@@ -1,3 +1,3 @@
 #pragma once
 
-#include "app/glfw.hpp"
+#include <glad/glad.h>

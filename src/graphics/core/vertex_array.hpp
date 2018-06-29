@@ -1,13 +1,13 @@
 #pragma once
 
-#include <cassert>
 #include <limits>
 
-#include "./gl_errors.hpp"
-#include "./gl_utils.hpp"
-#include "./opengl.hpp"
+#include "common/assert.hpp"
 #include "common/exception.hpp"
 #include "common/meta.hpp"
+#include "graphics/core/gl_errors.hpp"
+#include "graphics/core/gl_utils.hpp"
+#include "graphics/core/opengl.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -127,13 +127,8 @@ class VertexArrayType {
 public:
     /// Arguments for the vertex array.
     struct Args {
-
         /// The expected usage of the data.
-        /// Must be one of:
-        /// GL_STREAM_DRAW    GL_STATIC_DRAW    GL_DYNAMIC_DRAW
-        /// GL_STREAM_READ    GL_STATIC_READ    GL_DYNAMIC_READ
-        /// GL_STREAM_COPY    GL_STATIC_COPY    GL_DYNAMIC_COPY
-        GLenum usage = GL_STATIC_DRAW;
+        GLUsage usage = GLUsage::STATIC_DRAW;
 
         /// Whether attributes in this array are applied per-vertex or per-instance.
         bool per_instance = false;
@@ -143,7 +138,7 @@ public:
 protected:
     /// Constructor.
     /// @throws runtime_error   If there is no OpenGL context.
-    VertexArrayType(Args&& args) : m_args(std::move(args)), m_vbo_id(0), m_size(0)
+    VertexArrayType(Args&& args) : m_args(std::move(args))
     {
         if (!gl_is_initialized()) {
             notf_throw(runtime_error, "Cannot create a VertexArray without an OpenGL context");
@@ -157,10 +152,10 @@ public:
     virtual ~VertexArrayType();
 
     /// OpenGL handle of the vertex buffer.
-    GLuint id() const { return m_vbo_id; }
+    GLuint get_id() const { return m_vbo_id; }
 
     /// Number of elements in the array.
-    GLsizei size() const { return m_size; }
+    GLsizei get_size() const { return m_size; }
 
     /// Checks whether the array is empty.
     bool is_empty() const { return m_size == 0; }
@@ -171,10 +166,10 @@ protected:
     const Args m_args;
 
     /// OpenGL handle of the vertex buffer.
-    GLuint m_vbo_id;
+    GLuint m_vbo_id = 0;
 
     /// Number of elements in the array.
-    GLsizei m_size;
+    GLsizei m_size = 0;
 
     /// Invalid attribute ID.
     static constexpr GLuint INVALID_ID = std::numeric_limits<GLuint>::max();
@@ -224,7 +219,7 @@ public:
     /// Constructor.
     /// @param args             VertexArray arguments (defaults to default constructed argument struct).
     /// @throws runtime_error   If there is no OpenGL context.
-    VertexArray(Args&& args = {}) : VertexArrayType(std::forward<Args>(args)), m_vertices(), m_buffer_size(0)
+    VertexArray(Args&& args = {}) : VertexArrayType(std::forward<Args>(args))
     {
         static_assert(std::tuple_size<Traits>::value > 0, "A VertexArray must contain at least one Attribute");
         static_assert(is_trait_tuple(Traits{}), "Template arguments to VertexArray must only contain valid "
@@ -233,7 +228,7 @@ public:
 
     /// Write-access to the vertex buffer.
     /// Note that you need to `init()` (if it is the first time) or `update()` to apply the contents of the buffer.
-    std::vector<Vertex>& buffer() { return m_vertices; }
+    std::vector<Vertex>& get_buffer() { return m_vertices; }
 
     /// Initializes the VertexArray with the current contents of `m_vertices`.
     /// @throws runtime_error   If the VBO could not be allocated.
@@ -260,7 +255,8 @@ public:
         m_size = static_cast<GLsizei>(m_vertices.size());
 
         notf_check_gl(glBindBuffer(GL_ARRAY_BUFFER, m_vbo_id));
-        notf_check_gl(glBufferData(GL_ARRAY_BUFFER, m_size * sizeof(Vertex), &m_vertices[0], m_args.usage));
+        notf_check_gl(
+            glBufferData(GL_ARRAY_BUFFER, m_size * sizeof(Vertex), &m_vertices[0], get_gl_usage(m_args.usage)));
         _init_array<0, Ts...>();
         notf_check_gl(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
@@ -282,8 +278,8 @@ private:
         }
         else {
             // otherwise we have to do a full update
-            notf_check_gl(
-                glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(Vertex), &m_vertices[0], m_args.usage));
+            notf_check_gl(glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(Vertex), &m_vertices[0],
+                                       get_gl_usage(m_args.usage)));
         }
         m_buffer_size = std::max(m_buffer_size, m_size);
 
@@ -316,15 +312,15 @@ private:
         // therefore we have to discover the offset for each element
         const auto offset = reinterpret_cast<std::intptr_t>(&std::get<INDEX>(m_vertices[0]))
                             - reinterpret_cast<std::intptr_t>(&m_vertices[0]);
-        assert(offset >= 0);
+        NOTF_ASSERT(offset >= 0);
 
         // not all attribute types fit into a single OpenGL ES attribute
         // larger types are stored in consecutive attribute locations
         const size_t attribute_count = sizeof(typename ATTRIBUTE::type) / sizeof(GLfloat);
-        for (size_t multi = 0; multi < (attribute_count / 4) + (attribute_count % 4 ? 1 : 0); ++multi) {
+        for (size_t multi = 0, last = (attribute_count / 4) + (attribute_count % 4 ? 1 : 0); multi < last; ++multi) {
 
-            const GLint size = std::min(4, static_cast<int>(attribute_count) - static_cast<int>((multi * 4)));
-            assert(size >= 1 && size <= 4);
+            const GLint size = std::min(4, static_cast<int>(attribute_count) - static_cast<int>(multi * 4));
+            NOTF_ASSERT(size >= 1 && size <= 4);
 
             // link the location in the array to the shader's attribute
             notf_check_gl(glEnableVertexAttribArray(ATTRIBUTE::location + multi));
@@ -346,7 +342,7 @@ private:
     std::vector<Vertex> m_vertices;
 
     /// Size in bytes of the buffer allocated on the server.
-    GLsizei m_buffer_size;
+    GLsizei m_buffer_size = 0;
 };
 
 NOTF_CLOSE_NAMESPACE

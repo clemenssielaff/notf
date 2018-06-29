@@ -46,14 +46,6 @@ struct BlendMode {
         XOR,              ///< Exclusive OR of the source image and destination image.
         DEFAULT = SOURCE_OVER,
     };
-
-    // fields ------------------------------------------------------------------------------------------------------- //
-    /// Blend mode for colors.
-    Mode rgb;
-
-    /// Blend mode for transparency.
-    Mode alpha;
-
     // methods ------------------------------------------------------------------------------------------------------ //
     /// Default constructor.
     BlendMode() : rgb(DEFAULT), alpha(DEFAULT) {}
@@ -74,12 +66,20 @@ struct BlendMode {
     /// Inequality operator.
     /// @param other    Blend mode to test against.
     bool operator!=(const BlendMode& other) const { return rgb != other.rgb || alpha != other.alpha; }
+
+    // fields ------------------------------------------------------------------------------------------------------- //
+public:
+    /// Blend mode for colors.
+    Mode rgb;
+
+    /// Blend mode for transparency.
+    Mode alpha;
 };
 
 // ================================================================================================================== //
 
 /// Direction to cull in the culling test.
-enum CullFace : unsigned char {
+enum class CullFace : unsigned char {
     BACK,  ///< Do not render back-facing faces (default).
     FRONT, ///< Do not render front-facing faces.
     BOTH,  ///< Cull all faces.
@@ -90,7 +90,7 @@ enum CullFace : unsigned char {
 // ================================================================================================================== //
 
 /// The GraphicsContext is an abstraction of the OpenGL graphics context.
-/// It is the object owning all NoTF client objects like shaders and textures.
+/// It is the object owning all NoTF graphics objects like shaders and textures.
 class GraphicsContext {
 
     friend class access::_GraphicsContext<Texture>;
@@ -110,15 +110,19 @@ public:
     class Extensions {
         friend class GraphicsContext;
 
+        // methods -------------------------------------------------------------------------------------------------- //
+    private:
         /// Default constructor.
         Extensions();
 
+        // fields --------------------------------------------------------------------------------------------------- //
     public:
         /// Is anisotropic filtering of textures supported?
+        /// @see    https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_texture_filter_anisotropic.txt
         bool anisotropic_filter;
 
-        /// Does the GPU support nVidia GPU shader5 extensions.
-        /// @see   https://www.khronos.org/registry/OpenGL/extensions/NV/NV_gpu_shader5.txt
+        /// Does the GPU support GPU shader5 extensions?
+        /// @see   https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_gpu_shader5.txt
         bool nv_gpu_shader5;
     };
 
@@ -126,8 +130,16 @@ public:
 
     /// Helper struct containing variables that need to be read from OpenGL at runtime and won't change over the
     /// course of the app.
-    struct Environment {
+    class Environment {
+        friend class GraphicsContext;
 
+        // methods -------------------------------------------------------------------------------------------------- //
+    private:
+        /// Default constructor.
+        Environment();
+
+        // fields --------------------------------------------------------------------------------------------------- //
+    public:
         /// Maximum height and width of a render buffer in pixels.
         GLuint max_render_buffer_size;
 
@@ -144,18 +156,16 @@ public:
         /// In order to get that use:
         ///     GL_TEXTURE0 + font_atlas_texture_slot
         GLuint font_atlas_texture_slot;
-
-    private:
-        friend class GraphicsContext;
-
-        /// Default constructor.
-        Environment();
     };
 
     // ============================================================================================================== //
 
     /// Buffers to clear in a call to `clear`.
-    enum Buffer : unsigned char { COLOR = 1u << 1, DEPTH = 1u << 2, STENCIL = 1u << 3 };
+    enum Buffer : unsigned char {
+        COLOR = 1u << 1,  //< Color buffer
+        DEPTH = 1u << 2,  //< Depth buffer
+        STENCIL = 1u << 3 //< Stencil buffer
+    };
     using BufferFlags = std::underlying_type<Buffer>::type;
 
     // ============================================================================================================== //
@@ -165,9 +175,8 @@ public:
     class NOTF_NODISCARD PipelineGuard {
         friend class GraphicsContext;
 
-        NOTF_NO_COPY_OR_ASSIGN(PipelineGuard);
-        NOTF_NO_HEAP_ALLOCATION(PipelineGuard);
-
+        // methods -------------------------------------------------------------------------------------------------- //
+    private:
         /// Constructor.
         /// @param context  Context that created the guard.
         /// @param pipeline Pipeline to bind and unbind.
@@ -178,6 +187,9 @@ public:
         }
 
     public:
+        NOTF_NO_COPY_OR_ASSIGN(PipelineGuard);
+        NOTF_NO_HEAP_ALLOCATION(PipelineGuard);
+
         /// Explicit move Constructor.
         /// @param other    Pipeline to move from.
         PipelineGuard(PipelineGuard&& other)
@@ -198,6 +210,7 @@ public:
             }
         }
 
+        // fields --------------------------------------------------------------------------------------------------- //
     private:
         /// Context that created the guard.
         GraphicsContext& m_context;
@@ -208,7 +221,6 @@ public:
         /// Previously bound Pipeline, is restored on guard destruction.
         PipelinePtr m_previous_pipeline;
     };
-    friend class PipelineGuard;
 
     // ============================================================================================================== //
 
@@ -217,9 +229,8 @@ public:
     class NOTF_NODISCARD FramebufferGuard {
         friend class GraphicsContext;
 
-        NOTF_NO_COPY_OR_ASSIGN(FramebufferGuard);
-        NOTF_NO_HEAP_ALLOCATION(FramebufferGuard);
-
+        // methods -------------------------------------------------------------------------------------------------- //
+    private:
         /// Constructor.
         /// @param context      Context that created the guard.
         /// @param framebuffer  FrameBuffer to bind and unbind.
@@ -232,6 +243,9 @@ public:
         }
 
     public:
+        NOTF_NO_COPY_OR_ASSIGN(FramebufferGuard);
+        NOTF_NO_HEAP_ALLOCATION(FramebufferGuard);
+
         /// Explicit move Constructor.
         /// @param other    Framebuffer to move from.
         FramebufferGuard(FramebufferGuard&& other)
@@ -252,6 +266,7 @@ public:
             }
         }
 
+        // fields --------------------------------------------------------------------------------------------------- //
     private:
         /// Context that created the guard.
         GraphicsContext& m_context;
@@ -262,7 +277,6 @@ public:
         /// Previously bound FrameBuffer, is restored on guard destruction.
         FrameBufferPtr m_previous_framebuffer;
     };
-    friend class FramebufferGuard;
 
     // ============================================================================================================== //
 
@@ -271,7 +285,7 @@ public:
     struct NOTF_NODISCARD CurrentGuard {
         friend class GraphicsContext;
 
-        // methods ------------------------------------------------------------
+        // methods -------------------------------------------------------------------------------------------------- //
     private:
         /// Constructor.
         /// @param context      Context that created the guard.
@@ -324,22 +338,28 @@ private:
     /// Graphics state.
     struct State {
 
+        /// Blend mode.
         BlendMode blend_mode = BlendMode::DEFAULT;
 
+        /// Culling.
         CullFace cull_face = CullFace::DEFAULT;
 
+        /// Stencil mask.
         GLuint stencil_mask = 0xffffffff;
 
+        /// Bound textures.
         std::vector<TextureConstPtr> texture_slots = {};
 
+        /// Bound Pipeline.
         PipelinePtr pipeline = {};
 
+        /// Bound Framebuffer.
         FrameBufferPtr framebuffer = {};
 
         /// Color applied when the bound framebuffer is cleared.
         Color clear_color = Color::black();
 
-        /// Area that is rendered into.
+        /// On-screen AABR that is rendered into.
         Aabri render_area;
     };
 
@@ -360,18 +380,18 @@ public:
     bool operator==(const GraphicsContext& other) const { return m_window == other.m_window; }
 
     /// Creates and returns an GLExtension instance.
-    static const Extensions& extensions();
+    static const Extensions& get_extensions();
 
     /// Creates and initializes information about the graphics environment.
-    static const Environment& environment();
+    static const Environment& get_environment();
 
     /// Returns the size of the context's window in pixels.
     /// Note that this might not be the current render size. For example, if you are currently rendering into a
     /// FrameBuffer that has a color texture of size 128x128, the window size is most likely much larger than that.
-    Size2i window_size() const;
+    Size2i get_window_size() const;
 
     /// Area that is rendered into.
-    const Aabri& render_area() const { return m_state.render_area; }
+    const Aabri& get_render_area() const { return m_state.render_area; }
 
     ///@{
     /// FontManager used to render text.
@@ -401,8 +421,7 @@ public:
     /// Sets the new clear color.
     /// @param color    Color to apply.
     /// @param buffers  Buffers to clear.
-    /// @param force    Ignore the current state and always make the OpenGL call.
-    void clear(Color color, const BufferFlags buffers = Buffer::COLOR, const bool force = false);
+    void clear(Color color, const BufferFlags buffers = Buffer::COLOR);
 
     /// Makes this context current on this thread.
     /// Blocks until the GraphicsContext's mutex is free.
@@ -423,7 +442,7 @@ public:
     /// Finds and returns a Texture of this context by its name.
     /// @param id               ID of the Texture.
     /// @throws out_of_range    If the context does not contain a Texture with the given id.
-    TexturePtr texture(const TextureId& id) const;
+    TexturePtr get_texture(const TextureId& id) const;
 
     /// Binds the given texture at the given texture slot.
     /// Only results in an OpenGL call if the texture is not currently bound.
@@ -431,16 +450,13 @@ public:
     /// @param slot             Texture slot to bind the texture to.
     /// @throws runtime_error   If the texture is not valid.
     /// @throws runtime_error   If slot is >= than the number of texture slots in the environment.
-    void bind_texture(const Texture* texture, uint slot);
+    void bind_texture(const Texture* get_texture, uint slot);
     void bind_texture(const TexturePtr& texture, uint slot) { bind_texture(texture.get(), slot); }
 
     /// Unbinds the current texture and clears the context's texture stack.
     /// @param slot             Texture slot to clear.
     /// @throws runtime_error   If slot is >= than the number of texture slots in the environment.
     void unbind_texture(uint slot);
-
-    /// Unbinds bound texures from all slots.
-    void unbind_all_textures();
 
     // shader -----------------------------------------------------------------
 
@@ -451,7 +467,7 @@ public:
     /// Finds and returns a Shader of this context by its ID.
     /// @param id               ID of the Shader.
     /// @throws out_of_range    If the context does not contain a Shader with the given id.
-    ShaderPtr shader(const ShaderId& id) const;
+    ShaderPtr get_shader(const ShaderId& id) const;
 
     // pipeline ---------------------------------------------------------------
 
@@ -469,12 +485,12 @@ public:
     /// Finds and returns a FrameBuffer of this context by its ID.
     /// @param id               ID of the FrameBuffer.
     /// @throws out_of_range    If the context does not contain a FrameBuffer with the given id.
-    FrameBufferPtr framebuffer(const FrameBufferId& id) const;
+    FrameBufferPtr get_framebuffer(const FrameBufferId& id) const;
 
     /// Binds the given FrameBuffer, if it is not already bound.
     /// @param framebuffer  FrameBuffer to bind.
     /// @returns Guard, making sure that the FrameBuffer is properly unbound and the previous one restored after use.
-    FramebufferGuard bind_framebuffer(const FrameBufferPtr& framebuffer);
+    FramebufferGuard bind_framebuffer(const FrameBufferPtr& get_framebuffer);
 
     // methods ------------------------------------------------------------------------------------------------------ //
 private:
@@ -486,7 +502,8 @@ private:
     /// Decreases the recursion count of this graphics context.
     void _release_current();
 
-    // state ------------------------------------------------------------------
+    /// Unbinds bound texures from all slots.
+    void _unbind_all_textures();
 
     /// Create a new State.
     State _create_state() const;
@@ -506,30 +523,30 @@ private:
 
     /// Binds the given FrameBuffer, if it is not already bound.
     /// @param framebuffer  FrameBuffer to bind.
-    void _bind_framebuffer(const FrameBufferPtr& framebuffer);
+    void _bind_framebuffer(const FrameBufferPtr& get_framebuffer);
 
     /// Unbinds the current FrameBuffer.
     /// @param framebuffer  Only unbind the current FrameBuffer, if it is equal to the one given. If empty (default),
     /// the
     ///                     current FrameBuffer is always unbound.
-    void _unbind_framebuffer(const FrameBufferPtr& framebuffer = {});
+    void _unbind_framebuffer(const FrameBufferPtr& get_framebuffer = {});
 
     // registration -----------------------------------------------------------
 
     /// Registers a new Texture with this GraphicsContext.
     /// @param texture          New Texture to register.
     /// @throws internal_error  If another Texture with the same ID already exists.
-    void _register_new(TexturePtr texture);
+    void _register_new(TexturePtr get_texture);
 
     /// Registers a new Shader with this GraphicsContext.
     /// @param shader           New Shader to register.
     /// @throws internal_error  If another Shader with the same ID already exists.
-    void _register_new(ShaderPtr shader);
+    void _register_new(ShaderPtr get_shader);
 
     /// Registers a new FrameBuffer with this GraphicsContext.
     /// @param framebuffer      New FrameBuffer to register.
     /// @throws internal_error  If another FrameBuffer with the same ID already exists.
-    void _register_new(FrameBufferPtr framebuffer);
+    void _register_new(FrameBufferPtr get_framebuffer);
 
     /// Call this function after the last shader has been compiled.
     /// Might cause the driver to release the resources allocated for the compiler to free up some space, but is not

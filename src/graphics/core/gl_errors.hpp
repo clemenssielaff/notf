@@ -4,6 +4,8 @@
 
 NOTF_OPEN_NAMESPACE
 
+// ================================================================================================================== //
+
 namespace detail {
 
 /// Checks if there was an OpenGL error and reports it to Signal's logger.
@@ -19,6 +21,8 @@ void _notf_clear_gl_errors();
 
 } // namespace detail
 
+// ================================================================================================================== //
+
 /// Check for and return the last OpenGL error.
 /// For a simple error reporting mechanism use `notf_check_gl_error` which is a noop in release.
 #define notf_get_gl_error() detail::_notf_check_gl_error(__LINE__, notf::basename(__FILE__), __FUNCTION__)
@@ -26,7 +30,7 @@ void _notf_clear_gl_errors();
 #ifdef NOTF_DEBUG
 #    define notf_clear_gl_errors() detail::_notf_clear_gl_errors()
 #    define notf_check_gl_error() detail::_notf_check_gl_error(__LINE__, notf::basename(__FILE__), __FUNCTION__)
-#    define notf_check_gl(A) A; notf_check_gl_error()
+#    define notf_check_gl(A) (A); notf_check_gl_error()
 #else
 #    define notf_check_gl_error() do {} while (0)
 #    define notf_clear_gl_errors() do {} while (0)

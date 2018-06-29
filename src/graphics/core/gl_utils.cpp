@@ -1,9 +1,8 @@
 #include "graphics/core/gl_utils.hpp"
 
-#include "common/half.hpp"
+#include "common/assert.hpp"
 #include "common/log.hpp"
 #include "graphics/core/gl_errors.hpp"
-#include "graphics/core/opengl.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -20,63 +19,63 @@ void gl_log_system_info()
 
 const std::string& gl_type_name(GLenum type)
 {
-    static const std::string t_float                = "float";
-    static const std::string t_vec2                 = "vec2";
-    static const std::string t_vec3                 = "vec3";
-    static const std::string t_vec4                 = "vec4";
-    static const std::string t_int                  = "int";
-    static const std::string t_ivec2                = "ivec2";
-    static const std::string t_ivec3                = "ivec3";
-    static const std::string t_ivec4                = "ivec4";
-    static const std::string t_unsigned_int         = "unsigned int";
-    static const std::string t_uvec2                = "uvec2";
-    static const std::string t_uvec3                = "uvec3";
-    static const std::string t_uvec4                = "uvec4";
-    static const std::string t_bool                 = "bool";
-    static const std::string t_bvec2                = "bvec2";
-    static const std::string t_bvec3                = "bvec3";
-    static const std::string t_bvec4                = "bvec4";
-    static const std::string t_mat2                 = "mat2";
-    static const std::string t_mat3                 = "mat3";
-    static const std::string t_mat4                 = "mat4";
-    static const std::string t_mat2x3               = "mat2x3";
-    static const std::string t_mat2x4               = "mat2x4";
-    static const std::string t_mat3x2               = "mat3x2";
-    static const std::string t_mat3x4               = "mat3x4";
-    static const std::string t_mat4x2               = "mat4x2";
-    static const std::string t_mat4x3               = "mat4x3";
-    static const std::string t_sampler2D            = "sampler2D";
-    static const std::string t_sampler3D            = "sampler3D";
-    static const std::string t_samplerCube          = "samplerCube";
-    static const std::string t_sampler2DShadow      = "sampler2DShadow";
-    static const std::string t_sampler2DArray       = "sampler2DArray";
+    static const std::string t_float = "float";
+    static const std::string t_vec2 = "vec2";
+    static const std::string t_vec3 = "vec3";
+    static const std::string t_vec4 = "vec4";
+    static const std::string t_int = "int";
+    static const std::string t_ivec2 = "ivec2";
+    static const std::string t_ivec3 = "ivec3";
+    static const std::string t_ivec4 = "ivec4";
+    static const std::string t_unsigned_int = "unsigned int";
+    static const std::string t_uvec2 = "uvec2";
+    static const std::string t_uvec3 = "uvec3";
+    static const std::string t_uvec4 = "uvec4";
+    static const std::string t_bool = "bool";
+    static const std::string t_bvec2 = "bvec2";
+    static const std::string t_bvec3 = "bvec3";
+    static const std::string t_bvec4 = "bvec4";
+    static const std::string t_mat2 = "mat2";
+    static const std::string t_mat3 = "mat3";
+    static const std::string t_mat4 = "mat4";
+    static const std::string t_mat2x3 = "mat2x3";
+    static const std::string t_mat2x4 = "mat2x4";
+    static const std::string t_mat3x2 = "mat3x2";
+    static const std::string t_mat3x4 = "mat3x4";
+    static const std::string t_mat4x2 = "mat4x2";
+    static const std::string t_mat4x3 = "mat4x3";
+    static const std::string t_sampler2D = "sampler2D";
+    static const std::string t_sampler3D = "sampler3D";
+    static const std::string t_samplerCube = "samplerCube";
+    static const std::string t_sampler2DShadow = "sampler2DShadow";
+    static const std::string t_sampler2DArray = "sampler2DArray";
     static const std::string t_sampler2DArrayShadow = "sampler2DArrayShadow";
-    static const std::string t_sampler2DMS          = "sampler2DMS";
-    static const std::string t_samplerCubeShadow    = "samplerCubeShadow";
-    static const std::string t_isampler2D           = "isampler2D";
-    static const std::string t_isampler3D           = "isampler3D";
-    static const std::string t_isamplerCube         = "isamplerCube";
-    static const std::string t_isampler2DArray      = "isampler2DArray";
-    static const std::string t_isampler2DMS         = "isampler2DMS";
-    static const std::string t_usampler2D           = "usampler2D";
-    static const std::string t_usampler3D           = "usampler3D";
-    static const std::string t_usamplerCube         = "usamplerCube";
-    static const std::string t_usampler2DArray      = "usampler2DArray";
-    static const std::string t_usampler2DMS         = "usampler2DMS";
-    static const std::string t_image2D              = "image2D";
-    static const std::string t_image3D              = "image3D";
-    static const std::string t_imageCube            = "imageCube";
-    static const std::string t_image2DArray         = "image2DArray";
-    static const std::string t_iimage2D             = "iimage2D";
-    static const std::string t_iimage3D             = "iimage3D";
-    static const std::string t_iimageCube           = "iimageCube";
-    static const std::string t_iimage2DArray        = "iimage2DArray";
-    static const std::string t_uimage2D             = "uimage2D";
-    static const std::string t_uimage3D             = "uimage3D";
-    static const std::string t_uimageCube           = "uimageCube";
-    static const std::string t_uimage2DArray        = "uimage2DArray";
-    static const std::string t_atomic_uint          = "atomic_uint";
-    static const std::string t_unknown              = "unknown";
+    static const std::string t_sampler2DMS = "sampler2DMS";
+    static const std::string t_samplerCubeShadow = "samplerCubeShadow";
+    static const std::string t_isampler2D = "isampler2D";
+    static const std::string t_isampler3D = "isampler3D";
+    static const std::string t_isamplerCube = "isamplerCube";
+    static const std::string t_isampler2DArray = "isampler2DArray";
+    static const std::string t_isampler2DMS = "isampler2DMS";
+    static const std::string t_usampler2D = "usampler2D";
+    static const std::string t_usampler3D = "usampler3D";
+    static const std::string t_usamplerCube = "usamplerCube";
+    static const std::string t_usampler2DArray = "usampler2DArray";
+    static const std::string t_usampler2DMS = "usampler2DMS";
+    static const std::string t_image2D = "image2D";
+    static const std::string t_image3D = "image3D";
+    static const std::string t_imageCube = "imageCube";
+    static const std::string t_image2DArray = "image2DArray";
+    static const std::string t_iimage2D = "iimage2D";
+    static const std::string t_iimage3D = "iimage3D";
+    static const std::string t_iimageCube = "iimageCube";
+    static const std::string t_iimage2DArray = "iimage2DArray";
+    static const std::string t_uimage2D = "uimage2D";
+    static const std::string t_uimage3D = "uimage3D";
+    static const std::string t_uimageCube = "uimageCube";
+    static const std::string t_uimage2DArray = "uimage2DArray";
+    static const std::string t_atomic_uint = "atomic_uint";
+    static const std::string t_unknown = "unknown";
 
     switch (type) {
     case GL_FLOAT:
@@ -197,19 +196,36 @@ const std::string& gl_type_name(GLenum type)
 
 // ================================================================================================================== //
 
-GLenum to_gl_type(const GLbyte&) { return GL_BYTE; }
-GLenum to_gl_type(const GLubyte&) { return GL_UNSIGNED_BYTE; }
-GLenum to_gl_type(const GLshort&) { return GL_SHORT; }
-GLenum to_gl_type(const GLushort&) { return GL_UNSIGNED_SHORT; }
-GLenum to_gl_type(const GLint&) { return GL_INT; }
-GLenum to_gl_type(const GLuint&) { return GL_UNSIGNED_INT; }
-GLenum to_gl_type(const half&) { return GL_HALF_FLOAT; }
-GLenum to_gl_type(const GLfloat&) { return GL_FLOAT; }
-
-// ================================================================================================================== //
-
 VaoBindGuard::VaoBindGuard(GLuint vao) : m_vao(vao) { notf_check_gl(glBindVertexArray(m_vao)); }
 
 VaoBindGuard::~VaoBindGuard() { notf_check_gl(glBindVertexArray(0)); }
 
+// ================================================================================================================== //
+
+GLenum get_gl_usage(const GLUsage usage)
+{
+    switch (usage) {
+    case GLUsage::DYNAMIC_DRAW:
+        return GL_DYNAMIC_DRAW;
+    case GLUsage::DYNAMIC_READ:
+        return GL_DYNAMIC_READ;
+    case GLUsage::DYNAMIC_COPY:
+        return GL_DYNAMIC_COPY;
+    case GLUsage::STATIC_DRAW:
+        return GL_STATIC_DRAW;
+    case GLUsage::STATIC_READ:
+        return GL_STATIC_READ;
+    case GLUsage::STATIC_COPY:
+        return GL_STATIC_COPY;
+    case GLUsage::STREAM_DRAW:
+        return GL_STREAM_DRAW;
+    case GLUsage::STREAM_READ:
+        return GL_STREAM_READ;
+    case GLUsage::STREAM_COPY:
+        return GL_STREAM_COPY;
+    default:
+        NOTF_ASSERT(false);
+    }
+    return get_gl_usage(GLUsage::DEFAULT);
+}
 NOTF_CLOSE_NAMESPACE

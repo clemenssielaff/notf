@@ -100,10 +100,10 @@ public:
     virtual ~Shader();
 
     /// Graphics Context in which the Texture lives.
-    GraphicsContext& context() const { return m_graphics_context; }
+    GraphicsContext& get_context() const { return m_graphics_context; }
 
     /// The OpenGL ID of the Shader program.
-    ShaderId id() const { return m_id; }
+    ShaderId get_id() const { return m_id; }
 
     /// Checks if the Shader is valid.
     /// A Shader should always be valid - the only way to get an invalid one is to remove the GraphicsContext while
@@ -111,13 +111,13 @@ public:
     bool is_valid() const { return m_id.is_valid(); }
 
     /// Pipeline stage/s of the Shader.
-    Stage::Flags stage() const { return m_stages; }
+    Stage::Flags get_stage() const { return m_stages; }
 
     /// The name of this Shader.
-    const std::string& name() const { return m_name; }
+    const std::string& get_name() const { return m_name; }
 
     /// All uniforms of this shader.
-    const std::vector<Variable>& uniforms() const { return m_uniforms; }
+    const std::vector<Variable>& get_uniforms() const { return m_uniforms; }
 
     /// Updates the value of a uniform in the shader.
     /// @throws runtime_error   If the uniform cannot be found.
@@ -225,13 +225,13 @@ public:
 
     /// Returns the location of the attribute with the given name.
     /// @throws runtime_error   If there is no attribute with the given name in this shader.
-    GLuint attribute(const std::string& name) const;
+    GLuint get_attribute(const std::string& name) const;
 
     /// All attribute variables.
-    const std::vector<Variable>& attributes() { return m_attributes; }
+    const std::vector<Variable>& get_attributes() { return m_attributes; }
 
     /// The vertex shader source code.
-    const std::string& source() const { return m_source; }
+    const std::string& get_source() const { return m_source; }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
@@ -279,10 +279,10 @@ public:
            const std::string& evaluation_source, const Defines& defines = s_no_defines);
 
     /// The teselation control shader source code.
-    const std::string& control_source() const { return m_control_source; }
+    const std::string& get_control_source() const { return m_control_source; }
 
     /// The teselation evaluation shader source code.
-    const std::string& evaluation_source() const { return m_evaluation_source; }
+    const std::string& get_evaluation_source() const { return m_evaluation_source; }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
@@ -326,7 +326,7 @@ public:
                                     const Defines& defines = s_no_defines);
 
     /// The geometry shader source code.
-    const std::string& source() const { return m_source; }
+    const std::string& get_source() const { return m_source; }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
@@ -367,7 +367,7 @@ public:
                                     const Defines& defines = s_no_defines);
 
     /// The fragment shader source code.
-    const std::string& source() const { return m_source; }
+    const std::string& get_source() const { return m_source; }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

@@ -1,6 +1,5 @@
 #include "graphics/core/graphics_context.hpp"
 
-#include <cassert>
 #include <cstring>
 #include <set>
 
@@ -16,12 +15,72 @@
 #include "graphics/core/texture.hpp"
 #include "graphics/text/font_manager.hpp"
 
+namespace { // anonymous
+NOTF_USING_NAMESPACE
+
+std::pair<GLenum, GLenum> convert_blend_mode(const BlendMode::Mode blend_mode)
+{
+    GLenum sfactor = 0;
+    GLenum dfactor = 0;
+    switch (blend_mode) {
+    case (BlendMode::SOURCE_OVER):
+        sfactor = GL_ONE;
+        dfactor = GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    case (BlendMode::SOURCE_IN):
+        sfactor = GL_DST_ALPHA;
+        dfactor = GL_ZERO;
+        break;
+    case (BlendMode::SOURCE_OUT):
+        sfactor = GL_ONE_MINUS_DST_ALPHA;
+        dfactor = GL_ZERO;
+        break;
+    case (BlendMode::SOURCE_ATOP):
+        sfactor = GL_DST_ALPHA;
+        dfactor = GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    case (BlendMode::DESTINATION_OVER):
+        sfactor = GL_ONE_MINUS_DST_ALPHA;
+        dfactor = GL_ONE;
+        break;
+    case (BlendMode::DESTINATION_IN):
+        sfactor = GL_ZERO;
+        dfactor = GL_SRC_ALPHA;
+        break;
+    case (BlendMode::DESTINATION_OUT):
+        sfactor = GL_ZERO;
+        dfactor = GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    case (BlendMode::DESTINATION_ATOP):
+        sfactor = GL_ONE_MINUS_DST_ALPHA;
+        dfactor = GL_SRC_ALPHA;
+        break;
+    case (BlendMode::LIGHTER):
+        sfactor = GL_ONE;
+        dfactor = GL_ONE;
+        break;
+    case (BlendMode::COPY):
+        sfactor = GL_ONE;
+        dfactor = GL_ZERO;
+        break;
+    case (BlendMode::XOR):
+        sfactor = GL_ONE_MINUS_DST_ALPHA;
+        dfactor = GL_ONE_MINUS_SRC_ALPHA;
+        break;
+    default:
+        NOTF_ASSERT(false);
+    }
+    return {sfactor, dfactor};
+}
+
+} // namespace
+
 // ================================================================================================================== //
 
 NOTF_OPEN_NAMESPACE
 
 #if NOTF_LOG_LEVEL >= NOTF_LOG_LEVEL_INFO
-#define CHECK_EXTENSION(member, extension)                                                                         \
+#define NOTF_CHECK_GL_EXTENSION(member, extension)                                                                 \
     member = GLAD_##extension;                                                                                     \
     if (member) {                                                                                                  \
         notf::LogMessageFactory(notf::LogMessage::LEVEL::INFO, __LINE__, notf::basename(__FILE__), "GLExtensions") \
@@ -40,11 +99,11 @@ NOTF_OPEN_NAMESPACE
 GraphicsContext::Extensions::Extensions()
 {
     // initialize the members
-    CHECK_EXTENSION(anisotropic_filter, GL_EXT_texture_filter_anisotropic);
-    CHECK_EXTENSION(nv_gpu_shader5, GL_EXT_gpu_shader5);
+    NOTF_CHECK_GL_EXTENSION(anisotropic_filter, GL_EXT_texture_filter_anisotropic);
+    NOTF_CHECK_GL_EXTENSION(nv_gpu_shader5, GL_EXT_gpu_shader5);
 }
 
-#undef CHECK_EXTENSION
+#undef NOTF_CHECK_GL_EXTENSION
 
 // ================================================================================================================== //
 
@@ -88,8 +147,7 @@ GraphicsContext::GraphicsContext(GLFWwindow* window) : m_window(window)
         gladLoadGLES2Loader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
         glfwSwapInterval(m_has_vsync ? 1 : 0);
 
-        { // sanity check (otherwise OpenGL may happily return `null` on all calls until something crashes down the
-          // line)
+        { // sanity check (otherwise OpenGL may happily return `null` on all calls until something crashes later)
             const GLubyte* version;
             notf_check_gl(version = glGetString(GL_VERSION));
             if (!version) {
@@ -97,7 +155,7 @@ GraphicsContext::GraphicsContext(GLFWwindow* window) : m_window(window)
             }
         }
 
-        // OpenGL defaults
+        // OpenGL hints
         notf_check_gl(glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST));
         notf_check_gl(glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_DONT_CARE));
 
@@ -105,7 +163,7 @@ GraphicsContext::GraphicsContext(GLFWwindow* window) : m_window(window)
         m_state = _create_state();
         set_stencil_mask(m_state.stencil_mask, /* force = */ true);
         set_blend_mode(m_state.blend_mode, /* force = */ true);
-        clear(m_state.clear_color, Buffer::COLOR, /* force = */ true);
+        clear(m_state.clear_color, Buffer::COLOR);
 
         // create auxiliary objects
         m_font_manager = FontManager::create(*this);
@@ -116,14 +174,14 @@ GraphicsContext::~GraphicsContext()
 {
     // release all resources that are bound by the context
     m_font_manager.reset();
-    unbind_all_textures();
+    _unbind_all_textures();
     _unbind_pipeline();
     _unbind_framebuffer();
 
     // deallocate and invalidate all remaining Textures
     for (auto itr : m_textures) {
         if (TexturePtr texture = itr.second.lock()) {
-            log_warning << "Deallocating live Texture: \"" << texture->name() << "\"";
+            log_warning << "Deallocating live Texture: \"" << texture->get_name() << "\"";
             texture->_deallocate();
         }
     }
@@ -132,7 +190,7 @@ GraphicsContext::~GraphicsContext()
     // deallocate and invalidate all remaining Shaders
     for (auto itr : m_shaders) {
         if (ShaderPtr shader = itr.second.lock()) {
-            log_warning << "Deallocating live Shader: \"" << shader->name() << "\"";
+            log_warning << "Deallocating live Shader: \"" << shader->get_name() << "\"";
             shader->_deallocate();
         }
     }
@@ -141,26 +199,26 @@ GraphicsContext::~GraphicsContext()
     // deallocate and invalidate all remaining FrameBuffers
     for (auto itr : m_framebuffers) {
         if (FrameBufferPtr framebuffer = itr.second.lock()) {
-            log_warning << "Deallocating live FrameBuffer: \"" << framebuffer->id() << "\"";
+            log_warning << "Deallocating live FrameBuffer: \"" << framebuffer->get_id() << "\"";
             framebuffer->_deallocate();
         }
     }
     m_framebuffers.clear();
 }
 
-const GraphicsContext::Extensions& GraphicsContext::extensions()
+const GraphicsContext::Extensions& GraphicsContext::get_extensions()
 {
     static const Extensions singleton;
     return singleton;
 }
 
-const GraphicsContext::Environment& GraphicsContext::environment()
+const GraphicsContext::Environment& GraphicsContext::get_environment()
 {
     static const Environment singleton;
     return singleton;
 }
 
-Size2i GraphicsContext::window_size() const
+Size2i GraphicsContext::get_window_size() const
 {
     Size2i result;
     glfwGetFramebufferSize(m_window, &result.width, &result.height);
@@ -191,115 +249,14 @@ void GraphicsContext::set_blend_mode(const BlendMode mode, const bool force)
     }
     m_state.blend_mode = mode;
 
-    // color
-    GLenum rgb_sfactor;
-    GLenum rgb_dfactor;
-    switch (mode.rgb) {
-    case (BlendMode::SOURCE_OVER):
-        rgb_sfactor = GL_ONE;
-        rgb_dfactor = GL_ONE_MINUS_SRC_ALPHA;
-        break;
-    case (BlendMode::SOURCE_IN):
-        rgb_sfactor = GL_DST_ALPHA;
-        rgb_dfactor = GL_ZERO;
-        break;
-    case (BlendMode::SOURCE_OUT):
-        rgb_sfactor = GL_ONE_MINUS_DST_ALPHA;
-        rgb_dfactor = GL_ZERO;
-        break;
-    case (BlendMode::SOURCE_ATOP):
-        rgb_sfactor = GL_DST_ALPHA;
-        rgb_dfactor = GL_ONE_MINUS_SRC_ALPHA;
-        break;
-    case (BlendMode::DESTINATION_OVER):
-        rgb_sfactor = GL_ONE_MINUS_DST_ALPHA;
-        rgb_dfactor = GL_ONE;
-        break;
-    case (BlendMode::DESTINATION_IN):
-        rgb_sfactor = GL_ZERO;
-        rgb_dfactor = GL_SRC_ALPHA;
-        break;
-    case (BlendMode::DESTINATION_OUT):
-        rgb_sfactor = GL_ZERO;
-        rgb_dfactor = GL_ONE_MINUS_SRC_ALPHA;
-        break;
-    case (BlendMode::DESTINATION_ATOP):
-        rgb_sfactor = GL_ONE_MINUS_DST_ALPHA;
-        rgb_dfactor = GL_SRC_ALPHA;
-        break;
-    case (BlendMode::LIGHTER):
-        rgb_sfactor = GL_ONE;
-        rgb_dfactor = GL_ONE;
-        break;
-    case (BlendMode::COPY):
-        rgb_sfactor = GL_ONE;
-        rgb_dfactor = GL_ZERO;
-        break;
-    case (BlendMode::XOR):
-        rgb_sfactor = GL_ONE_MINUS_DST_ALPHA;
-        rgb_dfactor = GL_ONE_MINUS_SRC_ALPHA;
-        break;
-    default:
-        rgb_sfactor = 0;
-        rgb_dfactor = 0;
-        assert(false);
-        break;
-    }
+    /// rgb
+    GLenum rgb_sfactor, rgb_dfactor;
+    std::tie(rgb_sfactor, rgb_dfactor) = convert_blend_mode(mode.rgb);
 
     // alpha
-    GLenum alpha_sfactor;
-    GLenum alpha_dfactor;
-    switch (mode.alpha) {
-    case (BlendMode::SOURCE_OVER):
-        alpha_sfactor = GL_ONE;
-        alpha_dfactor = GL_ONE_MINUS_SRC_ALPHA;
-        break;
-    case (BlendMode::SOURCE_IN):
-        alpha_sfactor = GL_DST_ALPHA;
-        alpha_dfactor = GL_ZERO;
-        break;
-    case (BlendMode::SOURCE_OUT):
-        alpha_sfactor = GL_ONE_MINUS_DST_ALPHA;
-        alpha_dfactor = GL_ZERO;
-        break;
-    case (BlendMode::SOURCE_ATOP):
-        alpha_sfactor = GL_DST_ALPHA;
-        alpha_dfactor = GL_ONE_MINUS_SRC_ALPHA;
-        break;
-    case (BlendMode::DESTINATION_OVER):
-        alpha_sfactor = GL_ONE_MINUS_DST_ALPHA;
-        alpha_dfactor = GL_ONE;
-        break;
-    case (BlendMode::DESTINATION_IN):
-        alpha_sfactor = GL_ZERO;
-        alpha_dfactor = GL_SRC_ALPHA;
-        break;
-    case (BlendMode::DESTINATION_OUT):
-        alpha_sfactor = GL_ZERO;
-        alpha_dfactor = GL_ONE_MINUS_SRC_ALPHA;
-        break;
-    case (BlendMode::DESTINATION_ATOP):
-        alpha_sfactor = GL_ONE_MINUS_DST_ALPHA;
-        alpha_dfactor = GL_SRC_ALPHA;
-        break;
-    case (BlendMode::LIGHTER):
-        alpha_sfactor = GL_ONE;
-        alpha_dfactor = GL_ONE;
-        break;
-    case (BlendMode::COPY):
-        alpha_sfactor = GL_ONE;
-        alpha_dfactor = GL_ZERO;
-        break;
-    case (BlendMode::XOR):
-        alpha_sfactor = GL_ONE_MINUS_DST_ALPHA;
-        alpha_dfactor = GL_ONE_MINUS_SRC_ALPHA;
-        break;
-    default:
-        alpha_sfactor = 0;
-        alpha_dfactor = 0;
-        assert(false);
-        break;
-    }
+    GLenum alpha_sfactor, alpha_dfactor;
+    std::tie(alpha_sfactor, alpha_dfactor) = convert_blend_mode(mode.alpha);
+
     notf_check_gl(glBlendFuncSeparate(rgb_sfactor, rgb_dfactor, alpha_sfactor, alpha_dfactor));
 }
 
@@ -314,9 +271,9 @@ void GraphicsContext::set_render_area(Aabri area, const bool force)
     }
 }
 
-void GraphicsContext::clear(Color color, const BufferFlags buffers, const bool force)
+void GraphicsContext::clear(Color color, const BufferFlags buffers)
 {
-    if (color != m_state.clear_color || force) {
+    if (color != m_state.clear_color) {
         m_state.clear_color = std::move(color);
         notf_check_gl(
             glClearColor(m_state.clear_color.r, m_state.clear_color.g, m_state.clear_color.b, m_state.clear_color.a));
@@ -340,7 +297,7 @@ void GraphicsContext::begin_frame() { clear(m_state.clear_color, Buffer::COLOR |
 
 void GraphicsContext::finish_frame() { glfwSwapBuffers(m_window); }
 
-TexturePtr GraphicsContext::texture(const TextureId& id) const
+TexturePtr GraphicsContext::get_texture(const TextureId& id) const
 {
     auto it = m_textures.find(id);
     if (it == m_textures.end()) {
@@ -355,9 +312,9 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot)
         return unbind_texture(slot);
     }
 
-    if (slot >= environment().texture_slot_count) {
+    if (slot >= get_environment().texture_slot_count) {
         notf_throw(runtime_error, "Invalid texture slot: {} - largest texture slot is: {}", slot,
-                   environment().texture_slot_count - 1);
+                   get_environment().texture_slot_count - 1);
     }
 
     if (texture == m_state.texture_slots[slot].get()) {
@@ -365,20 +322,20 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot)
     }
 
     if (!texture->is_valid()) {
-        notf_throw(runtime_error, "Cannot bind invalid texture \"{}\"", texture->name());
+        notf_throw(runtime_error, "Cannot bind invalid texture \"{}\"", texture->get_name());
     }
 
     notf_check_gl(glActiveTexture(GL_TEXTURE0 + slot));
-    notf_check_gl(glBindTexture(GL_TEXTURE_2D, texture->id().value()));
+    notf_check_gl(glBindTexture(GL_TEXTURE_2D, texture->get_id().value()));
 
     m_state.texture_slots[slot] = texture->shared_from_this();
 }
 
 void GraphicsContext::unbind_texture(uint slot)
 {
-    if (slot >= environment().texture_slot_count) {
+    if (slot >= get_environment().texture_slot_count) {
         notf_throw(runtime_error, "Invalid texture slot: {} - largest texture slot is: {}", slot,
-                   environment().texture_slot_count - 1);
+                   get_environment().texture_slot_count - 1);
     }
 
     if (m_state.texture_slots.at(slot) == nullptr) {
@@ -391,14 +348,7 @@ void GraphicsContext::unbind_texture(uint slot)
     m_state.texture_slots[slot].reset();
 }
 
-void GraphicsContext::unbind_all_textures()
-{
-    for (uint slot = 0; slot < environment().texture_slot_count; ++slot) {
-        unbind_texture(slot);
-    }
-}
-
-ShaderPtr GraphicsContext::shader(const ShaderId& id) const
+ShaderPtr GraphicsContext::get_shader(const ShaderId& id) const
 {
     auto it = m_shaders.find(id);
     if (it == m_shaders.end()) {
@@ -413,7 +363,7 @@ GraphicsContext::PipelineGuard GraphicsContext::bind_pipeline(const PipelinePtr&
     return PipelineGuard(*this, pipeline);
 }
 
-FrameBufferPtr GraphicsContext::framebuffer(const FrameBufferId& id) const
+FrameBufferPtr GraphicsContext::get_framebuffer(const FrameBufferId& id) const
 {
     auto it = m_framebuffers.find(id);
     if (it == m_framebuffers.end()) {
@@ -445,15 +395,22 @@ void GraphicsContext::_release_current()
     }
 }
 
+void GraphicsContext::_unbind_all_textures()
+{
+    for (uint slot = 0; slot < get_environment().texture_slot_count; ++slot) {
+        unbind_texture(slot);
+    }
+}
+
 GraphicsContext::State GraphicsContext::_create_state() const
 {
     State result; // default constructed
 
     // query number of texture slots
-    result.texture_slots.resize(environment().texture_slot_count);
+    result.texture_slots.resize(get_environment().texture_slot_count);
 
     // query current window size
-    result.render_area = Aabri(window_size());
+    result.render_area = Aabri(get_window_size());
 
     return result;
 }
@@ -465,7 +422,7 @@ void GraphicsContext::_bind_pipeline(const PipelinePtr& pipeline)
     }
     else if (pipeline != m_state.pipeline) {
         notf_check_gl(glUseProgram(0));
-        notf_check_gl(glBindProgramPipeline(pipeline->id().value()));
+        notf_check_gl(glBindProgramPipeline(pipeline->get_id().value()));
         m_state.pipeline = pipeline;
     }
 }
@@ -473,7 +430,7 @@ void GraphicsContext::_bind_pipeline(const PipelinePtr& pipeline)
 void GraphicsContext::_unbind_pipeline(const PipelinePtr& pipeline)
 {
     if (pipeline && pipeline != m_state.pipeline) {
-        log_critical << "Did not find expected Pipeline \"" << pipeline->id() << "\" to unbind, ignoring";
+        log_critical << "Did not find expected Pipeline \"" << pipeline->get_id() << "\" to unbind, ignoring";
         return;
     }
     if (m_state.pipeline) {
@@ -489,7 +446,7 @@ void GraphicsContext::_bind_framebuffer(const FrameBufferPtr& framebuffer)
         _unbind_framebuffer();
     }
     else if (framebuffer != m_state.framebuffer) {
-        notf_check_gl(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->id().value()));
+        notf_check_gl(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->get_id().value()));
         m_state.framebuffer = framebuffer;
     }
 }
@@ -497,7 +454,7 @@ void GraphicsContext::_bind_framebuffer(const FrameBufferPtr& framebuffer)
 void GraphicsContext::_unbind_framebuffer(const FrameBufferPtr& framebuffer)
 {
     if (framebuffer && framebuffer != m_state.framebuffer) {
-        log_critical << "Did not find expected FrameBuffer \"" << framebuffer->id() << "\" to unbind, ignoring";
+        log_critical << "Did not find expected FrameBuffer \"" << framebuffer->get_id() << "\" to unbind, ignoring";
         return;
     }
     if (m_state.framebuffer) {
@@ -508,39 +465,39 @@ void GraphicsContext::_unbind_framebuffer(const FrameBufferPtr& framebuffer)
 
 void GraphicsContext::_register_new(TexturePtr texture)
 {
-    auto it = m_textures.find(texture->id());
+    auto it = m_textures.find(texture->get_id());
     if (it == m_textures.end()) {
-        m_textures.emplace(texture->id(), texture); // insert new
+        m_textures.emplace(texture->get_id(), texture); // insert new
     }
     else if (it->second.expired()) {
         it->second = texture; // update expired
     }
     else {
         notf_throw(internal_error, "Failed to register a new texture with the same ID as an existing texture: \"{}\"",
-                   texture->id());
+                   texture->get_id());
     }
 }
 
 void GraphicsContext::_register_new(ShaderPtr shader)
 {
-    auto it = m_shaders.find(shader->id());
+    auto it = m_shaders.find(shader->get_id());
     if (it == m_shaders.end()) {
-        m_shaders.emplace(shader->id(), shader); // insert new
+        m_shaders.emplace(shader->get_id(), shader); // insert new
     }
     else if (it->second.expired()) {
         it->second = shader; // update expired
     }
     else {
         notf_throw(internal_error, "Failed to register a new shader with the same ID as an existing shader: \"{}\"",
-                   shader->id());
+                   shader->get_id());
     }
 }
 
 void GraphicsContext::_register_new(FrameBufferPtr framebuffer)
 {
-    auto it = m_framebuffers.find(framebuffer->id());
+    auto it = m_framebuffers.find(framebuffer->get_id());
     if (it == m_framebuffers.end()) {
-        m_framebuffers.emplace(framebuffer->id(), framebuffer); // insert new
+        m_framebuffers.emplace(framebuffer->get_id(), framebuffer); // insert new
     }
     else if (it->second.expired()) {
         it->second = framebuffer; // update expired
@@ -548,7 +505,7 @@ void GraphicsContext::_register_new(FrameBufferPtr framebuffer)
     else {
         notf_throw(internal_error,
                    "Failed to register a new framebuffer with the same ID as an existing framebuffer: \"{}\"",
-                   framebuffer->id());
+                   framebuffer->get_id());
     }
 }
 

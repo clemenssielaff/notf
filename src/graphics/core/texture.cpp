@@ -4,8 +4,6 @@
 #include <fstream>
 #include <iterator>
 
-#include "cassert"
-
 #include "common/color.hpp"
 #include "common/enum.hpp"
 #include "common/log.hpp"
@@ -34,7 +32,7 @@ GLint wrap_to_gl(const Texture::Wrap wrap)
     case Texture::Wrap::MIRRORED_REPEAT:
         return GL_MIRRORED_REPEAT;
     }
-    assert(0);
+    NOTF_ASSERT(false);
     return GL_ZERO;
 }
 
@@ -54,7 +52,7 @@ GLint minfilter_to_gl(const Texture::MinFilter filter)
     case Texture::MinFilter::LINEAR_MIPMAP_LINEAR:
         return GL_LINEAR_MIPMAP_LINEAR; // trilinear filtering
     }
-    assert(0);
+    NOTF_ASSERT(false);
     return GL_ZERO;
 }
 
@@ -66,7 +64,7 @@ GLint magfilter_to_gl(const Texture::MagFilter filter)
     case Texture::MagFilter::LINEAR:
         return GL_LINEAR;
     }
-    assert(0);
+    NOTF_ASSERT(false);
     return GL_ZERO;
 }
 
@@ -92,7 +90,7 @@ GLenum datatype_to_gl(const Texture::DataType type)
     case Texture::DataType::USHORT_5_6_5:
         return GL_UNSIGNED_SHORT_5_6_5;
     }
-    assert(0);
+    NOTF_ASSERT(false);
     return GL_ZERO;
 }
 
@@ -101,7 +99,7 @@ void assert_is_valid(const Texture& texture)
 {
     if (!texture.is_valid()) {
         notf_throw(resource_error, "Texture \"{}\" was deallocated! Has the GraphicsContext been deleted?",
-                          texture.name());
+                   texture.get_name());
     }
 }
 #else
@@ -110,7 +108,7 @@ void assert_is_valid(const Texture&) {} // noop
 
 } // namespace
 
-//********************************************************************************************************************
+// ================================================================================================================== //
 
 NOTF_OPEN_NAMESPACE
 
@@ -119,8 +117,8 @@ Signal<TexturePtr> Texture::on_texture_created;
 
 Texture::Texture(GraphicsContext& context, const GLuint id, const GLenum target, std::string name, Size2i size,
                  const Format format)
-    : m_id(id)
-    , m_graphics_context(context)
+    : m_graphics_context(context)
+    , m_id(id)
     , m_target(target)
     , m_name(std::move(name))
     , m_size(std::move(size))
@@ -164,7 +162,7 @@ TexturePtr Texture::create_empty(GraphicsContext& context, std::string name, Siz
     // create the atlas texture
     GLuint id = 0;
     notf_check_gl(glGenTextures(1, &id));
-    assert(id);
+    NOTF_ASSERT(id);
     notf_check_gl(glBindTexture(GL_TEXTURE_2D, id));
 
     notf_check_gl(glPixelStorei(GL_UNPACK_ALIGNMENT, alignment));
@@ -206,10 +204,10 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
             return {};
         }
 
-        image_size.width = image.width();
-        image_size.height = image.height();
-        image_bytes = image.channels();
-        image_data = std::vector<uchar>(image.data(), image.data() + (image_size.area() * image_bytes));
+        image_size.width = image.get_width();
+        image_size.height = image.get_height();
+        image_bytes = image.get_channels();
+        image_data = std::vector<uchar>(image.get_data(), image.get_data() + (image_size.area() * image_bytes));
 
         if (image_bytes == 1) { // grayscale
             gl_format = GL_RED;
@@ -230,8 +228,7 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
             alignment = 4;
         }
         else {
-            notf_throw(runtime_error, "Cannot load texture with {} bytes per pixel (must be 1, 3 or 4)",
-                              image_bytes);
+            notf_throw(runtime_error, "Cannot load texture with {} bytes per pixel (must be 1, 3 or 4)", image_bytes);
         }
     }
     else if (args.codec == Codec::ASTC) {
@@ -253,13 +250,13 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
         // TODO: 'header' reader for ASTC files, we need the image size, the block size and the format (rgb/argb)
     }
     else {
-        assert(0);
+        NOTF_ASSERT(false);
     }
 
     // load the texture into OpenGL
     GLuint id = 0;
     notf_check_gl(glGenTextures(1, &id));
-    assert(id);
+    NOTF_ASSERT(id);
     notf_check_gl(glBindTexture(GL_TEXTURE_2D, id));
 
     notf_check_gl(glPixelStorei(GL_UNPACK_ALIGNMENT, alignment));
@@ -285,13 +282,13 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
                                                     &image_data.front()));
         }
         else {
-            assert(0);
+            NOTF_ASSERT(false);
         }
 #ifdef NOTF_DEBUG
         {
             GLint is_immutable = 0;
             notf_check_gl(glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_IMMUTABLE_FORMAT, &is_immutable));
-            assert(is_immutable);
+            NOTF_ASSERT(is_immutable);
         }
 #endif
     }
@@ -307,7 +304,7 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
                                                  image_size.height, BORDER, image_length, &image_data.front()));
         }
         else {
-            assert(0);
+            NOTF_ASSERT(false);
         }
     }
 
@@ -323,7 +320,7 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
     notf_check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical)));
 
     // make texture anisotropic, if requested and available
-    if (args.anisotropy > 1.f && context.extensions().anisotropic_filter) {
+    if (args.anisotropy > 1.f && context.get_extensions().anisotropic_filter) {
         GLfloat highest_anisotropy;
         notf_check_gl(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &highest_anisotropy));
         notf_check_gl(
@@ -344,7 +341,7 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
             format_name = &rgb;
         }
         else { // color + alpha
-            assert(image_bytes == 4);
+            NOTF_ASSERT(image_bytes == 4);
             format_name = &rgba;
         }
 

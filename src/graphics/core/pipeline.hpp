@@ -20,8 +20,8 @@ private:
     /// @param tesselation_shader   Tesselation shader to use in the Pipeline.
     /// @param geometry_shader      Geometry shader to use in the Pipeline.
     /// @param fragment_shader      Fragment shader to use in the Pipeline.
-    Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
-             GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader);
+    Pipeline(GraphicsContext& context, VertexShaderPtr get_vertex_shader, TesselationShaderPtr get_tesselation_shader,
+             GeometryShaderPtr get_geometry_shader, FragmentShaderPtr get_fragment_shader);
 
 public:
     /// Factory.
@@ -34,9 +34,8 @@ public:
     create(GraphicsContext& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
            GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader)
     {
-        return NOTF_MAKE_SHARED_FROM_PRIVATE(Pipeline, context, std::move(vertex_shader),
-                                             std::move(tesselation_shader), std::move(geometry_shader),
-                                             std::move(fragment_shader));
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(Pipeline, context, std::move(vertex_shader), std::move(tesselation_shader),
+                                             std::move(geometry_shader), std::move(fragment_shader));
     }
 
     static PipelinePtr
@@ -55,28 +54,25 @@ public:
     ~Pipeline();
 
     /// OpenGL ID of the Pipeline object.
-    PipelineId id() const { return m_id; }
+    PipelineId get_id() const { return m_id; }
 
     /// Vertex shader attached to this Pipeline.
-    const VertexShaderPtr& vertex_shader() const { return m_vertex_shader; }
+    const VertexShaderPtr& get_vertex_shader() const { return m_vertex_shader; }
 
     /// Tesselation shader attached to this Pipeline.
     /// The tesselation stage actually contains two shader sources (tesselation control and -evaluation).
-    const TesselationShaderPtr& tesselation_shader() const { return m_tesselation_shader; }
+    const TesselationShaderPtr& get_tesselation_shader() const { return m_tesselation_shader; }
 
     /// Geometry shader attached to this Pipeline.
-    const GeometryShaderPtr& geometry_shader() const { return m_geometry_shader; }
+    const GeometryShaderPtr& get_geometry_shader() const { return m_geometry_shader; }
 
     /// Fragment shader attached to this Pipeline.
-    const FragmentShaderPtr& fragment_shader() const { return m_fragment_shader; }
+    const FragmentShaderPtr& get_fragment_shader() const { return m_fragment_shader; }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Graphics context containing this Pipeline.
     GraphicsContext& m_graphics_context;
-
-    /// OpenGL ID of the Pipeline object.
-    PipelineId m_id;
 
     /// Vertex shader attached to this Pipeline.
     VertexShaderPtr m_vertex_shader;
@@ -90,6 +86,9 @@ private:
 
     /// Fragment shader attached to this Pipeline.
     FragmentShaderPtr m_fragment_shader;
+
+    /// OpenGL ID of the Pipeline object.
+    PipelineId m_id = 0;
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -5,9 +5,9 @@
 #include <vector>
 
 #include "common/meta.hpp"
+#include "common/signal.hpp"
 #include "common/size2.hpp"
 #include "graphics/ids.hpp"
-#include "common/signal.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -182,7 +182,7 @@ public:
     ~Texture();
 
     /// The OpenGL ID of this Texture.
-    TextureId id() const { return m_id; }
+    TextureId get_id() const { return m_id; }
 
     /// Checks if the Texture is still valid.
     /// A Texture should always be valid - the only way to get an invalid one is to remove the GraphicsContext while
@@ -190,16 +190,16 @@ public:
     bool is_valid() const { return m_id.is_valid(); }
 
     /// Texture target, e.g. GL_TEXTURE_2D for standard textures.
-    GLenum target() const { return m_target; }
+    GLenum get_target() const { return m_target; }
 
     /// The name of this Texture.
-    const std::string& name() const { return m_name; }
+    const std::string& get_name() const { return m_name; }
 
     /// The size of this texture.
-    const Size2i& size() const { return m_size; }
+    const Size2i& get_size() const { return m_size; }
 
     /// The format of this Texture.
-    const Format& format() const { return m_format; }
+    const Format& get_format() const { return m_format; }
 
     /// Sets a new filter mode when the texture pixels are smaller than scren pixels.
     void set_min_filter(const MinFilter filter);
@@ -222,11 +222,11 @@ private:
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
-    /// OpenGL ID of this Shader.
-    TextureId m_id;
-
     /// Render Context in which the Texture lives.
     GraphicsContext& m_graphics_context;
+
+    /// OpenGL ID of this Shader.
+    TextureId m_id;
 
     /// Texture target, e.g. GL_TEXTURE_2D for standard textures.
     GLenum m_target;

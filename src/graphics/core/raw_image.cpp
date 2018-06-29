@@ -1,18 +1,18 @@
 #include "graphics/core/raw_image.hpp"
 
-#include <cassert>
-
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image/stb_image.h>
 
+#include "common/assert.hpp"
 #include "common/exception.hpp"
 #include "common/log.hpp"
 #include "common/string.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-RawImage::RawImage(const std::string& image_path, int force_format)
-    : m_filepath(image_path), m_width(0), m_height(0), m_channels(0), m_data(nullptr)
+// ================================================================================================================== //
+
+RawImage::RawImage(std::string image_path, const int force_format) : m_filepath(std::move(image_path))
 {
     stbi_set_flip_vertically_on_load(0);
     stbi_set_unpremultiply_on_load(1);
@@ -23,9 +23,9 @@ RawImage::RawImage(const std::string& image_path, int force_format)
     if (!m_data) {
         notf_throw(runtime_error, "Failed to load image from \"{}\"", m_filepath);
     }
-    assert(m_height);
-    assert(m_width);
-    assert(m_channels);
+    NOTF_ASSERT(m_height);
+    NOTF_ASSERT(m_width);
+    NOTF_ASSERT(m_channels);
 
     log_trace << "Loaded Image '" << m_filepath << "'";
 }

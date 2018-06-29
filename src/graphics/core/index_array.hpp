@@ -3,11 +3,11 @@
 #include <limits>
 #include <vector>
 
-#include "./gl_errors.hpp"
-#include "./gl_utils.hpp"
-#include "./opengl.hpp"
 #include "common/exception.hpp"
 #include "common/meta.hpp"
+#include "graphics/core/gl_errors.hpp"
+#include "graphics/core/gl_utils.hpp"
+#include "graphics/core/opengl.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -37,11 +37,7 @@ public:
     struct Args {
 
         /// The expected usage of the data.
-        /// Must be one of:
-        /// GL_STREAM_DRAW    GL_STATIC_DRAW    GL_DYNAMIC_DRAW
-        /// GL_STREAM_READ    GL_STATIC_READ    GL_DYNAMIC_READ
-        /// GL_STREAM_COPY    GL_STATIC_COPY    GL_DYNAMIC_COPY
-        GLenum usage = GL_STATIC_DRAW;
+        GLUsage usage = GLUsage::DEFAULT;
     };
 
     // methods ------------------------------------------------------------------------------------------------------ //
@@ -62,19 +58,19 @@ public:
     virtual ~IndexArrayType();
 
     /// OpenGL handle of the index buffer.
-    GLuint id() const { return m_vbo_id; }
+    GLuint get_id() const { return m_vbo_id; }
 
     /// OpenGL enum value of the type of indices contained in the buffer.
-    GLenum type() const { return m_type; }
+    GLenum get_type() const { return m_type; }
 
     /// Number of elements to draw.
-    GLsizei size() const { return m_size; }
+    GLsizei get_size() const { return m_size; }
 
     /// Checks whether the array is empty.
     bool is_empty() const { return m_size == 0; }
 
     /// The restart index of the index buffer type.
-    virtual GLuint restart_index() const = 0;
+    virtual GLuint get_restart_index() const = 0;
 
     // fields ------------------------------------------------------------------------------------------------------- //
 protected:
@@ -138,8 +134,8 @@ public:
         m_size = static_cast<GLsizei>(m_indices.size());
 
         notf_check_gl(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id));
-        notf_check_gl(
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0], m_args.usage));
+        notf_check_gl(glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0],
+                                   get_gl_usage(m_args.usage)));
         // keep the buffer bound as it is stored in the VAO
 
         m_indices.clear();
@@ -161,8 +157,8 @@ private:
         }
         else {
             // otherwise we have to do a full update
-            notf_check_gl(
-                glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0], m_args.usage));
+            notf_check_gl(glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0],
+                                       get_gl_usage(m_args.usage)));
         }
         // keep the buffer bound as it is stored in the VAO
 
@@ -173,7 +169,10 @@ private:
     }
 
     /// Value to use as the restart index.
-    virtual GLuint restart_index() const override { return static_cast<GLuint>(std::numeric_limits<index_t>::max()); }
+    virtual GLuint get_restart_index() const override
+    {
+        return static_cast<GLuint>(std::numeric_limits<index_t>::max());
+    }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
@@ -192,8 +191,8 @@ private:
 template<size_t... INDICES>
 decltype(auto) create_index_buffer()
 {
-    using value_t    = typename detail::gl_smallest_unsigned_type<std::max<size_t>({INDICES...})>::type;
-    auto result      = std::make_unique<IndexArray<value_t>>();
+    using value_t = typename detail::gl_smallest_unsigned_type<std::max<size_t>({INDICES...})>::type;
+    auto result = std::make_unique<IndexArray<value_t>>();
     result->buffer() = std::vector<value_t>{INDICES...};
     return result;
 }

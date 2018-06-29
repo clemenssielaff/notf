@@ -70,12 +70,12 @@ Window::Window(const Args& args)
         const std::string icon_path = app.resource_manager().texture_directory() + args.icon;
         try {
             RawImage icon(icon_path);
-            if (icon.channels() != 4) {
+            if (icon.get_channels() != 4) {
                 log_warning << "Icon file \"" << icon_path << "\" does not provide the required 4 byte per pixel, but "
-                            << icon.channels();
+                            << icon.get_channels();
             }
             else {
-                const GLFWimage glfw_icon{icon.width(), icon.height(), const_cast<uchar*>(icon.data())};
+                const GLFWimage glfw_icon{icon.get_width(), icon.get_height(), const_cast<uchar*>(icon.get_data())};
                 glfwSetWindowIcon(m_glfw_window.get(), 1, &glfw_icon);
                 log_trace << "Loaded icon for Window \"" << get_title() << "\" from \"" << icon_path << "\"";
             }

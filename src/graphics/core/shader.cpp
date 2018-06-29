@@ -1,10 +1,10 @@
 #include "graphics/core/shader.hpp"
 
 #include <algorithm>
-#include <cassert>
 #include <regex>
 #include <sstream>
 
+#include "common/assert.hpp"
 #include "common/exception.hpp"
 #include "common/log.hpp"
 #include "common/matrix4.hpp"
@@ -66,7 +66,7 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
         stage_name = compute;
         break;
     }
-    assert(stage_name);
+    NOTF_ASSERT(stage_name);
 
     if (!shader) {
         notf_throw(runtime_error, "Failed to create {} shader object for for program \"{}\"", stage_name, program_name);
@@ -90,7 +90,7 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
                    error_message.data());
     }
 
-    assert(shader);
+    NOTF_ASSERT(shader);
     return shader;
 }
 
@@ -173,7 +173,7 @@ std::string build_glsl_header(const GraphicsContext& context)
 
     { // ... then extensions ...
         bool any_extensions = false;
-        if (context.extensions().nv_gpu_shader5) {
+        if (context.get_extensions().nv_gpu_shader5) {
             result += "#extension GL_EXT_gpu_shader5 : enable\n";
             any_extensions = true;
         }
@@ -184,7 +184,7 @@ std::string build_glsl_header(const GraphicsContext& context)
 
     { // ... and defines last
         bool any_defines = false;
-        if (!context.extensions().nv_gpu_shader5) {
+        if (!context.get_extensions().nv_gpu_shader5) {
             result += "#define int8_t    int \n"
                       "#define int16_t   int \n"
                       "#define int32_t   int \n"
@@ -271,7 +271,7 @@ void assert_is_valid(const Shader& shader)
 {
     if (!shader.is_valid()) {
         notf_throw(resource_error, "Shader \"{}\" was deallocated! Has the GraphicsContext been deleted?",
-                   shader.name());
+                   shader.get_name());
     }
 }
 #else
@@ -294,7 +294,7 @@ Shader::Shader(GraphicsContext& context, const GLuint id, Stage::Flags stages, s
     // discover uniforms
     GLint uniform_count = 0;
     notf_check_gl(glGetProgramiv(m_id.value(), GL_ACTIVE_UNIFORMS, &uniform_count));
-    assert(uniform_count >= 0);
+    NOTF_ASSERT(uniform_count >= 0);
     m_uniforms.reserve(static_cast<size_t>(uniform_count));
 
     std::vector<GLchar> uniform_name(longest_uniform_length(m_id.value()));
@@ -306,10 +306,10 @@ Shader::Shader(GraphicsContext& context, const GLuint id, Stage::Flags stages, s
         GLsizei name_length = 0;
         notf_check_gl(glGetActiveUniform(m_id.value(), index, static_cast<GLsizei>(uniform_name.size()), &name_length,
                                          &variable.size, &variable.type, &uniform_name[0]));
-        assert(variable.type);
-        assert(variable.size);
+        NOTF_ASSERT(variable.type);
+        NOTF_ASSERT(variable.size);
 
-        assert(name_length > 0);
+        NOTF_ASSERT(name_length > 0);
         variable.name = std::string(&uniform_name[0], static_cast<size_t>(name_length));
 
         variable.location = glGetUniformLocation(m_id.value(), variable.name.c_str());
@@ -431,13 +431,13 @@ GLuint Shader::_build(const std::string& name, const Args& args)
     }
     log_trace << "Compiled and linked shader program \"" << name << "\".";
 
-    assert(program);
+    NOTF_ASSERT(program);
     return program;
 }
 
 void Shader::_register_with_context(const ShaderPtr& shader)
 {
-    assert(shader && shader->is_valid());
+    NOTF_ASSERT(shader && shader->is_valid());
     GraphicsContext::Access<Shader>::register_new(shader->m_graphics_context, shader);
 }
 
@@ -560,28 +560,28 @@ void Shader::set_uniform(const std::string& name, const Matrix4f& value)
 
 Signal<VertexShaderPtr> VertexShader::on_shader_created;
 
-VertexShader::VertexShader(GraphicsContext& context, const GLuint program, std::string shader_name, std::string source)
-    : Shader(context, program, Stage::VERTEX, std::move(shader_name)), m_source(std::move(source)), m_attributes()
+VertexShader::VertexShader(GraphicsContext& context, const GLuint program, std::string name, std::string source)
+    : Shader(context, program, Stage::VERTEX, std::move(name)), m_source(std::move(source)), m_attributes()
 {
     // discover attributes
     GLint attribute_count = 0;
-    notf_check_gl(glGetProgramiv(id().value(), GL_ACTIVE_ATTRIBUTES, &attribute_count));
-    assert(attribute_count >= 0);
+    notf_check_gl(glGetProgramiv(get_id().value(), GL_ACTIVE_ATTRIBUTES, &attribute_count));
+    NOTF_ASSERT(attribute_count >= 0);
     m_attributes.reserve(static_cast<size_t>(attribute_count));
 
-    std::vector<GLchar> uniform_name(longest_attribute_length(id().value()));
+    std::vector<GLchar> uniform_name(longest_attribute_length(get_id().value()));
     for (GLuint index = 0; index < static_cast<GLuint>(attribute_count); ++index) {
         Variable variable;
         variable.type = 0;
         variable.size = 0;
 
         GLsizei name_length = 0;
-        notf_check_gl(glGetActiveAttrib(id().value(), index, static_cast<GLsizei>(uniform_name.size()), &name_length,
-                                        &variable.size, &variable.type, &uniform_name[0]));
-        assert(variable.type);
-        assert(variable.size);
+        notf_check_gl(glGetActiveAttrib(get_id().value(), index, static_cast<GLsizei>(uniform_name.size()),
+                                        &name_length, &variable.size, &variable.type, &uniform_name[0]));
+        NOTF_ASSERT(variable.type);
+        NOTF_ASSERT(variable.size);
 
-        assert(name_length > 0);
+        NOTF_ASSERT(name_length > 0);
         variable.name = std::string(&uniform_name[0], static_cast<size_t>(name_length));
 
         // some variable names are pre-defined by the language and cannot be set by the user
@@ -589,10 +589,10 @@ VertexShader::VertexShader(GraphicsContext& context, const GLuint program, std::
             continue;
         }
 
-        variable.location = glGetAttribLocation(id().value(), variable.name.c_str());
-        assert(variable.location >= 0);
+        variable.location = glGetAttribLocation(get_id().value(), variable.name.c_str());
+        NOTF_ASSERT(variable.location >= 0);
 
-        log_trace << "Discovered attribute \"" << variable.name << "\" on shader: \"" << name() << "\"";
+        log_trace << "Discovered attribute \"" << variable.name << "\" on shader: \"" << get_name() << "\"";
         m_attributes.emplace_back(std::move(variable));
     }
     m_attributes.shrink_to_fit();
@@ -618,24 +618,24 @@ VertexShader::create(GraphicsContext& context, std::string name, const std::stri
     return result;
 }
 
-GLuint VertexShader::attribute(const std::string& attribute_name) const
+GLuint VertexShader::get_attribute(const std::string& name) const
 {
     assert_is_valid(*this);
     for (const Variable& variable : m_attributes) {
-        if (variable.name == attribute_name) {
+        if (variable.name == name) {
             return static_cast<GLuint>(variable.location);
         }
     }
-    notf_throw(runtime_error, "No attribute named \"{}\" in shader \"{}\"", attribute_name, name());
+    notf_throw(runtime_error, "No attribute named \"{}\" in shader \"{}\"", name, get_name());
 }
 
 // ================================================================================================================== //
 
 Signal<TesselationShaderPtr> TesselationShader::on_shader_created;
 
-TesselationShader::TesselationShader(GraphicsContext& context, const GLuint program, std::string shader_name,
+TesselationShader::TesselationShader(GraphicsContext& context, const GLuint program, std::string name,
                                      const std::string& control_source, const std::string& evaluation_source)
-    : Shader(context, program, Stage::TESS_CONTROL | Stage::TESS_EVALUATION, std::move(shader_name))
+    : Shader(context, program, Stage::TESS_CONTROL | Stage::TESS_EVALUATION, std::move(name))
     , m_control_source(std::move(control_source))
     , m_evaluation_source(std::move(evaluation_source))
 {}
@@ -669,9 +669,8 @@ TesselationShader::create(GraphicsContext& context, const std::string& name, con
 
 Signal<GeometryShaderPtr> GeometryShader::on_shader_created;
 
-GeometryShader::GeometryShader(GraphicsContext& context, const GLuint program, std::string shader_name,
-                               std::string source)
-    : Shader(context, program, Stage::GEOMETRY, std::move(shader_name)), m_source(std::move(source))
+GeometryShader::GeometryShader(GraphicsContext& context, const GLuint program, std::string name, std::string source)
+    : Shader(context, program, Stage::GEOMETRY, std::move(name)), m_source(std::move(source))
 {}
 
 GeometryShaderPtr

@@ -180,12 +180,12 @@ Plotter::Plotter(Scene& scene)
         m_pipeline = Pipeline::create(m_graphics_context, vertex_shader, tess_shader, frag_shader);
 
         tess_shader->set_uniform("aa_width", 1.5f);
-        frag_shader->set_uniform("font_texture", m_graphics_context.environment().font_atlas_texture_slot);
+        frag_shader->set_uniform("font_texture", m_graphics_context.get_environment().font_atlas_texture_slot);
     }
 
     { // vertices
         VertexArrayType::Args vertex_args;
-        vertex_args.usage = GL_DYNAMIC_DRAW;
+        vertex_args.usage = GLUsage::DYNAMIC_DRAW;
         m_vertices = std::make_unique<PlotVertexArray>(std::move(vertex_args));
         static_cast<PlotVertexArray*>(m_vertices.get())->init();
     }
@@ -211,7 +211,7 @@ void Plotter::apply()
 
 void Plotter::clear()
 {
-    static_cast<PlotVertexArray*>(m_vertices.get())->buffer().clear();
+    static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer().clear();
     static_cast<PlotIndexArray*>(m_indices.get())->buffer().clear();
     m_batch_buffer.clear();
 }
@@ -224,7 +224,7 @@ void Plotter::add_stroke(StrokeInfo info, const CubicBezier2f& spline)
 
     // TODO: stroke_width less than 1 should set a uniform that fades the line out
 
-    std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->buffer();
+    std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer();
     std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->buffer();
 
     const size_t index_offset = indices.size();
@@ -289,7 +289,7 @@ void Plotter::add_stroke(StrokeInfo info, const CubicBezier2f& spline)
 
 void Plotter::add_shape(ShapeInfo info, const Polygonf& polygon)
 {
-    std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->buffer();
+    std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer();
     std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->buffer();
 
     const size_t index_offset = indices.size();
@@ -330,7 +330,7 @@ void Plotter::add_shape(ShapeInfo info, const Polygonf& polygon)
 
 void Plotter::add_text(TextInfo info, const std::string& text)
 {
-    std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->buffer();
+    std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer();
     std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->buffer();
 
     const size_t index_offset = indices.size();
@@ -417,13 +417,13 @@ void Plotter::_render(valid_ptr<Scene*> /*scene*/) const
 
             // patch type
             if (plotter.m_state.patch_type != PatchType::STROKE) {
-                pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::STROKE));
+                pipeline.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::STROKE));
                 plotter.m_state.patch_type = PatchType::STROKE;
             }
 
             // stroke width
             if (abs(plotter.m_state.stroke_width - stroke.width) > precision_high<float>()) {
-                pipeline.tesselation_shader()->set_uniform("stroke_width", stroke.width);
+                pipeline.get_tesselation_shader()->set_uniform("stroke_width", stroke.width);
                 plotter.m_state.stroke_width = stroke.width;
             }
 
@@ -445,13 +445,13 @@ void Plotter::_render(valid_ptr<Scene*> /*scene*/) const
             // patch type
             if (shape.is_convex) {
                 if (plotter.m_state.patch_type != PatchType::CONVEX) {
-                    pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONVEX));
+                    pipeline.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONVEX));
                     plotter.m_state.patch_type = PatchType::CONVEX;
                 }
             }
             else {
                 if (plotter.m_state.patch_type != PatchType::CONCAVE) {
-                    pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONCAVE));
+                    pipeline.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONCAVE));
                     plotter.m_state.patch_type = PatchType::CONCAVE;
                 }
             }
@@ -461,7 +461,7 @@ void Plotter::_render(valid_ptr<Scene*> /*scene*/) const
                 // with a purely convex polygon, we can safely put the base vertex into the center of the polygon as it
                 // will always be inside and it should never fall onto an existing vertex
                 // this way, we can use antialiasing at the outer edge
-                pipeline.tesselation_shader()->set_uniform("vec2_aux1", shape.center);
+                pipeline.get_tesselation_shader()->set_uniform("vec2_aux1", shape.center);
                 plotter.m_state.vec2_aux1 = shape.center;
             }
 
@@ -515,17 +515,17 @@ void Plotter::_render(valid_ptr<Scene*> /*scene*/) const
 
             // patch type
             if (plotter.m_state.patch_type != PatchType::TEXT) {
-                pipeline.tesselation_shader()->set_uniform("patch_type", to_number(PatchType::TEXT));
+                pipeline.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::TEXT));
                 plotter.m_state.patch_type = PatchType::TEXT;
             }
 
             const TexturePtr& font_atlas = plotter.m_font_manager.atlas_texture();
-            const Size2i& atlas_size = font_atlas->size();
+            const Size2i& atlas_size = font_atlas->get_size();
 
             // atlas size
             const Vector2f atlas_size_vec{atlas_size.width, atlas_size.height};
             if (!atlas_size_vec.is_approx(plotter.m_state.vec2_aux1)) {
-                pipeline.tesselation_shader()->set_uniform("vec2_aux1", atlas_size_vec);
+                pipeline.get_tesselation_shader()->set_uniform("vec2_aux1", atlas_size_vec);
                 plotter.m_state.vec2_aux1 = atlas_size_vec;
             }
 
@@ -548,10 +548,10 @@ void Plotter::_render(valid_ptr<Scene*> /*scene*/) const
     notf_check_gl(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
     auto pipeline_guard = m_graphics_context.bind_pipeline(m_pipeline);
-    const TesselationShaderPtr& tess_shader = m_pipeline->tesselation_shader();
+    const TesselationShaderPtr& tess_shader = m_pipeline->get_tesselation_shader();
 
     // screen size
-    const Aabri& render_area = m_graphics_context.render_area();
+    const Aabri& render_area = m_graphics_context.get_render_area();
     if (m_state.screen_size != render_area.size()) {
         m_state.screen_size = render_area.size();
         tess_shader->set_uniform("projection", Matrix4f::orthographic(0, m_state.screen_size.width, 0,

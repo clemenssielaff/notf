@@ -48,7 +48,7 @@ RenderTarget::RenderTarget(GraphicsContext& context, Args&& args)
 
 RenderTarget::~RenderTarget() = default;
 
-const TexturePtr& RenderTarget::texture() const { return m_framebuffer->color_texture(0); }
+const TexturePtr& RenderTarget::texture() const { return m_framebuffer->get_color_texture(0); }
 
 void RenderTarget::clean()
 {
@@ -57,9 +57,9 @@ void RenderTarget::clean()
     }
 
     // prepare the graphic state
-    GraphicsContext& context = m_framebuffer->context();
+    GraphicsContext& context = m_framebuffer->get_context();
     const auto framebuffer_guard = context.bind_framebuffer(m_framebuffer);
-    context.set_render_area(texture()->size());
+    context.set_render_area(texture()->get_size());
     context.clear(Color::black());
 
     // render everything

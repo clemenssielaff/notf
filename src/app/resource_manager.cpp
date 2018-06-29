@@ -111,7 +111,7 @@ risky_ptr<FontPtr> ResourceManager::font(const std::string& name)
 
 void ResourceManager::_add_shader(ShaderPtr shader)
 {
-    const std::string& name = shader->name();
+    const std::string& name = shader->get_name();
     auto it = m_shaders.find(name);
     if (it == m_shaders.end()) {
         m_shaders.insert(std::make_pair(name, shader)); // store a new shader
@@ -121,14 +121,13 @@ void ResourceManager::_add_shader(ShaderPtr shader)
             return; // do nothing if the same shader is already known
         }
         notf_throw(resource_identification_error,
-                          "Cannot store Shader \"{}\" because another Shader with the same name is already in storage",
-                          name)
+                   "Cannot store Shader \"{}\" because another Shader with the same name is already in storage", name)
     }
 }
 
 void ResourceManager::_add_texture(TexturePtr texture)
 {
-    const std::string& name = texture->name();
+    const std::string& name = texture->get_name();
     auto it = m_textures.find(name);
     if (it == m_textures.end()) {
         m_textures.insert(std::make_pair(name, texture)); // store a new texture
@@ -137,9 +136,8 @@ void ResourceManager::_add_texture(TexturePtr texture)
         if (it->second == texture) {
             return; // do nothing if the same texture is already known
         }
-        notf_throw(
-            resource_identification_error,
-            "Cannot store Texture \"{}\" because another Texture with the same name is already in storage", name)
+        notf_throw(resource_identification_error,
+                   "Cannot store Texture \"{}\" because another Texture with the same name is already in storage", name)
     }
 }
 
@@ -155,8 +153,7 @@ void ResourceManager::_add_font(FontPtr font)
             return; // do nothing if the same font is already known
         }
         notf_throw(resource_identification_error,
-                          "Cannot store Font \"{}\" because another Font with the same name is already in storage",
-                          name)
+                   "Cannot store Font \"{}\" because another Font with the same name is already in storage", name)
     }
 }
 

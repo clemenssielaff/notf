@@ -1,8 +1,7 @@
 #pragma once
 
-#include "glad/glad.h"
-
 #include "common/forwards.hpp"
+#include "graphics/core/opengl.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -21,5 +20,11 @@ NOTF_DEFINE_UNIQUE_POINTERS(class, GraphicsContext);
 NOTF_DEFINE_UNIQUE_POINTERS(class, VertexArrayType);
 NOTF_DEFINE_UNIQUE_POINTERS(class, IndexArrayType);
 NOTF_DEFINE_UNIQUE_POINTERS(class, FontManager);
+
+template<typename>
+class PrefabType;
+
+template<typename>
+class PrefabFactory;
 
 NOTF_CLOSE_NAMESPACE

@@ -1,7 +1,6 @@
 #include "graphics/text/font.hpp"
 
-#include <cassert>
-
+#include "common/assert.hpp"
 #include "common/log.hpp"
 #include "common/string.hpp"
 #include "graphics/text/font_manager.hpp"
@@ -39,8 +38,8 @@ Font::Font(FontManager& manager, const std::string& filename, const pixel_size_t
     FT_Set_Pixel_Sizes(m_face, 0, pixel_size);
 
     { // store font metrics
-        assert(m_face->ascender >= 0);
-        assert(m_face->height >= 0);
+        NOTF_ASSERT(m_face->ascender >= 0);
+        NOTF_ASSERT(m_face->height >= 0);
         m_ascender = static_cast<pixel_size_t>(std::abs(m_face->size->metrics.ascender) / 64);
         m_descender = static_cast<pixel_size_t>(std::abs(m_face->size->metrics.descender) / 64);
         m_line_height = static_cast<pixel_size_t>(std::abs(m_face->size->metrics.height) / 64);
@@ -75,7 +74,7 @@ Font::Font(FontManager& manager, const std::string& filename, const pixel_size_t
         }
         font_atlas.fill_rect(protoglyph.second, slot->bitmap.buffer);
 
-        assert(m_glyphs.count(protoglyph.first));
+        NOTF_ASSERT(m_glyphs.count(protoglyph.first));
         m_glyphs[protoglyph.first].rect = protoglyph.second;
     }
 
@@ -132,14 +131,14 @@ const Glyph& Font::_allocate_glyph(const codepoint_t codepoint) const
     glyph.advance_y = static_cast<Glyph::coord_t>(slot->advance.y >> 6);
 
     if (slot->bitmap.width > 0) {
-        assert(slot->bitmap.rows);
+        NOTF_ASSERT(slot->bitmap.rows);
         FontAtlas& font_atlas = m_manager.atlas();
         glyph.rect = font_atlas.insert_rect(static_cast<Glyph::coord_t>(slot->bitmap.width),
                                             static_cast<Glyph::coord_t>(slot->bitmap.rows));
         font_atlas.fill_rect(glyph.rect, slot->bitmap.buffer);
     }
     else {
-        assert(!slot->bitmap.rows);
+        NOTF_ASSERT(!slot->bitmap.rows);
         glyph.rect.x = 0;
         glyph.rect.y = 0;
         glyph.rect.height = 0;

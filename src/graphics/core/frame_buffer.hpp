@@ -20,7 +20,6 @@ class RenderBuffer {
 public:
     /// Type of RenderBuffer.
     enum class Type {
-        INVALID,       ///< Invalid value - no RenderBuffer can be of this type.
         COLOR,         ///< Color buffer.
         DEPTH,         ///< Depth buffer.
         STENCIL,       ///< Stencil buffer.
@@ -30,7 +29,7 @@ public:
     /// Render buffer arguments.
     struct Args {
         /// Buffer type.
-        Type type = Type::INVALID;
+        Type type = Type::COLOR;
 
         /// Size of the render buffer in pixels.
         Size2s size;
@@ -65,36 +64,36 @@ public:
     ~RenderBuffer();
 
     /// OpenGL ID of the render buffer.
-    RenderBufferId id() const { return m_id; }
+    RenderBufferId get_id() const { return m_id; }
 
     /// Buffer type.
-    Type type() const { return m_args.type; }
+    Type get_type() const { return m_args.type; }
 
     /// Size of the render buffer in pixels.
-    const Size2s& size() const { return m_args.size; }
+    const Size2s& get_size() const { return m_args.size; }
 
     /// Internal value format of a pixel in the buffer.
-    GLenum internal_format() const { return m_args.internal_format; }
+    GLenum get_internal_format() const { return m_args.internal_format; }
 
 private:
     /// Checks, whether the given format is a valid internal format for a color render buffer.
     /// @throws runtime_error   ...if it isn't.
-    static void _assert_color_format(const GLenum internal_format);
+    static void _assert_color_format(const GLenum get_internal_format);
 
     /// Checks, whether the given format is a valid internal format for a depth or stencil render buffer.
     /// @throws runtime_error  ...if it isn't.
-    static void _assert_depth_stencil_format(const GLenum internal_format);
+    static void _assert_depth_stencil_format(const GLenum get_internal_format);
 
     /// Deallocates the framebuffer data and invalidates the RenderBuffer.
     void _deallocate();
 
     // fields ------------------------------------------------------------------------------------------------------- //
 protected:
-    /// OpenGL ID of the render buffer.
-    RenderBufferId m_id;
-
     /// Render Context owning the render buffer.
     GraphicsContext& m_graphics_context;
+
+    /// OpenGL ID of the render buffer.
+    RenderBufferId m_id = 0;
 
     /// Arguments passed to this render buffer.
     Args m_args;
@@ -123,7 +122,7 @@ public:
         /// If the id already identifies a color target, it is updated.
         /// @param id       Color target id.
         /// @param target   Color target.
-        void set_color_target(const ushort id, ColorTarget target);
+        void set_color_target(const ushort get_id, ColorTarget target);
 
         /// All color targets
         /// A color target consists of a pair of color buffer id / render target.
@@ -144,7 +143,7 @@ private:
     /// @param context          Graphics context owning the frane buffer.
     /// @param args             Frame buffer arguments.
     /// @throws runtime_error   If the arguments fail to validate.
-    FrameBuffer(GraphicsContext& context, Args&& args);
+    FrameBuffer(GraphicsContext& get_context, Args&& args);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(FrameBuffer);
@@ -154,20 +153,20 @@ public:
     /// @param args             Frame buffer arguments.
     /// @throws runtime_error   If the arguments fail to validate.
     /// @throws internal_error  If another FrameBuffer with the same ID already exists.
-    static FrameBufferPtr create(GraphicsContext& context, Args&& args);
+    static FrameBufferPtr create(GraphicsContext& get_context, Args&& args);
 
     /// Destructor.
     ~FrameBuffer();
 
     /// The FrameBuffer's id.
-    FrameBufferId id() const { return m_id; }
+    FrameBufferId get_id() const { return m_id; }
 
     /// GraphicsContext containing the frame buffer.
-    GraphicsContext& context() { return m_context; }
+    GraphicsContext& get_context() { return m_context; }
 
     /// Texture used as color attachment.
     /// @throws runtime_error   If there is no texture attached as the color target.
-    const TexturePtr& color_texture(const ushort id);
+    const TexturePtr& get_color_texture(const ushort get_id);
 
 private:
     /// Deallocates the framebuffer data and invalidates the Framebuffer.

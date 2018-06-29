@@ -1,14 +1,9 @@
 #pragma once
 
-#include <memory>
-#include <sstream>
-
-#include "./index_array.hpp"
-#include "./prefab.hpp"
-#include "./vertex_array.hpp"
-#include "common/exception.hpp"
-#include "common/forwards.hpp"
 #include "common/matrix4.hpp"
+#include "graphics/core/index_array.hpp"
+#include "graphics/core/prefab.hpp"
+#include "graphics/core/vertex_array.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -41,17 +36,13 @@ public:
     NOTF_NO_COPY_OR_ASSIGN(PrefabGroup);
 
     /// Default constructor.
-    PrefabGroup()
-        : m_vao_id(0)
-        , m_vertex_array(std::make_unique<vertex_array_t>())
-        , m_index_array(std::make_unique<index_array_t>())
-        , m_instance_array()
+    PrefabGroup() : m_vertex_array(std::make_unique<vertex_array_t>()), m_index_array(std::make_unique<index_array_t>())
     {
         // create the per-instance array
         VertexArrayType::Args instance_args;
         instance_args.per_instance = true;
-        instance_args.usage        = GL_DYNAMIC_DRAW;
-        m_instance_array           = std::make_unique<instance_array_t>(std::move(instance_args));
+        instance_args.usage = GLUsage::DYNAMIC_DRAW;
+        m_instance_array = std::make_unique<instance_array_t>(std::move(instance_args));
     }
 
     /// Destructor.
@@ -109,7 +100,7 @@ public:
         for (const auto& prefab_type : m_prefab_types) {
 
             // skip prefabs with no instances
-            std::vector<std::shared_ptr<PrefabInstance<InstanceData>>> instances = prefab_type->instances();
+            std::vector<std::shared_ptr<PrefabInstance<InstanceData>>> instances = prefab_type->get_instances();
             if (instances.empty()) {
                 continue;
             }
@@ -118,35 +109,36 @@ public:
                 std::vector<InstanceData> instance_data;
                 instance_data.reserve(instances.size());
                 for (const std::shared_ptr<PrefabInstance<InstanceData>>& instance : instances) {
-                    instance_data.push_back(instance->data());
+                    instance_data.push_back(instance->get_data());
                 }
 
                 instance_array_t* instance_array = static_cast<instance_array_t*>(m_instance_array.get());
-                instance_array->buffer()         = std::move(instance_data);
+                instance_array->buffer() = std::move(instance_data);
                 instance_array->init();
             }
 
             // render all instances
-            notf_check_gl(glDrawElementsInstancedBaseVertex(GL_TRIANGLES, prefab_type->size(), m_index_array->type(), 0,
-                                                       instances.size(), prefab_type->offset()));
+            notf_check_gl(glDrawElementsInstancedBaseVertex(GL_TRIANGLES, prefab_type->get_size(),
+                                                            m_index_array->get_type(), 0, instances.size(),
+                                                            prefab_type->get_offset()));
         }
     }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
-    /** OpenGL handle of the internal vertex array object. */
-    GLuint m_vao_id;
+    /// OpenGL handle of the internal vertex array object.
+    GLuint m_vao_id = 0;
 
-    /** Attributes for the prefabs' vertices. */
+    /// Attributes for the prefabs' vertices.
     std::unique_ptr<VertexArrayType> m_vertex_array;
 
-    /** Vertex indices used to draw the prefabs. */
+    /// Vertex indices used to draw the prefabs.
     std::unique_ptr<IndexArrayType> m_index_array;
 
-    /** Per-instance attributes - updated before each instanced render call. */
+    /// Per-instance attributes - updated before each instanced render call.
     std::unique_ptr<VertexArrayType> m_instance_array;
 
-    /** All prefab types contained in this library. */
+    /// All prefab types contained in this library.
     std::vector<std::shared_ptr<PrefabType<InstanceData>>> m_prefab_types;
 };
 

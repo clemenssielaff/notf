@@ -55,8 +55,8 @@ ProceduralRenderer::ProceduralRenderer(Window& window, const std::string& shader
 void ProceduralRenderer::_render(valid_ptr<Scene*> scene) const
 {
     // match scene properties with shader uniforms
-    const FragmentShaderPtr& fragment_shader = m_pipeline->fragment_shader();
-    for (const auto& variable : fragment_shader->uniforms()) {
+    const FragmentShaderPtr& fragment_shader = m_pipeline->get_fragment_shader();
+    for (const auto& variable : fragment_shader->get_uniforms()) {
         switch (variable.type) {
         case GL_FLOAT:
             if (PropertyHandle<float> float_property = scene->get_property<float>(variable.name)) {

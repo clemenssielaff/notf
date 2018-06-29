@@ -1,8 +1,8 @@
 #include "graphics/core/pipeline.hpp"
 
-#include <cassert>
 #include <sstream>
 
+#include "common/assert.hpp"
 #include "common/exception.hpp"
 #include "common/log.hpp"
 #include "graphics/core/gl_errors.hpp"
@@ -15,7 +15,6 @@ NOTF_OPEN_NAMESPACE
 Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
                    GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader)
     : m_graphics_context(context)
-    , m_id(0)
     , m_vertex_shader(std::move(vertex_shader))
     , m_tesselation_shader(std::move(tesselation_shader))
     , m_geometry_shader(std::move(geometry_shader))
@@ -36,43 +35,43 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
     attached_stages.reserve(4);
 
     if (m_vertex_shader) {
-        assert(m_vertex_shader->is_valid());
-        assert(m_vertex_shader->context() == m_graphics_context);
-        notf_check_gl(glUseProgramStages(m_id.value(), GL_VERTEX_SHADER_BIT, m_vertex_shader->id().value()));
+        NOTF_ASSERT(m_vertex_shader->is_valid());
+        NOTF_ASSERT(m_vertex_shader->get_context() == m_graphics_context);
+        notf_check_gl(glUseProgramStages(m_id.value(), GL_VERTEX_SHADER_BIT, m_vertex_shader->get_id().value()));
 
         std::stringstream ss;
-        ss << "vertex shader \"" << m_vertex_shader->name() << "\"";
+        ss << "vertex shader \"" << m_vertex_shader->get_name() << "\"";
         attached_stages.emplace_back(ss.str());
     }
 
     if (m_tesselation_shader) {
-        assert(m_tesselation_shader->is_valid());
-        assert(m_tesselation_shader->context() == m_graphics_context);
+        NOTF_ASSERT(m_tesselation_shader->is_valid());
+        NOTF_ASSERT(m_tesselation_shader->get_context() == m_graphics_context);
         notf_check_gl(glUseProgramStages(m_id.value(), GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT,
-                                         m_tesselation_shader->id().value()));
+                                         m_tesselation_shader->get_id().value()));
 
         std::stringstream ss;
-        ss << "tesselation shader \"" << m_tesselation_shader->name() << "\"";
+        ss << "tesselation shader \"" << m_tesselation_shader->get_name() << "\"";
         attached_stages.emplace_back(ss.str());
     }
 
     if (m_geometry_shader) {
-        assert(m_geometry_shader->is_valid());
-        assert(m_geometry_shader->context() == m_graphics_context);
-        notf_check_gl(glUseProgramStages(m_id.value(), GL_GEOMETRY_SHADER_BIT, m_geometry_shader->id().value()));
+        NOTF_ASSERT(m_geometry_shader->is_valid());
+        NOTF_ASSERT(m_geometry_shader->get_context() == m_graphics_context);
+        notf_check_gl(glUseProgramStages(m_id.value(), GL_GEOMETRY_SHADER_BIT, m_geometry_shader->get_id().value()));
 
         std::stringstream ss;
-        ss << "geometry shader \"" << m_geometry_shader->name() << "\"";
+        ss << "geometry shader \"" << m_geometry_shader->get_name() << "\"";
         attached_stages.emplace_back(ss.str());
     }
 
     if (m_fragment_shader) {
-        assert(m_fragment_shader->is_valid());
-        assert(m_fragment_shader->context() == m_graphics_context);
-        notf_check_gl(glUseProgramStages(m_id.value(), GL_FRAGMENT_SHADER_BIT, m_fragment_shader->id().value()));
+        NOTF_ASSERT(m_fragment_shader->is_valid());
+        NOTF_ASSERT(m_fragment_shader->get_context() == m_graphics_context);
+        notf_check_gl(glUseProgramStages(m_id.value(), GL_FRAGMENT_SHADER_BIT, m_fragment_shader->get_id().value()));
 
         std::stringstream ss;
-        ss << "fragment shader \"" << m_fragment_shader->name() << "\"";
+        ss << "fragment shader \"" << m_fragment_shader->get_name() << "\"";
         attached_stages.emplace_back(ss.str());
     }
 
@@ -99,7 +98,7 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
     }
 
     { // log information about the successful creation
-        assert(attached_stages.size() > 0 && attached_stages.size() < 5);
+        NOTF_ASSERT(attached_stages.size() > 0 && attached_stages.size() < 5);
         std::stringstream message;
         message << "Created new Pipline: " << m_id << " with ";
         if (attached_stages.size() == 1) {
