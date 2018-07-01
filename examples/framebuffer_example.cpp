@@ -104,16 +104,16 @@ void render_thread(GLFWwindow* window)
     }
 
     auto box1    = box_type->create_instance();
-    box1->data() = std::make_tuple(Matrix4f::translation(-500, 500, -1000));
+    box1->get_data() = std::make_tuple(Matrix4f::translation(-500, 500, -1000));
 
     auto box2    = box_type->create_instance();
-    box2->data() = std::make_tuple(Matrix4f::translation(500, 500, -1000));
+    box2->get_data() = std::make_tuple(Matrix4f::translation(500, 500, -1000));
 
     auto box3    = box_type->create_instance();
-    box3->data() = std::make_tuple(Matrix4f::translation(-500, -500, -1000));
+    box3->get_data() = std::make_tuple(Matrix4f::translation(-500, -500, -1000));
 
     auto box4    = box_type->create_instance();
-    box4->data() = std::make_tuple(Matrix4f::translation(500, -500, -1000));
+    box4->get_data() = std::make_tuple(Matrix4f::translation(500, -500, -1000));
 
     library.init();
 

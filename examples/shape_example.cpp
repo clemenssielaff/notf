@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include "app/glfw.hpp"
-#include "app/render/plotter.hpp"
+#include "graphics/renderer/plotter.hpp"
 #include "app/layer.hpp"
 #include "app/widget/hierarchy.hpp"
 #include "common/log.hpp"
@@ -60,7 +60,7 @@ void render_thread(GLFWwindow* window)
 
     plotter->add_shape(info, polygon);
 
-    plotter->apply();
+    plotter->swap_buffers();
 
     // Render State //////////////////////////////////////////////
 

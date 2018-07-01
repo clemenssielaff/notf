@@ -42,17 +42,27 @@ using std::sqrt;
 using std::tan;
 
 /// Tests whether a given value is NAN.
-template<class T, typename = notf::enable_if_t<std::is_floating_point<T>::value>>
-inline bool is_nan(const T value)
+template<class T>
+inline notf::enable_if_t<std::is_floating_point<T>::value, bool> is_nan(const T& value)
 {
     return std::isnan(value);
 }
+template<class T>
+inline constexpr notf::enable_if_t<std::is_integral<T>::value, bool> is_nan(const T&)
+{
+    return false;
+}
 
 /// Tests whether a given value is INFINITY.
-template<class T, typename = notf::enable_if_t<std::is_floating_point<T>::value>>
-inline bool is_inf(const T value)
+template<class T>
+inline notf::enable_if_t<std::is_floating_point<T>::value, bool> is_inf(const T& value)
 {
     return std::isinf(value);
+}
+template<class T>
+inline constexpr notf::enable_if_t<std::is_integral<T>::value, bool> is_inf(const T&)
+{
+    return false;
 }
 
 /// Tests whether a given value is a valid float value (not NAN, not INFINITY).
@@ -136,19 +146,19 @@ inline T save_div(const L divident, const R divisor)
 /// Floating point comparison from:
 /// https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 template<class L, class R, typename T = std::common_type_t<L, R>>
-bool is_approx(const L lhs, const R rhs)
+bool is_approx(const L lhs, const R rhs, const T epsilon = std::numeric_limits<T>::epsilon())
 {
     if (is_nan(lhs) || is_nan(rhs)) {
         return false;
     }
 
     // if the numbers are really small, use the absolute epsilon
-    if (abs(lhs - rhs) <= std::numeric_limits<T>::epsilon()) {
+    if (abs(lhs - rhs) <= epsilon) {
         return true;
     }
 
     // use a relative epsilon if the numbers are larger
-    if (abs(lhs - rhs) <= ((abs(lhs) > abs(rhs)) ? abs(lhs) : abs(rhs)) * std::numeric_limits<T>::epsilon()) {
+    if (abs(lhs - rhs) <= ((abs(lhs) > abs(rhs)) ? abs(lhs) : abs(rhs)) * epsilon) {
         return true;
     }
 

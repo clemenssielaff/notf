@@ -266,7 +266,7 @@ void GraphicsContext::set_render_area(Aabri area, const bool force)
         notf_throw(runtime_error, "Cannot set to an invalid render area");
     }
     if (area != m_state.render_area || force) {
-        notf_check_gl(glViewport(area.left(), area.bottom(), area.width(), area.height()));
+        notf_check_gl(glViewport(area.get_left(), area.get_bottom(), area.get_width(), area.get_height()));
         m_state.render_area = std::move(area);
     }
 }

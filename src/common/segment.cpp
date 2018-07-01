@@ -5,20 +5,6 @@
 
 NOTF_OPEN_NAMESPACE
 
-// Vector2f Line2::closest_point(const Vector2f& point, bool inside) const
-//{
-//    const float length_sq = _delta.magnitude_sq();
-//    if (length_sq == approx(0.)) {
-//        return _start;
-//    }
-//    const float dot = (point - _start).dot(_delta);
-//    float t         = -dot / length_sq;
-//    if (inside) {
-//        t = clamp(t, 0.0, 1.0);
-//    }
-//    return _start + (_delta * t);
-//}
-
 // bool Line2::intersect(Vector2f& intersection, const Line2& other, const bool in_self, const bool in_other) const
 //{
 //    // fail if either line segment is zero-length or if the two lines are parallel

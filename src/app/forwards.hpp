@@ -67,6 +67,7 @@ NOTF_DEFINE_UNIQUE_POINTERS(class, TimerManager);
 // app / widget
 
 class Widget;
+class WidgetDesign;
 
 NOTF_DEFINE_SHARED_POINTERS(struct, Capability);
 

@@ -9,8 +9,8 @@ NOTF_OPEN_NAMESPACE
 
 std::ostream& operator<<(std::ostream& out, const Aabrf& aabr)
 {
-    return out << "Aabrf(pos: [" << aabr.left() << ", " << aabr.bottom() << "], h:" << aabr.height()
-               << ", w:" << aabr.width() << "])";
+    return out << "Aabrf(pos: [" << aabr.get_left() << ", " << aabr.get_bottom() << "], h:" << aabr.get_height()
+               << ", w:" << aabr.get_width() << "])";
 }
 
 static_assert(sizeof(Aabrf) == sizeof(Vector2f) * 2,
@@ -23,8 +23,8 @@ static_assert(std::is_pod<Aabrf>::value, "This compiler does not recognize notf:
 
 std::ostream& operator<<(std::ostream& out, const Aabrd& aabr)
 {
-    return out << "Aabrd(pos: [" << aabr.left() << ", " << aabr.bottom() << "], h:" << aabr.height()
-               << ", w:" << aabr.width() << "])";
+    return out << "Aabrd(pos: [" << aabr.get_left() << ", " << aabr.get_bottom() << "], h:" << aabr.get_height()
+               << ", w:" << aabr.get_width() << "])";
 }
 
 static_assert(sizeof(Aabrd) == sizeof(Vector2d) * 2,
@@ -37,8 +37,8 @@ static_assert(std::is_pod<Aabrd>::value, "This compiler does not recognize notf:
 
 std::ostream& operator<<(std::ostream& out, const Aabri& aabr)
 {
-    return out << "Aabri(pos: [" << aabr.left() << ", " << aabr.bottom() << "], h:" << aabr.height()
-               << ", w:" << aabr.width() << "])";
+    return out << "Aabri(pos: [" << aabr.get_left() << ", " << aabr.get_bottom() << "], h:" << aabr.get_height()
+               << ", w:" << aabr.get_width() << "])";
 }
 
 static_assert(sizeof(Aabri) == sizeof(Vector2i) * 2,

@@ -1,12 +1,10 @@
 #include "app/glfw.hpp"
-#include "app/render/plotter.hpp"
 #include "app/layer.hpp"
-#include "app/widget/hierarchy.hpp"
-#include "app/scene_manager.hpp"
 #include "common/bezier.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/vertex_array.hpp"
+#include "graphics/renderer/plotter.hpp"
 
 #pragma clang diagnostic ignored "-Wunused-variable"
 
@@ -16,18 +14,18 @@ namespace {
 
 struct VertexPos : public AttributeTrait {
     constexpr static uint location = 0;
-    using type                     = Vector2f;
-    using kind                     = AttributeKind::Position;
+    using type = Vector2f;
+    using kind = AttributeKind::Position;
 };
 
 struct LeftCtrlPos : public AttributeTrait {
     constexpr static uint location = 1;
-    using type                     = Vector2f;
+    using type = Vector2f;
 };
 
 struct RightCtrlPos : public AttributeTrait {
     constexpr static uint location = 2;
-    using type                     = Vector2f;
+    using type = Vector2f;
 };
 
 static void error_callback(int error, const char* description)
@@ -66,7 +64,7 @@ void render_thread(GLFWwindow* window)
         stroker->add_stroke(stroke_info, spline2);
     }
 
-    stroker->apply();
+    stroker->swap_buffers();
 
     // Render State //////////////////////////////////////////////
 
@@ -93,7 +91,7 @@ void render_thread(GLFWwindow* window)
 
 } // namespace
 
-int line_main(int /*argc*/, char* /*argv*/ [])
+int line_main(int /*argc*/, char* /*argv*/[])
 {
     // install the log handler first, to catch errors right away
     auto log_handler = std::make_unique<LogHandler>(128, 200);

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <cassert>
 
 #include "common/half.hpp"
 #include "common/hash.hpp"

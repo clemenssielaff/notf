@@ -197,25 +197,6 @@ Plotter::Plotter(Scene& scene)
 
 Plotter::~Plotter() { notf_check_gl(glDeleteVertexArrays(1, &m_vao_id)); }
 
-void Plotter::apply()
-{
-    const auto vao_guard = VaoBindGuard(m_vao_id);
-
-    static_cast<PlotVertexArray*>(m_vertices.get())->init();
-    static_cast<PlotIndexArray*>(m_indices.get())->init();
-
-    // TODO: combine batches with same type & info -- that's what batches are there for
-    std::swap(m_batches, m_batch_buffer);
-    m_batch_buffer.clear();
-}
-
-void Plotter::clear()
-{
-    static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer().clear();
-    static_cast<PlotIndexArray*>(m_indices.get())->buffer().clear();
-    m_batch_buffer.clear();
-}
-
 void Plotter::add_stroke(StrokeInfo info, const CubicBezier2f& spline)
 {
     if (spline.segments.empty() || info.width <= 0.f) {
@@ -223,6 +204,8 @@ void Plotter::add_stroke(StrokeInfo info, const CubicBezier2f& spline)
     }
 
     // TODO: stroke_width less than 1 should set a uniform that fades the line out
+    // TODO: differentiate between thin lines and thick lines. Thick lines should render like a concave shape, once into
+    //       the stencil buffer and once (without AA) into the color buffer, followed by a thin AA outline
 
     std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer();
     std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->buffer();
@@ -282,9 +265,9 @@ void Plotter::add_stroke(StrokeInfo info, const CubicBezier2f& spline)
         vertices.emplace_back(std::move(vertex));
     }
 
-    // batch
-    m_batch_buffer.emplace_back(
-        Batch{std::move(info), narrow_cast<uint>(index_offset), narrow_cast<int>(indices.size() - index_offset)});
+    // draw call
+    m_drawcall_buffer.emplace_back(
+        DrawCall{std::move(info), narrow_cast<uint>(index_offset), narrow_cast<int>(indices.size() - index_offset)});
 }
 
 void Plotter::add_shape(ShapeInfo info, const Polygonf& polygon)
@@ -321,11 +304,11 @@ void Plotter::add_shape(ShapeInfo info, const Polygonf& polygon)
         vertices.emplace_back(std::move(vertex));
     }
 
-    // batch
+    // draw call
     info.is_convex = polygon.is_convex();
     info.center = polygon.center();
-    m_batch_buffer.emplace_back(
-        Batch{std::move(info), narrow_cast<uint>(index_offset), narrow_cast<int>(indices.size() - index_offset)});
+    m_drawcall_buffer.emplace_back(
+        DrawCall{std::move(info), narrow_cast<uint>(index_offset), narrow_cast<int>(indices.size() - index_offset)});
 }
 
 void Plotter::add_text(TextInfo info, const std::string& text)
@@ -367,8 +350,8 @@ void Plotter::add_text(TextInfo info, const std::string& text)
                 // create the vertex
                 PlotVertexArray::Vertex vertex;
                 set_pos(vertex, uv);
-                set_first_ctrl(vertex, quad.bottom_left());
-                set_second_ctrl(vertex, quad.top_right());
+                set_first_ctrl(vertex, quad.get_bottom_left());
+                set_second_ctrl(vertex, quad.get_top_right());
                 vertices.emplace_back(std::move(vertex));
             }
 
@@ -384,23 +367,42 @@ void Plotter::add_text(TextInfo info, const std::string& text)
         indices.emplace_back(i);
     }
 
-    // batch
-    m_batch_buffer.emplace_back(
-        Batch{std::move(info), narrow_cast<uint>(index_offset), narrow_cast<int>(indices.size() - index_offset)});
+    // draw call
+    m_drawcall_buffer.emplace_back(
+        DrawCall{std::move(info), narrow_cast<uint>(index_offset), narrow_cast<int>(indices.size() - index_offset)});
+}
+
+void Plotter::swap_buffers()
+{
+    const auto vao_guard = VaoBindGuard(m_vao_id);
+
+    static_cast<PlotVertexArray*>(m_vertices.get())->init();
+    static_cast<PlotIndexArray*>(m_indices.get())->init();
+
+    // TODO: combine batches with same type & info -- that's what batches are there for
+    std::swap(m_drawcalls, m_drawcall_buffer);
+    m_drawcall_buffer.clear();
+}
+
+void Plotter::clear()
+{
+    static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer().clear();
+    static_cast<PlotIndexArray*>(m_indices.get())->buffer().clear();
+    m_drawcall_buffer.clear();
 }
 
 void Plotter::_render(valid_ptr<Scene*> /*scene*/) const
 {
-    /// Render various batch types.
-    struct GraphicsProducer {
+    /// Render various draw call types.
+    struct DrawCallVisitor {
 
         // fields ----------------------------------------------------------------------------------------------------//
 
         /// This plotter.
         const Plotter& plotter;
 
-        /// Batch target.
-        const Batch& batch;
+        /// draw call target.
+        const DrawCall& call;
 
         // methods ---------------------------------------------------------------------------------------------------//
 
@@ -427,8 +429,8 @@ void Plotter::_render(valid_ptr<Scene*> /*scene*/) const
                 plotter.m_state.stroke_width = stroke.width;
             }
 
-            notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
-                                         gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
+            notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(call.size), g_index_type,
+                                         gl_buffer_offset(call.offset * sizeof(PlotIndexArray::index_t))));
         }
 
         /// Draw a shape.
@@ -466,8 +468,8 @@ void Plotter::_render(valid_ptr<Scene*> /*scene*/) const
             }
 
             if (shape.is_convex) {
-                notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
-                                             gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
+                notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(call.size), g_index_type,
+                                             gl_buffer_offset(call.offset * sizeof(PlotIndexArray::index_t))));
             }
 
             // concave
@@ -484,8 +486,8 @@ void Plotter::_render(valid_ptr<Scene*> /*scene*/) const
                 notf_check_gl(glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP));
                 notf_check_gl(glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP));
                 notf_check_gl(glDisable(GL_CULL_FACE));
-                notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
-                                             gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
+                notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(call.size), g_index_type,
+                                             gl_buffer_offset(call.offset * sizeof(PlotIndexArray::index_t))));
                 notf_check_gl(glEnable(GL_CULL_FACE));
 
                 notf_check_gl(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)); // re-enable color
@@ -495,8 +497,8 @@ void Plotter::_render(valid_ptr<Scene*> /*scene*/) const
                                                                        // clearing it at the start)
 
                 // render colors here, same area as before if you don't want to clear the stencil buffer every time
-                notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
-                                             gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
+                notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(call.size), g_index_type,
+                                             gl_buffer_offset(call.offset * sizeof(PlotIndexArray::index_t))));
 
                 notf_check_gl(glDisable(GL_STENCIL_TEST));
             }
@@ -529,12 +531,12 @@ void Plotter::_render(valid_ptr<Scene*> /*scene*/) const
                 plotter.m_state.vec2_aux1 = atlas_size_vec;
             }
 
-            notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(batch.size), g_index_type,
-                                         gl_buffer_offset(batch.offset * sizeof(PlotIndexArray::index_t))));
+            notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(call.size), g_index_type,
+                                         gl_buffer_offset(call.offset * sizeof(PlotIndexArray::index_t))));
         }
     };
 
-    // function begins here ////////////////////////////////////////////////////////////////////////////////////////////
+    // function begins here ========================================================================================= //
 
     if (m_indices->is_empty()) {
         return;
@@ -552,14 +554,14 @@ void Plotter::_render(valid_ptr<Scene*> /*scene*/) const
 
     // screen size
     const Aabri& render_area = m_graphics_context.get_render_area();
-    if (m_state.screen_size != render_area.size()) {
-        m_state.screen_size = render_area.size();
+    if (m_state.screen_size != render_area.get_size()) {
+        m_state.screen_size = render_area.get_size();
         tess_shader->set_uniform("projection", Matrix4f::orthographic(0, m_state.screen_size.width, 0,
                                                                       m_state.screen_size.height, 0, 2));
     }
 
-    for (const Batch& batch : m_batches) {
-        notf::visit(GraphicsProducer{*this, batch}, batch.info);
+    for (const DrawCall& drawcall : m_drawcalls) {
+        notf::visit(DrawCallVisitor{*this, drawcall}, drawcall.info);
     }
 }
 

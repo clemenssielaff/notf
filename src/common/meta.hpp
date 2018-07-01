@@ -192,7 +192,6 @@ using std::enable_if_t;
 #endif
 
 #ifndef __cpp_lib_logical_traits
-
 /// Variadic logical AND metafunction
 /// http://en.cppreference.com/w/cpp/types/conjunction
 template<typename...>
@@ -215,26 +214,30 @@ struct disjunction<T, TList...> : notf::conditional_t<T::value, T, disjunction<T
 /// http://en.cppreference.com/w/cpp/types/negation
 template<typename T>
 struct negation : std::integral_constant<bool, !T::value> {};
-
 #else
 using notf::conjunction;
 using std::disjunction;
 using std::negation;
 #endif // __cpp_lib_logical_traits
 
-#ifndef __cpp_lib_void_t
-
 /// Void type.
+#ifndef __cpp_lib_void_t
 template<typename... Ts>
 struct make_void {
     typedef void type;
 };
 template<typename... Ts>
 using void_t = typename make_void<Ts...>::type;
-
 #else
 using std::void_t;
 #endif // __cpp_lib_void_t
+
+/// Byte type.
+#ifndef __cpp_lib_byte
+enum class byte : std::uint8_t {};
+#else
+using std::byte;
+#endif // __cpp_lib_byte
 
 /// Type template to ensure that a template argument does not participate in type deduction.
 /// Compare:

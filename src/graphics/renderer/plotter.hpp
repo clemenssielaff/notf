@@ -43,20 +43,20 @@ public:
     };
 
 private:
-    /// A batch is a sequence of indices, building one or more patches.
-    /// This way, we can group subsequent draw calls of the same type into a batch and render them using a single OpenGL
+    /// A DrawCall is a sequence of indices, building one or more patches.
+    /// This way, we can group subsequent calls of the same type into a batch and render them using a single OpenGL
     /// draw call (for example, to render multiple lines of the same width, color etc.).
-    struct Batch {
+    struct DrawCall {
 
         using Info = notf::variant<StrokeInfo, ShapeInfo, TextInfo>;
 
-        /// Additional information on how to draw the patches contained in this batch.
+        /// Additional information on how to draw the patches contained in this call.
         Info info;
 
-        /// Offset of the first index of the batch.
+        /// Offset of the first index of the call.
         uint offset;
 
-        /// Number of indices in the batch.
+        /// Number of indices in the call.
         int size;
     };
 
@@ -118,13 +118,6 @@ public:
     /// Destructor.
     virtual ~Plotter() override;
 
-    /// Replaces the current list of OpenGL draw calls with one parsed from the buffer.
-    /// Clears the buffer.
-    void apply();
-
-    /// Clears the buffer without parsing it.
-    void clear();
-
     /// Adds a new Bezier spline to stroke into the bufffer.
     /// @param info     Information on how to draw the stroke.
     /// @param spline   Spline to stroke.
@@ -139,6 +132,13 @@ public:
     /// @param info     Information on how to render the text.
     /// @param text     Text to render.
     void add_text(TextInfo info, const std::string& text);
+
+    /// Replaces the current list of OpenGL draw calls with one parsed from the buffer.
+    /// Clears the buffer.
+    void swap_buffers();
+
+    /// Clears the buffer without parsing it.
+    void clear();
 
 private:
     /// Render the current contents of the Plotter.
@@ -161,11 +161,11 @@ private:
     /// Index of the vertices.
     IndexArrayTypePtr m_indices;
 
-    /// Draw batches.
-    std::vector<Batch> m_batches;
+    /// Draw Calls.
+    std::vector<DrawCall> m_drawcalls;
 
-    /// Buffer for new batches.
-    std::vector<Batch> m_batch_buffer;
+    /// Buffer for new Draw Calls.
+    std::vector<DrawCall> m_drawcall_buffer;
 
     /// OpenGL handle of the internal vertex array object.
     GLuint m_vao_id = 0;

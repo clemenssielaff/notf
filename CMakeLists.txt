@@ -110,13 +110,11 @@ create_module(graphics)
 create_module(utils)
 
 add_sources(SOURCE_FILES examples
-#    framebuffer_example.cpp
-#    line_example.cpp
-#    wireframe_example.cpp
-#    shape_example.cpp
-#    text_example.cpp
-#    rendermanager_example.cpp
-#    renderthread_example.cpp
+    framebuffer_example.cpp
+    line_example.cpp
+    wireframe_example.cpp
+    shape_example.cpp
+    text_example.cpp
     smoke_example.cpp
 )
 
@@ -128,25 +126,25 @@ add_sources(THIRDPARTY_FILES thirdparty
     fmt/format.cc
 )
 
-#add_sources(RESOURCE_FILES res
-#    shaders/cell.frag
-#    shaders/cell.vert
-#    shaders/blinn_phong.vert
-#    shaders/blinn_phong.frag
-#    shaders/fullscreen.vert
-#    shaders/wireframe.vert
-#    shaders/wireframe.tess
-#    shaders/wireframe.eval
-#    shaders/wireframe.geo
-#    shaders/wireframe.frag
-#    shaders/plotter.vert
-#    shaders/plotter.tess
-#    shaders/plotter.eval
-#    shaders/plotter.frag
-#    shaders/trivial.vert
-#    shaders/trivial.frag
-#    shaders/clouds.frag
-#)
+add_sources(RESOURCE_FILES res
+    shaders/cell.frag
+    shaders/cell.vert
+    shaders/blinn_phong.vert
+    shaders/blinn_phong.frag
+    shaders/fullscreen.vert
+    shaders/wireframe.vert
+    shaders/wireframe.tess
+    shaders/wireframe.eval
+    shaders/wireframe.geo
+    shaders/wireframe.frag
+    shaders/plotter.vert
+    shaders/plotter.tess
+    shaders/plotter.eval
+    shaders/plotter.frag
+    shaders/trivial.vert
+    shaders/trivial.frag
+    shaders/clouds.frag
+)
 
 add_library(notf
     ${common_MODULE}

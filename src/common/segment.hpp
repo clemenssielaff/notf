@@ -40,25 +40,25 @@ struct Segment {
     Segment(vector_t start, const vector_t& end) : start(std::move(start)), end(std::move(end)) {}
 
     /// Difference vector between the end and start point of the Segment.
-    const vector_t& delta() const { return end - start; }
+    const vector_t& get_delta() const { return end - start; }
 
     /// Length of this line Segment.
-    element_t length() const { return delta().magnitude(); }
+    element_t get_length() const { return get_delta().magnitude(); }
 
     /// The squared length of this line Segment.
-    element_t length_sq() const { return delta().magnitude_sq(); }
+    element_t get_length_sq() const { return get_delta().magnitude_sq(); }
 
     /// Has the Segment zero length?
-    bool is_zero() const { return delta().is_zero(); }
+    bool is_zero() const { return get_delta().is_zero(); }
 
     /// The AABR of this line Segment.
-    Aabrf bounding_rect() const { return {start, end}; }
+    Aabrf get_bounding_rect() const { return {start, end}; }
 
     /// Checks whether this Segment is parallel to another.
-    bool is_parallel_to(const Segment& other) const { return delta().is_parallel_to(other.delta()); }
+    bool is_parallel_to(const Segment& other) const { return get_delta().is_parallel_to(other.delta()); }
 
     /// Checks whether this Segment is orthogonal to another.
-    bool is_orthogonal_to(const Segment& other) const { return delta().is_orthogonal_to(other.delta()); }
+    bool is_orthogonal_to(const Segment& other) const { return get_delta().is_orthogonal_to(other.delta()); }
 
     /// Checks if this line Segment contains a given point.
     /// @param point    Point to heck.
@@ -72,10 +72,10 @@ struct Segment {
 
 /// 2D line segment.
 template<typename REAL>
-struct Segment2 : public detail::Segment<detail::RealVector2<REAL>> {
+struct Segment2 : public Segment<detail::RealVector2<REAL>> {
 
     /// Base type.
-    using super_t = detail::Segment<detail::RealVector2<REAL>>;
+    using super_t = Segment<detail::RealVector2<REAL>>;
 
     /// Vector type.
     using vector_t = typename super_t::vector_t;
@@ -91,6 +91,16 @@ struct Segment2 : public detail::Segment<detail::RealVector2<REAL>> {
     using super_t::end;
 
     // methods ------------------------------------------------------------------------------------------------------ //
+
+    using super_t::contains;
+    using super_t::get_bounding_rect;
+    using super_t::get_delta;
+    using super_t::get_length;
+    using super_t::get_length_sq;
+    using super_t::is_orthogonal_to;
+    using super_t::is_parallel_to;
+    using super_t::is_zero;
+
     /// Default constructor.
     Segment2() = default;
 
@@ -121,7 +131,20 @@ struct Segment2 : public detail::Segment<detail::RealVector2<REAL>> {
     /// If the line has a length of zero, the start point is returned.
     /// @param point     Position to find the closest point on this Line to.
     /// @param inside    If true, the closest point has to lie within this Line's segment (between start and end).
-    //    vector_t closest_point(const vector_t& point, bool inside = true) const;
+    vector_t get_closest_point(const vector_t& point, bool inside = true) const
+    {
+        const vector_t delta = get_delta();
+        const float length_sq = delta.magnitude_sq();
+        if (is_approx(length_sq, 0)) {
+            return start;
+        }
+        const float dot = (point - start).dot(delta);
+        float t = -dot / length_sq;
+        if (inside) {
+            t = clamp(t, 0.0, 1.0);
+        }
+        return start + (delta * t);
+    }
 
     /// Calculates the intersection of this line with another ... IF they intersect.
     /// @param intersection  Out argument, is filled wil the intersection point if an intersection was found.
@@ -139,10 +162,10 @@ struct Segment2 : public detail::Segment<detail::RealVector2<REAL>> {
 
 /// 3D line segment.
 template<typename REAL>
-struct Segment3 : public detail::Segment<detail::RealVector3<REAL>> {
+struct Segment3 : public Segment<detail::RealVector3<REAL>> {
 
     /// Base type.
-    using super_t = detail::Segment<detail::RealVector3<REAL>>;
+    using super_t = Segment<detail::RealVector3<REAL>>;
 
     /// Vector type.
     using vector_t = typename super_t::vector_t;

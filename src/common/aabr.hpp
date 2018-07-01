@@ -147,49 +147,49 @@ struct Aabr {
     }
 
     /// Creates a copy of this Aabr.
-    Aabr copy() const { return *this; }
+    Aabr get_copy() const { return *this; }
 
     /// X-coordinate of the center point.
-    element_t x() const { return (_min.x() + _max.x()) / 2; }
+    element_t get_x() const { return (_min.x() + _max.x()) / 2; }
 
     /// Y-coordinate of the center point.
-    element_t y() const { return (_min.y() + _max.y()) / 2; }
+    element_t get_y() const { return (_min.y() + _max.y()) / 2; }
 
     /// The center of the Aabr.
-    vector_t center() const { return {x(), y()}; }
+    vector_t get_center() const { return {get_x(), get_y()}; }
 
     /// X-coordinate of the left edge of this Aabr.
-    element_t left() const { return _min.x(); }
+    element_t get_left() const { return _min.x(); }
 
     /// X-coordinate of the right edge of this Aabr.
-    element_t right() const { return _max.x(); }
+    element_t get_right() const { return _max.x(); }
 
     /// Y-coordinate of the top edge of this Aabr.
-    element_t top() const { return _max.y(); }
+    element_t get_top() const { return _max.y(); }
 
     /// Y-coordinate of the bottom edge of this Aabr.
-    element_t bottom() const { return _min.y(); }
+    element_t get_bottom() const { return _min.y(); }
 
     /// The bottom left corner of this Aabr.
-    const vector_t& bottom_left() const { return _min; }
+    const vector_t& get_bottom_left() const { return _min; }
 
     /// The top right corner of this Aabr.
-    const vector_t& top_right() const { return _max; }
+    const vector_t& get_top_right() const { return _max; }
 
     /// The top left corner of this Aabr.
-    vector_t top_left() const { return {_min.x(), _max.y()}; }
+    vector_t get_top_left() const { return {_min.x(), _max.y()}; }
 
     /// The bottom right corner of this Aabr.
-    vector_t bottom_right() const { return {_max.x(), _min.y()}; }
+    vector_t get_bottom_right() const { return {_max.x(), _min.y()}; }
 
     /// The width of this Aabr.
-    element_t width() const { return _max.x() - _min.x(); }
+    element_t get_width() const { return _max.x() - _min.x(); }
 
     /// The height of this Aabr.
-    element_t height() const { return _max.y() - _min.y(); }
+    element_t get_height() const { return _max.y() - _min.y(); }
 
     /// The area of this Aabr.
-    element_t area() const { return height() * width(); }
+    element_t get_area() const { return get_height() * get_width(); }
 
     /// A valid Aabr has a width and height >= 0.
     bool is_valid() const { return _min.x() <= _max.x() && _min.y() <= _max.y(); }
@@ -218,31 +218,31 @@ struct Aabr {
     /// Targets inside the Aabr are returned unchanged.
     /// @param target    Target point.
     /// @return          Closest point inside the Aabr to the target point.
-    vector_t closest_point_to(const vector_t& target) const
+    vector_t get_closest_point_to(const vector_t& target) const
     {
-        const vector_t pos = center();
-        const element_t half_width = width() / 2;
-        const element_t half_height = height() / 2;
+        const vector_t pos = get_center();
+        const element_t half_width = get_width() / 2;
+        const element_t half_height = get_height() / 2;
         return {pos.x() + clamp(target.x() - pos.x(), -half_width, half_width),
                 pos.y() + clamp(target.y() - pos.y(), -half_height, half_height)};
     }
 
     /// Returns the extend of this Aabr.
-    Size2<element_t> size() const { return {width(), height()}; }
+    Size2<element_t> get_size() const { return {get_width(), get_height()}; }
 
     /// Returns the length of the longer side of this Aabr.
-    element_t longer_side() const
+    element_t get_longer_side() const
     {
-        const element_t width = this->width();
-        const element_t height = this->height();
+        const element_t width = get_width();
+        const element_t height = get_height();
         return width > height ? width : height;
     }
 
     /// Returns the length of the shorter side of this Aabr.
-    element_t shorter_side() const
+    element_t get_shorter_side() const
     {
-        const element_t width = this->width();
-        const element_t height = this->height();
+        const element_t width = get_width();
+        const element_t height = get_height();
         return width < height ? width : height;
     }
 
@@ -264,7 +264,7 @@ struct Aabr {
     /// Moves the center of this Aabr to the given x-coordinate.
     Aabr& set_x(const element_t x)
     {
-        const element_t half_width = width() / 2;
+        const element_t half_width = get_width() / 2;
         _min.x() = x - half_width;
         _max.x() = x + half_width;
         return *this;
@@ -273,7 +273,7 @@ struct Aabr {
     /// Moves the center of this Aabr to the given y-coordinate.
     Aabr& set_y(const element_t y)
     {
-        const element_t half_height = height() / 2;
+        const element_t half_height = get_height() / 2;
         _min.y() = y - half_height;
         _max.y() = y + half_height;
         return *this;
@@ -371,7 +371,7 @@ struct Aabr {
     /// If a width less than zero is specified, the resulting width is zero.
     Aabr& set_width(const element_t width)
     {
-        const element_t center = x();
+        const element_t center = get_x();
         const element_t half_width = width / 2;
         _min.x() = center - half_width;
         _max.x() = center + half_width;
@@ -383,7 +383,7 @@ struct Aabr {
     /// If a height less than zero is specified, the resulting height is zero.
     Aabr& set_height(const element_t height)
     {
-        const element_t center = y();
+        const element_t center = get_y();
         const element_t half_height = height / 2;
         _min.y() = center - half_height;
         _max.y() = center + half_height;
@@ -447,7 +447,7 @@ struct Aabr {
     /// Intersection of this Aabr with `other`.
     /// Intersecting with another Aabr that does not intersect results in the zero Aabr.
     /// @return  The intersection Aabr.
-    Aabr intersect(const Aabr& other) const
+    Aabr get_intersection(const Aabr& other) const
     {
         if (!intersects(other)) {
             return Aabr::zero();
@@ -457,7 +457,7 @@ struct Aabr {
                     vector_t{_max.x() < other._max.x() ? _max.x() : other._max.x(),
                              _max.y() < other._max.y() ? _max.y() : other._max.y()});
     }
-    Aabr operator&(const Aabr& other) const { return intersect(other); }
+    Aabr operator&(const Aabr& other) const { return get_intersection(other); }
 
     /// Intersection of this Aabr with `other` in-place.
     /// Intersecting with another Aabr that does not intersect results in the zero Aabr.
@@ -475,14 +475,14 @@ struct Aabr {
     Aabr operator&=(const Aabr& other) { return intersect(other); }
 
     /// Creates the union of this Aabr with `other`.
-    Aabr unite(const Aabr& other) const
+    Aabr get_union(const Aabr& other) const
     {
         return Aabr(vector_t{_min.x() < other._min.x() ? _min.x() : other._min.x(),
                              _min.y() < other._min.y() ? _min.y() : other._min.y()},
                     vector_t{_max.x() > other._max.x() ? _max.x() : other._max.x(),
                              _max.y() > other._max.y() ? _max.y() : other._max.y()});
     }
-    Aabr operator|(const Aabr& other) const { return unite(other); }
+    Aabr operator|(const Aabr& other) const { return get_union(other); }
 
     /// Creates the union of this Aabr with `other` in-place.
     Aabr& unite(const Aabr& other)
@@ -534,25 +534,25 @@ namespace detail {
 template<>
 inline Aabrf matrix3_transform(const Matrix3f& xform, const Aabrf& aabr)
 {
-    return aabr.copy().transformed_by(xform);
+    return aabr.get_copy().transformed_by(xform);
 }
 
 template<>
 inline Aabrd matrix3_transform(const Matrix3d& xform, const Aabrd& aabr)
 {
-    return aabr.copy().transformed_by(xform);
+    return aabr.get_copy().transformed_by(xform);
 }
 
 template<>
 inline Aabrf transform3(const Matrix4f& xform, const Aabrf& aabr)
 {
-    return aabr.copy().transformed_by(xform);
+    return aabr.get_copy().transformed_by(xform);
 }
 
 template<>
 inline Aabrd transform3(const Matrix4d& xform, const Aabrd& aabr)
 {
-    return aabr.copy().transformed_by(xform);
+    return aabr.get_copy().transformed_by(xform);
 }
 
 } // namespace detail
