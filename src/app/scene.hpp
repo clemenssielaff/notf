@@ -80,9 +80,6 @@ public:
     /// Graph-unique name of the Scene.
     const std::string& get_name() const { return m_name->first; }
 
-    /// The unique root node of this Scene.
-    RootNode& get_root() const { return *m_root; }
-
     /// @{
     /// Searches for and returns a Property of a Node or the Scene.
     /// @param path     Path uniquely identifying a Property.
@@ -126,8 +123,11 @@ public:
     void clear();
 
 protected:
+    /// The unique root node of this Scene.
+    RootNode& _get_root() const { return *m_root; }
+
     /// Special access to this Scene's RootNode.
-    access::_RootNode<Scene> _get_root();
+    access::_RootNode<Scene> _get_root_access();
 
     // event handling ---------------------------------------------------------
 private:

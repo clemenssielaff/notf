@@ -1,8 +1,8 @@
 #pragma once
 
-#include "common/aabr.hpp"
 #include "common/color.hpp"
 #include "common/matrix3.hpp"
+#include "common/size2.hpp"
 #include "graphics/forwards.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -37,12 +37,6 @@ public:
         CLOCKWISE = CW,
         SOLID = CCW,
         HOLE = CW,
-    };
-
-    /// Clipping rect with transformation.
-    struct Clipping {
-        Aabrf rect;
-        Matrix3f xform;
     };
 
     // methods ------------------------------------------------------------------------------------------------------ //

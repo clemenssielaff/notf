@@ -95,6 +95,7 @@ public:
 
     /// Checks if the Handle is currently valid.
     bool is_valid() const { return !m_node.expired(); }
+    explicit operator bool() const { return is_valid(); }
 
     /// The managed BaseNode instance correctly typed.
     /// @throws Node::no_node_error    If the handled Node has been deleted.

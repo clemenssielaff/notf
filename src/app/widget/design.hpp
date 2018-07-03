@@ -4,6 +4,7 @@
 #include <set>
 #include <vector>
 
+#include "app/widget/clipping.hpp"
 #include "app/widget/paint.hpp"
 #include "common/assert.hpp"
 #include "common/vector2.hpp"
@@ -179,11 +180,11 @@ public:
 
     /// Set the clipping rect of the current Design state.
     struct SetClippingCommand final : public Command<CommandBase::Type::SET_CLIPPING> {
-        constexpr explicit SetClippingCommand(Paint::Clipping clipping)
+        explicit SetClippingCommand(Clipping clipping)
             : Command<CommandBase::Type::SET_CLIPPING>(), clipping(clipping)
         {}
         ~SetClippingCommand();
-        Paint::Clipping clipping;
+        Clipping clipping;
     };
 
     /// Reset the clipping rect of the current Design state.

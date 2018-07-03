@@ -28,8 +28,9 @@ struct RealVector2 : public detail::Arithmetic<RealVector2<REAL>, REAL, 2> {
     /// Element-wise constructor.
     /// @param x    First component.
     /// @param y    Second component (default is 0).
-    template<typename X, typename Y = element_t>
-    RealVector2(const X x, const Y y = 0) : super_t{static_cast<element_t>(x), static_cast<element_t>(y)} {}
+    template<typename X, typename Y = element_t, typename = notf::enable_if_t<std::is_convertible<X, element_t>::value>>
+    RealVector2(const X x, const Y y = 0) : super_t{static_cast<element_t>(x), static_cast<element_t>(y)}
+    {}
 
     /// Unit vector along the X-axis.
     static RealVector2 x_axis() { return RealVector2(1, 0); }
@@ -50,8 +51,8 @@ struct RealVector2 : public detail::Arithmetic<RealVector2<REAL>, REAL, 2> {
     const element_t& y() const { return data[1]; }
 
     /// Swizzles.
-    RealVector2 xy() const { return { data[0], data[1] }; }
-    RealVector2 yx() const { return { data[1], data[0] }; }
+    RealVector2 xy() const { return {data[0], data[1]}; }
+    RealVector2 yx() const { return {data[1], data[0]}; }
 
     /// Returns True, if other and self are approximately the same vector.
     /// @note Vectors use distance approximation instead of component-wise approximation.
@@ -180,7 +181,8 @@ struct IntVector2 : public detail::Arithmetic<IntVector2<INTEGER>, INTEGER, 2> {
     /// @param x    First component.
     /// @param y    Second component (default is 0).
     template<typename X, typename Y = element_t>
-    IntVector2(const X x, const Y y = 0) : super_t{static_cast<element_t>(x), static_cast<element_t>(y)} {}
+    IntVector2(const X x, const Y y = 0) : super_t{static_cast<element_t>(x), static_cast<element_t>(y)}
+    {}
 
     /// Unit vector along the X-axis.
     static IntVector2 x_axis() { return IntVector2(1, 0); }

@@ -45,7 +45,7 @@ public:
     /// Destructor.
     ~RootNode() override;
 
-    /// Sets  a new child at the top of the Scene hierarchy (below the root).
+    /// Sets a new child at the top of the Scene hierarchy (below the root).
     /// @param args Arguments that are forwarded to the constructor of the child.
     template<class T, class... Args>
     NodeHandle<T> set_child(Args&&... args)

@@ -35,10 +35,12 @@ private:
 
 struct TestScene : public Scene {
     TestScene(FactoryToken token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
-        : Scene(token, graph, std::move(name)), p_root_float(_get_root().create_property<float>("root_float", 0))
+        : Scene(token, graph, std::move(name)), p_root_float(_get_root_access().create_property<float>("root_float", 0))
     {}
 
     ~TestScene() override;
+
+    RootNode& get_root() const { return _get_root(); }
 
     void _resize_view(Size2i) override {}
 

@@ -40,7 +40,7 @@ struct Segment {
     Segment(vector_t start, const vector_t& end) : start(std::move(start)), end(std::move(end)) {}
 
     /// Difference vector between the end and start point of the Segment.
-    const vector_t& get_delta() const { return end - start; }
+    vector_t get_delta() const { return end - start; }
 
     /// Length of this line Segment.
     element_t get_length() const { return get_delta().magnitude(); }

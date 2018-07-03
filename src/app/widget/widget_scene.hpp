@@ -2,7 +2,7 @@
 
 #include "app/node_handle.hpp"
 #include "app/scene.hpp"
-#include "app/widget/widget.hpp"
+#include "app/widget/root_widget.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -15,9 +15,7 @@ class WidgetScene : public Scene {
     /// @param graph    The SceneGraph owning this Scene.
     /// @param name     Graph-unique, immutable name of the Scene.
     /// @throws scene_name_error    If the given name is not unique in the SceneGraph.
-    WidgetScene(FactoryToken token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
-        : Scene(token, graph, std::move(name))
-    {}
+    WidgetScene(FactoryToken token, const valid_ptr<SceneGraphPtr>& graph, std::string name);
 
     /// Destructor.
     ~WidgetScene() override;
@@ -33,8 +31,8 @@ private:
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
-    /// The single Widget underneath the root of this Scene.
-    NodeHandle<Widget> m_first;
+    /// The RootWidget underneath the root of this Scene.
+    NodeHandle<RootWidget> m_root_widget;
 };
 
 NOTF_CLOSE_NAMESPACE

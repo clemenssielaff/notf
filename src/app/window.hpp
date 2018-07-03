@@ -86,7 +86,6 @@ public:
     ///@}
 
     /// Returns the Window's size in screen coordinates (not pixels).
-    /// Returns an invalid size if the GLFW window was already closed.
     Size2i get_window_size() const { return m_size; }
 
     /// Returns the size of the Window including decorators added by the OS in screen coordinates (not pixels).

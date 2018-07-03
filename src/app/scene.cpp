@@ -27,7 +27,7 @@ size_t Scene::count_nodes() const
 
 void Scene::clear() { m_root->clear(); }
 
-access::_RootNode<Scene> Scene::_get_root() { return RootNode::Access<Scene>(*m_root); }
+access::_RootNode<Scene> Scene::_get_root_access() { return RootNode::Access<Scene>(*m_root); }
 
 risky_ptr<NodeContainer*> Scene::_get_frozen_children(valid_ptr<const Node*> node)
 {
@@ -108,7 +108,7 @@ NodePtr Scene::_get_node(const Path& path)
     }
 }
 
-void Scene::_finalize_root() { _get_root().finalize(); }
+void Scene::_finalize_root() { _get_root_access().finalize(); }
 
 void Scene::_clear_delta()
 {

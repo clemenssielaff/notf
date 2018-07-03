@@ -198,7 +198,10 @@ public:
     /// The root node is always a common ancestor, iff the two nodes are in the same scene.
     /// @param other            Other Node to find the common ancestor for.
     /// @throws hierarchy_error If the two nodes are not in the same scene.
-    NodeHandle<Node> get_common_ancestor(valid_ptr<Node*> other);
+    NodeHandle<Node> get_common_ancestor(valid_ptr<const Node*> other) const
+    {
+        return NodeHandle<Node>(const_cast<Node*>(raw_pointer(_get_common_ancestor(other))));
+    }
 
     /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
     /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
@@ -292,6 +295,15 @@ protected:
 
     /// Direct access to the mutex protecting this node's hierarchy.
     RecursiveMutex& _get_hierarchy_mutex() const { return SceneGraph::Access<Node>::hierarchy_mutex(get_graph()); }
+
+    /// Direct access to this Node's parent.
+    valid_ptr<Node*> _get_parent() const { return m_parent; }
+
+    /// Finds and returns the first common ancestor of two Nodes.
+    /// The root node is always a common ancestor, iff the two nodes are in the same scene.
+    /// @param other            Other Node to find the common ancestor for.
+    /// @throws hierarchy_error If the two nodes are not in the same scene.
+    valid_ptr<const Node*> _get_common_ancestor(valid_ptr<const Node*> other) const;
 
     /// All children of this node, orded from back to front.
     /// Never creates a delta.
@@ -434,7 +446,7 @@ private:
     Scene& m_scene;
 
     /// The parent of this node, is guaranteed to outlive this Node.
-    valid_ptr<Node*> const m_parent;
+    const valid_ptr<Node*> m_parent;
 
     /// All children of this node, ordered from back to front and accessible by their (node-unique) name.
     NodeContainer m_children;

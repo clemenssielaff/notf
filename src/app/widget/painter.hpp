@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "app/forwards.hpp"
+#include "app/widget/clipping.hpp"
 #include "app/widget/paint.hpp"
 #include "common/assert.hpp"
 #include "common/circle.hpp"
@@ -11,16 +12,23 @@
 
 NOTF_OPEN_NAMESPACE
 
+namespace access { // forwards
+template<class>
+class _Painter;
+} // namespace access
+
 // ================================================================================================================== //
 
 class Painter {
+
+    friend class access::_Painter<Painterpreter>;
 
     // types -------------------------------------------------------------------------------------------------------- //
 private:
     /// State used to contextualize paint operations.
     struct State {
         Matrix3f xform = Matrix3f::identity();
-        Paint::Clipping clipping = {};
+        Clipping clipping = {};
         Paint fill_paint = Color(255, 255, 255);
         Paint stroke_paint = Color(0, 0, 0);
         BlendMode blend_mode = BlendMode::SOURCE_OVER;
@@ -35,6 +43,11 @@ private:
         // Furthest distance between two points in which the second point is considered equal to the first.
         float distance_tolerance;
     };
+
+public:
+    /// Access types.
+    template<class T>
+    using Access = access::_Painter<T>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
@@ -79,7 +92,7 @@ public:
     // Clipping ---------------------------------------------------------------
 
     /// The Clipping currently applied to the Painter.
-    Paint::Clipping get_scissor() const { return _get_current_state().clipping; }
+    Clipping get_scissor() const { return _get_current_state().clipping; }
 
     /// Updates the Painter's Clipping rect (untransformed).
     void set_clipping(const Aabrf& aabr);
@@ -294,6 +307,16 @@ private:
     /// Keeps track of whether the Painter has a current, open path or not.
     /// If not, it has to create a new Path before addng Points.
     bool m_has_open_path = false;
+};
+
+// accessors -------------------------------------------------------------------------------------------------------- //
+
+template<>
+class access::_Painter<Painterpreter> {
+    friend class notf::Painterpreter;
+
+    /// State used to contextualize paint operations.
+    using State = notf::Painter::State;
 };
 
 NOTF_CLOSE_NAMESPACE

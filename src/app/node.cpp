@@ -103,43 +103,6 @@ bool Node::has_ancestor(valid_ptr<const Node*> ancestor) const
     return false;
 }
 
-NodeHandle<Node> Node::get_common_ancestor(valid_ptr<Node*> other)
-{
-    if (this == other) {
-        return NodeHandle<Node>(this);
-    }
-
-    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
-
-    valid_ptr<Node*> first = this;
-    valid_ptr<Node*> second = other;
-    Node* result = nullptr;
-    std::unordered_set<valid_ptr<Node*>, pointer_hash<valid_ptr<Node*>>> known_ancestors = {first, second};
-    while (true) {
-        first = first->m_parent;
-        if (known_ancestors.count(first)) {
-            result = first;
-            break;
-        }
-        known_ancestors.insert(first);
-
-        second = second->m_parent;
-        if (known_ancestors.count(second)) {
-            result = second;
-            break;
-        }
-        known_ancestors.insert(second);
-    }
-    NOTF_ASSERT(result);
-
-    // if the result is a scene root node, we need to make sure that it is in fact the root of BOTH nodes
-    if (result->m_parent == result && (!has_ancestor(result) || !other->has_ancestor(result))) {
-        notf_throw(hierarchy_error, "Nodes \"{}\" and \"{}\" are not part of the same hierarchy", get_name(),
-                   other->get_name());
-    }
-    return NodeHandle<Node>(result);
-}
-
 bool Node::is_in_front() const
 {
     NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
@@ -336,6 +299,43 @@ void Node::_get_node(const Path& path, const uint index, NodePtr& result)
     else {
         child->_get_node(path, index + 1, result);
     }
+}
+
+valid_ptr<const Node*> Node::_get_common_ancestor(valid_ptr<const Node*> other) const
+{
+    if (this == other) {
+        return this;
+    }
+
+    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+
+    valid_ptr<const Node*> first = this;
+    valid_ptr<const Node*> second = other;
+    const Node* result = nullptr;
+    std::unordered_set<valid_ptr<const Node*>, pointer_hash<valid_ptr<const Node*>>> known_ancestors = {first, second};
+    while (true) {
+        first = first->m_parent;
+        if (known_ancestors.count(first)) {
+            result = first;
+            break;
+        }
+        known_ancestors.insert(first);
+
+        second = second->m_parent;
+        if (known_ancestors.count(second)) {
+            result = second;
+            break;
+        }
+        known_ancestors.insert(second);
+    }
+    NOTF_ASSERT(result);
+
+    // if the result is a scene root node, we need to make sure that it is in fact the root of BOTH nodes
+    if (result->m_parent == result && (!has_ancestor(result) || !other->has_ancestor(result))) {
+        notf_throw(hierarchy_error, "Nodes \"{}\" and \"{}\" are not part of the same hierarchy", get_name(),
+                   other->get_name());
+    }
+    return result;
 }
 
 const NodeContainer& Node::_read_children() const

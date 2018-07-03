@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/assert.hpp"
 #include "common/exception.hpp"
 #include "common/hash.hpp"
 
@@ -55,6 +56,21 @@ notf::enable_if_t<std::is_same<std::decay_t<T>, std::nullptr_t>::value, std::nul
     return nullptr; // from nullptr
 }
 /// @}
+
+// ================================================================================================================== //
+
+/// If you are sure that a dynamic_cast would always succeed.
+template<class T, class U>
+inline T assert_cast(U&& casted)
+{
+#ifdef NOTF_DEBUG
+    auto result = dynamic_cast<T>(raw_pointer(std::forward<U>(casted)));
+    NOTF_ASSERT(result);
+    return result;
+#else
+    return static_cast<T>(raw_pointer(std::forward<U>(casted)));
+#endif
+}
 
 // ================================================================================================================== //
 

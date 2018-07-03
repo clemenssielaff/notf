@@ -110,11 +110,11 @@ create_module(graphics)
 create_module(utils)
 
 add_sources(SOURCE_FILES examples
-    framebuffer_example.cpp
-    line_example.cpp
-    wireframe_example.cpp
-    shape_example.cpp
-    text_example.cpp
+    #framebuffer_example.cpp
+    #line_example.cpp
+    #wireframe_example.cpp
+    #shape_example.cpp
+    #text_example.cpp
     smoke_example.cpp
 )
 

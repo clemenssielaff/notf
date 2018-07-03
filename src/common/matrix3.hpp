@@ -54,7 +54,7 @@ struct Matrix3 : public detail::Arithmetic<Matrix3<REAL>, RealVector2<REAL>, 3> 
 
     /// Element-wise constructor.
     Matrix3(const element_t a, const element_t b, const element_t c, const element_t d, const element_t e,
-             const element_t f)
+            const element_t f)
         : super_t{component_t(a, b), component_t(c, d), component_t(e, f)}
     {}
 
@@ -71,16 +71,13 @@ struct Matrix3 : public detail::Arithmetic<Matrix3<REAL>, RealVector2<REAL>, 3> 
     /// A translation matrix.
     /// @param x    X component of the translation vector.
     /// @param y    Y component of the translation vector.
-    static Matrix3 translation(const element_t x, const element_t y)
-    {
-        return Matrix3::translation(component_t(x, y));
-    }
+    static Matrix3 translation(const element_t x, const element_t y) { return Matrix3::translation(component_t(x, y)); }
 
     /// A rotation matrix.
     /// @param radians   Counter-clockwise rotation in radians.
     static Matrix3 rotation(const element_t radians)
     {
-        const element_t sine   = sin(radians);
+        const element_t sine = sin(radians);
         const element_t cosine = cos(radians);
         return Matrix3(cosine, sine, -sine, cosine, 0, 0);
     }

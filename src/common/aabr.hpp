@@ -73,14 +73,6 @@ struct Aabr {
         : _min(position), _max(position.x() + size.width, position.y() + size.height)
     {}
 
-    /// Aabr with a given width and height, and the bottom-left corner at zero.
-    /// @param width     Width of the Aabr.
-    /// @param height    Height of the Aabr.
-    template<typename WIDTH, typename HEIGHT>
-    Aabr(const WIDTH width, const HEIGHT height)
-        : _min(0, 0), _max(static_cast<element_t>(width), static_cast<element_t>(height))
-    {}
-
     /// Constructs an Aabr of the given size with the bottom-left corner at zero.
     /// @param size  Size of the Aabr.
     Aabr(const Size2<element_t>& size) : _min(0, 0), _max(size.width, size.height) {}

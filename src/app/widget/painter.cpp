@@ -67,7 +67,7 @@ void Painter::set_clipping(const Aabrf& aabr)
 void Painter::remove_clipping()
 {
     m_design.add_command(WidgetDesign::ResetClippingCommand());
-    _get_current_state().clipping = Paint::Clipping();
+    _get_current_state().clipping = Clipping();
 }
 
 void Painter::set_blend_mode(const BlendMode mode)
@@ -204,7 +204,8 @@ void Painter::arc(const float cx, const float cy, const float r, const float a0,
         const float tanx = -dy * r * kappa;
         const float tany = dx * r * kappa;
         if (static_cast<int>(i) == 0) {
-            if (!m_has_open_path) {
+            if (!m_has_open_path) { // TODO: this is the only time this variable is used - is it really necessary?
+                                    //       ... or should it be used even more often?
                 m_design.add_command(WidgetDesign::MoveCommand({x, y}));
             }
             else {

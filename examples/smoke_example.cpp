@@ -18,7 +18,7 @@ NOTF_USING_NAMESPACE
 
 struct CloudScene : public Scene {
     CloudScene(FactoryToken token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
-        : Scene(token, graph, std::move(name)), p_time(_get_root().create_property<float>("time", 0))
+        : Scene(token, graph, std::move(name)), p_time(_get_root_access().create_property<float>("time", 0))
     {
         m_timer = IntervalTimer::create([&] {
             const auto age_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Application::age()).count();
