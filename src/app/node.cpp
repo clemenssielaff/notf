@@ -84,8 +84,7 @@ Node::~Node()
 
 const std::string& Node::set_name(const std::string& name)
 {
-    NOTF_UNUSED const bool success = m_name->set(name);
-    NOTF_ASSERT(success);
+    m_name->set(name);
     return m_name->get();
 }
 

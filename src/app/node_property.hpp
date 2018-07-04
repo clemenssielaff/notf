@@ -180,9 +180,10 @@ public:
     /// Set the Property's value.
     /// Removes an existing expression on this Property if one exists.
     /// @param value    New value.
-    /// @returns        True iff the value could be updated, false if the validation failed.
-    bool set(T value)
+    void set(T value)
     {
+        // TODO: wasn't the idea here that Property::set would return false if validation failed? (or value is equal)?
+
         if (risky_ptr<TypedPropertyBody<T>*> body = _get_body()) {
             PropertyUpdateList effects;
             body->set(std::forward<T>(value), effects);
@@ -191,7 +192,6 @@ public:
         else {
             _set_value(std::move(value));
         }
-        return true;
     }
 
     /// Sets the Property's expression.
@@ -217,7 +217,7 @@ public:
     }
 
     /// Returns a PropertyReader for reading the (unbuffered) value of this Property.
-    TypedPropertyReader<T> reader() const
+    TypedPropertyReader<T> get_reader() const
     {
         return TypedPropertyReader<T>(std::static_pointer_cast<TypedPropertyBody<T>>(m_body));
     }
@@ -436,9 +436,8 @@ public:
     /// Set the Property's value.
     /// Removes an existing expression on this Property if one exists.
     /// @param value    New value.
-    /// @returns        True iff the value could be updated, false if the validation failed.
     /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
-    bool set(T value) { return _property()->set(std::forward<T>(value)); }
+    void set(T value) { return _property()->set(std::forward<T>(value)); }
 
     /// Sets the Property's expression.
     /// Evaluates the expression right away to update the Property's value.
@@ -457,7 +456,7 @@ public:
 
     /// Returns a PropertyReader for reading the (unbuffered) value of this Property.
     /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
-    TypedPropertyReader<T> get_reader() const { return _property()->reader(); }
+    TypedPropertyReader<T> get_reader() const { return _property()->get_reader(); }
 
     /// Comparison operator with another PropertyHandle of the same type as this.
     /// Tests for identity, not equality - meaning two handles of different properties that just happen to contain the

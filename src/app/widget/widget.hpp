@@ -74,16 +74,15 @@ protected:
     }
 
 private:
-    /// Updates the Claim of this Widget, which might cause an upstream relayout.
-    /// @return      True iff the Claim was modified.
-    bool _set_claim(Claim& claim);
+    /// Changing the Claim or the visiblity of a Widget causes a relayout further up the hierarchy.
+    void _relayout_upwards();
 
-    /// Updates the Grant of this Widget which might cause a downstream relayout.
-    /// @return      True iff the Grant was modified.
-    bool _set_grant(Size2f& grant);
+    /// Updates the size and transformations of all child Widgets.
+    virtual void _relayout_downwards() {}
 
-    /// Updates the size of this and the position/size of all child Widgets.
-    void _relayout();
+    /// Recalcuates the Claim of this Widget.
+    /// Useful for example, when the Widget's Claim is determined by its children.
+    virtual Claim _update_claim() { return m_claim.get(); }
 
     /// Updates (if necessary) and returns the Design of this Widget.
     const WidgetDesign& get_design();
