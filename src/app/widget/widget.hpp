@@ -27,26 +27,7 @@ public:
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
-    Widget(FactoryToken token, Scene& scene, valid_ptr<Node*> parent, const std::string& name = {})
-        : Node(token, scene, parent)
-    {
-        // name the widget
-        if (!name.empty()) {
-            set_name(name);
-        }
-
-        // create widget properties
-        m_claim = _create_property<Claim>("claim", Claim(), {}, /* has_body = */ false);
-        m_layout_transform = _create_property<Matrix3f>("layout_transform", Matrix3f::identity());
-        m_offset_transform = _create_property<Matrix3f>("offset_transform", Matrix3f::identity());
-        m_content_aabr = _create_property<Aabrf>("content_aabr", Aabrf::zero(), {}, /* has_body = */ false);
-        m_grant = _create_property<Size2f>("grant", Size2f::zero(), {}, /* has_body = */ false);
-        m_opacity = _create_property<float>("opacity", 1, [](float& v) {
-            v = clamp(v, 0, 1);
-            return true;
-        });
-        m_visibility = _create_property<bool>("visibility", true);
-    }
+    Widget(FactoryToken token, Scene& scene, valid_ptr<Node*> parent, const std::string& name = {});
 
     /// Destructor.
     ~Widget() override;
@@ -74,7 +55,7 @@ public:
     }
 
     /// The Clipping rect of this Widget.
-    virtual Clipping get_clipping_rect() const;
+    virtual const Clipping& get_clipping_rect() const;
 
 protected:
     /// Updates the Design of this Widget through the given Painter.
@@ -93,9 +74,18 @@ protected:
     }
 
 private:
+    /// Updates the Claim of this Widget, which might cause an upstream relayout.
+    /// @return      True iff the Claim was modified.
+    bool _set_claim(Claim& claim);
+
+    /// Updates the Grant of this Widget which might cause a downstream relayout.
+    /// @return      True iff the Grant was modified.
+    bool _set_grant(Size2f& grant);
+
     /// Updates the size of this and the position/size of all child Widgets.
     void _relayout();
 
+    /// Updates (if necessary) and returns the Design of this Widget.
     const WidgetDesign& get_design();
 
     /// Calculates the transformation of this Widget relative to its Window.

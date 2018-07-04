@@ -92,10 +92,10 @@ public:
     // Clipping ---------------------------------------------------------------
 
     /// The Clipping currently applied to the Painter.
-    Clipping get_scissor() const { return _get_current_state().clipping; }
+    const Clipping& get_clipping() const { return _get_current_state().clipping; }
 
-    /// Updates the Painter's Clipping rect (untransformed).
-    void set_clipping(const Aabrf& aabr);
+    /// Updates the Painter's Clipping.
+    void set_clipping(Clipping clipping);
 
     /// Removes the Painter's Clipping rect.
     void remove_clipping();

@@ -19,8 +19,10 @@ namespace detail {
 /// edges and must contain at least 3 unique points. Polygons are always closed, meaning the last point is always
 /// implicitly connected to the first one.
 template<typename REAL>
-struct Polygon {
+class Polygon {
 
+    // types -------------------------------------------------------------------------------------------------------- //
+public:
     /// Vector type.
     using vector_t = RealVector2<REAL>;
 
@@ -30,29 +32,62 @@ struct Polygon {
     /// Orientation type.
     using Orientation = typename Triangle<element_t>::Orientation;
 
-    // fields ------------------------------------------------------------------------------------------------------- //
-    /// Vertices of this Polygon.
-    const std::vector<vector_t> vertices;
-
     // methods ------------------------------------------------------------------------------------------------------ //
+public:
+    /// (empty) Default constructor.
+    Polygon() = default;
+
     /// Value constructor.
     /// @param vertices         Vertices from which to construct the Polygon.
     /// @throws runtime_error   If the Polygon does not contain at least 3 unique vertices.
     /// @throws runtime_error   If two non-consecutive vertices share the same position.
     /// @throws runtime_error   If two edges of the Polygon intersect.
-    Polygon(std::vector<vector_t> vertices) : vertices(_prepare_vertices(std::move(vertices))) {}
+    Polygon(std::vector<vector_t> vertices) : m_vertices(_prepare_vertices(std::move(vertices))) {}
+
+    /// Copy constructor.
+    Polygon(const Polygon& other) : m_vertices(other.m_vertices) {}
+
+    /// Move constructor.
+    Polygon(Polygon&& other) : m_vertices(std::move(other.m_vertices)) {}
+
+    /// Copy operator.
+    /// @param other    Polygon to copy.
+    Polygon& operator=(const Polygon& other)
+    {
+        m_vertices = other.m_vertices;
+        return *this;
+    }
+
+    /// Move operator.
+    /// @param other    Polygon to move.
+    Polygon& operator=(Polygon&& other)
+    {
+        m_vertices = std::move(other.m_vertices);
+        other.m_vertices = {};
+        return *this;
+    }
+
+    /// Checks whether the Polygon has any vertices or not.
+    bool is_empty() const { return m_vertices.empty(); }
+    operator bool() const { return !is_empty(); }
+
+    /// Vertices of this Polygon.
+    const std::vector<vector_t>& get_vertices() const { return m_vertices; }
+
+    /// Returns the number of vertices in this Polygon.
+    size_t get_vertex_count() const { return m_vertices.size(); }
 
     /// Calculates the orientation of the Polygon.
-    Orientation orientation() const
+    Orientation get_orientation() const
     {
         // find three consecutive vertices that form a triangle that doesn't contain any other vertices
         Triangle<element_t> triangle;
         bool is_empty;
-        for (size_t i = 2; i <= vertices.size(); ++i) {
-            triangle = {vertices[i - 2], vertices[i - 1], vertices[i % vertices.size()]};
+        for (size_t i = 2; i <= m_vertices.size(); ++i) {
+            triangle = {m_vertices[i - 2], m_vertices[i - 1], m_vertices[i % m_vertices.size()]};
             is_empty = true;
-            for (size_t j = 0; j < vertices.size(); ++j) {
-                if (triangle.contains(vertices[j])) {
+            for (size_t j = 0; j < m_vertices.size(); ++j) {
+                if (triangle.contains(m_vertices[j])) {
                     is_empty = false;
                     break;
                 }
@@ -73,13 +108,13 @@ struct Polygon {
     }
 
     /// The center point of the Polygon.
-    vector_t center() const
+    vector_t get_center() const
     {
         vector_t result = vector_t::zero();
-        for (const vector_t& vertex : vertices) {
+        for (const vector_t& vertex : m_vertices) {
             result += vertex;
         }
-        result /= static_cast<element_t>(vertices.size());
+        result /= static_cast<element_t>(m_vertices.size());
         return result;
     }
 
@@ -91,20 +126,20 @@ struct Polygon {
         // create a line segment from the point to some point on the outside of the polygon
         const Segment2<element_t> line(
             point, vector_t(1, 1)
-                       + *(std::max_element(std::begin(vertices), std::end(vertices),
+                       + *(std::max_element(std::begin(m_vertices), std::end(m_vertices),
                                             [](const auto& lhs, const auto& rhs) { return lhs.x() < rhs.x(); })));
 
         // find the index of the first vertex that does not fall on the line
         size_t index = 0;
-        while (index < vertices.size() && line.contains(vertices[index])) {
+        while (index < m_vertices.size() && line.contains(m_vertices[index])) {
             ++index;
         }
 
         // count the number of intersections with segments of this Polygon
         uint intersections = 0;
-        while (index < vertices.size()) {
-            const vector_t& last_vertex = vertices[index++];
-            const vector_t& current_vertex = vertices[index % vertices.size()];
+        while (index < m_vertices.size()) {
+            const vector_t& last_vertex = m_vertices[index++];
+            const vector_t& current_vertex = m_vertices[index % m_vertices.size()];
             if (Segment2<element_t>(last_vertex, current_vertex).intersects(line)) {
                 ++intersections;
             }
@@ -112,9 +147,9 @@ struct Polygon {
             // if the current vertex falls directly onto the line, the line either crosses or touches it
             if (line.contains(current_vertex)) {
                 do {
-                    ++index; // skip all vertices that fall on the line
-                } while (line.contains(vertices[index % vertices.size()]));
-                const vector_t& current_vertex = vertices[index % vertices.size()];
+                    ++index; // skip all m_vertices that fall on the line
+                } while (line.contains(m_vertices[index % m_vertices.size()]));
+                const vector_t& current_vertex = m_vertices[index % m_vertices.size()];
 
                 if (Triangle<element_t>(line.start, line.end, last_vertex).orientation()
                     == Triangle<element_t>(line.start, line.end, current_vertex).orientation()) {
@@ -134,15 +169,16 @@ struct Polygon {
     {
         // find the first non-zero triangle
         size_t index = 2;
-        while (index < vertices.size() && Triangle<element_t>(vertices[0], vertices[1], vertices[index]).is_zero()) {
+        while (index < m_vertices.size()
+               && Triangle<element_t>(m_vertices[0], m_vertices[1], m_vertices[index]).is_zero()) {
             ++index;
         }
         const Orientation first_orientation
-            = Triangle<element_t>(vertices[0], vertices[1], vertices[index]).orientation();
+            = Triangle<element_t>(m_vertices[0], m_vertices[1], m_vertices[index]).orientation();
 
         // check if subsequent triangles always have the same orientation
-        for (size_t i = index + 1; i <= vertices.size(); ++i) {
-            const Triangle<element_t> triangle(vertices[i - 2], vertices[i - 1], vertices[i % vertices.size()]);
+        for (size_t i = index + 1; i <= m_vertices.size(); ++i) {
+            const Triangle<element_t> triangle(m_vertices[i - 2], m_vertices[i - 1], m_vertices[i % m_vertices.size()]);
             if (!triangle.is_zero() && triangle.orientation() != first_orientation) {
                 return false;
             }
@@ -211,6 +247,11 @@ private:
 
         return vertices;
     }
+
+    // fields ------------------------------------------------------------------------------------------------------- //
+private:
+    /// Vertices of this Polygon.
+    std::vector<vector_t> m_vertices;
 };
 
 } // namespace detail

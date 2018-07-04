@@ -278,12 +278,12 @@ void Plotter::add_shape(ShapeInfo info, const Polygonf& polygon)
     const size_t index_offset = indices.size();
 
     { // update indices
-        indices.reserve(indices.size() + (polygon.vertices.size() * 2));
+        indices.reserve(indices.size() + (polygon.get_vertex_count() * 2));
 
         const GLuint first_index = narrow_cast<GLuint>(vertices.size());
         GLuint next_index = first_index;
 
-        for (size_t i = 0; i < polygon.vertices.size() - 1; ++i) {
+        for (size_t i = 0; i < polygon.get_vertex_count() - 1; ++i) {
             // first -> (n-1) segment
             indices.emplace_back(next_index++);
             indices.emplace_back(next_index);
@@ -295,8 +295,8 @@ void Plotter::add_shape(ShapeInfo info, const Polygonf& polygon)
     }
 
     // vertices
-    vertices.reserve(vertices.size() + polygon.vertices.size());
-    for (const auto& point : polygon.vertices) {
+    vertices.reserve(vertices.size() + polygon.get_vertex_count());
+    for (const Vector2f& point : polygon.get_vertices()) {
         PlotVertexArray::Vertex vertex;
         set_pos(vertex, point);
         set_first_ctrl(vertex, Vector2f::zero());
@@ -306,7 +306,7 @@ void Plotter::add_shape(ShapeInfo info, const Polygonf& polygon)
 
     // draw call
     info.is_convex = polygon.is_convex();
-    info.center = polygon.center();
+    info.center = polygon.get_center();
     m_drawcall_buffer.emplace_back(
         DrawCall{std::move(info), narrow_cast<uint>(index_offset), narrow_cast<int>(indices.size() - index_offset)});
 }

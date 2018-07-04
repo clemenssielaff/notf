@@ -32,7 +32,7 @@ Window::initialization_error::~initialization_error() = default;
 const Window::Args Window::s_default_args = {};
 
 Window::Window(const Args& args)
-    : m_glfw_window(nullptr, detail::window_deleter), m_title(args.title), m_state(args.state), m_size(args.size)
+    : m_glfw_window(nullptr, detail::window_deleter), m_title(args.title), m_state(args.state)
 {
     // make sure that an Application was initialized before instanciating a Window (will throw on failure)
     Application& app = Application::instance();
@@ -44,7 +44,7 @@ Window::Window(const Args& args)
     glfwWindowHint(GLFW_RESIZABLE, args.is_resizeable ? GL_TRUE : GL_FALSE);
 
     // create the GLFW window
-    m_glfw_window.reset(glfwCreateWindow(m_size.width, m_size.height, m_title.c_str(), nullptr, nullptr));
+    m_glfw_window.reset(glfwCreateWindow(args.size.width, args.size.height, m_title.c_str(), nullptr, nullptr));
     if (!m_glfw_window) {
         notf_throw(initialization_error, "Window or OpenGL context creation failed for Window \"{}\"", get_title());
     }
@@ -99,6 +99,13 @@ WindowPtr Window::_create(const Args& args)
 }
 
 Window::~Window() { close(); }
+
+Vector2i Window::get_position() const
+{
+    Vector2i window_pos;
+    glfwGetWindowPos(m_glfw_window.get(), &window_pos.x(), &window_pos.y());
+    return window_pos;
+}
 
 Size2i Window::get_framed_window_size() const
 {

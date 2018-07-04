@@ -56,12 +56,11 @@ void Painter::rotate(const float angle)
     _get_current_state().xform.rotate(angle);
 }
 
-void Painter::set_clipping(const Aabrf& aabr)
+void Painter::set_clipping(Clipping clipping)
 {
     State& current_state = _get_current_state();
-    current_state.clipping.xform = Matrix3f::identity();
-    current_state.clipping.rect = aabr;
-    m_design.add_command(WidgetDesign::SetClippingCommand(current_state.clipping));
+    current_state.clipping = clipping;
+    m_design.add_command(WidgetDesign::SetClippingCommand(std::move(clipping)));
 }
 
 void Painter::remove_clipping()

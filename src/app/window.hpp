@@ -85,8 +85,8 @@ public:
     const SceneGraphPtr& get_scene_graph() const { return m_scene_graph; }
     ///@}
 
-    /// Returns the Window's size in screen coordinates (not pixels).
-    Size2i get_window_size() const { return m_size; }
+    /// Position of the upper-left corner of the Window in screen coordinates.
+    Vector2i get_position() const;
 
     /// Returns the size of the Window including decorators added by the OS in screen coordinates (not pixels).
     /// Returns an invalid size if the GLFW window was already closed.
@@ -134,9 +134,6 @@ private:
 
     /// Current state of the window.
     State m_state;
-
-    /// The Window size.
-    Size2i m_size;
 
     /// Flag to indicate whether the Window is still open or already closed.
     std::atomic<bool> m_is_closed{false};

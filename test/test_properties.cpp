@@ -206,7 +206,7 @@ SCENARIO("NodeProperties in a SceneGraph hierarchy", "[app][property_graph][scen
             auto freeze_guard = graph_access.freeze_guard(render_thread_id);
 
             {
-                auto a = iprop1.reader();
+                auto a = iprop1.get_reader();
                 iprop2.set([=] { return a() + 1; }, {a});
             }
 

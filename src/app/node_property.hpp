@@ -171,11 +171,11 @@ public:
     bool supports_expressions() const { return (_get_body() != nullptr); }
 
     /// Whether or not changing this property will make the Node dirty (cause a redraw) or not.
-    bool is_external() const { return m_is_external; }
+    bool is_visible() const { return m_is_visible; }
 
-    /// External properties cause the Node to redraw when changed.
-    void set_external(const bool is_external = true) { m_is_external = is_external; }
-    void set_internal(const bool is_internal = true) { set_external(!is_internal); }
+    /// Visible properties cause the Node to redraw when changed.
+    void set_visible(const bool is_visible = true) { m_is_visible = is_visible; }
+    void set_invisible(const bool is_invisible = true) { set_visible(!is_invisible); }
 
     /// Set the Property's value.
     /// Removes an existing expression on this Property if one exists.
@@ -291,8 +291,8 @@ private:
             }
         }
 
-        // if the property is external, changing it dirties the node
-        if (m_is_external) {
+        // if the property is visible, changing it dirties the node
+        if (m_is_visible) {
             _set_node_dirty();
         }
 
@@ -317,7 +317,7 @@ private:
     std::atomic<T*> m_frozen_value{nullptr};
 
     /// Whether or not changing this property will make the Node dirty (cause a redraw) or not.
-    bool m_is_external = true;
+    bool m_is_visible = true;
 
     /// Current NodeProperty value.
     T m_value;
@@ -410,11 +410,14 @@ public:
 
     /// The node-unique name of this Property.
     /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
-    const std::string& name() const { return _property()->name(); }
+    const std::string& get_name() const { return _property()->name(); }
 
     /// Current NodeProperty value.
     /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
     const T& get() const { return _property()->get(); }
+
+    /// The Signal fired when the value of the Property changed.
+    Signal<const T&>& get_signal() { return _property()->on_value_changed; }
 
     /// Returns true if this NodeProperty can be set to hold an expressions.
     /// If this method returns false, trying to set an expression will throw a `no_body_error`.
@@ -423,12 +426,12 @@ public:
 
     /// Whether or not changing this property will make the Node dirty (cause a redraw) or not.
     /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
-    bool is_external() const { return _property()->is_external(); }
+    bool is_visible() const { return _property()->is_visible(); }
 
-    /// External properties cause the Node to redraw when changed.
+    /// Visible properties cause the Node to redraw when changed.
     /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
-    void set_external(const bool is_external = true) { _property()->set_external(is_external); }
-    void set_internal(const bool is_internal = true) { _property()->set_internal(is_internal); }
+    void set_visible(const bool is_visible = true) { _property()->set_visible(is_visible); }
+    void set_invisible(const bool is_invisible = true) { _property()->set_invisible(is_invisible); }
 
     /// Set the Property's value.
     /// Removes an existing expression on this Property if one exists.
@@ -454,7 +457,7 @@ public:
 
     /// Returns a PropertyReader for reading the (unbuffered) value of this Property.
     /// @throws NodeProperty::no_property_error    If the NodeProperty has expired.
-    TypedPropertyReader<T> reader() const { return _property()->reader(); }
+    TypedPropertyReader<T> get_reader() const { return _property()->reader(); }
 
     /// Comparison operator with another PropertyHandle of the same type as this.
     /// Tests for identity, not equality - meaning two handles of different properties that just happen to contain the

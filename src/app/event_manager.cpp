@@ -39,6 +39,19 @@ struct GlobalState {
 /// (like the cursor position).
 GlobalState g_state;
 
+inline Vector2f get_cursor_pos(GLFWwindow* glfw_window, const double x, const double y)
+{
+    // invert the y-coordinate (by default, y grows down)
+    Vector2i window_pos;
+    Size2i buffer_size;
+    glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
+    glfwGetFramebufferSize(glfw_window, &buffer_size.width, &buffer_size.height);
+    return Vector2f{
+        x - static_cast<double>(window_pos.x()),
+        y - static_cast<double>(buffer_size.height - window_pos.y()),
+    };
+}
+
 } // namespace
 
 // ================================================================================================================== //
@@ -301,13 +314,6 @@ void EventManager::_on_error(int error_number, const char* message)
 
 void EventManager::_on_mouse_button(GLFWwindow* glfw_window, int button, int action, int modifiers)
 {
-    valid_ptr<Window*> window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-
-    // invert the y-coordinate (by default, y grows down)
-    Vector2i window_pos;
-    glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
-    window_pos.y() = window->get_window_size().height - window_pos.y();
-
     // parse raw arguments
     const Button notf_button = static_cast<Button>(button);
     const MouseAction notf_action = static_cast<MouseAction>(action);
@@ -327,33 +333,24 @@ void EventManager::_on_mouse_button(GLFWwindow* glfw_window, int button, int act
         button_states = g_state.button_states;
     }
 
+    // clang-format off
     // let the window handle the event
-    EventPtr event
-        = std::make_unique<MouseEvent>(window, // Window that the event is meant for
-                                       Vector2f{cursor_pos.x() - static_cast<float>(window_pos.x()),  // event position
-                                                                                                      // in window
-                                                                                                      // coordinates
-                                                cursor_pos.y() - static_cast<float>(window_pos.y())}, //
-                                       Vector2f::zero(), // mouse cursor delta in window coordinates
-                                       notf_button,      // mouse button that triggered the event
-                                       notf_action,      // either PRESS or RELEASE
-                                       notf_modifiers,   // active key modifiers
-                                       button_states);   // state of all mouse buttons
+    EventPtr event = std::make_unique<MouseEvent>(
+        static_cast<Window*>(glfwGetWindowUserPointer(glfw_window)),// Window that the event is meant for
+        g_state.cursor_pos,                                         // event position in window coordinates
+        Vector2f::zero(),                                           // mouse cursor delta in window coordinates
+        notf_button,                                                // mouse button that triggered the event
+        notf_action,                                                // either PRESS or RELEASE
+        notf_modifiers,                                             // active key modifiers
+        button_states);                                             // state of all mouse buttons
+    // clang-format on
     Application::instance().event_manager().handle(std::move(event));
 }
 
 void EventManager::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
 {
-    valid_ptr<Window*> window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-
-    // invert the y-coordinate (by default, y grows down)
-    Vector2i window_pos;
-    glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
-    window_pos.y() = window->get_window_size().height - window_pos.y();
-
     // parse raw arguments
-    const Vector2f cursor_pos = {static_cast<float>(window_pos.x()) + static_cast<float>(x),
-                                 static_cast<float>(window_pos.y()) + static_cast<float>(y)};
+    const Vector2f cursor_pos = get_cursor_pos(glfw_window, x, y);
 
     // update the global state
     Vector2f prev_cursor_pos;
@@ -370,18 +367,17 @@ void EventManager::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
         g_state.cursor_pos = cursor_pos;
     }
 
+    // clang-format off
     // let the window handle the event
-    EventPtr event = std::make_unique<MouseEvent>(window, // Window that the event is meant for
-                                                  Vector2f{static_cast<float>(x), static_cast<float>(y)}, // event
-                                                                                                          // position in
-                                                                                                          // window
-                                                                                                          // coordinates
-                                                  cursor_pos - prev_cursor_pos, // mouse cursor delta in window
-                                                                                // coordinates
-                                                  Button::NO_BUTTON, // move events are not triggered by a button
-                                                  MouseAction::MOVE, // action
-                                                  key_modifiers,     // active key modifiers
-                                                  button_states);    // state of all mouse buttons
+    EventPtr event = std::make_unique<MouseEvent>(
+        static_cast<Window*>(glfwGetWindowUserPointer(glfw_window)),// Window that the event is meant for
+        cursor_pos,                                                 // event position in window coordinates
+        cursor_pos - prev_cursor_pos,                               // mouse cursor delta in window coordinates
+        Button::NO_BUTTON,                                          // move events are not triggered by a button
+        MouseAction::MOVE,                                          // action
+        key_modifiers,                                              // active key modifiers
+        button_states);                                             // state of all mouse buttons
+    // clang-format on
     Application::instance().event_manager().handle(std::move(event));
 }
 
@@ -398,13 +394,6 @@ void EventManager::_on_cursor_entered(GLFWwindow* glfw_window, int entered)
 
 void EventManager::_on_scroll(GLFWwindow* glfw_window, double x, double y)
 {
-    valid_ptr<Window*> window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-
-    // invert the y-coordinate (by default, y grows down)
-    Vector2i window_pos;
-    glfwGetWindowPos(glfw_window, &window_pos.x(), &window_pos.y());
-    window_pos.y() = window->get_window_size().height - window_pos.y();
-
     // update the global state
     Vector2f cursor_pos;
     KeyModifiers key_modifiers;
@@ -416,26 +405,22 @@ void EventManager::_on_scroll(GLFWwindow* glfw_window, double x, double y)
         button_states = g_state.button_states;
     }
 
+    // clang-format off
     // let the window handle the event
-    EventPtr event
-        = std::make_unique<MouseEvent>(window, // Window that the event is meant for
-                                       Vector2f{cursor_pos.x() - static_cast<float>(window_pos.x()),  // event position
-                                                                                                      // in window
-                                                                                                      // coordinates
-                                                cursor_pos.y() - static_cast<float>(window_pos.y())}, //
-                                       Vector2f{static_cast<float>(x), static_cast<float>(-y)}, // mouse cursor delta in
-                                                                                                // window coordinates
-                                       Button::NO_BUTTON,   // scroll events are not triggered by a button
-                                       MouseAction::SCROLL, // action
-                                       key_modifiers,       // active key modifiers
-                                       button_states);      // state of all mouse buttons
+    EventPtr event = std::make_unique<MouseEvent>(
+        static_cast<Window*>(glfwGetWindowUserPointer(glfw_window)),// Window that the event is meant for
+        cursor_pos,                                                 // event position in window coordinates
+        Vector2f{x, -y},                                            // mouse scroll delta
+        Button::NO_BUTTON,                                          // scroll events are not triggered by a button
+        MouseAction::SCROLL,                                        // action
+        key_modifiers,                                              // active key modifiers
+        button_states);                                             // state of all mouse buttons
+    // clang-format on
     Application::instance().event_manager().handle(std::move(event));
 }
 
 void EventManager::_on_token_key(GLFWwindow* glfw_window, int key, NOTF_UNUSED int scancode, int action, int modifiers)
 {
-    valid_ptr<Window*> window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-
     // parse raw arguments
     const Key notf_key = from_glfw_key(key);
     const KeyModifiers key_modifiers = KeyModifiers(modifiers);
@@ -450,12 +435,15 @@ void EventManager::_on_token_key(GLFWwindow* glfw_window, int key, NOTF_UNUSED i
         key_states = g_state.key_states;
     }
 
+    // clang-format off
     // let the window handle the event
-    EventPtr event = std::make_unique<KeyEvent>(window,            // Window that the event is meant for
-                                                notf_key,          // key triggering the event
-                                                KeyAction(action), // either PRESS, REPEAT or RELASE
-                                                key_modifiers,     // active key modifiers
-                                                key_states);       // state of all keys
+    EventPtr event = std::make_unique<KeyEvent>(
+        static_cast<Window*>(glfwGetWindowUserPointer(glfw_window)),// Window that the event is meant for
+        notf_key,                                                   // key triggering the event
+        KeyAction(action),                                          // either PRESS, REPEAT or RELASE
+        key_modifiers,                                              // active key modifiers
+        key_states);                                                // state of all keys
+    // clang-format on
     Application::instance().event_manager().handle(std::move(event));
 }
 
@@ -463,8 +451,6 @@ void EventManager::_on_char_input(GLFWwindow* glfw_window, uint codepoint) { _on
 
 void EventManager::_on_shortcut(GLFWwindow* glfw_window, uint codepoint, int modifiers)
 {
-    valid_ptr<Window*> window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-
     // parse raw arguments
     const KeyModifiers key_modifiers = KeyModifiers(modifiers);
 
@@ -477,11 +463,14 @@ void EventManager::_on_shortcut(GLFWwindow* glfw_window, uint codepoint, int mod
         key_states = g_state.key_states;
     }
 
+    // clang-format off
     // let the window handle the event
-    EventPtr event = std::make_unique<CharEvent>(window,        // Window that the event is meant for
-                                                 codepoint,     // character triggering the event
-                                                 key_modifiers, // active key modifiers
-                                                 key_states);   // state of all keys
+    EventPtr event = std::make_unique<CharEvent>(
+        static_cast<Window*>(glfwGetWindowUserPointer(glfw_window)),// Window that the event is meant for
+        codepoint,                                                  // character triggering the event
+        key_modifiers,                                              // active key modifiers
+        key_states);                                                // state of all keys
+    // clang-format on
     Application::instance().event_manager().handle(std::move(event));
 }
 
@@ -490,9 +479,14 @@ void EventManager::_on_window_move(GLFWwindow* /*glfw_window*/, int /*x*/, int /
 void EventManager::_on_window_resize(GLFWwindow* glfw_window, int width, int height)
 {
     valid_ptr<Window*> window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-    EventPtr event = std::make_unique<WindowResizeEvent>(window, // Window that the event is meant for
-                                                         window->get_window_size(), // old size
-                                                         Size2i{width, height});    // new size
+
+    // clang-format off
+    // let the window handle the event
+    EventPtr event = std::make_unique<WindowResizeEvent>(
+        window,                     // Window that the event is meant for
+        window->get_buffer_size(),  // old size
+        Size2i{width, height});     // new size
+    // clang-format on
     Application::instance().event_manager().handle(std::move(event));
 }
 

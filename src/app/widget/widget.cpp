@@ -4,28 +4,48 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
+Widget::Widget(FactoryToken token, Scene& scene, valid_ptr<Node*> parent, const std::string& name)
+    : Node(token, scene, parent)
+{
+    // name the widget
+    if (!name.empty()) {
+        set_name(name);
+    }
+
+    // create widget properties
+    m_claim = _create_property<Claim>("claim", Claim(), [&](Claim& claim) { return _set_claim(claim); },
+                                      /* has_body = */ false);
+    m_layout_transform = _create_property<Matrix3f>("layout_transform", Matrix3f::identity());
+    m_offset_transform = _create_property<Matrix3f>("offset_transform", Matrix3f::identity());
+    m_content_aabr = _create_property<Aabrf>("content_aabr", Aabrf::zero(), {}, /* has_body = */ false);
+    m_grant = _create_property<Size2f>("grant", Size2f::zero(), [&](Size2f& grant) { return _set_grant(grant); },
+                                       /* has_body = */ false);
+    m_opacity = _create_property<float>("opacity", 1, [](float& v) {
+        v = clamp(v, 0, 1);
+        return true;
+    });
+    m_visibility = _create_property<bool>("visibility", true);
+}
+
 Widget::~Widget() = default;
+
+
+
+bool Widget::_set_claim(Claim& claim)
+{
+    // TODO: Widget::_set_claim
+    return true;
+}
+
+bool Widget::_set_grant(Size2f& grant)
+{
+    // TODO: Widget::_set_grant
+    return true;
+}
 
 void Widget::_relayout(){};
 
-Clipping Widget::get_clipping_rect() const
-{
-    return assert_cast<Widget*>(_get_parent())->get_clipping_rect();
-
-    //    risky_ptr<WindowPtr> window = get_graph().get_window();
-    //    if (!window) {
-    //        m_clipping = {};
-    //        return m_clipping;
-    //    }
-
-    //    // update clipping rect
-    //    const Size2i window_size = window->get_buffer_size();
-    //    const Vector2f translation = Vector2f(window_size.width / 2., window_size.height / 2.);
-    //    m_clipping.rect = Aabrf(-translation, window_size);
-    //    m_clipping.xform = Matrix3f::translation(translation);
-
-    //    return m_clipping;
-}
+const Clipping& Widget::get_clipping_rect() const { return assert_cast<Widget*>(_get_parent())->get_clipping_rect(); }
 
 Matrix3f Widget::get_xform_to(valid_ptr<const Widget*> target) const
 {
