@@ -56,7 +56,7 @@ private:
     /// Worker thread.
     ScopedThread m_thread;
 
-    /// Mutex guarding the RenderThread's state.
+    /// Mutex guarding the Timer thread's state.
     Mutex m_mutex;
 
     /// Condition variable to wait for.

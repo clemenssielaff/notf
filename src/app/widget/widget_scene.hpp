@@ -10,6 +10,10 @@ NOTF_OPEN_NAMESPACE
 
 class WidgetScene : public Scene {
 
+    // methods ------------------------------------------------------------------------------------------------------ //
+public:
+    NOTF_NO_COPY_OR_ASSIGN(WidgetScene);
+
     /// Constructor.
     /// @param token    Factory token provided by Scene::create.
     /// @param graph    The SceneGraph owning this Scene.

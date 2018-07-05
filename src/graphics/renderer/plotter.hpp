@@ -1,10 +1,11 @@
 #pragma once
 
+#include <vector>
+
 #include "common/aabr.hpp"
 #include "common/variant.hpp"
 #include "common/vector2.hpp"
 #include "graphics/forwards.hpp"
-#include "graphics/renderer/renderer.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -15,7 +16,7 @@ NOTF_OPEN_NAMESPACE
 /// `render`, and the "buffer" one that is in the process of being defined through the various `add_*` functions.
 /// After calling `parse`, the render image is replaced by the new one and the buffer is cleared.
 /// Technically, the conceptual images consist of OpenGl buffers and draw calls.
-class Plotter : public Renderer {
+class Plotter {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -99,24 +100,16 @@ private:
     };
 
     // methods ------------------------------------------------------------------------------------------------------ //
-private:
-    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
-
-    /// Construct a new Plotter.
-    /// @param scene            Scene to plot
-    /// @throws runtime_error   If the OpenGL VAO could not be generated.
-    Plotter(Scene& scene);
-
 public:
     NOTF_NO_COPY_OR_ASSIGN(Plotter);
 
-    /// Factory.
-    /// @param scene    Scene to plot
+    /// Construct a new Plotter.
+    /// @param graphics_context GraphicsContext in which to operate in.
     /// @throws runtime_error   If the OpenGL VAO could not be generated.
-    static PlotterPtr create(Scene& scene) { return NOTF_MAKE_SHARED_FROM_PRIVATE(Plotter, scene); }
+    Plotter(GraphicsContext& graphics_context);
 
     /// Destructor.
-    virtual ~Plotter() override;
+    ~Plotter();
 
     /// Adds a new Bezier spline to stroke into the bufffer.
     /// @param info     Information on how to draw the stroke.
@@ -140,13 +133,12 @@ public:
     /// Clears the buffer without parsing it.
     void clear();
 
-private:
     /// Render the current contents of the Plotter.
-    void _render(valid_ptr<Scene*> scene) const override;
+    void render() const;
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
-    /// Graphics Context in which the Plotter lives.
+    /// GraphicsContext in which to operate in.
     GraphicsContext& m_graphics_context;
 
     /// Font Manager used to render text.

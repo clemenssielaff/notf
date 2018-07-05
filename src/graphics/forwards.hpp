@@ -21,6 +21,9 @@ NOTF_DEFINE_UNIQUE_POINTERS(class, VertexArrayType);
 NOTF_DEFINE_UNIQUE_POINTERS(class, IndexArrayType);
 NOTF_DEFINE_UNIQUE_POINTERS(class, FontManager);
 
+NOTF_DEFINE_UNIQUE_POINTERS(class, FragmentRenderer);
+NOTF_DEFINE_UNIQUE_POINTERS(class, Plotter);
+
 template<typename>
 class PrefabType;
 

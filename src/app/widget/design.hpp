@@ -50,7 +50,7 @@ private:
             SET_MITER_LIMIT,
             SET_LINE_CAP,
             SET_LINE_JOIN,
-            RENDER_TEXT,
+            WRITE,
         };
 
         // methods -------------------------------------------------------------------------------------------------- //
@@ -180,8 +180,7 @@ public:
 
     /// Set the clipping rect of the current Design state.
     struct SetClippingCommand final : public Command<CommandBase::Type::SET_CLIPPING> {
-        explicit SetClippingCommand(Clipping clipping)
-            : Command<CommandBase::Type::SET_CLIPPING>(), clipping(clipping)
+        explicit SetClippingCommand(Clipping clipping) : Command<CommandBase::Type::SET_CLIPPING>(), clipping(clipping)
         {}
         ~SetClippingCommand();
         Clipping clipping;
@@ -273,11 +272,11 @@ public:
     };
 
     /// Command to render the given text in the given font.
-    struct RenderTextCommand final : public Command<CommandBase::Type::RENDER_TEXT> {
-        explicit RenderTextCommand(std::shared_ptr<std::string> text, std::shared_ptr<Font> font)
-            : Command<CommandBase::Type::RENDER_TEXT>(), text(std::move(text)), font(std::move(font))
+    struct WriteCommand final : public Command<CommandBase::Type::WRITE> {
+        explicit WriteCommand(std::shared_ptr<std::string> text, std::shared_ptr<Font> font)
+            : Command<CommandBase::Type::WRITE>(), text(std::move(text)), font(std::move(font))
         {}
-        ~RenderTextCommand();
+        ~WriteCommand();
         std::shared_ptr<std::string> text;
         std::shared_ptr<Font> font;
     };
@@ -355,7 +354,7 @@ void WidgetDesign::add_command(const StrokePaintCommand& command)
 }
 
 template<>
-void WidgetDesign::add_command(const RenderTextCommand& command)
+void WidgetDesign::add_command(const WriteCommand& command)
 {
     using array_t = std::array<byte, sizeof(command) / sizeof(byte)>;
     const array_t& raw_array = *(reinterpret_cast<const array_t*>(&command));

@@ -1,25 +1,25 @@
 #include "app/layer.hpp"
 
 #include "app/scene.hpp"
+#include "app/visualizer/visualizer.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
-#include "graphics/renderer/renderer.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-Layer::Layer(Window& window, valid_ptr<RendererPtr> renderer, valid_ptr<ScenePtr> scene)
-    : m_window(window), m_scene(std::move(scene)), m_renderer(std::move(renderer))
+Layer::Layer(Window& window, valid_ptr<VisualizerPtr> visualizer, valid_ptr<ScenePtr> scene)
+    : m_window(window), m_scene(std::move(scene)), m_visualizer(std::move(visualizer))
 {}
 
-LayerPtr Layer::create(Window& window, valid_ptr<RendererPtr> renderer, valid_ptr<ScenePtr> scene)
+LayerPtr Layer::create(Window& window, valid_ptr<VisualizerPtr> visualizer, valid_ptr<ScenePtr> scene)
 {
-    return NOTF_MAKE_SHARED_FROM_PRIVATE(Layer, window, std::move(renderer), std::move(scene));
+    return NOTF_MAKE_SHARED_FROM_PRIVATE(Layer, window, std::move(visualizer), std::move(scene));
 }
 
 Layer::~Layer() = default;
 
-void Layer::render()
+void Layer::draw()
 {
     if (!is_visible()) {
         return;
@@ -35,13 +35,13 @@ void Layer::render()
             return;
         }
         if (!m_area.is_valid()) {
-            log_warning << "Cannot render a Layer with an invalid area";
+            log_warning << "Cannot draw a Layer with an invalid area";
             return;
         }
         context.set_render_area(m_area);
     }
 
-    Renderer::Access<Layer>::render(*m_renderer, raw_pointer(m_scene));
+    Visualizer::Access<Layer>::visualize(*m_visualizer, raw_pointer(m_scene));
 }
 
 NOTF_CLOSE_NAMESPACE

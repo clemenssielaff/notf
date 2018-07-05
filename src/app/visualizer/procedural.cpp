@@ -1,24 +1,20 @@
-#include "graphics/renderer/procedural.hpp"
+#include "app/visualizer/procedural.hpp"
 
 #include "app/application.hpp"
 #include "app/resource_manager.hpp"
 #include "app/scene.hpp"
 #include "app/window.hpp"
-#include "common/log.hpp"
 #include "common/system.hpp"
-#include "graphics/core/gl_errors.hpp"
-#include "graphics/core/graphics_context.hpp"
-#include "graphics/core/opengl.hpp"
-#include "graphics/core/pipeline.hpp"
 #include "graphics/core/shader.hpp"
+#include "graphics/renderer/fragment_renderer.hpp"
 
 #include "fmt/format.h"
 
 NOTF_OPEN_NAMESPACE
 
-ProceduralRenderer::ProceduralRenderer(Window& window, const std::string& shader_name)
-    : Renderer(), m_context(window.get_graphics_context())
+ProceduralVisualizer::ProceduralVisualizer(Window& window, const std::string& shader_name) : Visualizer()
 {
+    GraphicsContext& graphics_context = window.get_graphics_context();
     ResourceManager& resource_manager = Application::instance().resource_manager();
 
     // load or get the fullscreen vertex shader
@@ -31,7 +27,7 @@ ProceduralRenderer::ProceduralRenderer(Window& window, const std::string& shader
     }
     if (!vertex_shader) {
         const std::string vertex_src = load_file(fmt::format("{}fullscreen.vert", resource_manager.shader_directory()));
-        vertex_shader = VertexShader::create(m_context, "__fullscreen.vert", vertex_src);
+        vertex_shader = VertexShader::create(graphics_context, "__fullscreen.vert", vertex_src);
     }
 
     // load or get the custom fragment shader.
@@ -44,32 +40,30 @@ ProceduralRenderer::ProceduralRenderer(Window& window, const std::string& shader
         }
         if (!fragment_shader) {
             const std::string custom_shader_src = load_file(resource_manager.shader_directory() + shader_name);
-            fragment_shader = FragmentShader::create(m_context, custom_name, custom_shader_src);
+            fragment_shader = FragmentShader::create(graphics_context, custom_name, custom_shader_src);
         }
     }
 
-    // create the render pipeline
-    m_pipeline = Pipeline::create(m_context, vertex_shader, fragment_shader);
+    // create the renderer
+    m_renderer = std::make_unique<FragmentRenderer>(std::move(vertex_shader), std::move(fragment_shader));
 }
 
-void ProceduralRenderer::_render(valid_ptr<Scene*> scene) const
+ProceduralVisualizer::~ProceduralVisualizer() = default;
+
+void ProceduralVisualizer::_visualize(valid_ptr<Scene*> scene) const
 {
     // match scene properties with shader uniforms
-    const FragmentShaderPtr& fragment_shader = m_pipeline->get_fragment_shader();
-    for (const auto& variable : fragment_shader->get_uniforms()) {
+    for (const auto& variable : m_renderer->get_uniforms()) {
         switch (variable.type) {
         case GL_FLOAT:
             if (PropertyHandle<float> float_property = scene->get_property<float>(variable.name)) {
-                fragment_shader->set_uniform(variable.name, float_property.get());
+                m_renderer->set_uniform(variable.name, float_property.get());
             }
             break;
         }
     }
 
-    {
-        const auto pipeline_guard = m_context.bind_pipeline(m_pipeline);
-        notf_check_gl(glDrawArrays(GL_TRIANGLES, 0, 3));
-    }
+    m_renderer->render();
 }
 
 NOTF_CLOSE_NAMESPACE

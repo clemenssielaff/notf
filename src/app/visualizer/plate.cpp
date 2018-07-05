@@ -1,16 +1,16 @@
-#include "app/render_target.hpp"
+#include "app/visualizer/plate.hpp"
 
 #include <sstream>
 
+#include "app/visualizer/visualizer.hpp"
 #include "graphics/core/frame_buffer.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/texture.hpp"
-#include "graphics/renderer/renderer.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-RenderTarget::RenderTarget(GraphicsContext& context, Args&& args)
-    : m_scene(std::move(args.scene)), m_renderer(std::move(args.renderer))
+Plate::Plate(GraphicsContext& context, Args&& args)
+    : m_scene(std::move(args.scene)), m_visualizer(std::move(args.visualizer))
 {
     // create the texture arguments
     Texture::Args texture_args;
@@ -39,18 +39,18 @@ RenderTarget::RenderTarget(GraphicsContext& context, Args&& args)
     FrameBuffer::Args framebuffer_args;
     {
         std::stringstream ss;
-        ss << "RenderTargetTexture#" << this;
+        ss << "Plate#" << this;
         framebuffer_args.set_color_target(0, Texture::create_empty(context, ss.str(), args.size, texture_args));
     }
 
     m_framebuffer = FrameBuffer::create(context, std::move(framebuffer_args));
 }
 
-RenderTarget::~RenderTarget() = default;
+Plate::~Plate() = default;
 
-const TexturePtr& RenderTarget::texture() const { return m_framebuffer->get_color_texture(0); }
+const TexturePtr& Plate::texture() const { return m_framebuffer->get_color_texture(0); }
 
-void RenderTarget::clean()
+void Plate::clean()
 {
     if (!is_dirty()) {
         return;
@@ -62,8 +62,8 @@ void RenderTarget::clean()
     context.set_render_area(texture()->get_size());
     context.clear(Color::black());
 
-    // render everything
-    Renderer::Access<RenderTarget>::render(*m_renderer, m_scene.get());
+    // draw everything
+    Visualizer::Access<Plate>::visualize(*m_visualizer, m_scene.get());
 }
 
 NOTF_CLOSE_NAMESPACE

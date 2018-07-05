@@ -320,7 +320,7 @@ void Painter::add_ellipse(const float cx, const float cy, const float rx, const 
 
 void Painter::write(const std::string& text, const std::shared_ptr<Font> font)
 {
-    m_design.add_command(WidgetDesign::RenderTextCommand(std::make_shared<std::string>(text), font));
+    m_design.add_command(WidgetDesign::WriteCommand(std::make_shared<std::string>(text), font));
 }
 
 void Painter::fill() { m_design.add_command(WidgetDesign::FillCommand()); }

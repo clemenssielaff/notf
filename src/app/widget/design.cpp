@@ -25,6 +25,6 @@ WidgetDesign::SetAlphaCommand::~SetAlphaCommand() = default;
 WidgetDesign::MiterLimitCommand::~MiterLimitCommand() = default;
 WidgetDesign::LineCapCommand::~LineCapCommand() = default;
 WidgetDesign::LineJoinCommand::~LineJoinCommand() = default;
-WidgetDesign::RenderTextCommand::~RenderTextCommand() = default;
+WidgetDesign::WriteCommand::~WriteCommand() = default;
 
 NOTF_CLOSE_NAMESPACE

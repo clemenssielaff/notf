@@ -16,8 +16,8 @@ private:
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
-    /// @param plotter  Plotter used to render the Designs to the screen.
-    Painterpreter(PlotterPtr plotter) : m_plotter(std::move(plotter)) {}
+    /// @param context      The GraphicsContext containing the graphic objects.
+    Painterpreter(GraphicsContext& context);
 
     /// Paints the Design of the given Widget.
     void paint(const Widget& widget);

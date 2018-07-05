@@ -72,22 +72,12 @@
 
 #include "graphics/renderer/plotter.hpp"
 
-#include "app/scene.hpp"
-#include "app/scene_graph.hpp"
-#include "app/window.hpp"
 #include "common/bezier.hpp"
-#include "common/enum.hpp"
-#include "common/exception.hpp"
 #include "common/log.hpp"
-#include "common/matrix4.hpp"
 #include "common/polygon.hpp"
 #include "common/system.hpp"
-#include "common/utf.hpp"
-#include "common/vector.hpp"
-#include "common/vector2.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/index_array.hpp"
-#include "graphics/core/opengl.hpp"
 #include "graphics/core/pipeline.hpp"
 #include "graphics/core/shader.hpp"
 #include "graphics/core/texture.hpp"
@@ -137,26 +127,12 @@ void set_modified_second_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier
                                               delta.normalize() * (delta.magnitude() + 1));
 }
 
-valid_ptr<WindowPtr> get_window(Scene& scene)
-{
-    WindowPtr window;
-    if (risky_ptr<WindowPtr> risky_window = scene.get_graph().get_window()) {
-        window = risky_window;
-    }
-    else {
-        notf_throw(runtime_error, "Cannot create Plotter Renderer for a closed Scene in a closed Window");
-    }
-    return window;
-}
-
 } // namespace
 
 NOTF_OPEN_NAMESPACE
 
-Plotter::Plotter(Scene& scene)
-    : Renderer()
-    , m_graphics_context(get_window(scene)->get_graphics_context())
-    , m_font_manager(m_graphics_context.get_font_manager())
+Plotter::Plotter(GraphicsContext& graphics_context)
+    : m_graphics_context(graphics_context), m_font_manager(m_graphics_context.get_font_manager())
 {
     // vao
     notf_check_gl(glGenVertexArrays(1, &m_vao_id));
@@ -391,7 +367,7 @@ void Plotter::clear()
     m_drawcall_buffer.clear();
 }
 
-void Plotter::_render(valid_ptr<Scene*> /*scene*/) const
+void Plotter::render() const
 {
     /// Render various draw call types.
     struct DrawCallVisitor {

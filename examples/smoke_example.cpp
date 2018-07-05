@@ -9,8 +9,9 @@
 #include "app/root_node.hpp"
 #include "app/scene.hpp"
 #include "app/timer_manager.hpp"
+#include "app/visualizer/procedural.hpp"
+#include "app/widget/widget_scene.hpp"
 #include "app/window.hpp"
-#include "graphics/renderer/procedural.hpp"
 
 NOTF_USING_NAMESPACE
 
@@ -51,7 +52,7 @@ int smoke_main(int argc, char* argv[])
         WindowPtr window = Application::instance().create_window();
 
         std::vector<valid_ptr<LayerPtr>> layers
-            = {Layer::create(*window, ProceduralRenderer::create(*window, "clouds.frag"),
+            = {Layer::create(*window, std::make_shared<ProceduralVisualizer>(*window, "clouds.frag"),
                              Scene::create<CloudScene>(window->get_scene_graph(), "clouds_scene"))};
         SceneGraph::StatePtr state = window->get_scene_graph()->create_state(std::move(layers));
         window->get_scene_graph()->enter_state(state);

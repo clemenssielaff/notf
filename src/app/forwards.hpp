@@ -50,13 +50,11 @@ NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, GlobalProperty);
 
 // app
 
-NOTF_DEFINE_SHARED_POINTERS(class, RenderTarget);
 NOTF_DEFINE_SHARED_POINTERS(class, Layer);
 NOTF_DEFINE_SHARED_POINTERS(class, Timer);
 NOTF_DEFINE_SHARED_POINTERS(class, OneShotTimer);
 NOTF_DEFINE_SHARED_POINTERS(class, IntervalTimer);
 NOTF_DEFINE_SHARED_POINTERS(class, VariableTimer);
-NOTF_DEFINE_SHARED_POINTERS(class, Renderer);
 NOTF_DEFINE_SHARED_POINTERS(class, Window);
 
 NOTF_DEFINE_UNIQUE_POINTERS(class, ResourceManager);
@@ -72,11 +70,12 @@ class Painter;
 class Painterpreter;
 
 NOTF_DEFINE_SHARED_POINTERS(struct, Capability);
+NOTF_DEFINE_SHARED_POINTERS(class, WidgetScene);
 
-// app / render
+// app / visualizer
 
-NOTF_DEFINE_SHARED_POINTERS(class, Plotter);
-NOTF_DEFINE_SHARED_POINTERS(class, ProceduralRenderer);
+NOTF_DEFINE_SHARED_POINTERS(class, Visualizer);
+NOTF_DEFINE_SHARED_POINTERS(class, Plate);
 
 // tests
 

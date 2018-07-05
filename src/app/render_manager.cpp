@@ -92,7 +92,7 @@ void RenderManager::RenderThread::_run()
             try {
                 // render all Layers from back to front
                 for (const auto& layer : reverse(scene_graph->current_state()->layers())) { //
-                    layer->render();
+                    layer->draw();
                 }
             }
             // if an error bubbled all the way up here, something has gone horribly wrong

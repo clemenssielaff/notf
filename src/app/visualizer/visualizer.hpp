@@ -10,57 +10,57 @@ NOTF_OPEN_NAMESPACE
 
 namespace access { // forwards
 template<class>
-class _Renderer;
+class _Visualizer;
 } // namespace access
 
 // ================================================================================================================== //
 
-/// Base class for Renderer.
-class Renderer {
+/// Base class for Visualizer.
+class Visualizer {
 
-    friend class access::_Renderer<Layer>;
-    friend class access::_Renderer<RenderTarget>;
+    friend class access::_Visualizer<Layer>;
+    friend class access::_Visualizer<Plate>;
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Access types.
     template<class T>
-    using Access = access::_Renderer<T>;
+    using Access = access::_Visualizer<T>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Destructor.
-    virtual ~Renderer();
+    virtual ~Visualizer();
 
 private:
-    /// Report all RenderTargets that this renderer depends on.
+    /// Report all Plates that this Visualizer depends on.
     /// The default implementation does nothing, it is the subclass' responsibility to add *all* of its dependencies.
     /// @param dependencies     [out] Dependencies to add yours to.
-    virtual void _collect_dependencies(std::vector<RenderTarget*>& /*dependencies*/) const {}
+    virtual void _collect_dependencies(std::vector<Plate*>& /*dependencies*/) const {}
 
-    /// Subclass-defined implementation of the Renderer's rendering.
-    /// @param scene    Scene to render.
-    virtual void _render(valid_ptr<Scene*> scene) const = 0;
+    /// Subclass-defined visualization implementation.
+    /// @param scene    Scene to visualize.
+    virtual void _visualize(valid_ptr<Scene*> scene) const = 0;
 };
 
 // ================================================================================================================== //
 
 template<>
-class access::_Renderer<Layer> {
+class access::_Visualizer<Layer> {
     friend class notf::Layer;
 
-    /// Invokes the Renderer.
-    /// @param scene    Scene to render.
-    static void render(Renderer& renderer, valid_ptr<Scene*> scene) { renderer._render(std::move(scene)); }
+    /// Invokes the Visualizer.
+    /// @param scene    Scene to visualize.
+    static void visualize(Visualizer& visualizer, valid_ptr<Scene*> scene) { visualizer._visualize(std::move(scene)); }
 };
 
 template<>
-class access::_Renderer<RenderTarget> {
-    friend class notf::RenderTarget;
+class access::_Visualizer<Plate> {
+    friend class notf::Plate;
 
-    /// Invokes the Renderer.
-    /// @param scene    Scene to render.
-    static void render(Renderer& renderer, valid_ptr<Scene*> scene) { renderer._render(std::move(scene)); }
+    /// Invokes the Visualizer.
+    /// @param scene    Scene to visualize.
+    static void visualize(Visualizer& visualizer, valid_ptr<Scene*> scene) { visualizer._visualize(std::move(scene)); }
 };
 
 NOTF_CLOSE_NAMESPACE

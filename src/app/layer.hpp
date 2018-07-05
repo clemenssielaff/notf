@@ -10,8 +10,7 @@ NOTF_OPEN_NAMESPACE
 
 /// Layers are screen-axis-aligned quads that are drawn directly into the screen buffer by the SceneGraph.
 /// The contents of a Layer are clipped to its area.
-/// The Layer's Renderer can query the size of this area using GraphicsContext::render_area().size() when
-/// rendered.
+/// The Layer's Visualizer can query the size of this area using GraphicsContext::render_area().size() when drawing.
 class Layer {
 
     // methods ------------------------------------------------------------------------------------------------------ //
@@ -21,9 +20,9 @@ private:
     /// Constructor.
     /// Constructs a full-screen, visible Layer.
     /// @param window       Window containing this Layer.
-    /// @param renderer     Renderer that renders the Scene into this Layer.
+    /// @param visualizer   Visualizer that draws the Scene into this Layer.
     /// @param scene        Scene displayed in this Layer.
-    Layer(Window& window, valid_ptr<RendererPtr> renderer, valid_ptr<ScenePtr> scene);
+    Layer(Window& window, valid_ptr<VisualizerPtr> visualizer, valid_ptr<ScenePtr> scene);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(Layer);
@@ -31,9 +30,9 @@ public:
     /// Factory.
     /// Constructs a full-screen, visible Layer.
     /// @param window       Window containing this Layer.
-    /// @param renderer     Renderer that renders the Scene into this Layer.
+    /// @param visualizer   Visualizer that draws the Scene into this Layer.
     /// @param scene        Scene displayed in this Layer.
-    static LayerPtr create(Window& window, valid_ptr<RendererPtr> renderer, valid_ptr<ScenePtr> scene);
+    static LayerPtr create(Window& window, valid_ptr<VisualizerPtr> visualizer, valid_ptr<ScenePtr> scene);
 
     /// Destructor.
     ~Layer();
@@ -65,15 +64,15 @@ public:
     /// Inactive Layers do not participate in event propagation.
     void set_active(const bool is_active) { m_is_active = is_active; }
 
-    /// Sets the Layer to either be rendered always fullscreen (no matter the resolution),
+    /// Sets the Layer to either be always drawn fullscreen (no matter the resolution),
     /// or to respect its explicit size and position.
     void set_fullscreen(const bool is_fullscreen) { m_is_fullscreen = is_fullscreen; }
 
-    /// Sets a new are for this Layer to render into (but does not change its `fullscreen` state).
+    /// Sets a new area for this Layer to draw into (but does not change its `fullscreen` state).
     void set_area(Aabri area) { m_area = area; }
 
-    /// Render the Layer.
-    void render();
+    /// Draw the Layer.
+    void draw();
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
@@ -83,8 +82,8 @@ private:
     /// The Scene displayed in this Layer.
     valid_ptr<ScenePtr> m_scene;
 
-    /// Renderer that renders the Scene into this Layer.
-    valid_ptr<RendererPtr> m_renderer;
+    /// Visualizer that draws the Scene into this Layer.
+    valid_ptr<VisualizerPtr> m_visualizer;
 
     /// Area of this Layer when not fullscreen.
     Aabri m_area = Aabri::zero();
@@ -95,7 +94,7 @@ private:
     /// Layers can be active (the default) or inactive, in which case they do not participate in the event propagation.
     bool m_is_active = true;
 
-    /// Layers can be rendered either fullscreen (no matter the resolution), or in an AABR with explicit size and
+    /// Layers can be drawn either fullscreen (no matter the resolution), or in an AABR with explicit size and
     /// position.
     bool m_is_fullscreen = true;
 };
