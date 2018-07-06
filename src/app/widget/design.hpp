@@ -25,7 +25,7 @@ private:
         enum class Type : uint64_t {
             PUSH_STATE,
             POP_STATE,
-            BEGIN_PATH,
+            START_PATH,
             SET_WINDING,
             CLOSE_PATH,
             MOVE,
@@ -92,7 +92,7 @@ public:
     struct PopStateCommand final : public Command<CommandBase::Type::POP_STATE> {};
 
     /// Start a new path.
-    struct BeginPathCommand final : public Command<CommandBase::Type::BEGIN_PATH> {};
+    struct BeginPathCommand final : public Command<CommandBase::Type::START_PATH> {};
 
     /// Command setting the winding direction for the following fill or stroke commands.
     struct SetWindingCommand final : public Command<CommandBase::Type::SET_WINDING> {

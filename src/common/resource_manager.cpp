@@ -1,6 +1,9 @@
 #include "common/resource_manager.hpp"
 
-#if __has_include("filesystem")
+#ifdef NOTF_MSVC
+#define NOTF_NO_FILESYSTEM
+
+#elif __has_include("filesystem")
 #include <filesystem>
 namespace filesystem = std::filesystem;
 
@@ -28,8 +31,9 @@ bool ResourceManager::_is_dir(const std::string& path)
 {
 #ifdef NOTF_NO_FILESYSTEM
     return true;
-#endif
+#else
     return filesystem::is_directory(path);
+#endif
 }
 
 NOTF_CLOSE_NAMESPACE

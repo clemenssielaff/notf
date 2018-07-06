@@ -6,7 +6,6 @@
 #include <memory>
 
 NOTF_OPEN_NAMESPACE
-
 namespace detail {
 
 std::string demangle_type_name(const char* name)
@@ -17,16 +16,17 @@ std::string demangle_type_name(const char* name)
 }
 
 } // namespace detail
-
 NOTF_CLOSE_NAMESPACE
 
 #else
 
 NOTF_OPEN_NAMESPACE
+namespace detail {
 
 // Does nothing if this system is not supported
 std::string demangle_type_name(const char* name) { return name; }
 
+} // namespace detail
 NOTF_CLOSE_NAMESPACE
 
 #endif

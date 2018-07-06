@@ -147,8 +147,8 @@ struct Matrix4 : public detail::Arithmetic<Matrix4<REAL>, RealVector4<REAL>, 4> 
                                  const element_t top, element_t near, element_t far)
     {
         // near and far planes must be >= 1
-        near = max(near, 1);
-        far  = max(near, far);
+        near = notf::max(near, 1);
+        far = notf::max(near, far);
 
         const element_t width  = right - left;
         const element_t height = top - bottom;
