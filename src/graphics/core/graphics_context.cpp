@@ -139,7 +139,7 @@ GraphicsContext::Environment::Environment()
 GraphicsContext::GraphicsContext(GLFWwindow* window) : m_window(window)
 {
     if (!window) {
-        notf_throw(runtime_error, "Failed to create a new GraphicsContext without a window (given pointer is null).");
+        NOTF_THROW(runtime_error, "Failed to create a new GraphicsContext without a window (given pointer is null).");
     }
 
     { // GLFW defaults
@@ -151,7 +151,7 @@ GraphicsContext::GraphicsContext(GLFWwindow* window) : m_window(window)
             const GLubyte* version;
             notf_check_gl(version = glGetString(GL_VERSION));
             if (!version) {
-                notf_throw(runtime_error, "Failed to create an OpenGL context");
+                NOTF_THROW(runtime_error, "Failed to create an OpenGL context");
             }
         }
 
@@ -263,7 +263,7 @@ void GraphicsContext::set_blend_mode(const BlendMode mode, const bool force)
 void GraphicsContext::set_render_area(Aabri area, const bool force)
 {
     if (!area.is_valid()) {
-        notf_throw(runtime_error, "Cannot set to an invalid render area");
+        NOTF_THROW(runtime_error, "Cannot set to an invalid render area");
     }
     if (area != m_state.render_area || force) {
         notf_check_gl(glViewport(area.get_left(), area.get_bottom(), area.get_width(), area.get_height()));
@@ -301,7 +301,7 @@ TexturePtr GraphicsContext::get_texture(const TextureId& id) const
 {
     auto it = m_textures.find(id);
     if (it == m_textures.end()) {
-        notf_throw(out_of_bounds, "GraphicsContext does not contain a Texture with ID \"{}\"", id);
+        NOTF_THROW(out_of_bounds, "GraphicsContext does not contain a Texture with ID \"{}\"", id);
     }
     return it->second.lock();
 }
@@ -313,7 +313,7 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot)
     }
 
     if (slot >= get_environment().texture_slot_count) {
-        notf_throw(runtime_error, "Invalid texture slot: {} - largest texture slot is: {}", slot,
+        NOTF_THROW(runtime_error, "Invalid texture slot: {} - largest texture slot is: {}", slot,
                    get_environment().texture_slot_count - 1);
     }
 
@@ -322,7 +322,7 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot)
     }
 
     if (!texture->is_valid()) {
-        notf_throw(runtime_error, "Cannot bind invalid texture \"{}\"", texture->get_name());
+        NOTF_THROW(runtime_error, "Cannot bind invalid texture \"{}\"", texture->get_name());
     }
 
     notf_check_gl(glActiveTexture(GL_TEXTURE0 + slot));
@@ -334,7 +334,7 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot)
 void GraphicsContext::unbind_texture(uint slot)
 {
     if (slot >= get_environment().texture_slot_count) {
-        notf_throw(runtime_error, "Invalid texture slot: {} - largest texture slot is: {}", slot,
+        NOTF_THROW(runtime_error, "Invalid texture slot: {} - largest texture slot is: {}", slot,
                    get_environment().texture_slot_count - 1);
     }
 
@@ -352,7 +352,7 @@ ShaderPtr GraphicsContext::get_shader(const ShaderId& id) const
 {
     auto it = m_shaders.find(id);
     if (it == m_shaders.end()) {
-        notf_throw(out_of_bounds, "GraphicsContext does not contain a Shader with ID \"{}\"", id);
+        NOTF_THROW(out_of_bounds, "GraphicsContext does not contain a Shader with ID \"{}\"", id);
     }
     return it->second.lock();
 }
@@ -367,7 +367,7 @@ FrameBufferPtr GraphicsContext::get_framebuffer(const FrameBufferId& id) const
 {
     auto it = m_framebuffers.find(id);
     if (it == m_framebuffers.end()) {
-        notf_throw(out_of_bounds, "GraphicsContext does not contain a FrameBuffer with ID \"{}\"", id);
+        NOTF_THROW(out_of_bounds, "GraphicsContext does not contain a FrameBuffer with ID \"{}\"", id);
     }
     return it->second.lock();
 }
@@ -473,7 +473,7 @@ void GraphicsContext::_register_new(TexturePtr texture)
         it->second = texture; // update expired
     }
     else {
-        notf_throw(internal_error, "Failed to register a new texture with the same ID as an existing texture: \"{}\"",
+        NOTF_THROW(internal_error, "Failed to register a new texture with the same ID as an existing texture: \"{}\"",
                    texture->get_id());
     }
 }
@@ -488,7 +488,7 @@ void GraphicsContext::_register_new(ShaderPtr shader)
         it->second = shader; // update expired
     }
     else {
-        notf_throw(internal_error, "Failed to register a new shader with the same ID as an existing shader: \"{}\"",
+        NOTF_THROW(internal_error, "Failed to register a new shader with the same ID as an existing shader: \"{}\"",
                    shader->get_id());
     }
 }
@@ -503,7 +503,7 @@ void GraphicsContext::_register_new(FrameBufferPtr framebuffer)
         it->second = framebuffer; // update expired
     }
     else {
-        notf_throw(internal_error,
+        NOTF_THROW(internal_error,
                    "Failed to register a new framebuffer with the same ID as an existing framebuffer: \"{}\"",
                    framebuffer->get_id());
     }

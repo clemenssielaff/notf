@@ -14,7 +14,7 @@
 #error A C++ compiler is required!
 #else
 #if __cplusplus >= 199711L
-#define NOTF_CPP97
+#define NOTF_CPP98
 #endif
 #if __cplusplus >= 201103L
 #define NOTF_CPP11
@@ -219,6 +219,14 @@ using notf::conjunction;
 using std::disjunction;
 using std::negation;
 #endif // __cpp_lib_logical_traits
+
+/// Helper to reduce cv-qualified pointers/references to their base type.
+template<class T, typename U = std::remove_reference_t<std::remove_pointer_t<std::remove_cv_t<T>>>>
+struct strip_type {
+    using type = U;
+};
+template<class T>
+using strip_type_t = typename strip_type<T>::type;
 
 /// Void type.
 #ifndef __cpp_lib_void_t

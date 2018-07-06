@@ -55,7 +55,7 @@ public:
     explicit ScopedThread(std::thread thread) : m_thread(std::move(thread))
     {
         if (!m_thread.joinable()) {
-            notf_throw(logic_error, "Cannot guard non-joinable thread");
+            NOTF_THROW(logic_error, "Cannot guard non-joinable thread");
         }
     }
 

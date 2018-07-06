@@ -122,7 +122,7 @@ template<class T>
 inline T norm_angle(const T alpha)
 {
     if (!is_real(alpha)) {
-        notf_throw(logic_error, "Cannot normalize an invalid number");
+        NOTF_THROW(logic_error, "Cannot normalize an invalid number");
     }
     const T modulo = fmod(alpha, static_cast<T>(detail::PI * 2));
     return static_cast<T>(modulo >= 0 ? modulo : (detail::PI * 2) + modulo);
@@ -133,7 +133,7 @@ template<class L, class R, typename T = std::common_type_t<L, R>>
 inline T save_div(const L divident, const R divisor)
 {
     if (divisor == 0) {
-        notf_throw(logic_error, "Division by zero");
+        NOTF_THROW(logic_error, "Division by zero");
     }
     return divident / divisor;
 }

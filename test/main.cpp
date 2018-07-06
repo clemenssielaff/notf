@@ -19,7 +19,7 @@ NOTF_OPEN_NAMESPACE
 WindowPtr notf_window()
 {
     if (!g_window.has_value()) {
-        notf_throw(internal_error, "Could not get NoTF Window for testing");
+        NOTF_THROW(internal_error, "Could not get NoTF Window for testing");
     }
     return g_window.value();
 }

@@ -127,7 +127,7 @@ public:
         if (NOTF_LIKELY(is_running())) {
             return _instance();
         }
-        notf_throw(shut_down_error, "You may not access the Application after it was shut down");
+        NOTF_THROW(shut_down_error, "You may not access the Application after it was shut down");
     }
 
     /// Checks if the Application was once open but is now closed.

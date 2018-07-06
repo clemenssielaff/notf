@@ -137,7 +137,7 @@ Plotter::Plotter(GraphicsContext& graphics_context)
     // vao
     notf_check_gl(glGenVertexArrays(1, &m_vao_id));
     if (!m_vao_id) {
-        notf_throw(runtime_error, "Failed to allocate the Plotter VAO");
+        NOTF_THROW(runtime_error, "Failed to allocate the Plotter VAO");
     }
     const auto vao_guard = VaoBindGuard(m_vao_id);
 

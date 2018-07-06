@@ -38,7 +38,7 @@ Application::Application(const Args& application_args)
 
     // exit here, if the user failed to call Application::initialize()
     if (application_args.argc == -1) {
-        notf_throw(initialization_error, "Cannot start an uninitialized Application!\n"
+        NOTF_THROW(initialization_error, "Cannot start an uninitialized Application!\n"
                                          "Make sure to call `Application::initialize()` in `main()` "
                                          "before creating the first NoTF object");
     }
@@ -52,13 +52,13 @@ Application::Application(const Args& application_args)
         m_resource_manager = std::make_unique<ResourceManager>(std::move(args));
     }
     catch (const resource_manager_initialization_error& error) {
-        notf_throw(initialization_error, error.what());
+        NOTF_THROW(initialization_error, error.what());
     }
 
     // initialize GLFW
     if (glfwInit() == 0) {
         _shutdown();
-        notf_throw(initialization_error, "GLFW initialization failed");
+        NOTF_THROW(initialization_error, "GLFW initialization failed");
     }
     log_info << "GLFW version: " << glfwGetVersionString();
 }

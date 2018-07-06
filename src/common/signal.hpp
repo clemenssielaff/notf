@@ -255,7 +255,7 @@ public: // methods
     void operator()(ARGUMENTS&&... args) const
     {
         if (m_is_firing) {
-            notf_throw(runtime_error, "Cyclic signal connection detected!");
+            NOTF_THROW(runtime_error, "Cyclic signal connection detected!");
         }
         detail::FlagGuard _(m_is_firing);
 
@@ -392,7 +392,7 @@ public: // methods
     void operator()() const
     {
         if (m_is_firing) {
-            notf_throw(runtime_error, "Cyclic signal connection detected!");
+            NOTF_THROW(runtime_error, "Cyclic signal connection detected!");
         }
         detail::FlagGuard _(m_is_firing);
 

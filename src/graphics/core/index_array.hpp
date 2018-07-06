@@ -47,7 +47,7 @@ protected:
     IndexArrayType(Args&& args) : m_args(std::move(args)), m_vbo_id(0), m_type(0), m_size(0)
     {
         if (!gl_is_initialized()) {
-            notf_throw(runtime_error, "Cannot create an IndexArray without an OpenGL context");
+            NOTF_THROW(runtime_error, "Cannot create an IndexArray without an OpenGL context");
         }
     }
 
@@ -117,7 +117,7 @@ public:
             GLint current_vao = 0;
             notf_check_gl(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
             if (!current_vao) {
-                notf_throw(runtime_error, "Cannot initialize an IndexArray without a bound VAO");
+                NOTF_THROW(runtime_error, "Cannot initialize an IndexArray without a bound VAO");
             }
         }
 
@@ -127,7 +127,7 @@ public:
 
         notf_check_gl(glGenBuffers(1, &m_vbo_id));
         if (!m_vbo_id) {
-            notf_throw(runtime_error, "Failed to allocate IndexArray");
+            NOTF_THROW(runtime_error, "Failed to allocate IndexArray");
         }
 
         m_type = to_gl_type(index_t());

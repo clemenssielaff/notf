@@ -54,13 +54,13 @@ NOTF_COMPILER_WARNING(
 
 /// Convenience macro to throw a notf_exception with a message, that additionally contains the line, file and function
 /// where the error occured.
-#ifndef notf_throw
-#define notf_throw(TYPE, ...)                                                                            \
+#ifndef NOTF_THROW
+#define NOTF_THROW(TYPE, ...)                                                                            \
     {                                                                                                    \
         throw TYPE(notf::basename(__FILE__), NOTF_CURRENT_FUNCTION, __LINE__, fmt::format(__VA_ARGS__)); \
     }
 #else
-NOTF_COMPILER_WARNING("Macro 'notf_throw' is already defined - NoTF's notf_throw macro will remain disabled.")
+NOTF_COMPILER_WARNING("Macro 'NOTF_THROW' is already defined - NoTF's NOTF_THROW macro will remain disabled.")
 #endif
 
 // ================================================================================================================== //
@@ -97,12 +97,12 @@ inline constexpr TARGET narrow_cast(RAW_SOURCE&& value)
 
     TARGET result = static_cast<TARGET>(std::forward<RAW_SOURCE>(value));
     if (static_cast<SOURCE>(result) != value) {
-        notf_throw(logic_error, "narrow_cast failed");
+        NOTF_THROW(logic_error, "narrow_cast failed");
     }
 
     if (!is_same_signedness<TARGET, SOURCE>::value) {
         if ((result < TARGET{}) != (value < SOURCE{})) {
-            notf_throw(logic_error, "narrow_cast failed");
+            NOTF_THROW(logic_error, "narrow_cast failed");
         }
     }
 

@@ -57,10 +57,10 @@ public:
     static PlatePtr create(GraphicsContext& context, Args&& args)
     {
         if (!args.visualizer) {
-            notf_throw(value_error, "Cannot create a Plate without a Visualizer");
+            NOTF_THROW(value_error, "Cannot create a Plate without a Visualizer");
         }
         if (!args.scene) {
-            notf_throw(value_error, "Cannot create a Plate without a Scene to visualize");
+            NOTF_THROW(value_error, "Cannot create a Plate without a Scene to visualize");
         }
         return NOTF_MAKE_SHARED_FROM_PRIVATE(Plate, context, std::forward<Args>(args));
     }

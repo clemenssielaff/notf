@@ -72,7 +72,7 @@ public:
     void add_edge(const index_t origin, const index_t target)
     {
         if (origin >= m_vertex_count || target >= m_vertex_count) {
-            notf_throw(out_of_bounds, "Vertex index is larger than the largest index in the graph");
+            NOTF_THROW(out_of_bounds, "Vertex index is larger than the largest index in the graph");
         }
         m_edges[origin].push_back(target);
         ++m_indegrees[target];
@@ -114,7 +114,7 @@ public:
 
         // check if there is a cycle in the graph
         if (visited_count != m_vertex_count) {
-            notf_throw(no_dag, "Caught cyclic dependency during topological sort");
+            NOTF_THROW(no_dag, "Caught cyclic dependency during topological sort");
         }
 
         return m_result;

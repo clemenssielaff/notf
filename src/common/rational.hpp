@@ -171,7 +171,7 @@ public:
     constexpr Rational& operator/=(const Rational& r)
     {
         if (r.is_zero()) {
-            notf_throw(no_rational_error, "Cannot divide by zero");
+            NOTF_THROW(no_rational_error, "Cannot divide by zero");
         }
         if (is_zero()) {
             return *this;
@@ -227,7 +227,7 @@ public:
     constexpr Rational& operator/=(const T& i)
     {
         if (i == 0) {
-            notf_throw(no_rational_error, "Cannot divide by zero");
+            NOTF_THROW(no_rational_error, "Cannot divide by zero");
         }
         if (is_zero()) {
             return *this;
@@ -324,7 +324,7 @@ private:
     void _normalize()
     {
         if (m_den == 0) {
-            notf_throw(no_rational_error, "{}/{} is not a valid rational number", m_num, m_den);
+            NOTF_THROW(no_rational_error, "{}/{} is not a valid rational number", m_num, m_den);
         }
 
         // normal zero

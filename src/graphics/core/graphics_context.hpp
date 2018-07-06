@@ -237,7 +237,7 @@ public:
         CurrentGuard(CurrentGuard&& other)
         {
             if (other.m_thread_id != m_thread_id) {
-                notf_throw(internal_error, "Cannot move a GraphicsContext::CurrentGuard accross thread boundaries");
+                NOTF_THROW(internal_error, "Cannot move a GraphicsContext::CurrentGuard accross thread boundaries");
             }
             m_context = other.m_context;
             m_mutex_lock = std::move(other.m_mutex_lock);

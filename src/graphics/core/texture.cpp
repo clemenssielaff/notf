@@ -98,7 +98,7 @@ GLenum datatype_to_gl(const Texture::DataType type)
 void assert_is_valid(const Texture& texture)
 {
     if (!texture.is_valid()) {
-        notf_throw(resource_error, "Texture \"{}\" was deallocated! Has the GraphicsContext been deleted?",
+        NOTF_THROW(resource_error, "Texture \"{}\" was deallocated! Has the GraphicsContext been deleted?",
                    texture.get_name());
     }
 }
@@ -134,7 +134,7 @@ TexturePtr Texture::create_empty(GraphicsContext& context, std::string name, Siz
 {
     // validate the passed arguments
     if (!size.is_valid()) {
-        notf_throw(runtime_error, "Cannot create a texture with an invalid size: {}", size);
+        NOTF_THROW(runtime_error, "Cannot create a texture with an invalid size: {}", size);
     }
 
     // translate to OpenGL format
@@ -228,13 +228,13 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
             alignment = 4;
         }
         else {
-            notf_throw(runtime_error, "Cannot load texture with {} bytes per pixel (must be 1, 3 or 4)", image_bytes);
+            NOTF_THROW(runtime_error, "Cannot load texture with {} bytes per pixel (must be 1, 3 or 4)", image_bytes);
         }
     }
     else if (args.codec == Codec::ASTC) {
         std::ifstream image_file(file_path, std::ios::in | std::ios::binary);
         if (!image_file.good()) {
-            notf_throw(runtime_error, "Failed to read texture file: \"{}\"", file_path);
+            NOTF_THROW(runtime_error, "Failed to read texture file: \"{}\"", file_path);
         }
         image_data = std::vector<uchar>(std::istreambuf_iterator<char>(image_file), std::istreambuf_iterator<char>());
 

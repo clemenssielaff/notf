@@ -205,10 +205,10 @@ void Node::stack_behind(valid_ptr<const Node*> sibling)
 NodePropertyPtr Node::_get_property(const Path& path)
 {
     if (path.is_empty()) {
-        notf_throw(Path::path_error, "Cannot query a Property with an empty path");
+        NOTF_THROW(Path::path_error, "Cannot query a Property with an empty path");
     }
     if (!path.is_property()) {
-        notf_throw(Path::path_error, "Path \"{}\" does not refer to a Property of Node \"{}\"", path.to_string(),
+        NOTF_THROW(Path::path_error, "Path \"{}\" does not refer to a Property of Node \"{}\"", path.to_string(),
                    get_name());
     }
 
@@ -216,7 +216,7 @@ NodePropertyPtr Node::_get_property(const Path& path)
     if (path.is_absolute()) {
         const Path myPath = get_path();
         if (!path.begins_with(myPath)) {
-            notf_throw(Path::path_error, "Absolute path \"{}\" cannot be used to query a Property of Node \"{}\"",
+            NOTF_THROW(Path::path_error, "Absolute path \"{}\" cannot be used to query a Property of Node \"{}\"",
                        path.to_string(), get_name());
         }
         offset = narrow_cast<uint>(myPath.size());
@@ -256,10 +256,10 @@ void Node::_get_property(const Path& path, const uint index, NodePropertyPtr& re
 NodePtr Node::_get_node(const Path& path)
 {
     if (path.is_empty()) {
-        notf_throw(Path::path_error, "Cannot query a Node with an empty path");
+        NOTF_THROW(Path::path_error, "Cannot query a Node with an empty path");
     }
     if (!path.is_node()) {
-        notf_throw(Path::path_error, "Path \"{}\" does not refer to a descenant of Node \"{}\"", path.to_string(),
+        NOTF_THROW(Path::path_error, "Path \"{}\" does not refer to a descenant of Node \"{}\"", path.to_string(),
                    get_name());
     }
 
@@ -267,7 +267,7 @@ NodePtr Node::_get_node(const Path& path)
     if (path.is_absolute()) {
         const Path myPath = get_path();
         if (!path.begins_with(myPath)) {
-            notf_throw(Path::path_error, "Path \"{}\" cannot be used to query descenant of Node \"{}\"",
+            NOTF_THROW(Path::path_error, "Path \"{}\" cannot be used to query descenant of Node \"{}\"",
                        path.to_string(), get_name());
         }
         offset = narrow_cast<uint>(myPath.size());
@@ -331,7 +331,7 @@ valid_ptr<const Node*> Node::_get_common_ancestor(valid_ptr<const Node*> other) 
 
     // if the result is a scene root node, we need to make sure that it is in fact the root of BOTH nodes
     if (result->m_parent == result && (!has_ancestor(result) || !other->has_ancestor(result))) {
-        notf_throw(hierarchy_error, "Nodes \"{}\" and \"{}\" are not part of the same hierarchy", get_name(),
+        NOTF_THROW(hierarchy_error, "Nodes \"{}\" and \"{}\" are not part of the same hierarchy", get_name(),
                    other->get_name());
     }
     return result;
@@ -444,7 +444,7 @@ void Node::_initialize_path(const size_t depth, std::vector<std::string>& compon
 bool Node::_is_behind(valid_ptr<const Node*> sibling) const
 {
     if (m_parent != sibling->m_parent) {
-        notf_throw(hierarchy_error, "Cannot compare z-order of nodes \"{}\" and \"{}\", because they are not siblings.",
+        NOTF_THROW(hierarchy_error, "Cannot compare z-order of nodes \"{}\" and \"{}\", because they are not siblings.",
                    get_name(), sibling->get_name());
     }
     {

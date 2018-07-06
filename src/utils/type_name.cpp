@@ -1,9 +1,9 @@
 #include "utils/type_name.hpp"
 
 #ifdef __GNUG__
-#    include <cstdlib>
-#    include <cxxabi.h>
-#    include <memory>
+#include <cstdlib>
+#include <cxxabi.h>
+#include <memory>
 
 NOTF_OPEN_NAMESPACE
 

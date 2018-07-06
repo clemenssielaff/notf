@@ -120,7 +120,7 @@ void ResourceManager::_add_shader(ShaderPtr shader)
         if (it->second == shader) {
             return; // do nothing if the same shader is already known
         }
-        notf_throw(resource_identification_error,
+        NOTF_THROW(resource_identification_error,
                    "Cannot store Shader \"{}\" because another Shader with the same name is already in storage", name)
     }
 }
@@ -136,7 +136,7 @@ void ResourceManager::_add_texture(TexturePtr texture)
         if (it->second == texture) {
             return; // do nothing if the same texture is already known
         }
-        notf_throw(resource_identification_error,
+        NOTF_THROW(resource_identification_error,
                    "Cannot store Texture \"{}\" because another Texture with the same name is already in storage", name)
     }
 }
@@ -152,7 +152,7 @@ void ResourceManager::_add_font(FontPtr font)
         if (it->second == font) {
             return; // do nothing if the same font is already known
         }
-        notf_throw(resource_identification_error,
+        NOTF_THROW(resource_identification_error,
                    "Cannot store Font \"{}\" because another Font with the same name is already in storage", name)
     }
 }

@@ -163,7 +163,7 @@ public:
     std::shared_ptr<PrefabType<InstanceData>> produce(std::string name)
     {
         if (m_library.has_prefab_type(name)) {
-            notf_throw(runtime_error, "Cannot produce new prefab type with existing name \"{}\"", name);
+            NOTF_THROW(runtime_error, "Cannot produce new prefab type with existing name \"{}\"", name);
         }
 
         // build up the studies from the factory list

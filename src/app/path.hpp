@@ -113,7 +113,7 @@ public:
         if (index < size()) {
             return m_components[index];
         }
-        notf_throw(path_error, "Index {} is out of bounds for path \"{}\"", index, to_string());
+        NOTF_THROW(path_error, "Index {} is out of bounds for path \"{}\"", index, to_string());
     }
 
     /// Lexical equality comparison of two Paths.

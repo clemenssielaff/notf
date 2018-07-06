@@ -55,12 +55,12 @@ public:
     void init()
     {
         if (m_vao_id) {
-            notf_throw(runtime_error, "Cannot re-initialize a previously initialized PrefabGroup.");
+            NOTF_THROW(runtime_error, "Cannot re-initialize a previously initialized PrefabGroup.");
         }
 
         notf_check_gl(glGenVertexArrays(1, &m_vao_id));
         if (!m_vao_id) {
-            notf_throw(runtime_error, "Failed to allocate the PrefabLibary VAO");
+            NOTF_THROW(runtime_error, "Failed to allocate the PrefabLibary VAO");
         }
 
         {
@@ -89,7 +89,7 @@ public:
         if (it != m_prefab_types.end()) {
             return *it;
         }
-        notf_throw(runtime_error, "Unkown prefab type \"{}\"", name);
+        NOTF_THROW(runtime_error, "Unkown prefab type \"{}\"", name);
     }
 
     /// Go through all prefab types of this group and render all instances of each type.

@@ -159,7 +159,7 @@ public:
         if (index < children.size()) {
             return NodeHandle<T>(children[index].raw());
         }
-        notf_throw(detail::NodeHandleBase::no_node_error, "Index {} is out-of-bounds for Node \"{}\" with {} children",
+        NOTF_THROW(detail::NodeHandleBase::no_node_error, "Index {} is out-of-bounds for Node \"{}\" with {} children",
                    index, get_name(), count_children());
     }
 
@@ -373,17 +373,17 @@ protected:
     _create_property(std::string name, T&& value, Validator<T> validator = {}, const bool has_body = true)
     {
         if (_is_finalized()) {
-            notf_throw(node_finalized_error,
+            NOTF_THROW(node_finalized_error,
                        "Cannot create Property \"{}\" (or any new Property) on Node \"{}\", "
                        "or in fact any Node that has already been finalized",
                        name, get_name());
         }
         if (m_properties.count(name)) {
-            notf_throw(Path::not_unique_error, "Node \"{}\" already has a Property named \"{}\"", get_name(), name);
+            NOTF_THROW(Path::not_unique_error, "Node \"{}\" already has a Property named \"{}\"", get_name(), name);
         }
 
         if (validator && !validator(value)) {
-            notf_throw(NodeProperty::initial_value_error,
+            NOTF_THROW(NodeProperty::initial_value_error,
                        "Cannot create Property \"{}\" with a default value "
                        "that does not validate against the supplied Validator function",
                        name);

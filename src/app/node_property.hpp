@@ -206,7 +206,7 @@ public:
     {
         risky_ptr<TypedPropertyBody<T>*> body = _get_body();
         if (!body) {
-            notf_throw(NodeProperty::no_body_error,
+            NOTF_THROW(NodeProperty::no_body_error,
                        "Property \"{}\" on Node \"{}\" cannot be defined using an Expression", get_name(),
                        _node_name());
         }
@@ -472,7 +472,7 @@ private:
         if (TypedNodePropertyPtr<T> property = m_property.lock()) {
             return property;
         }
-        notf_throw(NodeProperty::no_property_error, "NodeProperty has expired");
+        NOTF_THROW(NodeProperty::no_property_error, "NodeProperty has expired");
     }
 
     // fields ------------------------------------------------------------------------------------------------------- //

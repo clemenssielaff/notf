@@ -58,7 +58,7 @@ inline constexpr T gcd(const L& lhs, const R& rhs)
     T a = static_cast<T>(lhs);
     T b = static_cast<T>(rhs);
     if (a == 0 || b == 0) {
-        notf_throw(value_error, "Cannot calculate the GCD of {} and {}", lhs, rhs);
+        NOTF_THROW(value_error, "Cannot calculate the GCD of {} and {}", lhs, rhs);
     }
 
     while (true) {

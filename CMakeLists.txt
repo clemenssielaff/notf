@@ -229,6 +229,7 @@ if(NOTF_BUILD_TESTS)
         test_properties.hpp
         test_properties.cpp
         test_event_manager.hpp
+        test_type_name.cpp
 #        test_signal.cpp
 #        test_string_utils.cpp
 #        test_utils.cpp

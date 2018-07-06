@@ -27,7 +27,7 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
         notf_check_gl(glGenProgramPipelines(1, &id));
         m_id = id;
         if (m_id == 0) {
-            notf_throw(runtime_error, "Could not allocate new Pipeline");
+            NOTF_THROW(runtime_error, "Could not allocate new Pipeline");
         }
     }
 
@@ -93,7 +93,7 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
                     error_message = error_message.substr(7, error_message.size() - 9);
                 }
             }
-            notf_throw(runtime_error, error_message);
+            NOTF_THROW(runtime_error, error_message);
         }
     }
 

@@ -89,7 +89,7 @@ struct Size2 {
     Size2 operator/(const value_t divisor) const
     {
         if (divisor == 0) {
-            notf_throw(logic_error, "Division by zero");
+            NOTF_THROW(logic_error, "Division by zero");
         }
         return {width / divisor, height / divisor};
     }

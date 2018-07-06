@@ -103,7 +103,7 @@ public:
     {
         NodePtr raw_node = m_node.lock();
         if (!raw_node) {
-            notf_throw(no_node_error, "Node has been deleted");
+            NOTF_THROW(no_node_error, "Node has been deleted");
         }
         return static_cast<T*>(raw_node.get());
     }

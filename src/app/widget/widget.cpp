@@ -38,7 +38,7 @@ Matrix3f Widget::get_xform_to(valid_ptr<const Widget*> target) const
 {
     NodeHandle<Widget> common_ancestor = get_common_ancestor(target);
     if (!common_ancestor) {
-        notf_throw(runtime_error, "Cannot find common ancestor for Widgets \"{}\" and \"{}\"", get_name(),
+        NOTF_THROW(runtime_error, "Cannot find common ancestor for Widgets \"{}\" and \"{}\"", get_name(),
                    target->get_name());
     }
 

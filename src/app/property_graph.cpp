@@ -111,7 +111,7 @@ void PropertyBody::_test_upstream(const Dependencies& dependencies)
     PropertyBody* candidate;
     while (pop_one(unchecked, candidate)) {
         if (this == candidate) {
-            notf_throw(PropertyGraph::no_dag_error,
+            NOTF_THROW(PropertyGraph::no_dag_error,
                        "Failed to create property expression which would introduce a cyclic dependency");
         }
         checked.insert(candidate);

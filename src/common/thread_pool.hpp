@@ -46,7 +46,7 @@ public:
         { // enqueue the new task, unless the pool has already finished
             std::lock_guard<std::mutex> lock(m_queue_mutex);
             if (is_finished) {
-                notf_throw(thread_pool_finished, "Cannot enqueue a new task into an already finished ThreadPool");
+                NOTF_THROW(thread_pool_finished, "Cannot enqueue a new task into an already finished ThreadPool");
             }
             m_tasks.emplace_back(
                 [function{std::forward<FUNCTION>(function)}, &args...] { function(std::forward<Args>(args)...); });
@@ -76,7 +76,7 @@ public:
         { // enqueue the new task, unless the pool has already finished
             std::lock_guard<std::mutex> lock(m_queue_mutex);
             if (is_finished) {
-                notf_throw(thread_pool_finished, "Cannot enqueue a new task into an already finished ThreadPool");
+                NOTF_THROW(thread_pool_finished, "Cannot enqueue a new task into an already finished ThreadPool");
             }
             m_tasks.emplace_back([task{std::move(task)}]() { (*task)(); });
         }

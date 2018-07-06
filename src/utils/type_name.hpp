@@ -21,11 +21,16 @@ std::string demangle_type_name(const char* name);
 /// @param t    Instance of the type in question.
 /// @returns    Pretty printed name, if this plattform is supported.
 template<class T>
+inline std::string type_name()
+{
+    return detail::demangle_type_name(typeid(T).name());
+}
+template<class T>
 inline std::string type_name(const T& t)
 {
     return detail::demangle_type_name(typeid(t).name());
 }
-template<class T>
+template<>
 inline std::string type_name(const std::type_info& type_info)
 {
     return detail::demangle_type_name(type_info.name());
