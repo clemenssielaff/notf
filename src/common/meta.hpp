@@ -215,7 +215,7 @@ struct disjunction<T, TList...> : notf::conditional_t<T::value, T, disjunction<T
 template<typename T>
 struct negation : std::integral_constant<bool, !T::value> {};
 #else
-using notf::conjunction;
+using std::conjunction;
 using std::disjunction;
 using std::negation;
 #endif // __cpp_lib_logical_traits

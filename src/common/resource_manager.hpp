@@ -19,7 +19,22 @@ class ResourceManager {
     // types -------------------------------------------------------------------------------------------------------- //
 private:
     /// Base class for all Resource types, used to store all subclasses into a single map.
-    struct ResourceTypeBase {};
+    class ResourceTypeBase {
+        friend class ResourceManager;
+
+        // methods -------------------------------------------------------------------------------------------------- //
+    public:
+        /// Destructor.
+        virtual ~ResourceTypeBase();
+
+    private:
+        /// Removes inactive resources.
+        /// @param cache_limit  How many of the most recently loaded inactive resources to retain.
+        virtual void _remove_inactive(const size_t cache_limit) = 0;
+
+        /// Removes all resources, inactive or not.
+        virtual void _clear() = 0;
+    };
 
 public:
     /// Exception thrown when an unknown Resource type is requested.
@@ -30,6 +45,60 @@ public:
 
     /// Exception thrown when a path of the ResourceManager could not be read.
     NOTF_EXCEPTION_TYPE(path_error);
+
+    // ========================================================================
+
+    template<class T>
+    class ResourceHandle {
+
+        // methods -------------------------------------------------------------------------------------------------- //
+    public:
+        /// Constructor.
+        /// @param resource     Handled resource.
+        ResourceHandle(std::shared_ptr<T> resource) : m_resource(std::move(resource)) {}
+
+        /// Copy Constructor.
+        /// @param other    ResourceHandle to copy.
+        ResourceHandle(const ResourceHandle& other) : m_resource(other.m_resource) {}
+
+        /// Move Constructor.
+        /// @param other    ResourceHandle to move from.
+        ResourceHandle(ResourceHandle&& other) : m_resource(std::move(other.m_resource)) { other.m_resource.reset(); }
+
+        /// Copy operator.
+        /// @param other    ResourceHandle to copy.
+        ResourceHandle& operator=(const ResourceHandle& other) { m_resource = other.m_resource; }
+
+        /// Move operator.
+        /// @param other    ResourceHandle to copy.
+        ResourceHandle& operator=(ResourceHandle&& other)
+        {
+            m_resource = std::move(other.m_resource);
+            other.m_resource.reset();
+        }
+
+        /// Comparison operator.
+        /// @param other    ResourceHandle to compare with.
+        bool operator==(const ResourceHandle& other) const { return m_resource == other.m_resource; }
+
+        /// The managed resource.
+        operator T*() { return m_resource.get(); }
+        T* operator->() { return operator T*(); }
+
+        // TODO: methods for manual or even automatic reload for resources that have changed on disk
+        //       you could do that by storing a "version" holder in the type, instead of shared_ptrs to the resource
+        //       and each handle would keep a shared_ptr to the "version" and an ID where 0 (or max) means "always
+        //       the latest". Every time the resource it requested, you would copy a shared_ptr (which should be atomic,
+        //       right?) to the actual resource and use that, in case the version holder changes while you work on the
+        //       resource.
+
+        // fields --------------------------------------------------------------------------------------------------- //
+    private:
+        /// Handled resource.
+        std::shared_ptr<T> m_resource;
+    };
+
+    // ========================================================================
 
     template<class T>
     class ResourceType : public ResourceTypeBase {
@@ -80,13 +149,13 @@ public:
         /// Sets a new directory path relative to the ResourceManager's base path.
         /// This method does not affect cached resources, only ones that are loaded in the future.
         /// @param path     New directory path. Can be empty.
-        void set_path(std::string path)
+        void set_path(const std::string& path)
         {
-            if (!path.empty() && path.back() != '/') {
-                path.append("/");
+            std::string directory_path = ResourceManager::_ensure_is_dir(path);
+            {
+                NOTF_MUTEX_GUARD(m_manager.m_mutex);
+                m_path = std::move(directory_path);
             }
-            NOTF_MUTEX_GUARD(m_manager.m_mutex);
-            m_path = std::move(path);
         }
 
         /// Number of inactive resources to retain in the cache.
@@ -118,13 +187,13 @@ public:
         /// Returns a resource by its filename, either from the cache or by trying to load it.
         /// @param resource_name    Name of the resource file (not path).
         /// @throws resource_error  If the file could not be loaded.
-        std::shared_ptr<T> get(const std::string& resource_name)
+        ResourceHandle<T> get(const std::string& resource_name)
         {
             { // return a cached resource
                 NOTF_MUTEX_GUARD(m_manager.m_mutex);
                 auto it = m_resources.find(resource_name);
                 if (it != m_resources.end()) {
-                    return it->second;
+                    return ResourceHandle<T>(it->second);
                 }
             }
 
@@ -165,10 +234,10 @@ public:
                 std::tie(it, success) = m_resources.emplace(resource_name, resource);
                 NOTF_ASSERT(success);
                 m_cache_list.emplace_front(std::move(it));
-                _prune_inactive();
+                _remove_inactive(m_cache_limit);
             }
 
-            return resource;
+            return ResourceHandle<T>(std::move(resource));
         }
 
         /// Removes all inactive resources, ignoring this type's cache limit.
@@ -181,7 +250,7 @@ public:
     private:
         /// Removes inactive resources.
         /// @param cache_limit  How many of the most recently loaded inactive resources to retain.
-        void _remove_inactive(const size_t cache_limit)
+        void _remove_inactive(const size_t cache_limit) final
         {
             NOTF_ASSERT(m_manager.m_mutex.is_locked_by_this_thread());
             size_t inactive_count = 0;
@@ -193,8 +262,13 @@ public:
             }
         }
 
-        /// Removes inactive resources with respect to this type's cache limit.
-        void _prune_inactive() { _remove_inactive(m_cache_limit); }
+        /// Removes all resources, inactive or not.
+        void _clear() final
+        {
+            NOTF_ASSERT(m_manager.m_mutex.is_locked_by_this_thread());
+            m_cache_list.clear();
+            m_resources.clear();
+        }
 
         // fields --------------------------------------------------------------------------------------------------- //
     private:
@@ -232,12 +306,16 @@ public:
     /// Constructor.
     /// @param base_path    Absolute path to the root directory of all managed resource files.
     /// @throws path_error  If `base_path` is not a directory.
-    ResourceManager(std::string base_path) : m_base_path(std::move(base_path))
-    {
-        if (m_base_path.back() != '/') {
-            m_base_path.append("/");
-        }
-    }
+    ResourceManager(const std::string& base_path) : m_base_path(_ensure_is_dir(base_path)) {}
+
+    /// Deletes all inactive resources.
+    void cleanup();
+
+    /// Releases ownership of all managed resources.
+    /// If a resource is not currently in use by another object owning a shared pointer to it, it is deleted.
+    void clear();
+
+    // types ------------------------------------------------------------------
 
     /// Tests if a given type has an associated ResourceType.
     template<class U, typename T = strip_type_t<U>>
@@ -288,8 +366,16 @@ public:
 
 private:
     /// Checks if a given string identifies a directory.
-    /// @param path     String potentially identifying a directory.
-    static bool _is_dir(const std::string& path);
+    /// @param path         String potentially identifying a directory.
+    /// @returns            String identifying an absolute, normalized directory.
+    /// @throws path_error  If `path` does not identify a valid directory.
+    static std::string _ensure_is_dir(const std::string& path);
+
+    /// Checks if a given string identifies a subdirectory of this ResourceManager's base directory.
+    /// @param path         String potentially identifying a directory.
+    /// @returns            String identifying a normalized directory relative to this Manager's base directory.
+    /// @throws path_error  If `path` does not identify a valid subdirectory.
+    static std::string _ensure_is_subdir(const std::string& path);
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

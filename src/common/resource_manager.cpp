@@ -1,20 +1,5 @@
 #include "common/resource_manager.hpp"
 
-#ifdef NOTF_MSVC
-#define NOTF_NO_FILESYSTEM
-
-#elif __has_include("filesystem")
-#include <filesystem>
-namespace filesystem = std::filesystem;
-
-#elif __has_include("experimental/filesystem")
-#include <experimental/filesystem>
-namespace filesystem = std::experimental::filesystem;
-
-#else
-#define NOTF_NO_FILESYSTEM
-#endif
-
 NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
@@ -27,13 +12,39 @@ ResourceManager::path_error::~path_error() = default;
 
 // ================================================================================================================== //
 
-bool ResourceManager::_is_dir(const std::string& path)
+ResourceManager::ResourceTypeBase::~ResourceTypeBase() = default;
+
+void ResourceManager::cleanup()
 {
-#ifdef NOTF_NO_FILESYSTEM
-    return true;
-#else
-    return filesystem::is_directory(path);
-#endif
+    NOTF_MUTEX_GUARD(m_mutex);
+    for (auto& type : m_types) {
+        type.second->_remove_inactive(0);
+    }
 }
+
+void ResourceManager::clear()
+{
+    NOTF_MUTEX_GUARD(m_mutex);
+    for (auto& type : m_types) {
+        type.second->_clear();
+    }
+}
+
+std::string ResourceManager::_ensure_is_dir(const std::string& path)
+{
+    // TODO: use std::filesystem or equivalent for the resource manager
+    //       also for `_ensure_is_subdir` - the current implementation does not much at all
+    if (path.back() == '/') {
+        return path;
+    }
+
+    std::string result;
+    result.reserve(path.size() + 1);
+    result.append(path);
+    result.append("/");
+    return result;
+}
+
+std::string ResourceManager::_ensure_is_subdir(const std::string& path) { return _ensure_is_dir(path); }
 
 NOTF_CLOSE_NAMESPACE

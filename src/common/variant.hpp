@@ -11,8 +11,8 @@ using std::variant;
 using std::variant_size;
 using std::variant_alternative;
 using std::variant_alternative_t;
-using notf::get;
-using notf::holds_alternative;
+using std::get;
+using std::holds_alternative;
 using std::visit;
 NOTF_CLOSE_NAMESPACE
 

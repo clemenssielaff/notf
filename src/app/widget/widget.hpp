@@ -40,6 +40,7 @@ public:
     const Matrix3f get_xform() const
     {
         static_assert(always_false<Space, space>{}, "Unsupported Space for Widget::get_xform");
+        return {}; // to stop warnings
     }
 
     /// Calculates a transformation from this to another Widget.

@@ -336,7 +336,7 @@ private:
 };
 
 template<>
-void WidgetDesign::add_command(const FillPaintCommand& command)
+inline void WidgetDesign::add_command(const FillPaintCommand& command)
 {
     using array_t = std::array<byte, sizeof(command) / sizeof(byte)>;
     const array_t& raw_array = *(reinterpret_cast<const array_t*>(&command));
@@ -345,7 +345,7 @@ void WidgetDesign::add_command(const FillPaintCommand& command)
 }
 
 template<>
-void WidgetDesign::add_command(const StrokePaintCommand& command)
+inline void WidgetDesign::add_command(const StrokePaintCommand& command)
 {
     using array_t = std::array<byte, sizeof(command) / sizeof(byte)>;
     const array_t& raw_array = *(reinterpret_cast<const array_t*>(&command));
@@ -354,7 +354,7 @@ void WidgetDesign::add_command(const StrokePaintCommand& command)
 }
 
 template<>
-void WidgetDesign::add_command(const WriteCommand& command)
+inline void WidgetDesign::add_command(const WriteCommand& command)
 {
     using array_t = std::array<byte, sizeof(command) / sizeof(byte)>;
     const array_t& raw_array = *(reinterpret_cast<const array_t*>(&command));
