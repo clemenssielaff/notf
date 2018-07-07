@@ -7,17 +7,15 @@
 #include "common/color.hpp"
 #include "common/enum.hpp"
 #include "common/log.hpp"
+#include "common/resource_manager.hpp"
 #include "common/size2.hpp"
 #include "graphics/core/gl_errors.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/opengl.hpp"
 #include "graphics/core/raw_image.hpp"
 
-#include "app/application.hpp"
-#include "app/resource_manager.hpp"
-
 namespace { // anonymous
-NOTF_USING_NAMESPACE
+NOTF_USING_NAMESPACE;
 
 // must be zero - as seen on: https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
 static const GLint BORDER = 0;
@@ -113,7 +111,6 @@ void assert_is_valid(const Texture&) {} // noop
 NOTF_OPEN_NAMESPACE
 
 const Texture::Args Texture::s_default_args = {};
-Signal<TexturePtr> Texture::on_texture_created;
 
 Texture::Texture(GraphicsContext& context, const GLuint id, const GLenum target, std::string name, Size2i size,
                  const Format format)
@@ -180,8 +177,9 @@ TexturePtr Texture::create_empty(GraphicsContext& context, std::string name, Siz
     notf_check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical)));
 
     // return the loaded texture on success
-    TexturePtr texture = Texture::_create(context, id, GL_TEXTURE_2D, std::move(name), std::move(size), args.format);
+    TexturePtr texture = Texture::_create(context, id, GL_TEXTURE_2D, name, std::move(size), args.format);
     GraphicsContext::Access<Texture>::register_new(context, texture);
+    ResourceManager::get_instance().get_type<Texture>().set(std::move(name), texture);
     return texture;
 }
 
@@ -351,11 +349,9 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
     }
 
     // return the loaded texture on success
-    TexturePtr texture
-        = Texture::_create(context, id, GL_TEXTURE_2D, std::move(name), std::move(image_size), texture_format);
+    TexturePtr texture = Texture::_create(context, id, GL_TEXTURE_2D, name, std::move(image_size), texture_format);
     GraphicsContext::Access<Texture>::register_new(context, texture);
-
-    on_texture_created(texture);
+    ResourceManager::get_instance().get_type<Texture>().set(std::move(name), texture);
     return texture;
 }
 

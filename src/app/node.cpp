@@ -7,7 +7,7 @@
 #include "common/string_view.hpp"
 
 namespace { // anonymous
-NOTF_USING_NAMESPACE
+NOTF_USING_NAMESPACE;
 
 /// Returns the name of the next node.
 /// Is thread-safe and ever-increasing.

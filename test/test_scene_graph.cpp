@@ -5,7 +5,7 @@
 #include "test_scene_graph.hpp"
 #include "testenv.hpp"
 
-NOTF_USING_NAMESPACE
+NOTF_USING_NAMESPACE;
 
 // ================================================================================================================== //
 

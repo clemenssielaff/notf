@@ -170,7 +170,7 @@
 #define NOTF_CLOSE_NAMESPACE }
 
 /// Use the versioned namespace.
-#define NOTF_USING_NAMESPACE using namespace notf;
+#define NOTF_USING_NAMESPACE using namespace notf
 
 // ================================================================================================================== //
 
@@ -491,8 +491,8 @@ struct make_shared_enabler : public T {
 #define NOTF_MAKE_SHARED_FROM_PRIVATE(T, ...) std::shared_ptr<T>(detail::make_new_enabler<T>(__VA_ARGS__))
 #define NOTF_MAKE_UNIQUE_FROM_PRIVATE(T, ...) std::unique_ptr<T>(detail::make_new_enabler<T>(__VA_ARGS__))
 #else
-#define NOTF_MAKE_SHARED_FROM_PRIVATE(T, ...) std::make_shared<detail::make_shared_enabler<T>>(__VA_ARGS__);
-#define NOTF_MAKE_UNIQUE_FROM_PRIVATE(T, ...) std::make_unique<detail::make_shared_enabler<T>>(__VA_ARGS__);
+#define NOTF_MAKE_SHARED_FROM_PRIVATE(T, ...) std::make_shared<detail::make_shared_enabler<T>>(__VA_ARGS__)
+#define NOTF_MAKE_UNIQUE_FROM_PRIVATE(T, ...) std::make_unique<detail::make_shared_enabler<T>>(__VA_ARGS__)
 #endif
 
 // ================================================================================================================== //

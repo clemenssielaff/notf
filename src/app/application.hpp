@@ -47,14 +47,17 @@ public:
     /// The default ApplicationInfo contains default paths to resource folders, relative to the executable.
     struct Args {
 
-        /// System path to the texture directory, can either be absolute or relative to the executable.
-        std::string texture_directory = "res/textures/";
+        /// Base directory to load resources from.
+        std::string resource_directory = "res/";
 
-        /// System path to the fonts directory, absolute or relative to the executable.
-        std::string fonts_directory = "res/fonts/";
+        /// System path to the texture directory, relative to the resource directory.
+        std::string texture_directory = "textures/";
 
-        /// System path to the shader directory, absolute or relative to the executable.
-        std::string shader_directory = "res/shaders/";
+        /// System path to the fonts directory, relative to the resource directory.
+        std::string fonts_directory = "fonts/";
+
+        /// System path to the shader directory, relative to the resource directory.
+        std::string shader_directory = "shaders/";
 
         /// System path to the application directory, absolute or relative to the executable.
         std::string app_directory = "app/";
@@ -80,7 +83,15 @@ private:
     /// Constructor.
     /// @param application_args         Application arguments.
     /// @throws initialization_error    When the Application intialization failed.
-    explicit Application(const Args& application_args);
+    explicit Application(Args args);
+
+    /// Creates invalid Application arguments that trigger an exception in the constructor.
+    /// Needed for when the user forgets to call "initialize" with valid arguments.
+    static const Args& _invalid_args()
+    {
+        static Args invalid;
+        return invalid;
+    }
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
@@ -102,7 +113,7 @@ public:
         Args args;
         args.argc = argc;
         args.argv = argv;
-        return _instance(args);
+        return initialize(args);
     }
 
     /// @{
@@ -133,30 +144,30 @@ public:
     /// Checks if the Application was once open but is now closed.
     static bool is_running() { return s_is_running.load(); }
 
-    /// The Application's Resource Manager.
-    ResourceManager& resource_manager() { return *m_resource_manager; }
+    /// Application arguments as passed to the constructor.
+    const Args& get_arguments() const { return m_args; }
 
     /// The Application's thread pool.
-    ThreadPool& thread_pool() { return *m_thread_pool; }
+    ThreadPool& get_thread_pool() { return *m_thread_pool; }
 
     /// The RenderManager singleton.
-    RenderManager& render_manager() { return *m_render_manager; }
+    RenderManager& get_render_manager() { return *m_render_manager; }
 
     /// The Application's Event Manager.
-    EventManager& event_manager() { return *m_event_manager; }
+    EventManager& get_event_manager() { return *m_event_manager; }
 
     /// The Application's Timer Manager.
-    TimerManager& timer_manager() { return *m_timer_manager; }
+    TimerManager& get_timer_manager() { return *m_timer_manager; }
 
     /// Timepoint when the Application was started.
-    static const timepoint_t& start_time() { return s_start_time; }
+    static const timepoint_t& get_start_time() { return s_start_time; }
 
     /// Age of this Application instance.
-    static duration_t age() { return clock_t::now() - s_start_time; }
+    static duration_t get_age() { return clock_t::now() - s_start_time; }
 
 private:
     /// Static (private) function holding the actual Application instance.
-    static Application& _instance(const Args& application_args = s_invalid_args)
+    static Application& _instance(const Args& application_args = _invalid_args())
     {
         static Application instance(application_args);
         return instance;
@@ -171,11 +182,11 @@ private:
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
+    /// Application arguments as passed to the constructor.
+    const Args m_args;
+
     /// The LogHandler thread used to format and print out log messages in a thread-safe manner.
     LogHandlerPtr m_log_handler;
-
-    /// The Application's resource manager.
-    ResourceManagerPtr m_resource_manager;
 
     /// The global thread pool.
     ThreadPoolPtr m_thread_pool;
@@ -197,9 +208,6 @@ private:
 
     /// Flag to indicate whether the Application is currently running or not.
     static std::atomic<bool> s_is_running;
-
-    /// Invalid arguments, used when you call `get_instance` without initializing the Application first.
-    static const Args s_invalid_args;
 };
 
 // ================================================================================================================== //

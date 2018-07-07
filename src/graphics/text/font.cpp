@@ -2,12 +2,13 @@
 
 #include "common/assert.hpp"
 #include "common/log.hpp"
+#include "common/resource_manager.hpp"
 #include "common/string.hpp"
 #include "graphics/text/font_manager.hpp"
 #include "graphics/text/freetype.hpp"
 
 namespace { // anonymous
-NOTF_USING_NAMESPACE
+NOTF_USING_NAMESPACE;
 
 const Glyph INVALID_GLYPH = {{0, 0, 0, 0}, 0, 0, 0, 0};
 
@@ -18,8 +19,6 @@ const Glyph INVALID_GLYPH = {{0, 0, 0, 0}, 0, 0, 0, 0};
 NOTF_OPEN_NAMESPACE
 
 static_assert(std::is_pod<Glyph::Rect>::value, "This compiler does not recognize notf::Glyph::Rect as a POD.");
-
-Signal<FontPtr> Font::on_font_created;
 
 Font::Font(FontManager& manager, const std::string& filename, const pixel_size_t pixel_size)
     : m_manager(manager), m_name(), m_identifier({filename, pixel_size}), m_face(nullptr), m_glyphs()
@@ -101,7 +100,7 @@ FontPtr Font::load(FontManagerPtr& font_manager, std::string filename, const pix
     FontPtr font = NOTF_MAKE_SHARED_FROM_PRIVATE(Font, *font_manager, filename, pixel_size);
     font_manager->m_fonts.insert({identifier, font});
 
-    on_font_created(font);
+    ResourceManager::get_instance().get_type<Font>().set(std::move(filename), font);
     return font;
 }
 

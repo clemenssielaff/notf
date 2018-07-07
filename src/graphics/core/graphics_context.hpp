@@ -527,7 +527,7 @@ private:
     std::unordered_map<FrameBufferId, FrameBufferWeakPtr> m_framebuffers;
 };
 
-// ================================================================================================================== //
+// accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
 class access::_GraphicsContext<Texture> {

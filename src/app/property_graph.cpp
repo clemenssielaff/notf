@@ -52,7 +52,7 @@ void PropertyGraph::fire_event(PropertyUpdateList&& effects)
     while (!updates_by_window.empty()) {
         auto it = updates_by_window.begin();
 
-        Application::instance().event_manager().handle(
+        Application::instance().get_event_manager().handle(
             std::make_unique<PropertyEvent>(it->first, std::move(it->second)));
         updates_by_window.erase(it);
     }

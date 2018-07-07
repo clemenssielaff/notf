@@ -4,7 +4,6 @@
 #include "app/glfw.hpp"
 #include "app/layer.hpp"
 #include "app/render_manager.hpp"
-#include "app/resource_manager.hpp"
 #include "app/scene.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"
@@ -56,7 +55,7 @@ Window::Window(const Args& args)
     auto context_guard = m_graphics_context->make_current();
 
     // connect the window callbacks
-    EventManager::Access<Window>::register_window(Application::instance().event_manager(), *this);
+    EventManager::Access<Window>::register_window(Application::instance().get_event_manager(), *this);
 
     // apply the Window icon
     // Showing the icon in Ubuntu 16.04 is as bit more complicated:
@@ -67,7 +66,7 @@ Window::Window(const Args& args)
     // in order to remove leftover icons on Ubuntu call:
     // rm ~/.local/share/applications/notf.desktop; rm ~/.local/share/icons/notf.png
     if (!args.icon.empty()) {
-        const std::string icon_path = app.resource_manager().texture_directory() + args.icon;
+        const std::string icon_path = app.get_arguments().texture_directory + args.icon;
         try {
             RawImage icon(icon_path);
             if (icon.get_channels() != 4) {
@@ -143,7 +142,7 @@ Vector2f Window::get_mouse_pos() const
 void Window::request_redraw()
 {
     if (Application::is_running()) {
-        Application::instance().render_manager().render(shared_from_this());
+        Application::instance().get_render_manager().render(shared_from_this());
     }
 }
 
@@ -172,7 +171,7 @@ void Window::close()
     log_trace << "Closing Window \"" << m_title << "\"";
 
     // disconnect the window callbacks (blocks until all queued events are handled)
-    EventManager::Access<Window>::remove_window(Application::instance().event_manager(), *this);
+    EventManager::Access<Window>::remove_window(Application::instance().get_event_manager(), *this);
 
     // remove yourself from the Application (deletes the Window if there are no more shared_ptrs to it)
     Application::Access<Window>::unregister(this);

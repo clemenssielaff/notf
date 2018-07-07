@@ -1,9 +1,9 @@
 #include "app/visualizer/procedural.hpp"
 
 #include "app/application.hpp"
-#include "app/resource_manager.hpp"
 #include "app/scene.hpp"
 #include "app/window.hpp"
+#include "common/resource_manager.hpp"
 #include "common/system.hpp"
 #include "graphics/core/shader.hpp"
 #include "graphics/renderer/fragment_renderer.hpp"
@@ -15,37 +15,30 @@ NOTF_OPEN_NAMESPACE
 ProceduralVisualizer::ProceduralVisualizer(Window& window, const std::string& shader_name) : Visualizer()
 {
     GraphicsContext& graphics_context = window.get_graphics_context();
-    ResourceManager& resource_manager = Application::instance().resource_manager();
+    ResourceManager& resource_manager = ResourceManager::get_instance();
+    auto& vs_type = resource_manager.get_type<VertexShader>();
+    auto& fs_type = resource_manager.get_type<FragmentShader>();
 
     // load or get the fullscreen vertex shader
-    VertexShaderPtr vertex_shader;
-    {
-        risky_ptr<ShaderPtr> fullscreen_shader = resource_manager.shader("__fullscreen.vert");
-        if (fullscreen_shader) {
-            vertex_shader = std::dynamic_pointer_cast<VertexShader>(fullscreen_shader.get());
-        }
-    }
+    static const std::string vertex_shader_name = "__fullscreen.vert";
+    ResourceHandle<VertexShader> vertex_shader = vs_type.get(vertex_shader_name);
     if (!vertex_shader) {
-        const std::string vertex_src = load_file(fmt::format("{}fullscreen.vert", resource_manager.shader_directory()));
-        vertex_shader = VertexShader::create(graphics_context, "__fullscreen.vert", vertex_src);
+        const std::string vertex_src = load_file(fmt::format("{}fullscreen.vert", vs_type.get_path()));
+        vertex_shader
+            = vs_type.set(vertex_shader_name, VertexShader::create(graphics_context, vertex_shader_name, vertex_src));
     }
 
     // load or get the custom fragment shader.
-    FragmentShaderPtr fragment_shader;
-    {
-        const std::string custom_name = fmt::format("__procedural_{}", shader_name);
-        risky_ptr<ShaderPtr> stored_shader = resource_manager.shader(custom_name);
-        if (stored_shader) {
-            fragment_shader = std::dynamic_pointer_cast<FragmentShader>(stored_shader.get());
-        }
-        if (!fragment_shader) {
-            const std::string custom_shader_src = load_file(resource_manager.shader_directory() + shader_name);
-            fragment_shader = FragmentShader::create(graphics_context, custom_name, custom_shader_src);
-        }
+    const std::string fragment_shader_name = fmt::format("__procedural_{}", shader_name);
+    ResourceHandle<FragmentShader> fragment_shader = fs_type.get(fragment_shader_name);
+    if (!fragment_shader) {
+        const std::string fragment_src = load_file(fs_type.get_path() + shader_name);
+        fragment_shader = fs_type.set(fragment_shader_name,
+                                      FragmentShader::create(graphics_context, fragment_shader_name, fragment_src));
     }
 
     // create the renderer
-    m_renderer = std::make_unique<FragmentRenderer>(std::move(vertex_shader), std::move(fragment_shader));
+    m_renderer = std::make_unique<FragmentRenderer>(vertex_shader.get_shared(), fragment_shader.get_shared());
 }
 
 ProceduralVisualizer::~ProceduralVisualizer() = default;

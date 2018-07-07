@@ -5,7 +5,7 @@
 #include "common/integer.hpp"
 
 namespace { // anonymous
-NOTF_USING_NAMESPACE
+NOTF_USING_NAMESPACE;
 
 /// Constructs a terminal color prefix for the given color.
 inline std::string color_prefix(ushort color) { return "\033[38;5;" + std::to_string(color) + "m"; }
@@ -184,7 +184,7 @@ LogMessage::LEVEL LogMessageFactory::s_log_level = LogMessage::LEVEL::ALL;
 NOTF_CLOSE_NAMESPACE
 
 #if 0
-NOTF_USING_NAMESPACE
+NOTF_USING_NAMESPACE;
 
 using Clock = std::chrono::high_resolution_clock;
 

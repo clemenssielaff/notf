@@ -5,11 +5,16 @@
 #include "app/event_manager.hpp"
 #include "app/glfw.hpp"
 #include "app/render_manager.hpp"
-#include "app/resource_manager.hpp"
 #include "app/timer_manager.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"
+#include "common/resource_manager.hpp"
 #include "common/thread_pool.hpp"
+
+namespace {
+NOTF_USING_NAMESPACE;
+void initialize_resource_types(Application& app);
+} // namespace
 
 NOTF_OPEN_NAMESPACE
 
@@ -21,12 +26,12 @@ Application::shut_down_error::~shut_down_error() = default;
 
 // ================================================================================================================== //
 
-const Application::Args Application::s_invalid_args;
 std::atomic<bool> Application::s_is_running{true};
 const timepoint_t Application::s_start_time = clock_t::now();
 
-Application::Application(const Args& application_args)
-    : m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
+Application::Application(Args args)
+    : m_args(std::move(args))
+    , m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
     , m_thread_pool(std::make_unique<ThreadPool>())
     , m_render_manager(std::make_unique<RenderManager>())
     , m_event_manager(std::make_unique<EventManager>())
@@ -37,22 +42,10 @@ Application::Application(const Args& application_args)
     m_log_handler->start();
 
     // exit here, if the user failed to call Application::initialize()
-    if (application_args.argc == -1) {
+    if (m_args.argc == -1) {
         NOTF_THROW(initialization_error, "Cannot start an uninitialized Application!\n"
                                          "Make sure to call `Application::initialize()` in `main()` "
                                          "before creating the first NoTF object");
-    }
-
-    try { // create the resource manager
-        ResourceManager::Args args;
-        args.texture_directory = application_args.texture_directory;
-        args.fonts_directory = application_args.fonts_directory;
-        args.shader_directory = application_args.shader_directory;
-        args.executable_path = application_args.argv[0];
-        m_resource_manager = std::make_unique<ResourceManager>(std::move(args));
-    }
-    catch (const resource_manager_initialization_error& error) {
-        NOTF_THROW(initialization_error, error.what());
     }
 
     // initialize GLFW
@@ -61,6 +54,8 @@ Application::Application(const Args& application_args)
         NOTF_THROW(initialization_error, "GLFW initialization failed");
     }
     log_info << "GLFW version: " << glfwGetVersionString();
+
+    initialize_resource_types(*this); // TODO: general purpose callback to call init functions on Application start?
 }
 
 Application::~Application() { _shutdown(); }
@@ -119,7 +114,7 @@ void Application::_shutdown()
     // release all resources and objects
     m_thread_pool.reset();
     m_event_manager.reset();
-    m_resource_manager.reset();
+    ResourceManager::get_instance().clear();
 
     // stop the logger last
     log_info << "Application shutdown";
@@ -128,3 +123,51 @@ void Application::_shutdown()
 }
 
 NOTF_CLOSE_NAMESPACE
+
+// ================================================================================================================== //
+
+#include "graphics/core/shader.hpp"
+#include "graphics/core/texture.hpp"
+#include "graphics/text/font.hpp"
+
+namespace {
+NOTF_USING_NAMESPACE;
+
+void initialize_resource_types(Application& app)
+{
+    ResourceManager& resource_manager = ResourceManager::get_instance();
+    const Application::Args& args = app.get_arguments();
+
+    std::string executable_path = args.argv[0];
+    executable_path = executable_path.substr(0, executable_path.find_last_of('/') + 1);
+    resource_manager.set_base_path(executable_path + args.resource_directory);
+
+    { // Vertex Shader
+        auto& resource_type = resource_manager.get_type<VertexShader>();
+        resource_type.set_path(args.shader_directory);
+    }
+    { // Tesselation Shader
+        auto& resource_type = resource_manager.get_type<TesselationShader>();
+        resource_type.set_path(args.shader_directory);
+    }
+    { // Geometry Shader
+        auto& resource_type = resource_manager.get_type<GeometryShader>();
+        resource_type.set_path(args.shader_directory);
+    }
+    { // Fragment Shader
+        auto& resource_type = resource_manager.get_type<FragmentShader>();
+        resource_type.set_path(args.shader_directory);
+    }
+
+    { // Texture
+        auto& resource_type = resource_manager.get_type<Texture>();
+        resource_type.set_path(args.texture_directory);
+    }
+
+    { // Font
+        auto& resource_type = resource_manager.get_type<Font>();
+        resource_type.set_path(args.fonts_directory);
+    }
+}
+
+} // namespace

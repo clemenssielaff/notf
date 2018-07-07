@@ -1,7 +1,6 @@
 #pragma once
 
 #include <forward_list>
-#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -11,6 +10,76 @@
 #include "utils/type_name.hpp"
 
 NOTF_OPEN_NAMESPACE
+
+// ================================================================================================================== //
+
+template<class T>
+class ResourceHandle {
+
+    // methods -------------------------------------------------------------------------------------------------- //
+public:
+    /// Empty default constructor.
+    ResourceHandle() = default;
+
+    /// Constructor.
+    /// @param resource     Handled resource.
+    explicit ResourceHandle(std::shared_ptr<T> resource) : m_resource(std::move(resource)) {}
+
+    /// Copy Constructor.
+    /// @param other    ResourceHandle to copy.
+    ResourceHandle(const ResourceHandle& other) : m_resource(other.m_resource) {}
+
+    /// Move Constructor.
+    /// @param other    ResourceHandle to move from.
+    ResourceHandle(ResourceHandle&& other) : m_resource(std::move(other.m_resource)) { other.m_resource.reset(); }
+
+    /// Copy operator.
+    /// @param other    ResourceHandle to copy.
+    ResourceHandle& operator=(const ResourceHandle& other) { m_resource = other.m_resource; }
+
+    /// Move operator.
+    /// @param other    ResourceHandle to copy.
+    ResourceHandle& operator=(ResourceHandle&& other)
+    {
+        m_resource = std::move(other.m_resource);
+        other.m_resource.reset();
+    }
+
+    /// Comparison operator.
+    /// @param other    ResourceHandle to compare with.
+    bool operator==(const ResourceHandle& other) const { return m_resource == other.m_resource; }
+
+    /// The managed resource.
+    /// @throws resource_error  If the handle is not valid.
+    operator T*()
+    {
+        if (!is_valid()) {
+            NOTF_THROW(resource_error, "Cannot acces invalid Handle for resource of type \"{}\"", type_name<T>());
+        }
+        return m_resource.get();
+    }
+    T* operator->() { return operator T*(); }
+
+    /// Returns the shared pointer contained in this Resource handle.
+    std::shared_ptr<T> get_shared() { return m_resource; }
+
+    /// Tests if the ResourceHandle is valid.
+    bool is_valid() const { return m_resource != nullptr; }
+    explicit operator bool() const { return is_valid(); }
+    bool operator!() const { return !is_valid(); }
+
+    // TODO: methods for manual or even automatic reload for resources that have changed on disk
+    //       you could do that by storing a "version" holder in the type, instead of shared_ptrs to the resource
+    //       and each handle would keep a shared_ptr to the "version" and an ID where 0 (or max) means "always
+    //       the latest". Every time the resource it requested, you would copy a shared_ptr (which should be atomic,
+    //       right?) to the actual resource and use that, in case the version holder changes while you work on the
+    //       resource.
+
+    // fields --------------------------------------------------------------------------------------------------- //
+private:
+    /// Handled resource.
+    std::shared_ptr<T> m_resource;
+};
 
 // ================================================================================================================== //
 
@@ -49,66 +118,8 @@ public:
     // ========================================================================
 
     template<class T>
-    class ResourceHandle {
-
-        // methods -------------------------------------------------------------------------------------------------- //
-    public:
-        /// Constructor.
-        /// @param resource     Handled resource.
-        ResourceHandle(std::shared_ptr<T> resource) : m_resource(std::move(resource)) {}
-
-        /// Copy Constructor.
-        /// @param other    ResourceHandle to copy.
-        ResourceHandle(const ResourceHandle& other) : m_resource(other.m_resource) {}
-
-        /// Move Constructor.
-        /// @param other    ResourceHandle to move from.
-        ResourceHandle(ResourceHandle&& other) : m_resource(std::move(other.m_resource)) { other.m_resource.reset(); }
-
-        /// Copy operator.
-        /// @param other    ResourceHandle to copy.
-        ResourceHandle& operator=(const ResourceHandle& other) { m_resource = other.m_resource; }
-
-        /// Move operator.
-        /// @param other    ResourceHandle to copy.
-        ResourceHandle& operator=(ResourceHandle&& other)
-        {
-            m_resource = std::move(other.m_resource);
-            other.m_resource.reset();
-        }
-
-        /// Comparison operator.
-        /// @param other    ResourceHandle to compare with.
-        bool operator==(const ResourceHandle& other) const { return m_resource == other.m_resource; }
-
-        /// The managed resource.
-        operator T*() { return m_resource.get(); }
-        T* operator->() { return operator T*(); }
-
-        // TODO: methods for manual or even automatic reload for resources that have changed on disk
-        //       you could do that by storing a "version" holder in the type, instead of shared_ptrs to the resource
-        //       and each handle would keep a shared_ptr to the "version" and an ID where 0 (or max) means "always
-        //       the latest". Every time the resource it requested, you would copy a shared_ptr (which should be atomic,
-        //       right?) to the actual resource and use that, in case the version holder changes while you work on the
-        //       resource.
-
-        // fields --------------------------------------------------------------------------------------------------- //
-    private:
-        /// Handled resource.
-        std::shared_ptr<T> m_resource;
-    };
-
-    // ========================================================================
-
-    template<class T>
     class ResourceType : public ResourceTypeBase {
         friend class ResourceManager;
-
-        /// Since the ResourceManager does not know how to actually load/create any type of resource, you have to supply
-        /// a loading function to the Resource Type that takes the name of the resource file to load and returns a
-        /// shared pointer to the created resource.
-        /// If the shared pointer is empty, it is assumed that the load has failed and it will not be stored.
-        using LoadFunction = std::function<std::shared_ptr<T>(const std::string&)>;
 
         /// Map storing all loaded resources by filename.
         using ResourceMap = std::map<const std::string, std::shared_ptr<T>>;
@@ -119,20 +130,11 @@ public:
 
         /// Constructor.
         /// @param manager  The manager managing this Resource type.
-        /// @param loader   Load function for this Resource type.
-        /// @param name     Name of the resource type for log messages (defaults to the demanged typename of T).
-        ResourceType(ResourceManager& manager, LoadFunction loader, std::string name)
-            : m_manager(manager), m_loader(std::move(loader)), m_name(std::move(name))
-        {}
-
-        /// Factory.
-        /// @param mutex    Mutex protecting the Resource Manager.
-        static std::unique_ptr<ResourceType> create(Mutex& mutex)
-        {
-            NOTF_MAKE_UNIQUE_FROM_PRIVATE(ResourceType, mutex);
-        }
+        ResourceType(ResourceManager& manager) : ResourceTypeBase(), m_manager(manager) {}
 
     public:
+        NOTF_NO_COPY_OR_ASSIGN(ResourceType);
+
         /// Unique identifier for this resource type.
         size_t get_id() const { return m_id; }
 
@@ -154,7 +156,9 @@ public:
             std::string directory_path = ResourceManager::_ensure_is_dir(path);
             {
                 NOTF_MUTEX_GUARD(m_manager.m_mutex);
-                m_path = std::move(directory_path);
+                m_path.reserve(m_manager.m_base_path.size() + directory_path.size());
+                m_path = m_manager.m_base_path;
+                m_path.append(std::move(directory_path));
             }
         }
 
@@ -176,68 +180,54 @@ public:
             m_cache_limit = cache_limit;
         }
 
-        /// Tests if a given resource is already cached.
-        /// @param resource     Name of the resource file (not a path).
-        bool is_cached(const std::string& resource)
+        /// Returns a cached resource by its filename.
+        /// @param name             Name of the resource.
+        /// @throws resource_error  If there is no resource by the name.
+        ResourceHandle<T> get(const std::string& name) const
         {
             NOTF_MUTEX_GUARD(m_manager.m_mutex);
-            return m_resources.count(resource) != 0;
+            auto it = m_resources.find(name);
+            if (it != m_resources.end()) {
+                return ResourceHandle<T>(it->second);
+            }
+            return {};
         }
 
-        /// Returns a resource by its filename, either from the cache or by trying to load it.
-        /// @param resource_name    Name of the resource file (not path).
-        /// @throws resource_error  If the file could not be loaded.
-        ResourceHandle<T> get(const std::string& resource_name)
+        ResourceHandle<T> set(const std::string& name, std::shared_ptr<T> resource)
         {
-            { // return a cached resource
-                NOTF_MUTEX_GUARD(m_manager.m_mutex);
-                auto it = m_resources.find(resource_name);
-                if (it != m_resources.end()) {
-                    return ResourceHandle<T>(it->second);
-                }
-            }
+            NOTF_MUTEX_GUARD(m_manager.m_mutex);
 
-            // the full path to the resource is: base_path + resource_type_path + resource_name
-            std::string resource_path;
-            resource_path.reserve(m_manager.m_base_path.size() + m_path.size() + resource_name.size());
-            resource_path.append(m_manager.m_base_path);
-            resource_path.append(m_path);
-            resource_path.append(resource_name);
+            auto it = m_resources.find(name);
 
-            // try to load the resource
-            std::shared_ptr<T> resource;
-            try {
-                resource = m_loader(resource_path);
-            }
-            catch (const std::exception& exception) {
-                NOTF_THROW(resource_error,
-                           "Loader function failed while loading resource of type \"{}\" from \"{}\"\n"
-                           "Error: {}",
-                           type_name<T>(), resource_path, exception.what());
-            }
-            if (!resource) {
-                NOTF_THROW(resource_error, "Failed to load resource \"{}\" of type \"{}\" from \"{}\"", resource_name,
-                           type_name<T>(), resource_path);
-            }
-
-            { // cache the resource
-                NOTF_MUTEX_GUARD(m_manager.m_mutex);
-
-                // to avoid race conditions, see if another thread has loaded the same resource since we last checked
-                auto it = m_resources.find(resource_name);
-                if (it != m_resources.end()) {
-                    return it->second;
-                }
-
-                // update the cache
+            if (it == m_resources.end()) {
+                // create a new resource entry
                 bool success = false;
-                std::tie(it, success) = m_resources.emplace(resource_name, resource);
+                std::tie(it, success) = m_resources.emplace(name, std::move(resource));
                 NOTF_ASSERT(success);
-                m_cache_list.emplace_front(std::move(it));
+
+                m_cache_list.emplace_front(it);
                 _remove_inactive(m_cache_limit);
+                return ResourceHandle<T>(it->second);
             }
 
-            return ResourceHandle<T>(std::move(resource));
+            else {
+                // remove the existing entry from the list of most recently loaded
+                bool success = false;
+                for (auto prev = m_cache_list.before_begin(), cache_it = m_cache_list.begin(), end = m_cache_list.end();
+                     cache_it != end; prev = ++cache_it) {
+                    if (*cache_it == it) {
+                        m_cache_list.erase_after(prev);
+                        success = true;
+                        break;
+                    }
+                }
+                NOTF_ASSERT(success);
+
+                // update the existing entry
+                it->second = std::move(resource);
+                m_cache_list.emplace_front(it);
+                return ResourceHandle<T>(it->second);
+            }
         }
 
         /// Removes all inactive resources, ignoring this type's cache limit.
@@ -256,7 +246,7 @@ public:
             size_t inactive_count = 0;
             for (auto prev = m_cache_list.before_begin(), it = m_cache_list.begin(), end = m_cache_list.end();
                  it != end; prev = ++it) {
-                while ((**it).unique() && ++inactive_count > cache_limit) {
+                while ((**it).second.unique() && ++inactive_count > cache_limit) {
                     it = m_cache_list.erase_after(prev);
                 }
             }
@@ -278,11 +268,8 @@ public:
         /// The manager managing this Resource type.
         ResourceManager& m_manager;
 
-        /// Load function for this Resource type.
-        const LoadFunction m_loader;
-
-        /// Name of the resource type for log messages (defaults to the demanged name of T)
-        const std::string m_name;
+        /// Name of the resource type for log messages.
+        const std::string m_name = type_name<T>();
 
         /// Resource directory path relative to the ResourceManager's base path (can be empty).
         /// Always ends in a forward slash, if not empty.
@@ -298,15 +285,47 @@ public:
         ResourceMap m_resources;
 
         /// List of most recently loaded resources (newer resources are earlier in the list).
-        std::forward_list<typename ResourceMap::Iterator> m_cache_list;
+        std::forward_list<typename ResourceMap::iterator> m_cache_list;
     };
 
     // methods ------------------------------------------------------------------------------------------------------ //
-public:
+private:
     /// Constructor.
+    ResourceManager() = default;
+
+public:
+    /// Returns the global ResourceManager.
+    static ResourceManager& get_instance()
+    {
+        static ResourceManager instance;
+        return instance;
+    }
+
+    /// Returns the ResourceType associated with the given type.
+    /// @throws type_error  If the ResourceType does not exists.
+    template<class U, typename T = strip_type_t<U>>
+    ResourceType<T>& get_type()
+    {
+        static const size_t type_id = typeid(T).hash_code();
+
+        NOTF_MUTEX_GUARD(m_mutex);
+        decltype(m_types)::iterator it = m_types.find(type_id);
+        if (it == m_types.end()) {
+            bool success = false;
+            std::tie(it, success)
+                = m_types.emplace(std::make_pair(type_id, NOTF_MAKE_UNIQUE_FROM_PRIVATE(ResourceType<T>, *this)));
+            NOTF_ASSERT(success);
+        }
+        return *static_cast<ResourceType<T>*>(it->second.get());
+    }
+
+    /// Absolute path to the root directory of all managed resource files.
+    const std::string& get_base_path() const { return m_base_path; }
+
+    /// Sets a new base path of the Resource Manager.
     /// @param base_path    Absolute path to the root directory of all managed resource files.
     /// @throws path_error  If `base_path` is not a directory.
-    ResourceManager(const std::string& base_path) : m_base_path(_ensure_is_dir(base_path)) {}
+    void set_base_path(const std::string& base_path) { m_base_path = _ensure_is_dir(base_path); }
 
     /// Deletes all inactive resources.
     void cleanup();
@@ -314,55 +333,6 @@ public:
     /// Releases ownership of all managed resources.
     /// If a resource is not currently in use by another object owning a shared pointer to it, it is deleted.
     void clear();
-
-    // types ------------------------------------------------------------------
-
-    /// Tests if a given type has an associated ResourceType.
-    template<class U, typename T = strip_type_t<U>>
-    bool has_type() const
-    {
-        static const size_t type_id = typeid(T).hash_code();
-
-        NOTF_MUTEX_GUARD(m_mutex);
-        return m_types.count(type_id) != 0;
-    }
-
-    /// Creates a new ResourceType.
-    /// @param loader       Load function for this Resource type.
-    /// @param name         Name of the resource type for log messages (defaults to the demanged typename of T).
-    /// @throws type_error  If the ResourceType already exists.
-    template<class U, typename T = strip_type_t<U>>
-    void create_type(typename T::LoadFunction loader, std::string name = type_name<T>())
-    {
-        const size_t type_id = typeid(T).hash_code();
-
-        NOTF_MUTEX_GUARD(m_mutex);
-        if (has_type<T>()) {
-            NOTF_THROW(type_error, "Resource type \"{}\" had already been registered with the ResourceManager", name);
-        }
-        bool success = false;
-        std::tie(std::ignore, success)
-            = m_types.emplace(type_id, std::make_unique<ResourceType<T>>(*this, std::move(loader), std::move(name)));
-        NOTF_ASSERT(success);
-    }
-
-    /// Returns the ResourceType associated with the given type.
-    /// @throws type_error  If the ResourceType does not exists.
-    template<class U, typename T = strip_type_t<U>>
-    const ResourceType<T>& get_type() const
-    {
-        static const size_t type_id = typeid(T).hash_code();
-
-        NOTF_MUTEX_GUARD(m_mutex);
-        auto it = m_types.find(type_id);
-        if (it == m_types.end()) {
-            NOTF_THROW(type_error,
-                       "Unknown Resource type \"{0}\" requested from the ResourceManager.\n"
-                       "Make sure to create it using ResourceManager::create_type<{0}>(...) first.",
-                       type_name<T>());
-        }
-        return *(static_cast<ResourceType<T>*>(it->second.get()));
-    }
 
 private:
     /// Checks if a given string identifies a directory.

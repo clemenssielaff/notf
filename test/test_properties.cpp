@@ -11,7 +11,7 @@
 #include "test_scene_graph.hpp"
 #include "testenv.hpp"
 
-NOTF_USING_NAMESPACE
+NOTF_USING_NAMESPACE;
 
 namespace {
 
@@ -29,7 +29,7 @@ SCENARIO("simple PropertyGraph with global properties", "[app][property_graph]")
     const std::thread::id render_thread_id;
 
     auto& app = Application::instance();
-    EventManager& event_manager = app.event_manager();
+    EventManager& event_manager = app.get_event_manager();
 
     SECTION("simple CRUD operations on properties")
     {

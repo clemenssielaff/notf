@@ -86,7 +86,7 @@
 
 namespace {
 
-NOTF_USING_NAMESPACE
+NOTF_USING_NAMESPACE;
 
 struct VertexPos : public AttributeTrait {
     constexpr static uint location = 0;

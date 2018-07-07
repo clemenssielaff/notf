@@ -7,7 +7,7 @@
 #include "app/timer_manager.hpp"
 #include "testenv.hpp"
 
-NOTF_USING_NAMESPACE
+NOTF_USING_NAMESPACE;
 
 // ================================================================================================================== //
 

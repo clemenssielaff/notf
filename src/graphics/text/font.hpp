@@ -5,7 +5,6 @@
 #include <unordered_map>
 
 #include "common/hash.hpp"
-#include "common/signal.hpp"
 #include "common/utf.hpp"
 #include "graphics/forwards.hpp"
 
@@ -126,12 +125,6 @@ public: // types
             return filename == rhs.filename && pixel_size == rhs.pixel_size;
         }
     };
-
-    // signals ------------------------------------------------------------------------------------------------------ //
-public:
-    /// Fired when a new Font was created.
-    /// @param New font.
-    static Signal<FontPtr> on_font_created;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 private:

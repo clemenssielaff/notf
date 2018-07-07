@@ -16,7 +16,7 @@
 #include "graphics/text/font_manager.hpp"
 
 namespace { // anonymous
-NOTF_USING_NAMESPACE
+NOTF_USING_NAMESPACE;
 
 std::pair<GLenum, GLenum> convert_blend_mode(const BlendMode::Mode blend_mode)
 {

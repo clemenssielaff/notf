@@ -73,5 +73,6 @@ using Polygonf = detail::Polygon<float>;
 
 NOTF_DEFINE_UNIQUE_POINTERS(class, LogHandler);
 NOTF_DEFINE_UNIQUE_POINTERS(class, ThreadPool);
+NOTF_DEFINE_UNIQUE_POINTERS(class, ResourceManager);
 
 NOTF_CLOSE_NAMESPACE

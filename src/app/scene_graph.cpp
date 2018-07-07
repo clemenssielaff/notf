@@ -37,7 +37,7 @@ void SceneGraph::enter_state(StatePtr new_state)
     if (NOTF_UNLIKELY(!window)) {
         return;
     }
-    EventManager& event_manger = Application::instance().event_manager();
+    EventManager& event_manger = Application::instance().get_event_manager();
     event_manger.handle(std::make_unique<StateChangeEvent>(raw_pointer(window), std::move(new_state)));
 }
 

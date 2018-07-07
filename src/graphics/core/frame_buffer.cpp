@@ -13,7 +13,7 @@
 #include "graphics/core/texture.hpp"
 
 namespace { // anonymous
-NOTF_USING_NAMESPACE
+NOTF_USING_NAMESPACE;
 
 /// Human-readable name of a RenderBuffer type.
 const char* type_to_str(const RenderBuffer::Type type)

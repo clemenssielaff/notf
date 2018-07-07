@@ -8,6 +8,7 @@
 #include "common/exception.hpp"
 #include "common/log.hpp"
 #include "common/matrix4.hpp"
+#include "common/resource_manager.hpp"
 #include "common/vector2.hpp"
 #include "common/vector4.hpp"
 #include "graphics/core/gl_errors.hpp"
@@ -16,8 +17,7 @@
 #include "graphics/core/opengl.hpp"
 
 namespace { // anonymous
-
-NOTF_USING_NAMESPACE
+NOTF_USING_NAMESPACE;
 
 /// Compiles a single shader stage from a given source.
 /// @param program_name Name of the Shader program (for error messages).
@@ -558,8 +558,6 @@ void Shader::set_uniform(const std::string& name, const Matrix4f& value)
 
 // ================================================================================================================== //
 
-Signal<VertexShaderPtr> VertexShader::on_shader_created;
-
 VertexShader::VertexShader(GraphicsContext& context, const GLuint program, std::string name, std::string source)
     : Shader(context, program, Stage::VERTEX, std::move(name)), m_source(std::move(source)), m_attributes()
 {
@@ -606,16 +604,15 @@ VertexShader::create(GraphicsContext& context, std::string name, const std::stri
     Args args;
     args.vertex_source = modified_source.c_str();
 
-    VertexShaderPtr result;
+    VertexShaderPtr shader;
     {
         auto guard = context.make_current();
-        result = NOTF_MAKE_SHARED_FROM_PRIVATE(VertexShader, context, Shader::_build(name, args), std::move(name),
+        shader = NOTF_MAKE_SHARED_FROM_PRIVATE(VertexShader, context, Shader::_build(name, args), name,
                                                std::move(modified_source));
     }
-    _register_with_context(result);
-
-    on_shader_created(result);
-    return result;
+    _register_with_context(shader);
+    ResourceManager::get_instance().get_type<VertexShader>().set(std::move(name), shader);
+    return shader;
 }
 
 GLuint VertexShader::get_attribute(const std::string& name) const
@@ -630,8 +627,6 @@ GLuint VertexShader::get_attribute(const std::string& name) const
 }
 
 // ================================================================================================================== //
-
-Signal<TesselationShaderPtr> TesselationShader::on_shader_created;
 
 TesselationShader::TesselationShader(GraphicsContext& context, const GLuint program, std::string name,
                                      const std::string& control_source, const std::string& evaluation_source)
@@ -652,22 +647,19 @@ TesselationShader::create(GraphicsContext& context, const std::string& name, con
     args.tess_ctrl_source = modified_control_source.c_str();
     args.tess_eval_source = modified_evaluation_source.c_str();
 
-    TesselationShaderPtr result;
+    TesselationShaderPtr shader;
     {
         auto guard = context.make_current();
-        result = NOTF_MAKE_SHARED_FROM_PRIVATE(TesselationShader, context, Shader::_build(name, args), std::move(name),
+        shader = NOTF_MAKE_SHARED_FROM_PRIVATE(TesselationShader, context, Shader::_build(name, args), name,
                                                std::move(modified_control_source),
                                                std::move(modified_evaluation_source));
     }
-    _register_with_context(result);
-
-    on_shader_created(result);
-    return result;
+    _register_with_context(shader);
+    ResourceManager::get_instance().get_type<TesselationShader>().set(std::move(name), shader);
+    return shader;
 }
 
 // ================================================================================================================== //
-
-Signal<GeometryShaderPtr> GeometryShader::on_shader_created;
 
 GeometryShader::GeometryShader(GraphicsContext& context, const GLuint program, std::string name, std::string source)
     : Shader(context, program, Stage::GEOMETRY, std::move(name)), m_source(std::move(source))
@@ -681,22 +673,18 @@ GeometryShader::create(GraphicsContext& context, std::string name, const std::st
     Args args;
     args.geometry_source = modified_source.c_str();
 
-    GeometryShaderPtr result;
+    GeometryShaderPtr shader;
     {
         auto guard = context.make_current();
-        result = NOTF_MAKE_SHARED_FROM_PRIVATE(GeometryShader, context, Shader::_build(name, args), std::move(name),
+        shader = NOTF_MAKE_SHARED_FROM_PRIVATE(GeometryShader, context, Shader::_build(name, args), name,
                                                std::move(modified_source));
     }
-
-    _register_with_context(result);
-
-    on_shader_created(result);
-    return result;
+    _register_with_context(shader);
+    ResourceManager::get_instance().get_type<GeometryShader>().set(std::move(name), shader);
+    return shader;
 }
 
 // ================================================================================================================== //
-
-Signal<FragmentShaderPtr> FragmentShader::on_shader_created;
 
 FragmentShader::FragmentShader(GraphicsContext& context, const GLuint program, std::string shader_name,
                                std::string source)
@@ -711,16 +699,15 @@ FragmentShader::create(GraphicsContext& context, std::string name, const std::st
     Args args;
     args.fragment_source = modified_source.c_str();
 
-    FragmentShaderPtr result;
+    FragmentShaderPtr shader;
     {
         auto guard = context.make_current();
-        result = NOTF_MAKE_SHARED_FROM_PRIVATE(FragmentShader, context, Shader::_build(name, args), std::move(name),
+        shader = NOTF_MAKE_SHARED_FROM_PRIVATE(FragmentShader, context, Shader::_build(name, args), name,
                                                std::move(modified_source));
     }
-    _register_with_context(result);
-
-    on_shader_created(result);
-    return result;
+    _register_with_context(shader);
+    ResourceManager::get_instance().get_type<FragmentShader>().set(std::move(name), shader);
+    return shader;
 }
 
 NOTF_CLOSE_NAMESPACE

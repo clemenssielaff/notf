@@ -3,7 +3,6 @@
 #include <string>
 #include <vector>
 
-#include "common/signal.hpp"
 #include "graphics/ids.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -196,12 +195,6 @@ void Shader::set_uniform(const std::string&, const Matrix4f& value);
 /// Vertex Shader.
 class VertexShader : public Shader {
 
-    // signals ------------------------------------------------------------------------------------------------------ //
-public:
-    /// Fired when a new Vertex Shader was created.
-    /// @param New vertex shader.
-    static Signal<VertexShaderPtr> on_shader_created;
-
     // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
@@ -246,12 +239,6 @@ private:
 
 /// Tesselation Shader.
 class TesselationShader : public Shader {
-
-    // signals ------------------------------------------------------------------------------------------------------ //
-public:
-    /// Fired when a new Tesselation Shader was created.
-    /// @param New tesselation shader.
-    static Signal<TesselationShaderPtr> on_shader_created;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 private:
@@ -298,12 +285,6 @@ private:
 /// Geometry Shader.
 class GeometryShader : public Shader {
 
-    // signals ------------------------------------------------------------------------------------------------------ //
-public:
-    /// Fired when a new Geometry Shader was created.
-    /// @param New geometry shader.
-    static Signal<GeometryShaderPtr> on_shader_created;
-
     // methods ------------------------------------------------------------------------------------------------------ //
 private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
@@ -338,12 +319,6 @@ private:
 
 /// Fragment Shader.
 class FragmentShader : public Shader {
-
-    // signals ------------------------------------------------------------------------------------------------------ //
-public:
-    /// Fired when a new Fragment Shader was created.
-    /// @param New fragment shader.
-    static Signal<FragmentShaderPtr> on_shader_created;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 private:

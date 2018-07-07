@@ -13,7 +13,7 @@
 #include "app/widget/widget_scene.hpp"
 #include "app/window.hpp"
 
-NOTF_USING_NAMESPACE
+NOTF_USING_NAMESPACE;
 
 #pragma clang diagnostic ignored "-Wweak-vtables"
 
@@ -22,7 +22,7 @@ struct CloudScene : public Scene {
         : Scene(token, graph, std::move(name)), p_time(_get_root_access().create_property<float>("time", 0))
     {
         m_timer = IntervalTimer::create([&] {
-            const auto age_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Application::age()).count();
+            const auto age_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Application::get_age()).count();
             p_time.set(static_cast<float>(age_in_ms / 1000.));
         });
 

@@ -8,7 +8,7 @@
 #include "common/optional.hpp"
 #include "testenv.hpp"
 
-NOTF_USING_NAMESPACE
+NOTF_USING_NAMESPACE;
 
 namespace {
 notf::optional<WindowPtr> g_window;
