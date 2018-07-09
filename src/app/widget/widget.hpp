@@ -83,7 +83,7 @@ private:
 
     /// Recalcuates the Claim of this Widget.
     /// Useful for example, when the Widget's Claim is determined by its children.
-    virtual Claim _update_claim() { return m_claim.get(); }
+    virtual Claim _calculate_claim() { return m_claim.get(); }
 
     /// Updates (if necessary) and returns the Design of this Widget.
     const WidgetDesign& get_design();

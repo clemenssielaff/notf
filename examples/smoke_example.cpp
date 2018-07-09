@@ -4,12 +4,12 @@
 #include <thread>
 
 #include "app/application.hpp"
-#include "app/layer.hpp"
 #include "app/node_property.hpp"
 #include "app/root_node.hpp"
 #include "app/scene.hpp"
 #include "app/timer_manager.hpp"
 #include "app/visualizer/procedural.hpp"
+#include "app/visualizer/widget_visualizer.hpp"
 #include "app/widget/widget_scene.hpp"
 #include "app/window.hpp"
 
@@ -22,18 +22,29 @@ struct CloudScene : public Scene {
         : Scene(token, graph, std::move(name)), p_time(_get_root_access().create_property<float>("time", 0))
     {
         m_timer = IntervalTimer::create([&] {
-            const auto age_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(Application::get_age()).count();
+            const auto age_in_ms
+                = std::chrono::duration_cast<std::chrono::milliseconds>(Application::get_age()).count();
             p_time.set(static_cast<float>(age_in_ms / 1000.));
         });
 
         using namespace notf::literals;
         m_timer->start(20_fps);
     }
+
+    ~CloudScene() override { m_timer->stop(); }
+
     void _resize_view(Size2i) override {}
 
 private: // fields
     PropertyHandle<float> p_time;
     IntervalTimerPtr m_timer;
+};
+
+struct SceneOWidgets : public WidgetScene {
+
+    SceneOWidgets(FactoryToken token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
+        : WidgetScene(token, graph, std::move(name))
+    {}
 };
 
 int smoke_main(int argc, char* argv[])
@@ -51,11 +62,17 @@ int smoke_main(int argc, char* argv[])
     { // initialize the window
         WindowPtr window = Application::instance().create_window();
 
-        std::vector<valid_ptr<LayerPtr>> layers
-            = {Layer::create(*window, std::make_shared<ProceduralVisualizer>(*window, "clouds.frag"),
-                             Scene::create<CloudScene>(window->get_scene_graph(), "clouds_scene"))};
-        SceneGraph::StatePtr state = window->get_scene_graph()->create_state(std::move(layers));
-        window->get_scene_graph()->enter_state(state);
+        std::shared_ptr<CloudScene> cloud_scene = Scene::create<CloudScene>(window->get_scene_graph(), "clouds_scene");
+        std::shared_ptr<SceneOWidgets> widget_scene
+            = Scene::create<SceneOWidgets>(window->get_scene_graph(), "SceneO'Widgets");
+
+        SceneGraph::CompositionPtr composition = SceneGraph::Composition::create(
+            {SceneGraph::Layer::create(cloud_scene, std::make_shared<ProceduralVisualizer>(*window, "clouds.frag")),
+             SceneGraph::Layer::create(widget_scene, std::make_shared<WidgetVisualizer>(*window))});
+        // TODO: Life-time management won't work, if Layers take SHARED_PTRs to their Visualizer
+        // TODO: Life-time management won't work, if users still have raw ScenePtrs
+        //       ... unless there is a way to "neuter" the Scene like we do with Layers
+        window->get_scene_graph()->change_composition(composition);
     }
     return app.exec();
 }

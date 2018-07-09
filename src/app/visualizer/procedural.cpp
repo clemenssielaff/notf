@@ -43,7 +43,7 @@ ProceduralVisualizer::ProceduralVisualizer(Window& window, const std::string& sh
 
 ProceduralVisualizer::~ProceduralVisualizer() = default;
 
-void ProceduralVisualizer::_visualize(valid_ptr<Scene*> scene) const
+void ProceduralVisualizer::visualize(valid_ptr<Scene*> scene) const
 {
     // match scene properties with shader uniforms
     for (const auto& variable : m_renderer->get_uniforms()) {

@@ -134,6 +134,8 @@ NOTF_OPEN_NAMESPACE
 Plotter::Plotter(GraphicsContext& graphics_context)
     : m_graphics_context(graphics_context), m_font_manager(m_graphics_context.get_font_manager())
 {
+    const GraphicsContext::CurrentGuard current_guard = m_graphics_context.make_current();
+
     // vao
     notf_check_gl(glGenVertexArrays(1, &m_vao_id));
     if (!m_vao_id) {

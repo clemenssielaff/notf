@@ -63,7 +63,7 @@ void Plate::clean()
     context.clear(Color::black());
 
     // draw everything
-    Visualizer::Access<Plate>::visualize(*m_visualizer, m_scene.get());
+    m_visualizer->visualize(m_scene.get());
 }
 
 NOTF_CLOSE_NAMESPACE

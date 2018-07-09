@@ -9,7 +9,9 @@ WidgetVisualizer::WidgetVisualizer(Window& window)
     : Visualizer(), m_renderer(std::make_unique<Plotter>(window.get_graphics_context()))
 {}
 
-void WidgetVisualizer::_visualize(valid_ptr<Scene*> scene) const
+WidgetVisualizer::~WidgetVisualizer() = default;
+
+void WidgetVisualizer::visualize(valid_ptr<Scene*> scene) const
 {
     // TODO: WidgetVisualizer::_visualize
 }

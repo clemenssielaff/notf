@@ -2,7 +2,6 @@
 
 #include "app/event_manager.hpp"
 #include "app/glfw.hpp"
-#include "app/layer.hpp"
 #include "app/render_manager.hpp"
 #include "app/scene.hpp"
 #include "common/log.hpp"
@@ -172,6 +171,9 @@ void Window::close()
 
     // disconnect the window callbacks (blocks until all queued events are handled)
     EventManager::Access<Window>::remove_window(Application::instance().get_event_manager(), *this);
+
+    // deletes all Nodes and Scenes in the SceneGraph before it is destroyed
+    SceneGraph::Access<Window>::clear(*m_scene_graph.get());
 
     // remove yourself from the Application (deletes the Window if there are no more shared_ptrs to it)
     Application::Access<Window>::unregister(this);

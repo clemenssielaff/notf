@@ -18,7 +18,7 @@ void ResourceManager::cleanup()
 {
     NOTF_MUTEX_GUARD(m_mutex);
     for (auto& type : m_types) {
-        type.second->_remove_inactive(0);
+        type.second->_cleanup();
     }
 }
 

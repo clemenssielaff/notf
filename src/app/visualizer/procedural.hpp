@@ -19,7 +19,7 @@ public:
 
     /// Subclass-defined visualization implementation.
     /// @param scene    Scene providing Properties matching the Shader's uniforms.
-    void _visualize(valid_ptr<Scene*> scene) const override;
+    void visualize(valid_ptr<Scene*> scene) const override;
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

@@ -8,17 +8,19 @@ NOTF_OPEN_NAMESPACE
 class WidgetVisualizer : public Visualizer {
 
     // methods ------------------------------------------------------------------------------------------------------ //
-private:
-    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
+public:
+    //    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Constructor.
     /// @param window       Window in which the renderer is displayed.
     WidgetVisualizer(Window& window);
 
-private:
+    /// Destructor.
+    ~WidgetVisualizer() override;
+
     /// Subclass-defined visualization implementation.
     /// @param scene    Scene providing Properties matching the Shader's uniforms.
-    void _visualize(valid_ptr<Scene*> scene) const override;
+    void visualize(valid_ptr<Scene*> scene) const override;
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

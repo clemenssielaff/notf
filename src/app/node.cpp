@@ -359,7 +359,6 @@ const NodeContainer& Node::_read_children() const
 NodeContainer& Node::_write_children()
 {
     NOTF_ASSERT(_get_hierarchy_mutex().is_locked_by_this_thread());
-    NOTF_ASSERT(SceneGraph::Access<Node>::event_mutex(get_graph()).is_locked_by_this_thread());
 
     // direct access if unfrozen or the node hasn't been finalized yet
     SceneGraph& scene_graph = get_graph();

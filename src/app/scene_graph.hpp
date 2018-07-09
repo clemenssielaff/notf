@@ -4,6 +4,7 @@
 
 #include "app/node_property.hpp"
 #include "app/path.hpp"
+#include "common/aabr.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -39,31 +40,142 @@ public:
     /// Map containing non-owning references to all Scenes in this graph by name.
     using SceneMap = std::map<std::string, SceneWeakPtr>;
 
-    // ------------------------------------------------------------------------
+    /// Layers are managed by shared pointers, so we can keep track of them in the SceneGraph.
+    NOTF_DEFINE_SHARED_POINTERS(class, Layer);
 
-    /// State of the SceneGraph.
-    class State {
+    /// Compositions are managed by shared pointers, because they have to be passed around by events etc. and it's just
+    /// nicer not to copy them around the place as much.
+    NOTF_DEFINE_SHARED_POINTERS(class, Composition);
+
+    /// The SceneGraph offers two classes: LayerPtr and ScenePtr, that live in user-space.
+    /// However, when a Window is closed, instances of those classes become invalid and any further access to them will
+    /// cause either a hard crash ... or this exception, which is preferable.
+    NOTF_EXCEPTION_TYPE(no_window_error);
+
+    // ========================================================================
+
+    /// Layers are screen-axis-aligned quads that are drawn directly into the screen buffer by the SceneGraph.
+    /// The contents of a Layer are clipped to its area.
+    /// The Layer's Visualizer can query the size of this area using GraphicsContext::render_area().size() when drawing.
+    class Layer {
+        friend class SceneGraph;
+
+        // methods -------------------------------------------------------------------------------------------------- //
+    private:
+        NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
+
+        /// Constructor, constructs a full-screen, visible Layer.
+        /// @param scene        Scene displayed in this Layer.
+        /// @param visualizer   Visualizer that draws the Scene into this Layer.
+        Layer(valid_ptr<ScenePtr> scene, valid_ptr<VisualizerPtr> visualizer);
+
+    public:
+        NOTF_NO_COPY_OR_ASSIGN(Layer);
+
+        /// Factory, constructs a full-screen, visible Layer.
+        /// @param scene        Scene displayed in this Layer.
+        /// @param visualizer   Visualizer that draws the Scene into this Layer.
+        static LayerPtr create(valid_ptr<ScenePtr> scene, valid_ptr<VisualizerPtr> visualizer);
+
+        /// Whether the Layer is visible or not.
+        bool is_visible() const { return m_is_visible; }
+
+        /// Whether the Layer is active or not.
+        bool is_active() const { return m_is_active; }
+
+        /// Whether the Layer is fullscreen or not.
+        bool is_fullscreen() const { return m_is_fullscreen; }
+
+        /// Area of this Layer when not fullscreen.
+        const Aabri& get_area() const { return m_area; }
+
+        /// The Scene displayed in this Layer.
+        /// @throws no_window_error     If the Window containing this Layer has been closed.
+        Scene& get_scene()
+        {
+            if (NOTF_LIKELY(m_scene)) {
+                return *raw_pointer(m_scene);
+            }
+            NOTF_THROW(no_window_error, "Cannot get the Scene from a Layer of a closed Window");
+        }
+
+        /// Invisible Layers are not drawn on screen.
+        /// Note that this method also changes the `active` state of the Layer to the visibility state.
+        /// If you want a hidden/active or visible/inactive combo, call `set_active` after this method.
+        void set_visible(const bool is_visible)
+        {
+            m_is_visible = is_visible;
+            m_is_active = is_visible;
+        }
+
+        /// Inactive Layers do not participate in event propagation.
+        void set_active(const bool is_active) { m_is_active = is_active; }
+
+        /// Sets the Layer to either be always drawn fullscreen (no matter the resolution),
+        /// or to respect its explicit size and position.
+        void set_fullscreen(const bool is_fullscreen) { m_is_fullscreen = is_fullscreen; }
+
+        /// Sets a new area for this Layer to draw into (but does not change its `fullscreen` state).
+        void set_area(Aabri area) { m_area = area; }
+
+        /// Draw the Layer.
+        /// @throws no_window_error     If the Window containing this Layer has been closed.
+        void draw();
+
+        // fields --------------------------------------------------------------------------------------------------- //
+    private:
+        /// The Scene displayed in this Layer.
+        ScenePtr m_scene;
+
+        /// Visualizer that draws the Scene into this Layer.
+        VisualizerPtr m_visualizer;
+
+        /// Area of this Layer when not fullscreen.
+        Aabri m_area = Aabri::zero();
+
+        /// Layers can be set invisible in which case they are simply not drawn.
+        bool m_is_visible = true;
+
+        /// Layers can be active (the default) or inactive, in which case they do not participate in the event
+        /// propagation.
+        bool m_is_active = true;
+
+        /// Layers can be drawn either fullscreen (no matter the resolution), or in an AABR with explicit size and
+        /// position.
+        bool m_is_fullscreen = true;
+    };
+
+    // ========================================================================
+
+    /// The Composition of the SceneGraph is a simple list of Layer.
+    class Composition {
 
         // methods ------------------------------------------------------------
     private:
         NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
         /// Constructor.
-        /// @param layers   Layers that make up the State, ordered from front to back.
-        State(std::vector<valid_ptr<LayerPtr>>&& layers) : m_layers(std::move(layers)) {}
+        /// @param layers   Layers that make up the Composition, ordered from front to back.
+        Composition(std::vector<valid_ptr<LayerPtr>> layers) : m_layers(std::move(layers)) {}
 
     public:
-        /// Layers that make up the State, ordered from front to back.
-        const std::vector<valid_ptr<LayerPtr>>& layers() const { return m_layers; }
+        /// Factory.
+        /// @param layers   Layers that make up the Composition, ordered from front to back.
+        static CompositionPtr create(std::vector<valid_ptr<LayerPtr>> layers)
+        {
+            return NOTF_MAKE_SHARED_FROM_PRIVATE(Composition, std::move(layers));
+        }
+
+        /// Layers that make up the Composition, ordered from front to back.
+        const std::vector<valid_ptr<LayerPtr>>& get_layers() const { return m_layers; }
 
         // fields -------------------------------------------------------------
     private:
-        /// Layers that make up the State, ordered from front to back.
+        /// Layers that make up the Composition, ordered from front to back.
         std::vector<valid_ptr<LayerPtr>> m_layers;
     };
-    using StatePtr = std::shared_ptr<State>;
 
-    // ------------------------------------------------------------------------
+    // ========================================================================
 
     /// RAII object to make sure that a frozen scene is ALWAYS unfrozen again
     class NOTF_NODISCARD FreezeGuard {
@@ -190,21 +302,14 @@ public:
     /// @param thread_id    Id of the thread in question.
     bool is_frozen_by(std::thread::id thread_id) const { return (m_freezing_thread == hash(thread_id)); }
 
-    // state management -------------------------------------------------------
+    // composition ------------------------------------------------------------
 
-    /// Creates a new SceneGraph::State
-    /// @param layers   Layers that make up the new state, ordered from front to back.
-    static StatePtr create_state(std::vector<valid_ptr<LayerPtr>> layers)
-    {
-        return NOTF_MAKE_SHARED_FROM_PRIVATE(State, std::move(layers));
-    }
+    /// The current Composition of the SceneGraph.
+    CompositionPtr get_current_composition() const;
 
-    /// The current State of the SceneGraph.
-    StatePtr current_state() const;
-
-    /// Schedule this SceneGraph to switch to a new state.
-    /// Generates a StateChangeEvent and pushes it onto the event queue for the Window.
-    void enter_state(StatePtr new_state);
+    /// Schedule this SceneGraph to switch to a new Composition.
+    /// Generates a CompositionChangeEvent and pushes it onto the event queue for the Window.
+    void change_composition(CompositionPtr composition);
 
 private:
     /// Registers a Node as dirty.
@@ -252,22 +357,25 @@ private:
     /// @param thread_id    Id of the calling thread (for safety reasons).
     void _unfreeze(const std::thread::id thread_id);
 
-    // state changes ----------------------------------------------------------
+    // composition ------------------------------------------------------------
 
-    /// Enters a given State.
-    /// @param state    New state to enter.
-    void _enter_state(valid_ptr<StatePtr> state);
+    /// Enters a given Composition.
+    /// @param composition  New Composition.
+    void _set_composition(valid_ptr<CompositionPtr> composition);
+
+    /// Deletes all Nodes and Scenes in the SceneGraph before it is destroyed.
+    void _clear();
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Window owning this SceneGraph.
     WindowWeakPtr m_window;
 
-    /// Current State of the SceneGraph.
-    valid_ptr<StatePtr> m_current_state;
+    /// Current Composition of the SceneGraph.
+    valid_ptr<CompositionPtr> m_current_composition;
 
-    /// Frozen State of the SceneGraph.
-    risky_ptr<StatePtr> m_frozen_state = nullptr;
+    /// Frozen Composition of the SceneGraph.
+    risky_ptr<CompositionPtr> m_frozen_composition = nullptr;
 
     /// Nodes that registered themselves as "dirty".
     /// If there is one or more dirty Nodes registered, the Window containing this graph must be re-rendered.
@@ -276,8 +384,12 @@ private:
     /// All Scenes of this SceneGraph by name.
     SceneMap m_scenes;
 
+    /// All Layers of this SceneGraph.
+    std::vector<LayerWeakPtr> m_layers;
+
     /// Mutex locked while an event is being processed.
     /// This mutex is also aquired by the RenderManager to freeze and unfreeze the graph in between events.
+    /// If both mutexes are frozen by the same function, the event mutex is always held longer! (to avoid deadlocks).
     Mutex m_event_mutex;
 
     /// Mutex guarding the scene.
@@ -299,6 +411,9 @@ class access::_SceneGraph<Window> {
     /// Factory.
     /// @param window   Window owning this SceneGraph.
     static SceneGraphPtr create(valid_ptr<WindowPtr> window) { return SceneGraph::_create(std::move(window)); }
+
+    /// Deletes all Nodes and Scenes in the SceneGraph before it is destroyed.
+    static void clear(SceneGraph& graph) { graph._clear(); }
 };
 
 //-----------------------------------------------------------------------------
@@ -324,6 +439,10 @@ class access::_SceneGraph<Scene> {
     /// @param graph    SceneGraph to operate on.
     /// @param scene    Scene to register.
     static void register_scene(SceneGraph& graph, ScenePtr scene);
+
+    /// Direct access to the Graph's event mutex.
+    /// @param graph    SceneGraph to operate on.
+    static Mutex& event_mutex(SceneGraph& graph) { return graph.m_event_mutex; }
 
     /// Direct access to the Graph's hierachy mutex.
     /// @param graph    SceneGraph to operate on.
@@ -351,10 +470,6 @@ class access::_SceneGraph<Node> {
     /// Direct access to the Graph's hierachy mutex.
     /// @param graph    SceneGraph to operate on.
     static RecursiveMutex& hierarchy_mutex(SceneGraph& graph) { return graph.m_hierarchy_mutex; }
-
-    /// Direct access to the Graph's event mutex.
-    /// @param graph    SceneGraph to operate on.
-    static Mutex& event_mutex(SceneGraph& graph) { return graph.m_event_mutex; }
 };
 
 //-----------------------------------------------------------------------------

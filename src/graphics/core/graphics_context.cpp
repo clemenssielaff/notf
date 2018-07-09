@@ -6,6 +6,7 @@
 #include "app/glfw.hpp"
 #include "common/exception.hpp"
 #include "common/log.hpp"
+#include "common/resource_manager.hpp"
 #include "common/vector.hpp"
 #include "graphics/core/frame_buffer.hpp"
 #include "graphics/core/gl_errors.hpp"
@@ -177,6 +178,9 @@ GraphicsContext::~GraphicsContext()
     _unbind_all_textures();
     _unbind_pipeline();
     _unbind_framebuffer();
+
+    // cleanup unused resources
+    ResourceManager::get_instance().cleanup();
 
     // deallocate and invalidate all remaining Textures
     for (auto itr : m_textures) {

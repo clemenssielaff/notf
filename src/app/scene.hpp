@@ -63,7 +63,8 @@ public:
     template<class T, class... Args, typename = notf::enable_if_t<std::is_base_of<Scene, T>::value>>
     static std::shared_ptr<T> create(const valid_ptr<SceneGraphPtr>& graph, std::string name, Args... args)
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(*graph.get()));
+        NOTF_MUTEX_GUARDS(SceneGraph::Access<Scene>::event_mutex(*graph.get()), 0);
+        NOTF_MUTEX_GUARDS(SceneGraph::Access<Scene>::hierarchy_mutex(*graph.get()), 1);
         std::shared_ptr<T> scene
             = std::make_shared<T>(FactoryToken(), graph, std::move(name), std::forward<Args>(args)...);
         scene->_finalize_root();

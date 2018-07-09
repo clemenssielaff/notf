@@ -1,6 +1,5 @@
 #include "app/render_manager.hpp"
 
-#include "app/layer.hpp"
 #include "app/scene.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"
@@ -91,7 +90,7 @@ void RenderManager::RenderThread::_run()
 
             try {
                 // render all Layers from back to front
-                for (const auto& layer : reverse(scene_graph->current_state()->layers())) { //
+                for (const auto& layer : reverse(scene_graph->get_current_composition()->get_layers())) { //
                     layer->draw();
                 }
             }

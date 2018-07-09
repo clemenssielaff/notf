@@ -66,7 +66,7 @@ void Widget::_relayout_upwards()
         return; // only the root Widget has no parent Widget
     }
 
-    Claim new_parent_claim = parent->_update_claim();
+    Claim new_parent_claim = parent->_calculate_claim();
     if (new_parent_claim == parent->m_claim.get()) {
         // this Widget's Claim changed, but the parent's Claim stayed the same
         // therefore the parent needs to re-layout its children

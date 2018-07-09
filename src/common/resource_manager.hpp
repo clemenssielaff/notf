@@ -43,6 +43,7 @@ public:
     {
         m_resource = std::move(other.m_resource);
         other.m_resource.reset();
+        return *this;
     }
 
     /// Comparison operator.
@@ -103,6 +104,17 @@ private:
 
         /// Removes all resources, inactive or not.
         virtual void _clear() = 0;
+
+        /// Removes inactive resources as determined by the cache limit.
+        void _cleanup() { _remove_inactive(m_cache_limit); }
+
+        // fields --------------------------------------------------------------------------------------------------- //
+    protected:
+        /// Number of inactive resources to retain in the cache (defaults to 0).
+        ///     0  = no caching
+        ///     n = caching of n last loaded inactive
+        /// Inactive means that the resource is held only by the ResourceManager.
+        size_t m_cache_limit = 0;
     };
 
 public:
@@ -244,11 +256,16 @@ public:
         {
             NOTF_ASSERT(m_manager.m_mutex.is_locked_by_this_thread());
             size_t inactive_count = 0;
-            for (auto prev = m_cache_list.before_begin(), it = m_cache_list.begin(), end = m_cache_list.end();
-                 it != end; prev = ++it) {
-                while ((**it).second.unique() && ++inactive_count > cache_limit) {
+            auto prev = m_cache_list.before_begin(), it = m_cache_list.begin(), end = m_cache_list.end();
+            while (true) { // I tried a for-loop but that crashes..?
+                while (it != end && (**it).second.unique() && ++inactive_count > cache_limit) {
+                    m_resources.erase(*it);
                     it = m_cache_list.erase_after(prev);
                 }
+                if (it == end) {
+                    break;
+                }
+                prev = ++it;
             }
         }
 
@@ -274,12 +291,6 @@ public:
         /// Resource directory path relative to the ResourceManager's base path (can be empty).
         /// Always ends in a forward slash, if not empty.
         std::string m_path;
-
-        /// Number of inactive resources to retain in the cache (defaults to 0).
-        ///     0  = no caching
-        ///     n = caching of n last loaded inactive
-        /// Inactive means that the resource is held only by the ResourceManager.
-        size_t m_cache_limit = 0;
 
         /// Resources by filename.
         ResourceMap m_resources;
