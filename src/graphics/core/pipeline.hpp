@@ -4,11 +4,24 @@
 
 NOTF_OPEN_NAMESPACE
 
+namespace access {
+template<class>
+class _Pipeline;
+} // namespace access
+
 // ================================================================================================================== //
 
 /// Render Pipeline
 /// Is not managed by the context, but keeps their Shaders alive.
 class Pipeline : public std::enable_shared_from_this<Pipeline> {
+
+    friend class access::_Pipeline<GraphicsContext>;
+
+    // types -------------------------------------------------------------------------------------------------------- //
+public:
+    /// Access types.
+    template<class T>
+    using Access = access::_Pipeline<T>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 private:
@@ -32,11 +45,7 @@ public:
     /// @param fragment_shader      Fragment shader to use in the Pipeline.
     static PipelinePtr
     create(GraphicsContext& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
-           GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader)
-    {
-        return NOTF_MAKE_SHARED_FROM_PRIVATE(Pipeline, context, std::move(vertex_shader), std::move(tesselation_shader),
-                                             std::move(geometry_shader), std::move(fragment_shader));
-    }
+           GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader);
 
     static PipelinePtr
     create(GraphicsContext& context, VertexShaderPtr vertex_shader, FragmentShaderPtr fragment_shader)
@@ -69,6 +78,10 @@ public:
     /// Fragment shader attached to this Pipeline.
     const FragmentShaderPtr& get_fragment_shader() const { return m_fragment_shader; }
 
+private:
+    /// Deallocates the Pipeline.
+    void _deallocate();
+
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Graphics context containing this Pipeline.
@@ -89,6 +102,16 @@ private:
 
     /// OpenGL ID of the Pipeline object.
     PipelineId m_id = 0;
+};
+
+// accessors -------------------------------------------------------------------------------------------------------- //
+
+template<>
+class access::_Pipeline<GraphicsContext> {
+    friend class notf::GraphicsContext;
+
+    /// Deallocates the Pipeline.
+    static void deallocate(Pipeline& pipeline) { pipeline._deallocate(); }
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -5,9 +5,14 @@
 
 #include "graphics/ids.hpp"
 
+// TODO: cache compiled shader binaries next to their text files (like python?)
+
 NOTF_OPEN_NAMESPACE
 
-// TODO: cache compiled shader binaries next to their text files (like python?)
+namespace access {
+template<class>
+class _Shader;
+} // namespace access
 
 // ================================================================================================================== //
 
@@ -29,10 +34,14 @@ NOTF_OPEN_NAMESPACE
 /// similar to the handling of Textures.
 class Shader : public std::enable_shared_from_this<Shader> {
 
-    friend class GraphicsContext; // creates and finally invalidates all of its Shaders when it is destroyed
+    friend class access::_Shader<GraphicsContext>;
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
+    /// Access types.
+    template<class T>
+    using Access = access::_Shader<T>;
+
     /// Information about a variable (attribute or uniform) of this shader.
     struct Variable {
         /// Location of the variable, used to address the variable in the OpenGL shader.
@@ -189,6 +198,16 @@ void Shader::set_uniform(const std::string&, const Vector4f& value);
 
 template<>
 void Shader::set_uniform(const std::string&, const Matrix4f& value);
+
+// accessors -------------------------------------------------------------------------------------------------------- //
+
+template<>
+class access::_Shader<GraphicsContext> {
+    friend class notf::GraphicsContext;
+
+    /// Deallocates the Shader data and invalidates the Shader.
+    static void deallocate(Shader& shader) { shader._deallocate(); }
+};
 
 // ================================================================================================================== //
 

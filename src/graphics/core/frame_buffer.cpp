@@ -264,22 +264,24 @@ void FrameBuffer::_deallocate()
         return;
     }
 
+    auto render_buffer_access = RenderBuffer::Access<FrameBuffer>();
+
     // deallocate all attached RenderBuffers
     for (const auto& numbered_color_target : m_args.color_targets) {
         const auto& color_target = numbered_color_target.second;
         if (notf::holds_alternative<RenderBufferPtr>(color_target)) {
             NOTF_ASSERT(notf::get<RenderBufferPtr>(color_target)); // RenderBuffer pointer should never be empty
-            notf::get<RenderBufferPtr>(color_target)->_deallocate();
+            render_buffer_access.deallocate(*notf::get<RenderBufferPtr>(color_target));
         }
     }
 
     if (notf::holds_alternative<RenderBufferPtr>(m_args.depth_target)) {
         NOTF_ASSERT(notf::get<RenderBufferPtr>(m_args.depth_target)); // RenderBuffer pointer should never be empty
-        notf::get<RenderBufferPtr>(m_args.depth_target)->_deallocate();
+        render_buffer_access.deallocate(*notf::get<RenderBufferPtr>(m_args.depth_target));
     }
 
     if (m_args.stencil_target) {
-        m_args.stencil_target->_deallocate();
+        render_buffer_access.deallocate(*m_args.stencil_target);
     }
 
     // shed all owning pointers

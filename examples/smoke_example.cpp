@@ -67,9 +67,8 @@ int smoke_main(int argc, char* argv[])
             = Scene::create<SceneOWidgets>(window->get_scene_graph(), "SceneO'Widgets");
 
         SceneGraph::CompositionPtr composition = SceneGraph::Composition::create(
-            {SceneGraph::Layer::create(cloud_scene, std::make_shared<ProceduralVisualizer>(*window, "clouds.frag")),
-             SceneGraph::Layer::create(widget_scene, std::make_shared<WidgetVisualizer>(*window))});
-        // TODO: Life-time management won't work, if Layers take SHARED_PTRs to their Visualizer
+            {SceneGraph::Layer::create(cloud_scene, std::make_unique<ProceduralVisualizer>(*window, "clouds.frag")),
+             SceneGraph::Layer::create(widget_scene, std::make_unique<WidgetVisualizer>(*window))});
         // TODO: Life-time management won't work, if users still have raw ScenePtrs
         //       ... unless there is a way to "neuter" the Scene like we do with Layers
         window->get_scene_graph()->change_composition(composition);

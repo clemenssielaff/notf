@@ -8,10 +8,14 @@
 #include "common/size2.hpp"
 #include "graphics/ids.hpp"
 
+// TODO: [engine] a texture streaming method using buffers
+
 NOTF_OPEN_NAMESPACE
 
-// TODO: [engine] a texture streaming method using buffers
-// TODO: [engine] 3D texture
+namespace access {
+template<class>
+class _Texture;
+} // namespace access
 
 // ================================================================================================================== //
 
@@ -28,10 +32,14 @@ NOTF_OPEN_NAMESPACE
 /// similar to the handling of Shaders.
 class Texture : public std::enable_shared_from_this<Texture> {
 
-    friend class GraphicsContext; // creates and finally invalidates all of its Textures when it is destroyed
+    friend class access::_Texture<GraphicsContext>;
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
+    /// Access types.
+    template<class T>
+    using Access = access::_Texture<T>;
+
     /// Texture format.
     enum class Format : unsigned char {
         GRAYSCALE = 1, ///< one channel per pixel (grayscale)
@@ -235,6 +243,16 @@ private:
 
     /// Default arguments.
     static const Args s_default_args;
+};
+
+// accessors -------------------------------------------------------------------------------------------------------- //
+
+template<>
+class access::_Texture<GraphicsContext> {
+    friend class notf::GraphicsContext;
+
+    /// Deallocates the Texture data and invalidates the Texture.
+    static void deallocate(Texture& texture) { texture._deallocate(); }
 };
 
 NOTF_CLOSE_NAMESPACE

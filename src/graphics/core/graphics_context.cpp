@@ -1,6 +1,5 @@
 #include "graphics/core/graphics_context.hpp"
 
-#include <cstring>
 #include <set>
 
 #include "app/glfw.hpp"
@@ -186,7 +185,7 @@ GraphicsContext::~GraphicsContext()
     for (auto itr : m_textures) {
         if (TexturePtr texture = itr.second.lock()) {
             log_warning << "Deallocating live Texture: \"" << texture->get_name() << "\"";
-            texture->_deallocate();
+            Texture::Access<GraphicsContext>::deallocate(*texture);
         }
     }
     m_textures.clear();
@@ -195,7 +194,7 @@ GraphicsContext::~GraphicsContext()
     for (auto itr : m_shaders) {
         if (ShaderPtr shader = itr.second.lock()) {
             log_warning << "Deallocating live Shader: \"" << shader->get_name() << "\"";
-            shader->_deallocate();
+            Shader::Access<GraphicsContext>::deallocate(*shader);
         }
     }
     m_shaders.clear();
@@ -204,7 +203,16 @@ GraphicsContext::~GraphicsContext()
     for (auto itr : m_framebuffers) {
         if (FrameBufferPtr framebuffer = itr.second.lock()) {
             log_warning << "Deallocating live FrameBuffer: \"" << framebuffer->get_id() << "\"";
-            framebuffer->_deallocate();
+            FrameBuffer::Access<GraphicsContext>::deallocate(*framebuffer);
+        }
+    }
+    m_framebuffers.clear();
+
+    // deallocate and invalidate all remaining Pipelines
+    for (auto itr : m_pipelines) {
+        if (PipelinePtr pipeline = itr.second.lock()) {
+            log_warning << "Deallocating live Pipeline: \"" << pipeline->get_id() << "\"";
+            Pipeline::Access<GraphicsContext>::deallocate(*pipeline);
         }
     }
     m_framebuffers.clear();
@@ -477,7 +485,7 @@ void GraphicsContext::_register_new(TexturePtr texture)
         it->second = texture; // update expired
     }
     else {
-        NOTF_THROW(internal_error, "Failed to register a new texture with the same ID as an existing texture: \"{}\"",
+        NOTF_THROW(internal_error, "Failed to register a new Texture with the same ID as an existing Texture: \"{}\"",
                    texture->get_id());
     }
 }
@@ -492,7 +500,7 @@ void GraphicsContext::_register_new(ShaderPtr shader)
         it->second = shader; // update expired
     }
     else {
-        NOTF_THROW(internal_error, "Failed to register a new shader with the same ID as an existing shader: \"{}\"",
+        NOTF_THROW(internal_error, "Failed to register a new Shader with the same ID as an existing Shader: \"{}\"",
                    shader->get_id());
     }
 }
@@ -508,8 +516,23 @@ void GraphicsContext::_register_new(FrameBufferPtr framebuffer)
     }
     else {
         NOTF_THROW(internal_error,
-                   "Failed to register a new framebuffer with the same ID as an existing framebuffer: \"{}\"",
+                   "Failed to register a new Framebuffer with the same ID as an existing Framebuffer: \"{}\"",
                    framebuffer->get_id());
+    }
+}
+
+void GraphicsContext::_register_new(PipelinePtr pipeline)
+{
+    auto it = m_pipelines.find(pipeline->get_id());
+    if (it == m_pipelines.end()) {
+        m_pipelines.emplace(pipeline->get_id(), pipeline); // insert new
+    }
+    else if (it->second.expired()) {
+        it->second = pipeline; // update expired
+    }
+    else {
+        NOTF_THROW(internal_error, "Failed to register a new Pipeline with the same ID as an existing Pipeline: \"{}\"",
+                   pipeline->get_id());
     }
 }
 

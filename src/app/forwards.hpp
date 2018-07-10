@@ -68,7 +68,8 @@ NOTF_DEFINE_SHARED_POINTERS(class, WidgetScene);
 
 // app/visualizer =================================================================================================== //
 
-NOTF_DEFINE_SHARED_POINTERS(class, Visualizer);
+NOTF_DEFINE_UNIQUE_POINTERS(class, Visualizer);
+
 NOTF_DEFINE_SHARED_POINTERS(class, Plate);
 
 // tests ============================================================================================================ //

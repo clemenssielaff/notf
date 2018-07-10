@@ -13,7 +13,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-namespace access { // forwards
+namespace access {
 template<class>
 class _PropertyGraph;
 template<class>

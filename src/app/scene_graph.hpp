@@ -8,7 +8,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-namespace access { // forwards
+namespace access {
 template<class>
 class _SceneGraph;
 class _SceneGraph_NodeHandle;
@@ -17,8 +17,6 @@ class _SceneGraph_NodeHandle;
 // ================================================================================================================== //
 
 class SceneGraph {
-
-    // access ------------------------------------------------------------------------------------------------------- //
 
     friend class access::_SceneGraph<Window>;
     friend class access::_SceneGraph<Scene>;
@@ -128,6 +126,7 @@ public:
         ScenePtr m_scene;
 
         /// Visualizer that draws the Scene into this Layer.
+        /// Is unique, because Visualizers should not live in user space.
         VisualizerPtr m_visualizer;
 
         /// Area of this Layer when not fullscreen.

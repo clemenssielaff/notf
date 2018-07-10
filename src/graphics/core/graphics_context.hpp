@@ -15,7 +15,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-namespace access { // forwards
+namespace access {
 template<class>
 class _GraphicsContext;
 } // namespace access
@@ -29,6 +29,7 @@ class GraphicsContext {
     friend class access::_GraphicsContext<Texture>;
     friend class access::_GraphicsContext<Shader>;
     friend class access::_GraphicsContext<FrameBuffer>;
+    friend class access::_GraphicsContext<Pipeline>;
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -404,6 +405,10 @@ public:
 
     // pipeline ---------------------------------------------------------------
 
+    /// Checks whether this context contains a Pipeline with the given ID.
+    /// @param id   ID of the Pipeline.
+    bool has_pipeline(const PipelineId& id) { return m_pipelines.count(id) != 0; }
+
     /// Binds the given Pipeline.
     /// @param pipeline Pipeline to bind.
     /// @returns Guard, making sure that the Pipline is properly unbound and the previous one restored after use.
@@ -469,17 +474,22 @@ private:
     /// Registers a new Texture with this GraphicsContext.
     /// @param texture          New Texture to register.
     /// @throws internal_error  If another Texture with the same ID already exists.
-    void _register_new(TexturePtr get_texture);
+    void _register_new(TexturePtr texture);
 
     /// Registers a new Shader with this GraphicsContext.
     /// @param shader           New Shader to register.
     /// @throws internal_error  If another Shader with the same ID already exists.
-    void _register_new(ShaderPtr get_shader);
+    void _register_new(ShaderPtr shader);
 
     /// Registers a new FrameBuffer with this GraphicsContext.
     /// @param framebuffer      New FrameBuffer to register.
     /// @throws internal_error  If another FrameBuffer with the same ID already exists.
-    void _register_new(FrameBufferPtr get_framebuffer);
+    void _register_new(FrameBufferPtr framebuffer);
+
+    /// Registers a new Pipeline with this GraphicsContext.
+    /// @param pipeline         New Pipeline to register.
+    /// @throws internal_error  If another Pipeline with the same ID already exists.
+    void _register_new(PipelinePtr pipeline);
 
     /// Call this function after the last shader has been compiled.
     /// Might cause the driver to release the resources allocated for the compiler to free up some space, but is not
@@ -525,6 +535,10 @@ private:
     /// All FrameBuffers managed by this Context.
     /// See `m_textures` for details on management.
     std::unordered_map<FrameBufferId, FrameBufferWeakPtr> m_framebuffers;
+
+    /// All Pipelines managed by this Context.
+    /// See `m_textures` for details on management.
+    std::unordered_map<PipelineId, PipelineWeakPtr> m_pipelines;
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //
@@ -565,6 +579,20 @@ class access::_GraphicsContext<FrameBuffer> {
     static void register_new(GraphicsContext& context, FrameBufferPtr framebuffer)
     {
         context._register_new(std::move(framebuffer));
+    }
+};
+
+template<>
+class access::_GraphicsContext<Pipeline> {
+    friend class notf::Pipeline;
+
+    /// Registers a new Pipeline.
+    /// @param context          GraphicsContext to access.
+    /// @param pipeline         New Pipeline to register.
+    /// @throws internal_error  If another pipeline with the same ID already exists.
+    static void register_new(GraphicsContext& context, PipelinePtr pipeline)
+    {
+        context._register_new(std::move(pipeline));
     }
 };
 

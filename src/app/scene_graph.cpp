@@ -21,7 +21,7 @@ SceneGraph::no_window_error::~no_window_error() = default;
 // ================================================================================================================== //
 
 SceneGraph::Layer::Layer(valid_ptr<ScenePtr> scene, valid_ptr<VisualizerPtr> visualizer)
-    : m_scene(std::move(scene)), m_visualizer(std::move(visualizer))
+    : m_scene(std::move(scene)), m_visualizer(std::move(visualizer.raw()))
 {}
 
 SceneGraph::LayerPtr SceneGraph::Layer::create(valid_ptr<ScenePtr> scene, valid_ptr<VisualizerPtr> visualizer)

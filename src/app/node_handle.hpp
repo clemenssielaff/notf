@@ -6,7 +6,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-namespace access { // forwards
+namespace access {
 class _NodeHandle;
 } // namespace access
 

@@ -8,16 +8,28 @@
 
 NOTF_OPEN_NAMESPACE
 
+namespace access {
+template<class>
+class _RenderBuffer;
+template<class>
+class _FrameBuffer;
+} // namespace access
+
 // ================================================================================================================== //
 
 /// Base class for all RenderBuffers (color, depth and stencil).
 /// RenderBuffers are not managed by the GraphicsContext, but by FrameBuffers instead.
 /// However, if the underlying GraphicContext should be destroyed, all RenderBuffer objects are deallocated as well.
 class RenderBuffer {
-    friend class FrameBuffer;
+
+    friend class access::_RenderBuffer<FrameBuffer>;
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
+    /// Access types.
+    template<class T>
+    using Access = access::_RenderBuffer<T>;
+
     /// Type of RenderBuffer.
     enum class Type {
         COLOR,         ///< Color buffer.
@@ -84,7 +96,7 @@ private:
     /// @throws runtime_error  ...if it isn't.
     static void _assert_depth_stencil_format(const GLenum get_internal_format);
 
-    /// Deallocates the framebuffer data and invalidates the RenderBuffer.
+    /// Deallocates the RenderBuffer data and invalidates the RenderBuffer.
     void _deallocate();
 
     // fields ------------------------------------------------------------------------------------------------------- //
@@ -99,14 +111,29 @@ protected:
     Args m_args;
 };
 
+// accessors -------------------------------------------------------------------------------------------------------- //
+
+template<>
+class access::_RenderBuffer<FrameBuffer> {
+    friend class notf::FrameBuffer;
+
+    /// Deallocates the RenderBuffer data and invalidates the RenderBuffer.
+    static void deallocate(RenderBuffer& renderbuffer) { renderbuffer._deallocate(); }
+};
+
 // ================================================================================================================== //
 
 // TODO: read pixels from framebuffer into raw image
 class FrameBuffer {
-    friend class GraphicsContext;
+
+    friend class access::_FrameBuffer<GraphicsContext>;
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
+    /// Access types.
+    template<class T>
+    using Access = access::_FrameBuffer<T>;
+
     /// A FrameBuffer's color target can be either a RenderBuffer or a Texture.
     using ColorTarget = notf::variant<TexturePtr, RenderBufferPtr>;
 
@@ -178,14 +205,24 @@ private:
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
-    /// GraphicsContext containing the frame buffer.
+    /// GraphicsContext containing the FrameBuffer.
     GraphicsContext& m_context;
 
-    /// OpenGL ID of the frame buffer.
+    /// OpenGL ID of the FrameBuffer.
     FrameBufferId m_id;
 
-    /// Arguments passed to this frame buffer.
+    /// Arguments passed to this FrameBuffer.
     Args m_args;
+};
+
+// accessors -------------------------------------------------------------------------------------------------------- //
+
+template<>
+class access::_FrameBuffer<GraphicsContext> {
+    friend class notf::GraphicsContext;
+
+    /// Deallocates the framebuffer data and invalidates the Framebuffer.
+    static void deallocate(FrameBuffer& framebuffer) { framebuffer._deallocate(); }
 };
 
 NOTF_CLOSE_NAMESPACE

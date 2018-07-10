@@ -97,10 +97,10 @@ FontPtr Font::load(FontManagerPtr& font_manager, std::string filename, const pix
     }
 
     // create and store the new Font in the manager, so it can be re-used
-    FontPtr font = NOTF_MAKE_SHARED_FROM_PRIVATE(Font, *font_manager, filename, pixel_size);
-    font_manager->m_fonts.insert({identifier, font});
+    FontPtr font = NOTF_MAKE_SHARED_FROM_PRIVATE(Font, *font_manager, identifier.filename, pixel_size);
+    ResourceManager::get_instance().get_type<Font>().set(identifier.filename, font);
+    font_manager->m_fonts.insert({std::move(identifier), font});
 
-    ResourceManager::get_instance().get_type<Font>().set(std::move(filename), font);
     return font;
 }
 

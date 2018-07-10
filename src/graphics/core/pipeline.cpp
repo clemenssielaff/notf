@@ -118,7 +118,20 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
     }
 }
 
-Pipeline::~Pipeline()
+PipelinePtr
+Pipeline::create(GraphicsContext& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
+                 GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader)
+{
+    PipelinePtr pipeline = NOTF_MAKE_SHARED_FROM_PRIVATE(Pipeline, context, std::move(vertex_shader),
+                                                         std::move(tesselation_shader), std::move(geometry_shader),
+                                                         std::move(fragment_shader));
+    GraphicsContext::Access<Pipeline>::register_new(context, pipeline);
+    return pipeline;
+}
+
+Pipeline::~Pipeline() { _deallocate(); }
+
+void Pipeline::_deallocate()
 {
     if (m_id) {
         notf_check_gl(glDeleteProgramPipelines(1, &m_id.value()));
