@@ -74,6 +74,8 @@ WindowPtr Application::create_window(const detail::WindowArguments& args)
 
 int Application::exec()
 {
+    log_info << "Starting main loop";
+
     // loop until there are no more windows open
     while (!m_windows.empty()) {
 

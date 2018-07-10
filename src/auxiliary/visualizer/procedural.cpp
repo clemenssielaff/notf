@@ -1,4 +1,4 @@
-#include "app/visualizer/procedural.hpp"
+#include "auxiliary/visualizer/procedural.hpp"
 
 #include "app/application.hpp"
 #include "app/scene.hpp"

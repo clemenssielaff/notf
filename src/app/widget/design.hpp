@@ -9,6 +9,7 @@
 #include "common/assert.hpp"
 #include "common/vector2.hpp"
 #include "graphics/core/gl_modes.hpp"
+#include "utils/bit_cast.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -290,8 +291,8 @@ public:
     void add_command(const COMMAND& command)
     {
         using array_t = std::array<byte, sizeof(command) / sizeof(byte)>;
-        const array_t& raw_array = *(reinterpret_cast<const array_t*>(&command));
-        m_buffer.insert(m_buffer.end(), std::begin(raw_array), std::end(raw_array));
+        array_t raw_array = bit_cast_risky<array_t>(command);
+        std::move(std::begin(raw_array), std::end(raw_array), std::back_inserter(m_buffer));
     }
 
     /// Returns the size of a Command in bytes.
@@ -303,10 +304,10 @@ public:
 
     /// Creates a const reference of a specific Command type that maps directly into the buffer.
     template<typename COMMAND, typename = notf::enable_if_t<std::is_base_of<CommandBase, COMMAND>::value>>
-    const COMMAND& map_command(const size_t index)
+    COMMAND map_command(const size_t index)
     {
         NOTF_ASSERT((index + get_command_size<COMMAND>()) < m_buffer.size());
-        const COMMAND& command = *(reinterpret_cast<const COMMAND*>(&m_buffer[index]));
+        COMMAND command = bit_cast<COMMAND>(m_buffer[index]);
         NOTF_ASSERT(command.get_type() == COMMAND::type);
         return command;
     }
@@ -339,8 +340,8 @@ template<>
 inline void WidgetDesign::add_command(const FillPaintCommand& command)
 {
     using array_t = std::array<byte, sizeof(command) / sizeof(byte)>;
-    const array_t& raw_array = *(reinterpret_cast<const array_t*>(&command));
-    m_buffer.insert(m_buffer.end(), std::begin(raw_array), std::end(raw_array));
+    array_t raw_array = bit_cast_risky<array_t>(command);
+    std::move(std::begin(raw_array), std::end(raw_array), std::back_inserter(m_buffer));
     m_vault.insert(command.paint.texture);
 }
 
@@ -348,8 +349,8 @@ template<>
 inline void WidgetDesign::add_command(const StrokePaintCommand& command)
 {
     using array_t = std::array<byte, sizeof(command) / sizeof(byte)>;
-    const array_t& raw_array = *(reinterpret_cast<const array_t*>(&command));
-    m_buffer.insert(m_buffer.end(), std::begin(raw_array), std::end(raw_array));
+    array_t raw_array = bit_cast_risky<array_t>(command);
+    std::move(std::begin(raw_array), std::end(raw_array), std::back_inserter(m_buffer));
     m_vault.insert(command.paint.texture);
 }
 
@@ -357,8 +358,8 @@ template<>
 inline void WidgetDesign::add_command(const WriteCommand& command)
 {
     using array_t = std::array<byte, sizeof(command) / sizeof(byte)>;
-    const array_t& raw_array = *(reinterpret_cast<const array_t*>(&command));
-    m_buffer.insert(m_buffer.end(), std::begin(raw_array), std::end(raw_array));
+    array_t raw_array = bit_cast_risky<array_t>(command);
+    std::move(std::begin(raw_array), std::end(raw_array), std::back_inserter(m_buffer));
     m_vault.insert(command.text);
     m_vault.insert(command.font);
 }

@@ -108,6 +108,7 @@ create_module(common)
 create_module(app)
 create_module(graphics)
 create_module(utils)
+create_module(auxiliary)
 
 add_sources(SOURCE_FILES examples
     #framebuffer_example.cpp
@@ -152,6 +153,7 @@ add_library(notf
     ${graphics_MODULE}
     ${utils_MODULE}
     ${SOURCE_FILES}
+    ${auxiliary_MODULE}
     ${THIRDPARTY_FILES}
     ${RESOURCE_FILES}
 )

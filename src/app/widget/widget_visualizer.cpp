@@ -1,4 +1,4 @@
-#include "app/visualizer/widget_visualizer.hpp"
+#include "app/widget/widget_visualizer.hpp"
 
 #include "app/window.hpp"
 #include "graphics/renderer/plotter.hpp"

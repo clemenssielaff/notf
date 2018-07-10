@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/visualizer/visualizer.hpp"
+#include "app/visualizer.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -9,8 +9,6 @@ class WidgetVisualizer : public Visualizer {
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
-    //    NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
-
     /// Constructor.
     /// @param window       Window in which the renderer is displayed.
     WidgetVisualizer(Window& window);

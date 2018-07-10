@@ -8,10 +8,10 @@
 #include "app/root_node.hpp"
 #include "app/scene.hpp"
 #include "app/timer_manager.hpp"
-#include "app/visualizer/procedural.hpp"
-#include "app/visualizer/widget_visualizer.hpp"
 #include "app/widget/widget_scene.hpp"
+#include "app/widget/widget_visualizer.hpp"
 #include "app/window.hpp"
+#include "auxiliary/visualizer/procedural.hpp"
 
 NOTF_USING_NAMESPACE;
 
@@ -69,8 +69,6 @@ int smoke_main(int argc, char* argv[])
         SceneGraph::CompositionPtr composition = SceneGraph::Composition::create(
             {SceneGraph::Layer::create(cloud_scene, std::make_unique<ProceduralVisualizer>(*window, "clouds.frag")),
              SceneGraph::Layer::create(widget_scene, std::make_unique<WidgetVisualizer>(*window))});
-        // TODO: Life-time management won't work, if users still have raw ScenePtrs
-        //       ... unless there is a way to "neuter" the Scene like we do with Layers
         window->get_scene_graph()->change_composition(composition);
     }
     return app.exec();

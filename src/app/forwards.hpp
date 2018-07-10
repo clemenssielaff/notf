@@ -60,6 +60,7 @@ NOTF_DEFINE_UNIQUE_POINTERS(struct, Event);
 
 class Widget;
 class WidgetDesign;
+class WidgetVisualizer;
 class Painter;
 class Painterpreter;
 

@@ -1,13 +1,16 @@
-#include "app/visualizer/plate.hpp"
+#include "app/visualizer.hpp"
 
-#include <sstream>
+#include "fmt/format.h"
 
-#include "app/visualizer/visualizer.hpp"
 #include "graphics/core/frame_buffer.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/texture.hpp"
 
 NOTF_OPEN_NAMESPACE
+
+Visualizer::~Visualizer() = default;
+
+// ================================================================================================================== //
 
 Plate::Plate(GraphicsContext& context, Args&& args)
     : m_scene(std::move(args.scene)), m_visualizer(std::move(args.visualizer))
@@ -37,11 +40,8 @@ Plate::Plate(GraphicsContext& context, Args&& args)
 
     // create the framebuffer
     FrameBuffer::Args framebuffer_args;
-    {
-        std::stringstream ss;
-        ss << "Plate#" << this;
-        framebuffer_args.set_color_target(0, Texture::create_empty(context, ss.str(), args.size, texture_args));
-    }
+    framebuffer_args.set_color_target(0, Texture::create_empty(context, fmt::format("Plate#{}", to_number(this)),
+                                                               args.size, texture_args));
 
     m_framebuffer = FrameBuffer::create(context, std::move(framebuffer_args));
 }

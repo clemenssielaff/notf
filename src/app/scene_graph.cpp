@@ -7,7 +7,7 @@
 #include "app/io/mouse_event.hpp"
 #include "app/io/window_event.hpp"
 #include "app/scene.hpp"
-#include "app/visualizer/visualizer.hpp"
+#include "app/visualizer.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"
 #include "graphics/core/graphics_context.hpp"

@@ -20,4 +20,15 @@ inline Dest bit_cast(const Source& source)
     return target;
 }
 
+/// Like `bit_cast` but doesn't require the types to be trivially copyable.
+/// Use this only if you know what you are doing.
+template<typename Dest, typename Source>
+inline Dest bit_cast_risky(const Source& source)
+{
+    static_assert(sizeof(Dest) == sizeof(Source), "bit_cast requires source and destination to be the same size");
+    Dest target;
+    std::memcpy(&target, &source, sizeof(target));
+    return target;
+}
+
 NOTF_CLOSE_NAMESPACE
