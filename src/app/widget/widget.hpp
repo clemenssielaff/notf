@@ -9,12 +9,23 @@
 
 NOTF_OPEN_NAMESPACE
 
+namespace access {
+template<class>
+class _Widget;
+} // namespace access
+
 // ================================================================================================================== //
 
 class Widget : public Node {
 
+    friend class access::_Widget<Painterpreter>;
+
     // types -------------------------------------------------------------------------------------------------------- //
 public:
+    /// Access types.
+    template<class T>
+    using Access = access::_Widget<T>;
+
     /// Spaces that the transformation of a Widget passes through.
     enum class Space : uchar {
         LOCAL,  // no transformation
@@ -86,7 +97,7 @@ private:
     virtual Claim _calculate_claim() { return m_claim.get(); }
 
     /// Updates (if necessary) and returns the Design of this Widget.
-    const WidgetDesign& get_design();
+    const WidgetDesign& _get_design();
 
     /// Calculates the transformation of this Widget relative to its Window.
     void _get_window_xform(Matrix3f& result) const;
@@ -149,5 +160,15 @@ inline const Matrix3f Widget::get_xform<Widget::Space::PARENT>() const
 
 template<>
 const Matrix3f Widget::get_xform<Widget::Space::WINDOW>() const;
+
+// accessors -------------------------------------------------------------------------------------------------------- //
+
+template<>
+class access::_Widget<Painterpreter> {
+    friend class notf::Painterpreter;
+
+    /// Updates (if necessary) and returns the Design of this Widget.
+    static const WidgetDesign& get_design(Widget& widget) { return widget._get_design(); }
+};
 
 NOTF_CLOSE_NAMESPACE

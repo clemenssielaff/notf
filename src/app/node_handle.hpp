@@ -40,8 +40,6 @@ public:
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
-    NOTF_NO_COPY_OR_ASSIGN(NodeHandle);
-
     /// Empty default constructor.
     NodeHandle() = default;
 
@@ -61,6 +59,10 @@ public:
     {}
     /// @}
 
+    /// Copy constructor.
+    /// @param other    NodeHandle to copy from.
+    NodeHandle(const NodeHandle& other) : m_node(other.m_node) {}
+
     /// Move constructor.
     /// @param other    NodeHandle to move from.
     NodeHandle(NodeHandle&& other) noexcept : m_node(std::move(other.m_node)) { other.m_node.reset(); }
@@ -72,6 +74,14 @@ public:
     NodeHandle(NodeHandle<U>&& other) : m_node(std::move(other.m_node))
     {
         other.m_node.reset();
+    }
+
+    /// Copy assignment operator.
+    /// @param other    NodeHandle to move from.
+    NodeHandle& operator=(const NodeHandle& other) noexcept
+    {
+        m_node = other.m_node;
+        return *this;
     }
 
     /// Move assignment operator.
@@ -105,6 +115,7 @@ public:
         if (!raw_node) {
             NOTF_THROW(no_node_error, "Node has been deleted");
         }
+        // TODO: is it a problem that this does not guarantee that the node will stay alive during function execution?
         return static_cast<T*>(raw_node.get());
     }
     T* operator->() { return operator T*(); }

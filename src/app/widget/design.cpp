@@ -4,8 +4,6 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-WidgetDesign::CommandBase::~CommandBase() = default;
-
 WidgetDesign::SetWindingCommand::~SetWindingCommand() = default;
 WidgetDesign::MoveCommand::~MoveCommand() = default;
 WidgetDesign::LineCommand::~LineCommand() = default;

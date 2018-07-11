@@ -62,7 +62,8 @@ class Widget;
 class WidgetDesign;
 class WidgetVisualizer;
 class Painter;
-class Painterpreter;
+
+NOTF_DEFINE_UNIQUE_POINTERS(class, Painterpreter);
 
 NOTF_DEFINE_SHARED_POINTERS(struct, Capability);
 NOTF_DEFINE_SHARED_POINTERS(class, WidgetScene);

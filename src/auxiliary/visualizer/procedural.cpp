@@ -38,7 +38,7 @@ ProceduralVisualizer::ProceduralVisualizer(Window& window, const std::string& sh
     }
 
     // create the renderer
-    m_renderer = std::make_unique<FragmentRenderer>(vertex_shader.get_shared(), fragment_shader.get_shared());
+    m_renderer = std::make_shared<FragmentRenderer>(vertex_shader.get_shared(), fragment_shader.get_shared());
 }
 
 ProceduralVisualizer::~ProceduralVisualizer() = default;

@@ -79,7 +79,7 @@ void Widget::_relayout_upwards()
     }
 }
 
-const WidgetDesign& Widget::get_design()
+const WidgetDesign& Widget::_get_design()
 {
     Painter painter(m_design);
     _paint(painter); // TODO: minimize widget redesign
@@ -88,7 +88,7 @@ const WidgetDesign& Widget::get_design()
 
 void Widget::_get_window_xform(Matrix3f& result) const
 {
-    if (valid_ptr<Widget*> parent = dynamic_cast<Widget*>(raw_pointer(_get_parent()))) {
+    if (Widget* parent = dynamic_cast<Widget*>(raw_pointer(_get_parent()))) {
         parent->_get_window_xform(result);
         result.premult(get_xform<Space::PARENT>());
     }

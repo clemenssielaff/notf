@@ -4,6 +4,8 @@
 
 NOTF_OPEN_NAMESPACE
 
+// ================================================================================================================== //
+
 /// Visualizer used to visualize a WidgetScene.
 class WidgetVisualizer : public Visualizer {
 
@@ -22,8 +24,8 @@ public:
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
-    /// Renderer to use for visualization.
-    PlotterPtr m_renderer;
+    /// Painterpreter to use for visualization.
+    PainterpreterPtr m_painterpreter;
 };
 
 NOTF_CLOSE_NAMESPACE

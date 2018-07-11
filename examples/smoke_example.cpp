@@ -8,6 +8,7 @@
 #include "app/root_node.hpp"
 #include "app/scene.hpp"
 #include "app/timer_manager.hpp"
+#include "app/widget/painter.hpp"
 #include "app/widget/widget_scene.hpp"
 #include "app/widget/widget_visualizer.hpp"
 #include "app/window.hpp"
@@ -16,6 +17,8 @@
 NOTF_USING_NAMESPACE;
 
 #pragma clang diagnostic ignored "-Wweak-vtables"
+
+// == Cloud Scene =================================================================================================== //
 
 struct CloudScene : public Scene {
     CloudScene(FactoryToken token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
@@ -40,12 +43,43 @@ private: // fields
     IntervalTimerPtr m_timer;
 };
 
-struct SceneOWidgets : public WidgetScene {
+// == Window Widget ================================================================================================= //
 
+class WindowWidget : public Widget {
+    // methods ------------------------------------------------------------------------------------------------------ //
+public:
+    /// Constructor.
+    WindowWidget(FactoryToken token, Scene& scene, valid_ptr<Node*> parent) : Widget(token, scene, parent) {}
+
+    /// Destructor.
+    ~WindowWidget() override = default;
+
+protected:
+    /// Updates the Design of this Widget through the given Painter.
+    void _paint(Painter& painter) final
+    {
+        painter.translate(50, 50);
+        painter.line_to(100, 100);
+        painter.stroke();
+    }
+
+    /// Recursive implementation to find all Widgets at a given position in local space
+    /// @param local_pos     Local coordinates where to look for a Widget.
+    /// @return              All Widgets at the given coordinate, ordered from front to back.
+    void _get_widgets_at(const Vector2f&, std::vector<valid_ptr<Widget*>>&) const final {}
+};
+
+// == Scene O' Widgets ============================================================================================== //
+
+struct SceneOWidgets : public WidgetScene {
     SceneOWidgets(FactoryToken token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
         : WidgetScene(token, graph, std::move(name))
-    {}
+    {
+        set_widget<WindowWidget>();
+    }
 };
+
+// == Main ========================================================================================================== //
 
 int smoke_main(int argc, char* argv[])
 {

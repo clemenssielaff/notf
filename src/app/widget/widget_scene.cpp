@@ -7,10 +7,8 @@ NOTF_OPEN_NAMESPACE
 // ================================================================================================================== //
 
 WidgetScene::WidgetScene(FactoryToken token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
-    : Scene(token, graph, std::move(name))
-{
-    _get_root().set_child<RootWidget>();
-}
+    : Scene(token, graph, std::move(name)), m_root_widget(_get_root().set_child<RootWidget>())
+{}
 
 WidgetScene::~WidgetScene() = default;
 
