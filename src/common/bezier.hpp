@@ -53,14 +53,14 @@ struct Bezier {
         /// @param ctrl1    First control point, in absolute coordinates.
         /// @param ctrl2    Second control point, in absolute coordinates.
         /// @param end      End of the spline, in absolute coordinates.
-        Segment(const vector_t a, const vector_t b, const vector_t c, const vector_t d)
+        Segment(vector_t a, vector_t b, vector_t c, vector_t d)
             : start(std::move(a)), ctrl1(std::move(b)), ctrl2(std::move(c)), end(std::move(d))
         {}
 
         /// Straight line.
         /// @param start    Start of the spline, in absolute coordinates.
         /// @param end      End of the spline, in absolute coordinates.
-        static Segment line(const vector_t a, const vector_t d)
+        static Segment line(const vector_t a, vector_t d)
         {
             const vector_t delta_thirds = (d - a) * (1. / 3.);
             return Segment(a, a + delta_thirds, a + (delta_thirds * 2), std::move(d));
@@ -70,7 +70,7 @@ struct Bezier {
         {
             // the tangent at the very extremes 0 and 1 may not be defined
             static const element_t epsilon = std::numeric_limits<element_t>::epsilon() * 100;
-            t                              = clamp(t, epsilon, 1 - epsilon);
+            t = clamp(t, epsilon, 1 - epsilon);
 
             const element_t ti = 1 - t;
             return ((ctrl1 - start) * (3 * ti * ti)) + ((ctrl2 - ctrl1) * (6 * ti * t)) + ((end - ctrl2) * (3 * t * t));

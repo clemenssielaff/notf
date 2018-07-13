@@ -71,7 +71,7 @@ public:
 
 protected:
     /// Updates the Design of this Widget through the given Painter.
-    virtual void _paint(Painter& painter) = 0;
+    virtual void _paint(Painter& painter) const = 0;
 
     /// Recursive implementation to find all Widgets at a given position in local space
     /// @param local_pos     Local coordinates where to look for a Widget.

@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "app/widget/paint.hpp" // TODO: move Paint into Plotter
 #include "common/aabr.hpp"
 #include "common/variant.hpp"
 #include "common/vector2.hpp"
@@ -86,17 +87,11 @@ private:
         int patch_vertices = 2;
 
         /// Stroke width uniform.
-        float stroke_width = 0;
+        float stroke_width = -1;
 
         /// Auxiliary vector2 uniform.
         /// Used as the base vertex for shapes and the size of the font atlas for text.
         Vector2f vec2_aux1;
-
-        /// Pixel ratio of the screen that the Plotter draws into.
-        /// Is calculated by its Window with:
-        ///     static_cast<float>(buffer_size().width) / static_cast<float>(window_size().width)
-        float pixel_ratio = 1.0;
-        // TODO: the pixel ratio was important for NanoVG, is it important for the Plotter?
     };
 
     // methods ------------------------------------------------------------------------------------------------------ //

@@ -89,6 +89,12 @@ private:
     /// Creates a new, empty Path.
     void _create_path();
 
+    /// Paints the current Path.
+    void _fill();
+
+    /// Paints an outline of the current Path.
+    void _stroke();
+
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Plotter used to render the Designs to the screen.

@@ -56,7 +56,7 @@ public:
 
 protected:
     /// Updates the Design of this Widget through the given Painter.
-    void _paint(Painter& painter) final
+    void _paint(Painter& painter) const override
     {
         painter.translate(50, 50);
         painter.line_to(100, 100);
@@ -100,9 +100,10 @@ int smoke_main(int argc, char* argv[])
         std::shared_ptr<SceneOWidgets> widget_scene
             = Scene::create<SceneOWidgets>(window->get_scene_graph(), "SceneO'Widgets");
 
-        SceneGraph::CompositionPtr composition = SceneGraph::Composition::create(
-            {SceneGraph::Layer::create(cloud_scene, std::make_unique<ProceduralVisualizer>(*window, "clouds.frag")),
-             SceneGraph::Layer::create(widget_scene, std::make_unique<WidgetVisualizer>(*window))});
+        SceneGraph::CompositionPtr composition = SceneGraph::Composition::create({
+            SceneGraph::Layer::create(widget_scene, std::make_unique<WidgetVisualizer>(*window)),
+            SceneGraph::Layer::create(cloud_scene, std::make_unique<ProceduralVisualizer>(*window, "clouds.frag")),
+        });
         window->get_scene_graph()->change_composition(composition);
     }
     return app.exec();

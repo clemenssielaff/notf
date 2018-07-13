@@ -181,9 +181,8 @@ void Plotter::add_stroke(StrokeInfo info, const CubicBezier2f& spline)
         return; // early out
     }
 
-    // TODO: stroke_width less than 1 should set a uniform that fades the line out
-    // TODO: differentiate between thin lines and thick lines. Thick lines should render like a concave shape, once into
-    //       the stencil buffer and once (without AA) into the color buffer, followed by a thin AA outline
+    // a line must be at least a pixel wide to be drawn, to emulate thinner lines lower the alpha
+    info.width = max(1, info.width);
 
     std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer();
     std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->buffer();
@@ -195,20 +194,20 @@ void Plotter::add_stroke(StrokeInfo info, const CubicBezier2f& spline)
     { // update indices
         indices.reserve(indices.size() + (spline.segments.size() * 4) + 2);
 
-        GLuint next_index = narrow_cast<GLuint>(vertices.size());
+        GLuint index = narrow_cast<GLuint>(vertices.size());
 
         // start cap
-        indices.emplace_back(next_index);
-        indices.emplace_back(next_index);
+        indices.emplace_back(index);
+        indices.emplace_back(index);
 
         for (size_t i = 0; i < spline.segments.size(); ++i) {
-            // first -> (n-1) segment
-            indices.emplace_back(next_index++);
-            indices.emplace_back(next_index);
+            // segment
+            indices.emplace_back(index);
+            indices.emplace_back(++index);
 
             // joint / end cap
-            indices.emplace_back(next_index);
-            indices.emplace_back(next_index);
+            indices.emplace_back(index);
+            indices.emplace_back(index);
         }
     }
 

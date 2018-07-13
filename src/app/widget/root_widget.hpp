@@ -34,7 +34,7 @@ public:
 
 private:
     /// Updates the Design of this Widget through the given Painter.
-    void _paint(Painter&) final {}
+    void _paint(Painter&) const final {}
 
     /// Recursive implementation to find all Widgets at a given position in local space
     /// @param local_pos     Local coordinates where to look for a Widget.

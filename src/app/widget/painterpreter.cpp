@@ -1,6 +1,7 @@
 #include "app/widget/painterpreter.hpp"
 
 #include "app/widget/widget.hpp"
+#include "common/bezier.hpp"
 #include "common/vector.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/renderer/plotter.hpp"
@@ -106,7 +107,7 @@ void Painterpreter::paint(Widget& widget)
             } break;
 
             case WidgetDesign::CommandType::STROKE: {
-                //                _stroke();
+                _stroke();
                 index += WidgetDesign::get_command_size<WidgetDesign::StrokeCommand>();
             } break;
 
@@ -220,6 +221,10 @@ void Painterpreter::paint(Widget& widget)
             }
         }
     }
+
+    // plot it
+    m_plotter->swap_buffers();
+    m_plotter->render();
 }
 
 void Painterpreter::_push_state() { m_states.emplace_back(m_states.back()); }
@@ -259,6 +264,44 @@ void Painterpreter::_create_path()
 {
     Path& new_path = create_back(m_paths);
     new_path.first_point = m_points.size();
+}
+
+void Painterpreter::_fill() {}
+
+void Painterpreter::_stroke()
+{
+    const State& state = _get_current_state();
+
+    // get the stroke paint
+    Paint stroke_paint = state.stroke_paint;
+    stroke_paint.inner_color.a *= state.alpha;
+    stroke_paint.outer_color.a *= state.alpha;
+
+    float stroke_width;
+    { // create a sane stroke width
+        const float scale = (state.xform.scale_x() + state.xform.scale_y()) / 2;
+        stroke_width = max(state.stroke_width * scale, 0); // 200 is arbitrary
+        if (stroke_width < 1) {
+            // if the stroke width is less than pixel size, use alpha to emulate coverage.
+            const float alpha = clamp(stroke_width, 0.0f, 1.0f);
+            stroke_paint.inner_color.a *= alpha * alpha; // since coverage is area, scale by alpha*alpha
+            stroke_paint.outer_color.a *= alpha * alpha;
+            stroke_width = 1;
+        }
+    }
+
+    { // pass the stroke to the plotter
+        Plotter::StrokeInfo stroke_info;
+        stroke_info.width = stroke_width;
+
+        CubicBezier2f spline2({
+            CubicBezier2f::Segment::line(Vector2f{100, 100}, Vector2f{200, 150}),
+            CubicBezier2f::Segment::line(Vector2f{200, 150}, Vector2f{300, 100}),
+            CubicBezier2f::Segment::line(Vector2f{300, 100}, Vector2f{400, 200}),
+        });
+
+        m_plotter->add_stroke(stroke_info, spline2);
+    }
 }
 
 NOTF_CLOSE_NAMESPACE
