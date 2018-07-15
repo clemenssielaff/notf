@@ -23,7 +23,7 @@ struct Triangle {
     // types -------------------------------------------------------------------------------------------------------- //
 
     /// Orientation of the Triangle.
-    enum class Orientation : char {
+    enum class Orientation : char { // TODO: there are two Orientation/Winding enums: in Triangle & in Plotter::paint
         CCW              = 1,
         CW               = 2,
         COUNTERCLOCKWISE = CCW,

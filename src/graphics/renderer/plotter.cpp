@@ -19,7 +19,7 @@
 /// For the correct calculation of caps and joints, we need the tangent directions at each vertex.
 /// This information is easy to derive if a2 != a1 and a3 != a1. If however, one of the two control points has zero
 /// distance to the vertex, the shader would require the next patch in order to get the tangent - which doesn't work.
-/// Therefore each control point is modified with the following formula (with T begin the tangent normal in the
+/// Therefore each control point ax is modified with the following formula (with T begin the tangent normal in the
 /// direction of ax):
 ///
 ///     if ax - a1 == (0, 0):
@@ -131,6 +131,86 @@ void set_modified_second_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier
 
 NOTF_OPEN_NAMESPACE
 
+// ================================================================================================================== //
+
+Plotter::Paint Plotter::Paint::linear_gradient(const Vector2f& start_pos, const Vector2f& end_pos,
+                                               const Color start_color, const Color end_color)
+{
+    static const float large_number = 1e5;
+
+    Vector2f delta = end_pos - start_pos;
+    const float mag = delta.magnitude();
+    if (is_approx(mag, 0, 0.0001)) {
+        delta.x() = 0;
+        delta.y() = 1;
+    }
+    else {
+        delta.x() /= mag;
+        delta.y() /= mag;
+    }
+
+    Paint paint;
+    paint.xform[0][0] = delta.y();
+    paint.xform[0][1] = -delta.x();
+    paint.xform[1][0] = delta.x();
+    paint.xform[1][1] = delta.y();
+    paint.xform[2][0] = start_pos.x() - (delta.x() * large_number);
+    paint.xform[2][1] = start_pos.y() - (delta.y() * large_number);
+    paint.radius = 0.0f;
+    paint.feather = max(1, mag);
+    paint.extent.width = large_number;
+    paint.extent.height = large_number + (mag / 2);
+    paint.inner_color = std::move(start_color);
+    paint.outer_color = std::move(end_color);
+    return paint;
+}
+
+Plotter::Paint
+Plotter::Paint::radial_gradient(const Vector2f& center, const float inner_radius, const float outer_radius,
+                                const Color inner_color, const Color outer_color)
+{
+    Paint paint;
+    paint.xform = Matrix3f::translation(center);
+    paint.radius = (inner_radius + outer_radius) * 0.5f;
+    paint.feather = max(1, outer_radius - inner_radius);
+    paint.extent.width = paint.radius;
+    paint.extent.height = paint.radius;
+    paint.inner_color = std::move(inner_color);
+    paint.outer_color = std::move(outer_color);
+    return paint;
+}
+
+Plotter::Paint Plotter::Paint::box_gradient(const Vector2f& center, const Size2f& extend, const float radius,
+                                            const float feather, const Color inner_color, const Color outer_color)
+{
+    Paint paint;
+    paint.xform = Matrix3f::translation({center.x() + extend.width / 2, center.y() + extend.height / 2});
+    paint.radius = radius;
+    paint.feather = max(1, feather);
+    paint.extent.width = extend.width / 2;
+    paint.extent.height = extend.height / 2;
+    paint.inner_color = std::move(inner_color);
+    paint.outer_color = std::move(outer_color);
+    return paint;
+}
+
+Plotter::Paint Plotter::Paint::texture_pattern(const Vector2f& origin, const Size2f& extend, TexturePtr texture,
+                                               const float angle, const float alpha)
+{
+    Paint paint;
+    paint.xform = Matrix3f::rotation(angle);
+    paint.xform[2][0] = origin.x();
+    paint.xform[2][1] = origin.y();
+    paint.extent.width = extend.width;
+    paint.extent.height = -extend.height;
+    paint.texture = texture;
+    paint.inner_color = Color(1, 1, 1, alpha);
+    paint.outer_color = Color(1, 1, 1, alpha);
+    return paint;
+}
+
+// ================================================================================================================== //
+
 Plotter::Plotter(GraphicsContext& graphics_context)
     : m_graphics_context(graphics_context), m_font_manager(m_graphics_context.get_font_manager())
 {
@@ -175,21 +255,17 @@ Plotter::Plotter(GraphicsContext& graphics_context)
 
 Plotter::~Plotter() { notf_check_gl(glDeleteVertexArrays(1, &m_vao_id)); }
 
-void Plotter::add_stroke(StrokeInfo info, const CubicBezier2f& spline)
+Plotter::PathPtr Plotter::add(const CubicBezier2f& spline)
 {
-    if (spline.segments.empty() || info.width <= 0.f) {
-        return; // early out
-    }
-
-    // a line must be at least a pixel wide to be drawn, to emulate thinner lines lower the alpha
-    info.width = max(1, info.width);
-
     std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer();
     std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->buffer();
 
-    const size_t index_offset = indices.size();
-
-    // TODO: differentiate between closed and open splines
+    // path
+    PathPtr path = NOTF_MAKE_SHARED_FROM_PRIVATE(Path);
+    path->offset = narrow_cast<uint>(indices.size());
+    path->center = Vector2f::zero(); // TODO: extract more Plotter::Path information from bezier splines
+    path->is_convex = false;         //
+    path->is_closed = spline.segments.front().start.is_approx(spline.segments.back().end);
 
     { // update indices
         indices.reserve(indices.size() + (spline.segments.size() * 4) + 2);
@@ -210,49 +286,55 @@ void Plotter::add_stroke(StrokeInfo info, const CubicBezier2f& spline)
             indices.emplace_back(index);
         }
     }
+    path->size = narrow_cast<int>(indices.size() - path->offset);
 
-    vertices.reserve(vertices.size() + spline.segments.size() + 1);
+    { // vertices
+        vertices.reserve(vertices.size() + spline.segments.size() + 1);
 
-    { // first vertex
-        const CubicBezier2f::Segment& first_segment = spline.segments.front();
-        PlotVertexArray::Vertex vertex;
-        set_pos(vertex, first_segment.start);
-        set_first_ctrl(vertex, Vector2f::zero());
-        set_modified_second_ctrl(vertex, first_segment);
-        vertices.emplace_back(std::move(vertex));
+        { // first vertex
+            const CubicBezier2f::Segment& first_segment = spline.segments.front();
+            PlotVertexArray::Vertex vertex;
+            set_pos(vertex, first_segment.start);
+            set_first_ctrl(vertex, Vector2f::zero());
+            set_modified_second_ctrl(vertex, first_segment);
+            vertices.emplace_back(std::move(vertex));
+        }
+
+        // middle vertices
+        for (size_t i = 0; i < spline.segments.size() - 1; ++i) {
+            const CubicBezier2f::Segment& left_segment = spline.segments[i];
+            const CubicBezier2f::Segment& right_segment = spline.segments[i + 1];
+            PlotVertexArray::Vertex vertex;
+            set_pos(vertex, left_segment.end);
+            set_modified_first_ctrl(vertex, left_segment);
+            set_modified_second_ctrl(vertex, right_segment);
+            vertices.emplace_back(std::move(vertex));
+        }
+
+        { // last vertex
+            const CubicBezier2f::Segment& last_segment = spline.segments.back();
+            PlotVertexArray::Vertex vertex;
+            set_pos(vertex, last_segment.end);
+            set_modified_first_ctrl(vertex, last_segment);
+            set_second_ctrl(vertex, Vector2f::zero());
+            vertices.emplace_back(std::move(vertex));
+        }
     }
 
-    // middle vertices
-    for (size_t i = 0; i < spline.segments.size() - 1; ++i) {
-        const CubicBezier2f::Segment& left_segment = spline.segments[i];
-        const CubicBezier2f::Segment& right_segment = spline.segments[i + 1];
-        PlotVertexArray::Vertex vertex;
-        set_pos(vertex, left_segment.end);
-        set_modified_first_ctrl(vertex, left_segment);
-        set_modified_second_ctrl(vertex, right_segment);
-        vertices.emplace_back(std::move(vertex));
-    }
-
-    { // last vertex
-        const CubicBezier2f::Segment& last_segment = spline.segments.back();
-        PlotVertexArray::Vertex vertex;
-        set_pos(vertex, last_segment.end);
-        set_modified_first_ctrl(vertex, last_segment);
-        set_second_ctrl(vertex, Vector2f::zero());
-        vertices.emplace_back(std::move(vertex));
-    }
-
-    // draw call
-    m_drawcall_buffer.emplace_back(
-        DrawCall{std::move(info), narrow_cast<uint>(index_offset), narrow_cast<int>(indices.size() - index_offset)});
+    return path;
 }
 
-void Plotter::add_shape(ShapeInfo info, const Polygonf& polygon)
+Plotter::PathPtr Plotter::add(const Polygonf& polygon)
 {
     std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer();
     std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->buffer();
 
-    const size_t index_offset = indices.size();
+    // path
+    PathPtr path = NOTF_MAKE_SHARED_FROM_PRIVATE(Path);
+    path->offset = narrow_cast<uint>(indices.size());
+    path->center = polygon.get_center();
+    path->is_convex = polygon.is_convex();
+    path->is_closed = true;
 
     { // update indices
         indices.reserve(indices.size() + (polygon.get_vertex_count() * 2));
@@ -270,6 +352,7 @@ void Plotter::add_shape(ShapeInfo info, const Polygonf& polygon)
         indices.emplace_back(next_index);
         indices.emplace_back(first_index);
     }
+    path->size = narrow_cast<int>(indices.size() - path->offset);
 
     // vertices
     vertices.reserve(vertices.size() + polygon.get_vertex_count());
@@ -281,11 +364,7 @@ void Plotter::add_shape(ShapeInfo info, const Polygonf& polygon)
         vertices.emplace_back(std::move(vertex));
     }
 
-    // draw call
-    info.is_convex = polygon.is_convex();
-    info.center = polygon.get_center();
-    m_drawcall_buffer.emplace_back(
-        DrawCall{std::move(info), narrow_cast<uint>(index_offset), narrow_cast<int>(indices.size() - index_offset)});
+    return path;
 }
 
 void Plotter::add_text(TextInfo info, const std::string& text)
@@ -345,8 +424,30 @@ void Plotter::add_text(TextInfo info, const std::string& text)
     }
 
     // draw call
-    m_drawcall_buffer.emplace_back(
-        DrawCall{std::move(info), narrow_cast<uint>(index_offset), narrow_cast<int>(indices.size() - index_offset)});
+    PathPtr path = NOTF_MAKE_SHARED_FROM_PRIVATE(Path);
+    path->offset = narrow_cast<uint>(index_offset);
+    path->size = narrow_cast<int>(indices.size() - index_offset);
+    m_drawcall_buffer.emplace_back(DrawCall{std::move(info), std::move(path)});
+}
+
+void Plotter::stroke(PathPtr path, StrokeInfo info)
+{
+    if (path->size == 0 || info.width <= 0.f) {
+        return; // early out
+    }
+
+    // a line must be at least a pixel wide to be drawn, to emulate thinner lines lower the alpha
+    info.width = max(1, info.width);
+
+    m_drawcall_buffer.emplace_back(DrawCall{std::move(info), std::move(path)});
+}
+
+void Plotter::fill(PathPtr path, FillInfo info)
+{
+    if (path->size == 0) {
+        return; // early out
+    }
+    m_drawcall_buffer.emplace_back(DrawCall{std::move(info), std::move(path)});
 }
 
 void Plotter::swap_buffers()
@@ -378,7 +479,7 @@ void Plotter::render() const
         /// This plotter.
         const Plotter& plotter;
 
-        /// draw call target.
+        /// Draw call target.
         const DrawCall& call;
 
         // methods ---------------------------------------------------------------------------------------------------//
@@ -387,6 +488,7 @@ void Plotter::render() const
         void operator()(const StrokeInfo& stroke) const
         {
             Pipeline& pipeline = *plotter.m_pipeline.get();
+            Path& path = *call.path;
 
             // patch vertices
             if (plotter.m_state.patch_vertices != 2) {
@@ -406,14 +508,15 @@ void Plotter::render() const
                 plotter.m_state.stroke_width = stroke.width;
             }
 
-            notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(call.size), g_index_type,
-                                         gl_buffer_offset(call.offset * sizeof(PlotIndexArray::index_t))));
+            notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
+                                         gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
         }
 
-        /// Draw a shape.
-        void operator()(const ShapeInfo& shape) const
+        /// Fill a shape.
+        void operator()(const FillInfo& /*shape*/) const
         {
             Pipeline& pipeline = *plotter.m_pipeline.get();
+            Path& path = *call.path;
 
             // patch vertices
             if (plotter.m_state.patch_vertices != 2) {
@@ -422,7 +525,7 @@ void Plotter::render() const
             }
 
             // patch type
-            if (shape.is_convex) {
+            if (path.is_convex) {
                 if (plotter.m_state.patch_type != PatchType::CONVEX) {
                     pipeline.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONVEX));
                     plotter.m_state.patch_type = PatchType::CONVEX;
@@ -436,17 +539,17 @@ void Plotter::render() const
             }
 
             // base vertex
-            if (!shape.center.is_approx(plotter.m_state.vec2_aux1)) {
+            if (!path.center.is_approx(plotter.m_state.vec2_aux1)) {
                 // with a purely convex polygon, we can safely put the base vertex into the center of the polygon as it
                 // will always be inside and it should never fall onto an existing vertex
                 // this way, we can use antialiasing at the outer edge
-                pipeline.get_tesselation_shader()->set_uniform("vec2_aux1", shape.center);
-                plotter.m_state.vec2_aux1 = shape.center;
+                pipeline.get_tesselation_shader()->set_uniform("vec2_aux1", path.center);
+                plotter.m_state.vec2_aux1 = path.center;
             }
 
-            if (shape.is_convex) {
-                notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(call.size), g_index_type,
-                                             gl_buffer_offset(call.offset * sizeof(PlotIndexArray::index_t))));
+            if (path.is_convex) {
+                notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
+                                             gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
             }
 
             // concave
@@ -463,8 +566,8 @@ void Plotter::render() const
                 notf_check_gl(glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP));
                 notf_check_gl(glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP));
                 notf_check_gl(glDisable(GL_CULL_FACE));
-                notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(call.size), g_index_type,
-                                             gl_buffer_offset(call.offset * sizeof(PlotIndexArray::index_t))));
+                notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
+                                             gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
                 notf_check_gl(glEnable(GL_CULL_FACE));
 
                 notf_check_gl(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)); // re-enable color
@@ -474,8 +577,8 @@ void Plotter::render() const
                                                                        // clearing it at the start)
 
                 // render colors here, same area as before if you don't want to clear the stencil buffer every time
-                notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(call.size), g_index_type,
-                                             gl_buffer_offset(call.offset * sizeof(PlotIndexArray::index_t))));
+                notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
+                                             gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
 
                 notf_check_gl(glDisable(GL_STENCIL_TEST));
             }
@@ -485,6 +588,7 @@ void Plotter::render() const
         void operator()(const TextInfo& /*text*/) const
         {
             Pipeline& pipeline = *plotter.m_pipeline.get();
+            Path& path = *call.path;
 
             // patch vertices
             if (plotter.m_state.patch_vertices != 1) {
@@ -508,8 +612,8 @@ void Plotter::render() const
                 plotter.m_state.vec2_aux1 = atlas_size_vec;
             }
 
-            notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(call.size), g_index_type,
-                                         gl_buffer_offset(call.offset * sizeof(PlotIndexArray::index_t))));
+            notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
+                                         gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
         }
     };
 

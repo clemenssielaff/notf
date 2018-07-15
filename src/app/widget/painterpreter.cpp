@@ -18,207 +18,63 @@ void Painterpreter::paint(Widget& widget)
         m_states.clear();
         m_states.emplace_back(); // always have at least one state
 
-        m_paths.clear();
-        m_points.clear();
+        m_current_path.reset();
 
         m_base_xform = widget.get_xform<Widget::Space::WINDOW>();
         m_base_clipping = widget.get_clipping_rect();
         m_bounds = Aabrf::wrongest();
     }
 
-    { // parse the Widget Design
-        using Word = WidgetDesign::Word;
+    /// Execute the various Painterpreter Commands.
+    struct CommandVisitor {
+
+        // fields ----------------------------------------------------------------------------------------------------//
+
+        /// This Painterpreter.
+        Painterpreter& painterpreter;
+
+        // methods ---------------------------------------------------------------------------------------------------//
+
+        void operator()(const WidgetDesign::PushStateCommand&) const { painterpreter._push_state(); }
+
+        void operator()(const WidgetDesign::PopStateCommand&) const { painterpreter._pop_state(); }
+
+        void operator()(const WidgetDesign::ResetTransformCommand& command) const {}
+
+        void operator()(const WidgetDesign::TranslationCommand& command) const {}
+
+        void operator()(const WidgetDesign::RotationCommand& command) const {}
+
+        void operator()(const WidgetDesign::SetStrokeWidthCommand& command) const
+        {
+            painterpreter._get_current_state().stroke_width = command.stroke_width;
+        }
+
+        void operator()(const WidgetDesign::SetPolygonPathCommand& command) const
+        {
+            painterpreter.m_current_path = painterpreter.m_plotter->add(command.data->polygon);
+        }
+
+        void operator()(const WidgetDesign::SetSplinePathCommand& command) const
+        {
+            painterpreter.m_current_path = painterpreter.m_plotter->add(command.data->spline);
+        }
+
+        void operator()(const WidgetDesign::WriteCommand& command) const
+        {
+            //
+        }
+
+        void operator()(const WidgetDesign::FillCommand&) const { painterpreter._fill(); }
+
+        void operator()(const WidgetDesign::StrokeCommand&) const { painterpreter._stroke(); }
+    };
+
+    { // parse the commands
         const WidgetDesign& design = Widget::Access<Painterpreter>::get_design(widget);
-        const std::vector<Word>& buffer = WidgetDesign::Access<Painterpreter>::get_buffer(design);
-        for (size_t index = 0; index < buffer.size();) {
-            switch (WidgetDesign::CommandType(buffer[index])) {
-
-            case WidgetDesign::CommandType::PUSH_STATE: {
-                _push_state();
-                index += WidgetDesign::get_command_size<WidgetDesign::PushStateCommand>();
-            } break;
-
-            case WidgetDesign::CommandType::POP_STATE: {
-                _pop_state();
-                index += WidgetDesign::get_command_size<WidgetDesign::PopStateCommand>();
-            } break;
-
-            case WidgetDesign::CommandType::START_PATH: {
-                m_paths.clear();
-                m_points.clear();
-                m_bounds = Aabrf::wrongest();
-                index += WidgetDesign::get_command_size<WidgetDesign::BeginPathCommand>();
-            } break;
-
-            case WidgetDesign::CommandType::SET_WINDING: {
-                if (!m_paths.empty()) {
-                    m_paths.back().winding = static_cast<Paint::Winding>(buffer[index + 1]);
-                }
-                index += WidgetDesign::get_command_size<WidgetDesign::SetWindingCommand>();
-            } break;
-
-            case WidgetDesign::CommandType::CLOSE_PATH: {
-                if (!m_paths.empty()) {
-                    m_paths.back().is_closed = true;
-                }
-                index += WidgetDesign::get_command_size<WidgetDesign::ClosePathCommand>();
-            } break;
-
-            case WidgetDesign::CommandType::MOVE: {
-                _create_path();
-                const auto cmd = design.map_command<WidgetDesign::MoveCommand>(index);
-                _add_point(cmd.pos, Point::Flags::CORNER);
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::LINE: {
-                if (m_paths.empty()) {
-                    _create_path();
-                }
-                const auto cmd = design.map_command<WidgetDesign::LineCommand>(index);
-                _add_point(cmd.pos, Point::Flags::CORNER);
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::BEZIER: {
-                //                if (m_paths.empty()) {
-                //                    _add_path();
-                //                }
-                //                Vector2f stylus;
-                //                if (m_points.empty()) {
-                //                    stylus = Vector2f::zero();
-                //                    _add_point(stylus, Point::Flags::CORNER);
-                //                }
-                //                else {
-                //                    Vector2f pos = m_points.back().pos;
-                //                    make_const(_get_current_state()).xform.inverse().transform(pos);
-                //                    stylus = pos;
-                //                }
-                const auto cmd = design.map_command<WidgetDesign::BezierCommand>(index);
-                //                _tesselate_bezier(stylus.x(), stylus.y(), cmd.ctrl1.x(), cmd.ctrl1.y(), cmd.ctrl2.x(),
-                //                cmd.ctrl2.y(),
-                //                                  cmd.end.x(), cmd.end.y());
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::FILL: {
-                //                _fill();
-                index += WidgetDesign::get_command_size<WidgetDesign::FillCommand>();
-            } break;
-
-            case WidgetDesign::CommandType::STROKE: {
-                _stroke();
-                index += WidgetDesign::get_command_size<WidgetDesign::StrokeCommand>();
-            } break;
-
-            case WidgetDesign::CommandType::SET_TRANSFORM: {
-                const auto cmd = design.map_command<WidgetDesign::SetTransformCommand>(index);
-                _get_current_state().xform = cmd.xform;
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::RESET_TRANSFORM: {
-                const auto cmd = design.map_command<WidgetDesign::ResetTransformCommand>(index);
-                _get_current_state().xform = m_base_xform;
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::TRANSFORM: {
-                const auto cmd = design.map_command<WidgetDesign::TransformCommand>(index);
-                _get_current_state().xform *= cmd.xform;
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::TRANSLATE: {
-                const auto cmd = design.map_command<WidgetDesign::TranslationCommand>(index);
-                _get_current_state().xform.translate(cmd.delta);
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::ROTATE: {
-                const auto cmd = design.map_command<WidgetDesign::RotationCommand>(index);
-                _get_current_state().xform.rotate(cmd.angle);
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::SET_CLIPPING: {
-                const auto cmd = design.map_command<WidgetDesign::SetClippingCommand>(index);
-                //                _set_scissor(cmd.scissor);
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::RESET_CLIPPING: {
-                const auto cmd = design.map_command<WidgetDesign::ResetClippingCommand>(index);
-                _get_current_state().clipping = m_base_clipping;
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::SET_FILL_COLOR: {
-                const auto cmd = design.map_command<WidgetDesign::FillColorCommand>(index);
-                _get_current_state().fill_paint.set_color(cmd.color);
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::SET_FILL_PAINT: {
-                const auto cmd = design.map_command<WidgetDesign::FillPaintCommand>(index);
-                _get_current_state().fill_paint = cmd.paint;
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::SET_STROKE_COLOR: {
-                const auto cmd = design.map_command<WidgetDesign::StrokeColorCommand>(index);
-                _get_current_state().stroke_paint.set_color(cmd.color);
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::SET_STROKE_PAINT: {
-                const auto cmd = design.map_command<WidgetDesign::StrokePaintCommand>(index);
-                _get_current_state().stroke_paint = cmd.paint;
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::SET_STROKE_WIDTH: {
-                const auto cmd = design.map_command<WidgetDesign::StrokeWidthCommand>(index);
-                _get_current_state().stroke_width = cmd.stroke_width;
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::SET_BLEND_MODE: {
-                const auto cmd = design.map_command<WidgetDesign::BlendModeCommand>(index);
-                _get_current_state().blend_mode = cmd.blend_mode;
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::SET_ALPHA: {
-                const auto cmd = design.map_command<WidgetDesign::SetAlphaCommand>(index);
-                _get_current_state().alpha = cmd.alpha;
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::SET_MITER_LIMIT: {
-                const auto cmd = design.map_command<WidgetDesign::MiterLimitCommand>(index);
-                _get_current_state().miter_limit = cmd.miter_limit;
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::SET_LINE_CAP: {
-                const auto cmd = design.map_command<WidgetDesign::LineCapCommand>(index);
-                _get_current_state().line_cap = cmd.line_cap;
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::SET_LINE_JOIN: {
-                const auto cmd = design.map_command<WidgetDesign::LineJoinCommand>(index);
-                _get_current_state().line_join = cmd.line_join;
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-
-            case WidgetDesign::CommandType::WRITE: {
-                const auto cmd = design.map_command<WidgetDesign::WriteCommand>(index);
-                //                _render_text(*cmd.text.get(), cmd.font);
-                index += WidgetDesign::get_command_size<decltype(cmd)>();
-            } break;
-            }
+        const std::vector<WidgetDesign::Command>& buffer = WidgetDesign::Access<Painterpreter>::get_buffer(design);
+        for (const WidgetDesign::Command& command : buffer) {
+            notf::visit(CommandVisitor{*this}, command);
         }
     }
 
@@ -235,73 +91,53 @@ void Painterpreter::_pop_state()
     m_states.pop_back();
 }
 
-void Painterpreter::_add_point(Vector2f position, const Point::Flags flags)
+void Painterpreter::_fill()
 {
-    if (m_paths.empty()) {
-        _create_path();
+    const State& state = _get_current_state();
+    if (!m_current_path || is_approx(state.alpha, 0)) {
+        return; // early out
     }
 
-    const State& current_state = _get_current_state();
+    // get the fill paint
+    Paint paint = state.stroke_paint;
+    paint.inner_color.a *= state.alpha;
+    paint.outer_color.a *= state.alpha;
 
-    // bring the Point from Painter- into Cell-space
-    current_state.xform.transform(position);
-
-    // if the Point is not significantly different from the last one, use that instead
-    if (!m_points.empty()) {
-        Point& last_point = m_points.back();
-        if (position.is_approx(last_point.pos, current_state.distance_tolerance)) {
-            last_point.flags = static_cast<Point::Flags>(last_point.flags | flags);
-            return;
-        }
-    }
-
-    // ... or if it is significantly different, append a new Point to the current Path
-    m_points.emplace_back(Point{std::move(position), Vector2f::zero(), Vector2f::zero(), 0.f, flags});
-    m_paths.back().point_count++;
+    // plot the shape
+    Plotter::FillInfo fill_info;
+    m_plotter->fill(m_current_path, std::move(fill_info));
 }
-
-void Painterpreter::_create_path()
-{
-    Path& new_path = create_back(m_paths);
-    new_path.first_point = m_points.size();
-}
-
-void Painterpreter::_fill() {}
 
 void Painterpreter::_stroke()
 {
     const State& state = _get_current_state();
+    if (!m_current_path || state.stroke_width <= 0 || is_approx(state.alpha, 0)) {
+        return; // early out
+    }
 
     // get the stroke paint
-    Paint stroke_paint = state.stroke_paint;
-    stroke_paint.inner_color.a *= state.alpha;
-    stroke_paint.outer_color.a *= state.alpha;
+    Paint paint = state.stroke_paint;
+    paint.inner_color.a *= state.alpha;
+    paint.outer_color.a *= state.alpha;
 
+    // create a sane stroke width
     float stroke_width;
-    { // create a sane stroke width
+    {
         const float scale = (state.xform.scale_x() + state.xform.scale_y()) / 2;
-        stroke_width = max(state.stroke_width * scale, 0); // 200 is arbitrary
+        stroke_width = max(state.stroke_width * scale, 0);
         if (stroke_width < 1) {
             // if the stroke width is less than pixel size, use alpha to emulate coverage.
             const float alpha = clamp(stroke_width, 0.0f, 1.0f);
-            stroke_paint.inner_color.a *= alpha * alpha; // since coverage is area, scale by alpha*alpha
-            stroke_paint.outer_color.a *= alpha * alpha;
+            paint.inner_color.a *= alpha * alpha; // since coverage is area, scale by alpha*alpha
+            paint.outer_color.a *= alpha * alpha;
             stroke_width = 1;
         }
     }
 
-    { // pass the stroke to the plotter
-        Plotter::StrokeInfo stroke_info;
-        stroke_info.width = stroke_width;
-
-        CubicBezier2f spline2({
-            CubicBezier2f::Segment::line(Vector2f{100, 100}, Vector2f{200, 150}),
-            CubicBezier2f::Segment::line(Vector2f{200, 150}, Vector2f{300, 100}),
-            CubicBezier2f::Segment::line(Vector2f{300, 100}, Vector2f{400, 200}),
-        });
-
-        m_plotter->add_stroke(stroke_info, spline2);
-    }
+    // plot the stroke
+    Plotter::StrokeInfo stroke_info;
+    stroke_info.width = stroke_width;
+    m_plotter->stroke(m_current_path, std::move(stroke_info));
 }
 
 NOTF_CLOSE_NAMESPACE

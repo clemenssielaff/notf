@@ -13,52 +13,9 @@ private:
     /// State used to contextualize paint operations.
     using State = Painter::Access<Painterpreter>::State;
 
-    // ========================================================================
-
-    struct Point {
-        enum Flags : uint {
-            NONE = 0,
-            CORNER = 1u << 0,
-            LEFT = 1u << 1,
-            BEVEL = 1u << 2,
-            INNERBEVEL = 1u << 3,
-        };
-
-        /// Position of the Point.
-        Vector2f pos;
-
-        /// Direction to the next Point.
-        Vector2f forward;
-
-        /// Miter distance.
-        Vector2f dm;
-
-        /// Distance to the next point forward.
-        float length;
-
-        /// Additional information about this Point.
-        Flags flags;
-    };
+    using Paint = Plotter::Paint;
 
     // ========================================================================
-
-    struct Path {
-        /// Index of the first Point.
-        size_t first_point = 0;
-
-        /// Number of Points in this Path.
-        size_t point_count = 0;
-
-        /// What direction the Path is wound.
-        Paint::Winding winding = Paint::Winding::SOLID;
-
-        /// Whether this Path is closed or not.
-        /// Closed Paths will draw an additional line between their last and first Point.
-        bool is_closed = false;
-
-        /// Whether the Path is convex or not.
-        bool is_convex = false;
-    };
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
@@ -83,9 +40,6 @@ private:
     /// Restore the previous State from the stack.
     void _pop_state();
 
-    /// Appends a new Point to the current Path.
-    void _add_point(Vector2f position, const Point::Flags flags);
-
     /// Creates a new, empty Path.
     void _create_path();
 
@@ -103,12 +57,6 @@ private:
     /// Stack of states.
     std::vector<State> m_states;
 
-    //// All points in the Painterpreter.
-    std::vector<Point> m_points;
-
-    /// All Paths stored in the Painterpreter (they refer to Points in `m_points`).
-    std::vector<Path> m_paths;
-
     /// The Widget's window transform.
     Matrix3f m_base_xform;
 
@@ -118,6 +66,9 @@ private:
     /// The bounds of all vertices of a path, used to define the quad to render them onto.
     Aabrf m_bounds; // TODO: do I really need this? maybe it's better to draw all polygons multiple times than to
                     // overdraw
+
+    /// The current Path.
+    Plotter::PathPtr m_current_path;
 };
 
 NOTF_CLOSE_NAMESPACE

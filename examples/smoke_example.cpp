@@ -58,9 +58,36 @@ protected:
     /// Updates the Design of this Widget through the given Painter.
     void _paint(Painter& painter) const override
     {
-        painter.translate(50, 50);
-        painter.line_to(100, 100);
+        // narrow s-curve
+        painter.set_stroke_width(1);
+        painter.set_path(CubicBezier2f({
+            CubicBezier2f::Segment(Vector2f{50, 100}, Vector2f{200, 50}, Vector2f{200, 350}, Vector2f{350, 350}),
+        }));
         painter.stroke();
+
+        // wide(r) line segments
+        painter.set_stroke_width(3);
+        painter.set_path(CubicBezier2f({
+            CubicBezier2f::Segment::line(Vector2f{200, 100}, Vector2f{300, 150}),
+            CubicBezier2f::Segment::line(Vector2f{300, 150}, Vector2f{400, 100}),
+            CubicBezier2f::Segment::line(Vector2f{400, 100}, Vector2f{500, 200}),
+        }));
+        painter.stroke();
+
+        // convex
+        painter.set_path(
+            Polygonf({Vector2f{10, 70}, Vector2f{5, 20}, Vector2f{5, 5}, Vector2f{75, 5}, Vector2f{75, 75}}));
+        // concave
+//        painter.set_path(Polygonf({
+//            Vector2f{565, 770},
+//            Vector2f{040, 440},
+//            Vector2f{330, 310},
+//            Vector2f{150, 120},
+//            Vector2f{460, 230},
+//            Vector2f{770, 120},
+//            Vector2f{250, 450},
+//        }));
+        painter.fill();
     }
 
     /// Recursive implementation to find all Widgets at a given position in local space

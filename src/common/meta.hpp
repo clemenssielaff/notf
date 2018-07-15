@@ -414,6 +414,62 @@ struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T
 
 // ================================================================================================================== //
 
+/// Member detector idiom as described on:
+///     https://en.wikibooks.org/wiki/More_C++_Idioms/Member_Detector
+///
+/// Usage:
+///     NOTF_HAS_MEMBER_DETECTOR(foo);  // generates a detector type `has_member_foo`
+///     has_member_foo<Bar>::value;     // is either true or false
+///
+/// Note that the class is NOT PUT INTO A NAMESPACE, so you can use it inside a class body as well.
+/// In the wild, if you don't put it into a class body, consider putting the generated class into the `detail` (or
+/// whatever) namespace.
+#define NOTF_HAS_MEMBER_DETECTOR(Member)                                              \
+    template<class T>                                                                 \
+    class _HasMember_##Member {                                                       \
+    private:                                                                          \
+        using No = char[1];                                                           \
+        using Yes = char[2];                                                          \
+        struct Fallback {                                                             \
+            int member;                                                               \
+        };                                                                            \
+        struct Derived : T, Fallback {};                                              \
+        template<class U>                                                             \
+        static No& test(decltype(U::member)*);                                        \
+        template<typename U>                                                          \
+        static Yes& test(U*);                                                         \
+                                                                                      \
+    public:                                                                           \
+        static constexpr bool RESULT = sizeof(test<Derived>(nullptr)) == sizeof(Yes); \
+    };                                                                                \
+    template<class T>                                                                 \
+    struct has_member_##Member : public std::integral_constant<bool, _HasMember_##Member<T>::RESULT> {}
+
+/// Like NOTF_HAS_MEMBER_DETECTOR but for detecting the presence of types.
+#define NOTF_HAS_MEMBER_TYPE_DETECTOR(Type)                                           \
+    template<class T>                                                                 \
+    class _HasMemberType_##Type {                                                     \
+    private:                                                                          \
+        using No = char[1];                                                           \
+        using Yes = char[2];                                                          \
+        struct Fallback {                                                             \
+            struct Type {};                                                           \
+        };                                                                            \
+        struct Derived : T, Fallback {};                                              \
+        template<class U>                                                             \
+        static No& test(typename U::Type*);                                           \
+        template<typename U>                                                          \
+        static Yes& test(U*);                                                         \
+                                                                                      \
+    public:                                                                           \
+        static constexpr bool RESULT = sizeof(test<Derived>(nullptr)) == sizeof(Yes); \
+    };                                                                                \
+                                                                                      \
+    template<class T>                                                                 \
+    struct has_member_type_##Type : public std::integral_constant<bool, _HasMemberType_##Type<T>::RESULT> {}
+
+// ================================================================================================================== //
+
 namespace detail {
 template<class T>
 constexpr void _notf_is_constexpr_helper(T&&)
@@ -494,6 +550,17 @@ struct make_shared_enabler : public T {
 #define NOTF_MAKE_SHARED_FROM_PRIVATE(T, ...) std::make_shared<detail::make_shared_enabler<T>>(__VA_ARGS__)
 #define NOTF_MAKE_UNIQUE_FROM_PRIVATE(T, ...) std::make_unique<detail::make_shared_enabler<T>>(__VA_ARGS__)
 #endif
+
+/// Explicitly instantiate T using aggreate initialization.
+/// Useful with `make_unique`, for example, whenever the aggregate constructor would not be able to be deduced
+/// automatically. Usage:
+///     std::make_uniqe<aggreate_adapter<X>>(foo, bar);
+template<class T>
+struct aggregate_adapter : public T {
+    template<class... Args>
+    aggregate_adapter(Args&&... args) : T{std::forward<Args>(args)...}
+    {}
+};
 
 // ================================================================================================================== //
 
