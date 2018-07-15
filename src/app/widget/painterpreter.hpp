@@ -15,7 +15,7 @@ private:
 
     using Paint = Plotter::Paint;
 
-    // ========================================================================
+    using PathPtr = Plotter::PathPtr;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
@@ -27,12 +27,11 @@ public:
     void paint(Widget& widget);
 
 private:
+    /// Reset the internal state.
+    void _reset();
+
     /// The current State.
-    State& _get_current_state()
-    {
-        assert(!m_states.empty());
-        return m_states.back();
-    }
+    State& _get_current_state();
 
     /// Copy the new state and place the copy on the stack.
     void _push_state();
@@ -67,8 +66,8 @@ private:
     Aabrf m_bounds; // TODO: do I really need this? maybe it's better to draw all polygons multiple times than to
                     // overdraw
 
-    /// The current Path.
-    Plotter::PathPtr m_current_path;
+    /// All Paths created by the Widget, addressable by index.
+    std::vector<valid_ptr<PathPtr>> m_paths;
 };
 
 NOTF_CLOSE_NAMESPACE

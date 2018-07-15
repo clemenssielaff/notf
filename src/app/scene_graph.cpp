@@ -64,6 +64,12 @@ void SceneGraph::Layer::draw()
 
     // the render thread should never modify the hierarchy
     NOTF_ASSERT(scene_graph.is_frozen_by(std::this_thread::get_id()));
+
+    // TODO: CRASHBUG
+    // I very seldomly get a crash here. it appears that the Scene was still alive when requested in this method
+    // a few lines up, but is deleted before the next line. I need a better way to make sure Scenes stay alife during
+    // rendering
+
     m_visualizer->visualize(raw_pointer(m_scene));
 }
 

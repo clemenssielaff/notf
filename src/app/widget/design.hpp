@@ -28,6 +28,9 @@ public:
     /// Paint to use in the next fill / stroke / write.
     using Paint = Plotter::Paint;
 
+    /// Id identifying a Path in the Design.
+    using PathId = Plotter::PathId;
+
     // ========================================================================
 private:
     /// Member type detector to differentiate Commands with a `Data` type from those without.
@@ -76,6 +79,11 @@ public:
         std::unique_ptr<Data> data;
     };
 
+    /// Make an existing Path current.
+    struct SetPathIndexCommand {
+        PathId index;
+    };
+
     /// Writes the given text on screen using the current Path transform at the baseline start point.
     struct WriteCommand {
         struct Data {
@@ -93,7 +101,7 @@ public:
 
     using Command = notf::variant<PushStateCommand, PopStateCommand, ResetTransformCommand, TranslationCommand,
                                   RotationCommand, SetStrokeWidthCommand, SetPolygonPathCommand, SetSplinePathCommand,
-                                  WriteCommand, FillCommand, StrokeCommand>;
+                                  SetPathIndexCommand, WriteCommand, FillCommand, StrokeCommand>;
     static_assert(sizeof(Command) == (sizeof(std::unique_ptr<void>) * 2),
                   "Make sure to wrap supplementary data of your Command type in a unique_ptr<>, "
                   "so it doesn't inflate the size of the Command variant");

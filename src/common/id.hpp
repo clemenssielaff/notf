@@ -1,8 +1,6 @@
 #pragma once
 
 #include <functional>
-#include <ostream>
-#include <type_traits>
 
 #include "common/meta.hpp"
 
@@ -45,18 +43,21 @@ public:
     IdType() = delete;
 
     /// Value constructor.
-    IdType(const underlying_type value) : m_value(value) {}
+    constexpr IdType(const underlying_type value) : m_value(value) {}
 
     /// Copy constructor from typed ID.
     template<typename... Ts>
-    IdType(const IdType<type_t, underlying_t, Ts...>& id) : m_value(id.value())
+    constexpr IdType(const IdType<type_t, underlying_t, Ts...>& id) : m_value(id.value())
     {}
 
     /// Explicit invalid Id generator.
-    static IdType invalid() { return IdType(INVALID); }
+    constexpr static IdType invalid() { return IdType(INVALID); }
+
+    /// First valid Id.
+    constexpr static IdType first() { return IdType(INVALID + 1); }
 
     /// Identifier value of this ID.
-    const underlying_t& value() const { return m_value; }
+    constexpr const underlying_t& value() const { return m_value; }
 
     /// @{
     /// Equality operator.
@@ -101,14 +102,14 @@ public:
     /// @}
 
     /// Checks if this Id is valid or not.
-    bool is_valid() const { return m_value != INVALID; }
+    constexpr bool is_valid() const { return m_value != INVALID; }
 
     /// Checks if this Id is valid or not.
-    explicit operator bool() const { return is_valid(); }
+    constexpr explicit operator bool() const { return is_valid(); }
 
     /// Cast back to the underlying type.
     /// Must be explicit to avoid comparison between different Id types.
-    explicit operator underlying_type() const { return m_value; }
+    constexpr explicit operator underlying_type() const { return m_value; }
 };
 
 // ================================================================================================================== //

@@ -10,19 +10,13 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-Painterpreter::Painterpreter(GraphicsContext& context) : m_plotter(std::make_shared<Plotter>(context)) {}
+Painterpreter::Painterpreter(GraphicsContext& context) : m_plotter(std::make_shared<Plotter>(context)) { _reset(); }
 
 void Painterpreter::paint(Widget& widget)
 {
-    { // reset / adopt the Widget's auxiliary information
-        m_states.clear();
-        m_states.emplace_back(); // always have at least one state
-
-        m_current_path.reset();
-
+    { // adopt the Widget's auxiliary information
         m_base_xform = widget.get_xform<Widget::Space::WINDOW>();
         m_base_clipping = widget.get_clipping_rect();
-        m_bounds = Aabrf::wrongest();
     }
 
     /// Execute the various Painterpreter Commands.
@@ -39,28 +33,42 @@ void Painterpreter::paint(Widget& widget)
 
         void operator()(const WidgetDesign::PopStateCommand&) const { painterpreter._pop_state(); }
 
-        void operator()(const WidgetDesign::ResetTransformCommand& command) const {}
+        void operator()(const WidgetDesign::ResetTransformCommand&) const {}
 
-        void operator()(const WidgetDesign::TranslationCommand& command) const {}
+        void operator()(const WidgetDesign::TranslationCommand&) const {}
 
-        void operator()(const WidgetDesign::RotationCommand& command) const {}
+        void operator()(const WidgetDesign::RotationCommand&) const {}
 
         void operator()(const WidgetDesign::SetStrokeWidthCommand& command) const
         {
-            painterpreter._get_current_state().stroke_width = command.stroke_width;
+            State& state = painterpreter._get_current_state();
+            state.stroke_width = command.stroke_width;
         }
 
         void operator()(const WidgetDesign::SetPolygonPathCommand& command) const
         {
-            painterpreter.m_current_path = painterpreter.m_plotter->add(command.data->polygon);
+            State& state = painterpreter._get_current_state();
+            state.path = painterpreter.m_plotter->add(command.data->polygon);
+            painterpreter.m_paths.emplace_back(state.path);
         }
 
         void operator()(const WidgetDesign::SetSplinePathCommand& command) const
         {
-            painterpreter.m_current_path = painterpreter.m_plotter->add(command.data->spline);
+            State& state = painterpreter._get_current_state();
+            state.path = painterpreter.m_plotter->add(command.data->spline);
+            painterpreter.m_paths.emplace_back(state.path);
         }
 
-        void operator()(const WidgetDesign::WriteCommand& command) const
+        void operator()(const WidgetDesign::SetPathIndexCommand& command) const
+        {
+            NOTF_ASSERT(command.index);
+            const size_t path_index = command.index.value() - Plotter::PathId::first().value();
+            NOTF_ASSERT(path_index < painterpreter.m_paths.size());
+            State& state = painterpreter._get_current_state();
+            state.path = painterpreter.m_paths[path_index];
+        }
+
+        void operator()(const WidgetDesign::WriteCommand&) const
         {
             //
         }
@@ -81,6 +89,25 @@ void Painterpreter::paint(Widget& widget)
     // plot it
     m_plotter->swap_buffers();
     m_plotter->render();
+    _reset();
+}
+
+void Painterpreter::_reset()
+{
+    m_states.clear();
+    m_states.emplace_back(); // always have at least one state
+
+    m_paths.clear();
+
+    m_base_xform = Matrix3f::identity();
+    m_base_clipping = {};
+    m_bounds = Aabrf::wrongest();
+}
+
+Painterpreter::State& Painterpreter::_get_current_state()
+{
+    assert(!m_states.empty());
+    return m_states.back();
 }
 
 void Painterpreter::_push_state() { m_states.emplace_back(m_states.back()); }
@@ -94,7 +121,7 @@ void Painterpreter::_pop_state()
 void Painterpreter::_fill()
 {
     const State& state = _get_current_state();
-    if (!m_current_path || is_approx(state.alpha, 0)) {
+    if (!state.path || is_approx(state.alpha, 0)) {
         return; // early out
     }
 
@@ -105,13 +132,13 @@ void Painterpreter::_fill()
 
     // plot the shape
     Plotter::FillInfo fill_info;
-    m_plotter->fill(m_current_path, std::move(fill_info));
+    m_plotter->fill(state.path, std::move(fill_info));
 }
 
 void Painterpreter::_stroke()
 {
     const State& state = _get_current_state();
-    if (!m_current_path || state.stroke_width <= 0 || is_approx(state.alpha, 0)) {
+    if (!state.path || state.stroke_width <= 0 || is_approx(state.alpha, 0)) {
         return; // early out
     }
 
@@ -137,7 +164,7 @@ void Painterpreter::_stroke()
     // plot the stroke
     Plotter::StrokeInfo stroke_info;
     stroke_info.width = stroke_width;
-    m_plotter->stroke(m_current_path, std::move(stroke_info));
+    m_plotter->stroke(state.path, std::move(stroke_info));
 }
 
 NOTF_CLOSE_NAMESPACE

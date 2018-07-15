@@ -4,6 +4,8 @@
 
 #include "common/aabr.hpp"
 #include "common/color.hpp"
+#include "common/id.hpp"
+#include "common/pointer.hpp"
 #include "common/variant.hpp"
 #include "common/vector2.hpp"
 #include "graphics/forwards.hpp"
@@ -56,6 +58,9 @@ public:
         bool is_closed = true;
     };
     using PathPtr = std::shared_ptr<Path>;
+
+    /// Id identifying a Path in the Design.
+    using PathId = IdType<Path, uint>;
 
     // ============================================================================================================== //
 
@@ -241,12 +246,12 @@ public:
     /// Creates a stroke tracing the given Path.
     /// @param path     Path to stroke.
     /// @param info     Information on how to draw the stroke.
-    void stroke(PathPtr path, StrokeInfo info);
+    void stroke(valid_ptr<PathPtr> path, StrokeInfo info);
 
     /// Creates a filled shape bounded by the given Path.
     /// @param path     Path to fill.
     /// @param info     Information on how to draw the shape.
-    void fill(PathPtr path, FillInfo info);
+    void fill(valid_ptr<PathPtr> path, FillInfo info);
 
     /// Adds a new line of text to render into the buffer.
     /// @param info     Information on how to render the text.

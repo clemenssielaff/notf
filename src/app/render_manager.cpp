@@ -90,7 +90,7 @@ void RenderManager::RenderThread::_run()
 
             try {
                 // render all Layers from back to front
-                for (const auto& layer : reverse(scene_graph->get_current_composition()->get_layers())) { //
+                for (const auto& layer : reverse(scene_graph->get_current_composition()->get_layers())) {
                     layer->draw();
                 }
             }

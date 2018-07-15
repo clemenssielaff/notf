@@ -430,7 +430,7 @@ void Plotter::add_text(TextInfo info, const std::string& text)
     m_drawcall_buffer.emplace_back(DrawCall{std::move(info), std::move(path)});
 }
 
-void Plotter::stroke(PathPtr path, StrokeInfo info)
+void Plotter::stroke(valid_ptr<PathPtr> path, StrokeInfo info)
 {
     if (path->size == 0 || info.width <= 0.f) {
         return; // early out
@@ -442,7 +442,7 @@ void Plotter::stroke(PathPtr path, StrokeInfo info)
     m_drawcall_buffer.emplace_back(DrawCall{std::move(info), std::move(path)});
 }
 
-void Plotter::fill(PathPtr path, FillInfo info)
+void Plotter::fill(valid_ptr<PathPtr> path, FillInfo info)
 {
     if (path->size == 0) {
         return; // early out
