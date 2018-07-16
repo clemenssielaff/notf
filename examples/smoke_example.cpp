@@ -13,6 +13,8 @@
 #include "app/widget/widget_visualizer.hpp"
 #include "app/window.hpp"
 #include "auxiliary/visualizer/procedural.hpp"
+#include "graphics/core/graphics_context.hpp"
+#include "graphics/text/font.hpp"
 
 NOTF_USING_NAMESPACE;
 
@@ -49,7 +51,11 @@ class WindowWidget : public Widget {
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
-    WindowWidget(FactoryToken token, Scene& scene, valid_ptr<Node*> parent) : Widget(token, scene, parent) {}
+    WindowWidget(FactoryToken token, Scene& scene, valid_ptr<Node*> parent) : Widget(token, scene, parent)
+    {
+        GraphicsContext& context = scene.get_window()->get_graphics_context();
+        m_font = Font::load(context.get_font_manager(), "Roboto-Regular.ttf", 32);
+    }
 
     /// Destructor.
     ~WindowWidget() override = default;
@@ -58,45 +64,58 @@ protected:
     /// Updates the Design of this Widget through the given Painter.
     void _paint(Painter& painter) const override
     {
-        const Painter::PathId narrow_s_curve = painter.set_path(CubicBezier2f({
-            CubicBezier2f::Segment(Vector2f{50, 100}, Vector2f{200, 50}, Vector2f{200, 350}, Vector2f{350, 350}),
-        }));
-        const Painter::PathId line_segments = painter.set_path(CubicBezier2f({
-            CubicBezier2f::Segment::line(Vector2f{200, 100}, Vector2f{300, 150}),
-            CubicBezier2f::Segment::line(Vector2f{300, 150}, Vector2f{400, 100}),
-            CubicBezier2f::Segment::line(Vector2f{400, 100}, Vector2f{500, 200}),
-        }));
+        if (false) { // lines
+            const Painter::PathId narrow_s_curve = painter.set_path(CubicBezier2f({
+                CubicBezier2f::Segment(Vector2f{50, 100}, Vector2f{200, 50}, Vector2f{200, 350}, Vector2f{350, 350}),
+            }));
+            const Painter::PathId line_segments = painter.set_path(CubicBezier2f({
+                CubicBezier2f::Segment::line(Vector2f{200, 100}, Vector2f{300, 150}),
+                CubicBezier2f::Segment::line(Vector2f{300, 150}, Vector2f{400, 100}),
+                CubicBezier2f::Segment::line(Vector2f{400, 100}, Vector2f{500, 200}),
+            }));
 
-        // narrow s-curve
-        painter.set_stroke_width(1);
-        painter.set_path(narrow_s_curve);
-        painter.stroke();
+            // narrow s-curve
+            painter.set_stroke_width(1);
+            painter.set_path(narrow_s_curve);
+            painter.stroke();
 
-        // wide(r) line segments
-        painter.set_stroke_width(3);
-        painter.set_path(line_segments);
-        painter.stroke();
+            // wide(r) line segments
+            painter.set_stroke_width(3);
+            painter.set_path(line_segments);
+            painter.stroke();
+        }
 
-        // convex
-        painter.set_path(
-            Polygonf({Vector2f{10, 70}, Vector2f{5, 20}, Vector2f{5, 5}, Vector2f{75, 5}, Vector2f{75, 75}}));
-        // concave
-        //        painter.set_path(Polygonf({
-        //            Vector2f{565, 770},
-        //            Vector2f{040, 440},
-        //            Vector2f{330, 310},
-        //            Vector2f{150, 120},
-        //            Vector2f{460, 230},
-        //            Vector2f{770, 120},
-        //            Vector2f{250, 450},
-        //        }));
-        painter.fill();
+        if (false) { // shapes
+            // convex
+            painter.set_path(
+                Polygonf({Vector2f{10, 70}, Vector2f{5, 20}, Vector2f{5, 5}, Vector2f{75, 5}, Vector2f{75, 75}}));
+            // concave
+            //        painter.set_path(Polygonf({
+            //            Vector2f{565, 770},
+            //            Vector2f{040, 440},
+            //            Vector2f{330, 310},
+            //            Vector2f{150, 120},
+            //            Vector2f{460, 230},
+            //            Vector2f{770, 120},
+            //            Vector2f{250, 450},
+            //        }));
+            painter.fill();
+        }
+
+        { // text
+            painter.set_font(m_font);
+            painter.write("Hello NoTF!");
+        }
     }
 
     /// Recursive implementation to find all Widgets at a given position in local space
     /// @param local_pos     Local coordinates where to look for a Widget.
     /// @return              All Widgets at the given coordinate, ordered from front to back.
     void _get_widgets_at(const Vector2f&, std::vector<valid_ptr<Widget*>>&) const final {}
+
+    // fields ------------------------------------------------------------------------------------------------------- //
+private:
+    FontPtr m_font;
 };
 
 // == Scene O' Widgets ============================================================================================== //

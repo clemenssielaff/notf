@@ -48,6 +48,9 @@ private:
     /// Paints an outline of the current Path.
     void _stroke();
 
+    /// Writes the given text.
+    void _write(const std::string& text);
+
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Plotter used to render the Designs to the screen.

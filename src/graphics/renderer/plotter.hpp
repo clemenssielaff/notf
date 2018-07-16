@@ -254,9 +254,9 @@ public:
     void fill(valid_ptr<PathPtr> path, FillInfo info);
 
     /// Adds a new line of text to render into the buffer.
-    /// @param info     Information on how to render the text.
     /// @param text     Text to render.
-    void add_text(TextInfo info, const std::string& text);
+    /// @param info     Information on how to render the text.
+    void write(const std::string& text, TextInfo info);
 
     /// Replaces the current list of OpenGL draw calls with one parsed from the buffer.
     /// Clears the buffer.

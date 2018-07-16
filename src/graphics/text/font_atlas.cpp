@@ -255,7 +255,7 @@ FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t he
         const SkylineNode& current_node = m_nodes[node_index];
 
         // if the rect is too wide, there's nothing more we can do
-        if (current_node.x + width > m_width) {
+        if (current_node.x + width >= m_width) {
             break;
         }
 
@@ -266,7 +266,7 @@ FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t he
             for (size_t spanned_index = node_index; remaining_width > 0; ++spanned_index) {
                 NOTF_ASSERT(spanned_index < m_nodes.size());
                 y = max(y, m_nodes[spanned_index].y);
-                if (y + height > m_height) {
+                if (y + height >= m_height) {
                     y = std::numeric_limits<coord_t>::max();
                     break;
                 }
@@ -303,7 +303,7 @@ FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t he
 void FontAtlas::_add_node(const size_t node_index, const Glyph::Rect& rect)
 {
     const coord_t rect_right = rect.x + rect.width;
-    NOTF_ASSERT(rect_right <= m_width);
+    NOTF_ASSERT(rect_right < m_width);
     NOTF_ASSERT(rect.y + rect.height < m_height);
 
     // identify and store generated waste

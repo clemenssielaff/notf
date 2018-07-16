@@ -80,26 +80,27 @@ Font::Font(FontManager& manager, const std::string& filename, const pixel_size_t
     log_trace << "Loaded Font \"" << m_name << "\" from file: " << filename;
 }
 
-FontPtr Font::load(FontManagerPtr& font_manager, std::string filename, const pixel_size_t pixel_size)
+FontPtr Font::load(FontManager& font_manager, const std::string& filename, const pixel_size_t pixel_size)
 {
-    const Font::Identifier identifier = {std::move(filename), pixel_size};
+    auto& font_resource_type = ResourceManager::get_instance().get_type<Font>();
+    const Font::Identifier identifier = {font_resource_type.get_path() + filename, pixel_size};
 
     { // check if the given filename/size - pair is already a known (and loaded) font
-        auto it = font_manager->m_fonts.find(identifier);
-        if (it != font_manager->m_fonts.end()) {
+        auto it = font_manager.m_fonts.find(identifier);
+        if (it != font_manager.m_fonts.end()) {
             if (FontPtr font = it->second.lock()) {
                 return font;
             }
             else {
-                font_manager->m_fonts.erase(it);
+                font_manager.m_fonts.erase(it);
             }
         }
     }
 
     // create and store the new Font in the manager, so it can be re-used
-    FontPtr font = NOTF_MAKE_SHARED_FROM_PRIVATE(Font, *font_manager, identifier.filename, pixel_size);
-    ResourceManager::get_instance().get_type<Font>().set(identifier.filename, font);
-    font_manager->m_fonts.insert({std::move(identifier), font});
+    FontPtr font = NOTF_MAKE_SHARED_FROM_PRIVATE(Font, font_manager, identifier.filename, pixel_size);
+    font_resource_type.set(identifier.filename, font);
+    font_manager.m_fonts.insert({std::move(identifier), font});
 
     return font;
 }

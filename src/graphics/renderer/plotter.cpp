@@ -367,7 +367,7 @@ Plotter::PathPtr Plotter::add(const Polygonf& polygon)
     return path;
 }
 
-void Plotter::add_text(TextInfo info, const std::string& text)
+void Plotter::write(const std::string& text, TextInfo info)
 {
     std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer();
     std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->buffer();
@@ -454,7 +454,7 @@ void Plotter::swap_buffers()
 {
     const auto vao_guard = VaoBindGuard(m_vao_id);
 
-    static_cast<PlotVertexArray*>(m_vertices.get())->init();
+    static_cast<PlotVertexArray*>(m_vertices.get())->init(); // TODO: this should be `update` right?
     static_cast<PlotIndexArray*>(m_indices.get())->init();
 
     // TODO: combine batches with same type & info -- that's what batches are there for
@@ -602,7 +602,7 @@ void Plotter::render() const
                 plotter.m_state.patch_type = PatchType::TEXT;
             }
 
-            const TexturePtr& font_atlas = plotter.m_font_manager.atlas_texture();
+            const TexturePtr font_atlas = plotter.m_font_manager.get_atlas_texture();
             const Size2i& atlas_size = font_atlas->get_size();
 
             // atlas size
@@ -611,7 +611,6 @@ void Plotter::render() const
                 pipeline.get_tesselation_shader()->set_uniform("vec2_aux1", atlas_size_vec);
                 plotter.m_state.vec2_aux1 = atlas_size_vec;
             }
-
             notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
                                          gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
         }

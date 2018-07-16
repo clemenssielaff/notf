@@ -45,6 +45,12 @@ void Painterpreter::paint(Widget& widget)
             state.stroke_width = command.stroke_width;
         }
 
+        void operator()(const WidgetDesign::SetFontCommand& command) const
+        {
+            State& state = painterpreter._get_current_state();
+            state.font = command.data->font;
+        }
+
         void operator()(const WidgetDesign::SetPolygonPathCommand& command) const
         {
             State& state = painterpreter._get_current_state();
@@ -68,10 +74,7 @@ void Painterpreter::paint(Widget& widget)
             state.path = painterpreter.m_paths[path_index];
         }
 
-        void operator()(const WidgetDesign::WriteCommand&) const
-        {
-            //
-        }
+        void operator()(const WidgetDesign::WriteCommand& command) const { painterpreter._write(command.data->text); }
 
         void operator()(const WidgetDesign::FillCommand&) const { painterpreter._fill(); }
 
@@ -165,6 +168,20 @@ void Painterpreter::_stroke()
     Plotter::StrokeInfo stroke_info;
     stroke_info.width = stroke_width;
     m_plotter->stroke(state.path, std::move(stroke_info));
+}
+
+void Painterpreter::_write(const std::string& text)
+{
+    const State& state = _get_current_state();
+    if (!state.font || is_approx(state.alpha, 0)) {
+        return; // early out
+    }
+
+    // plot the text
+    Plotter::TextInfo text_info;
+    text_info.font = state.font;
+    text_info.translation = {150, 150}; //state.xform.transform(Vector2f::zero());
+    m_plotter->write(text, std::move(text_info));
 }
 
 NOTF_CLOSE_NAMESPACE

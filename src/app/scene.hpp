@@ -78,6 +78,9 @@ public:
     /// The SceneGraph owning this Scene.
     SceneGraph& get_graph() const { return *m_graph; }
 
+    /// Window owning this Scene. Is empty if the Window was already closed.
+    risky_ptr<WindowPtr> get_window() const { return m_graph->get_window(); }
+
     /// Graph-unique name of the Scene.
     const std::string& get_name() const { return m_name->first; }
 

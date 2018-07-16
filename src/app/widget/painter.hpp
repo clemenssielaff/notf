@@ -47,6 +47,9 @@ private:
         /// Current Path.
         risky_ptr<PathPtr> path;
 
+        /// Current Font.
+        FontPtr font;
+
         Clipping clipping;
 
         float alpha = 1;
@@ -87,9 +90,13 @@ public:
 
     // Text -------------------------------------------------------------------
 
+    /// Sets a new current Font.
+    /// @param font     New current font.
+    void set_font(FontPtr font);
+
     /// Renders a text.
-    /// The stencil position corresponts to the start of the text's baseline.
-    void write(std::string text, FontPtr font);
+    /// The transformation corresponds to the start of the text's baseline.
+    void write(std::string text);
 
     // Painting ---------------------------------------------------------------
 

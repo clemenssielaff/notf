@@ -37,10 +37,17 @@ Painter::PathId Painter::set_path(PathId id)
     return m_current_path_id;
 }
 
-void Painter::write(std::string text, FontPtr font)
+void Painter::set_font(FontPtr font)
 {
-    m_design.add_command<WidgetDesign::WriteCommand>(std::move(text), std::move(font));
+    State& current_state = _get_current_state();
+    if (!font || current_state.font == font) {
+        return; // early out
+    }
+    current_state.font = font;
+    m_design.add_command<WidgetDesign::SetFontCommand>(std::move(font));
 }
+
+void Painter::write(std::string text) { m_design.add_command<WidgetDesign::WriteCommand>(std::move(text)); }
 
 void Painter::fill() { m_design.add_command<WidgetDesign::FillCommand>(); }
 

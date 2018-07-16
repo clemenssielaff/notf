@@ -61,6 +61,14 @@ public:
         float stroke_width;
     };
 
+    /// Changes the current Font.
+    struct SetFontCommand {
+        struct Data {
+            FontPtr font;
+        };
+        std::unique_ptr<Data> data;
+    };
+
     /// Sets the current Path of the Design to the given Polygon.
     /// Note that the Polgyon will still be transformed by the Path transformation before drawn on screen.
     struct SetPolygonPathCommand {
@@ -88,7 +96,6 @@ public:
     struct WriteCommand {
         struct Data {
             std::string text;
-            FontPtr font;
         };
         std::unique_ptr<Data> data;
     };
@@ -100,8 +107,8 @@ public:
     struct StrokeCommand {};
 
     using Command = notf::variant<PushStateCommand, PopStateCommand, ResetTransformCommand, TranslationCommand,
-                                  RotationCommand, SetStrokeWidthCommand, SetPolygonPathCommand, SetSplinePathCommand,
-                                  SetPathIndexCommand, WriteCommand, FillCommand, StrokeCommand>;
+                                  RotationCommand, SetStrokeWidthCommand, SetFontCommand, SetPolygonPathCommand,
+                                  SetSplinePathCommand, SetPathIndexCommand, WriteCommand, FillCommand, StrokeCommand>;
     static_assert(sizeof(Command) == (sizeof(std::unique_ptr<void>) * 2),
                   "Make sure to wrap supplementary data of your Command type in a unique_ptr<>, "
                   "so it doesn't inflate the size of the Command variant");

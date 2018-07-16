@@ -142,7 +142,7 @@ public:
     /// @param font_manager     Manager of the loaded Font.
     /// @param filename         File from which the Font is loaded.
     /// @param pixel_size       Nominal size of the loaded Font in pixels.
-    static FontPtr load(FontManagerPtr& font_manager, std::string filename, const pixel_size_t pixel_size);
+    static FontPtr load(FontManager& font_manager, const std::string& filename, const pixel_size_t pixel_size);
 
     /// Name of the Font.
     const std::string& name() const { return m_name; }

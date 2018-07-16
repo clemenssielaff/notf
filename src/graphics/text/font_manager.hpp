@@ -39,7 +39,7 @@ public:
     ~FontManager();
 
     /// Direct access to the font atlas texture.
-    TexturePtr atlas_texture() const;
+    TexturePtr get_atlas_texture() const;
 
 private: // for Font
     /// The Freetype library used by the Manager.

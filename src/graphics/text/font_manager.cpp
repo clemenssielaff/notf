@@ -5,8 +5,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-FontManager::FontManager(GraphicsContext& context)
-    : m_freetype(nullptr), m_graphics_context(context), m_atlas(context)
+FontManager::FontManager(GraphicsContext& context) : m_freetype(nullptr), m_graphics_context(context), m_atlas(context)
 {
     if (FT_Init_FreeType(&m_freetype)) {
         log_critical << "Failed to initialize the Freetype library";
@@ -16,6 +15,6 @@ FontManager::FontManager(GraphicsContext& context)
 
 FontManager::~FontManager() { FT_Done_FreeType(m_freetype); }
 
-TexturePtr FontManager::atlas_texture() const { return m_atlas.get_texture(); }
+TexturePtr FontManager::get_atlas_texture() const { return m_atlas.get_texture(); }
 
 NOTF_CLOSE_NAMESPACE
