@@ -113,7 +113,6 @@ create_module(auxiliary)
 add_sources(SOURCE_FILES examples
     #framebuffer_example.cpp
     #wireframe_example.cpp
-    #text_example.cpp
     smoke_example.cpp
 )
 

@@ -64,7 +64,7 @@ protected:
     /// Updates the Design of this Widget through the given Painter.
     void _paint(Painter& painter) const override
     {
-        if (false) { // lines
+         { // lines
             const Painter::PathId narrow_s_curve = painter.set_path(CubicBezier2f({
                 CubicBezier2f::Segment(Vector2f{50, 100}, Vector2f{200, 50}, Vector2f{200, 350}, Vector2f{350, 350}),
             }));
@@ -85,7 +85,7 @@ protected:
             painter.stroke();
         }
 
-        if (false) { // shapes
+        { // shapes
             // convex
             painter.set_path(
                 Polygonf({Vector2f{10, 70}, Vector2f{5, 20}, Vector2f{5, 5}, Vector2f{75, 5}, Vector2f{75, 75}}));

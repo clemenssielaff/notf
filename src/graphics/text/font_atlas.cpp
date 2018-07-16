@@ -236,6 +236,7 @@ void FontAtlas::fill_rect(const Glyph::Rect& rect, const uchar* data)
         return;
     }
 
+    const auto context_guard = m_graphics_context.make_current();
     notf_check_gl(glActiveTexture(GL_TEXTURE0 + m_graphics_context.get_environment().font_atlas_texture_slot));
     notf_check_gl(glPixelStorei(GL_UNPACK_ROW_LENGTH, rect.width));
     notf_check_gl(glTexSubImage2D(GL_TEXTURE_2D, /* level = */ 0, rect.x, rect.y, rect.width, rect.height, GL_RED,

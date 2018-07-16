@@ -454,7 +454,7 @@ void Plotter::swap_buffers()
 {
     const auto vao_guard = VaoBindGuard(m_vao_id);
 
-    static_cast<PlotVertexArray*>(m_vertices.get())->init(); // TODO: this should be `update` right?
+    static_cast<PlotVertexArray*>(m_vertices.get())->init();
     static_cast<PlotIndexArray*>(m_indices.get())->init();
 
     // TODO: combine batches with same type & info -- that's what batches are there for
@@ -611,6 +611,7 @@ void Plotter::render() const
                 pipeline.get_tesselation_shader()->set_uniform("vec2_aux1", atlas_size_vec);
                 plotter.m_state.vec2_aux1 = atlas_size_vec;
             }
+
             notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
                                          gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
         }

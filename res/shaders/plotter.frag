@@ -27,7 +27,7 @@ uniform sampler2D font_texture;
 void main() {
 
     if(v_in.patch_type == TEXT){
-        f_color = vec4(texture(font_texture, v_in.tex_coord).r, ONE, ONE, ONE);
+        f_color = vec4(ONE, ONE, ONE, texture(font_texture, v_in.tex_coord).r);
     }
     else {
         f_color = vec4(ONE, ONE, ONE, smoothstep(ZERO, ONE, v_in.tex_coord.y));

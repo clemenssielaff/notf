@@ -41,6 +41,9 @@ public:
     /// Direct access to the font atlas texture.
     TexturePtr get_atlas_texture() const;
 
+    /// GraphicsContext in which the Texture lives.
+    GraphicsContext& get_graphics_context() const { return m_graphics_context; }
+
 private: // for Font
     /// The Freetype library used by the Manager.
     FT_Library freetype() const { return m_freetype; }

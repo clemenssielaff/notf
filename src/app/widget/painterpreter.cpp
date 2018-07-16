@@ -180,7 +180,7 @@ void Painterpreter::_write(const std::string& text)
     // plot the text
     Plotter::TextInfo text_info;
     text_info.font = state.font;
-    text_info.translation = {150, 150}; //state.xform.transform(Vector2f::zero());
+    text_info.translation = state.xform.transform(Vector2f::zero());
     m_plotter->write(text, std::move(text_info));
 }
 
