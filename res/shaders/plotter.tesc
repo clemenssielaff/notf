@@ -37,8 +37,8 @@ const int JOINT     = 31;
 const int START_CAP = 32;
 const int END_CAP   = 33;
 
-#define start (gl_in[0].gl_Position.xy)
-#define end   (gl_in[1].gl_Position.xy)
+#define START (gl_in[0].gl_Position.xy)
+#define END   (gl_in[1].gl_Position.xy)
 
 // settings
 const float tessel_x_factor = 0.0001;
@@ -67,7 +67,7 @@ void main(){
             patch_data.ctrl2_direction = v_in[0].second_ctrl;
         }
 
-        // not text
+        // branch for everything but text
         else {
             // ctrl point delta magnitude
             patch_data.ctrl1_length = max(ZERO, length(v_in[0].second_ctrl) - ONE);
@@ -78,8 +78,8 @@ void main(){
             patch_data.ctrl2_direction = normalize(v_in[1].first_ctrl);
 
             // bezier spline points
-            vec2 ctrl1 = start + (patch_data.ctrl1_direction * patch_data.ctrl1_length);
-            vec2 ctrl2 = end + (patch_data.ctrl2_direction * patch_data.ctrl2_length);
+            vec2 ctrl1 = START + (patch_data.ctrl1_direction * patch_data.ctrl1_length);
+            vec2 ctrl2 = END + (patch_data.ctrl2_direction * patch_data.ctrl2_length);
 
             if(patch_type == CONVEX || patch_type == CONCAVE){
                 gl_TessLevelInner[0] = ZERO;
@@ -109,12 +109,12 @@ void main(){
 
                 // segment
                 else {
-                    vec2 line = end - start;
+                    vec2 line = END - START;
                     float line_dot = dot(line, line);
                     tessel_x = min(tessel_x_max, ONE +
                                    floor(length(line) * tessel_x_factor *
-                                            (length(start + line * (dot(ctrl1 - start, line) / line_dot) - ctrl1) +
-                                             length(start + line * (dot(ctrl2 - start, line) / line_dot) - ctrl2))));
+                                            (length(START + line * (dot(ctrl1 - START, line) / line_dot) - ctrl1) +
+                                             length(START + line * (dot(ctrl2 - START, line) / line_dot) - ctrl2))));
                 }
 
                 // apply tesselation

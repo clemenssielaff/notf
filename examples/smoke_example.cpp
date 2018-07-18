@@ -15,6 +15,7 @@
 #include "auxiliary/visualizer/procedural.hpp"
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/text/font.hpp"
+#include "utils/literals.hpp"
 
 NOTF_USING_NAMESPACE;
 
@@ -31,9 +32,8 @@ struct CloudScene : public Scene {
                 = std::chrono::duration_cast<std::chrono::milliseconds>(Application::get_age()).count();
             p_time.set(static_cast<float>(age_in_ms / 1000.));
         });
-
         using namespace notf::literals;
-        m_timer->start(20_fps);
+        m_timer->start(30_fps); // TODO: 60_fps doesn't work...?
     }
 
     ~CloudScene() override { m_timer->stop(); }
@@ -54,7 +54,7 @@ public:
     WindowWidget(FactoryToken token, Scene& scene, valid_ptr<Node*> parent) : Widget(token, scene, parent)
     {
         GraphicsContext& context = scene.get_window()->get_graphics_context();
-        m_font = Font::load(context.get_font_manager(), "Roboto-Regular.ttf", 32);
+        m_font = Font::load(context.get_font_manager(), "Roboto-Regular.ttf", 11);
     }
 
     /// Destructor.
@@ -64,48 +64,31 @@ protected:
     /// Updates the Design of this Widget through the given Painter.
     void _paint(Painter& painter) const override
     {
-         { // lines
-            const Painter::PathId narrow_s_curve = painter.set_path(CubicBezier2f({
-                CubicBezier2f::Segment(Vector2f{50, 100}, Vector2f{200, 50}, Vector2f{200, 350}, Vector2f{350, 350}),
-            }));
-            const Painter::PathId line_segments = painter.set_path(CubicBezier2f({
-                CubicBezier2f::Segment::line(Vector2f{200, 100}, Vector2f{300, 150}),
-                CubicBezier2f::Segment::line(Vector2f{300, 150}, Vector2f{400, 100}),
-                CubicBezier2f::Segment::line(Vector2f{400, 100}, Vector2f{500, 200}),
-            }));
+        const Size2i window_size = get_scene().get_window()->get_buffer_size();
+        const Vector2f center = Vector2f(window_size.width, window_size.height) / 2;
+        const double time = [&]() -> double {
+            const auto age_in_ms
+                = std::chrono::duration_cast<std::chrono::milliseconds>(Application::get_age()).count();
+            return static_cast<double>(age_in_ms);
+        }();
 
-            // narrow s-curve
-            painter.set_stroke_width(1);
-            painter.set_path(narrow_s_curve);
-            painter.stroke();
+        const double length = 200;
+        const double period = 10;
 
-            // wide(r) line segments
-            painter.set_stroke_width(3);
-            painter.set_path(line_segments);
-            painter.stroke();
-        }
+        const double half_length = length / 2;
+        const double t = fmod(time / (1000 * period), 1) * pi<double>();
+        const double sin_t = sin(t);
+        const double cos_t = cos(t);
+        const Vector2f half_line{sin_t * half_length, cos_t * half_length};
+        const CubicBezier2f spline({CubicBezier2f::Segment::line(center + half_line, center - half_line)});
 
-        { // shapes
-            // convex
-            painter.set_path(
-                Polygonf({Vector2f{10, 70}, Vector2f{5, 20}, Vector2f{5, 5}, Vector2f{75, 5}, Vector2f{75, 75}}));
-            // concave
-            //        painter.set_path(Polygonf({
-            //            Vector2f{565, 770},
-            //            Vector2f{040, 440},
-            //            Vector2f{330, 310},
-            //            Vector2f{150, 120},
-            //            Vector2f{460, 230},
-            //            Vector2f{770, 120},
-            //            Vector2f{250, 450},
-            //        }));
-            painter.fill();
-        }
+        // draw the rotating line
+        painter.set_stroke_width(1);
+        painter.set_path(spline);
+        painter.stroke();
 
-        { // text
-            painter.set_font(m_font);
-            painter.write("Hello NoTF!");
-        }
+//        painter.set_font(m_font);
+//        painter.write(std::to_string(time / 1000));
     }
 
     /// Recursive implementation to find all Widgets at a given position in local space
@@ -122,10 +105,24 @@ private:
 
 struct SceneOWidgets : public WidgetScene {
     SceneOWidgets(FactoryToken token, const valid_ptr<SceneGraphPtr>& graph, std::string name)
-        : WidgetScene(token, graph, std::move(name))
+        : WidgetScene(token, graph, std::move(name)), p_time(_get_root_access().create_property<float>("time", 0))
     {
         set_widget<WindowWidget>();
+
+        m_timer = IntervalTimer::create([&] {
+            const auto age_in_ms
+                = std::chrono::duration_cast<std::chrono::milliseconds>(Application::get_age()).count();
+            p_time.set(static_cast<float>(age_in_ms / 1000.));
+        });
+        using namespace notf::literals;
+        m_timer->start(30_fps);
     }
+
+    ~SceneOWidgets() override { m_timer->stop(); }
+
+private: // fields
+    PropertyHandle<float> p_time;
+    IntervalTimerPtr m_timer;
 };
 
 // == Main ========================================================================================================== //
@@ -143,7 +140,9 @@ int smoke_main(int argc, char* argv[])
     Application& app = Application::initialize(args);
 
     { // initialize the window
-        WindowPtr window = Application::instance().create_window();
+        Window::Args window_args;
+        window_args.is_resizeable = false;
+        WindowPtr window = Application::instance().create_window(window_args);
 
         std::shared_ptr<CloudScene> cloud_scene = Scene::create<CloudScene>(window->get_scene_graph(), "clouds_scene");
         std::shared_ptr<SceneOWidgets> widget_scene
@@ -151,7 +150,7 @@ int smoke_main(int argc, char* argv[])
 
         SceneGraph::CompositionPtr composition = SceneGraph::Composition::create({
             SceneGraph::Layer::create(widget_scene, std::make_unique<WidgetVisualizer>(*window)),
-            SceneGraph::Layer::create(cloud_scene, std::make_unique<ProceduralVisualizer>(*window, "clouds.frag")),
+//            SceneGraph::Layer::create(cloud_scene, std::make_unique<ProceduralVisualizer>(*window, "clouds.frag")),
         });
         window->get_scene_graph()->change_composition(composition);
     }

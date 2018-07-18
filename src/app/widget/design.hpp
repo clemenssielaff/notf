@@ -43,17 +43,12 @@ public:
     /// Remove the current Design state and restore the previous one.
     struct PopStateCommand {};
 
-    /// Reset the transformation of the Path space.
-    struct ResetTransformCommand {};
-
-    /// Translates the Path space.
-    struct TranslationCommand {
-        Vector2f pos;
-    };
-
-    /// Rotates the Path space in the screen plane around its origin in radians.
-    struct RotationCommand {
-        float angle;
+    /// Updates the Path space.
+    struct SetTransformationCommand {
+        struct Data {
+            Matrix3f transformation;
+        };
+        std::unique_ptr<Data> data;
     };
 
     /// Changes the stroke width of the current Paint.
@@ -106,9 +101,9 @@ public:
     /// Strokes the current Path using the current Paint.
     struct StrokeCommand {};
 
-    using Command = notf::variant<PushStateCommand, PopStateCommand, ResetTransformCommand, TranslationCommand,
-                                  RotationCommand, SetStrokeWidthCommand, SetFontCommand, SetPolygonPathCommand,
-                                  SetSplinePathCommand, SetPathIndexCommand, WriteCommand, FillCommand, StrokeCommand>;
+    using Command = notf::variant<PushStateCommand, PopStateCommand, SetTransformationCommand, SetStrokeWidthCommand,
+                                  SetFontCommand, SetPolygonPathCommand, SetSplinePathCommand, SetPathIndexCommand,
+                                  WriteCommand, FillCommand, StrokeCommand>;
     static_assert(sizeof(Command) == (sizeof(std::unique_ptr<void>) * 2),
                   "Make sure to wrap supplementary data of your Command type in a unique_ptr<>, "
                   "so it doesn't inflate the size of the Command variant");

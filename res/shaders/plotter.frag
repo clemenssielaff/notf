@@ -5,6 +5,8 @@ precision mediump float;
 in VertexData {
     vec2 position;
     vec2 tex_coord;
+    vec2 line_start;
+    vec2 line_end;
     mediump flat int patch_type;
 } v_in;
 
@@ -30,6 +32,6 @@ void main() {
         f_color = vec4(ONE, ONE, ONE, texture(font_texture, v_in.tex_coord).r);
     }
     else {
-        f_color = vec4(ONE, ONE, ONE, smoothstep(ZERO, ONE, v_in.tex_coord.y));
+        f_color = vec4(ONE, ONE, ONE, mix(ZERO, ONE, v_in.tex_coord.y));
     }
 }

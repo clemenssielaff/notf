@@ -60,4 +60,39 @@ void Painter::set_stroke_width(const float width)
     m_design.add_command<WidgetDesign::SetStrokeWidthCommand>(current_state.stroke_width);
 }
 
+void Painter::set_transform(const Matrix3f& xform)
+{
+    State& current_state = _get_current_state();
+    current_state.xform = xform;
+    m_design.add_command<WidgetDesign::SetTransformationCommand>(current_state.xform);
+}
+
+void Painter::reset_transform()
+{
+    State& current_state = _get_current_state();
+    current_state.xform = Matrix3f::identity();
+    m_design.add_command<WidgetDesign::SetTransformationCommand>(current_state.xform);
+}
+
+void Painter::transform(const Matrix3f& transform)
+{
+    State& current_state = _get_current_state();
+    current_state.xform *= transform;
+    m_design.add_command<WidgetDesign::SetTransformationCommand>(current_state.xform);
+}
+
+void Painter::translate(const Vector2f& delta)
+{
+    State& current_state = _get_current_state();
+    current_state.xform.translate(delta);
+    m_design.add_command<WidgetDesign::SetTransformationCommand>(current_state.xform);
+}
+
+void Painter::rotate(const float angle)
+{
+    State& current_state = _get_current_state();
+    current_state.xform.rotate(angle);
+    m_design.add_command<WidgetDesign::SetTransformationCommand>(current_state.xform);
+}
+
 NOTF_CLOSE_NAMESPACE

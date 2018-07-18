@@ -25,6 +25,8 @@ struct RealVector2 : public detail::Arithmetic<RealVector2<REAL>, REAL, 2> {
     /// Default constructor.
     RealVector2() = default;
 
+    // TODO: templated constructor for any type that has a size of 2 and can be addressed using operator[]?
+
     /// Element-wise constructor.
     /// @param x    First component.
     /// @param y    Second component (default is 0).

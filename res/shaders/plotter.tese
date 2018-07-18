@@ -25,6 +25,8 @@ uniform vec2 vec2_aux1;
 out VertexData {
     mediump vec2 position;
     mediump vec2 tex_coord;
+    mediump vec2 line_start;
+    mediump vec2 line_end;
     mediump flat int patch_type;
 } v_out;
 
@@ -56,8 +58,8 @@ const int JOINT     = 31;
 const int START_CAP = 32;
 const int END_CAP   = 33;
 
-#define start (gl_in[0].gl_Position.xy)
-#define end   (gl_in[1].gl_Position.xy)
+#define START (gl_in[0].gl_Position.xy)
+#define END   (gl_in[1].gl_Position.xy)
 
 void main()
 {
@@ -69,7 +71,7 @@ void main()
         // This always creates a triangle with zero area :/ but I hope that the GPU is quick to discard such polygons.
         // The alternative would be that I always pass 3 vertices to a patch, which would mean that I always pass an unused
         // vertex for each line segment, which might be slower
-        vec2 delta = mix(gl_in[1].gl_Position.xy, gl_in[0].gl_Position.xy, gl_TessCoord.x) - base_vertex;
+        vec2 delta = mix(END, START, gl_TessCoord.x) - base_vertex;
         v_out.position = fma(vec2(step(HALF, gl_TessCoord.y) * (length(delta) - (sign(v_out.tex_coord.y - HALF) * aa_width))),
                              normalize(delta), base_vertex);
     }
@@ -80,13 +82,13 @@ void main()
         v_out.tex_coord.x = gl_TessCoord.x;
 
         // see comment in the CONVEX branch
-        vec2 delta = mix(gl_in[1].gl_Position.xy, gl_in[0].gl_Position.xy, gl_TessCoord.x) - base_vertex;
+        vec2 delta = mix(END, START, gl_TessCoord.x) - base_vertex;
         v_out.position = fma(vec2(step(HALF, gl_TessCoord.y) * length(delta)), normalize(delta), base_vertex);
     }
 
     else if (patch_data.type == TEXT) {
-        vec2 uv_max = start + (glyph_max_corner - glyph_min_corner);
-        v_out.tex_coord = mix(start, uv_max, vec2(gl_TessCoord.x, ONE - gl_TessCoord.y)) / atlas_size;
+        vec2 uv_max = START + (glyph_max_corner - glyph_min_corner);
+        v_out.tex_coord = mix(START, uv_max, vec2(gl_TessCoord.x, ONE - gl_TessCoord.y)) / atlas_size;
 
         v_out.position = mix(glyph_min_corner, glyph_max_corner, gl_TessCoord.xy);
     }
@@ -101,16 +103,16 @@ void main()
             vec2 TVEC = vec2(ONE, gl_TessCoord.x);
 
             // bezier control points
-            vec2 ctrl1 = start + (patch_data.ctrl1_direction * patch_data.ctrl1_length);
-            vec2 ctrl2 = end + (patch_data.ctrl2_direction * patch_data.ctrl2_length);
+            vec2 ctrl1 = START + (patch_data.ctrl1_direction * patch_data.ctrl1_length);
+            vec2 ctrl2 = END + (patch_data.ctrl2_direction * patch_data.ctrl2_length);
 
-            // tex_coord.x grows along the stroke from start = 0 to end = 1
+            // tex_coord.x grows along the stroke from START = 0 to END = 1
             v_out.tex_coord.x = gl_TessCoord.x;
 
             // screen space position of the vertex
-            vec2 normal = normalize(mat3x2(ctrl1-start, ctrl2-ctrl1, end-ctrl2) * DERIV * (TVEC.xyy * TVEC.xxy)).yx * vec2(-ONE, ONE);
+            vec2 normal = normalize(mat3x2(ctrl1-START, ctrl2-ctrl1, END-ctrl2) * DERIV * (TVEC.xyy * TVEC.xxy)).yx * vec2(-ONE, ONE);
             v_out.position =
-                    (mat4x2(start, ctrl1, ctrl2, end) * BEZIER * (TVEC.xyyy * TVEC.xxyy * TVEC.xxxy)).xy    // along spline
+                    (mat4x2(START, ctrl1, ctrl2, END) * BEZIER * (TVEC.xyyy * TVEC.xxyy * TVEC.xxxy)).xy    // along spline
                     + (normal * normal_offset);                                                             // along normal
         }
 
@@ -121,7 +123,7 @@ void main()
             } else {
                 normal = (-patch_data.ctrl2_direction).yx * vec2(ONE, -ONE);
             }
-            v_out.position = start + (normal * normal_offset);
+            v_out.position = START + (normal * normal_offset);
 
             v_out.tex_coord.x = HALF;
         }
@@ -129,7 +131,7 @@ void main()
         else if(patch_data.type == START_CAP){
             // screen space position of the vertex
             vec2 normal = patch_data.ctrl1_direction.yx * vec2(-ONE, ONE);
-            v_out.position = start
+            v_out.position = START
                     + (patch_data.ctrl1_direction * ((gl_TessCoord.x - ONE) * aa_width * TWO))  // along spline
                     + (normal * normal_offset);                                                 // along normal
 
@@ -141,7 +143,7 @@ void main()
         else if(patch_data.type == END_CAP){
             // screen space position of the vertex
             vec2 normal = patch_data.ctrl2_direction.yx * vec2(ONE, -ONE);
-            v_out.position = end
+            v_out.position = END
                     + (patch_data.ctrl2_direction * (-gl_TessCoord.x * aa_width * TWO)) // along spline
                     + (normal * normal_offset);                                         // along normal
 
@@ -156,4 +158,8 @@ void main()
 
     // patch type
     v_out.patch_type = patch_data.type;
+
+    // line start and -end
+    v_out.line_start = START;
+    v_out.line_end = END;
 }

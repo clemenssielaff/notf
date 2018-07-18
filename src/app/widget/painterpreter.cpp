@@ -33,11 +33,11 @@ void Painterpreter::paint(Widget& widget)
 
         void operator()(const WidgetDesign::PopStateCommand&) const { painterpreter._pop_state(); }
 
-        void operator()(const WidgetDesign::ResetTransformCommand&) const {}
-
-        void operator()(const WidgetDesign::TranslationCommand&) const {}
-
-        void operator()(const WidgetDesign::RotationCommand&) const {}
+        void operator()(const WidgetDesign::SetTransformationCommand& command) const
+        {
+            State& state = painterpreter._get_current_state();
+            state.xform = command.data->transformation;
+        }
 
         void operator()(const WidgetDesign::SetStrokeWidthCommand& command) const
         {

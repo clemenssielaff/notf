@@ -109,25 +109,25 @@ public:
     // Transform --------------------------------------------------------------
 
     /// The Painter's current transform.
-    //    const Matrix3f& get_transform() const { return _get_current_state().xform; }
+    const Matrix3f& get_transform() const { return _get_current_state().xform; }
 
     /// Sets the transform of the Painter.
-    //    void set_transform(const Matrix3f& xform);
+    void set_transform(const Matrix3f& xform);
 
     /// Reset the Painter's transform.
-    //    void reset_transform();
+    void reset_transform();
 
     /// Transforms the Painter's transformation matrix.
-    //    void transform(const Matrix3f& transform);
+    void transform(const Matrix3f& transform);
 
     /// Translates the Painter's transformation matrix.
-    //    void translate(const float x, const float y) { translate(Vector2f{x, y}); }
+    void translate(const float x, const float y) { translate(Vector2f{x, y}); }
 
     /// Translates the Painter's transformation matrix.
-    //    void translate(const Vector2f& delta);
+    void translate(const Vector2f& delta);
 
     /// Rotates the current state the given amount of radians in a counter-clockwise direction.
-    //    void rotate(const float angle);
+    void rotate(const float angle);
 
     // Clipping ---------------------------------------------------------------
 

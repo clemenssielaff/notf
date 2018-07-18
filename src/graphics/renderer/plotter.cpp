@@ -227,10 +227,10 @@ Plotter::Plotter(GraphicsContext& graphics_context)
         const std::string vertex_src = load_file("/home/clemens/code/notf/res/shaders/plotter.vert");
         VertexShaderPtr vertex_shader = VertexShader::create(m_graphics_context, "plotter.vert", vertex_src);
 
-        const std::string tess_src = load_file("/home/clemens/code/notf/res/shaders/plotter.tess");
-        const std::string eval_src = load_file("/home/clemens/code/notf/res/shaders/plotter.eval");
+        const std::string ctrl_src = load_file("/home/clemens/code/notf/res/shaders/plotter.tesc");
+        const std::string eval_src = load_file("/home/clemens/code/notf/res/shaders/plotter.tese");
         TesselationShaderPtr tess_shader
-            = TesselationShader::create(m_graphics_context, "plotter.tess", tess_src, eval_src);
+            = TesselationShader::create(m_graphics_context, "plotter.tess", ctrl_src, eval_src);
 
         const std::string frag_src = load_file("/home/clemens/code/notf/res/shaders/plotter.frag");
         FragmentShaderPtr frag_shader = FragmentShader::create(m_graphics_context, "plotter.frag", frag_src);
