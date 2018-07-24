@@ -11,7 +11,6 @@ in VertexData {
     vec2 second_ctrl;
 } v_in[];
 
-uniform float aa_width;
 uniform int patch_type;
 
 patch out PatchData {
@@ -93,8 +92,8 @@ void main(){
 
             else if(patch_type == STROKE){
                 // tesselation defaults
-                float tessel_x = ONE;                               // along spline
-                float tessel_y = (aa_width == ZERO ? ONE : THREE);  // along normal
+                float tessel_x = ONE;       // along spline
+                //  float tessel_y = ONE;   // along normal
 
                 // segment sub-types
                 if(gl_in[0].gl_Position == gl_in[1].gl_Position){
@@ -119,11 +118,11 @@ void main(){
 
                 // apply tesselation
                 gl_TessLevelInner[0] = tessel_x;
-                gl_TessLevelInner[1] = tessel_y;
+                gl_TessLevelInner[1] = ONE;
 
-                gl_TessLevelOuter[0] = tessel_y;
+                gl_TessLevelOuter[0] = ONE;
                 gl_TessLevelOuter[1] = tessel_x;
-                gl_TessLevelOuter[2] = tessel_y;
+                gl_TessLevelOuter[2] = ONE;
                 gl_TessLevelOuter[3] = tessel_x;
             }
         }

@@ -237,7 +237,7 @@ Plotter::Plotter(GraphicsContext& graphics_context)
 
         m_pipeline = Pipeline::create(m_graphics_context, vertex_shader, tess_shader, frag_shader);
 
-        tess_shader->set_uniform("aa_width", 1.5f);
+        tess_shader->set_uniform("aa_width", static_cast<float>(sqrt(2.l) / 2.l));
         frag_shader->set_uniform("font_texture", m_graphics_context.get_environment().font_atlas_texture_slot);
     }
 

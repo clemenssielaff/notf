@@ -12,7 +12,23 @@ out VertexData {
 } v_out;
 
 void main(){
-    gl_Position = vec4(a_position.xy, 0.0, 0.0);
+    // all plotter vertices are positioned with integer values in the center of the pixels
+    // the first visible pixel has the index 1, meaning all positions are shifted 0.5 pixels to the left and bottom
+    //
+    //   || ... | ... | ... |
+    //    +-----+-----+-----+-
+    //   || x=1 | x=2 | x=3 | ...
+    //   || y=3 | y=3 | y=3 | ...
+    //    +-----+-----+-----+-
+    //   || x=1 | x=2 | x=3 | ...
+    //   || y=2 | y=2 | y=2 | ...
+    //    +-----+-----+-----+-
+    //   || x=1 | x=2 | x=3 | ...
+    //   || y=1 | y=1 | y=1 | ...
+    //    +=====+=====+=====+=
+    // origin
+    //
+    gl_Position = vec4(a_position.xy - vec2(0.5, 0.5), 0.0, 0.0);
 
     // pass attributes into block
     v_out.first_ctrl = a_first_ctrl;

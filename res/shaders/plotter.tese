@@ -23,10 +23,10 @@ uniform vec2 vec2_aux1;
 #define atlas_size  vec2_aux1
 
 out VertexData {
+    mediump mat3 line_xform;
+    mediump vec2 line_size;
     mediump vec2 position;
     mediump vec2 tex_coord;
-    mediump vec2 line_start;
-    mediump vec2 line_end;
     mediump flat int patch_type;
 } v_out;
 
@@ -61,26 +61,54 @@ const int END_CAP   = 33;
 #define START (gl_in[0].gl_Position.xy)
 #define END   (gl_in[1].gl_Position.xy)
 
+void calculate_line() 
+{
+    vec2 delta = END - START;
+    float dist = length(delta);
+    vec2 offset = normalize(delta);
+    
+    // move start and end coordinates to the bottom left of the stroke
+    vec2 blub = vec2(offset.y, -offset.x) * stroke_width * HALF;
+    vec2 start = START + blub;
+    
+    // calculate the transformation of points in screen space to line-space
+    float angle = atan(delta.y, delta.x);
+    float c = cos(angle);
+    float s = sin(angle);
+
+    mat3 transform = mat3(
+        1., 0., start.x, 
+        0., 1., start.y,
+        0., 0., 1.);
+    mat3 rotation = mat3(
+        +c, -s, 0., 
+        +s, +c, 0.,
+        0., 0., 1.);
+
+    v_out.line_xform = inverse(rotation * transform);
+
+    v_out.line_size.x = dist;
+    v_out.line_size.y = stroke_width;
+}
+
 void main()
 {
+    v_out.tex_coord.x = gl_TessCoord.x;
+    v_out.tex_coord.y = gl_TessCoord.y;
+
     if(patch_data.type == CONVEX){
-        // tex_coord.y is 1 within the stroke and 0 at the very edge (geometric anti-aliasing in the normal)
-        v_out.tex_coord.y = aa_width == 0.0 ? 1.0 : ONE - step(0.9, gl_TessCoord.y);
-        v_out.tex_coord.x = gl_TessCoord.x;
+        // v_out.tex_coord.y = aa_width == 0.0 ? 1.0 : ONE - step(0.9, gl_TessCoord.y);
 
         // This always creates a triangle with zero area :/ but I hope that the GPU is quick to discard such polygons.
         // The alternative would be that I always pass 3 vertices to a patch, which would mean that I always pass an unused
         // vertex for each line segment, which might be slower
         vec2 delta = mix(END, START, gl_TessCoord.x) - base_vertex;
-        v_out.position = fma(vec2(step(HALF, gl_TessCoord.y) * (length(delta) - (sign(v_out.tex_coord.y - HALF) * aa_width))),
-                             normalize(delta), base_vertex);
+        // v_out.position = fma(vec2(step(HALF, gl_TessCoord.y) * (length(delta) - (sign(v_out.tex_coord.y - HALF) * aa_width))),
+        //                      normalize(delta), base_vertex);
+        v_out.position = fma(vec2(step(HALF, gl_TessCoord.y) * length(delta)), normalize(delta), base_vertex);
     }
 
     else if (patch_data.type == CONCAVE) {
-        // concave shapes have no defined outer edge that can be smoothed, therefore they have no geometric aa
-        v_out.tex_coord.y = 1.0;
-        v_out.tex_coord.x = gl_TessCoord.x;
-
         // see comment in the CONVEX branch
         vec2 delta = mix(END, START, gl_TessCoord.x) - base_vertex;
         v_out.position = fma(vec2(step(HALF, gl_TessCoord.y) * length(delta)), normalize(delta), base_vertex);
@@ -89,15 +117,11 @@ void main()
     else if (patch_data.type == TEXT) {
         vec2 uv_max = START + (glyph_max_corner - glyph_min_corner);
         v_out.tex_coord = mix(START, uv_max, vec2(gl_TessCoord.x, ONE - gl_TessCoord.y)) / atlas_size;
-
         v_out.position = mix(glyph_min_corner, glyph_max_corner, gl_TessCoord.xy);
     }
 
     else { // patch_data.type is some form of line
-        // tex_coord.y is 1 within the stroke and 0 at the very edge (geometric anti-aliasing in the normal)
-        v_out.tex_coord.y = aa_width == 0.0 ? 1.0 : ONE - (step(ONE, gl_TessCoord.y) + step(ONE, ONE - gl_TessCoord.y));
-
-        float normal_offset = sign(gl_TessCoord.y - HALF) * HALF * (max(ZERO, stroke_width) + ((ONE - (v_out.tex_coord.y * TWO)) * aa_width));
+        float normal_offset = (aa_width + (stroke_width / 2.0)) * sign(gl_TessCoord.y - HALF);
 
         if(patch_data.type == STROKE){
             vec2 TVEC = vec2(ONE, gl_TessCoord.x);
@@ -105,9 +129,6 @@ void main()
             // bezier control points
             vec2 ctrl1 = START + (patch_data.ctrl1_direction * patch_data.ctrl1_length);
             vec2 ctrl2 = END + (patch_data.ctrl2_direction * patch_data.ctrl2_length);
-
-            // tex_coord.x grows along the stroke from START = 0 to END = 1
-            v_out.tex_coord.x = gl_TessCoord.x;
 
             // screen space position of the vertex
             vec2 normal = normalize(mat3x2(ctrl1-START, ctrl2-ctrl1, END-ctrl2) * DERIV * (TVEC.xyy * TVEC.xxy)).yx * vec2(-ONE, ONE);
@@ -137,7 +158,7 @@ void main()
 
             // cap texture coordinates
             v_out.tex_coord.x = ZERO;
-            v_out.tex_coord.y = (gl_TessCoord.x == ONE) ? v_out.tex_coord.y : ZERO;
+            // v_out.tex_coord.y = (gl_TessCoord.x == ONE) ? v_out.tex_coord.y : ZERO;
         }
 
         else if(patch_data.type == END_CAP){
@@ -149,7 +170,7 @@ void main()
 
             // cap texture coordinates
             v_out.tex_coord.x = ONE;
-            v_out.tex_coord.y = gl_TessCoord.x > 0.9 ? ZERO : v_out.tex_coord.y;
+            // v_out.tex_coord.y = gl_TessCoord.x > 0.9 ? ZERO : v_out.tex_coord.y;
         }
     }
 
@@ -159,7 +180,5 @@ void main()
     // patch type
     v_out.patch_type = patch_data.type;
 
-    // line start and -end
-    v_out.line_start = START;
-    v_out.line_end = END;
+    calculate_line();
 }

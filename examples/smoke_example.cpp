@@ -72,7 +72,7 @@ protected:
             return static_cast<double>(age_in_ms);
         }();
 
-        const double length = 200;
+        const double length = 100;
         const double period = 10;
 
         const double half_length = length / 2;
@@ -81,6 +81,7 @@ protected:
         const double cos_t = cos(t);
         const Vector2f half_line{sin_t * half_length, cos_t * half_length};
         const CubicBezier2f spline({CubicBezier2f::Segment::line(center + half_line, center - half_line)});
+        // const CubicBezier2f spline({CubicBezier2f::Segment::line(Vector2f(20, 20), Vector2f(327, 174))});
 
         // draw the rotating line
         painter.set_stroke_width(1);
