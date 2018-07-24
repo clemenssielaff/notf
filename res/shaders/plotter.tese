@@ -23,7 +23,7 @@ uniform vec2 vec2_aux1;
 #define atlas_size  vec2_aux1
 
 out VertexData {
-    mediump mat3 line_xform;
+    mediump mat2x3 line_xform;
     mediump vec2 line_size;
     mediump vec2 position;
     mediump vec2 tex_coord;
@@ -64,31 +64,22 @@ const int END_CAP   = 33;
 void calculate_line() 
 {
     vec2 delta = END - START;
-    float dist = length(delta);
-    vec2 offset = normalize(delta);
-    
-    // move start and end coordinates to the bottom left of the stroke
-    vec2 blub = vec2(offset.y, -offset.x) * stroke_width * HALF;
-    vec2 start = START + blub;
+    float line_length = length(delta);
+    v_out.line_size.x = line_length;
+    v_out.line_size.y = stroke_width; 
+
+    // move the origin of the stroke to its bottom left
+    vec2 along = delta / (line_length == 0.0 ? 1.0 : line_length);
+    vec2 origin = START + (vec2(along.y, -along.x) * stroke_width * HALF);
     
     // calculate the transformation of points in screen space to line-space
     float angle = atan(delta.y, delta.x);
     float c = cos(angle);
     float s = sin(angle);
-
-    mat3 transform = mat3(
-        1., 0., start.x, 
-        0., 1., start.y,
-        0., 0., 1.);
-    mat3 rotation = mat3(
-        +c, -s, 0., 
-        +s, +c, 0.,
-        0., 0., 1.);
-
-    v_out.line_xform = inverse(rotation * transform);
-
-    v_out.line_size.x = dist;
-    v_out.line_size.y = stroke_width;
+    float d = (c * c) + (s * s);
+    v_out.line_xform = mat2x3(
+        vec3(+c, s, -(c * origin.x + s * origin.y)) / d,
+        vec3(-s, c, +(s * origin.x - c * origin.y)) / d);
 }
 
 void main()

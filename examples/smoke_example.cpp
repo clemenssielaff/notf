@@ -72,10 +72,11 @@ protected:
             return static_cast<double>(age_in_ms);
         }();
 
-        const double length = 100;
-        const double period = 10;
+        const double length = 200;
+        const double period = 30;
 
         const double half_length = length / 2;
+        // const double t = pi<double>() * 0.0;
         const double t = fmod(time / (1000 * period), 1) * pi<double>();
         const double sin_t = sin(t);
         const double cos_t = cos(t);

@@ -136,8 +136,8 @@ add_sources(RESOURCE_FILES res
     shaders/wireframe.geo
     shaders/wireframe.frag
     shaders/plotter.vert
-    shaders/plotter.tess
-    shaders/plotter.eval
+    shaders/plotter.tesc
+    shaders/plotter.tese
     shaders/plotter.frag
     shaders/trivial.vert
     shaders/trivial.frag
