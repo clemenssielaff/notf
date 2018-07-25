@@ -76,10 +76,9 @@ void calculate_line()
     float angle = atan(delta.y, delta.x);
     float c = cos(angle);
     float s = sin(angle);
-    float d = (c * c) + (s * s);
     v_out.line_xform = mat2x3(
-        vec3(+c, s, -(c * origin.x + s * origin.y)) / d,
-        vec3(-s, c, +(s * origin.x - c * origin.y)) / d);
+        vec3(+c, s, -(c * origin.x + s * origin.y)),
+        vec3(-s, c, +(s * origin.x - c * origin.y)));
 }
 
 void main()

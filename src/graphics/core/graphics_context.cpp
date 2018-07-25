@@ -158,6 +158,7 @@ GraphicsContext::GraphicsContext(GLFWwindow* window) : m_window(window)
         // OpenGL hints
         notf_check_gl(glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST));
         notf_check_gl(glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_DONT_CARE));
+        notf_check_gl(glDisable(GL_DITHER));
 
         // apply the default state
         m_state = _create_state();

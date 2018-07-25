@@ -76,7 +76,7 @@ protected:
         const double period = 30;
 
         const double half_length = length / 2;
-        // const double t = pi<double>() * 0.0;
+        //const double t = pi<double>() * 0.02;
         const double t = fmod(time / (1000 * period), 1) * pi<double>();
         const double sin_t = sin(t);
         const double cos_t = cos(t);
@@ -89,7 +89,7 @@ protected:
         painter.set_path(spline);
         painter.stroke();
 
-//        painter.set_font(m_font);
+//        painter.set_font(m_font); 
 //        painter.write(std::to_string(time / 1000));
     }
 
