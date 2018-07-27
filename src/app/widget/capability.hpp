@@ -39,7 +39,7 @@ class CapabilityMap {
 public:
     /// Returns a requested capability by type.
     /// @throws out_of_range    If the map does not contain the requested capability type.
-    template<typename CAPABILITY, notf::enable_if_t<std::is_base_of<Capability, CAPABILITY>::value>>
+    template<typename CAPABILITY, std::enable_if_t<std::is_base_of<Capability, CAPABILITY>::value>>
     std::shared_ptr<CAPABILITY> get()
     {
         const size_t id = typeid(CAPABILITY).hash_code();
@@ -55,7 +55,7 @@ public:
 
     /// Returns a requested capability by type.
     /// If the map does not contain the requested capability, throws an std::out_of_range exception.
-    template<typename CAPABILITY, notf::enable_if_t<std::is_base_of<Capability, CAPABILITY>::value>>
+    template<typename CAPABILITY, std::enable_if_t<std::is_base_of<Capability, CAPABILITY>::value>>
     std::shared_ptr<const CAPABILITY> get() const
     {
         return const_cast<CapabilityMap*>(this)->get<CAPABILITY>();
@@ -63,7 +63,7 @@ public:
 
     /// Inserts or replaces a capability in the map.
     /// @param capability    Capability to insert.
-    template<typename CAPABILITY, notf::enable_if_t<std::is_base_of<Capability, CAPABILITY>::value>>
+    template<typename CAPABILITY, std::enable_if_t<std::is_base_of<Capability, CAPABILITY>::value>>
     void set(std::shared_ptr<CAPABILITY> capability)
     {
         const size_t id = typeid(CAPABILITY).hash_code();

@@ -1,10 +1,10 @@
 #include "app/node.hpp"
 
 #include <atomic>
+#include <string_view>
 
 #include "app/property_graph.hpp"
 #include "common/log.hpp"
-#include "common/string_view.hpp"
 
 namespace { // anonymous
 NOTF_USING_NAMESPACE;
@@ -23,17 +23,17 @@ std::string next_node_name()
 /// @param existing     All names that are already taken.
 /// @param proposed     New proposed name, is presumably already taken.
 /// @returns            New, unique name.
-std::string make_unique_name(const std::set<notf::string_view>& existing, const std::string& proposed)
+std::string make_unique_name(const std::set<std::string_view>& existing, const std::string& proposed)
 {
     // remove all trailing numbers from the proposed name
-    notf::string_view proposed_name;
+    std::string_view proposed_name;
     {
         const auto last_char = proposed.find_last_not_of("0123456789");
-        if (last_char == notf::string_view::npos) {
+        if (last_char == std::string_view::npos) {
             proposed_name = proposed;
         }
         else {
-            proposed_name = notf::string_view(proposed.c_str(), last_char + 1);
+            proposed_name = std::string_view(proposed.c_str(), last_char + 1);
         }
     }
 
@@ -397,7 +397,7 @@ valid_ptr<TypedNodeProperty<std::string>*> Node::_create_name()
 
         // create unique name
         if (siblings.contains(name)) {
-            std::set<notf::string_view> all_names;
+            std::set<std::string_view> all_names;
             for (const auto& it : NodeContainer::Access<Node>::name_map(siblings)) {
                 all_names.insert(it.first);
             }

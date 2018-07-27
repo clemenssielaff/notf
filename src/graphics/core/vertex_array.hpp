@@ -85,18 +85,18 @@ template<class T>
 struct is_attribute_trait<
     T, std::void_t<
            // does the type contain a `uint` that has a valid value?
-           notf::enable_if_t<std::is_same<decltype(T::location), const uint>::value>,
-           notf::enable_if_t<T::location != std::numeric_limits<GLuint>::max()>,
+           std::enable_if_t<std::is_same<decltype(T::location), const uint>::value>,
+           std::enable_if_t<T::location != std::numeric_limits<GLuint>::max()>,
 
            // does the type contain a `bool` named `normalized` ?
-           notf::enable_if_t<std::is_same<decltype(T::normalized), const bool>::value>,
+           std::enable_if_t<std::is_same<decltype(T::normalized), const bool>::value>,
 
            // does type type contain a type named `type`?
            typename T::type,
 
            // does type type contain a type named `kind` that is a subtype of `AttributeKind`?
            typename T::kind,
-           notf::enable_if_t<is_one_of<typename T::kind, AttributeKind::Position, AttributeKind::Normal,
+           std::enable_if_t<is_one_of<typename T::kind, AttributeKind::Position, AttributeKind::Normal,
                                        AttributeKind::Color, AttributeKind::TexCoord, AttributeKind::Other>::value>>>
     : std::true_type {};
 
@@ -105,7 +105,7 @@ namespace detail {
 template<typename TUPLE, std::size_t... I>
 constexpr bool is_trait_tuple_impl(const TUPLE&, std::index_sequence<I...>)
 {
-    return notf::conjunction<is_attribute_trait<typename std::tuple_element<I, TUPLE>::type>...>::value;
+    return std::conjunction<is_attribute_trait<typename std::tuple_element<I, TUPLE>::type>...>::value;
 }
 
 } // namespace detail

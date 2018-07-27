@@ -1,17 +1,18 @@
 #define CATCH_CONFIG_RUNNER
 #include "catch.hpp"
 
+#include <optional>
+
 #include "app/application.hpp"
 #include "app/window.hpp"
 #include "common/exception.hpp"
 #include "common/log.hpp"
-#include "common/optional.hpp"
 #include "testenv.hpp"
 
 NOTF_USING_NAMESPACE;
 
 namespace {
-notf::optional<WindowPtr> g_window;
+std::optional<WindowPtr> g_window;
 }
 
 NOTF_OPEN_NAMESPACE

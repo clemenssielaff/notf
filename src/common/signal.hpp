@@ -438,7 +438,7 @@ public: // methods
 
     /** Creates a Connection connecting the given Signal to a member function of this object. */
     template<typename SIGNAL, typename RECEIVER, typename... SIGNATURE, typename... ARGS,
-             typename = notf::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value == sizeof...(SIGNATURE))>>
+             typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value == sizeof...(SIGNATURE))>>
     Connection connect_signal(SIGNAL& signal, void (RECEIVER::*method)(SIGNATURE...), ARGS&&... args)
     {
         return _connect_signal(signal,
@@ -448,7 +448,7 @@ public: // methods
 
     /** Creates a Connection connecting the given Signal to a CONST member function of this object. */
     template<typename SIGNAL, typename RECEIVER, typename... SIGNATURE, typename... ARGS,
-             typename = notf::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value == sizeof...(SIGNATURE))>>
+             typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value == sizeof...(SIGNATURE))>>
     Connection connect_signal(SIGNAL& signal, void (RECEIVER::*method)(SIGNATURE...) const, ARGS&&... args)
     {
         return _connect_signal(signal,
@@ -463,7 +463,7 @@ public: // methods
      * call in a lambda that discards the additional arguments.
      */
     template<typename SIGNAL, typename RECEIVER, typename... TEST_FUNC,
-             typename = notf::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value > 0)>>
+             typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value > 0)>>
     Connection connect_signal(SIGNAL& signal, void (RECEIVER::*method)(void), TEST_FUNC&&... test_func)
     {
         constexpr auto signal_size = std::tuple_size<typename std::decay<typename SIGNAL::Signature>::type>::value;
@@ -473,7 +473,7 @@ public: // methods
 
     /** Argument-ignoring overload for CONST functions (see overload above). */
     template<typename SIGNAL, typename RECEIVER, typename... TEST_FUNC,
-             typename = notf::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value > 0)>>
+             typename = std::enable_if_t<(std::tuple_size<typename SIGNAL::Signature>::value > 0)>>
     Connection connect_signal(SIGNAL& signal, void (RECEIVER::*method)(void) const, TEST_FUNC&&... test_func)
     {
         constexpr auto signal_size = std::tuple_size<typename std::decay<typename SIGNAL::Signature>::type>::value;

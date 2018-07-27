@@ -25,7 +25,7 @@ NOTF_EXCEPTION_TYPE(no_rational_error);
 namespace detail {
 
 /// A rational number consisting of an integer fraction.
-template<class Integer, typename = notf::enable_if_t<std::is_integral<Integer>::value>>
+template<class Integer, typename = std::enable_if_t<std::is_integral<Integer>::value>>
 class Rational {
 
     // types -------------------------------------------------------------------------------------------------------- //
@@ -40,7 +40,7 @@ public:
 
     /// Value constructor.
     /// @param num  Numerator, Denominator defaults to one.
-    template<class T, typename = notf::enable_if_t<std::is_integral<T>::value>>
+    template<class T, typename = std::enable_if_t<std::is_integral<T>::value>>
     explicit constexpr Rational(const T& num) : m_num(static_cast<Integer>(num))
     {}
 
@@ -49,8 +49,7 @@ public:
     /// @param den  Denominator
     /// @throws no_rational_error   If the denominator is zero.
     template<class T, class U,
-             typename
-             = notf::enable_if_t<notf::conjunction<std::is_integral<T>, std::is_convertible<U, Integer>>::value>>
+             typename = std::enable_if_t<std::conjunction<std::is_integral<T>, std::is_convertible<U, Integer>>::value>>
     constexpr Rational(const T& num, const U& den) : m_num(static_cast<Integer>(num)), m_den(static_cast<Integer>(den))
     {
         _normalize();
@@ -81,7 +80,7 @@ public:
     constexpr Integer get_denominator() const { return m_den; }
 
     /// Returns the corresponding real value to this fraction.
-    template<class T = float, typename = notf::enable_if_t<std::is_floating_point<T>::value>>
+    template<class T = float, typename = std::enable_if_t<std::is_floating_point<T>::value>>
     constexpr T as_real() const
     {
         return static_cast<T>(m_num) / static_cast<T>(m_den);
@@ -193,7 +192,7 @@ public:
 
     /// Scalar addition.
     /// @param i    Scalar to add to the fraction.
-    template<class T, typename = notf::enable_if_t<std::is_integral<T>::value>>
+    template<class T, typename = std::enable_if_t<std::is_integral<T>::value>>
     constexpr Rational& operator+=(const T& i)
     {
         m_num += i * m_den;
@@ -202,7 +201,7 @@ public:
 
     /// Scalar subtraction.
     /// @param i    Scalar to subtract from the fraction.
-    template<class T, typename = notf::enable_if_t<std::is_integral<T>::value>>
+    template<class T, typename = std::enable_if_t<std::is_integral<T>::value>>
     constexpr Rational& operator-=(const T& i)
     {
         m_num -= i * m_den;
@@ -211,7 +210,7 @@ public:
 
     /// Scalar multiplication.
     /// @param i    Scalar to multiply the fraction with.
-    template<class T, typename = notf::enable_if_t<std::is_integral<T>::value>>
+    template<class T, typename = std::enable_if_t<std::is_integral<T>::value>>
     constexpr Rational& operator*=(const T& i)
     {
         // avoid overflow and preserve normalization
@@ -223,7 +222,7 @@ public:
 
     /// Scalar division.
     /// @param i    Scalar to divide the fraction by.
-    template<class T, typename = notf::enable_if_t<std::is_integral<T>::value>>
+    template<class T, typename = std::enable_if_t<std::is_integral<T>::value>>
     constexpr Rational& operator/=(const T& i)
     {
         if (i == 0) {
@@ -254,7 +253,7 @@ public:
     constexpr bool operator==(const Rational& other) const { return (m_num == other.m_num) && (m_den == other.m_den); }
 
     /// Scalar equality operator.
-    template<class T, typename = notf::enable_if_t<std::is_integral<T>::value>>
+    template<class T, typename = std::enable_if_t<std::is_integral<T>::value>>
     constexpr bool operator==(const T& i) const
     {
         return (m_den == 1) && (m_num == static_cast<Integer>(i));
@@ -268,7 +267,7 @@ public:
     }
 
     /// Scalar lesser-than operator.
-    template<class T, typename = notf::enable_if_t<std::is_integral<T>::value>>
+    template<class T, typename = std::enable_if_t<std::is_integral<T>::value>>
     constexpr bool operator<(const T& i) const
     {
         // break value into mixed-fraction form, with always-nonnegative remainder
@@ -293,7 +292,7 @@ public:
     constexpr bool operator<=(const Rational& r) const { return operator==(r) || operator<(r); }
 
     /// Scalar lesser-or-equal operator
-    template<class T, typename = notf::enable_if_t<std::is_integral<T>::value>>
+    template<class T, typename = std::enable_if_t<std::is_integral<T>::value>>
     constexpr bool operator<=(const T& i) const
     {
         return operator==(i) || operator<(i);
@@ -303,7 +302,7 @@ public:
     constexpr bool operator>(const Rational& r) const { return operator==(r) ? false : !operator<(r); }
 
     /// Scalar greater-than operator.
-    template<class T, typename = notf::enable_if_t<std::is_integral<T>::value>>
+    template<class T, typename = std::enable_if_t<std::is_integral<T>::value>>
     constexpr bool operator>(const T& i) const
     {
         return operator==(i) ? false : !operator<(i);
@@ -313,7 +312,7 @@ public:
     constexpr bool operator>=(const Rational& r) const { return operator==(r) || operator>(r); }
 
     /// Scalar greater-or-equal operator
-    template<class T, typename = notf::enable_if_t<std::is_integral<T>::value>>
+    template<class T, typename = std::enable_if_t<std::is_integral<T>::value>>
     constexpr bool operator>=(const T& i) const
     {
         return operator==(i) || operator>(i);

@@ -85,7 +85,7 @@ void Painterpreter::paint(Widget& widget)
         const WidgetDesign& design = Widget::Access<Painterpreter>::get_design(widget);
         const std::vector<WidgetDesign::Command>& buffer = WidgetDesign::Access<Painterpreter>::get_buffer(design);
         for (const WidgetDesign::Command& command : buffer) {
-            notf::visit(CommandVisitor{*this}, command);
+            std::visit(CommandVisitor{*this}, command);
         }
     }
 

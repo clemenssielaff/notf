@@ -30,7 +30,7 @@ struct RealVector2 : public detail::Arithmetic<RealVector2<REAL>, REAL, 2> {
     /// Element-wise constructor.
     /// @param x    First component.
     /// @param y    Second component (default is 0).
-    template<typename X, typename Y = element_t, typename = notf::enable_if_t<std::is_convertible<X, element_t>::value>>
+    template<typename X, typename Y = element_t, typename = std::enable_if_t<std::is_convertible<X, element_t>::value>>
     RealVector2(const X x, const Y y = 0) : super_t{static_cast<element_t>(x), static_cast<element_t>(y)}
     {}
 

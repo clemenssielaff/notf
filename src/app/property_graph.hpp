@@ -43,9 +43,9 @@ public:
 
     /// Checks if T is a valid type to store in a Property.
     template<class T>
-    using is_property_type = typename notf::conjunction< //
-        std::is_copy_constructible<T>,                   // we need to copy property values to store them as deltas
-        negation<std::is_const<T>>>;                     // property values must be modifyable
+    using is_property_type = typename std::conjunction< //
+        std::is_copy_constructible<T>,                  // we need to copy property values to store them as deltas
+        std::negation<std::is_const<T>>>;               // property values must be modifyable
     template<class T>
     static constexpr bool is_property_type_v = is_property_type<T>::value;
 
@@ -264,7 +264,7 @@ private:
 public:
     /// Factory function, making sure that all PropertyBodies are managed by a shared_ptr.
     /// @param value    Value held by the Property, is used to determine the property type.
-    static notf::enable_if_t<PropertyGraph::is_property_type_v<T>, TypedPropertyBodyPtr<T>>
+    static std::enable_if_t<PropertyGraph::is_property_type_v<T>, TypedPropertyBodyPtr<T>>
     create(valid_ptr<PropertyHead*> head, T&& value)
     {
         return NOTF_MAKE_SHARED_FROM_PRIVATE(TypedPropertyBody<T>, head, std::forward<T>(value));

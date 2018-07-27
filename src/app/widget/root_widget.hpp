@@ -19,7 +19,7 @@ public:
 
     /// Sets a new child Widget at the top of the Widget hierarchy.
     /// @param args Arguments that are forwarded to the constructor of the child.
-    template<class T, class... Args, typename = enable_if_t<std::is_base_of<Widget, T>::value>>
+    template<class T, class... Args, typename = std::enable_if_t<std::is_base_of<Widget, T>::value>>
     NodeHandle<T> set_child(Args&&... args)
     {
         _clear_children();

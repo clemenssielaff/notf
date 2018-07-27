@@ -642,7 +642,7 @@ void Plotter::render() const
     }
 
     for (const DrawCall& drawcall : m_drawcalls) {
-        notf::visit(DrawCallVisitor{*this, drawcall}, drawcall.info);
+        std::visit(DrawCallVisitor{*this, drawcall}, drawcall.info);
     }
 }
 

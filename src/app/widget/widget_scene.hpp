@@ -26,14 +26,14 @@ public:
 
     /// Sets a new Widget at the top of the hierarchy in this Scene.
     /// @param args Arguments that are forwarded to the constructor of the child.
-    template<class T, class... Args, typename = notf::enable_if_t<std::is_base_of<Widget, T>::value>>
+    template<class T, class... Args, typename = std::enable_if_t<std::is_base_of<Widget, T>::value>>
     void set_widget(Args&&... args)
     {
         m_root_widget->set_child<T>(std::forward<Args>(args)...);
     }
 
     /// Returns the Widget at the top of the hierarchy in this Scene.
-    template<class T, typename = notf::enable_if_t<std::is_base_of<Widget, T>::value>>
+    template<class T, typename = std::enable_if_t<std::is_base_of<Widget, T>::value>>
     NodeHandle<T> get_widget()
     {
         return m_root_widget->get_child<T>(0);

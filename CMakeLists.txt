@@ -86,7 +86,7 @@ add_subdirectory(thirdparty/freetype-2.9.1)
 
 # NOTF #################################################################################################################
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DNOTF_DEBUG")
@@ -118,8 +118,6 @@ add_sources(SOURCE_FILES examples
 
 add_sources(THIRDPARTY_FILES thirdparty
     tinyutf8/tinyutf8.cpp
-    abseil/any.cpp
-    abseil/optional.cpp
     glad/glad.c
     fmt/format.cc
 )

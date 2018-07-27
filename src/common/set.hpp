@@ -6,7 +6,7 @@ NOTF_OPEN_NAMESPACE
 
 /// Pops a single element from a std::set and places it into the output parameter.
 /// @return True iff an element was popped from the set.
-template<typename T, typename U, typename = notf::enable_if_t<std::is_convertible<typename T::key_type, U>::value>>
+template<typename T, typename U, typename = std::enable_if_t<std::is_convertible<typename T::key_type, U>::value>>
 bool pop_one(T& set, U& result)
 {
     if (set.empty()) {

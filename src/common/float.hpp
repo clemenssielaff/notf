@@ -43,30 +43,30 @@ using std::tan;
 
 /// Tests whether a given value is NAN.
 template<class T>
-inline notf::enable_if_t<std::is_floating_point<T>::value, bool> is_nan(const T& value)
+inline std::enable_if_t<std::is_floating_point<T>::value, bool> is_nan(const T& value)
 {
     return std::isnan(value);
 }
 template<class T>
-inline constexpr notf::enable_if_t<std::is_integral<T>::value, bool> is_nan(const T&)
+inline constexpr std::enable_if_t<std::is_integral<T>::value, bool> is_nan(const T&)
 {
     return false;
 }
 
 /// Tests whether a given value is INFINITY.
 template<class T>
-inline notf::enable_if_t<std::is_floating_point<T>::value, bool> is_inf(const T& value)
+inline std::enable_if_t<std::is_floating_point<T>::value, bool> is_inf(const T& value)
 {
     return std::isinf(value);
 }
 template<class T>
-inline constexpr notf::enable_if_t<std::is_integral<T>::value, bool> is_inf(const T&)
+inline constexpr std::enable_if_t<std::is_integral<T>::value, bool> is_inf(const T&)
 {
     return false;
 }
 
 /// Tests whether a given value is a valid float value (not NAN, not INFINITY).
-template<class T, typename = notf::enable_if_t<std::is_floating_point<T>::value>>
+template<class T, typename = std::enable_if_t<std::is_floating_point<T>::value>>
 inline bool is_real(const T value)
 {
     return !is_nan(value) && !is_inf(value);

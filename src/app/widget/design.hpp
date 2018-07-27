@@ -1,9 +1,10 @@
 #pragma once
 
+#include <variant>
+
 #include "app/forwards.hpp"
 #include "common/bezier.hpp"
 #include "common/polygon.hpp"
-#include "common/variant.hpp"
 #include "graphics/renderer/plotter.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -101,7 +102,7 @@ public:
     /// Strokes the current Path using the current Paint.
     struct StrokeCommand {};
 
-    using Command = notf::variant<PushStateCommand, PopStateCommand, SetTransformationCommand, SetStrokeWidthCommand,
+    using Command = std::variant<PushStateCommand, PopStateCommand, SetTransformationCommand, SetStrokeWidthCommand,
                                   SetFontCommand, SetPolygonPathCommand, SetSplinePathCommand, SetPathIndexCommand,
                                   WriteCommand, FillCommand, StrokeCommand>;
     static_assert(sizeof(Command) == (sizeof(std::unique_ptr<void>) * 2),
@@ -116,12 +117,12 @@ public:
     /// Pushes a new Command onto the buffer.
     /// @param args Arguments used to initialize the data of the given Command.
     template<class T, class... Args>
-    notf::enable_if_t<has_member_type_Data<T>::value, void> add_command(Args&&... args)
+    std::enable_if_t<has_member_type_Data<T>::value, void> add_command(Args&&... args)
     {
         m_buffer.emplace_back(T{std::make_unique<aggregate_adapter<typename T::Data>>(std::forward<Args>(args)...)});
     }
     template<class T, class... Args>
-    notf::enable_if_t<!has_member_type_Data<T>::value, void> add_command(Args&&... args)
+    std::enable_if_t<!has_member_type_Data<T>::value, void> add_command(Args&&... args)
     {
         m_buffer.emplace_back(T{std::forward<Args>(args)...});
     }

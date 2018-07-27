@@ -1,12 +1,12 @@
 #pragma once
 
+#include <variant>
 #include <vector>
 
 #include "common/aabr.hpp"
 #include "common/color.hpp"
 #include "common/id.hpp"
 #include "common/pointer.hpp"
-#include "common/variant.hpp"
 #include "common/vector2.hpp"
 #include "graphics/forwards.hpp"
 
@@ -180,7 +180,7 @@ private:
     /// draw call (for example, to render multiple lines of the same width, color etc.).
     struct DrawCall {
 
-        using Info = notf::variant<StrokeInfo, FillInfo, TextInfo>;
+        using Info = std::variant<StrokeInfo, FillInfo, TextInfo>;
 
         /// Additional information on how to draw the patches contained in this call.
         Info info;

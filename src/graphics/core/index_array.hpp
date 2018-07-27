@@ -19,9 +19,9 @@ template<signed long long VALUE>
 struct gl_smallest_unsigned_type {
     static_assert(VALUE >= 0, "Index buffer index cannot be less than zero");
     static_assert(VALUE <= std::numeric_limits<GLuint>::max(), "Index buffer index too large (must fit into a Gluint)");
-    using type = typename notf::conditional_t<
+    using type = typename std::conditional_t<
         VALUE <= std::numeric_limits<GLubyte>::max(), GLubyte,
-        typename notf::conditional_t<VALUE <= std::numeric_limits<GLushort>::max(), GLushort, GLuint>>;
+        typename std::conditional_t<VALUE <= std::numeric_limits<GLushort>::max(), GLushort, GLuint>>;
 };
 
 } // namespace detail

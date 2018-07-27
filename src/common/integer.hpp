@@ -8,7 +8,7 @@
 NOTF_OPEN_NAMESPACE
 
 /// Counts the digits in a given integral number.
-template<class Integer, typename = notf::enable_if_t<std::is_integral<Integer>::value>>
+template<class Integer, typename = std::enable_if_t<std::is_integral<Integer>::value>>
 inline constexpr ushort count_digits(Integer digits)
 {
     ushort counter = 1;
@@ -22,7 +22,7 @@ inline constexpr ushort count_digits(Integer digits)
 /// @param n     n % M
 /// @param M     n % M
 /// @return      n % M, while negative values are wrapped (for example -1%3=2).
-template<class Integer, typename = notf::enable_if_t<std::is_integral<Integer>::value>>
+template<class Integer, typename = std::enable_if_t<std::is_integral<Integer>::value>>
 inline constexpr Integer wrap_mod(const Integer n, const Integer M)
 {
     return ((n % M) + M) % M;
@@ -36,7 +36,7 @@ inline constexpr Integer wrap_mod(const Integer n, const Integer M)
 ///     value = 60  => interval = 120
 ///     value = 61  => interval = 120
 ///     ...
-template<class Integer, typename = notf::enable_if_t<std::is_integral<Integer>::value>>
+template<class Integer, typename = std::enable_if_t<std::is_integral<Integer>::value>>
 inline constexpr Integer next_interval(Integer value, const Integer interval)
 {
     if (!interval) {

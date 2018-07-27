@@ -22,7 +22,7 @@ Type random_number(const Type from, const Type to)
 }
 
 /** Returns a random angle in radians between -pi and pi. */
-template<typename Real, typename = notf::enable_if_t<std::is_floating_point<Real>::value>(Real)>
+template<typename Real, typename = std::enable_if_t<std::is_floating_point<Real>::value>(Real)>
 Real random_radian()
 {
     return random_number(-pi<Real>(), pi<Real>());

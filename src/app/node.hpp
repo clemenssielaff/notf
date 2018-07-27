@@ -205,7 +205,7 @@ public:
 
     /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
     /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
-    template<class T, typename = notf::enable_if_t<std::is_base_of<Node, T>::value>>
+    template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
     NodeHandle<T> get_first_ancestor()
     {
         NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
@@ -320,7 +320,7 @@ protected:
     /// Creates and adds a new child to this node.
     /// @param args Arguments that are forwarded to the constructor of the child.
     ///             Note that all arguments for the Node base class are supplied automatically by this method.
-    template<class T, class... Args, typename = notf::enable_if_t<std::is_base_of<Node, T>::value>>
+    template<class T, class... Args, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
     NodeHandle<T> _add_child(Args&&... args)
     {
         // create the node

@@ -14,8 +14,8 @@ NOTF_OPEN_NAMESPACE
 /// indices into the vertex buffer.
 /// The group also contains an instance buffer that is repeatedly filled by each prefab type to render its instances.
 template<typename VERTEX_ARRAY, typename INSTANCE_ARRAY,
-         typename = notf::enable_if_t<std::is_base_of<VertexArrayType, VERTEX_ARRAY>::value>,
-         typename = notf::enable_if_t<std::is_base_of<VertexArrayType, INSTANCE_ARRAY>::value>>
+         typename = std::enable_if_t<std::is_base_of<VertexArrayType, VERTEX_ARRAY>::value>,
+         typename = std::enable_if_t<std::is_base_of<VertexArrayType, INSTANCE_ARRAY>::value>>
 class PrefabGroup {
 
     template<typename>

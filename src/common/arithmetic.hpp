@@ -57,7 +57,7 @@ struct ArithmeticImpl;
 /// Base for all arithmetic types that contain only scalars (i.e. vectors).
 template<typename self_t, typename element_t, typename component_t, size_t dim>
 struct ArithmeticImpl<self_t, element_t, component_t, dim,
-                      notf::enable_if_t<std::is_same<element_t, component_t>::value>> {
+                      std::enable_if_t<std::is_same<element_t, component_t>::value>> {
 
     // fields ------------------------------------------------------------------------------------------------------- //
     /// Value data array.
@@ -242,7 +242,7 @@ struct ArithmeticImpl<self_t, element_t, component_t, dim,
 /// Base for all arithmetic types that contain vectors (i.e. matrices).
 template<typename self_t, typename element_t, typename component_t, size_t dim>
 struct ArithmeticImpl<self_t, element_t, component_t, dim,
-                      notf::enable_if_t<!std::is_same<element_t, component_t>::value>> {
+                      std::enable_if_t<!std::is_same<element_t, component_t>::value>> {
 
     // fields ------------------------------------------------------------------------------------------------------- //
     /// Value data array.
@@ -376,7 +376,7 @@ struct get_element_type {
     using type = typename T::element_t;
 };
 template<typename T>
-struct get_element_type<T, notf::enable_if_t<std::is_arithmetic<T>::value>> {
+struct get_element_type<T, std::enable_if_t<std::is_arithmetic<T>::value>> {
     using type = T;
 };
 template<>

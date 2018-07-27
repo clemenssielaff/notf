@@ -30,28 +30,28 @@ struct is_unique_ptr<std::unique_ptr<T>> : std::true_type {};
 /// @{
 /// Returns the raw pointer from any kind of other pointer without increasing the use_count of shared_ptrs.
 template<class T>
-notf::enable_if_t<std::is_pointer<T>::value, T> raw_pointer(const T& ptr)
+std::enable_if_t<std::is_pointer<T>::value, T> raw_pointer(const T& ptr)
 {
     return ptr; // from raw
 }
 template<class T>
-notf::enable_if_t<is_shared_ptr<T>::value, typename T::element_type*> raw_pointer(const T& shared_ptr)
+std::enable_if_t<is_shared_ptr<T>::value, typename T::element_type*> raw_pointer(const T& shared_ptr)
 {
     return shared_ptr.get(); // from shared_ptr<T>
 }
 template<class T>
-notf::enable_if_t<is_unique_ptr<T>::value, typename T::element_type*> raw_pointer(const T& unique_ptr)
+std::enable_if_t<is_unique_ptr<T>::value, typename T::element_type*> raw_pointer(const T& unique_ptr)
 {
     return unique_ptr.get(); // from unique<T>
 }
 template<class T>
-notf::enable_if_t<T::is_notf_pointer::value, decltype(raw_pointer(typename T::type{}))>
+std::enable_if_t<T::is_notf_pointer::value, decltype(raw_pointer(typename T::type{}))>
 raw_pointer(const T& notf_pointer)
 {
     return raw_pointer(notf_pointer.raw()); // from notf_pointer
 }
 template<class T>
-notf::enable_if_t<std::is_same<std::decay_t<T>, std::nullptr_t>::value, std::nullptr_t> raw_pointer(T)
+std::enable_if_t<std::is_same<std::decay_t<T>, std::nullptr_t>::value, std::nullptr_t> raw_pointer(T)
 {
     return nullptr; // from nullptr
 }
@@ -153,7 +153,7 @@ struct valid_ptr {
     /// Value Constructor
     /// @param ptr  Pointer to wrap.
     /// @throws bad_pointer_error   If you try to instantiate with a nullptr.
-    template<typename U, typename = notf::enable_if_t<std::is_convertible<U, T>::value>>
+    template<typename U, typename = std::enable_if_t<std::is_convertible<U, T>::value>>
     valid_ptr(U&& u) : m_ptr(std::forward<U>(u))
     {
         if (NOTF_UNLIKELY(m_ptr == nullptr)) {
@@ -163,7 +163,7 @@ struct valid_ptr {
 
     /// Copy Constructor.
     /// @param other    Other pointer to copy.
-    template<typename U, typename = notf::enable_if_t<std::is_convertible<U, T>::value>>
+    template<typename U, typename = std::enable_if_t<std::is_convertible<U, T>::value>>
     valid_ptr(const valid_ptr<U>& other) : valid_ptr(other.get())
     {}
 
@@ -294,13 +294,13 @@ struct risky_ptr {
 
     /// Value Constructor
     /// @param ptr  Pointer to wrap.
-    template<typename U, typename = notf::enable_if_t<std::is_convertible<U, T>::value>>
+    template<typename U, typename = std::enable_if_t<std::is_convertible<U, T>::value>>
     risky_ptr(const U& u) : m_ptr(u)
     {}
 
     /// Copy Constructor.
     /// @param other    Other pointer to copy.
-    template<typename U, typename = notf::enable_if_t<std::is_convertible<U, T>::value>>
+    template<typename U, typename = std::enable_if_t<std::is_convertible<U, T>::value>>
     risky_ptr(risky_ptr<U>&& other) : risky_ptr(other.m_ptr)
     {}
 

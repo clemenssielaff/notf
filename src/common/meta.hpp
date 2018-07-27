@@ -6,29 +6,6 @@
 
 // ================================================================================================================== //
 
-/// Definitions for the various versions of C++.
-/// Wherever possible, it is more precise to use feature testing macros described in:
-///     http://en.cppreference.com/w/User:D41D8CD98F/feature_testing_macros
-
-#ifndef __cplusplus
-#error A C++ compiler is required!
-#else
-#if __cplusplus >= 199711L
-#define NOTF_CPP98
-#endif
-#if __cplusplus >= 201103L
-#define NOTF_CPP11
-#endif
-#if __cplusplus >= 201402L
-#define NOTF_CPP14
-#endif
-#if __cplusplus >= 201703L
-#define NOTF_CPP17
-#endif
-#endif
-
-// ================================================================================================================== //
-
 /// Compiler detection.
 #ifdef __clang__
 #define NOTF_CLANG
@@ -176,50 +153,6 @@
 
 NOTF_OPEN_NAMESPACE
 
-#ifndef NOTF_CPP14
-
-/// SFINAE convenience type
-template<bool B, class T = void>
-using enable_if_t = typename std::enable_if<B, T>::type;
-
-/// SFINAE convenience type
-template<bool B, class T, class F>
-using conditional_t = typename std::conditional<B, T, F>::type;
-
-#else
-using std::conditional_t;
-using std::enable_if_t;
-#endif
-
-#ifndef __cpp_lib_logical_traits
-/// Variadic logical AND metafunction
-/// http://en.cppreference.com/w/cpp/types/conjunction
-template<typename...>
-struct conjunction : std::true_type {};
-template<typename T>
-struct conjunction<T> : T {};
-template<typename T, typename... TList>
-struct conjunction<T, TList...> : notf::conditional_t<T::value, conjunction<TList...>, T> {};
-
-/// Variadic logical OR metafunction
-/// http://en.cppreference.com/w/cpp/types/disjunction
-template<typename...>
-struct disjunction : std::false_type {};
-template<typename T>
-struct disjunction<T> : T {};
-template<typename T, typename... TList>
-struct disjunction<T, TList...> : notf::conditional_t<T::value, T, disjunction<TList...>> {};
-
-/// Logical NOT metafunction.
-/// http://en.cppreference.com/w/cpp/types/negation
-template<typename T>
-struct negation : std::integral_constant<bool, !T::value> {};
-#else
-using std::conjunction;
-using std::disjunction;
-using std::negation;
-#endif // __cpp_lib_logical_traits
-
 /// Helper to reduce cv-qualified pointers/references to their base type.
 template<class T, typename U = std::remove_reference_t<std::remove_pointer_t<std::remove_cv_t<T>>>>
 struct strip_type {
@@ -227,25 +160,6 @@ struct strip_type {
 };
 template<class T>
 using strip_type_t = typename strip_type<T>::type;
-
-/// Void type.
-#ifndef __cpp_lib_void_t
-template<typename... Ts>
-struct make_void {
-    typedef void type;
-};
-template<typename... Ts>
-using void_t = typename make_void<Ts...>::type;
-#else
-using std::void_t;
-#endif // __cpp_lib_void_t
-
-/// Byte type.
-#ifndef __cpp_lib_byte
-enum class byte : std::uint8_t {};
-#else
-using std::byte;
-#endif // __cpp_lib_byte
 
 /// Type template to ensure that a template argument does not participate in type deduction.
 /// Compare:
@@ -353,7 +267,7 @@ struct Harness;
 
 /// Checks if T is any of the variadic types.
 template<typename T, typename... Ts>
-using is_one_of = disjunction<std::is_same<T, Ts>...>;
+using is_one_of = std::disjunction<std::is_same<T, Ts>...>;
 
 /// The `always_false` struct can be used to create a templated struct that will always evaluate to `false` when
 /// used in a static_assert.
@@ -484,14 +398,14 @@ constexpr void _notf_is_constexpr_helper(T&&)
 
 /// Constexpr to use an enum class value as a numeric value.
 /// From "Effective Modern C++ by Scott Mayers': Item #10.
-template<typename Enum, typename = notf::enable_if_t<std::is_enum<Enum>::value>>
+template<typename Enum, typename = std::enable_if_t<std::is_enum<Enum>::value>>
 constexpr auto to_number(Enum enumerator) noexcept
 {
     return static_cast<std::underlying_type_t<Enum>>(enumerator);
 }
 
 /// Converts any pointer to the equivalent integer representation.
-template<typename T, typename = notf::enable_if_t<std::is_pointer<T>::value>>
+template<typename T, typename = std::enable_if_t<std::is_pointer<T>::value>>
 constexpr std::uintptr_t to_number(const T ptr) noexcept
 {
     return reinterpret_cast<std::uintptr_t>(ptr);

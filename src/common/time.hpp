@@ -7,7 +7,7 @@
 NOTF_OPEN_NAMESPACE
 
 /// Most precise but steady clock.
-using clock_t = notf::conditional_t<std::chrono::high_resolution_clock::is_steady, // if it is steady
+using clock_t = std::conditional_t<std::chrono::high_resolution_clock::is_steady, // if it is steady
                                    std::chrono::high_resolution_clock,            // use the high-resolution clock,
                                    std::chrono::steady_clock>;                    // otherwise use the steady clock
 
