@@ -61,8 +61,7 @@ public:
     ~WindowWidget() override = default;
 
 protected:
-    /// Updates the Design of this Widget through the given Painter.
-    void _paint(Painter& painter) const override
+    void _paint_line(Painter& painter) const
     {
         const Size2i window_size = get_scene().get_window()->get_buffer_size();
         const Vector2f center = Vector2f(window_size.width, window_size.height) / 2;
@@ -76,22 +75,44 @@ protected:
         const double period = 30;
 
         const double half_length = length / 2;
-        //const double t = pi<double>() * 0.02;
         const double t = fmod(time / (1000 * period), 1) * pi<double>();
         const double sin_t = sin(t);
         const double cos_t = cos(t);
         const Vector2f half_line{sin_t * half_length, cos_t * half_length};
         const CubicBezier2f spline({CubicBezier2f::Segment::line(center + half_line, center - half_line)});
-        // const CubicBezier2f spline({CubicBezier2f::Segment::line(Vector2f(20, 20), Vector2f(327, 174))});
 
         // draw the rotating line
         painter.set_stroke_width(1);
         painter.set_path(spline);
         painter.stroke();
-
-//        painter.set_font(m_font); 
-//        painter.write(std::to_string(time / 1000));
     }
+
+    void _paint_text(Painter& /*painter*/) const
+    {
+        // painter.set_font(m_font);
+        // painter.write(std::to_string(time / 1000));
+    }
+
+    void _paint_shape(Painter& painter) const
+    {
+        // convex
+        //        painter.set_path(
+        //            Polygonf({Vector2f{10, 70}, Vector2f{5, 20}, Vector2f{5, 5}, Vector2f{75, 5}, Vector2f{75, 75}}));
+        // concave
+        painter.set_path(Polygonf({
+            Vector2f{565 * 0.6 + 50., 770 * 0.6},
+            Vector2f{040 * 0.6 + 50., 440 * 0.6},
+            Vector2f{330 * 0.6 + 50., 310 * 0.6},
+            Vector2f{150 * 0.6 + 50., 120 * 0.6},
+            Vector2f{460 * 0.6 + 50., 230 * 0.6},
+            Vector2f{770 * 0.6 + 50., 120 * 0.6},
+            Vector2f{250 * 0.6 + 50., 450 * 0.6},
+        }));
+        painter.fill();
+    }
+
+    /// Updates the Design of this Widget through the given Painter.
+    void _paint(Painter& painter) const override { _paint_shape(painter); }
 
     /// Recursive implementation to find all Widgets at a given position in local space
     /// @param local_pos     Local coordinates where to look for a Widget.
