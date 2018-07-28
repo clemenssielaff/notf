@@ -146,7 +146,7 @@ inline T save_div(const L divident, const R divisor)
 /// Floating point comparison from:
 /// https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 template<class L, class R, typename T = std::common_type_t<L, R>>
-bool is_approx(const L lhs, const R rhs, const T epsilon = std::numeric_limits<T>::epsilon())
+bool is_approx(const L lhs, const R rhs, const T epsilon = precision_high<T>())
 {
     if (is_nan(lhs) || is_nan(rhs)) {
         return false;

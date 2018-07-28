@@ -66,7 +66,7 @@ WindowPtr Application::create_window()
     return m_windows.back();
 }
 
-WindowPtr Application::create_window(const detail::WindowArguments& args)
+WindowPtr Application::create_window(const detail::WindowSettings& args)
 {
     m_windows.emplace_back(Window::Access<Application>::create(args));
     return m_windows.back();

@@ -5,6 +5,7 @@
 #include "common/assert.hpp"
 #include "common/exception.hpp"
 #include "common/meta.hpp"
+#include "common/numeric.hpp"
 #include "graphics/core/gl_errors.hpp"
 #include "graphics/core/gl_utils.hpp"
 #include "graphics/core/opengl.hpp"
@@ -63,7 +64,7 @@ struct AttributeKind {
 struct AttributeTrait {
 
     /// Location of the attribute in the shader.
-    constexpr static uint location = std::numeric_limits<GLuint>::max(); // INVALID DEFAULT
+    constexpr static uint location = max_value<GLuint>(); // INVALID DEFAULT
 
     /// Type used to store the trait value.
     using type = void; // INVALID DEFAULT
@@ -86,7 +87,7 @@ struct is_attribute_trait<
     T, std::void_t<
            // does the type contain a `uint` that has a valid value?
            std::enable_if_t<std::is_same<decltype(T::location), const uint>::value>,
-           std::enable_if_t<T::location != std::numeric_limits<GLuint>::max()>,
+           std::enable_if_t<T::location != max_value<GLuint>()>,
 
            // does the type contain a `bool` named `normalized` ?
            std::enable_if_t<std::is_same<decltype(T::normalized), const bool>::value>,
@@ -97,7 +98,7 @@ struct is_attribute_trait<
            // does type type contain a type named `kind` that is a subtype of `AttributeKind`?
            typename T::kind,
            std::enable_if_t<is_one_of<typename T::kind, AttributeKind::Position, AttributeKind::Normal,
-                                       AttributeKind::Color, AttributeKind::TexCoord, AttributeKind::Other>::value>>>
+                                      AttributeKind::Color, AttributeKind::TexCoord, AttributeKind::Other>::value>>>
     : std::true_type {};
 
 namespace detail {
@@ -172,7 +173,7 @@ protected:
     GLsizei m_size = 0;
 
     /// Invalid attribute ID.
-    static constexpr GLuint INVALID_ID = std::numeric_limits<GLuint>::max();
+    static constexpr GLuint INVALID_ID = max_value<GLuint>();
 };
 
 // ================================================================================================================== //

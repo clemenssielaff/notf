@@ -119,7 +119,7 @@ public:
     /// @{
     /// Creates a new Window instance with the given arguments.
     WindowPtr create_window();
-    WindowPtr create_window(const detail::WindowArguments& args);
+    WindowPtr create_window(const detail::WindowSettings& args);
     /// @}
 
     /// Starts the application's main loop.

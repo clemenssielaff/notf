@@ -5,6 +5,7 @@
 
 #include "common/exception.hpp"
 #include "common/meta.hpp"
+#include "common/numeric.hpp"
 #include "graphics/core/gl_errors.hpp"
 #include "graphics/core/gl_utils.hpp"
 #include "graphics/core/opengl.hpp"
@@ -18,10 +19,10 @@ namespace detail {
 template<signed long long VALUE>
 struct gl_smallest_unsigned_type {
     static_assert(VALUE >= 0, "Index buffer index cannot be less than zero");
-    static_assert(VALUE <= std::numeric_limits<GLuint>::max(), "Index buffer index too large (must fit into a Gluint)");
-    using type = typename std::conditional_t<
-        VALUE <= std::numeric_limits<GLubyte>::max(), GLubyte,
-        typename std::conditional_t<VALUE <= std::numeric_limits<GLushort>::max(), GLushort, GLuint>>;
+    static_assert(VALUE <= max_value<GLuint>(), "Index buffer index too large (must fit into a Gluint)");
+    using type =
+        typename std::conditional_t<VALUE <= max_value<GLubyte>(), GLubyte,
+                                    typename std::conditional_t<VALUE <= max_value<GLushort>(), GLushort, GLuint>>;
 };
 
 } // namespace detail
@@ -169,10 +170,7 @@ private:
     }
 
     /// Value to use as the restart index.
-    virtual GLuint get_restart_index() const override
-    {
-        return static_cast<GLuint>(std::numeric_limits<index_t>::max());
-    }
+    virtual GLuint get_restart_index() const override { return max_value<GLuint>(); }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

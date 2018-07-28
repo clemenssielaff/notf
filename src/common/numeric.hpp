@@ -45,6 +45,30 @@ inline Value clamp(const Value value, const Min min, const Max max)
     return notf::max(static_cast<Value>(min), notf::min(static_cast<Value>(max), value));
 }
 
+// limits =========================================================================================================== //
+
+/// Highest value representable with the given type.
+/// There exists no value X of the type for which "X > max_value<T>()" is true.
+template<class T>
+constexpr T max_value()
+{
+    return std::numeric_limits<T>::max();
+}
+
+/// Lowest value representable with the given type.
+/// There exists no value X of the type for which "X < min_value<T>()" is true.
+template<class T>
+constexpr T min_value()
+{
+    return std::numeric_limits<T>::lowest();
+}
+
+/// Helper struct containing the type that has a higher numeric limits.
+template<typename LEFT, typename RIGHT>
+struct higher_type {
+    using type = typename std::conditional<max_value<LEFT>() <= max_value<RIGHT>(), LEFT, RIGHT>::type;
+};
+
 // precision ======================================================================================================== //
 
 /// Type dependent constant for low-precision approximation (useful for use in "noisy" functions).

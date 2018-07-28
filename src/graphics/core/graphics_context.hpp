@@ -360,6 +360,10 @@ public:
     /// Makes this context current on this thread.
     /// Blocks until the GraphicsContext's mutex is free.
     CurrentGuard make_current() { return CurrentGuard(*this); }
+    // TODO: this has the potential of a deadlock!
+    // The RenderThread needs to lock the scene hierarchy mutex from time to time - which can also be held by the event
+    // handler thread. If the event handler thread asks for the GraphicsContext to become current, the two will wait
+    // for each other indefinetely
 
     /// Begins the render of a frame.
     void begin_frame();

@@ -43,7 +43,7 @@ struct Size2 {
 
     /// The "most wrong" Size2 (maximal negative area).
     /// Is useful as the starting point for defining the union of multiple Size2.
-    static Size2 wrongest() { return {std::numeric_limits<value_t>::lowest(), std::numeric_limits<value_t>::lowest()}; }
+    static Size2 wrongest() { return {min_value<value_t>(), min_value<value_t>()}; }
 
     /// Tests if this Size is valid (>=0) in both dimensions.
     bool is_valid() const { return width >= 0 && height >= 0; }

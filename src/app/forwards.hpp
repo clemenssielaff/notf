@@ -41,7 +41,7 @@ NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, TypedNodeProperty);
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, GlobalProperty);
 
 namespace detail {
-struct WindowArguments;
+struct WindowSettings;
 } // namespace detail
 
 // app/io =========================================================================================================== //

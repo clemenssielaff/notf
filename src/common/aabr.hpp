@@ -112,8 +112,8 @@ struct Aabr {
     static Aabr huge()
     {
         Aabr result;
-        result._min = vector_t::fill(std::numeric_limits<element_t>::lowest());
-        result._max = vector_t::fill(std::numeric_limits<element_t>::max());
+        result._min = vector_t::fill(min_value<element_t>());
+        result._max = vector_t::fill(max_value<element_t>());
         return result;
     }
 
@@ -122,8 +122,8 @@ struct Aabr {
     static Aabr wrongest()
     {
         Aabr result;
-        result._min = vector_t::fill(std::numeric_limits<element_t>::max());
-        result._max = vector_t::fill(std::numeric_limits<element_t>::lowest());
+        result._min = vector_t::fill(max_value<element_t>());
+        result._max = vector_t::fill(min_value<element_t>());
         return result;
     }
 

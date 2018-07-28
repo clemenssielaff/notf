@@ -163,9 +163,9 @@ int smoke_main(int argc, char* argv[])
     Application& app = Application::initialize(args);
 
     { // initialize the window
-        Window::Args window_args;
-        window_args.is_resizeable = false;
-        WindowPtr window = Application::instance().create_window(window_args);
+        Window::Settings window_settings;
+        window_settings.is_resizeable = true;
+        WindowPtr window = Application::instance().create_window(window_settings);
 
         std::shared_ptr<CloudScene> cloud_scene = Scene::create<CloudScene>(window->get_scene_graph(), "clouds_scene");
         std::shared_ptr<SceneOWidgets> widget_scene

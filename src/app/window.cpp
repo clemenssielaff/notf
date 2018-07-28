@@ -8,6 +8,20 @@
 #include "graphics/core/graphics_context.hpp"
 #include "graphics/core/raw_image.hpp"
 
+namespace {
+
+GLFWmonitor* get_glfw_monitor(int index)
+{
+    int count = 0;
+    GLFWmonitor** monitors = glfwGetMonitors(&count);
+    NOTF_ASSERT(index < count);
+    return monitors[index];
+}
+
+} // namespace
+
+// ================================================================================================================== //
+
 NOTF_OPEN_NAMESPACE
 
 namespace detail {
@@ -27,27 +41,59 @@ Window::initialization_error::~initialization_error() = default;
 
 // ================================================================================================================== //
 
-const Window::Args Window::s_default_args = {};
+const Window::Settings Window::s_default_settings = {};
 
-Window::Window(const Args& args)
-    : m_glfw_window(nullptr, detail::window_deleter), m_title(args.title), m_state(args.state)
+Window::Window(const Settings& settings)
+    : m_glfw_window(nullptr, detail::window_deleter)
+    , m_settings(std::make_unique<Settings>(_validate_settings(settings)))
 {
     // make sure that an Application was initialized before instanciating a Window (will throw on failure)
     Application& app = Application::instance();
 
-    // NoTF uses OpenGL ES 3.2
+    // Window and OpenGL context hints
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-    glfwWindowHint(GLFW_RESIZABLE, args.is_resizeable ? GL_TRUE : GL_FALSE);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
+    glfwWindowHint(GLFW_VISIBLE, settings.is_visible);
+    glfwWindowHint(GLFW_FOCUSED, settings.is_focused);
+    glfwWindowHint(GLFW_DECORATED, settings.is_decorated);
+    glfwWindowHint(GLFW_RESIZABLE, settings.is_resizeable);
+    glfwWindowHint(GLFW_MAXIMIZED, settings.state == Settings::State::MAXIMIZED);
+    glfwWindowHint(GLFW_SAMPLES, settings.samples);
+    glfwWindowHint(GLFW_DOUBLEBUFFER, true);
+    glfwWindowHint(GLFW_SRGB_CAPABLE, true);
+    glfwWindowHint(GLFW_REFRESH_RATE, GLFW_DONT_CARE);
+    glfwWindowHint(GLFW_CONTEXT_RELEASE_BEHAVIOR, GLFW_RELEASE_BEHAVIOR_NONE);
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, is_debug_build());
+    glfwWindowHint(GLFW_CONTEXT_NO_ERROR, !is_debug_build());
 
-    // create the GLFW window
-    m_glfw_window.reset(glfwCreateWindow(args.size.width, args.size.height, m_title.c_str(), nullptr, nullptr));
-    if (!m_glfw_window) {
-        NOTF_THROW(initialization_error, "Window or OpenGL context creation failed for Window \"{}\"", get_title());
+    { // create the GLFW window with the correct size and monitor
+        Size2i window_size = m_settings->size;
+        GLFWmonitor* monitor = nullptr;
+        if (m_settings->state == Window::Settings::State::FULLSCREEN) {
+            if (m_settings->has_buffer_size()) {
+                window_size = m_settings->buffer_size;
+            }
+            else {
+                monitor = get_glfw_monitor(m_settings->has_monitor() ? m_settings->monitor : 0);
+                const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+                window_size = {mode->width, mode->height};
+            }
+        }
+
+        m_glfw_window.reset(
+            glfwCreateWindow(window_size.width, window_size.height, get_title().c_str(), monitor, nullptr));
+        if (!m_glfw_window) {
+            NOTF_THROW(initialization_error, "Window or OpenGL context creation failed for Window \"{}\"", get_title());
+        }
+        glfwSetWindowUserPointer(m_glfw_window.get(), this);
+
+        if (m_settings->state == Settings::State::MINIMIZED || m_settings->state == Settings::State::MAXIMIZED) {
+            set_state(m_settings->state);
+        }
     }
-    glfwSetWindowUserPointer(m_glfw_window.get(), this);
-    set_state(m_state);
 
     // create the graphics context
     m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window.get());
@@ -64,8 +110,8 @@ Window::Window(const Args& args)
     //
     // in order to remove leftover icons on Ubuntu call:
     // rm ~/.local/share/applications/notf.desktop; rm ~/.local/share/icons/notf.png
-    if (!args.icon.empty()) {
-        const std::string icon_path = app.get_arguments().texture_directory + args.icon;
+    if (!settings.icon.empty()) {
+        const std::string icon_path = app.get_arguments().texture_directory + settings.icon;
         try {
             RawImage icon(icon_path);
             if (icon.get_channels() != 4) {
@@ -86,9 +132,9 @@ Window::Window(const Args& args)
     log_info << "Created Window \"" << get_title() << "\" using OpenGl version: " << glGetString(GL_VERSION);
 }
 
-WindowPtr Window::_create(const Args& args)
+WindowPtr Window::_create(const Settings& settings)
 {
-    WindowPtr result = NOTF_MAKE_SHARED_FROM_PRIVATE(Window, args);
+    WindowPtr result = NOTF_MAKE_SHARED_FROM_PRIVATE(Window, settings);
 
     // the SceneGraph requires a fully initialized WindowPtr
     result->m_scene_graph = SceneGraph::Access<Window>::create(result);
@@ -97,13 +143,6 @@ WindowPtr Window::_create(const Args& args)
 }
 
 Window::~Window() { close(); }
-
-Vector2i Window::get_position() const
-{
-    Vector2i window_pos;
-    glfwGetWindowPos(m_glfw_window.get(), &window_pos.x(), &window_pos.y());
-    return window_pos;
-}
 
 Size2i Window::get_framed_window_size() const
 {
@@ -145,19 +184,41 @@ void Window::request_redraw()
     }
 }
 
-void Window::set_state(const State state)
+void Window::set_state(const Settings::State state)
 {
+    { // windowify the window if it is currently in full screen
+        GLFWmonitor* monitor = glfwGetWindowMonitor(m_glfw_window.get());
+        if (monitor && state != Settings::State::FULLSCREEN) {
+            glfwSetWindowMonitor(m_glfw_window.get(), nullptr, m_settings->pos.x(), m_settings->pos.y(),
+                                 m_settings->size.width, m_settings->size.height, /*ignored*/ 0);
+        }
+    }
+
+    // TODO: update Window settings
+    //  monitor (whenever moved)
+    //  position (whenever moved)
+    //  size (whenever resized)
+
     switch (state) {
-    case State::MINIMIZED:
+    case Settings::State::MINIMIZED:
         glfwIconifyWindow(m_glfw_window.get());
         break;
-    case State::WINDOWED:
+    case Settings::State::WINDOWED:
         glfwRestoreWindow(m_glfw_window.get());
         break;
-    case State::FULLSCREEN:
+    case Settings::State::MAXIMIZED:
         glfwMaximizeWindow(m_glfw_window.get());
         break;
+    case Settings::State::FULLSCREEN: {
+        GLFWmonitor* monitor = get_glfw_monitor(m_settings->monitor);
+        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+        const Size2i buffer_size = m_settings->has_buffer_size() ? m_settings->buffer_size :
+                                                                   Size2i{mode->width, mode->height};
+        glfwSetWindowMonitor(m_glfw_window.get(), monitor, /*ignored*/ 0, /*ignored*/ 0, buffer_size.width,
+                             buffer_size.height, mode->refreshRate);
+    } break;
     }
+    m_settings->state = state;
 }
 
 void Window::close()
@@ -167,7 +228,7 @@ void Window::close()
     }
     m_is_closed.store(true, std::memory_order_release);
 
-    log_trace << "Closing Window \"" << m_title << "\"";
+    log_trace << "Closing Window \"" << get_title() << "\"";
 
     // disconnect the window callbacks (blocks until all queued events are handled)
     EventManager::Access<Window>::remove_window(Application::instance().get_event_manager(), *this);
@@ -177,6 +238,55 @@ void Window::close()
 
     // remove yourself from the Application (deletes the Window if there are no more shared_ptrs to it)
     Application::Access<Window>::unregister(this);
+}
+
+Window::Settings Window::_validate_settings(const Settings& given)
+{
+    Settings settings = given;
+
+    // warn about ignored settings
+    if (settings.state == Settings::State::FULLSCREEN) {
+        if (!settings.is_visible) {
+            log_warning << "Ignoring setting \"is_visible = false\" for Window \"" << settings.title
+                        << "\", because the Window was requested to start in full screen";
+            settings.is_visible = true;
+        }
+        if (settings.is_decorated) {
+            log_warning << "Ignoring setting \"is_decorated = true\" for Window \"" << settings.title
+                        << "\", because the Window was requested to start in full screen";
+            settings.is_decorated = false;
+        }
+        if (!settings.is_focused) {
+            log_warning << "Ignoring setting \"is_focused = false\" for Window \"" << settings.title
+                        << "\", because the Window was requested to start in full screen";
+            settings.is_focused = true;
+        }
+    }
+    if (!settings.is_visible) {
+        if (settings.is_focused) {
+            log_warning << "Ignoring setting \"is_focused = true\" for Window \"" << settings.title
+                        << "\", because the Window was requested to start invisible";
+            settings.is_focused = false;
+        }
+    }
+
+    if (settings.monitor != -1) { // make sure the monitor is valid
+        int count = 0;
+        glfwGetMonitors(&count);
+        if (count == 0) {
+            NOTF_THROW(Window::initialization_error, "Cannot find a monitor to place the Window on to");
+        }
+        if (settings.monitor < count) {
+            log_warning << "Cannot place Window \"" << settings.title << "\" on monitor " << settings.monitor
+                        << " because the system only provides " << count << ". Using primary monitor instead.";
+            settings.monitor = 0;
+        }
+    }
+
+    // correct nonsensical values
+    settings.samples = max(0, settings.samples);
+
+    return settings;
 }
 
 NOTF_CLOSE_NAMESPACE

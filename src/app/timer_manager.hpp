@@ -7,6 +7,7 @@
 #include "app/forwards.hpp"
 #include "common/assert.hpp"
 #include "common/mutex.hpp"
+#include "common/numeric.hpp"
 #include "common/pointer.hpp"
 #include "common/thread.hpp"
 #include "common/time.hpp"
@@ -115,7 +116,7 @@ protected:
     bool _is_infinite() const { return m_times_left == _infinity(); }
 
     /// If the user wants to have the Callback repeated this much, it might as well be infinity.
-    constexpr static size_t _infinity() { return std::numeric_limits<size_t>::max(); }
+    constexpr static size_t _infinity() { return max_value<size_t>(); }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 protected:
