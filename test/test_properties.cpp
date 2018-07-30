@@ -28,7 +28,7 @@ SCENARIO("simple PropertyGraph with global properties", "[app][property_graph]")
     const std::thread::id event_thread_id = std::this_thread::get_id();
     const std::thread::id render_thread_id;
 
-    auto& app = Application::instance();
+    auto& app = TheApplication::get();
     EventManager& event_manager = app.get_event_manager();
 
     SECTION("simple CRUD operations on properties")

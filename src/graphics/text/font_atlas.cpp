@@ -9,10 +9,10 @@
 #include "common/numeric.hpp"
 #include "common/size2.hpp"
 #include "common/vector.hpp"
-#include "graphics/core/gl_errors.hpp"
-#include "graphics/core/graphics_context.hpp"
-#include "graphics/core/opengl.hpp"
-#include "graphics/core/texture.hpp"
+#include "graphics/gl_errors.hpp"
+#include "graphics/graphics_context.hpp"
+#include "graphics/opengl.hpp"
+#include "graphics/texture.hpp"
 
 namespace { // anonymous
 

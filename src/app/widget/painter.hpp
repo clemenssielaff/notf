@@ -8,7 +8,7 @@
 #include "common/circle.hpp"
 #include "common/pointer.hpp"
 #include "common/vector2.hpp"
-#include "graphics/core/gl_modes.hpp"
+#include "graphics/gl_modes.hpp"
 #include "graphics/renderer/plotter.hpp"
 
 NOTF_OPEN_NAMESPACE

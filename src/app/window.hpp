@@ -16,9 +16,6 @@ class _Window;
 
 namespace detail {
 
-/// Destroys a GLFW window.
-void window_deleter(GLFWwindow* glfw_window);
-
 /// Settings to create a Window instance.
 struct WindowSettings {
 
@@ -87,6 +84,9 @@ struct WindowSettings {
     /// Tests whether the settings specify a aspect ratio constraint on the Window.
     bool has_aspect_ratio() const { return aspect_ratio != Rationali::zero(); }
 
+    /// Tests whether the settings specify a position for the Window.
+    bool has_pos() const { return pos != Vector2i(max_value<int>(), max_value<int>()); }
+
     /// Tests whether the settings specify a buffer size.
     bool has_buffer_size() const { return buffer_size == Size2i::zero(); }
 
@@ -101,7 +101,7 @@ struct WindowSettings {
 /// The Window is a OS window containing an OpenGL context.
 class Window : public std::enable_shared_from_this<Window> {
 
-    friend class access::_Window<Application>;
+    friend class access::_Window<TheApplication>;
     friend class access::_Window<EventManager>;
 
     // types -------------------------------------------------------------------------------------------------------- //
@@ -193,7 +193,7 @@ private:
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The GLFW window managed by this Window.
-    std::unique_ptr<GLFWwindow, decltype(&detail::window_deleter)> m_glfw_window;
+    detail::GlfwWindowPtr m_glfw_window;
 
     /// Internal GraphicsContext.
     GraphicsContextPtr m_graphics_context;
@@ -214,8 +214,8 @@ private:
 // ================================================================================================================== //
 
 template<>
-class access::_Window<Application> {
-    friend class notf::Application;
+class access::_Window<TheApplication> {
+    friend class notf::TheApplication;
 
     /// Factory.
     /// @param args     Initialization arguments.

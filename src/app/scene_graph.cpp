@@ -10,7 +10,7 @@
 #include "app/visualizer.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"
-#include "graphics/core/graphics_context.hpp"
+#include "graphics/graphics_context.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -98,7 +98,7 @@ void SceneGraph::change_composition(CompositionPtr composition)
     if (NOTF_UNLIKELY(!window)) {
         return;
     }
-    EventManager& event_manger = Application::instance().get_event_manager();
+    EventManager& event_manger = TheApplication::get().get_event_manager();
     event_manger.handle(std::make_unique<CompositionChangeEvent>(raw_pointer(window), std::move(composition)));
 }
 

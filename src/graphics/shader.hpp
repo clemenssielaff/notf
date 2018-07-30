@@ -23,15 +23,6 @@ class _Shader;
 /// Technically, OpenGL would call this a "program" containing a single "shader" - but in notf you only have shaders and
 /// piplines, so we ignore the nomenclature here.
 ///
-/// Shader and GraphicsContext
-/// ==========================
-/// A Shader needs a valid GraphicsContext (which in turn refers to an OpenGL context), since the Shader class itself
-/// only stores the OpenGL ID of the program.
-/// Shaders themselves are stored and passed around as shared pointer, which you own.
-/// However, the GraphicsContext does keep a weak pointer to the Shader and will deallocate it when it is itself
-/// removed. In this case, the remaining Shader will become invalid and you'll get a warning message. In a well-behaved
-/// program, all Shader should have gone out of scope by the time the GraphicsContext is destroyed. This behaviour is
-/// similar to the handling of Textures.
 class Shader : public std::enable_shared_from_this<Shader> {
 
     friend class access::_Shader<GraphicsContext>;
@@ -61,7 +52,7 @@ public:
 
     struct Stage {
         /// Individual Shader stages.
-        enum Flag : unsigned char {
+        enum Flag {
             // implicit zero value for default-initialized Stage
             VERTEX = 1u << 0,          ///< Vertex stage.
             TESS_CONTROL = 1u << 1,    ///< Tesselation control stage.

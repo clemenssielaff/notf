@@ -1,9 +1,9 @@
 #pragma once
 
 #include "common/matrix4.hpp"
-#include "graphics/core/index_array.hpp"
-#include "graphics/core/prefab.hpp"
-#include "graphics/core/vertex_array.hpp"
+#include "graphics/index_array.hpp"
+#include "graphics/prefab.hpp"
+#include "graphics/vertex_array.hpp"
 
 NOTF_OPEN_NAMESPACE
 

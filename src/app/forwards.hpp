@@ -9,7 +9,7 @@ NOTF_OPEN_NAMESPACE
 
 // app ============================================================================================================== //
 
-class Application;
+class TheApplication;
 class PropertyHead;
 class PropertyGraph;
 class PropertyBatch;

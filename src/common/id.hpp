@@ -110,6 +110,9 @@ public:
     /// Cast back to the underlying type.
     /// Must be explicit to avoid comparison between different Id types.
     constexpr explicit operator underlying_type() const { return m_value; }
+
+    /// Raw read and write access to the ID's underlying data.
+    underlying_t& data() { return m_value; }
 };
 
 // ================================================================================================================== //

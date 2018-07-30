@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/forwards.hpp"
-#include "graphics/core/opengl.hpp"
+#include "graphics/opengl.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -30,4 +30,8 @@ class PrefabType;
 template<typename>
 class PrefabFactory;
 
+class TheGraphicsSystem;
+
 NOTF_CLOSE_NAMESPACE
+
+class GLFWwindow;

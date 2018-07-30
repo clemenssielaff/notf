@@ -11,23 +11,33 @@ NOTF_OPEN_NAMESPACE
 
 namespace access {
 template<class>
-class _Application;
+class _TheApplication;
 } // namespace access
+
+// ================================================================================================================== //
+
+namespace detail {
+
+/// Destroys a GLFW window.
+void window_deleter(GLFWwindow* glfw_window);
+using GlfwWindowPtr = std::unique_ptr<GLFWwindow, decltype(&detail::window_deleter)>;
+
+} // namespace detail
 
 // ================================================================================================================== //
 
 /// The Application class.
 /// After initialization, the Application singleton is available everywhere with `Application::instance()`.
 /// It also manages the lifetime of the LogHandler.
-class Application {
+class TheApplication {
 
-    friend class access::_Application<Window>;
+    friend class access::_TheApplication<Window>;
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Access types.
     template<class T>
-    using Access = access::_Application<T>;
+    using Access = access::_TheApplication<T>;
 
     /// Application arguments.
     ///
@@ -83,7 +93,7 @@ private:
     /// Constructor.
     /// @param application_args         Application arguments.
     /// @throws initialization_error    When the Application intialization failed.
-    explicit Application(Args args);
+    explicit TheApplication(Args args);
 
     /// Creates invalid Application arguments that trigger an exception in the constructor.
     /// Needed for when the user forgets to call "initialize" with valid arguments.
@@ -93,22 +103,29 @@ private:
         return invalid;
     }
 
+    /// Static (private) function holding the actual Application instance.
+    static TheApplication& _instance(const Args& application_args = _invalid_args())
+    {
+        static TheApplication instance(application_args);
+        return instance;
+    }
+
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
-    NOTF_NO_COPY_OR_ASSIGN(Application);
+    NOTF_NO_COPY_OR_ASSIGN(TheApplication);
 
     /// Desctructor
-    ~Application();
+    ~TheApplication();
 
     // initialization  --------------------------------------------------------
 
     /// Initializes the Application through an user-defined ApplicationInfo object.
     /// @throws initialization_error    When the Application intialization failed.
-    static Application& initialize(const Args& application_args) { return _instance(application_args); }
+    static TheApplication& initialize(const Args& application_args) { return _instance(application_args); }
 
     /// Initializes the Application using only the command line arguments passed by the OS.
     /// @throws initialization_error    When the Application intialization failed.
-    static Application& initialize(const int argc, char* argv[])
+    static TheApplication& initialize(const int argc, char* argv[])
     {
         Args args;
         args.argc = argc;
@@ -118,7 +135,7 @@ public:
 
     /// @{
     /// Creates a new Window instance with the given arguments.
-    WindowPtr create_window();
+    WindowPtr create_window(); // TODO: I don't like this - Windows know that there's a single App -> use that!
     WindowPtr create_window(const detail::WindowSettings& args);
     /// @}
 
@@ -133,7 +150,7 @@ public:
     /// @returns    The Application singleton.
     /// @throws initialization_error    When the Application intialization failed.
     /// @throws shut_down_error         When this method is called after the Application was shut down.
-    static Application& instance()
+    static TheApplication& get()
     {
         if (NOTF_LIKELY(is_running())) {
             return _instance();
@@ -166,13 +183,6 @@ public:
     static duration_t get_age() { return clock_t::now() - s_start_time; }
 
 private:
-    /// Static (private) function holding the actual Application instance.
-    static Application& _instance(const Args& application_args = _invalid_args())
-    {
-        static Application instance(application_args);
-        return instance;
-    }
-
     /// Unregisters an existing Window from this Application.
     void _unregister_window(Window* window);
 
@@ -213,11 +223,11 @@ private:
 // ================================================================================================================== //
 
 template<>
-class access::_Application<Window> {
+class access::_TheApplication<Window> {
     friend class notf::Window;
 
     /// Unregisters an existing Window from this Application.
-    static void unregister(Window* window) { Application::instance()._unregister_window(window); }
+    static void unregister(Window* window) { TheApplication::get()._unregister_window(window); }
 };
 
 NOTF_CLOSE_NAMESPACE

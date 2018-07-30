@@ -32,12 +32,12 @@ int main(int argc, char* argv[])
     set_log_level(LogMessage::LEVEL::NONE);
 
     // initialize the application
-    Application::initialize(argc, argv);
+    TheApplication::initialize(argc, argv);
 
     { // initialize the window
         Window::Settings window_settings;
         window_settings.state = Window::Settings::State::MINIMIZED;
-        g_window = Application::instance().create_window(window_settings);
+        g_window = TheApplication::get().create_window(window_settings);
     }
 
     int result = Catch::Session().run(argc, argv);

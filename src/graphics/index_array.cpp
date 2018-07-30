@@ -1,4 +1,4 @@
-#include "graphics/core/index_array.hpp"
+#include "graphics/index_array.hpp"
 
 NOTF_OPEN_NAMESPACE
 

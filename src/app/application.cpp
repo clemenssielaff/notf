@@ -13,23 +13,36 @@
 
 namespace {
 NOTF_USING_NAMESPACE;
-void initialize_resource_types(Application& app);
+void initialize_resource_types(TheApplication& app);
 } // namespace
 
 NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-Application::initialization_error::~initialization_error() = default;
+namespace detail {
 
-Application::shut_down_error::~shut_down_error() = default;
+void window_deleter(GLFWwindow* glfw_window)
+{
+    if (glfw_window != nullptr) {
+        glfwDestroyWindow(glfw_window);
+    }
+}
+
+} // namespace detail
 
 // ================================================================================================================== //
 
-std::atomic<bool> Application::s_is_running{true};
-const timepoint_t Application::s_start_time = clock_t::now();
+TheApplication::initialization_error::~initialization_error() = default;
 
-Application::Application(Args args)
+TheApplication::shut_down_error::~shut_down_error() = default;
+
+// ================================================================================================================== //
+
+std::atomic<bool> TheApplication::s_is_running{true};
+const timepoint_t TheApplication::s_start_time = clock_t::now();
+
+TheApplication::TheApplication(Args args)
     : m_args(std::move(args))
     , m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
     , m_thread_pool(std::make_unique<ThreadPool>())
@@ -58,21 +71,21 @@ Application::Application(Args args)
     initialize_resource_types(*this); // TODO: general purpose callback to call init functions on Application start?
 }
 
-Application::~Application() { _shutdown(); }
+TheApplication::~TheApplication() { _shutdown(); }
 
-WindowPtr Application::create_window()
+WindowPtr TheApplication::create_window()
 {
-    m_windows.emplace_back(Window::Access<Application>::create());
+    m_windows.emplace_back(Window::Access<TheApplication>::create());
     return m_windows.back();
 }
 
-WindowPtr Application::create_window(const detail::WindowSettings& args)
+WindowPtr TheApplication::create_window(const detail::WindowSettings& args)
 {
-    m_windows.emplace_back(Window::Access<Application>::create(args));
+    m_windows.emplace_back(Window::Access<TheApplication>::create(args));
     return m_windows.back();
 }
 
-int Application::exec()
+int TheApplication::exec()
 {
     log_info << "Starting main loop";
 
@@ -87,7 +100,7 @@ int Application::exec()
     return 0;
 }
 
-void Application::_unregister_window(Window* window)
+void TheApplication::_unregister_window(Window* window)
 {
     // unregister the window
     auto it = std::find_if(m_windows.begin(), m_windows.end(),
@@ -96,7 +109,7 @@ void Application::_unregister_window(Window* window)
     m_windows.erase(it);
 }
 
-void Application::_shutdown()
+void TheApplication::_shutdown()
 {
     // you can only close the application once
     if (!is_running()) {
@@ -128,17 +141,17 @@ NOTF_CLOSE_NAMESPACE
 
 // ================================================================================================================== //
 
-#include "graphics/core/shader.hpp"
-#include "graphics/core/texture.hpp"
+#include "graphics/shader.hpp"
 #include "graphics/text/font.hpp"
+#include "graphics/texture.hpp"
 
 namespace {
 NOTF_USING_NAMESPACE;
 
-void initialize_resource_types(Application& app)
+void initialize_resource_types(TheApplication& app)
 {
     ResourceManager& resource_manager = ResourceManager::get_instance();
-    const Application::Args& args = app.get_arguments();
+    const TheApplication::Args& args = app.get_arguments();
 
     std::string executable_path = args.argv[0];
     executable_path = executable_path.substr(0, executable_path.find_last_of('/') + 1);

@@ -1,8 +1,8 @@
 #include "graphics/renderer/fragment_renderer.hpp"
 
-#include "graphics/core/gl_errors.hpp"
-#include "graphics/core/graphics_context.hpp"
-#include "graphics/core/pipeline.hpp"
+#include "graphics/gl_errors.hpp"
+#include "graphics/graphics_context.hpp"
+#include "graphics/pipeline.hpp"
 
 NOTF_OPEN_NAMESPACE
 

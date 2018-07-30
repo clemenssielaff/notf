@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/pointer.hpp"
-#include "graphics/core/shader.hpp"
+#include "graphics/shader.hpp"
 
 NOTF_OPEN_NAMESPACE
 

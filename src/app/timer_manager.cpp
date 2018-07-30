@@ -119,7 +119,7 @@ Timer::~Timer() = default;
 
 void Timer::start(const timepoint_t timeout)
 {
-    TimerManager& manager = Application::instance().get_timer_manager();
+    TimerManager& manager = TheApplication::get().get_timer_manager();
     {
         NOTF_MUTEX_GUARD(manager.m_mutex);
 
@@ -147,7 +147,7 @@ void Timer::start(const timepoint_t timeout)
 
 void Timer::stop()
 {
-    TimerManager& manager = Application::instance().get_timer_manager();
+    TimerManager& manager = TheApplication::get().get_timer_manager();
     {
         NOTF_MUTEX_GUARD(manager.m_mutex);
 
@@ -175,7 +175,7 @@ void IntervalTimer::start(const duration_t interval, const size_t repetitions)
         return; // what did you expect?
     }
 
-    TimerManager& manager = Application::instance().get_timer_manager();
+    TimerManager& manager = TheApplication::get().get_timer_manager();
     {
         NOTF_MUTEX_GUARD(manager.m_mutex);
 
@@ -213,7 +213,7 @@ void VariableTimer::start(IntervalFunction function, const size_t repetitions)
         return; // what did you expect?
     }
 
-    TimerManager& manager = Application::instance().get_timer_manager();
+    TimerManager& manager = TheApplication::get().get_timer_manager();
     {
         NOTF_MUTEX_GUARD(manager.m_mutex);
 

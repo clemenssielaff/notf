@@ -1,8 +1,8 @@
-#include "graphics/core/gl_utils.hpp"
+#include "graphics/gl_utils.hpp"
 
 #include "common/assert.hpp"
 #include "common/log.hpp"
-#include "graphics/core/gl_errors.hpp"
+#include "graphics/gl_errors.hpp"
 
 NOTF_OPEN_NAMESPACE
 

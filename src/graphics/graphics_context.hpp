@@ -9,8 +9,11 @@
 #include "app/forwards.hpp"
 #include "common/aabr.hpp"
 #include "common/color.hpp"
+#include "common/exception.hpp"
 #include "common/mutex.hpp"
-#include "graphics/core/gl_modes.hpp"
+#include "common/pointer.hpp"
+#include "graphics/forwards.hpp"
+#include "graphics/gl_modes.hpp"
 #include "graphics/ids.hpp"
 
 NOTF_OPEN_NAMESPACE

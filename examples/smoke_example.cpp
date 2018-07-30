@@ -13,7 +13,7 @@
 #include "app/widget/widget_visualizer.hpp"
 #include "app/window.hpp"
 #include "auxiliary/visualizer/procedural.hpp"
-#include "graphics/core/graphics_context.hpp"
+#include "graphics/graphics_context.hpp"
 #include "graphics/text/font.hpp"
 #include "utils/literals.hpp"
 
@@ -29,7 +29,7 @@ struct CloudScene : public Scene {
     {
         m_timer = IntervalTimer::create([&] {
             const auto age_in_ms
-                = std::chrono::duration_cast<std::chrono::milliseconds>(Application::get_age()).count();
+                = std::chrono::duration_cast<std::chrono::milliseconds>(TheApplication::get_age()).count();
             p_time.set(static_cast<float>(age_in_ms / 1000.));
         });
         using namespace notf::literals;
@@ -67,7 +67,7 @@ protected:
         const Vector2f center = Vector2f(window_size.width, window_size.height) / 2;
         const double time = [&]() -> double {
             const auto age_in_ms
-                = std::chrono::duration_cast<std::chrono::milliseconds>(Application::get_age()).count();
+                = std::chrono::duration_cast<std::chrono::milliseconds>(TheApplication::get_age()).count();
             return static_cast<double>(age_in_ms);
         }();
 
@@ -134,7 +134,7 @@ struct SceneOWidgets : public WidgetScene {
 
         m_timer = IntervalTimer::create([&] {
             const auto age_in_ms
-                = std::chrono::duration_cast<std::chrono::milliseconds>(Application::get_age()).count();
+                = std::chrono::duration_cast<std::chrono::milliseconds>(TheApplication::get_age()).count();
             p_time.set(static_cast<float>(age_in_ms / 1000.));
         });
         using namespace notf::literals;
@@ -153,27 +153,28 @@ private: // fields
 int smoke_main(int argc, char* argv[])
 {
     // initialize the application
-    Application::Args args;
+    TheApplication::Args args;
     args.argc = argc;
     args.argv = argv;
 #ifdef NOTF_MSVC
     args.shader_directory = "C:/Users/Clemens/Code/notf/res/shaders";
     args.texture_directory = "C:/Users/Clemens/Code/notf/res/textures";
 #endif // NOTF_MSVC
-    Application& app = Application::initialize(args);
+    TheApplication& app = TheApplication::initialize(args);
 
     { // initialize the window
         Window::Settings window_settings;
         window_settings.is_resizeable = true;
-        WindowPtr window = Application::instance().create_window(window_settings);
+        WindowPtr window = TheApplication::get().create_window(window_settings);
 
-        std::shared_ptr<CloudScene> cloud_scene = Scene::create<CloudScene>(window->get_scene_graph(), "clouds_scene");
+//        std::shared_ptr<CloudScene> cloud_scene = Scene::create<CloudScene>(window->get_scene_graph(), "clouds_scene");
         std::shared_ptr<SceneOWidgets> widget_scene
             = Scene::create<SceneOWidgets>(window->get_scene_graph(), "SceneO'Widgets");
 
         SceneGraph::CompositionPtr composition = SceneGraph::Composition::create({
             SceneGraph::Layer::create(widget_scene, std::make_unique<WidgetVisualizer>(*window)),
-//            SceneGraph::Layer::create(cloud_scene, std::make_unique<ProceduralVisualizer>(*window, "clouds.frag")),
+            //            SceneGraph::Layer::create(cloud_scene, std::make_unique<ProceduralVisualizer>(*window,
+            //            "clouds.frag")),
         });
         window->get_scene_graph()->change_composition(composition);
     }

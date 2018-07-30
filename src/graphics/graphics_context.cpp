@@ -1,4 +1,4 @@
-#include "graphics/core/graphics_context.hpp"
+#include "graphics/graphics_context.hpp"
 
 #include <set>
 
@@ -7,12 +7,12 @@
 #include "common/log.hpp"
 #include "common/resource_manager.hpp"
 #include "common/vector.hpp"
-#include "graphics/core/frame_buffer.hpp"
-#include "graphics/core/gl_errors.hpp"
-#include "graphics/core/opengl.hpp"
-#include "graphics/core/pipeline.hpp"
-#include "graphics/core/shader.hpp"
-#include "graphics/core/texture.hpp"
+#include "graphics/frame_buffer.hpp"
+#include "graphics/gl_errors.hpp"
+#include "graphics/opengl.hpp"
+#include "graphics/pipeline.hpp"
+#include "graphics/shader.hpp"
+#include "graphics/texture.hpp"
 #include "graphics/text/font_manager.hpp"
 
 namespace { // anonymous

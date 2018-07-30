@@ -3,7 +3,7 @@
 #include "app/scene.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"
-#include "graphics/core/graphics_context.hpp"
+#include "graphics/graphics_context.hpp"
 #include "utils/reverse_iterator.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -79,7 +79,7 @@ void RenderManager::RenderThread::_run()
 
         { // render the frame
             SceneGraph::FreezeGuard freeze_guard = SceneGraph::Access<RenderManager>::freeze(*scene_graph);
-            GraphicsContext::CurrentGuard context_guard = context.make_current();
+            const auto context_guard = context.make_current();
 
             // log_trace << "Rendering frame: " << frame_counter++;
 

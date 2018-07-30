@@ -1,4 +1,4 @@
-#include "graphics/core/texture.hpp"
+#include "graphics/texture.hpp"
 
 #include <algorithm>
 #include <fstream>
@@ -9,10 +9,10 @@
 #include "common/log.hpp"
 #include "common/resource_manager.hpp"
 #include "common/size2.hpp"
-#include "graphics/core/gl_errors.hpp"
-#include "graphics/core/graphics_context.hpp"
-#include "graphics/core/opengl.hpp"
-#include "graphics/core/raw_image.hpp"
+#include "graphics/gl_errors.hpp"
+#include "graphics/graphics_context.hpp"
+#include "graphics/opengl.hpp"
+#include "graphics/raw_image.hpp"
 
 namespace { // anonymous
 NOTF_USING_NAMESPACE;

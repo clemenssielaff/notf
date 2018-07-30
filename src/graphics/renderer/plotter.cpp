@@ -76,13 +76,13 @@
 #include "common/log.hpp"
 #include "common/polygon.hpp"
 #include "common/system.hpp"
-#include "graphics/core/graphics_context.hpp"
-#include "graphics/core/index_array.hpp"
-#include "graphics/core/pipeline.hpp"
-#include "graphics/core/shader.hpp"
-#include "graphics/core/texture.hpp"
-#include "graphics/core/vertex_array.hpp"
+#include "graphics/graphics_context.hpp"
+#include "graphics/index_array.hpp"
+#include "graphics/pipeline.hpp"
+#include "graphics/shader.hpp"
 #include "graphics/text/font_manager.hpp"
+#include "graphics/texture.hpp"
+#include "graphics/vertex_array.hpp"
 
 namespace {
 

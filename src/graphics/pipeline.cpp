@@ -1,14 +1,14 @@
-#include "graphics/core/pipeline.hpp"
+#include "graphics/pipeline.hpp"
 
 #include <sstream>
 
 #include "common/assert.hpp"
 #include "common/exception.hpp"
 #include "common/log.hpp"
-#include "graphics/core/gl_errors.hpp"
-#include "graphics/core/graphics_context.hpp"
-#include "graphics/core/opengl.hpp"
-#include "graphics/core/shader.hpp"
+#include "graphics/gl_errors.hpp"
+#include "graphics/graphics_context.hpp"
+#include "graphics/opengl.hpp"
+#include "graphics/shader.hpp"
 
 NOTF_OPEN_NAMESPACE
 

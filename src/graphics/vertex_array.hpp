@@ -6,9 +6,9 @@
 #include "common/exception.hpp"
 #include "common/meta.hpp"
 #include "common/numeric.hpp"
-#include "graphics/core/gl_errors.hpp"
-#include "graphics/core/gl_utils.hpp"
-#include "graphics/core/opengl.hpp"
+#include "graphics/gl_errors.hpp"
+#include "graphics/gl_utils.hpp"
+#include "graphics/opengl.hpp"
 
 NOTF_OPEN_NAMESPACE
 

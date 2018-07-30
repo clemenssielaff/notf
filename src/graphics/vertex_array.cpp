@@ -1,4 +1,4 @@
-#include "graphics/core/vertex_array.hpp"
+#include "graphics/vertex_array.hpp"
 
 NOTF_OPEN_NAMESPACE
 

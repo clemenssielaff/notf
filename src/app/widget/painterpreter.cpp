@@ -3,7 +3,7 @@
 #include "app/widget/widget.hpp"
 #include "common/bezier.hpp"
 #include "common/vector.hpp"
-#include "graphics/core/graphics_context.hpp"
+#include "graphics/graphics_context.hpp"
 #include "graphics/renderer/plotter.hpp"
 
 NOTF_OPEN_NAMESPACE

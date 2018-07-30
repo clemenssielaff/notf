@@ -5,8 +5,8 @@
 #include "app/window.hpp"
 #include "common/resource_manager.hpp"
 #include "common/system.hpp"
-#include "graphics/core/shader.hpp"
 #include "graphics/renderer/fragment_renderer.hpp"
+#include "graphics/shader.hpp"
 
 #include "fmt/format.h"
 

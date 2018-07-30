@@ -10,8 +10,8 @@
 #include "common/vector2.hpp"
 #include "common/vector3.hpp"
 #include "common/vector4.hpp"
-#include "graphics/core/prefab.hpp"
-#include "graphics/core/prefab_group.hpp"
+#include "graphics/prefab.hpp"
+#include "graphics/prefab_group.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -217,33 +217,12 @@ private:
     {
         std::vector<Vertex> result(m_studies.size());
         for (size_t index = 0; index < m_studies.size(); ++index) {
-#ifndef NOTF_CPP17
-            _apply_studies_recursive<TRAIT_INDEX...>(m_studies[index], result[index]);
-#else // use fold expression from C++17 onwards
             (_apply_study<TRAIT_INDEX>(typename std::tuple_element<TRAIT_INDEX, VertexTraits>::type::kind{},
                                        m_studies[index], result[index]),
              ...);
-#endif
         }
         return result;
     }
-
-#ifndef NOTF_CPP17 // use recursion up to C++14
-    /// Find the correct study for each Vertex trait and store it in the vertex.
-    template<size_t FIRST_INDEX, size_t SECOND_INDEX, size_t... REST>
-    static void _apply_studies_recursive(const Study& study, Vertex& vertex)
-    {
-        _apply_study<FIRST_INDEX>(typename std::tuple_element<FIRST_INDEX, VertexTraits>::type::kind{}, study, vertex);
-        _apply_studies_recursive<SECOND_INDEX, REST...>(study, vertex);
-    }
-
-    /// Recursion breaker for _apply_studies_recursive.
-    template<size_t LAST_INDEX>
-    static void _apply_studies_recursive(const Study& study, Vertex& vertex)
-    {
-        _apply_study<LAST_INDEX>(typename std::tuple_element<LAST_INDEX, VertexTraits>::type::kind{}, study, vertex);
-    }
-#endif
 
     /// Takes a study and converts one of its values to store it in the given vertex.
     template<size_t index>

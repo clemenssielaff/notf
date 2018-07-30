@@ -172,7 +172,7 @@ void EventManager::_handle(EventPtr&& event)
 void EventManager::_register_window(Window& window)
 {
     // create the handler
-    EventManager& manager = Application::instance().get_event_manager();
+    EventManager& manager = TheApplication::get().get_event_manager();
     for (const auto& handler : manager.m_handler) {
         if (handler->window() == &window) {
             log_critical << "Ignoring duplicate event handler registration of Window: " << window.get_title();
@@ -239,7 +239,7 @@ void EventManager::_remove_window(Window& window)
     glfwSetJoystickCallback(nullptr);
 
     // remove handler
-    EventManager& manager = Application::instance().get_event_manager();
+    EventManager& manager = TheApplication::get().get_event_manager();
     {
         std::lock_guard<Mutex> lock(manager.m_mutex);
         auto it = std::find_if(manager.m_handler.begin(), manager.m_handler.end(),
@@ -344,7 +344,7 @@ void EventManager::_on_mouse_button(GLFWwindow* glfw_window, int button, int act
         notf_modifiers,                                             // active key modifiers
         button_states);                                             // state of all mouse buttons
     // clang-format on
-    Application::instance().get_event_manager().handle(std::move(event));
+    TheApplication::get().get_event_manager().handle(std::move(event));
 }
 
 void EventManager::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
@@ -378,7 +378,7 @@ void EventManager::_on_cursor_move(GLFWwindow* glfw_window, double x, double y)
         key_modifiers,                                              // active key modifiers
         button_states);                                             // state of all mouse buttons
     // clang-format on
-    Application::instance().get_event_manager().handle(std::move(event));
+    TheApplication::get().get_event_manager().handle(std::move(event));
 }
 
 void EventManager::_on_cursor_entered(GLFWwindow* glfw_window, int entered)
@@ -389,7 +389,7 @@ void EventManager::_on_cursor_entered(GLFWwindow* glfw_window, int entered)
     EventPtr event = std::make_unique<WindowEvent>(window, // Window that the event is meant for
                                                    entered == GLFW_TRUE ? WindowEvent::Type::CURSOR_ENTERED :
                                                                           WindowEvent::Type::CURSOR_EXITED);
-    Application::instance().get_event_manager().handle(std::move(event));
+    TheApplication::get().get_event_manager().handle(std::move(event));
 }
 
 void EventManager::_on_scroll(GLFWwindow* glfw_window, double x, double y)
@@ -416,7 +416,7 @@ void EventManager::_on_scroll(GLFWwindow* glfw_window, double x, double y)
         key_modifiers,                                              // active key modifiers
         button_states);                                             // state of all mouse buttons
     // clang-format on
-    Application::instance().get_event_manager().handle(std::move(event));
+    TheApplication::get().get_event_manager().handle(std::move(event));
 }
 
 void EventManager::_on_token_key(GLFWwindow* glfw_window, int key, NOTF_UNUSED int scancode, int action, int modifiers)
@@ -444,7 +444,7 @@ void EventManager::_on_token_key(GLFWwindow* glfw_window, int key, NOTF_UNUSED i
         key_modifiers,                                              // active key modifiers
         key_states);                                                // state of all keys
     // clang-format on
-    Application::instance().get_event_manager().handle(std::move(event));
+    TheApplication::get().get_event_manager().handle(std::move(event));
 }
 
 void EventManager::_on_char_input(GLFWwindow* glfw_window, uint codepoint) { _on_shortcut(glfw_window, codepoint, 0); }
@@ -471,7 +471,7 @@ void EventManager::_on_shortcut(GLFWwindow* glfw_window, uint codepoint, int mod
         key_modifiers,                                              // active key modifiers
         key_states);                                                // state of all keys
     // clang-format on
-    Application::instance().get_event_manager().handle(std::move(event));
+    TheApplication::get().get_event_manager().handle(std::move(event));
 }
 
 void EventManager::_on_window_move(GLFWwindow* /*glfw_window*/, int /*x*/, int /*y*/) { NOTF_NOOP; }
@@ -487,7 +487,7 @@ void EventManager::_on_window_resize(GLFWwindow* glfw_window, int width, int hei
         window->get_buffer_size(),  // old size
         Size2i{width, height});     // new size
     // clang-format on
-    Application::instance().get_event_manager().handle(std::move(event));
+    TheApplication::get().get_event_manager().handle(std::move(event));
 }
 
 void EventManager::_on_framebuffer_resize(GLFWwindow* /*glfw_window*/, int /*width*/, int /*height*/) { NOTF_NOOP; }

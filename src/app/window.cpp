@@ -5,8 +5,8 @@
 #include "app/render_manager.hpp"
 #include "app/scene.hpp"
 #include "common/log.hpp"
-#include "graphics/core/graphics_context.hpp"
-#include "graphics/core/raw_image.hpp"
+#include "graphics/graphics_context.hpp"
+#include "graphics/raw_image.hpp"
 
 namespace {
 
@@ -24,19 +24,6 @@ GLFWmonitor* get_glfw_monitor(int index)
 
 NOTF_OPEN_NAMESPACE
 
-namespace detail {
-
-void window_deleter(GLFWwindow* glfw_window)
-{
-    if (glfw_window != nullptr) {
-        glfwDestroyWindow(glfw_window);
-    }
-}
-
-} // namespace detail
-
-// ================================================================================================================== //
-
 Window::initialization_error::~initialization_error() = default;
 
 // ================================================================================================================== //
@@ -48,7 +35,7 @@ Window::Window(const Settings& settings)
     , m_settings(std::make_unique<Settings>(_validate_settings(settings)))
 {
     // make sure that an Application was initialized before instanciating a Window (will throw on failure)
-    Application& app = Application::instance();
+    TheApplication& app = TheApplication::get();
 
     // Window and OpenGL context hints
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
@@ -90,6 +77,7 @@ Window::Window(const Settings& settings)
         }
         glfwSetWindowUserPointer(m_glfw_window.get(), this);
 
+        // position the window
         if (m_settings->state == Settings::State::MINIMIZED || m_settings->state == Settings::State::MAXIMIZED) {
             set_state(m_settings->state);
         }
@@ -100,7 +88,7 @@ Window::Window(const Settings& settings)
     auto context_guard = m_graphics_context->make_current();
 
     // connect the window callbacks
-    EventManager::Access<Window>::register_window(Application::instance().get_event_manager(), *this);
+    EventManager::Access<Window>::register_window(TheApplication::get().get_event_manager(), *this);
 
     // apply the Window icon
     // Showing the icon in Ubuntu 16.04 is as bit more complicated:
@@ -179,8 +167,8 @@ Vector2f Window::get_mouse_pos() const
 
 void Window::request_redraw()
 {
-    if (Application::is_running()) {
-        Application::instance().get_render_manager().render(shared_from_this());
+    if (TheApplication::is_running()) {
+        TheApplication::get().get_render_manager().render(shared_from_this());
     }
 }
 
@@ -231,13 +219,13 @@ void Window::close()
     log_trace << "Closing Window \"" << get_title() << "\"";
 
     // disconnect the window callbacks (blocks until all queued events are handled)
-    EventManager::Access<Window>::remove_window(Application::instance().get_event_manager(), *this);
+    EventManager::Access<Window>::remove_window(TheApplication::get().get_event_manager(), *this);
 
     // deletes all Nodes and Scenes in the SceneGraph before it is destroyed
     SceneGraph::Access<Window>::clear(*m_scene_graph.get());
 
     // remove yourself from the Application (deletes the Window if there are no more shared_ptrs to it)
-    Application::Access<Window>::unregister(this);
+    TheApplication::Access<Window>::unregister(this);
 }
 
 Window::Settings Window::_validate_settings(const Settings& given)

@@ -2,9 +2,9 @@
 
 #include "fmt/format.h"
 
-#include "graphics/core/frame_buffer.hpp"
-#include "graphics/core/graphics_context.hpp"
-#include "graphics/core/texture.hpp"
+#include "graphics/frame_buffer.hpp"
+#include "graphics/graphics_context.hpp"
+#include "graphics/texture.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -39,10 +39,9 @@ Plate::Plate(GraphicsContext& context, Args&& args)
     }
 
     // create the framebuffer
+    std::string name = fmt::format("Plate#{}", to_number(this));
     FrameBuffer::Args framebuffer_args;
-    framebuffer_args.set_color_target(0, Texture::create_empty(context, fmt::format("Plate#{}", to_number(this)),
-                                                               args.size, texture_args));
-
+    framebuffer_args.set_color_target(0, Texture::create_empty(context, std::move(name), args.size, texture_args));
     m_framebuffer = FrameBuffer::create(context, std::move(framebuffer_args));
 }
 

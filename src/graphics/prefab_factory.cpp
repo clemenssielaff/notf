@@ -1,4 +1,4 @@
-#include "graphics/core/prefab_factory.hpp"
+#include "graphics/prefab_factory.hpp"
 
 #include "utils/make_const.hpp"
 

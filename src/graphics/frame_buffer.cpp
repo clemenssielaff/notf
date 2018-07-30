@@ -1,4 +1,4 @@
-#include "graphics/core/frame_buffer.hpp"
+#include "graphics/frame_buffer.hpp"
 
 #include <algorithm>
 #include <set>
@@ -7,10 +7,10 @@
 #include "common/assert.hpp"
 #include "common/exception.hpp"
 #include "common/log.hpp"
-#include "graphics/core/gl_errors.hpp"
-#include "graphics/core/graphics_context.hpp"
-#include "graphics/core/opengl.hpp"
-#include "graphics/core/texture.hpp"
+#include "graphics/gl_errors.hpp"
+#include "graphics/graphics_context.hpp"
+#include "graphics/opengl.hpp"
+#include "graphics/texture.hpp"
 
 namespace { // anonymous
 NOTF_USING_NAMESPACE;

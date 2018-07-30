@@ -20,16 +20,6 @@ class _Texture;
 // ================================================================================================================== //
 
 /// Manages the loading and setup of an OpenGL texture.
-///
-/// Texture and GraphicsContext
-/// ===========================
-/// A Texture needs a valid GraphicsContext (which in turn refers to an OpenGL context), since the Texture class itself
-/// does not store any image data, only the OpenGL ID and metadata.
-/// The return value is a shared pointer, which you own.
-/// However, the GraphicsContext does keep a weak pointer to the Texture and will deallocate it when it's itself
-/// removed. In this case, the remaining Texture will become invalid and you'll get a warning message. In a well-behaved
-/// program, all Textures should have gone out of scope by the time the GraphicsContext is destroyed. This behaviour is
-/// similar to the handling of Shaders.
 class Texture : public std::enable_shared_from_this<Texture> {
 
     friend class access::_Texture<GraphicsContext>;
