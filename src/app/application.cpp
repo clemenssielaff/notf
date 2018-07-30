@@ -10,6 +10,7 @@
 #include "common/log.hpp"
 #include "common/resource_manager.hpp"
 #include "common/thread_pool.hpp"
+#include "graphics/graphics_system.hpp"
 
 namespace {
 NOTF_USING_NAMESPACE;
@@ -45,6 +46,7 @@ const timepoint_t TheApplication::s_start_time = clock_t::now();
 TheApplication::TheApplication(Args args)
     : m_args(std::move(args))
     , m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
+    , m_shared_window(nullptr, detail::window_deleter)
     , m_thread_pool(std::make_unique<ThreadPool>())
     , m_render_manager(std::make_unique<RenderManager>())
     , m_event_manager(std::make_unique<EventManager>())
@@ -67,6 +69,27 @@ TheApplication::TheApplication(Args args)
         NOTF_THROW(initialization_error, "GLFW initialization failed");
     }
     log_info << "GLFW version: " << glfwGetVersionString();
+
+    // default GLFW Window and OpenGL context hints
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+//    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+//    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+//    glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+//    glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
+//    glfwWindowHint(GLFW_REFRESH_RATE, GLFW_DONT_CARE);
+//    glfwWindowHint(GLFW_CONTEXT_RELEASE_BEHAVIOR, GLFW_RELEASE_BEHAVIOR_NONE);
+//    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, is_debug_build() ? GLFW_TRUE : GLFW_FALSE);
+//    glfwWindowHint(GLFW_CONTEXT_NO_ERROR, is_debug_build() ? GLFW_FALSE : GLFW_TRUE);
+
+    // create the shared window
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+    m_shared_window.reset(glfwCreateWindow(1, 1, "", nullptr, nullptr));
+    if (!m_shared_window) {
+        NOTF_THROW(initialization_error, "OpenGL context creation failed.");
+    }
+    TheGraphicsSystem::Access<TheApplication>::initialize(m_shared_window.get());
 
     initialize_resource_types(*this); // TODO: general purpose callback to call init functions on Application start?
 }
@@ -123,7 +146,7 @@ void TheApplication::_shutdown()
     }
     m_windows.clear();
     m_render_manager.reset();
-
+    TheGraphicsSystem::Access<TheApplication>::shutdown();
     glfwTerminate();
 
     // release all resources and objects

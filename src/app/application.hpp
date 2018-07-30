@@ -147,7 +147,6 @@ public:
     // global state -----------------------------------------------------------
 
     /// The singleton Application instance.
-    /// @returns    The Application singleton.
     /// @throws initialization_error    When the Application intialization failed.
     /// @throws shut_down_error         When this method is called after the Application was shut down.
     static TheApplication& get()
@@ -190,6 +189,9 @@ private:
     /// Is called automatically, after the last Window has been closed.
     void _shutdown();
 
+    /// The internal GLFW window managed by the Application.
+    GLFWwindow* _get_shared_window() const { return m_shared_window.get(); }
+
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Application arguments as passed to the constructor.
@@ -197,6 +199,10 @@ private:
 
     /// The LogHandler thread used to format and print out log messages in a thread-safe manner.
     LogHandlerPtr m_log_handler;
+
+    /// The internal GLFW window managed by the Application.
+    /// Does not actually open a Window, only provides the shared OpenGL context.
+    detail::GlfwWindowPtr m_shared_window;
 
     /// The global thread pool.
     ThreadPoolPtr m_thread_pool;
@@ -228,6 +234,9 @@ class access::_TheApplication<Window> {
 
     /// Unregisters an existing Window from this Application.
     static void unregister(Window* window) { TheApplication::get()._unregister_window(window); }
+
+    /// The internal GLFW window managed by the Application.
+    static GLFWwindow* get_shared_window() { return TheApplication::get()._get_shared_window(); }
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -15,7 +15,7 @@ class _Pipeline;
 /// Is not managed by the context, but keeps their Shaders alive.
 class Pipeline : public std::enable_shared_from_this<Pipeline> {
 
-    friend class access::_Pipeline<GraphicsContext>;
+    friend class access::_Pipeline<TheGraphicsSystem>;
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -107,8 +107,8 @@ private:
 // accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
-class access::_Pipeline<GraphicsContext> {
-    friend class notf::GraphicsContext;
+class access::_Pipeline<TheGraphicsSystem> {
+    friend class notf::TheGraphicsSystem;
 
     /// Deallocates the Pipeline.
     static void deallocate(Pipeline& pipeline) { pipeline._deallocate(); }

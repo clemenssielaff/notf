@@ -138,13 +138,7 @@ public:
     // methods ------------------------------------------------------------------------------------------------------ //
 protected:
     /// Constructor.
-    /// @throws runtime_error   If there is no OpenGL context.
-    VertexArrayType(Args&& args) : m_args(std::move(args))
-    {
-        if (!gl_is_initialized()) {
-            NOTF_THROW(runtime_error, "Cannot create a VertexArray without an OpenGL context");
-        }
-    }
+    VertexArrayType(Args&& args) : m_args(std::move(args)) {}
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(VertexArrayType);

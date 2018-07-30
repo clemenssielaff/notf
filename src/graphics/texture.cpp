@@ -10,7 +10,7 @@
 #include "common/resource_manager.hpp"
 #include "common/size2.hpp"
 #include "graphics/gl_errors.hpp"
-#include "graphics/graphics_context.hpp"
+#include "graphics/graphics_system.hpp"
 #include "graphics/opengl.hpp"
 #include "graphics/raw_image.hpp"
 
@@ -178,7 +178,7 @@ TexturePtr Texture::create_empty(GraphicsContext& context, std::string name, Siz
 
     // return the loaded texture on success
     TexturePtr texture = Texture::_create(context, id, GL_TEXTURE_2D, name, std::move(size), args.format);
-    GraphicsContext::Access<Texture>::register_new(context, texture);
+    TheGraphicsSystem::Access<Texture>::register_new(texture);
     ResourceManager::get_instance().get_type<Texture>().set(std::move(name), texture);
     return texture;
 }
@@ -318,7 +318,7 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
     notf_check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical)));
 
     // make texture anisotropic, if requested and available
-    if (args.anisotropy > 1.f && context.get_extensions().anisotropic_filter) {
+    if (args.anisotropy > 1.f && TheGraphicsSystem::get_extensions().anisotropic_filter) {
         GLfloat highest_anisotropy;
         notf_check_gl(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &highest_anisotropy));
         notf_check_gl(
@@ -350,7 +350,7 @@ Texture::load_image(GraphicsContext& context, const std::string& file_path, std:
 
     // return the loaded texture on success
     TexturePtr texture = Texture::_create(context, id, GL_TEXTURE_2D, name, std::move(image_size), texture_format);
-    GraphicsContext::Access<Texture>::register_new(context, texture);
+    TheGraphicsSystem::Access<Texture>::register_new(texture);
     ResourceManager::get_instance().get_type<Texture>().set(std::move(name), texture);
     return texture;
 }

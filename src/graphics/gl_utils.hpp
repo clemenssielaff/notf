@@ -8,9 +8,6 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-/// Checks if there is a valid OpenGL context.
-bool gl_is_initialized();
-
 /// Modern way of creating a GLvoid buffer offset.
 constexpr char* gl_buffer_offset(size_t offset) { return static_cast<char*>(nullptr) + offset; }
 
@@ -30,24 +27,6 @@ inline constexpr GLenum to_gl_type(const GLint&) { return GL_INT; }
 inline constexpr GLenum to_gl_type(const GLuint&) { return GL_UNSIGNED_INT; }
 inline constexpr GLenum to_gl_type(const half&) { return GL_HALF_FLOAT; }
 inline constexpr GLenum to_gl_type(const GLfloat&) { return GL_FLOAT; }
-
-// ================================================================================================================== //
-
-/// RAII guard for vector array object bindings.
-struct VaoBindGuard final {
-
-    // fields ------------------------------------------------------------------------------------------------------- //
-    /// Vertex array object ID.
-    const GLuint m_vao;
-
-    // methods ------------------------------------------------------------------------------------------------------ //
-    /// Constructor.
-    /// @param vao  Vertex array object ID.
-    VaoBindGuard(GLuint vao);
-
-    /// Destructor.
-    ~VaoBindGuard();
-};
 
 // ================================================================================================================== //
 

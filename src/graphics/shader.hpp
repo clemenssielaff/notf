@@ -25,7 +25,7 @@ class _Shader;
 ///
 class Shader : public std::enable_shared_from_this<Shader> {
 
-    friend class access::_Shader<GraphicsContext>;
+    friend class access::_Shader<TheGraphicsSystem>;
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -193,8 +193,8 @@ void Shader::set_uniform(const std::string&, const Matrix4f& value);
 // accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
-class access::_Shader<GraphicsContext> {
-    friend class notf::GraphicsContext;
+class access::_Shader<TheGraphicsSystem> {
+    friend class notf::TheGraphicsSystem;
 
     /// Deallocates the Shader data and invalidates the Shader.
     static void deallocate(Shader& shader) { shader._deallocate(); }

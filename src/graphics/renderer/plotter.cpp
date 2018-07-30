@@ -76,7 +76,7 @@
 #include "common/log.hpp"
 #include "common/polygon.hpp"
 #include "common/system.hpp"
-#include "graphics/graphics_context.hpp"
+#include "graphics/graphics_system.hpp"
 #include "graphics/index_array.hpp"
 #include "graphics/pipeline.hpp"
 #include "graphics/shader.hpp"
@@ -212,16 +212,16 @@ Plotter::Paint Plotter::Paint::texture_pattern(const Vector2f& origin, const Siz
 // ================================================================================================================== //
 
 Plotter::Plotter(GraphicsContext& graphics_context)
-    : m_graphics_context(graphics_context), m_font_manager(m_graphics_context.get_font_manager())
+    : m_graphics_context(graphics_context), m_font_manager(TheGraphicsSystem::get().get_font_manager())
 {
-    const GraphicsContext::CurrentGuard current_guard = m_graphics_context.make_current();
+    const auto current_guard = m_graphics_context.make_current();
 
     // vao
     notf_check_gl(glGenVertexArrays(1, &m_vao_id));
     if (!m_vao_id) {
         NOTF_THROW(runtime_error, "Failed to allocate the Plotter VAO");
     }
-    const auto vao_guard = VaoBindGuard(m_vao_id);
+    const auto vao_guard = TheGraphicsSystem::VaoGuard(m_vao_id);
 
     { // pipeline
         const std::string vertex_src = load_file("/home/clemens/code/notf/res/shaders/plotter.vert");
@@ -238,7 +238,7 @@ Plotter::Plotter(GraphicsContext& graphics_context)
         m_pipeline = Pipeline::create(m_graphics_context, vertex_shader, tess_shader, frag_shader);
 
         tess_shader->set_uniform("aa_width", static_cast<float>(sqrt(2.l) / 2.l));
-        frag_shader->set_uniform("font_texture", m_graphics_context.get_environment().font_atlas_texture_slot);
+        frag_shader->set_uniform("font_texture", TheGraphicsSystem::get_environment().font_atlas_texture_slot);
     }
 
     { // vertices
@@ -452,7 +452,7 @@ void Plotter::fill(valid_ptr<PathPtr> path, FillInfo info)
 
 void Plotter::swap_buffers()
 {
-    const auto vao_guard = VaoBindGuard(m_vao_id);
+    const auto vao_guard = TheGraphicsSystem::VaoGuard(m_vao_id);
 
     static_cast<PlotVertexArray*>(m_vertices.get())->init();
     static_cast<PlotIndexArray*>(m_indices.get())->init();
@@ -622,7 +622,7 @@ void Plotter::render() const
     if (m_indices->is_empty()) {
         return;
     }
-    const auto vao_guard = VaoBindGuard(m_vao_id);
+    const auto vao_guard = TheGraphicsSystem::VaoGuard(m_vao_id);
 
     notf_check_gl(glEnable(GL_CULL_FACE));
     notf_check_gl(glCullFace(GL_BACK));

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/matrix4.hpp"
+#include "graphics/graphics_system.hpp"
 #include "graphics/index_array.hpp"
 #include "graphics/prefab.hpp"
 #include "graphics/vertex_array.hpp"
@@ -64,7 +65,7 @@ public:
         }
 
         {
-            VaoBindGuard _(m_vao_id);
+            TheGraphicsSystem::VaoGuard vao_guard(m_vao_id);
             static_cast<vertex_array_t*>(m_vertex_array.get())->init();
             static_cast<index_array_t*>(m_index_array.get())->init();
             static_cast<instance_array_t*>(m_instance_array.get())->init();
@@ -96,7 +97,7 @@ public:
     void render()
     {
         // TODO: [engine] No front-to-back sorting of prefabs globally or even just within its group
-        VaoBindGuard _(m_vao_id);
+        TheGraphicsSystem::VaoGuard vao_guard(m_vao_id);
         for (const auto& prefab_type : m_prefab_types) {
 
             // skip prefabs with no instances

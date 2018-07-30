@@ -13,7 +13,7 @@
 #include "app/widget/widget_visualizer.hpp"
 #include "app/window.hpp"
 #include "auxiliary/visualizer/procedural.hpp"
-#include "graphics/graphics_context.hpp"
+#include "graphics/graphics_system.hpp"
 #include "graphics/text/font.hpp"
 #include "utils/literals.hpp"
 
@@ -53,8 +53,7 @@ public:
     /// Constructor.
     WindowWidget(FactoryToken token, Scene& scene, valid_ptr<Node*> parent) : Widget(token, scene, parent)
     {
-        GraphicsContext& context = scene.get_window()->get_graphics_context();
-        m_font = Font::load(context.get_font_manager(), "Roboto-Regular.ttf", 11);
+        m_font = Font::load(TheGraphicsSystem::get().get_font_manager(), "Roboto-Regular.ttf", 11);
     }
 
     /// Destructor.

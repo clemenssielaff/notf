@@ -22,7 +22,7 @@ class _Texture;
 /// Manages the loading and setup of an OpenGL texture.
 class Texture : public std::enable_shared_from_this<Texture> {
 
-    friend class access::_Texture<GraphicsContext>;
+    friend class access::_Texture<TheGraphicsSystem>;
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -217,7 +217,7 @@ private:
     GraphicsContext& m_graphics_context;
 
     /// OpenGL ID of this Shader.
-    TextureId m_id;
+    TextureId m_id = 0;
 
     /// Texture target, e.g. GL_TEXTURE_2D for standard textures.
     GLenum m_target;
@@ -238,8 +238,8 @@ private:
 // accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
-class access::_Texture<GraphicsContext> {
-    friend class notf::GraphicsContext;
+class access::_Texture<TheGraphicsSystem> {
+    friend class notf::TheGraphicsSystem;
 
     /// Deallocates the Texture data and invalidates the Texture.
     static void deallocate(Texture& texture) { texture._deallocate(); }

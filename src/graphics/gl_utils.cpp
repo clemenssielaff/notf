@@ -6,8 +6,6 @@
 
 NOTF_OPEN_NAMESPACE
 
-bool gl_is_initialized() { return glGetString(GL_VERSION) != nullptr; }
-
 void gl_log_system_info()
 {
     log_info << "OpenGL ES version:    " << glGetString(GL_VERSION);
@@ -193,12 +191,6 @@ const std::string& gl_type_name(GLenum type)
     }
     return t_unknown;
 }
-
-// ================================================================================================================== //
-
-VaoBindGuard::VaoBindGuard(GLuint vao) : m_vao(vao) { notf_check_gl(glBindVertexArray(m_vao)); }
-
-VaoBindGuard::~VaoBindGuard() { notf_check_gl(glBindVertexArray(0)); }
 
 // ================================================================================================================== //
 

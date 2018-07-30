@@ -8,7 +8,7 @@
 #include "common/exception.hpp"
 #include "common/log.hpp"
 #include "graphics/gl_errors.hpp"
-#include "graphics/graphics_context.hpp"
+#include "graphics/graphics_system.hpp"
 #include "graphics/opengl.hpp"
 #include "graphics/texture.hpp"
 
@@ -62,7 +62,7 @@ RenderBuffer::RenderBuffer(GraphicsContextPtr& context, Args&& args)
     : m_graphics_context(*context), m_args(std::move(args))
 {
     // check arguments
-    const GraphicsContext::Environment& env = m_graphics_context.get_environment();
+    const TheGraphicsSystem::Environment& env = TheGraphicsSystem::get().get_environment();
     const short max_size = static_cast<short>(env.max_render_buffer_size);
     if (!m_args.size.is_valid() || m_args.size.area() == 0 || m_args.size.height > max_size
         || m_args.size.width > max_size) {
@@ -237,7 +237,7 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_context(cont
 FrameBufferPtr FrameBuffer::create(GraphicsContext& context, Args&& args)
 {
     FrameBufferPtr framebuffer = NOTF_MAKE_SHARED_FROM_PRIVATE(FrameBuffer, context, std::move(args));
-    GraphicsContext::Access<FrameBuffer>::register_new(context, framebuffer);
+    TheGraphicsSystem::Access<FrameBuffer>::register_new(framebuffer);
     return framebuffer;
 }
 

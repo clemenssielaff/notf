@@ -45,12 +45,7 @@ public:
 protected:
     /// Constructor.
     /// @throws runtime_error   If there is no OpenGL context.
-    IndexArrayType(Args&& args) : m_args(std::move(args)), m_vbo_id(0), m_type(0), m_size(0)
-    {
-        if (!gl_is_initialized()) {
-            NOTF_THROW(runtime_error, "Cannot create an IndexArray without an OpenGL context");
-        }
-    }
+    IndexArrayType(Args&& args) : m_args(std::move(args)), m_vbo_id(0), m_type(0), m_size(0) {}
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(IndexArrayType);

@@ -13,7 +13,7 @@
 #include "common/vector4.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/gl_utils.hpp"
-#include "graphics/graphics_context.hpp"
+#include "graphics/graphics_system.hpp"
 #include "graphics/opengl.hpp"
 
 namespace { // anonymous
@@ -160,6 +160,8 @@ std::string build_glsl_header(const GraphicsContext& context)
 {
     std::string result = "\n//==== notf header ========================================\n\n";
 
+    const auto& extensions = TheGraphicsSystem::get().get_extensions();
+
     { // pragmas first ...
         bool any_pragma = false;
 #ifdef NOTF_DEBUG
@@ -173,7 +175,7 @@ std::string build_glsl_header(const GraphicsContext& context)
 
     { // ... then extensions ...
         bool any_extensions = false;
-        if (context.get_extensions().nv_gpu_shader5) {
+        if (extensions.gpu_shader5) {
             result += "#extension GL_EXT_gpu_shader5 : enable\n";
             any_extensions = true;
         }
@@ -184,7 +186,7 @@ std::string build_glsl_header(const GraphicsContext& context)
 
     { // ... and defines last
         bool any_defines = false;
-        if (!context.get_extensions().nv_gpu_shader5) {
+        if (!extensions.gpu_shader5) {
             result += "#define int8_t    int \n"
                       "#define int16_t   int \n"
                       "#define int32_t   int \n"
@@ -438,7 +440,7 @@ GLuint Shader::_build(const std::string& name, const Args& args)
 void Shader::_register_with_context(const ShaderPtr& shader)
 {
     NOTF_ASSERT(shader && shader->is_valid());
-    GraphicsContext::Access<Shader>::register_new(shader->m_graphics_context, shader);
+    TheGraphicsSystem::Access<Shader>::register_new(shader);
 }
 
 const Shader::Variable& Shader::_uniform(const std::string& name) const

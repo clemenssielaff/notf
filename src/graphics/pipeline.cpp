@@ -6,7 +6,7 @@
 #include "common/exception.hpp"
 #include "common/log.hpp"
 #include "graphics/gl_errors.hpp"
-#include "graphics/graphics_context.hpp"
+#include "graphics/graphics_system.hpp"
 #include "graphics/opengl.hpp"
 #include "graphics/shader.hpp"
 
@@ -20,7 +20,7 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
     , m_geometry_shader(std::move(geometry_shader))
     , m_fragment_shader(std::move(fragment_shader))
 {
-    GraphicsContext::CurrentGuard guard = m_graphics_context.make_current();
+    const auto current_guard = m_graphics_context.make_current();
 
     { // generate new pipeline id
         PipelineId::underlying_t id = 0;
@@ -125,7 +125,7 @@ Pipeline::create(GraphicsContext& context, VertexShaderPtr vertex_shader, Tessel
     PipelinePtr pipeline = NOTF_MAKE_SHARED_FROM_PRIVATE(Pipeline, context, std::move(vertex_shader),
                                                          std::move(tesselation_shader), std::move(geometry_shader),
                                                          std::move(fragment_shader));
-    GraphicsContext::Access<Pipeline>::register_new(context, pipeline);
+    TheGraphicsSystem::Access<Pipeline>::register_new(pipeline);
     return pipeline;
 }
 

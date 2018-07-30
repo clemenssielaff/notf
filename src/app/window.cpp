@@ -37,26 +37,18 @@ Window::Window(const Settings& settings)
     // make sure that an Application was initialized before instanciating a Window (will throw on failure)
     TheApplication& app = TheApplication::get();
 
-    // Window and OpenGL context hints
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
-    glfwWindowHint(GLFW_VISIBLE, settings.is_visible);
-    glfwWindowHint(GLFW_FOCUSED, settings.is_focused);
-    glfwWindowHint(GLFW_DECORATED, settings.is_decorated);
-    glfwWindowHint(GLFW_RESIZABLE, settings.is_resizeable);
-    glfwWindowHint(GLFW_MAXIMIZED, settings.state == Settings::State::MAXIMIZED);
-    glfwWindowHint(GLFW_SAMPLES, settings.samples);
-    glfwWindowHint(GLFW_DOUBLEBUFFER, true);
-    glfwWindowHint(GLFW_SRGB_CAPABLE, true);
-    glfwWindowHint(GLFW_REFRESH_RATE, GLFW_DONT_CARE);
-    glfwWindowHint(GLFW_CONTEXT_RELEASE_BEHAVIOR, GLFW_RELEASE_BEHAVIOR_NONE);
-    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, is_debug_build());
-    glfwWindowHint(GLFW_CONTEXT_NO_ERROR, !is_debug_build());
+    { // create the GLFW window
 
-    { // create the GLFW window with the correct size and monitor
+        // Window specific GLFW hints (see Application constructor for application-wide hints)
+        glfwWindowHint(GLFW_VISIBLE, settings.is_visible);
+        glfwWindowHint(GLFW_FOCUSED, settings.is_focused);
+        glfwWindowHint(GLFW_DECORATED, settings.is_decorated);
+        glfwWindowHint(GLFW_RESIZABLE, settings.is_resizeable);
+        glfwWindowHint(GLFW_MAXIMIZED, settings.state == Settings::State::MAXIMIZED);
+        glfwWindowHint(GLFW_SAMPLES, settings.samples);
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); // always start out invisible
+
+        // use the correct size and monitor
         Size2i window_size = m_settings->size;
         GLFWmonitor* monitor = nullptr;
         if (m_settings->state == Window::Settings::State::FULLSCREEN) {
@@ -70,8 +62,8 @@ Window::Window(const Settings& settings)
             }
         }
 
-        m_glfw_window.reset(
-            glfwCreateWindow(window_size.width, window_size.height, get_title().c_str(), monitor, nullptr));
+        m_glfw_window.reset(glfwCreateWindow(window_size.width, window_size.height, get_title().c_str(), monitor,
+                                             TheApplication::Access<Window>::get_shared_window()));
         if (!m_glfw_window) {
             NOTF_THROW(initialization_error, "Window or OpenGL context creation failed for Window \"{}\"", get_title());
         }
@@ -80,6 +72,14 @@ Window::Window(const Settings& settings)
         // position the window
         if (m_settings->state == Settings::State::MINIMIZED || m_settings->state == Settings::State::MAXIMIZED) {
             set_state(m_settings->state);
+        }
+        else if (m_settings->has_pos() && m_settings->state == Settings::State::WINDOWED) {
+            glfwSetWindowPos(m_glfw_window.get(), m_settings->pos.x(), m_settings->pos.y());
+        }
+
+        // show the window after setting it up
+        if (m_settings->state != Window::Settings::State::FULLSCREEN && m_settings->is_visible) {
+            glfwShowWindow(m_glfw_window.get());
         }
     }
 

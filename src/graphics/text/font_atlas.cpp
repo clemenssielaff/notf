@@ -10,7 +10,7 @@
 #include "common/size2.hpp"
 #include "common/vector.hpp"
 #include "graphics/gl_errors.hpp"
-#include "graphics/graphics_context.hpp"
+#include "graphics/graphics_system.hpp"
 #include "graphics/opengl.hpp"
 #include "graphics/texture.hpp"
 
@@ -117,6 +117,8 @@ FontAtlas::FontAtlas(GraphicsContext& graphics_context)
     , m_nodes()
     , m_waste()
 {
+    const auto context_guard = m_graphics_context.make_current();
+
     // create the atlas texture
     Texture::Args tex_args;
     tex_args.format = Texture::Format::GRAYSCALE;
@@ -128,7 +130,7 @@ FontAtlas::FontAtlas(GraphicsContext& graphics_context)
     m_texture->set_mag_filter(Texture::MagFilter::LINEAR);
 
     // permanently bind the atlas texture to its slot (it is reserved and won't be rebound)
-    const GLenum texture_slot = m_graphics_context.get_environment().font_atlas_texture_slot;
+    const GLenum texture_slot = TheGraphicsSystem::get_environment().font_atlas_texture_slot;
     notf_check_gl(glActiveTexture(GL_TEXTURE0 + texture_slot));
     notf_check_gl(glBindTexture(GL_TEXTURE_2D, m_texture->get_id().value()));
 
@@ -237,8 +239,9 @@ void FontAtlas::fill_rect(const Glyph::Rect& rect, const uchar* data)
         return;
     }
 
+    TheGraphicsSystem& system = TheGraphicsSystem::get();
     const auto context_guard = m_graphics_context.make_current();
-    notf_check_gl(glActiveTexture(GL_TEXTURE0 + m_graphics_context.get_environment().font_atlas_texture_slot));
+    notf_check_gl(glActiveTexture(GL_TEXTURE0 + system.get_environment().font_atlas_texture_slot));
     notf_check_gl(glPixelStorei(GL_UNPACK_ROW_LENGTH, rect.width));
     notf_check_gl(glTexSubImage2D(GL_TEXTURE_2D, /* level = */ 0, rect.x, rect.y, rect.width, rect.height, GL_RED,
                                   GL_UNSIGNED_BYTE, data));
