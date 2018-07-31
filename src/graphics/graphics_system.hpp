@@ -21,7 +21,7 @@ class _GraphicsSystem;
 /// Is a singleton.
 /// Unlike the GraphicsContext class in graphics/core, the GraphicsSystem is not meant for rendering, but to be
 /// used exclusively for resource management.
-class TheGraphicsSystem : public GraphicsContext {
+class TheGraphicsSystem final : public GraphicsContext {
 
     friend class access::_GraphicsSystem<TheApplication>;
     friend class access::_GraphicsSystem<Texture>;
@@ -112,7 +112,7 @@ public:
     static TheGraphicsSystem& get() { return _instance(); }
 
     /// Desctructor
-    ~TheGraphicsSystem();
+    ~TheGraphicsSystem() override;
 
     /// Creates and returns an GLExtension instance.
     static const Extensions& get_extensions();
@@ -125,11 +125,6 @@ public:
     FontManager& get_font_manager() { return *m_font_manager; }
     const FontManager& get_font_manager() const { return *m_font_manager; }
     ///@}
-
-    // TODO: this has the potential of a deadlock!
-    // The RenderThread needs to lock the scene hierarchy mutex from time to time - which can also be held by the event
-    // handler thread. If the event handler thread asks for the GraphicsContext to become current, the two will wait
-    // for each other indefinetely
 
     // texture ----------------------------------------------------------------
 
@@ -180,8 +175,8 @@ private:
     /// At this point, the global GraphicsSystem singleton is available for other classes to use.
     void _post_initialization();
 
-    /// Shuts the GraphicsSystem down for good.
-    void _shutdown();
+    /// Shut down implementation
+    void _shutdown_once() final;
 
     /// Registers a new Texture with the GraphicsSystem.
     /// @param texture          New Texture to register.
@@ -232,9 +227,6 @@ private:
     /// All Pipelines managed by the GraphicsSystem.
     /// See `m_textures` for details on management.
     std::unordered_map<PipelineId, PipelineWeakPtr> m_pipelines;
-
-    /// Flag to indicate whether the GraphicsSystem is currently running or not.
-    static std::atomic<bool> s_is_running;
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //

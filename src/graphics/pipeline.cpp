@@ -12,20 +12,15 @@
 
 NOTF_OPEN_NAMESPACE
 
-Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
+Pipeline::Pipeline(VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
                    GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader)
-    : m_graphics_context(context)
-    , m_vertex_shader(std::move(vertex_shader))
+    : m_vertex_shader(std::move(vertex_shader))
     , m_tesselation_shader(std::move(tesselation_shader))
     , m_geometry_shader(std::move(geometry_shader))
     , m_fragment_shader(std::move(fragment_shader))
 {
-    const auto current_guard = m_graphics_context.make_current();
-
     { // generate new pipeline id
-        PipelineId::underlying_t id = 0;
-        notf_check_gl(glGenProgramPipelines(1, &id));
-        m_id = id;
+        NOTF_CHECK_GL(glGenProgramPipelines(1, &m_id.data()));
         if (m_id == 0) {
             NOTF_THROW(runtime_error, "Could not allocate new Pipeline");
         }
@@ -36,8 +31,7 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
 
     if (m_vertex_shader) {
         NOTF_ASSERT(m_vertex_shader->is_valid());
-        NOTF_ASSERT(m_vertex_shader->get_context() == m_graphics_context);
-        notf_check_gl(glUseProgramStages(m_id.value(), GL_VERTEX_SHADER_BIT, m_vertex_shader->get_id().value()));
+        NOTF_CHECK_GL(glUseProgramStages(m_id.value(), GL_VERTEX_SHADER_BIT, m_vertex_shader->get_id().value()));
 
         std::stringstream ss;
         ss << "vertex shader \"" << m_vertex_shader->get_name() << "\"";
@@ -46,8 +40,7 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
 
     if (m_tesselation_shader) {
         NOTF_ASSERT(m_tesselation_shader->is_valid());
-        NOTF_ASSERT(m_tesselation_shader->get_context() == m_graphics_context);
-        notf_check_gl(glUseProgramStages(m_id.value(), GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT,
+        NOTF_CHECK_GL(glUseProgramStages(m_id.value(), GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT,
                                          m_tesselation_shader->get_id().value()));
 
         std::stringstream ss;
@@ -57,8 +50,7 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
 
     if (m_geometry_shader) {
         NOTF_ASSERT(m_geometry_shader->is_valid());
-        NOTF_ASSERT(m_geometry_shader->get_context() == m_graphics_context);
-        notf_check_gl(glUseProgramStages(m_id.value(), GL_GEOMETRY_SHADER_BIT, m_geometry_shader->get_id().value()));
+        NOTF_CHECK_GL(glUseProgramStages(m_id.value(), GL_GEOMETRY_SHADER_BIT, m_geometry_shader->get_id().value()));
 
         std::stringstream ss;
         ss << "geometry shader \"" << m_geometry_shader->get_name() << "\"";
@@ -67,8 +59,7 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
 
     if (m_fragment_shader) {
         NOTF_ASSERT(m_fragment_shader->is_valid());
-        NOTF_ASSERT(m_fragment_shader->get_context() == m_graphics_context);
-        notf_check_gl(glUseProgramStages(m_id.value(), GL_FRAGMENT_SHADER_BIT, m_fragment_shader->get_id().value()));
+        NOTF_CHECK_GL(glUseProgramStages(m_id.value(), GL_FRAGMENT_SHADER_BIT, m_fragment_shader->get_id().value()));
 
         std::stringstream ss;
         ss << "fragment shader \"" << m_fragment_shader->get_name() << "\"";
@@ -76,9 +67,9 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
     }
 
     { // validate the pipeline once it has been created
-        notf_check_gl(glValidateProgramPipeline(m_id.value()));
+        NOTF_CHECK_GL(glValidateProgramPipeline(m_id.value()));
         GLint is_valid = 0;
-        notf_check_gl(glGetProgramPipelineiv(m_id.value(), GL_VALIDATE_STATUS, &is_valid));
+        NOTF_CHECK_GL(glGetProgramPipelineiv(m_id.value(), GL_VALIDATE_STATUS, &is_valid));
         if (!is_valid) {
             GLint log_length = 0;
             glGetProgramPipelineiv(m_id.value(), GL_INFO_LOG_LENGTH, &log_length);
@@ -118,11 +109,10 @@ Pipeline::Pipeline(GraphicsContext& context, VertexShaderPtr vertex_shader, Tess
     }
 }
 
-PipelinePtr
-Pipeline::create(GraphicsContext& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
-                 GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader)
+PipelinePtr Pipeline::create(VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
+                             GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader)
 {
-    PipelinePtr pipeline = NOTF_MAKE_SHARED_FROM_PRIVATE(Pipeline, context, std::move(vertex_shader),
+    PipelinePtr pipeline = NOTF_MAKE_SHARED_FROM_PRIVATE(Pipeline, std::move(vertex_shader),
                                                          std::move(tesselation_shader), std::move(geometry_shader),
                                                          std::move(fragment_shader));
     TheGraphicsSystem::Access<Pipeline>::register_new(pipeline);
@@ -134,7 +124,7 @@ Pipeline::~Pipeline() { _deallocate(); }
 void Pipeline::_deallocate()
 {
     if (m_id) {
-        notf_check_gl(glDeleteProgramPipelines(1, &m_id.value()));
+        NOTF_CHECK_GL(glDeleteProgramPipelines(1, &m_id.value()));
         log_trace << "Deleted Pipeline: " << m_id;
         m_id = PipelineId::invalid();
     }

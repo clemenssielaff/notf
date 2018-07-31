@@ -55,22 +55,17 @@ private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Constructor.
-    /// @param context         Graphics context owning the render buffer.
     /// @param args            Render buffer arguments.
     /// @throws runtime_error  If the arguments fail to validate.
-    RenderBuffer(GraphicsContextPtr& context, Args&& args);
+    RenderBuffer(Args&& args);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(RenderBuffer);
 
     /// Factory.
-    /// @param context         Graphics context owning the render buffer.
     /// @param args            Render buffer arguments.
     /// @throws runtime_error  If the arguments fail to validate.
-    static RenderBufferPtr create(GraphicsContextPtr& context, Args&& args)
-    {
-        return NOTF_MAKE_SHARED_FROM_PRIVATE(RenderBuffer, context, std::move(args));
-    }
+    static RenderBufferPtr create(Args&& args) { return NOTF_MAKE_SHARED_FROM_PRIVATE(RenderBuffer, std::move(args)); }
 
     /// Destructor.
     ~RenderBuffer();
@@ -101,9 +96,6 @@ private:
 
     // fields ------------------------------------------------------------------------------------------------------- //
 protected:
-    /// Render Context owning the render buffer.
-    GraphicsContext& m_graphics_context;
-
     /// OpenGL ID of the render buffer.
     RenderBufferId m_id = 0;
 
@@ -167,29 +159,24 @@ private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Constructor.
-    /// @param context          Graphics context owning the frane buffer.
     /// @param args             Frame buffer arguments.
     /// @throws runtime_error   If the arguments fail to validate.
-    FrameBuffer(GraphicsContext& get_context, Args&& args);
+    FrameBuffer(Args&& args);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(FrameBuffer);
 
     /// Factory.
-    /// @param context          Graphics context owning the frane buffer.
     /// @param args             Frame buffer arguments.
     /// @throws runtime_error   If the arguments fail to validate.
     /// @throws internal_error  If another FrameBuffer with the same ID already exists.
-    static FrameBufferPtr create(GraphicsContext& get_context, Args&& args);
+    static FrameBufferPtr create(Args&& args);
 
     /// Destructor.
     ~FrameBuffer();
 
     /// The FrameBuffer's id.
     FrameBufferId get_id() const { return m_id; }
-
-    /// GraphicsContext containing the frame buffer.
-    GraphicsContext& get_context() { return m_context; }
 
     /// Texture used as color attachment.
     /// @throws runtime_error   If there is no texture attached as the color target.
@@ -205,9 +192,6 @@ private:
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
-    /// GraphicsContext containing the FrameBuffer.
-    GraphicsContext& m_context;
-
     /// OpenGL ID of the FrameBuffer.
     FrameBufferId m_id;
 

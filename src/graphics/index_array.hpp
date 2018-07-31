@@ -44,8 +44,7 @@ public:
     // methods ------------------------------------------------------------------------------------------------------ //
 protected:
     /// Constructor.
-    /// @throws runtime_error   If there is no OpenGL context.
-    IndexArrayType(Args&& args) : m_args(std::move(args)), m_vbo_id(0), m_type(0), m_size(0) {}
+    IndexArrayType(Args&& args) : m_args(std::move(args)), m_vbo_id(0), m_type(0), m_size(0){}
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(IndexArrayType);
@@ -109,19 +108,21 @@ public:
     /// @throws runtime_error   If no VAO is currently bound.
     void init()
     {
+#ifdef NOTF_DEBUG
         { // make sure there is a bound VAO
             GLint current_vao = 0;
-            notf_check_gl(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
+            NOTF_CHECK_GL(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
             if (!current_vao) {
                 NOTF_THROW(runtime_error, "Cannot initialize an IndexArray without a bound VAO");
             }
         }
+#endif
 
         if (m_vbo_id) {
             return _update();
         }
 
-        notf_check_gl(glGenBuffers(1, &m_vbo_id));
+        NOTF_CHECK_GL(glGenBuffers(1, &m_vbo_id));
         if (!m_vbo_id) {
             NOTF_THROW(runtime_error, "Failed to allocate IndexArray");
         }
@@ -129,8 +130,8 @@ public:
         m_type = to_gl_type(index_t());
         m_size = static_cast<GLsizei>(m_indices.size());
 
-        notf_check_gl(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id));
-        notf_check_gl(glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0],
+        NOTF_CHECK_GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id));
+        NOTF_CHECK_GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0],
                                    get_gl_usage(m_args.usage)));
         // keep the buffer bound as it is stored in the VAO
 
@@ -145,15 +146,15 @@ private:
     {
         m_size = static_cast<GLsizei>(m_indices.size());
 
-        notf_check_gl(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id));
+        NOTF_CHECK_GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_vbo_id));
         if (m_size <= m_buffer_size) {
             // if the new data is smaller or of equal size than the last one, we can do a minimal update
-            notf_check_gl(
+            NOTF_CHECK_GL(
                 glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, /*offset = */ 0, m_size * sizeof(index_t), &m_indices[0]));
         }
         else {
             // otherwise we have to do a full update
-            notf_check_gl(glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0],
+            NOTF_CHECK_GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indices.size() * sizeof(index_t), &m_indices[0],
                                        get_gl_usage(m_args.usage)));
         }
         // keep the buffer bound as it is stored in the VAO

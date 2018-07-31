@@ -205,7 +205,7 @@ private:
     std::unique_ptr<Settings> m_settings;
 
     /// Flag to indicate whether the Window is still open or already closed.
-    std::atomic<bool> m_is_closed{false};
+    std::atomic<bool> m_is_closed{false}; // TODO: replace with call_once? But that cannot be checked...
 
     /// Default arguments, when the user didn't supply any.
     static const Settings s_default_settings;

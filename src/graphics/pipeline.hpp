@@ -28,35 +28,31 @@ private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Value constructor.
-    /// @param context              Graphics context containing this Pipeline and all of its Shader.
     /// @param vertex_shader        Vertex shader to use in the Pipeline.
     /// @param tesselation_shader   Tesselation shader to use in the Pipeline.
     /// @param geometry_shader      Geometry shader to use in the Pipeline.
     /// @param fragment_shader      Fragment shader to use in the Pipeline.
-    Pipeline(GraphicsContext& context, VertexShaderPtr get_vertex_shader, TesselationShaderPtr get_tesselation_shader,
+    Pipeline(VertexShaderPtr get_vertex_shader, TesselationShaderPtr get_tesselation_shader,
              GeometryShaderPtr get_geometry_shader, FragmentShaderPtr get_fragment_shader);
 
 public:
     /// Factory.
-    /// @param context              Graphics context containing this Pipeline and all of its Shader.
     /// @param vertex_shader        Vertex shader to use in the Pipeline.
     /// @param tesselation_shader   Tesselation shader to use in the Pipeline.
     /// @param geometry_shader      Geometry shader to use in the Pipeline.
     /// @param fragment_shader      Fragment shader to use in the Pipeline.
-    static PipelinePtr
-    create(GraphicsContext& context, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
-           GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader);
+    static PipelinePtr create(VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
+                              GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader);
 
-    static PipelinePtr
-    create(GraphicsContext& context, VertexShaderPtr vertex_shader, FragmentShaderPtr fragment_shader)
+    static PipelinePtr create(VertexShaderPtr vertex_shader, FragmentShaderPtr fragment_shader)
     {
-        return create(context, std::move(vertex_shader), {}, {}, std::move(fragment_shader));
+        return create(std::move(vertex_shader), {}, {}, std::move(fragment_shader));
     }
 
-    static PipelinePtr create(GraphicsContext& context, VertexShaderPtr vertex_shader,
-                              TesselationShaderPtr tesselation_shader, FragmentShaderPtr fragment_shader)
+    static PipelinePtr
+    create(VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader, FragmentShaderPtr fragment_shader)
     {
-        return create(context, std::move(vertex_shader), std::move(tesselation_shader), {}, std::move(fragment_shader));
+        return create(std::move(vertex_shader), std::move(tesselation_shader), {}, std::move(fragment_shader));
     }
 
     /// Destructor.
@@ -84,9 +80,6 @@ private:
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
-    /// Graphics context containing this Pipeline.
-    GraphicsContext& m_graphics_context;
-
     /// Vertex shader attached to this Pipeline.
     VertexShaderPtr m_vertex_shader;
 

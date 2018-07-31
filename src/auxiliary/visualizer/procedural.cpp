@@ -12,9 +12,8 @@
 
 NOTF_OPEN_NAMESPACE
 
-ProceduralVisualizer::ProceduralVisualizer(Window& window, const std::string& shader_name) : Visualizer()
+ProceduralVisualizer::ProceduralVisualizer(const std::string& shader_name) : Visualizer()
 {
-    GraphicsContext& graphics_context = window.get_graphics_context();
     ResourceManager& resource_manager = ResourceManager::get_instance();
     auto& vs_type = resource_manager.get_type<VertexShader>();
     auto& fs_type = resource_manager.get_type<FragmentShader>();
@@ -24,8 +23,7 @@ ProceduralVisualizer::ProceduralVisualizer(Window& window, const std::string& sh
     ResourceHandle<VertexShader> vertex_shader = vs_type.get(vertex_shader_name);
     if (!vertex_shader) {
         const std::string vertex_src = load_file(fmt::format("{}fullscreen.vert", vs_type.get_path()));
-        vertex_shader
-            = vs_type.set(vertex_shader_name, VertexShader::create(graphics_context, vertex_shader_name, vertex_src));
+        vertex_shader = vs_type.set(vertex_shader_name, VertexShader::create(vertex_shader_name, vertex_src));
     }
 
     // load or get the custom fragment shader.
@@ -33,8 +31,7 @@ ProceduralVisualizer::ProceduralVisualizer(Window& window, const std::string& sh
     ResourceHandle<FragmentShader> fragment_shader = fs_type.get(fragment_shader_name);
     if (!fragment_shader) {
         const std::string fragment_src = load_file(fs_type.get_path() + shader_name);
-        fragment_shader = fs_type.set(fragment_shader_name,
-                                      FragmentShader::create(graphics_context, fragment_shader_name, fragment_src));
+        fragment_shader = fs_type.set(fragment_shader_name, FragmentShader::create(fragment_shader_name, fragment_src));
     }
 
     // create the renderer
@@ -56,7 +53,9 @@ void ProceduralVisualizer::visualize(valid_ptr<Scene*> scene) const
         }
     }
 
-    m_renderer->render();
+    if (risky_ptr<WindowPtr> window = scene->get_window()) {
+        m_renderer->render();
+    }
 }
 
 NOTF_CLOSE_NAMESPACE

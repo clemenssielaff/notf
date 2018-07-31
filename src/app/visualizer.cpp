@@ -12,8 +12,7 @@ Visualizer::~Visualizer() = default;
 
 // ================================================================================================================== //
 
-Plate::Plate(GraphicsContext& context, Args&& args)
-    : m_scene(std::move(args.scene)), m_visualizer(std::move(args.visualizer))
+Plate::Plate(Args&& args) : m_scene(std::move(args.scene)), m_visualizer(std::move(args.visualizer))
 {
     // create the texture arguments
     Texture::Args texture_args;
@@ -41,8 +40,8 @@ Plate::Plate(GraphicsContext& context, Args&& args)
     // create the framebuffer
     std::string name = fmt::format("Plate#{}", to_number(this));
     FrameBuffer::Args framebuffer_args;
-    framebuffer_args.set_color_target(0, Texture::create_empty(context, std::move(name), args.size, texture_args));
-    m_framebuffer = FrameBuffer::create(context, std::move(framebuffer_args));
+    framebuffer_args.set_color_target(0, Texture::create_empty(std::move(name), args.size, texture_args));
+    m_framebuffer = FrameBuffer::create(std::move(framebuffer_args));
 }
 
 Plate::~Plate() = default;
@@ -56,7 +55,7 @@ void Plate::clean()
     }
 
     // prepare the graphic state
-    GraphicsContext& context = m_framebuffer->get_context();
+    GraphicsContext& context = GraphicsContext::get();
     const auto framebuffer_guard = context.bind_framebuffer(m_framebuffer);
     context.set_render_area(texture()->get_size());
     context.clear(Color::black());

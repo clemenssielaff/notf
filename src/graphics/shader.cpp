@@ -73,18 +73,18 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
     }
 
     // compile the shader
-    notf_check_gl(glShaderSource(shader, /*count*/ 1, &source, /*length*/ nullptr));
-    notf_check_gl(glCompileShader(shader));
+    NOTF_CHECK_GL(glShaderSource(shader, /*count*/ 1, &source, /*length*/ nullptr));
+    NOTF_CHECK_GL(glCompileShader(shader));
 
     // check for errors
     GLint success = GL_FALSE;
-    notf_check_gl(glGetShaderiv(shader, GL_COMPILE_STATUS, &success));
+    NOTF_CHECK_GL(glGetShaderiv(shader, GL_COMPILE_STATUS, &success));
     if (!success) {
         GLint error_size;
-        notf_check_gl(glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &error_size));
+        NOTF_CHECK_GL(glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &error_size));
         std::vector<char> error_message(static_cast<size_t>(error_size));
-        notf_check_gl(glGetShaderInfoLog(shader, error_size, /*length*/ nullptr, &error_message[0]));
-        notf_check_gl(glDeleteShader(shader));
+        NOTF_CHECK_GL(glGetShaderInfoLog(shader, error_size, /*length*/ nullptr, &error_message[0]));
+        NOTF_CHECK_GL(glDeleteShader(shader));
 
         NOTF_THROW(runtime_error, "Failed to compile {} stage for shader \"{}\"\n\t{}", stage_name, program_name,
                    error_message.data());
@@ -98,7 +98,7 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
 size_t longest_uniform_length(const GLuint program)
 {
     GLint result = 0;
-    notf_check_gl(glGetProgramiv(program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &result));
+    NOTF_CHECK_GL(glGetProgramiv(program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &result));
     return narrow_cast<size_t>(result);
 }
 
@@ -106,7 +106,7 @@ size_t longest_uniform_length(const GLuint program)
 size_t longest_attribute_length(const GLuint program)
 {
     GLint result = 0;
-    notf_check_gl(glGetProgramiv(program, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &result));
+    NOTF_CHECK_GL(glGetProgramiv(program, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &result));
     return narrow_cast<size_t>(result);
 }
 
@@ -156,7 +156,7 @@ std::string build_defines(const Shader::Defines& defines)
 
 namespace detail {
 
-std::string build_glsl_header(const GraphicsContext& context)
+std::string build_glsl_header()
 {
     std::string result = "\n//==== notf header ========================================\n\n";
 
@@ -245,9 +245,9 @@ std::string build_glsl_header(const GraphicsContext& context)
 
 } // namespace detail
 
-const std::string& glsl_header(const GraphicsContext& context)
+const std::string& glsl_header()
 {
-    static const std::string header = detail::build_glsl_header(context);
+    static const std::string header = detail::build_glsl_header();
     return header;
 }
 
@@ -272,7 +272,7 @@ std::string inject_header(const std::string& source, const std::string& injectio
 void assert_is_valid(const Shader& shader)
 {
     if (!shader.is_valid()) {
-        NOTF_THROW(resource_error, "Shader \"{}\" was deallocated! Has the GraphicsContext been deleted?",
+        NOTF_THROW(resource_error, "Shader \"{}\" was deallocated! Has TheGraphicsSystem been deleted?",
                    shader.get_name());
     }
 }
@@ -288,14 +288,12 @@ NOTF_OPEN_NAMESPACE
 
 const Shader::Defines Shader::s_no_defines = {};
 
-Shader::Shader(GraphicsContext& context, const GLuint id, Stage::Flags stages, std::string name)
-    : m_graphics_context(context), m_id(id), m_stages(stages), m_name(std::move(name)), m_uniforms()
+Shader::Shader(const GLuint id, Stage::Flags stages, std::string name)
+    : m_name(std::move(name)), m_id(id), m_stages(stages)
 {
-    auto context_guard = m_graphics_context.make_current();
-
     // discover uniforms
     GLint uniform_count = 0;
-    notf_check_gl(glGetProgramiv(m_id.value(), GL_ACTIVE_UNIFORMS, &uniform_count));
+    NOTF_CHECK_GL(glGetProgramiv(m_id.value(), GL_ACTIVE_UNIFORMS, &uniform_count));
     NOTF_ASSERT(uniform_count >= 0);
     m_uniforms.reserve(static_cast<size_t>(uniform_count));
 
@@ -306,7 +304,7 @@ Shader::Shader(GraphicsContext& context, const GLuint id, Stage::Flags stages, s
         variable.size = 0;
 
         GLsizei name_length = 0;
-        notf_check_gl(glGetActiveUniform(m_id.value(), index, static_cast<GLsizei>(uniform_name.size()), &name_length,
+        NOTF_CHECK_GL(glGetActiveUniform(m_id.value(), index, static_cast<GLsizei>(uniform_name.size()), &name_length,
                                          &variable.size, &variable.type, &uniform_name[0]));
         NOTF_ASSERT(variable.type);
         NOTF_ASSERT(variable.size);
@@ -334,15 +332,13 @@ bool Shader::validate_now() const
 {
     assert_is_valid(*this);
 
-    notf_check_gl(glValidateProgram(m_id.value()));
-
     GLint status = GL_FALSE;
-    notf_check_gl(glGetProgramiv(m_id.value(), GL_VALIDATE_STATUS, &status));
-
     GLint message_size;
-    notf_check_gl(glGetProgramiv(m_id.value(), GL_INFO_LOG_LENGTH, &message_size));
-    std::vector<char> message(static_cast<size_t>(message_size));
-    notf_check_gl(glGetProgramInfoLog(m_id.value(), message_size, /*length*/ nullptr, &message[0]));
+    NOTF_CHECK_GL(glValidateProgram(m_id.value()));
+    NOTF_CHECK_GL(glGetProgramiv(m_id.value(), GL_VALIDATE_STATUS, &status));
+    NOTF_CHECK_GL(glGetProgramiv(m_id.value(), GL_INFO_LOG_LENGTH, &message_size));
+    std::vector<char> message = std::vector<char>(static_cast<size_t>(message_size));
+    NOTF_CHECK_GL(glGetProgramInfoLog(m_id.value(), message_size, /*length*/ nullptr, &message[0]));
 
     log_trace << "Validation of shader \"" << m_name << "\" " << (status ? "succeeded" : "failed:\n") << message.data();
     return status == GL_TRUE;
@@ -351,7 +347,9 @@ bool Shader::validate_now() const
 
 GLuint Shader::_build(const std::string& name, const Args& args)
 {
-    notf_clear_gl_errors();
+    if constexpr (is_debug_build()) {
+        clear_gl_errors();
+    }
 
     // create the program
     // We don't use `glCreateShaderProgramv` so we could pass additional pre-link parameters.
@@ -361,7 +359,7 @@ GLuint Shader::_build(const std::string& name, const Args& args)
     if (!program) {
         NOTF_THROW(runtime_error, "Failed to create program object for shader \"{}\"", name);
     }
-    notf_check_gl(glProgramParameteri(program, GL_PROGRAM_SEPARABLE, GL_TRUE));
+    NOTF_CHECK_GL(glProgramParameteri(program, GL_PROGRAM_SEPARABLE, GL_TRUE));
 
     { // create and attach the shader stages
         GLuint vertex_stage = compile_stage(name, Shader::Stage::VERTEX, args.vertex_source);
@@ -372,61 +370,61 @@ GLuint Shader::_build(const std::string& name, const Args& args)
         GLuint compute_stage = compile_stage(name, Shader::Stage::COMPUTE, args.compute_source);
 
         if (vertex_stage) {
-            notf_check_gl(glAttachShader(program, vertex_stage));
+            NOTF_CHECK_GL(glAttachShader(program, vertex_stage));
         }
         if (tess_ctrl_stage) {
-            notf_check_gl(glAttachShader(program, tess_ctrl_stage));
+            NOTF_CHECK_GL(glAttachShader(program, tess_ctrl_stage));
         }
         if (tess_eval_stage) {
-            notf_check_gl(glAttachShader(program, tess_eval_stage));
+            NOTF_CHECK_GL(glAttachShader(program, tess_eval_stage));
         }
         if (geometry_stage) {
-            notf_check_gl(glAttachShader(program, geometry_stage));
+            NOTF_CHECK_GL(glAttachShader(program, geometry_stage));
         }
         if (fragment_stage) {
-            notf_check_gl(glAttachShader(program, fragment_stage));
+            NOTF_CHECK_GL(glAttachShader(program, fragment_stage));
         }
         if (compute_stage) {
-            notf_check_gl(glAttachShader(program, compute_stage));
+            NOTF_CHECK_GL(glAttachShader(program, compute_stage));
         }
 
-        notf_check_gl(glLinkProgram(program));
+        NOTF_CHECK_GL(glLinkProgram(program));
 
         if (vertex_stage) {
-            notf_check_gl(glDetachShader(program, vertex_stage));
-            notf_check_gl(glDeleteShader(vertex_stage));
+            NOTF_CHECK_GL(glDetachShader(program, vertex_stage));
+            NOTF_CHECK_GL(glDeleteShader(vertex_stage));
         }
         if (tess_ctrl_stage) {
-            notf_check_gl(glDetachShader(program, tess_ctrl_stage));
-            notf_check_gl(glDeleteShader(tess_ctrl_stage));
+            NOTF_CHECK_GL(glDetachShader(program, tess_ctrl_stage));
+            NOTF_CHECK_GL(glDeleteShader(tess_ctrl_stage));
         }
         if (tess_eval_stage) {
-            notf_check_gl(glDetachShader(program, tess_eval_stage));
-            notf_check_gl(glDeleteShader(tess_eval_stage));
+            NOTF_CHECK_GL(glDetachShader(program, tess_eval_stage));
+            NOTF_CHECK_GL(glDeleteShader(tess_eval_stage));
         }
         if (geometry_stage) {
-            notf_check_gl(glDetachShader(program, geometry_stage));
-            notf_check_gl(glDeleteShader(geometry_stage));
+            NOTF_CHECK_GL(glDetachShader(program, geometry_stage));
+            NOTF_CHECK_GL(glDeleteShader(geometry_stage));
         }
         if (fragment_stage) {
-            notf_check_gl(glDetachShader(program, fragment_stage));
-            notf_check_gl(glDeleteShader(fragment_stage));
+            NOTF_CHECK_GL(glDetachShader(program, fragment_stage));
+            NOTF_CHECK_GL(glDeleteShader(fragment_stage));
         }
         if (compute_stage) {
-            notf_check_gl(glDetachShader(program, compute_stage));
-            notf_check_gl(glDeleteShader(compute_stage));
+            NOTF_CHECK_GL(glDetachShader(program, compute_stage));
+            NOTF_CHECK_GL(glDeleteShader(compute_stage));
         }
     }
 
     { // check for errors
         GLint success = GL_FALSE;
-        notf_check_gl(glGetProgramiv(program, GL_LINK_STATUS, &success));
+        NOTF_CHECK_GL(glGetProgramiv(program, GL_LINK_STATUS, &success));
         if (!success) {
             GLint error_size;
-            notf_check_gl(glGetProgramiv(program, GL_INFO_LOG_LENGTH, &error_size));
+            NOTF_CHECK_GL(glGetProgramiv(program, GL_INFO_LOG_LENGTH, &error_size));
             std::vector<char> error_message(static_cast<size_t>(error_size));
-            notf_check_gl(glGetProgramInfoLog(program, error_size, /*length*/ nullptr, &error_message[0]));
-            notf_check_gl(glDeleteProgram(program));
+            NOTF_CHECK_GL(glGetProgramInfoLog(program, error_size, /*length*/ nullptr, &error_message[0]));
+            NOTF_CHECK_GL(glDeleteProgram(program));
 
             NOTF_THROW(runtime_error, "Failed to link shader program \"{}\":\n", name, error_message.data());
         }
@@ -437,7 +435,7 @@ GLuint Shader::_build(const std::string& name, const Args& args)
     return program;
 }
 
-void Shader::_register_with_context(const ShaderPtr& shader)
+void Shader::_register_with_system(const ShaderPtr& shader)
 {
     NOTF_ASSERT(shader && shader->is_valid());
     TheGraphicsSystem::Access<Shader>::register_new(shader);
@@ -458,7 +456,7 @@ const Shader::Variable& Shader::_uniform(const std::string& name) const
 void Shader::_deallocate()
 {
     if (m_id.value()) {
-        notf_check_gl(glDeleteProgram(m_id.value()));
+        NOTF_CHECK_GL(glDeleteProgram(m_id.value()));
         log_trace << "Deleted Shader Program \"" << m_name << "\"";
         m_id = ShaderId::invalid();
     }
@@ -470,7 +468,7 @@ void Shader::set_uniform(const std::string& name, const int& value)
     assert_is_valid(*this);
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_INT || uniform.type == GL_SAMPLER_2D) {
-        notf_check_gl(glProgramUniform1i(m_id.value(), uniform.location, value));
+        NOTF_CHECK_GL(glProgramUniform1i(m_id.value(), uniform.location, value));
     }
     else {
         NOTF_THROW(runtime_error,
@@ -485,10 +483,10 @@ void Shader::set_uniform(const std::string& name, const unsigned int& value)
     assert_is_valid(*this);
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_UNSIGNED_INT) {
-        notf_check_gl(glProgramUniform1ui(m_id.value(), uniform.location, value));
+        NOTF_CHECK_GL(glProgramUniform1ui(m_id.value(), uniform.location, value));
     }
     else if (uniform.type == GL_SAMPLER_2D) {
-        notf_check_gl(glProgramUniform1i(m_id.value(), uniform.location, static_cast<GLint>(value)));
+        NOTF_CHECK_GL(glProgramUniform1i(m_id.value(), uniform.location, static_cast<GLint>(value)));
     }
     else {
         NOTF_THROW(runtime_error,
@@ -503,7 +501,7 @@ void Shader::set_uniform(const std::string& name, const float& value)
     assert_is_valid(*this);
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT) {
-        notf_check_gl(glProgramUniform1f(m_id.value(), uniform.location, value));
+        NOTF_CHECK_GL(glProgramUniform1f(m_id.value(), uniform.location, value));
     }
     else {
         NOTF_THROW(runtime_error,
@@ -518,7 +516,7 @@ void Shader::set_uniform(const std::string& name, const Vector2f& value)
     assert_is_valid(*this);
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT_VEC2) {
-        notf_check_gl(glProgramUniform2fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
+        NOTF_CHECK_GL(glProgramUniform2fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
     }
     else {
         NOTF_THROW(runtime_error,
@@ -533,7 +531,7 @@ void Shader::set_uniform(const std::string& name, const Vector4f& value)
     assert_is_valid(*this);
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT_VEC4) {
-        notf_check_gl(glProgramUniform4fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
+        NOTF_CHECK_GL(glProgramUniform4fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
     }
     else {
         NOTF_THROW(runtime_error,
@@ -548,7 +546,7 @@ void Shader::set_uniform(const std::string& name, const Matrix4f& value)
     assert_is_valid(*this);
     const Variable& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT_MAT4) {
-        notf_check_gl(glProgramUniformMatrix4fv(m_id.value(), uniform.location, /*count*/ 1, /*transpose*/ GL_FALSE,
+        NOTF_CHECK_GL(glProgramUniformMatrix4fv(m_id.value(), uniform.location, /*count*/ 1, /*transpose*/ GL_FALSE,
                                                 value.as_ptr()));
     }
     else {
@@ -560,12 +558,12 @@ void Shader::set_uniform(const std::string& name, const Matrix4f& value)
 
 // ================================================================================================================== //
 
-VertexShader::VertexShader(GraphicsContext& context, const GLuint program, std::string name, std::string source)
-    : Shader(context, program, Stage::VERTEX, std::move(name)), m_source(std::move(source)), m_attributes()
+VertexShader::VertexShader(const GLuint program, std::string name, std::string string)
+    : Shader(program, Stage::VERTEX, std::move(name)), m_source(std::move(string)), m_attributes()
 {
     // discover attributes
     GLint attribute_count = 0;
-    notf_check_gl(glGetProgramiv(get_id().value(), GL_ACTIVE_ATTRIBUTES, &attribute_count));
+    NOTF_CHECK_GL(glGetProgramiv(get_id().value(), GL_ACTIVE_ATTRIBUTES, &attribute_count));
     NOTF_ASSERT(attribute_count >= 0);
     m_attributes.reserve(static_cast<size_t>(attribute_count));
 
@@ -576,7 +574,7 @@ VertexShader::VertexShader(GraphicsContext& context, const GLuint program, std::
         variable.size = 0;
 
         GLsizei name_length = 0;
-        notf_check_gl(glGetActiveAttrib(get_id().value(), index, static_cast<GLsizei>(uniform_name.size()),
+        NOTF_CHECK_GL(glGetActiveAttrib(get_id().value(), index, static_cast<GLsizei>(uniform_name.size()),
                                         &name_length, &variable.size, &variable.type, &uniform_name[0]));
         NOTF_ASSERT(variable.type);
         NOTF_ASSERT(variable.size);
@@ -598,21 +596,16 @@ VertexShader::VertexShader(GraphicsContext& context, const GLuint program, std::
     m_attributes.shrink_to_fit();
 }
 
-VertexShaderPtr
-VertexShader::create(GraphicsContext& context, std::string name, const std::string& source, const Defines& defines)
+VertexShaderPtr VertexShader::create(std::string name, const std::string& string, const Defines& defines)
 {
-    const std::string modified_source = inject_header(source, glsl_header(context) + build_defines(defines));
+    std::string source = inject_header(string, glsl_header() + build_defines(defines));
 
     Args args;
-    args.vertex_source = modified_source.c_str();
+    args.vertex_source = source.c_str();
 
-    VertexShaderPtr shader;
-    {
-        auto guard = context.make_current();
-        shader = NOTF_MAKE_SHARED_FROM_PRIVATE(VertexShader, context, Shader::_build(name, args), name,
-                                               std::move(modified_source));
-    }
-    _register_with_context(shader);
+    VertexShaderPtr shader
+        = NOTF_MAKE_SHARED_FROM_PRIVATE(VertexShader, Shader::_build(name, args), name, std::move(source));
+    _register_with_system(shader);
     ResourceManager::get_instance().get_type<VertexShader>().set(std::move(name), shader);
     return shader;
 }
@@ -630,84 +623,68 @@ GLuint VertexShader::get_attribute(const std::string& name) const
 
 // ================================================================================================================== //
 
-TesselationShader::TesselationShader(GraphicsContext& context, const GLuint program, std::string name,
-                                     const std::string& control_source, const std::string& evaluation_source)
-    : Shader(context, program, Stage::TESS_CONTROL | Stage::TESS_EVALUATION, std::move(name))
-    , m_control_source(std::move(control_source))
-    , m_evaluation_source(std::move(evaluation_source))
+TesselationShader::TesselationShader(const GLuint program, std::string name, const std::string& control_string,
+                                     const std::string& evaluation_string)
+    : Shader(program, Stage::TESS_CONTROL | Stage::TESS_EVALUATION, std::move(name))
+    , m_control_source(std::move(control_string))
+    , m_evaluation_source(std::move(evaluation_string))
 {}
 
-TesselationShaderPtr
-TesselationShader::create(GraphicsContext& context, const std::string& name, const std::string& control_source,
-                          const std::string& evaluation_source, const Defines& defines)
+TesselationShaderPtr TesselationShader::create(const std::string& name, const std::string& control_string,
+                                               const std::string& evaluation_string, const Defines& defines)
 {
-    const std::string injection_string = glsl_header(context) + build_defines(defines);
-    const std::string modified_control_source = inject_header(control_source, injection_string);
-    const std::string modified_evaluation_source = inject_header(evaluation_source, injection_string);
+    const std::string injection_string = glsl_header() + build_defines(defines);
+    const std::string modified_control_source = inject_header(control_string, injection_string);
+    const std::string modified_evaluation_source = inject_header(evaluation_string, injection_string);
 
     Args args;
     args.tess_ctrl_source = modified_control_source.c_str();
     args.tess_eval_source = modified_evaluation_source.c_str();
 
-    TesselationShaderPtr shader;
-    {
-        auto guard = context.make_current();
-        shader = NOTF_MAKE_SHARED_FROM_PRIVATE(TesselationShader, context, Shader::_build(name, args), name,
-                                               std::move(modified_control_source),
-                                               std::move(modified_evaluation_source));
-    }
-    _register_with_context(shader);
+    TesselationShaderPtr shader = NOTF_MAKE_SHARED_FROM_PRIVATE(TesselationShader, Shader::_build(name, args), name,
+                                                                std::move(modified_control_source),
+                                                                std::move(modified_evaluation_source));
+    _register_with_system(shader);
     ResourceManager::get_instance().get_type<TesselationShader>().set(std::move(name), shader);
     return shader;
 }
 
 // ================================================================================================================== //
 
-GeometryShader::GeometryShader(GraphicsContext& context, const GLuint program, std::string name, std::string source)
-    : Shader(context, program, Stage::GEOMETRY, std::move(name)), m_source(std::move(source))
+GeometryShader::GeometryShader(const GLuint program, std::string name, std::string string)
+    : Shader(program, Stage::GEOMETRY, std::move(name)), m_source(std::move(string))
 {}
 
-GeometryShaderPtr
-GeometryShader::create(GraphicsContext& context, std::string name, const std::string& source, const Defines& defines)
+GeometryShaderPtr GeometryShader::create(std::string name, const std::string& string, const Defines& defines)
 {
-    const std::string modified_source = inject_header(source, glsl_header(context) + build_defines(defines));
+    std::string source = inject_header(string, glsl_header() + build_defines(defines));
 
     Args args;
-    args.geometry_source = modified_source.c_str();
+    args.geometry_source = source.c_str();
 
-    GeometryShaderPtr shader;
-    {
-        auto guard = context.make_current();
-        shader = NOTF_MAKE_SHARED_FROM_PRIVATE(GeometryShader, context, Shader::_build(name, args), name,
-                                               std::move(modified_source));
-    }
-    _register_with_context(shader);
+    GeometryShaderPtr shader
+        = NOTF_MAKE_SHARED_FROM_PRIVATE(GeometryShader, Shader::_build(name, args), name, std::move(source));
+    _register_with_system(shader);
     ResourceManager::get_instance().get_type<GeometryShader>().set(std::move(name), shader);
     return shader;
 }
 
 // ================================================================================================================== //
 
-FragmentShader::FragmentShader(GraphicsContext& context, const GLuint program, std::string shader_name,
-                               std::string source)
-    : Shader(context, program, Stage::FRAGMENT, std::move(shader_name)), m_source(std::move(source))
+FragmentShader::FragmentShader(const GLuint program, std::string shader_name, std::string string)
+    : Shader(program, Stage::FRAGMENT, std::move(shader_name)), m_source(std::move(string))
 {}
 
-FragmentShaderPtr
-FragmentShader::create(GraphicsContext& context, std::string name, const std::string& source, const Defines& defines)
+FragmentShaderPtr FragmentShader::create(std::string name, const std::string& string, const Defines& defines)
 {
-    const std::string modified_source = inject_header(source, glsl_header(context) + build_defines(defines));
+    std::string source = inject_header(string, glsl_header() + build_defines(defines));
 
     Args args;
-    args.fragment_source = modified_source.c_str();
+    args.fragment_source = source.c_str();
 
-    FragmentShaderPtr shader;
-    {
-        auto guard = context.make_current();
-        shader = NOTF_MAKE_SHARED_FROM_PRIVATE(FragmentShader, context, Shader::_build(name, args), name,
-                                               std::move(modified_source));
-    }
-    _register_with_context(shader);
+    FragmentShaderPtr shader
+        = NOTF_MAKE_SHARED_FROM_PRIVATE(FragmentShader, Shader::_build(name, args), name, std::move(source));
+    _register_with_system(shader);
     ResourceManager::get_instance().get_type<FragmentShader>().set(std::move(name), shader);
     return shader;
 }

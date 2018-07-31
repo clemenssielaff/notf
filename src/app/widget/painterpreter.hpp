@@ -20,7 +20,7 @@ private:
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
-    /// @param context      The GraphicsContext containing the graphic objects.
+    /// @param context  GraphicsContext to operate in.
     Painterpreter(GraphicsContext& context);
 
     /// Paints the Design of the given Widget.

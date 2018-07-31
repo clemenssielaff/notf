@@ -3,6 +3,7 @@
 #include <set>
 
 #include "app/glfw.hpp"
+#include "app/window.hpp" // TODO: window is included in graphics.. :/
 #include "common/exception.hpp"
 #include "common/log.hpp"
 #include "common/resource_manager.hpp"
@@ -82,19 +83,19 @@ GraphicsContext::graphics_context_error::~graphics_context_error() = default;
 
 // ================================================================================================================== //
 
-GraphicsContext::VaoGuard::VaoGuard(GLuint vao) : m_vao(vao) { notf_check_gl(glBindVertexArray(m_vao)); }
+GraphicsContext::VaoGuard::VaoGuard(GLuint vao) : m_vao(vao) { NOTF_CHECK_GL(glBindVertexArray(m_vao)); }
 
-GraphicsContext::VaoGuard::~VaoGuard() { notf_check_gl(glBindVertexArray(0)); }
+GraphicsContext::VaoGuard::~VaoGuard() { NOTF_CHECK_GL(glBindVertexArray(0)); }
 
 // ================================================================================================================== //
 
 GraphicsContext::GraphicsContext(valid_ptr<GLFWwindow*> window) : m_window(window)
 {
-    ContextGuard guard = make_current();
+    ContextGuard guard(*this);
 
     { // sanity check (otherwise OpenGL may happily return `null` on all calls until something crashes later)
         const GLubyte* version;
-        notf_check_gl(version = glGetString(GL_VERSION));
+        NOTF_CHECK_GL(version = glGetString(GL_VERSION));
         if (!version) {
             NOTF_THROW(runtime_error, "Failed to create an OpenGL context");
         }
@@ -104,9 +105,9 @@ GraphicsContext::GraphicsContext(valid_ptr<GLFWwindow*> window) : m_window(windo
     glfwSwapInterval(-1); // -1 in case EXT_swap_control_tear is supported
 
     // OpenGL hints
-    notf_check_gl(glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST));
-    notf_check_gl(glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_DONT_CARE));
-    notf_check_gl(glDisable(GL_DITHER));
+    NOTF_CHECK_GL(glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST));
+    NOTF_CHECK_GL(glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_DONT_CARE));
+    NOTF_CHECK_GL(glDisable(GL_DITHER));
 
     // apply the default state
     m_state = _create_state();
@@ -116,6 +117,27 @@ GraphicsContext::GraphicsContext(valid_ptr<GLFWwindow*> window) : m_window(windo
 }
 
 GraphicsContext::~GraphicsContext() = default;
+
+GraphicsContext& GraphicsContext::get()
+{
+    if (GLFWwindow* glfw_window = glfwGetCurrentContext()) {
+        if (void* user_pointer = glfwGetWindowUserPointer(glfw_window)) {
+            return static_cast<Window*>(user_pointer)->get_graphics_context();
+        }
+    }
+    return TheGraphicsSystem::get();
+}
+
+GraphicsContext::ContextGuard GraphicsContext::make_current()
+{
+    GLFWwindow* glfw_window = glfwGetCurrentContext();
+    if (glfw_window && glfw_window != m_window) {
+        NOTF_THROW(graphics_context_error,
+                   "Cannot make a GraphicsContext current on this thread while another one is already current");
+    }
+
+    return ContextGuard(*this);
+}
 
 Size2i GraphicsContext::get_window_size() const
 {
@@ -132,7 +154,7 @@ void GraphicsContext::set_stencil_mask(const GLuint mask, const bool force)
     }
     NOTF_ASSERT(is_current());
     m_state.stencil_mask = mask;
-    notf_check_gl(glStencilMask(mask));
+    NOTF_CHECK_GL(glStencilMask(mask));
 }
 
 void GraphicsContext::set_blend_mode(const BlendMode mode, const bool force)
@@ -151,7 +173,7 @@ void GraphicsContext::set_blend_mode(const BlendMode mode, const bool force)
     GLenum alpha_sfactor, alpha_dfactor;
     std::tie(alpha_sfactor, alpha_dfactor) = convert_blend_mode(mode.alpha);
 
-    notf_check_gl(glBlendFuncSeparate(rgb_sfactor, rgb_dfactor, alpha_sfactor, alpha_dfactor));
+    NOTF_CHECK_GL(glBlendFuncSeparate(rgb_sfactor, rgb_dfactor, alpha_sfactor, alpha_dfactor));
 }
 
 void GraphicsContext::set_render_area(Aabri area, const bool force)
@@ -161,7 +183,7 @@ void GraphicsContext::set_render_area(Aabri area, const bool force)
     }
     if (area != m_state.render_area || force) {
         NOTF_ASSERT(is_current());
-        notf_check_gl(glViewport(area.get_left(), area.get_bottom(), area.get_width(), area.get_height()));
+        NOTF_CHECK_GL(glViewport(area.get_left(), area.get_bottom(), area.get_width(), area.get_height()));
         m_state.render_area = std::move(area);
     }
 }
@@ -171,7 +193,7 @@ void GraphicsContext::clear(Color color, const BufferFlags buffers)
     NOTF_ASSERT(is_current());
     if (color != m_state.clear_color) {
         m_state.clear_color = std::move(color);
-        notf_check_gl(
+        NOTF_CHECK_GL(
             glClearColor(m_state.clear_color.r, m_state.clear_color.g, m_state.clear_color.b, m_state.clear_color.a));
     }
 
@@ -185,7 +207,7 @@ void GraphicsContext::clear(Color color, const BufferFlags buffers)
     if (buffers & Buffer::STENCIL) {
         gl_flags |= GL_STENCIL_BUFFER_BIT;
     }
-    notf_check_gl(glClear(gl_flags));
+    NOTF_CHECK_GL(glClear(gl_flags));
 }
 
 // TODO: access control for begin_ and end_frame
@@ -218,8 +240,8 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot)
     }
 
     NOTF_ASSERT(is_current());
-    notf_check_gl(glActiveTexture(GL_TEXTURE0 + slot));
-    notf_check_gl(glBindTexture(GL_TEXTURE_2D, texture->get_id().value()));
+    NOTF_CHECK_GL(glActiveTexture(GL_TEXTURE0 + slot));
+    NOTF_CHECK_GL(glBindTexture(GL_TEXTURE_2D, texture->get_id().value()));
 
     m_state.texture_slots[slot] = texture->shared_from_this();
 }
@@ -237,8 +259,8 @@ void GraphicsContext::unbind_texture(uint slot)
     }
 
     NOTF_ASSERT(is_current());
-    notf_check_gl(glActiveTexture(GL_TEXTURE0 + slot));
-    notf_check_gl(glBindTexture(GL_TEXTURE_2D, 0));
+    NOTF_CHECK_GL(glActiveTexture(GL_TEXTURE0 + slot));
+    NOTF_CHECK_GL(glBindTexture(GL_TEXTURE_2D, 0));
 
     m_state.texture_slots[slot].reset();
 }
@@ -253,6 +275,12 @@ GraphicsContext::FramebufferGuard GraphicsContext::bind_framebuffer(const FrameB
 {
     _bind_framebuffer(framebuffer);
     return FramebufferGuard(*this, framebuffer);
+}
+
+void GraphicsContext::_shutdown_once()
+{
+    const auto current_guard = make_current();
+    m_state = {};
 }
 
 std::unique_lock<RecursiveMutex> GraphicsContext::_make_current()
@@ -302,8 +330,8 @@ void GraphicsContext::_bind_pipeline(const PipelinePtr& pipeline)
     }
     else if (pipeline != m_state.pipeline) {
         NOTF_ASSERT(is_current());
-        notf_check_gl(glUseProgram(0));
-        notf_check_gl(glBindProgramPipeline(pipeline->get_id().value()));
+        NOTF_CHECK_GL(glUseProgram(0));
+        NOTF_CHECK_GL(glBindProgramPipeline(pipeline->get_id().value()));
         m_state.pipeline = pipeline;
     }
 }
@@ -316,8 +344,8 @@ void GraphicsContext::_unbind_pipeline(const PipelinePtr& pipeline)
     }
     if (m_state.pipeline) {
         NOTF_ASSERT(is_current());
-        notf_check_gl(glUseProgram(0));
-        notf_check_gl(glBindProgramPipeline(0));
+        NOTF_CHECK_GL(glUseProgram(0));
+        NOTF_CHECK_GL(glBindProgramPipeline(0));
         m_state.pipeline.reset();
     }
 }
@@ -329,7 +357,7 @@ void GraphicsContext::_bind_framebuffer(const FrameBufferPtr& framebuffer)
     }
     else if (framebuffer != m_state.framebuffer) {
         NOTF_ASSERT(is_current());
-        notf_check_gl(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->get_id().value()));
+        NOTF_CHECK_GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->get_id().value()));
         m_state.framebuffer = framebuffer;
     }
 }
@@ -342,7 +370,7 @@ void GraphicsContext::_unbind_framebuffer(const FrameBufferPtr& framebuffer)
     }
     if (m_state.framebuffer) {
         NOTF_ASSERT(is_current());
-        notf_check_gl(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+        NOTF_CHECK_GL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
         m_state.framebuffer.reset();
     }
 }

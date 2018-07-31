@@ -22,27 +22,19 @@ private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Constructor.
-    /// @param context  Graphics context within which the FontManager operates.
-    FontManager(GraphicsContext& context);
+    FontManager();
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(FontManager);
 
     /// Factory
-    /// @param context  Graphics context within which the FontManager operates.
-    static FontManagerPtr create(GraphicsContext& context)
-    {
-        return NOTF_MAKE_UNIQUE_FROM_PRIVATE(FontManager, context);
-    }
+    static FontManagerPtr create() { return NOTF_MAKE_UNIQUE_FROM_PRIVATE(FontManager); }
 
     /// Destructor.
     ~FontManager();
 
     /// Direct access to the font atlas texture.
     TexturePtr get_atlas_texture() const;
-
-    /// GraphicsContext in which the Texture lives.
-    GraphicsContext& get_graphics_context() const { return m_graphics_context; }
 
 private: // for Font
     /// The Freetype library used by the Manager.
@@ -59,9 +51,6 @@ private:
 private:
     /// Freetype library used to rasterize the glyphs.
     FT_Library m_freetype;
-
-    /// Render Context in which the Texture lives.
-    GraphicsContext& m_graphics_context;
 
     /// Font Atlas to store Glyphs of all loaded Fonts.
     FontAtlas m_atlas;

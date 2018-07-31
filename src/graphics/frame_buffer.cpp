@@ -9,7 +9,6 @@
 #include "common/log.hpp"
 #include "graphics/gl_errors.hpp"
 #include "graphics/graphics_system.hpp"
-#include "graphics/opengl.hpp"
 #include "graphics/texture.hpp"
 
 namespace { // anonymous
@@ -58,8 +57,8 @@ const char* status_to_str(const GLenum status)
 
 NOTF_OPEN_NAMESPACE
 
-RenderBuffer::RenderBuffer(GraphicsContextPtr& context, Args&& args)
-    : m_graphics_context(*context), m_args(std::move(args))
+RenderBuffer::RenderBuffer(Args&& args)
+    : m_args(std::move(args))
 {
     // check arguments
     const TheGraphicsSystem::Environment& env = TheGraphicsSystem::get().get_environment();
@@ -78,13 +77,10 @@ RenderBuffer::RenderBuffer(GraphicsContextPtr& context, Args&& args)
         _assert_depth_stencil_format(m_args.internal_format);
     }
 
-    { // generate new renderbuffer id
-        RenderBufferId::underlying_t id = 0;
-        notf_check_gl(glGenRenderbuffers(1, &id));
-        m_id = id;
-        if (m_id == 0) {
-            NOTF_THROW(runtime_error, "Could not allocate new RenderBuffer");
-        }
+    // generate new renderbuffer id
+    NOTF_CHECK_GL(glGenRenderbuffers(1, &m_id.data()));
+    if (m_id == 0) {
+        NOTF_THROW(runtime_error, "Could not allocate new RenderBuffer");
     }
 }
 
@@ -147,9 +143,9 @@ void RenderBuffer::_assert_depth_stencil_format(const GLenum internal_format)
 void RenderBuffer::_deallocate()
 {
     if (m_id != 0) {
-        notf_check_gl(glDeleteRenderbuffers(1, &m_id.value()));
-        m_id = RenderBufferId::invalid();
+        NOTF_CHECK_GL(glDeleteRenderbuffers(1, &m_id.value()));
     }
+    m_id = RenderBufferId::invalid();
 }
 
 // ================================================================================================================== //
@@ -166,13 +162,13 @@ void FrameBuffer::Args::set_color_target(const ushort id, ColorTarget target)
     }
 }
 
-FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_context(context), m_id(0), m_args(args)
+FrameBuffer::FrameBuffer(Args&& args) : m_id(0), m_args(args)
 {
     _validate_arguments();
 
     { // generate new framebuffer id
         FrameBufferId::underlying_t id = 0;
-        notf_check_gl(glGenFramebuffers(1, &id));
+        NOTF_CHECK_GL(glGenFramebuffers(1, &id));
         m_id = id;
         if (m_id == 0) {
             NOTF_THROW(runtime_error, "Could not allocate new FrameBuffer");
@@ -180,7 +176,7 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_context(cont
     }
 
     // define framebuffer
-    notf_check_gl(glBindFramebuffer(GL_FRAMEBUFFER, m_id.value()));
+    NOTF_CHECK_GL(glBindFramebuffer(GL_FRAMEBUFFER, m_id.value()));
 
     for (const auto& numbered_color_target : m_args.color_targets) {
         const ushort target_id = numbered_color_target.first;
@@ -188,12 +184,12 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_context(cont
 
         if (std::holds_alternative<RenderBufferPtr>(color_target)) {
             if (const auto& color_buffer = std::get<RenderBufferPtr>(color_target)) {
-                notf_check_gl(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id,
+                NOTF_CHECK_GL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id,
                                                         GL_RENDERBUFFER, color_buffer->get_id().value()));
             }
         }
         else if (const auto& color_texture = std::get<TexturePtr>(color_target)) {
-            notf_check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id,
+            NOTF_CHECK_GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id,
                                                  color_texture->get_target(), color_texture->get_id().value(),
                                                  /* level = */ 0));
         }
@@ -202,19 +198,19 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_context(cont
     bool has_depth = false;
     if (std::holds_alternative<RenderBufferPtr>(m_args.depth_target)) {
         if (const auto& depth_buffer = std::get<RenderBufferPtr>(m_args.depth_target)) {
-            notf_check_gl(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
+            NOTF_CHECK_GL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
                                                     depth_buffer->get_id().value()));
             has_depth = true;
         }
     }
     else if (const auto& depth_texture = std::get<TexturePtr>(m_args.depth_target)) {
-        notf_check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_texture->get_target(),
+        NOTF_CHECK_GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_texture->get_target(),
                                              depth_texture->get_id().value(), /* level = */ 0));
         has_depth = true;
     }
 
     if (m_args.stencil_target) {
-        notf_check_gl(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
+        NOTF_CHECK_GL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
                                                 m_args.stencil_target->get_id().value()));
     }
 
@@ -231,12 +227,12 @@ FrameBuffer::FrameBuffer(GraphicsContext& context, Args&& args) : m_context(cont
         }
     }
 
-    notf_check_gl(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    NOTF_CHECK_GL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 }
 
-FrameBufferPtr FrameBuffer::create(GraphicsContext& context, Args&& args)
+FrameBufferPtr FrameBuffer::create(Args&& args)
 {
-    FrameBufferPtr framebuffer = NOTF_MAKE_SHARED_FROM_PRIVATE(FrameBuffer, context, std::move(args));
+    FrameBufferPtr framebuffer = NOTF_MAKE_SHARED_FROM_PRIVATE(FrameBuffer, std::move(args));
     TheGraphicsSystem::Access<FrameBuffer>::register_new(framebuffer);
     return framebuffer;
 }
@@ -288,7 +284,7 @@ void FrameBuffer::_deallocate()
     m_args = Args{};
 
     // deallocate yourself
-    notf_check_gl(glDeleteFramebuffers(1, &m_id.value()));
+    NOTF_CHECK_GL(glDeleteFramebuffers(1, &m_id.value()));
     m_id = FrameBufferId::invalid();
 }
 

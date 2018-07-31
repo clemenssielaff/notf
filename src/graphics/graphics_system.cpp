@@ -71,19 +71,19 @@ TheGraphicsSystem::Environment::Environment()
 
     { // max render buffer size
         GLint max_renderbuffer_size = -1;
-        notf_check_gl(glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &max_renderbuffer_size));
+        NOTF_CHECK_GL(glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &max_renderbuffer_size));
         max_render_buffer_size = narrow_cast<decltype(max_render_buffer_size)>(max_renderbuffer_size);
     }
 
     { // color attachment count
         GLint max_color_attachments = -1;
-        notf_check_gl(glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &max_color_attachments));
+        NOTF_CHECK_GL(glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &max_color_attachments));
         color_attachment_count = narrow_cast<decltype(color_attachment_count)>(max_color_attachments);
     }
 
     { // texture slot count
         GLint max_image_units = -1;
-        notf_check_gl(glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_image_units));
+        NOTF_CHECK_GL(glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_image_units));
         texture_slot_count = narrow_cast<decltype(texture_slot_count)>(max_image_units - reserved_texture_slots);
     }
 
@@ -94,13 +94,9 @@ TheGraphicsSystem::Environment::Environment()
 
 // ================================================================================================================== //
 
-std::atomic<bool> TheGraphicsSystem::s_is_running{false};
-
 TheGraphicsSystem::TheGraphicsSystem(valid_ptr<GLFWwindow*> shared_window)
     : GraphicsContext(load_gl_functions(shared_window))
-{
-    s_is_running.store(true);
-}
+{}
 
 TheGraphicsSystem::~TheGraphicsSystem() { _shutdown(); }
 
@@ -152,15 +148,14 @@ FrameBufferPtr TheGraphicsSystem::get_framebuffer(const FrameBufferId& id) const
     return it->second.lock();
 }
 
-void TheGraphicsSystem::_post_initialization() { m_font_manager = FontManager::create(*this); }
+void TheGraphicsSystem::_post_initialization() { m_font_manager = FontManager::create(); }
 
-void TheGraphicsSystem::_shutdown()
+void TheGraphicsSystem::_shutdown_once()
 {
-    // you can only close the application once
-    if (!s_is_running.load()) {
-        return;
-    }
-    s_is_running.store(false);
+    const auto current_guard = make_current();
+
+    // shed the GraphicsContext state
+    GraphicsContext::_shutdown_once();
 
     // destroy the font manager
     m_font_manager.reset();
@@ -266,6 +261,6 @@ void TheGraphicsSystem::_register_new(PipelinePtr pipeline)
     }
 }
 
-void TheGraphicsSystem::release_shader_compiler() { notf_check_gl(glReleaseShaderCompiler()); }
+void TheGraphicsSystem::release_shader_compiler() { NOTF_CHECK_GL(glReleaseShaderCompiler()); }
 
 NOTF_CLOSE_NAMESPACE

@@ -10,14 +10,27 @@
 
 NOTF_OPEN_NAMESPACE
 
+namespace access {
+template<class>
+class _GraphicsContext;
+} // namespace access
+
+class Window;
+
 // ================================================================================================================== //
 
 /// The GraphicsContext is an abstraction of the OpenGL graphics context.
 /// It is the object owning all NoTF graphics objects like shaders and textures.
 class GraphicsContext {
 
+    friend class access::_GraphicsContext<Window>;
+
     // types -------------------------------------------------------------------------------------------------------- //
 public:
+    /// Access types.
+    template<class T>
+    using Access = access::_GraphicsContext<T>;
+
     /// Buffers to clear in a call to `clear`.
     enum Buffer : unsigned char {
         COLOR = 1u << 1,  //< Color buffer
@@ -195,6 +208,10 @@ public:
 
     // ============================================================================================================== //
 
+    // TODO: Proper VAO class.
+    // Right now I bind a VAO without the context but others only with one / also VAOs cannot be shared, so they should
+    // keep a reference to their context around to check when a context tries to make them current.
+
     /// RAII guard for vector array object bindings.
     class NOTF_NODISCARD VaoGuard final {
 
@@ -254,14 +271,20 @@ public:
     GraphicsContext(valid_ptr<GLFWwindow*> window);
 
     /// Destructor.
-    ~GraphicsContext();
+    virtual ~GraphicsContext();
+
+    /// Returns the GraphicsContext current on this thread or the Graphics System.
+    static GraphicsContext& get();
 
     /// Makes the GraphicsContext current on this thread.
     /// Blocks until the GraphicsContext's mutex is free.
-    ContextGuard make_current() { return ContextGuard(*this); }
+    /// @throws graphics_context_error  If another context is already current on this thread.
+    ContextGuard make_current();
 
+#ifdef NOTF_DEBUG
     /// Tests if the GraphicsContext is current on this thread.
     bool is_current() const { return m_mutex.is_locked_by_this_thread(); }
+#endif
 
     /// Tests whether two GraphicsContexts are the same.
     bool operator==(const GraphicsContext& other) const { return _get_window() == other._get_window(); }
@@ -332,6 +355,15 @@ protected:
     /// The GLFW window owning the associated OpenGL context.
     GLFWwindow* _get_window() const { return m_window; }
 
+    /// Shuts the GraphicsContext down for good.
+    void _shutdown()
+    {
+        std::call_once(m_was_closed, [&] { _shutdown_once(); });
+    }
+
+    /// Shut down implementation
+    virtual void _shutdown_once();
+
 private:
     /// Makes the GraphicsSystem's OpenGL context current on the current thread.
     /// Does nothing if the context is already current.
@@ -371,6 +403,10 @@ private:
     void _unbind_framebuffer(const FrameBufferPtr& framebuffer = {});
 
     // fields ------------------------------------------------------------------------------------------------------- //
+protected:
+    /// Flag to indicate whether the GraphicsContext has already been closed.
+    std::once_flag m_was_closed;
+
 private:
     /// The GLFW window owning the associated OpenGL context.
     GLFWwindow* m_window;
@@ -383,6 +419,16 @@ private:
 
     /// The current state of the context.
     State m_state;
+};
+
+// ================================================================================================================== //
+
+template<>
+class access::_GraphicsContext<Window> {
+    friend class notf::Window;
+
+    /// Shuts the GraphicsContext down for good.
+    static void shutdown(GraphicsContext& context) { context._shutdown(); }
 };
 
 NOTF_CLOSE_NAMESPACE

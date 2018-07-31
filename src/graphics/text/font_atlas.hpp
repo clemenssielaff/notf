@@ -97,7 +97,7 @@ public:
     NOTF_NO_COPY_OR_ASSIGN(FontAtlas);
 
     /// Constructor.
-    FontAtlas(GraphicsContext& graphics_context);
+    FontAtlas();
 
     /// Destructor.
     ~FontAtlas();
@@ -135,9 +135,6 @@ private:
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
-    /// Graphics context owning the texture.
-    GraphicsContext& m_graphics_context;
-
     /// Font atlas texture.
     TexturePtr m_texture;
 

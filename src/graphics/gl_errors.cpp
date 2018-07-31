@@ -1,15 +1,15 @@
 #include "graphics/gl_errors.hpp"
 
+#include "app/glfw.hpp" // TODO: maybe glfw should be in graphics?
 #include "common/log.hpp"
-#include "graphics/opengl.hpp"
+#include "graphics/graphics_context.hpp"
 
 namespace { // anonymous
 
-/** String representation of an OpenGl error code.
- * Is a constant expression so it can be used as optimizable input to log_* - functions.
- * @param error_code    The OpenGl error code.
- * @return              The given error code as a string, empty if GL_NO_ERROR was passed.
- */
+/// String representation of an OpenGl error code.
+/// Is a constant expression so it can be used as optimizable input to log_* - functions.
+/// @param error_code    The OpenGl error code.
+/// @return              The given error code as a string, empty if GL_NO_ERROR was passed.
 constexpr const char* gl_error_string(GLenum error_code)
 {
     const char* no_error = "GL_NO_ERROR";
@@ -55,10 +55,20 @@ constexpr const char* gl_error_string(GLenum error_code)
 
 NOTF_OPEN_NAMESPACE
 
+// ================================================================================================================== //
+
+opengl_error::~opengl_error() = default;
+
+// ================================================================================================================== //
+
 namespace detail {
 
-int _notf_check_gl_error(uint line, const char* file, const char* function)
+void check_gl_error(uint line, const char* file, const char* function)
 {
+    if (glfwGetCurrentContext() == nullptr) {
+        NOTF_THROW(GraphicsContext::graphics_context_error, "No OpenGL context current on this thread");
+    }
+
     int error_count = 0;
     GLenum error_code;
     while ((error_code = glGetError()) != GL_NO_ERROR) {
@@ -66,15 +76,17 @@ int _notf_check_gl_error(uint line, const char* file, const char* function)
         notf::LogMessageFactory(notf::LogMessage::LEVEL::WARNING, line, file, function).input
             << "OpenGL error: " << gl_error_string(error_code);
     }
-    return error_count;
-}
-
-void _notf_clear_gl_errors()
-{
-    while (glGetError() != GL_NO_ERROR) {
-    };
 }
 
 } // namespace detail
+
+// ================================================================================================================== //
+
+void clear_gl_errors()
+{
+    if constexpr (is_debug_build()) {
+        while (glGetError() != GL_NO_ERROR) {};
+    }
+}
 
 NOTF_CLOSE_NAMESPACE

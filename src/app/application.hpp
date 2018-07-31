@@ -223,7 +223,7 @@ private:
     static const timepoint_t s_start_time;
 
     /// Flag to indicate whether the Application is currently running or not.
-    static std::atomic<bool> s_is_running;
+    static std::atomic<bool> s_is_running; // TODO: replace with call_once
 };
 
 // ================================================================================================================== //

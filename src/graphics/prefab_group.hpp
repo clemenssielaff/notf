@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/matrix4.hpp"
-#include "graphics/graphics_system.hpp"
+#include "graphics/graphics_context.hpp"
 #include "graphics/index_array.hpp"
 #include "graphics/prefab.hpp"
 #include "graphics/vertex_array.hpp"
@@ -47,7 +47,7 @@ public:
     }
 
     /// Destructor.
-    ~PrefabGroup() { notf_check_gl(glDeleteVertexArrays(1, &m_vao_id)); }
+    ~PrefabGroup() { NOTF_CHECK_GL(glDeleteVertexArrays(1, &m_vao_id)); }
 
     /// Initializes the library.
     /// Call this method once, after all prefabs have been added using PrefabFactories.
@@ -59,13 +59,13 @@ public:
             NOTF_THROW(runtime_error, "Cannot re-initialize a previously initialized PrefabGroup.");
         }
 
-        notf_check_gl(glGenVertexArrays(1, &m_vao_id));
+        NOTF_CHECK_GL(glGenVertexArrays(1, &m_vao_id));
         if (!m_vao_id) {
             NOTF_THROW(runtime_error, "Failed to allocate the PrefabLibary VAO");
         }
 
         {
-            TheGraphicsSystem::VaoGuard vao_guard(m_vao_id);
+            GraphicsContext::VaoGuard vao_guard(m_vao_id);
             static_cast<vertex_array_t*>(m_vertex_array.get())->init();
             static_cast<index_array_t*>(m_index_array.get())->init();
             static_cast<instance_array_t*>(m_instance_array.get())->init();
@@ -97,7 +97,7 @@ public:
     void render()
     {
         // TODO: [engine] No front-to-back sorting of prefabs globally or even just within its group
-        TheGraphicsSystem::VaoGuard vao_guard(m_vao_id);
+        GraphicsContext::VaoGuard vao_guard(m_vao_id);
         for (const auto& prefab_type : m_prefab_types) {
 
             // skip prefabs with no instances
@@ -119,7 +119,7 @@ public:
             }
 
             // render all instances
-            notf_check_gl(glDrawElementsInstancedBaseVertex(GL_TRIANGLES, prefab_type->get_size(),
+            NOTF_CHECK_GL(glDrawElementsInstancedBaseVertex(GL_TRIANGLES, prefab_type->get_size(),
                                                             m_index_array->get_type(), 0, instances.size(),
                                                             prefab_type->get_offset()));
         }

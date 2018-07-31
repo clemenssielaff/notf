@@ -122,50 +122,42 @@ private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Value Constructor.
-    /// @param context  Render Context in which the Texture lives.
     /// @param id       OpenGL texture ID.
     /// @param target   How the texture is going to be used by OpenGL.
     ///                 (see https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glTexImage2D.xhtml)
-    /// @param name     Context-unique name of the Texture.
+    /// @param name     Application-unique name of the Texture.
     /// @param size     Size of the Texture in pixels.
     /// @param format   Texture format.
-    Texture(GraphicsContext& context, const GLuint id, const GLenum target, std::string name, Size2i size,
-            const Format format);
+    Texture(const GLuint id, const GLenum target, std::string name, Size2i size, const Format format);
 
 private:
     /// Factory.
-    /// @param context  Render Context in which the Texture lives.
     /// @param id       OpenGL texture ID.
     /// @param target   How the texture is going to be used by OpenGL.
     ///                 (see https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glTexImage2D.xhtml)
-    /// @param name     Context-unique name of the Texture.
+    /// @param name     Application-unique name of the Texture.
     /// @param size     Size of the Texture in pixels.
     /// @param format   Texture format.
-    static TexturePtr _create(GraphicsContext& context, const GLuint id, const GLenum target, std::string name,
-                              Size2i size, const Format format)
+    static TexturePtr _create(const GLuint id, const GLenum target, std::string name, Size2i size, const Format format)
     {
-        return NOTF_MAKE_SHARED_FROM_PRIVATE(Texture, context, id, target, std::move(name), std::move(size), format);
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(Texture, id, target, std::move(name), std::move(size), format);
     }
 
 public:
     /// Creates an valid but transparent texture in memory.
-    /// @param context          Render Context in which the Texture lives.
-    /// @param name             Context-unique name of the Texture.
+    /// @param name             Application-unique name of the Texture.
     /// @param size             Size of the texture in pixels.
     /// @param args             Texture arguments.
     /// @throws internal_error  If another Texture with the same ID already exists.
-    static TexturePtr
-    create_empty(GraphicsContext& context, std::string name, Size2i size, const Args& args = s_default_args);
+    static TexturePtr create_empty(std::string name, Size2i size, const Args& args = s_default_args);
 
     /// Loads a texture from a given file.
-    /// @param context          Render Context in which the texture lives.
     /// @param file_path        Path to a texture file.
-    /// @param name             Context-unique name of the Texture.
+    /// @param name             Application-unique name of the Texture.
     /// @param args             Arguments to initialize the texture.
     /// @throws internal_error  If another Texture with the same ID already exists.
     /// @return Texture instance, is empty if the texture could not be loaded.
-    static TexturePtr load_image(GraphicsContext& context, const std::string& file_path, std::string name,
-                                 const Args& args = s_default_args);
+    static TexturePtr load_image(const std::string& file_path, std::string name, const Args& args = s_default_args);
 
     NOTF_NO_COPY_OR_ASSIGN(Texture);
 
@@ -176,8 +168,8 @@ public:
     TextureId get_id() const { return m_id; }
 
     /// Checks if the Texture is still valid.
-    /// A Texture should always be valid - the only way to get an invalid one is to remove the GraphicsContext while
-    /// still holding on to shared pointers of a Texture that lived in the removed GraphicsContext.
+    /// A Texture should always be valid - the only way to get an invalid one is to remove the GraphicsSystem while
+    /// still holding on to shared pointers of a Texture that lived in the removed GraphicsSystem.
     bool is_valid() const { return m_id.is_valid(); }
 
     /// Texture target, e.g. GL_TEXTURE_2D for standard textures.
@@ -213,9 +205,6 @@ private:
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
-    /// Render Context in which the Texture lives.
-    GraphicsContext& m_graphics_context;
-
     /// OpenGL ID of this Shader.
     TextureId m_id = 0;
 

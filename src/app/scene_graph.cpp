@@ -48,6 +48,7 @@ void SceneGraph::Layer::draw()
     // define render area
     WindowPtr window = scene_graph.get_window();
     GraphicsContext& context = window->get_graphics_context();
+    NOTF_ASSERT(context.is_current());
     if (m_is_fullscreen) {
         context.set_render_area(context.get_window_size());
     }

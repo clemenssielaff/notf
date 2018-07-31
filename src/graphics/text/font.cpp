@@ -4,7 +4,6 @@
 #include "common/log.hpp"
 #include "common/resource_manager.hpp"
 #include "common/string.hpp"
-#include "graphics/graphics_context.hpp"
 #include "graphics/text/font_manager.hpp"
 #include "graphics/text/freetype.hpp"
 
@@ -66,18 +65,16 @@ Font::Font(FontManager& manager, const std::string& filename, const pixel_size_t
                                                              static_cast<Glyph::coord_t>(slot->bitmap.rows)});
     }
 
-    { // render the glyph into the atlas
-        const auto context_guard = m_manager.get_graphics_context().make_current();
-        FontAtlas& font_atlas = m_manager.atlas();
-        for (const FontAtlas::ProtoGlyph& protoglyph : font_atlas.insert_rects(std::move(fit_atlas_request))) {
-            if (FT_Load_Char(m_face, protoglyph.first, FT_LOAD_RENDER)) {
-                continue;
-            }
-            font_atlas.fill_rect(protoglyph.second, slot->bitmap.buffer);
-
-            NOTF_ASSERT(m_glyphs.count(protoglyph.first));
-            m_glyphs[protoglyph.first].rect = protoglyph.second;
+    // render the glyph into the atlas
+    FontAtlas& font_atlas = m_manager.atlas();
+    for (const FontAtlas::ProtoGlyph& protoglyph : font_atlas.insert_rects(std::move(fit_atlas_request))) {
+        if (FT_Load_Char(m_face, protoglyph.first, FT_LOAD_RENDER)) {
+            continue;
         }
+        font_atlas.fill_rect(protoglyph.second, slot->bitmap.buffer);
+
+        NOTF_ASSERT(m_glyphs.count(protoglyph.first));
+        m_glyphs[protoglyph.first].rect = protoglyph.second;
     }
 
     log_trace << "Loaded Font \"" << m_name << "\" from file: " << filename;

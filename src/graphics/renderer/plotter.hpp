@@ -226,9 +226,9 @@ public:
     NOTF_NO_COPY_OR_ASSIGN(Plotter);
 
     /// Construct a new Plotter.
-    /// @param graphics_context GraphicsContext in which to operate in.
+    /// @param context  GraphicsContext to create the VAO in.
     /// @throws runtime_error   If the OpenGL VAO could not be generated.
-    Plotter(GraphicsContext& graphics_context);
+    Plotter(GraphicsContext& context);
 
     /// Destructor.
     ~Plotter();
@@ -275,11 +275,9 @@ public:
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
-    /// GraphicsContext in which to operate in.
-    GraphicsContext& m_graphics_context;
-
-    /// Font Manager used to render text.
-    FontManager& m_font_manager;
+    /// GraphicsContext used to initalize the Plotter.
+    /// Since VAOs are not shared, all Plotter operations need to happen within this context.
+    GraphicsContext& m_context;
 
     /// Shader pipeline used to render the strokes, shapes and glyphs.
     PipelinePtr m_pipeline;

@@ -166,12 +166,15 @@ int smoke_main(int argc, char* argv[])
         window_settings.is_resizeable = true;
         WindowPtr window = TheApplication::get().create_window(window_settings);
 
-//        std::shared_ptr<CloudScene> cloud_scene = Scene::create<CloudScene>(window->get_scene_graph(), "clouds_scene");
+        //        std::shared_ptr<CloudScene> cloud_scene = Scene::create<CloudScene>(window->get_scene_graph(),
+        //        "clouds_scene");
         std::shared_ptr<SceneOWidgets> widget_scene
             = Scene::create<SceneOWidgets>(window->get_scene_graph(), "SceneO'Widgets");
 
         SceneGraph::CompositionPtr composition = SceneGraph::Composition::create({
-            SceneGraph::Layer::create(widget_scene, std::make_unique<WidgetVisualizer>(*window)),
+
+            // TODO: this seems exessively complicated to create a Widget Layer ... is it?
+            SceneGraph::Layer::create(widget_scene, std::make_unique<WidgetVisualizer>(window->get_graphics_context())),
             //            SceneGraph::Layer::create(cloud_scene, std::make_unique<ProceduralVisualizer>(*window,
             //            "clouds.frag")),
         });

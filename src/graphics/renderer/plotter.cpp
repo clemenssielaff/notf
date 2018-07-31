@@ -211,35 +211,33 @@ Plotter::Paint Plotter::Paint::texture_pattern(const Vector2f& origin, const Siz
 
 // ================================================================================================================== //
 
-Plotter::Plotter(GraphicsContext& graphics_context)
-    : m_graphics_context(graphics_context), m_font_manager(TheGraphicsSystem::get().get_font_manager())
+Plotter::Plotter(GraphicsContext& context) : m_context(context)
 {
-    const auto current_guard = m_graphics_context.make_current();
-
-    // vao
-    notf_check_gl(glGenVertexArrays(1, &m_vao_id));
-    if (!m_vao_id) {
-        NOTF_THROW(runtime_error, "Failed to allocate the Plotter VAO");
-    }
-    const auto vao_guard = TheGraphicsSystem::VaoGuard(m_vao_id);
+    const auto current_guard = m_context.make_current();
 
     { // pipeline
         const std::string vertex_src = load_file("/home/clemens/code/notf/res/shaders/plotter.vert");
-        VertexShaderPtr vertex_shader = VertexShader::create(m_graphics_context, "plotter.vert", vertex_src);
+        VertexShaderPtr vertex_shader = VertexShader::create("plotter.vert", vertex_src);
 
         const std::string ctrl_src = load_file("/home/clemens/code/notf/res/shaders/plotter.tesc");
         const std::string eval_src = load_file("/home/clemens/code/notf/res/shaders/plotter.tese");
-        TesselationShaderPtr tess_shader
-            = TesselationShader::create(m_graphics_context, "plotter.tess", ctrl_src, eval_src);
+        TesselationShaderPtr tess_shader = TesselationShader::create("plotter.tess", ctrl_src, eval_src);
 
         const std::string frag_src = load_file("/home/clemens/code/notf/res/shaders/plotter.frag");
-        FragmentShaderPtr frag_shader = FragmentShader::create(m_graphics_context, "plotter.frag", frag_src);
+        FragmentShaderPtr frag_shader = FragmentShader::create("plotter.frag", frag_src);
 
-        m_pipeline = Pipeline::create(m_graphics_context, vertex_shader, tess_shader, frag_shader);
+        m_pipeline = Pipeline::create(vertex_shader, tess_shader, frag_shader);
 
         tess_shader->set_uniform("aa_width", static_cast<float>(sqrt(2.l) / 2.l));
         frag_shader->set_uniform("font_texture", TheGraphicsSystem::get_environment().font_atlas_texture_slot);
     }
+
+    // vao
+    NOTF_CHECK_GL(glGenVertexArrays(1, &m_vao_id));
+    if (!m_vao_id) {
+        NOTF_THROW(runtime_error, "Failed to allocate the Plotter VAO");
+    }
+    const auto vao_guard = GraphicsContext::VaoGuard(m_vao_id);
 
     { // vertices
         VertexArrayType::Args vertex_args;
@@ -253,7 +251,7 @@ Plotter::Plotter(GraphicsContext& graphics_context)
     static_cast<PlotIndexArray*>(m_indices.get())->init();
 }
 
-Plotter::~Plotter() { notf_check_gl(glDeleteVertexArrays(1, &m_vao_id)); }
+Plotter::~Plotter() { NOTF_CHECK_GL(glDeleteVertexArrays(1, &m_vao_id)); }
 
 Plotter::PathPtr Plotter::add(const CubicBezier2f& spline)
 {
@@ -452,7 +450,9 @@ void Plotter::fill(valid_ptr<PathPtr> path, FillInfo info)
 
 void Plotter::swap_buffers()
 {
-    const auto vao_guard = TheGraphicsSystem::VaoGuard(m_vao_id);
+    NOTF_ASSERT(m_context.is_current());
+
+    const auto vao_guard = GraphicsContext::VaoGuard(m_vao_id);
 
     static_cast<PlotVertexArray*>(m_vertices.get())->init();
     static_cast<PlotIndexArray*>(m_indices.get())->init();
@@ -464,6 +464,8 @@ void Plotter::swap_buffers()
 
 void Plotter::clear()
 {
+    NOTF_ASSERT(m_context.is_current());
+
     static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer().clear();
     static_cast<PlotIndexArray*>(m_indices.get())->buffer().clear();
     m_drawcall_buffer.clear();
@@ -493,7 +495,7 @@ void Plotter::render() const
             // patch vertices
             if (plotter.m_state.patch_vertices != 2) {
                 plotter.m_state.patch_vertices = 2;
-                notf_check_gl(glPatchParameteri(GL_PATCH_VERTICES, 2));
+                NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, 2));
             }
 
             // patch type
@@ -508,7 +510,7 @@ void Plotter::render() const
                 plotter.m_state.stroke_width = stroke.width;
             }
 
-            notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
+            NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
                                          gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
         }
 
@@ -521,7 +523,7 @@ void Plotter::render() const
             // patch vertices
             if (plotter.m_state.patch_vertices != 2) {
                 plotter.m_state.patch_vertices = 2;
-                notf_check_gl(glPatchParameteri(GL_PATCH_VERTICES, 2));
+                NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, 2));
             }
 
             // patch type
@@ -548,7 +550,7 @@ void Plotter::render() const
             }
 
             if (path.is_convex) {
-                notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
+                NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
                                              gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
             }
 
@@ -557,30 +559,30 @@ void Plotter::render() const
                 // TODO: concave shapes have no antialiasing yet
                 // TODO: this actually covers both single concave and multiple polygons with holes
 
-                notf_check_gl(glEnable(GL_STENCIL_TEST));                           // enable stencil
-                notf_check_gl(glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)); // do not write into color buffer
-                notf_check_gl(glStencilMask(0xff));            // write to all bits of the stencil buffer
-                notf_check_gl(glStencilFunc(GL_ALWAYS, 0, 1)); //  Always pass (other values are default values and do
+                NOTF_CHECK_GL(glEnable(GL_STENCIL_TEST));                           // enable stencil
+                NOTF_CHECK_GL(glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)); // do not write into color buffer
+                NOTF_CHECK_GL(glStencilMask(0xff));            // write to all bits of the stencil buffer
+                NOTF_CHECK_GL(glStencilFunc(GL_ALWAYS, 0, 1)); //  Always pass (other values are default values and do
                                                                //  not matter for GL_ALWAYS)
 
-                notf_check_gl(glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP));
-                notf_check_gl(glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP));
-                notf_check_gl(glDisable(GL_CULL_FACE));
-                notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
+                NOTF_CHECK_GL(glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP));
+                NOTF_CHECK_GL(glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP));
+                NOTF_CHECK_GL(glDisable(GL_CULL_FACE));
+                NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
                                              gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
-                notf_check_gl(glEnable(GL_CULL_FACE));
+                NOTF_CHECK_GL(glEnable(GL_CULL_FACE));
 
-                notf_check_gl(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)); // re-enable color
-                notf_check_gl(glStencilFunc(GL_NOTEQUAL, 0x00, 0xff)); // only write to pixels that are inside the
+                NOTF_CHECK_GL(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)); // re-enable color
+                NOTF_CHECK_GL(glStencilFunc(GL_NOTEQUAL, 0x00, 0xff)); // only write to pixels that are inside the
                                                                        // polygon
-                notf_check_gl(glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO)); // reset the stencil buffer (is a lot faster than
+                NOTF_CHECK_GL(glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO)); // reset the stencil buffer (is a lot faster than
                                                                        // clearing it at the start)
 
                 // render colors here, same area as before if you don't want to clear the stencil buffer every time
-                notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
+                NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
                                              gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
 
-                notf_check_gl(glDisable(GL_STENCIL_TEST));
+                NOTF_CHECK_GL(glDisable(GL_STENCIL_TEST));
             }
         }
 
@@ -593,7 +595,7 @@ void Plotter::render() const
             // patch vertices
             if (plotter.m_state.patch_vertices != 1) {
                 plotter.m_state.patch_vertices = 1;
-                notf_check_gl(glPatchParameteri(GL_PATCH_VERTICES, 1));
+                NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, 1));
             }
 
             // patch type
@@ -602,7 +604,7 @@ void Plotter::render() const
                 plotter.m_state.patch_type = PatchType::TEXT;
             }
 
-            const TexturePtr font_atlas = plotter.m_font_manager.get_atlas_texture();
+            const TexturePtr font_atlas = TheGraphicsSystem::get().get_font_manager().get_atlas_texture();
             const Size2i& atlas_size = font_atlas->get_size();
 
             // atlas size
@@ -612,29 +614,29 @@ void Plotter::render() const
                 plotter.m_state.vec2_aux1 = atlas_size_vec;
             }
 
-            notf_check_gl(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
+            NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
                                          gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
         }
     };
 
     // function begins here ========================================================================================= //
-
+    NOTF_ASSERT(m_context.is_current());
     if (m_indices->is_empty()) {
         return;
     }
-    const auto vao_guard = TheGraphicsSystem::VaoGuard(m_vao_id);
+    const auto vao_guard = GraphicsContext::VaoGuard(m_vao_id);
 
-    notf_check_gl(glEnable(GL_CULL_FACE));
-    notf_check_gl(glCullFace(GL_BACK));
-    notf_check_gl(glPatchParameteri(GL_PATCH_VERTICES, m_state.patch_vertices));
-    notf_check_gl(glEnable(GL_BLEND));
-    notf_check_gl(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+    NOTF_CHECK_GL(glEnable(GL_CULL_FACE));
+    NOTF_CHECK_GL(glCullFace(GL_BACK));
+    NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, m_state.patch_vertices));
+    NOTF_CHECK_GL(glEnable(GL_BLEND));
+    NOTF_CHECK_GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-    auto pipeline_guard = m_graphics_context.bind_pipeline(m_pipeline);
+    auto pipeline_guard = m_context.bind_pipeline(m_pipeline);
     const TesselationShaderPtr& tess_shader = m_pipeline->get_tesselation_shader();
 
     // screen size
-    const Aabri& render_area = m_graphics_context.get_render_area();
+    const Aabri& render_area = m_context.get_render_area();
     if (m_state.screen_size != render_area.get_size()) {
         m_state.screen_size = render_area.get_size();
         tess_shader->set_uniform("projection", Matrix4f::orthographic(0, m_state.screen_size.width, 0,

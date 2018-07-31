@@ -31,9 +31,6 @@ public:
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
-    /// GraphicsContext.
-    GraphicsContext& m_context;
-
     /// Shader pipeline used to produce the graphics.
     PipelinePtr m_pipeline;
 

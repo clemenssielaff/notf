@@ -1,6 +1,6 @@
 #pragma once
 
-#include <limits>
+#include <vector>
 
 #include "common/assert.hpp"
 #include "common/exception.hpp"
@@ -232,7 +232,7 @@ public:
     {
         { // make sure there is a bound VAO
             GLint current_vao = 0;
-            notf_check_gl(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
+            NOTF_CHECK_GL(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
             if (!current_vao) {
                 NOTF_THROW(runtime_error, "Cannot initialize a VertexArray without a bound VAO");
             }
@@ -242,18 +242,18 @@ public:
             return _update();
         }
 
-        notf_check_gl(glGenBuffers(1, &m_vbo_id));
+        NOTF_CHECK_GL(glGenBuffers(1, &m_vbo_id));
         if (!m_vbo_id) {
             NOTF_THROW(runtime_error, "Failed to allocate VertexArray");
         }
 
         m_size = static_cast<GLsizei>(m_vertices.size());
 
-        notf_check_gl(glBindBuffer(GL_ARRAY_BUFFER, m_vbo_id));
-        notf_check_gl(
+        NOTF_CHECK_GL(glBindBuffer(GL_ARRAY_BUFFER, m_vbo_id));
+        NOTF_CHECK_GL(
             glBufferData(GL_ARRAY_BUFFER, m_size * sizeof(Vertex), &m_vertices[0], get_gl_usage(m_args.usage)));
         _init_array<0, Ts...>();
-        notf_check_gl(glBindBuffer(GL_ARRAY_BUFFER, 0));
+        NOTF_CHECK_GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
         m_vertices.clear();
         m_vertices.shrink_to_fit();
@@ -266,19 +266,19 @@ private:
     {
         m_size = static_cast<GLsizei>(m_vertices.size());
 
-        notf_check_gl(glBindBuffer(GL_ARRAY_BUFFER, m_vbo_id));
+        NOTF_CHECK_GL(glBindBuffer(GL_ARRAY_BUFFER, m_vbo_id));
         if (m_size <= m_buffer_size) {
             // if the new data is smaller or of equal size than the last one, we can do a minimal update
-            notf_check_gl(glBufferSubData(GL_ARRAY_BUFFER, /*offset = */ 0, m_size * sizeof(Vertex), &m_vertices[0]));
+            NOTF_CHECK_GL(glBufferSubData(GL_ARRAY_BUFFER, /*offset = */ 0, m_size * sizeof(Vertex), &m_vertices[0]));
         }
         else {
             // otherwise we have to do a full update
-            notf_check_gl(glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(Vertex), &m_vertices[0],
+            NOTF_CHECK_GL(glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(Vertex), &m_vertices[0],
                                        get_gl_usage(m_args.usage)));
         }
         m_buffer_size = std::max(m_buffer_size, m_size);
 
-        notf_check_gl(glBindBuffer(GL_ARRAY_BUFFER, 0));
+        NOTF_CHECK_GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
         m_vertices.clear();
         // do not shrink to size, if you call `update` once you are likely to call it again
@@ -318,15 +318,15 @@ private:
             NOTF_ASSERT(size >= 1 && size <= 4);
 
             // link the location in the array to the shader's attribute
-            notf_check_gl(glEnableVertexAttribArray(ATTRIBUTE::location + multi));
-            notf_check_gl(glVertexAttribPointer(
+            NOTF_CHECK_GL(glEnableVertexAttribArray(ATTRIBUTE::location + multi));
+            NOTF_CHECK_GL(glVertexAttribPointer(
                 ATTRIBUTE::location + multi, size, to_gl_type(typename ATTRIBUTE::type::element_t{}),
                 ATTRIBUTE::normalized, static_cast<GLsizei>(sizeof(Vertex)),
                 gl_buffer_offset(static_cast<size_t>(offset + (multi * 4 * sizeof(GLfloat))))));
 
             // define the attribute as an instance attribute
             if (m_args.per_instance) {
-                notf_check_gl(glVertexAttribDivisor(ATTRIBUTE::location + multi, 1));
+                NOTF_CHECK_GL(glVertexAttribDivisor(ATTRIBUTE::location + multi, 1));
             }
         }
     }

@@ -12,8 +12,8 @@ class WidgetVisualizer : public Visualizer {
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
-    /// @param window       Window in which the renderer is displayed.
-    WidgetVisualizer(Window& window);
+    /// @param context  GraphicsContext to operate in.
+    WidgetVisualizer(GraphicsContext& context);
 
     /// Destructor.
     ~WidgetVisualizer() override;

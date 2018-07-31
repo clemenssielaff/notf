@@ -4,6 +4,6 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-IndexArrayType::~IndexArrayType() { notf_check_gl(glDeleteBuffers(1, &m_vbo_id)); }
+IndexArrayType::~IndexArrayType() { NOTF_CHECK_GL(glDeleteBuffers(1, &m_vbo_id)); }
 
 NOTF_CLOSE_NAMESPACE

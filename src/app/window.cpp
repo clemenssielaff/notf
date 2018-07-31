@@ -221,8 +221,14 @@ void Window::close()
     // disconnect the window callbacks (blocks until all queued events are handled)
     EventManager::Access<Window>::remove_window(TheApplication::get().get_event_manager(), *this);
 
-    // deletes all Nodes and Scenes in the SceneGraph before it is destroyed
-    SceneGraph::Access<Window>::clear(*m_scene_graph.get());
+    { // delete all Nodes and Scenes in the SceneGraph before it is destroyed
+        const auto current_guard = m_graphics_context->make_current();
+        SceneGraph::Access<Window>::clear(*m_scene_graph.get());
+    }
+
+    // destroy the graphics context
+    GraphicsContext::Access<Window>::shutdown(*m_graphics_context);
+    m_graphics_context.reset();
 
     // remove yourself from the Application (deletes the Window if there are no more shared_ptrs to it)
     TheApplication::Access<Window>::unregister(this);

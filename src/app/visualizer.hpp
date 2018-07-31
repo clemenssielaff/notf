@@ -67,18 +67,16 @@ private:
     NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE;
 
     /// Constructor.
-    /// @param context  The GraphicsContext containing the graphic objects.
     /// @param args     Arguments.
-    Plate(GraphicsContext& context, Args&& args);
+    Plate(Args&& args);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(Plate);
 
     /// Factory.
-    /// @param context      The GraphicsContext containing the graphic objects.
     /// @param args         Arguments.
     /// @throws value_error If `args` doesn't contain a Visualizer.
-    static PlatePtr create(GraphicsContext& context, Args&& args)
+    static PlatePtr create(Args&& args)
     {
         if (!args.visualizer) {
             NOTF_THROW(value_error, "Cannot create a Plate without a Visualizer");
@@ -86,7 +84,7 @@ public:
         if (!args.scene) {
             NOTF_THROW(value_error, "Cannot create a Plate without a Scene to visualize");
         }
-        return NOTF_MAKE_SHARED_FROM_PRIVATE(Plate, context, std::forward<Args>(args));
+        return NOTF_MAKE_SHARED_FROM_PRIVATE(Plate, std::forward<Args>(args));
     }
 
     /// Destructor.
