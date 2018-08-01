@@ -91,10 +91,4 @@ using ConditionVariable = std::condition_variable;
 
 #endif // NOTF_DEBUG
 
-// ================================================================================================================== //
-
-/// Convenience macro to create a scoped lock_guard for a given mutex.
-#define NOTF_MUTEX_GUARD(m) std::lock_guard<decltype(m)> _notf_mutex_lock_guard(m)
-#define NOTF_MUTEX_GUARDS(m, n) std::lock_guard<decltype(m)> _notf_mutex_lock_guard##n(m)
-
 NOTF_CLOSE_NAMESPACE

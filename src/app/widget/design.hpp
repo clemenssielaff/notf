@@ -1,5 +1,6 @@
 #pragma once
 
+#include <any>
 #include <variant>
 
 #include "app/forwards.hpp"
@@ -103,8 +104,8 @@ public:
     struct StrokeCommand {};
 
     using Command = std::variant<PushStateCommand, PopStateCommand, SetTransformationCommand, SetStrokeWidthCommand,
-                                  SetFontCommand, SetPolygonPathCommand, SetSplinePathCommand, SetPathIndexCommand,
-                                  WriteCommand, FillCommand, StrokeCommand>;
+                                 SetFontCommand, SetPolygonPathCommand, SetSplinePathCommand, SetPathIndexCommand,
+                                 WriteCommand, FillCommand, StrokeCommand>;
     static_assert(sizeof(Command) == (sizeof(std::unique_ptr<void>) * 2),
                   "Make sure to wrap supplementary data of your Command type in a unique_ptr<>, "
                   "so it doesn't inflate the size of the Command variant");

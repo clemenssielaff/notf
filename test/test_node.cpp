@@ -35,7 +35,7 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
     //
     NodeHandle<TestNode> a, b, c, d, e, f, g, h, i;
     {
-        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+        NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
 
         a = scene.get_root().set_child<TestNode>("a");
         b = a->add_node<TestNode>("b");
@@ -52,7 +52,7 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
 
     SECTION("Nodes form a tree hierarchy")
     {
-        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+        NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
 
         REQUIRE(a->count_children() == 2);
         REQUIRE(e->count_children() == 3);
@@ -82,7 +82,7 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
 
     SECTION("Child nodes cannot have the same name")
     {
-        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+        NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
 
         b->set_name("unique");
         REQUIRE(b->get_name() == "unique");
@@ -99,7 +99,7 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
 
     SECTION("Nodes can have properties")
     {
-        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+        NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
 
         REQUIRE_THROWS_AS(d->_BROKEN_create_property_after_finalized(), Node::node_finalized_error);
 
@@ -123,7 +123,7 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
 
     SECTION("Nodes can be uniquely identified via their path")
     {
-        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+        NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
 
         REQUIRE(a->get_path() == Path("/TestScene/a"));
         REQUIRE(b->get_path() == Path("/TestScene/a/b"));
@@ -145,7 +145,7 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
 
     SECTION("Nodes have a z-order that can be modified")
     {
-        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+        NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
 
         REQUIRE(g->is_in_back());
         REQUIRE(h->is_before(g));
@@ -193,7 +193,7 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
 
     SECTION("Nodes are represented by handles in user-space")
     {
-        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+        NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
 
         REQUIRE(b.is_valid());
 
@@ -207,7 +207,7 @@ SCENARIO("creation / modification of a node hierarchy", "[app][node]")
 
     SECTION("Nodes have access to all of their ancestors")
     {
-        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+        NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
 
         REQUIRE(e->get_first_ancestor<TestNode>() == b);
         REQUIRE(e->get_first_ancestor<RootNode>() == a->get_parent());
@@ -220,6 +220,6 @@ TestNode::~TestNode() = default;
 
 void TestNode::reverse_children()
 {
-    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
     _write_children().reverse();
 }

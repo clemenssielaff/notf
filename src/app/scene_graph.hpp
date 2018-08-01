@@ -50,6 +50,10 @@ public:
     /// cause either a hard crash ... or this exception, which is preferable.
     NOTF_EXCEPTION_TYPE(no_window_error);
 
+    /// Error thrown when a SceneGraph Composition is invalid (for example, if it contains Scenes that are not of the
+    /// SceneGraph).
+    NOTF_EXCEPTION_TYPE(composition_error);
+
     // ========================================================================
 
     /// Layers are screen-axis-aligned quads that are drawn directly into the screen buffer by the SceneGraph.
@@ -308,6 +312,7 @@ public:
 
     /// Schedule this SceneGraph to switch to a new Composition.
     /// Generates a CompositionChangeEvent and pushes it onto the event queue for the Window.
+    /// @throws composition_error   If the Composition is not valid.
     void change_composition(CompositionPtr composition);
 
 private:

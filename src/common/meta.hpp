@@ -151,6 +151,11 @@
 
 // ================================================================================================================== //
 
+/// Uniquely named RAII guard object.
+#define NOTF_GUARD(f) const auto NOTF_DEFER(NOTF_CONCAT, __notf__guard, __COUNTER__) = f
+
+// ================================================================================================================== //
+
 NOTF_OPEN_NAMESPACE
 
 /// Helper to reduce cv-qualified pointers/references to their base type.
@@ -409,6 +414,16 @@ template<typename T, typename = std::enable_if_t<std::is_pointer<T>::value>>
 constexpr std::uintptr_t to_number(const T ptr) noexcept
 {
     return reinterpret_cast<std::uintptr_t>(ptr);
+}
+
+// ================================================================================================================== //
+
+/// Convenience method to use as
+///     if(all(a, !b, c < d)){ // is equal to ```if(a && !b && c < d){```
+template<class... Ts>
+constexpr bool all(Ts... expressions)
+{
+    return (... && expressions);
 }
 
 // ================================================================================================================== //

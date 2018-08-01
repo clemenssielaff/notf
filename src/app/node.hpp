@@ -130,7 +130,7 @@ public:
     /// @param name     Name of the requested Node.
     bool has_child(const std::string& name)
     {
-        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+        NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
         return _read_children().contains(name);
     }
 
@@ -142,7 +142,7 @@ public:
     template<class T>
     NodeHandle<T> get_child(const std::string& name)
     {
-        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+        NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
         return NodeHandle<T>(_read_children().get(name));
     }
 
@@ -154,7 +154,7 @@ public:
     template<class T>
     NodeHandle<T> get_child(const size_t index)
     {
-        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+        NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
         const NodeContainer& children = _read_children();
         if (index < children.size()) {
             return NodeHandle<T>(children[index].raw());
@@ -177,14 +177,14 @@ public:
     /// The number of direct children of this Node.
     size_t count_children() const
     {
-        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+        NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
         return _read_children().size();
     }
 
     /// The number of all (direct and indirect) descendants of this Node.
     size_t count_descendants() const
     {
-        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+        NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
         size_t result = 0;
         _count_descendants_impl(result);
         return result;
@@ -208,7 +208,7 @@ public:
     template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
     NodeHandle<T> get_first_ancestor()
     {
-        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+        NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
 
         valid_ptr<Node*> next = m_parent;
         while (true) {
@@ -329,7 +329,7 @@ protected:
         auto handle = NodeHandle<T>(child);
 
         { // store the node as a child
-            NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+            NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
             _write_children().add(std::move(child));
         }
 
@@ -348,7 +348,7 @@ protected:
         NOTF_ASSERT(node);
 
         { // remove the node from the child container
-            NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+            NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
             NodeContainer& children = _write_children();
             children.erase(node);
         }

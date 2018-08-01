@@ -152,8 +152,12 @@ public:
 
     /// Information necessary to draw a predefined stroke.
     struct StrokeInfo {
+
         /// Transformation applied to the stroked Path.
         Matrix3f transform;
+
+        /// Path to draw.
+        std::shared_ptr<Path> path;
 
         /// Width of the stroke in pixels.
         float width;
@@ -161,11 +165,19 @@ public:
 
     /// Information necessary to fill a Path.
     struct FillInfo {
+
+        /// Path to draw.
+        std::shared_ptr<Path> path;
+
         /// Transformation applied to the filled Path.
         Matrix3f transform;
     };
 
     struct TextInfo {
+
+        /// Path to draw.
+        std::shared_ptr<Path> path;
+
         /// Font to draw the text in.
         FontPtr font;
 
@@ -178,16 +190,7 @@ private:
     /// A DrawCall is a sequence of indices, building one or more patches.
     /// This way, we can group subsequent calls of the same type into a batch and render them using a single OpenGL
     /// draw call (for example, to render multiple lines of the same width, color etc.).
-    struct DrawCall {
-
-        using Info = std::variant<StrokeInfo, FillInfo, TextInfo>;
-
-        /// Additional information on how to draw the patches contained in this call.
-        Info info;
-
-        /// Path to draw.
-        std::shared_ptr<Path> path;
-    };
+    using DrawCall = std::variant<StrokeInfo, FillInfo, TextInfo>;
 
     /// Type of the patch to draw.
     enum PatchType : int {
@@ -272,6 +275,11 @@ public:
     // TODO: can we support automatic instancing, if you draw the same Path multiple times with different transforms?
     // TODO: would it be possible to keep some Paths around between frames? This way we wouldn't have to refill the
     //       buffers every time. This should work similarly to how prefabs work.
+
+private:
+    void _render_line(const StrokeInfo& text) const;
+    void _render_shape(const FillInfo& text) const;
+    void _render_text(const TextInfo& text) const;
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:

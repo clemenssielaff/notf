@@ -36,7 +36,7 @@ SCENARIO("Scene", "[app][scene]")
     //
     SECTION("Scenes manage their nodes and -properties")
     {
-        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+        NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
 
         NodeHandle<TestNode> a = scene.get_root().set_child<TestNode>("a");
         NodeHandle<TestNode> b = a->add_node<TestNode>("b");
@@ -70,7 +70,7 @@ SCENARIO("Scene", "[app][scene]")
 
     SECTION("Scenes will always contain at least the root node")
     {
-        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+        NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
 
         NodeHandle<TestNode> a = scene.get_root().set_child<TestNode>("a");
         NodeHandle<TestNode> b = a->add_node<TestNode>("b");
@@ -89,7 +89,7 @@ SCENARIO("Scene", "[app][scene]")
     SECTION("freezing an empty scene has no effect")
     {
         { // event thread
-            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
             REQUIRE(scene_access.node_count() == 1);
             REQUIRE(scene_access.delta_count() == 0);
         }
@@ -97,7 +97,7 @@ SCENARIO("Scene", "[app][scene]")
             auto guard = graph_access.freeze_guard();
         }
         { // event thread
-            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
             REQUIRE(scene_access.node_count() == 1);
             REQUIRE(scene_access.delta_count() == 0);
         }
@@ -106,7 +106,7 @@ SCENARIO("Scene", "[app][scene]")
     SECTION("creating, modifying and deleting without freezing produces no deltas")
     {
         { // event thread
-            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
 
             NodeHandle<TestNode> first_node = scene.get_root().set_child<TestNode>(); // + 1
             NodeHandle<TestNode> a = first_node->add_subtree(2);                      // + 3
@@ -133,7 +133,7 @@ SCENARIO("Scene", "[app][scene]")
         NodeHandle<TestNode> node, back, front;
 
         { // event thread
-            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
             NodeHandle<TestNode> first = scene.get_root().set_child<TestNode>();
             node = first->add_subtree(2);
 
@@ -146,7 +146,7 @@ SCENARIO("Scene", "[app][scene]")
             front = node->get_child<TestNode>(1);
 
             { // event thread
-                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
                 REQUIRE(scene_access.node_count() == 5);
                 REQUIRE(scene_access.delta_count() == 0);
 
@@ -154,20 +154,20 @@ SCENARIO("Scene", "[app][scene]")
                 REQUIRE(back->is_in_back());
             }
             { // render thread
-                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
                 graph_access.set_render_thread(event_thread_id);
                 CHECK(front->is_in_front());
                 CHECK(back->is_in_back());
                 graph_access.set_render_thread(render_thread_id);
             }
             { // event thread
-                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
                 node->reverse_children();
                 REQUIRE(front->is_in_back());
                 REQUIRE(back->is_in_front());
             }
             { // render thread
-                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
                 graph_access.set_render_thread(event_thread_id);
                 CHECK(front->is_in_front());
                 CHECK(back->is_in_back());
@@ -178,7 +178,7 @@ SCENARIO("Scene", "[app][scene]")
             }
         } // end of frozen scope
         { // event thread
-            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
             REQUIRE(front->is_in_back());
             REQUIRE(back->is_in_front());
 
@@ -195,7 +195,7 @@ SCENARIO("Scene", "[app][scene]")
         NodeHandle<TestNode> c;
 
         { // event thread
-            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
             first_node = scene.get_root().set_child<TestNode>();
             a = first_node->add_subtree(2);
             b = first_node->add_subtree(3);
@@ -208,7 +208,7 @@ SCENARIO("Scene", "[app][scene]")
             auto guard = graph_access.freeze_guard(render_thread_id);
 
             { // event thread
-                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
                 REQUIRE(scene_access.node_count() == 13);
                 REQUIRE(scene_access.delta_count() == 0);
 
@@ -221,13 +221,13 @@ SCENARIO("Scene", "[app][scene]")
                 first_node->remove_child(c);
             }
             { // // the render thread still sees the original 13 nodes
-                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
                 graph_access.set_render_thread(event_thread_id);
                 REQUIRE(scene_access.node_count() == 13);
                 graph_access.set_render_thread(render_thread_id);
             }
             { // the event handler already has the updated number of 9 nodes
-                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
                 REQUIRE(scene_access.node_count() == 9);
                 REQUIRE(scene_access.delta_count() == 3);
             }
@@ -239,7 +239,7 @@ SCENARIO("Scene", "[app][scene]")
         NodeHandle<TestNode> first_node, node, back, front;
 
         { // event thread
-            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
             first_node = scene.get_root().set_child<TestNode>();
         }
 
@@ -247,7 +247,7 @@ SCENARIO("Scene", "[app][scene]")
             graph_access.freeze(render_thread_id);
 
             { // event thread
-                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
                 node = first_node->add_subtree(2);
                 back = node->get_child<TestNode>(0);
                 front = node->get_child<TestNode>(1);
@@ -264,7 +264,7 @@ SCENARIO("Scene", "[app][scene]")
             graph_access.unfreeze(render_thread_id);
 
             { // event thread
-                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
                 REQUIRE(scene_access.delta_count() == 0);
 
                 REQUIRE(front->is_in_back());
@@ -280,7 +280,7 @@ SCENARIO("Scene", "[app][scene]")
         NodeHandle<TestNode> first_node;
 
         { // event thread
-            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
             first_node = scene.get_root().set_child<TestNode>();
 
             REQUIRE(scene_access.node_count() == 2);
@@ -290,7 +290,7 @@ SCENARIO("Scene", "[app][scene]")
             auto guard = graph_access.freeze_guard(render_thread_id);
 
             { // event thread
-                NOTF_MUTEX_GUARD(graph_access.event_mutex());
+                NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
 
                 NodeHandle<TestNode> a = first_node->add_subtree(2);
                 NodeHandle<TestNode> b = first_node->add_subtree(3);
@@ -304,7 +304,7 @@ SCENARIO("Scene", "[app][scene]")
             }
         } // end of frozen scope
         { // event thread
-            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
             REQUIRE(scene_access.node_count() == 2);
             REQUIRE(scene_access.delta_count() == 0);
         }

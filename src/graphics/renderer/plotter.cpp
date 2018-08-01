@@ -76,6 +76,7 @@
 #include "common/log.hpp"
 #include "common/polygon.hpp"
 #include "common/system.hpp"
+#include "common/variant.hpp"
 #include "graphics/graphics_system.hpp"
 #include "graphics/index_array.hpp"
 #include "graphics/pipeline.hpp"
@@ -422,10 +423,10 @@ void Plotter::write(const std::string& text, TextInfo info)
     }
 
     // draw call
-    PathPtr path = NOTF_MAKE_SHARED_FROM_PRIVATE(Path);
-    path->offset = narrow_cast<uint>(index_offset);
-    path->size = narrow_cast<int>(indices.size() - index_offset);
-    m_drawcall_buffer.emplace_back(DrawCall{std::move(info), std::move(path)});
+    info.path = NOTF_MAKE_SHARED_FROM_PRIVATE(Path);
+    info.path->offset = narrow_cast<uint>(index_offset);
+    info.path->size = narrow_cast<int>(indices.size() - index_offset);
+    m_drawcall_buffer.emplace_back(DrawCall{std::move(info)});
 }
 
 void Plotter::stroke(valid_ptr<PathPtr> path, StrokeInfo info)
@@ -437,7 +438,8 @@ void Plotter::stroke(valid_ptr<PathPtr> path, StrokeInfo info)
     // a line must be at least a pixel wide to be drawn, to emulate thinner lines lower the alpha
     info.width = max(1, info.width);
 
-    m_drawcall_buffer.emplace_back(DrawCall{std::move(info), std::move(path)});
+    info.path = std::move(path);
+    m_drawcall_buffer.emplace_back(DrawCall{std::move(info)});
 }
 
 void Plotter::fill(valid_ptr<PathPtr> path, FillInfo info)
@@ -445,7 +447,8 @@ void Plotter::fill(valid_ptr<PathPtr> path, FillInfo info)
     if (path->size == 0) {
         return; // early out
     }
-    m_drawcall_buffer.emplace_back(DrawCall{std::move(info), std::move(path)});
+    info.path = std::move(path);
+    m_drawcall_buffer.emplace_back(DrawCall{std::move(info)});
 }
 
 void Plotter::swap_buffers()
@@ -473,153 +476,6 @@ void Plotter::clear()
 
 void Plotter::render() const
 {
-    /// Render various draw call types.
-    struct DrawCallVisitor {
-
-        // fields ----------------------------------------------------------------------------------------------------//
-
-        /// This plotter.
-        const Plotter& plotter;
-
-        /// Draw call target.
-        const DrawCall& call;
-
-        // methods ---------------------------------------------------------------------------------------------------//
-
-        /// Draw a stroke.
-        void operator()(const StrokeInfo& stroke) const
-        {
-            Pipeline& pipeline = *plotter.m_pipeline.get();
-            Path& path = *call.path;
-
-            // patch vertices
-            if (plotter.m_state.patch_vertices != 2) {
-                plotter.m_state.patch_vertices = 2;
-                NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, 2));
-            }
-
-            // patch type
-            if (plotter.m_state.patch_type != PatchType::STROKE) {
-                pipeline.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::STROKE));
-                plotter.m_state.patch_type = PatchType::STROKE;
-            }
-
-            // stroke width
-            if (abs(plotter.m_state.stroke_width - stroke.width) > precision_high<float>()) {
-                pipeline.get_tesselation_shader()->set_uniform("stroke_width", stroke.width);
-                plotter.m_state.stroke_width = stroke.width;
-            }
-
-            NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
-                                         gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
-        }
-
-        /// Fill a shape.
-        void operator()(const FillInfo& /*shape*/) const
-        {
-            Pipeline& pipeline = *plotter.m_pipeline.get();
-            Path& path = *call.path;
-
-            // patch vertices
-            if (plotter.m_state.patch_vertices != 2) {
-                plotter.m_state.patch_vertices = 2;
-                NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, 2));
-            }
-
-            // patch type
-            if (path.is_convex) {
-                if (plotter.m_state.patch_type != PatchType::CONVEX) {
-                    pipeline.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONVEX));
-                    plotter.m_state.patch_type = PatchType::CONVEX;
-                }
-            }
-            else {
-                if (plotter.m_state.patch_type != PatchType::CONCAVE) {
-                    pipeline.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONCAVE));
-                    plotter.m_state.patch_type = PatchType::CONCAVE;
-                }
-            }
-
-            // base vertex
-            if (!path.center.is_approx(plotter.m_state.vec2_aux1)) {
-                // with a purely convex polygon, we can safely put the base vertex into the center of the polygon as it
-                // will always be inside and it should never fall onto an existing vertex
-                // this way, we can use antialiasing at the outer edge
-                pipeline.get_tesselation_shader()->set_uniform("vec2_aux1", path.center);
-                plotter.m_state.vec2_aux1 = path.center;
-            }
-
-            if (path.is_convex) {
-                NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
-                                             gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
-            }
-
-            // concave
-            else {
-                // TODO: concave shapes have no antialiasing yet
-                // TODO: this actually covers both single concave and multiple polygons with holes
-
-                NOTF_CHECK_GL(glEnable(GL_STENCIL_TEST));                           // enable stencil
-                NOTF_CHECK_GL(glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)); // do not write into color buffer
-                NOTF_CHECK_GL(glStencilMask(0xff));            // write to all bits of the stencil buffer
-                NOTF_CHECK_GL(glStencilFunc(GL_ALWAYS, 0, 1)); //  Always pass (other values are default values and do
-                                                               //  not matter for GL_ALWAYS)
-
-                NOTF_CHECK_GL(glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP));
-                NOTF_CHECK_GL(glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP));
-                NOTF_CHECK_GL(glDisable(GL_CULL_FACE));
-                NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
-                                             gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
-                NOTF_CHECK_GL(glEnable(GL_CULL_FACE));
-
-                NOTF_CHECK_GL(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)); // re-enable color
-                NOTF_CHECK_GL(glStencilFunc(GL_NOTEQUAL, 0x00, 0xff)); // only write to pixels that are inside the
-                                                                       // polygon
-                NOTF_CHECK_GL(glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO)); // reset the stencil buffer (is a lot faster than
-                                                                       // clearing it at the start)
-
-                // render colors here, same area as before if you don't want to clear the stencil buffer every time
-                NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
-                                             gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
-
-                NOTF_CHECK_GL(glDisable(GL_STENCIL_TEST));
-            }
-        }
-
-        /// Render text.
-        void operator()(const TextInfo& /*text*/) const
-        {
-            Pipeline& pipeline = *plotter.m_pipeline.get();
-            Path& path = *call.path;
-
-            // patch vertices
-            if (plotter.m_state.patch_vertices != 1) {
-                plotter.m_state.patch_vertices = 1;
-                NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, 1));
-            }
-
-            // patch type
-            if (plotter.m_state.patch_type != PatchType::TEXT) {
-                pipeline.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::TEXT));
-                plotter.m_state.patch_type = PatchType::TEXT;
-            }
-
-            const TexturePtr font_atlas = TheGraphicsSystem::get().get_font_manager().get_atlas_texture();
-            const Size2i& atlas_size = font_atlas->get_size();
-
-            // atlas size
-            const Vector2f atlas_size_vec{atlas_size.width, atlas_size.height};
-            if (!atlas_size_vec.is_approx(plotter.m_state.vec2_aux1)) {
-                pipeline.get_tesselation_shader()->set_uniform("vec2_aux1", atlas_size_vec);
-                plotter.m_state.vec2_aux1 = atlas_size_vec;
-            }
-
-            NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
-                                         gl_buffer_offset(path.offset * sizeof(PlotIndexArray::index_t))));
-        }
-    };
-
-    // function begins here ========================================================================================= //
     NOTF_ASSERT(m_context.is_current());
     if (m_indices->is_empty()) {
         return;
@@ -644,8 +500,140 @@ void Plotter::render() const
     }
 
     for (const DrawCall& drawcall : m_drawcalls) {
-        std::visit(DrawCallVisitor{*this, drawcall}, drawcall.info);
+        std::visit(
+            overloaded{
+                [&](const StrokeInfo& stroke) { _render_line(stroke); },
+                [&](const FillInfo& shape) { _render_shape(shape); },
+                [&](const TextInfo& text) { _render_text(text); },
+            },
+            drawcall);
     }
+}
+
+void Plotter::_render_line(const StrokeInfo& stroke) const
+{
+    Pipeline& pipeline = *m_pipeline.get();
+
+    // patch vertices
+    if (m_state.patch_vertices != 2) {
+        m_state.patch_vertices = 2;
+        NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, 2));
+    }
+
+    // patch type
+    if (m_state.patch_type != PatchType::STROKE) {
+        pipeline.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::STROKE));
+        m_state.patch_type = PatchType::STROKE;
+    }
+
+    // stroke width
+    if (abs(m_state.stroke_width - stroke.width) > precision_high<float>()) {
+        pipeline.get_tesselation_shader()->set_uniform("stroke_width", stroke.width);
+        m_state.stroke_width = stroke.width;
+    }
+
+    NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(stroke.path->size), g_index_type,
+                                 gl_buffer_offset(stroke.path->offset * sizeof(PlotIndexArray::index_t))));
+}
+
+void Plotter::_render_shape(const FillInfo& shape) const
+{
+    Pipeline& pipeline = *m_pipeline.get();
+
+    // patch vertices
+    if (m_state.patch_vertices != 2) {
+        m_state.patch_vertices = 2;
+        NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, 2));
+    }
+
+    // patch type
+    if (shape.path->is_convex) {
+        if (m_state.patch_type != PatchType::CONVEX) {
+            pipeline.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONVEX));
+            m_state.patch_type = PatchType::CONVEX;
+        }
+    }
+    else {
+        if (m_state.patch_type != PatchType::CONCAVE) {
+            pipeline.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONCAVE));
+            m_state.patch_type = PatchType::CONCAVE;
+        }
+    }
+
+    // base vertex
+    if (!shape.path->center.is_approx(m_state.vec2_aux1)) {
+        // with a purely convex polygon, we can safely put the base vertex into the center of the polygon as it
+        // will always be inside and it should never fall onto an existing vertex
+        // this way, we can use antialiasing at the outer edge
+        pipeline.get_tesselation_shader()->set_uniform("vec2_aux1", shape.path->center);
+        m_state.vec2_aux1 = shape.path->center;
+    }
+
+    if (shape.path->is_convex) {
+        NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(shape.path->size), g_index_type,
+                                     gl_buffer_offset(shape.path->offset * sizeof(PlotIndexArray::index_t))));
+    }
+
+    // concave
+    else {
+        // TODO: concave shapes have no antialiasing yet
+        // this actually covers both single concave and multiple polygons with holes
+
+        NOTF_CHECK_GL(glEnable(GL_STENCIL_TEST));                           // enable stencil
+        NOTF_CHECK_GL(glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)); // do not write into color buffer
+        NOTF_CHECK_GL(glStencilMask(0xff));                                 // write to all bits of the stencil buffer
+        NOTF_CHECK_GL(glStencilFunc(GL_ALWAYS, 0, 1)); //  Always pass (other values are default values and do
+                                                       //  not matter for GL_ALWAYS)
+
+        NOTF_CHECK_GL(glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP));
+        NOTF_CHECK_GL(glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP));
+        NOTF_CHECK_GL(glDisable(GL_CULL_FACE));
+        NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(shape.path->size), g_index_type,
+                                     gl_buffer_offset(shape.path->offset * sizeof(PlotIndexArray::index_t))));
+        NOTF_CHECK_GL(glEnable(GL_CULL_FACE));
+
+        NOTF_CHECK_GL(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)); // re-enable color
+        NOTF_CHECK_GL(glStencilFunc(GL_NOTEQUAL, 0x00, 0xff));          // only write to pixels that are inside the
+                                                                        // polygon
+        NOTF_CHECK_GL(glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO)); // reset the stencil buffer (is a lot faster than
+                                                               // clearing it at the start)
+
+        // render colors here, same area as before if you don't want to clear the stencil buffer every time
+        NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(shape.path->size), g_index_type,
+                                     gl_buffer_offset(shape.path->offset * sizeof(PlotIndexArray::index_t))));
+
+        NOTF_CHECK_GL(glDisable(GL_STENCIL_TEST));
+    }
+}
+
+void Plotter::_render_text(const TextInfo& text) const
+{
+    Pipeline& pipeline = *m_pipeline.get();
+
+    // patch vertices
+    if (m_state.patch_vertices != 1) {
+        m_state.patch_vertices = 1;
+        NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, 1));
+    }
+
+    // patch type
+    if (m_state.patch_type != PatchType::TEXT) {
+        pipeline.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::TEXT));
+        m_state.patch_type = PatchType::TEXT;
+    }
+
+    const TexturePtr font_atlas = TheGraphicsSystem::get().get_font_manager().get_atlas_texture();
+    const Size2i& atlas_size = font_atlas->get_size();
+
+    // atlas size
+    const Vector2f atlas_size_vec{atlas_size.width, atlas_size.height};
+    if (!atlas_size_vec.is_approx(m_state.vec2_aux1)) {
+        pipeline.get_tesselation_shader()->set_uniform("vec2_aux1", atlas_size_vec);
+        m_state.vec2_aux1 = atlas_size_vec;
+    }
+
+    NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(text.path->size), g_index_type,
+                                 gl_buffer_offset(text.path->offset * sizeof(PlotIndexArray::index_t))));
 }
 
 NOTF_CLOSE_NAMESPACE

@@ -16,7 +16,7 @@ ResourceManager::ResourceTypeBase::~ResourceTypeBase() = default;
 
 void ResourceManager::cleanup()
 {
-    NOTF_MUTEX_GUARD(m_mutex);
+    NOTF_GUARD(std::lock_guard(m_mutex));
     for (auto& type : m_types) {
         type.second->_cleanup();
     }
@@ -24,7 +24,7 @@ void ResourceManager::cleanup()
 
 void ResourceManager::clear()
 {
-    NOTF_MUTEX_GUARD(m_mutex);
+    NOTF_GUARD(std::lock_guard(m_mutex));
     for (auto& type : m_types) {
         type.second->_clear();
     }

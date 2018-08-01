@@ -36,7 +36,7 @@ SCENARIO("a Scene can be set up and modified", "[app][scene_graph]")
     //
     SECTION("SceneGraphs manage their scenes, nodes and -properties")
     {
-        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+        NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
 
         NodeHandle<TestNode> a = scene.get_root().set_child<TestNode>("a");
         NodeHandle<TestNode> b = a->add_node<TestNode>("b");

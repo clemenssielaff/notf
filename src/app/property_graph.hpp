@@ -273,7 +273,7 @@ public:
     /// Checks if the Property is grounded or not (has an expression).
     bool is_grounded() const
     {
-        NOTF_MUTEX_GUARD(_mutex());
+        NOTF_GUARD(std::lock_guard(_mutex()));
         return !static_cast<bool>(m_expression);
     }
 
@@ -283,7 +283,7 @@ public:
     /// The Property's value.
     const T& get() const
     {
-        NOTF_MUTEX_GUARD(_mutex());
+        NOTF_GUARD(std::lock_guard(_mutex()));
         return m_value;
     }
 
@@ -316,7 +316,7 @@ public:
     /// @param effects      [OUT] All properties affected by the change.
     void set(T&& value, PropertyUpdateList& effects)
     {
-        NOTF_MUTEX_GUARD(_mutex());
+        NOTF_GUARD(std::lock_guard(_mutex()));
         _ground();
         _set_value(std::forward<T>(value), effects);
     }
@@ -329,7 +329,7 @@ public:
     /// @throws no_dag_error    If the expression would introduce a cyclic dependency into the graph.
     void set(Expression expression, Dependencies dependencies, PropertyUpdateList& effects)
     {
-        NOTF_MUTEX_GUARD(_mutex());
+        NOTF_GUARD(std::lock_guard(_mutex()));
         _ground(); // always remove the current expression, even if the new one might be invalid
         _set_expression(std::move(expression), std::move(dependencies), effects);
     }

@@ -73,7 +73,7 @@ PropertyUpdate::~PropertyUpdate() = default;
 PropertyBody::~PropertyBody()
 {
     { // properties that are getting deleted should not have any downstream left, but to be sure, ground here
-        NOTF_MUTEX_GUARD(_mutex());
+        NOTF_GUARD(std::lock_guard(_mutex()));
         PropertyBody::_ground();
     }
 
@@ -161,7 +161,7 @@ void PropertyBody::_add_downstream(valid_ptr<PropertyBody*> affected)
 
 void PropertyBody::_remove_head()
 {
-    NOTF_MUTEX_GUARD(_mutex());
+    NOTF_GUARD(std::lock_guard(_mutex()));
     m_head = nullptr;
 }
 

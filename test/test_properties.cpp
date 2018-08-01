@@ -158,7 +158,7 @@ SCENARIO("NodeProperties in a SceneGraph hierarchy", "[app][property_graph][scen
     PropertyHandle<int> iprop1, iprop2;
     PropertyHandle<std::string> sprop;
     { // event thread
-        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+        NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
         first_node = scene.get_root().set_child<TestNode>();
         iprop1 = first_node->add_property("i1", 48);
         iprop2 = first_node->add_property("i2", 0);
@@ -223,7 +223,7 @@ SCENARIO("NodeProperties in a SceneGraph hierarchy", "[app][property_graph][scen
         auto freeze_guard = graph_access.freeze_guard(render_thread_id);
 
         { // event thread
-            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
             scene.get_root().set_child<TestNode>();
         }
 
@@ -234,7 +234,7 @@ SCENARIO("NodeProperties in a SceneGraph hierarchy", "[app][property_graph][scen
 
     SECTION("PropertyHandles can go out of scope")
     { // event thread
-        NOTF_MUTEX_GUARD(graph_access.event_mutex());
+        NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
         PropertyHandle<float> fprop = first_node->add_property<float>("f1", 48.0);
         scene.get_root().set_child<TestNode>();
         REQUIRE_THROWS_AS(fprop.set(123.f), NodeProperty::no_property_error);
@@ -244,7 +244,7 @@ SCENARIO("NodeProperties in a SceneGraph hierarchy", "[app][property_graph][scen
     {
         PropertyHandle<float> fprop;
         { // event thread
-            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
 
             fprop = first_node->add_property("f1", 50.f, [](float& value) -> bool {
                 if (value < 0) {
@@ -297,7 +297,7 @@ SCENARIO("NodeProperties in a SceneGraph hierarchy", "[app][property_graph][scen
     {
         PropertyHandle<float> fprop;
         { // event thread
-            NOTF_MUTEX_GUARD(graph_access.event_mutex());
+            NOTF_GUARD(std::lock_guard(graph_access.event_mutex()));
             fprop = first_node->add_property("f1", 0.f, {}, /* had_body = */ false);
             REQUIRE(PropertyAccess::get(fprop, event_thread_id) == 0.f);
 

@@ -1,6 +1,6 @@
 #include "graphics/gl_errors.hpp"
 
-#include "app/glfw.hpp" // TODO: maybe glfw should be in graphics?
+#include "app/glfw.hpp"
 #include "common/log.hpp"
 #include "graphics/graphics_context.hpp"
 

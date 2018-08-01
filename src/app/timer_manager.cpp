@@ -9,7 +9,7 @@ TimerManager::TimerManager() { m_thread = ScopedThread(std::thread(&TimerManager
 TimerManager::~TimerManager()
 {
     {
-        NOTF_MUTEX_GUARD(m_mutex);
+        NOTF_GUARD(std::lock_guard(m_mutex));
         m_is_running = false;
     }
     m_condition.notify_one();
@@ -121,7 +121,7 @@ void Timer::start(const timepoint_t timeout)
 {
     TimerManager& manager = TheApplication::get().get_timer_manager();
     {
-        NOTF_MUTEX_GUARD(manager.m_mutex);
+        NOTF_GUARD(std::lock_guard(manager.m_mutex));
 
         // unschedule if active
         if (_is_active()) {
@@ -149,7 +149,7 @@ void Timer::stop()
 {
     TimerManager& manager = TheApplication::get().get_timer_manager();
     {
-        NOTF_MUTEX_GUARD(manager.m_mutex);
+        NOTF_GUARD(std::lock_guard(manager.m_mutex));
 
         if (!_is_active()) {
             return;
@@ -177,7 +177,7 @@ void IntervalTimer::start(const duration_t interval, const size_t repetitions)
 
     TimerManager& manager = TheApplication::get().get_timer_manager();
     {
-        NOTF_MUTEX_GUARD(manager.m_mutex);
+        NOTF_GUARD(std::lock_guard(manager.m_mutex));
 
         // unschedule if active
         if (_is_active()) {
@@ -215,7 +215,7 @@ void VariableTimer::start(IntervalFunction function, const size_t repetitions)
 
     TimerManager& manager = TheApplication::get().get_timer_manager();
     {
-        NOTF_MUTEX_GUARD(manager.m_mutex);
+        NOTF_GUARD(std::lock_guard(manager.m_mutex));
 
         // unschedule if active
         if (_is_active()) {

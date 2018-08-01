@@ -8,7 +8,7 @@ void PropertyBatch::execute()
 {
     PropertyUpdateList effects;
     {
-        NOTF_MUTEX_GUARD(PropertyGraph::Access<PropertyBatch>::mutex());
+        NOTF_GUARD(std::lock_guard(PropertyGraph::Access<PropertyBatch>::mutex()));
 
         // verify that all updates will succeed first
         for (const PropertyUpdatePtr& update : m_updates) {

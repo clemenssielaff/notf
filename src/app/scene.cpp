@@ -31,7 +31,7 @@ access::_RootNode<Scene> Scene::_get_root_access() { return RootNode::Access<Sce
 
 risky_ptr<NodeContainer*> Scene::_get_frozen_children(valid_ptr<const Node*> node)
 {
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(get_graph()));
+    NOTF_GUARD(std::lock_guard(SceneGraph::Access<Scene>::hierarchy_mutex(get_graph())));
 
     auto it = m_frozen_children.find(node);
     if (it == m_frozen_children.end()) {
@@ -42,7 +42,7 @@ risky_ptr<NodeContainer*> Scene::_get_frozen_children(valid_ptr<const Node*> nod
 
 void Scene::_create_frozen_children(valid_ptr<const Node*> node)
 {
-    NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(get_graph()));
+    NOTF_GUARD(std::lock_guard(SceneGraph::Access<Scene>::hierarchy_mutex(get_graph())));
 
     NOTF_UNUSED auto it = m_frozen_children.emplace(std::make_pair(node, Node::Access<Scene>::children(*node)));
     NOTF_ASSERT(it.second);
@@ -67,7 +67,7 @@ NodePropertyPtr Scene::_get_property(const Path& path)
         }
     }
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(get_graph()));
+        NOTF_GUARD(std::lock_guard(SceneGraph::Access<Scene>::hierarchy_mutex(get_graph())));
 
         if (path.is_absolute() || path[0] == get_name()) { // Path("Scene/node") is relative but still requires index =
                                                            // 1
@@ -97,7 +97,7 @@ NodePtr Scene::_get_node(const Path& path)
         }
     }
     {
-        NOTF_MUTEX_GUARD(SceneGraph::Access<Scene>::hierarchy_mutex(get_graph()));
+        NOTF_GUARD(std::lock_guard(SceneGraph::Access<Scene>::hierarchy_mutex(get_graph())));
 
         if (path.is_absolute() || path[0] == get_name()) { // Path("Scene/node") is relative but still requires index =
                                                            // 1

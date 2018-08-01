@@ -144,6 +144,13 @@ public:
         /// @param manager  The manager managing this Resource type.
         ResourceType(ResourceManager& manager) : ResourceTypeBase(), m_manager(manager) {}
 
+        /// Factory.
+        /// @param manager  The manager managing this Resource type.
+        static std::unique_ptr<ResourceType<T>> create(ResourceManager& manager)
+        {
+            return NOTF_MAKE_UNIQUE_FROM_PRIVATE(ResourceType<T>, manager);
+        }
+
     public:
         NOTF_NO_COPY_OR_ASSIGN(ResourceType);
 
@@ -156,7 +163,7 @@ public:
         /// Resource directory path relative to the ResourceManager's base path (can be empty).
         const std::string& get_path() const
         {
-            NOTF_MUTEX_GUARD(m_manager.m_mutex);
+            NOTF_GUARD(std::lock_guard(m_manager.m_mutex));
             return m_path;
         }
 
@@ -167,7 +174,7 @@ public:
         {
             std::string directory_path = ResourceManager::_ensure_is_dir(path);
             {
-                NOTF_MUTEX_GUARD(m_manager.m_mutex);
+                NOTF_GUARD(std::lock_guard(m_manager.m_mutex));
                 m_path.reserve(m_manager.m_base_path.size() + directory_path.size());
                 m_path = m_manager.m_base_path;
                 m_path.append(std::move(directory_path));
@@ -177,7 +184,7 @@ public:
         /// Number of inactive resources to retain in the cache.
         size_t get_cache_limit() const
         {
-            NOTF_MUTEX_GUARD(m_manager.m_mutex);
+            NOTF_GUARD(std::lock_guard(m_manager.m_mutex));
             return m_cache_limit;
         }
 
@@ -185,7 +192,7 @@ public:
         /// @param cache_limit  Number of inactive resources to retain in the cache.
         void set_cache_limit(const size_t cache_limit)
         {
-            NOTF_MUTEX_GUARD(m_manager.m_mutex);
+            NOTF_GUARD(std::lock_guard(m_manager.m_mutex));
             if (cache_limit < m_cache_limit) {
                 _remove_inactive(cache_limit);
             }
@@ -197,7 +204,7 @@ public:
         /// @throws resource_error  If there is no resource by the name.
         ResourceHandle<T> get(const std::string& name) const
         {
-            NOTF_MUTEX_GUARD(m_manager.m_mutex);
+            NOTF_GUARD(std::lock_guard(m_manager.m_mutex));
             auto it = m_resources.find(name);
             if (it != m_resources.end()) {
                 return ResourceHandle<T>(it->second);
@@ -207,7 +214,7 @@ public:
 
         ResourceHandle<T> set(const std::string& name, std::shared_ptr<T> resource)
         {
-            NOTF_MUTEX_GUARD(m_manager.m_mutex);
+            NOTF_GUARD(std::lock_guard(m_manager.m_mutex));
 
             auto it = m_resources.find(name);
 
@@ -217,7 +224,7 @@ public:
                 std::tie(it, success) = m_resources.emplace(name, std::move(resource));
                 NOTF_ASSERT(success);
 
-                m_cache_list.emplace_front(it);
+                m_cache.emplace_front(it);
                 _remove_inactive(m_cache_limit);
                 return ResourceHandle<T>(it->second);
             }
@@ -225,10 +232,10 @@ public:
             else {
                 // remove the existing entry from the list of most recently loaded
                 bool success = false;
-                for (auto prev = m_cache_list.before_begin(), cache_it = m_cache_list.begin(), end = m_cache_list.end();
+                for (auto prev = m_cache.before_begin(), cache_it = m_cache.begin(), end = m_cache.end();
                      cache_it != end; prev = ++cache_it) {
                     if (*cache_it == it) {
-                        m_cache_list.erase_after(prev);
+                        m_cache.erase_after(prev);
                         success = true;
                         break;
                     }
@@ -237,7 +244,7 @@ public:
 
                 // update the existing entry
                 it->second = std::move(resource);
-                m_cache_list.emplace_front(it);
+                m_cache.emplace_front(it);
                 return ResourceHandle<T>(it->second);
             }
         }
@@ -245,7 +252,7 @@ public:
         /// Removes all inactive resources, ignoring this type's cache limit.
         void remove_all_inactive()
         {
-            NOTF_MUTEX_GUARD(m_manager.m_mutex);
+            NOTF_GUARD(std::lock_guard(m_manager.m_mutex));
             _remove_inactive(0);
         }
 
@@ -256,16 +263,14 @@ public:
         {
             NOTF_ASSERT(m_manager.m_mutex.is_locked_by_this_thread());
             size_t inactive_count = 0;
-            auto prev = m_cache_list.before_begin(), it = m_cache_list.begin(), end = m_cache_list.end();
-            while (true) { // I tried a for-loop but that crashes..?
+            for (auto prev = m_cache.before_begin(), it = m_cache.begin(), end = m_cache.end();; prev = ++it) {
                 while (it != end && (**it).second.unique() && ++inactive_count > cache_limit) {
                     m_resources.erase(*it);
-                    it = m_cache_list.erase_after(prev);
+                    it = m_cache.erase_after(prev);
                 }
                 if (it == end) {
                     break;
                 }
-                prev = ++it;
             }
         }
 
@@ -273,7 +278,7 @@ public:
         void _clear() final
         {
             NOTF_ASSERT(m_manager.m_mutex.is_locked_by_this_thread());
-            m_cache_list.clear();
+            m_cache.clear();
             m_resources.clear();
         }
 
@@ -296,7 +301,7 @@ public:
         ResourceMap m_resources;
 
         /// List of most recently loaded resources (newer resources are earlier in the list).
-        std::forward_list<typename ResourceMap::iterator> m_cache_list;
+        std::forward_list<typename ResourceMap::iterator> m_cache;
     };
 
     // methods ------------------------------------------------------------------------------------------------------ //
@@ -319,12 +324,11 @@ public:
     {
         static const size_t type_id = typeid(T).hash_code();
 
-        NOTF_MUTEX_GUARD(m_mutex);
+        NOTF_GUARD(std::lock_guard(m_mutex));
         decltype(m_types)::iterator it = m_types.find(type_id);
         if (it == m_types.end()) {
             bool success = false;
-            std::tie(it, success)
-                = m_types.emplace(std::make_pair(type_id, NOTF_MAKE_UNIQUE_FROM_PRIVATE(ResourceType<T>, *this)));
+            std::tie(it, success) = m_types.emplace(std::make_pair(type_id, ResourceType<T>::create(*this)));
             NOTF_ASSERT(success);
         }
         return *static_cast<ResourceType<T>*>(it->second.get());

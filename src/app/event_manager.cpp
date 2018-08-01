@@ -59,7 +59,7 @@ inline Vector2f get_cursor_pos(GLFWwindow* glfw_window, const double x, const do
 void EventManager::WindowHandler::start()
 {
     {
-        NOTF_MUTEX_GUARD(m_mutex);
+        NOTF_GUARD(std::lock_guard(m_mutex));
         if (m_is_running) {
             return;
         }
@@ -72,7 +72,7 @@ void EventManager::WindowHandler::start()
 void EventManager::WindowHandler::enqueue_event(EventPtr&& event)
 {
     {
-        NOTF_MUTEX_GUARD(m_mutex);
+        NOTF_GUARD(std::lock_guard(m_mutex));
         m_events.emplace_back(std::move(event));
     }
     m_condition.notify_one();
@@ -81,7 +81,7 @@ void EventManager::WindowHandler::enqueue_event(EventPtr&& event)
 void EventManager::WindowHandler::stop()
 {
     {
-        NOTF_MUTEX_GUARD(m_mutex);
+        NOTF_GUARD(std::lock_guard(m_mutex));
         if (!m_is_running) {
             return;
         }

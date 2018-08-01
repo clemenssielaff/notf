@@ -18,6 +18,8 @@ NOTF_OPEN_NAMESPACE
 
 SceneGraph::no_window_error::~no_window_error() = default;
 
+SceneGraph::composition_error::~composition_error() = default;
+
 // ================================================================================================================== //
 
 SceneGraph::Layer::Layer(valid_ptr<ScenePtr> scene, valid_ptr<VisualizerPtr> visualizer)
@@ -29,7 +31,7 @@ SceneGraph::LayerPtr SceneGraph::Layer::create(valid_ptr<ScenePtr> scene, valid_
     LayerPtr result = NOTF_MAKE_SHARED_FROM_PRIVATE(Layer, std::move(scene), std::move(visualizer));
     SceneGraph& scene_graph = result->get_scene().get_graph();
     {
-        NOTF_MUTEX_GUARD(scene_graph.m_hierarchy_mutex);
+        NOTF_GUARD(std::lock_guard(scene_graph.m_hierarchy_mutex));
         scene_graph.m_layers.emplace_back(result);
     }
     return result;
@@ -84,7 +86,7 @@ SceneGraph::~SceneGraph() = default;
 
 SceneGraph::CompositionPtr SceneGraph::get_current_composition() const
 {
-    NOTF_MUTEX_GUARD(m_hierarchy_mutex);
+    NOTF_GUARD(std::lock_guard(m_hierarchy_mutex));
 
     if (is_frozen_by(std::this_thread::get_id())) {
         NOTF_ASSERT(m_frozen_composition);
@@ -99,13 +101,22 @@ void SceneGraph::change_composition(CompositionPtr composition)
     if (NOTF_UNLIKELY(!window)) {
         return;
     }
+
+    for (const auto& layer : composition->get_layers()) {
+        if (&(layer->get_scene().get_graph()) != this) {
+            NOTF_THROW(composition_error,
+                       "SceneGraph of Window \"{}\" cannot display a Composition that contains foreign Scene \"{}\"",
+                       window->get_title(), layer->get_scene().get_name());
+        }
+    }
+
     EventManager& event_manger = TheApplication::get().get_event_manager();
     event_manger.handle(std::make_unique<CompositionChangeEvent>(raw_pointer(window), std::move(composition)));
 }
 
 void SceneGraph::_register_dirty(valid_ptr<Node*> node)
 {
-    NOTF_MUTEX_GUARD(m_hierarchy_mutex);
+    NOTF_GUARD(std::lock_guard(m_hierarchy_mutex));
 
     if (m_dirty_nodes.empty()) {
         risky_ptr<WindowPtr> window = get_window();
@@ -118,7 +129,7 @@ void SceneGraph::_register_dirty(valid_ptr<Node*> node)
 
 void SceneGraph::_remove_dirty(valid_ptr<Node*> node)
 {
-    NOTF_MUTEX_GUARD(m_hierarchy_mutex);
+    NOTF_GUARD(std::lock_guard(m_hierarchy_mutex));
 
     m_dirty_nodes.erase(node);
 }
@@ -132,7 +143,7 @@ void SceneGraph::_propagate_event(EventPtr&& untyped_event)
     static const size_t window_resize_event = WindowResizeEvent::static_type();
     static const size_t composition_change_event = CompositionChangeEvent::static_type();
 
-    NOTF_MUTEX_GUARD(m_event_mutex);
+    NOTF_GUARD(std::lock_guard(m_event_mutex));
 
     const size_t event_type = untyped_event->type();
 
@@ -221,7 +232,7 @@ NodePropertyPtr SceneGraph::_get_property(const Path& path)
     }
     const std::string& scene_name = path[0];
     {
-        NOTF_MUTEX_GUARD(m_hierarchy_mutex);
+        NOTF_GUARD(std::lock_guard(m_hierarchy_mutex));
 
         auto scene_it = m_scenes.find(scene_name);
         if (scene_it != m_scenes.end()) {
@@ -244,7 +255,7 @@ NodePtr SceneGraph::_get_node(const Path& path)
     }
     const std::string& scene_name = path[0];
     {
-        NOTF_MUTEX_GUARD(m_hierarchy_mutex);
+        NOTF_GUARD(std::lock_guard(m_hierarchy_mutex));
 
         auto scene_it = m_scenes.find(scene_name);
         if (scene_it != m_scenes.end()) {
@@ -259,7 +270,7 @@ NodePtr SceneGraph::_get_node(const Path& path)
 
 bool SceneGraph::_freeze(const std::thread::id thread_id)
 {
-    NOTF_MUTEX_GUARD(m_event_mutex);
+    NOTF_GUARD(std::lock_guard(m_event_mutex));
 
     const size_t thread_hash = hash(thread_id);
 
@@ -275,7 +286,7 @@ bool SceneGraph::_freeze(const std::thread::id thread_id)
     m_freezing_thread = thread_hash;
 
     {
-        NOTF_MUTEX_GUARD(m_hierarchy_mutex);
+        NOTF_GUARD(std::lock_guard(m_hierarchy_mutex));
         m_frozen_composition = m_current_composition;
 
         // remove all dirty nodes, any further changes from this point onward will trigger a new redraw
@@ -287,7 +298,7 @@ bool SceneGraph::_freeze(const std::thread::id thread_id)
 
 void SceneGraph::_unfreeze(NOTF_UNUSED const std::thread::id thread_id)
 {
-    NOTF_MUTEX_GUARD(m_event_mutex);
+    NOTF_GUARD(std::lock_guard(m_event_mutex));
 
     if (m_freezing_thread == 0) {
         return; // already unfrozen
@@ -297,7 +308,7 @@ void SceneGraph::_unfreeze(NOTF_UNUSED const std::thread::id thread_id)
                     hash(thread_id), hash(m_freezing_thread.load()));
 
     {
-        NOTF_MUTEX_GUARD(m_hierarchy_mutex);
+        NOTF_GUARD(std::lock_guard(m_hierarchy_mutex));
 
         // unfreeze - otherwise all modifications would just create new deltas
         m_freezing_thread = 0;
@@ -319,7 +330,7 @@ void SceneGraph::_unfreeze(NOTF_UNUSED const std::thread::id thread_id)
 
 void SceneGraph::_set_composition(valid_ptr<CompositionPtr> composition)
 {
-    NOTF_MUTEX_GUARD(m_hierarchy_mutex);
+    NOTF_GUARD(std::lock_guard(m_hierarchy_mutex));
     if (composition != m_current_composition) {
         m_current_composition = std::move(composition);
         risky_ptr<WindowPtr> window = get_window();
@@ -331,8 +342,8 @@ void SceneGraph::_set_composition(valid_ptr<CompositionPtr> composition)
 
 void SceneGraph::_clear()
 {
-    NOTF_MUTEX_GUARDS(m_event_mutex, 0);
-    NOTF_MUTEX_GUARDS(m_hierarchy_mutex, 1);
+    NOTF_GUARD(std::lock_guard(m_event_mutex));
+    NOTF_GUARD(std::lock_guard(m_hierarchy_mutex));
 
     // clear all Scenes and Visualizers from the Layers of this SceneGraph
     for (LayerWeakPtr& weak_layer : m_layers) {

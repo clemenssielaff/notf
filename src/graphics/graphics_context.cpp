@@ -3,7 +3,7 @@
 #include <set>
 
 #include "app/glfw.hpp"
-#include "app/window.hpp" // TODO: window is included in graphics.. :/
+#include "app/window.hpp"
 #include "common/exception.hpp"
 #include "common/log.hpp"
 #include "common/resource_manager.hpp"

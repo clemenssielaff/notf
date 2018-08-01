@@ -90,7 +90,7 @@ const std::string& Node::set_name(const std::string& name)
 
 bool Node::has_ancestor(valid_ptr<const Node*> ancestor) const
 {
-    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
 
     valid_ptr<const Node*> next = m_parent;
     while (next != next->m_parent) {
@@ -104,7 +104,7 @@ bool Node::has_ancestor(valid_ptr<const Node*> ancestor) const
 
 bool Node::is_in_front() const
 {
-    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
 
     const NodeContainer& siblings = m_parent->_read_children();
     NOTF_ASSERT(!siblings.empty());
@@ -113,7 +113,7 @@ bool Node::is_in_front() const
 
 bool Node::is_in_back() const
 {
-    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
 
     const NodeContainer& siblings = m_parent->_read_children();
     NOTF_ASSERT(!siblings.empty());
@@ -138,7 +138,7 @@ bool Node::is_behind(valid_ptr<const Node*> sibling) const
 
 void Node::stack_front()
 {
-    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
 
     // early out to avoid creating unnecessary deltas
     if (is_in_front()) {
@@ -151,7 +151,7 @@ void Node::stack_front()
 
 void Node::stack_back()
 {
-    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
 
     // early out to avoid creating unnecessary deltas
     if (is_in_back()) {
@@ -164,7 +164,7 @@ void Node::stack_back()
 
 void Node::stack_before(valid_ptr<const Node*> sibling)
 {
-    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
 
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
@@ -184,7 +184,7 @@ void Node::stack_before(valid_ptr<const Node*> sibling)
 
 void Node::stack_behind(valid_ptr<const Node*> sibling)
 {
-    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
 
     size_t my_index;
     { // early out to avoid creating unnecessary deltas
@@ -222,7 +222,7 @@ NodePropertyPtr Node::_get_property(const Path& path)
         offset = narrow_cast<uint>(myPath.size());
     }
 
-    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
 
     NodePropertyPtr result;
     _get_property(path, offset, result);
@@ -273,7 +273,7 @@ NodePtr Node::_get_node(const Path& path)
         offset = narrow_cast<uint>(myPath.size());
     }
 
-    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
 
     NodePtr result;
     _get_node(path, offset, result);
@@ -306,7 +306,7 @@ valid_ptr<const Node*> Node::_get_common_ancestor(valid_ptr<const Node*> other) 
         return this;
     }
 
-    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
 
     valid_ptr<const Node*> first = this;
     valid_ptr<const Node*> second = other;
@@ -380,7 +380,7 @@ NodeContainer& Node::_write_children()
 
 void Node::_clear_children()
 {
-    NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
 
     _write_children().clear();
 }
@@ -392,7 +392,7 @@ valid_ptr<TypedNodeProperty<std::string>*> Node::_create_name()
 
     // validator function for Node names, is called every time its name changes.
     TypedNodeProperty<std::string>::Validator validator = [this](std::string& name) -> bool {
-        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+        NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
         const NodeContainer& siblings = m_parent->_read_children();
 
         // create unique name
@@ -447,7 +447,7 @@ bool Node::_is_behind(valid_ptr<const Node*> sibling) const
                    get_name(), sibling->get_name());
     }
     {
-        NOTF_MUTEX_GUARD(_get_hierarchy_mutex());
+        NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
         const NodeContainer& siblings = m_parent->_read_children();
         for (const auto& it : siblings) {
             if (it == this) {

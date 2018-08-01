@@ -2,6 +2,7 @@
 
 #include "app/widget/widget.hpp"
 #include "common/bezier.hpp"
+#include "common/variant.hpp"
 #include "common/vector.hpp"
 #include "graphics/graphics_context.hpp"
 #include "graphics/renderer/plotter.hpp"
@@ -19,73 +20,58 @@ void Painterpreter::paint(Widget& widget)
         m_base_clipping = widget.get_clipping_rect();
     }
 
-    /// Execute the various Painterpreter Commands.
-    struct CommandVisitor {
-
-        // fields ----------------------------------------------------------------------------------------------------//
-
-        /// This Painterpreter.
-        Painterpreter& painterpreter;
-
-        // methods ---------------------------------------------------------------------------------------------------//
-
-        void operator()(const WidgetDesign::PushStateCommand&) const { painterpreter._push_state(); }
-
-        void operator()(const WidgetDesign::PopStateCommand&) const { painterpreter._pop_state(); }
-
-        void operator()(const WidgetDesign::SetTransformationCommand& command) const
-        {
-            State& state = painterpreter._get_current_state();
-            state.xform = command.data->transformation;
-        }
-
-        void operator()(const WidgetDesign::SetStrokeWidthCommand& command) const
-        {
-            State& state = painterpreter._get_current_state();
-            state.stroke_width = command.stroke_width;
-        }
-
-        void operator()(const WidgetDesign::SetFontCommand& command) const
-        {
-            State& state = painterpreter._get_current_state();
-            state.font = command.data->font;
-        }
-
-        void operator()(const WidgetDesign::SetPolygonPathCommand& command) const
-        {
-            State& state = painterpreter._get_current_state();
-            state.path = painterpreter.m_plotter->add(command.data->polygon);
-            painterpreter.m_paths.emplace_back(state.path);
-        }
-
-        void operator()(const WidgetDesign::SetSplinePathCommand& command) const
-        {
-            State& state = painterpreter._get_current_state();
-            state.path = painterpreter.m_plotter->add(command.data->spline);
-            painterpreter.m_paths.emplace_back(state.path);
-        }
-
-        void operator()(const WidgetDesign::SetPathIndexCommand& command) const
-        {
-            NOTF_ASSERT(command.index);
-            const size_t path_index = command.index.value() - Plotter::PathId::first().value();
-            NOTF_ASSERT(path_index < painterpreter.m_paths.size());
-            State& state = painterpreter._get_current_state();
-            state.path = painterpreter.m_paths[path_index];
-        }
-
-        void operator()(const WidgetDesign::WriteCommand& command) const { painterpreter._write(command.data->text); }
-
-        void operator()(const WidgetDesign::FillCommand&) const { painterpreter._fill(); }
-
-        void operator()(const WidgetDesign::StrokeCommand&) const { painterpreter._stroke(); }
-    };
-
     { // parse the commands
         const WidgetDesign& design = Widget::Access<Painterpreter>::get_design(widget);
         const std::vector<WidgetDesign::Command>& buffer = WidgetDesign::Access<Painterpreter>::get_buffer(design);
         for (const WidgetDesign::Command& command : buffer) {
-            std::visit(CommandVisitor{*this}, command);
+            std::visit(
+                overloaded{
+                    [&](const WidgetDesign::PushStateCommand&) { _push_state(); },
+
+                    [&](const WidgetDesign::PopStateCommand&) { _pop_state(); },
+
+                    [&](const WidgetDesign::SetTransformationCommand& command) {
+                        State& state = _get_current_state();
+                        state.xform = command.data->transformation;
+                    },
+
+                    [&](const WidgetDesign::SetStrokeWidthCommand& command) {
+                        State& state = _get_current_state();
+                        state.stroke_width = command.stroke_width;
+                    },
+
+                    [&](const WidgetDesign::SetFontCommand& command) {
+                        State& state = _get_current_state();
+                        state.font = command.data->font;
+                    },
+
+                    [&](const WidgetDesign::SetPolygonPathCommand& command) {
+                        State& state = _get_current_state();
+                        state.path = m_plotter->add(command.data->polygon);
+                        m_paths.emplace_back(state.path);
+                    },
+
+                    [&](const WidgetDesign::SetSplinePathCommand& command) {
+                        State& state = _get_current_state();
+                        state.path = m_plotter->add(command.data->spline);
+                        m_paths.emplace_back(state.path);
+                    },
+
+                    [&](const WidgetDesign::SetPathIndexCommand& command) {
+                        NOTF_ASSERT(command.index);
+                        const size_t path_index = command.index.value() - Plotter::PathId::first().value();
+                        NOTF_ASSERT(path_index < m_paths.size());
+                        State& state = _get_current_state();
+                        state.path = m_paths[path_index];
+                    },
+
+                    [&](const WidgetDesign::WriteCommand& command) { _write(command.data->text); },
+
+                    [&](const WidgetDesign::FillCommand&) { _fill(); },
+
+                    [&](const WidgetDesign::StrokeCommand&) { _stroke(); },
+                },
+                command);
         }
     }
 
