@@ -1,12 +1,12 @@
-#include "app/timer_manager.hpp"
-
-#include "app/application.hpp"
+#include "common/timer_pool.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-TimerManager::TimerManager() { m_thread = ScopedThread(std::thread(&TimerManager::_run, this)); }
+// ================================================================================================================== //
 
-TimerManager::~TimerManager()
+TheTimerPool::TheTimerPool() { m_thread = ScopedThread(std::thread(&TheTimerPool::_run, this)); }
+
+TheTimerPool::~TheTimerPool()
 {
     {
         NOTF_GUARD(std::lock_guard(m_mutex));
@@ -16,16 +16,16 @@ TimerManager::~TimerManager()
     m_thread = {}; // blocks until the thread has joined
 }
 
-void TimerManager::_run()
+void TheTimerPool::_run()
 {
-    TimerPtr next_timer = IntervalTimer::create([] {});
+    TimerPtr next_timer;
     while (true) {
         {
             std::unique_lock<Mutex> lock(m_mutex);
 
             // re-schedule the last timer, if it is repeating AND if this is not the last reference to the timer
             // otherwise we could end up with timer that could never be stopped
-            if ((next_timer->m_times_left > 0) && !next_timer.unique()) {
+            if ((next_timer.use_count() > 1) && (next_timer->m_times_left > 0)) {
                 next_timer->m_next_timeout += next_timer->_interval();
                 _schedule(std::move(next_timer));
             }
@@ -66,49 +66,31 @@ void TimerManager::_run()
     }
 }
 
-void TimerManager::_schedule(TimerPtr timer)
+void TheTimerPool::_schedule(TimerPtr timer)
 {
     NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
     if (m_timer.empty()) {
         m_timer.emplace_front(std::move(timer));
         return;
     }
-    auto it = m_timer.begin();
-    if ((*it)->m_next_timeout <= timer->m_next_timeout) {
-        m_timer.emplace_front(std::move(timer));
-    }
-    else {
-        auto prev = it;
-        ++it;
-        for (auto end = m_timer.end(); it != end; ++it) {
-            if ((*it)->m_next_timeout <= timer->m_next_timeout) {
-                break;
-            }
-            prev = it;
+    for (auto prev = m_timer.before_begin(), it = m_timer.begin(), end = m_timer.end(); it != end; prev = ++it) {
+        if ((*it)->m_next_timeout <= timer->m_next_timeout) {
+            m_timer.emplace_after(prev, std::move(timer));
+            break;
         }
-        m_timer.emplace_after(prev, std::move(timer));
     }
 }
 
-void TimerManager::_unschedule(const valid_ptr<Timer*> timer)
+void TheTimerPool::_unschedule(const valid_ptr<Timer*> timer)
 {
     NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
     if (m_timer.empty()) {
         return;
     }
-    auto it = m_timer.begin();
-    if ((*it).get() == timer) {
-        m_timer.pop_front();
-    }
-    else {
-        auto prev = it;
-        ++it;
-        for (auto end = m_timer.end(); it != end; ++it) {
-            if ((*it).get() == timer) {
-                m_timer.erase_after(prev);
-                break;
-            }
-            prev = it;
+    for (auto prev = m_timer.before_begin(), it = m_timer.begin(), end = m_timer.end(); it != end; prev = ++it) {
+        if ((*it).get() == timer) {
+            m_timer.erase_after(prev);
+            break;
         }
     }
 }
@@ -119,20 +101,20 @@ Timer::~Timer() = default;
 
 void Timer::start(const timepoint_t timeout)
 {
-    TimerManager& manager = TheApplication::get().get_timer_manager();
+    TheTimerPool& pool = TheTimerPool::get();
     {
-        NOTF_GUARD(std::lock_guard(manager.m_mutex));
+        NOTF_GUARD(std::lock_guard(pool.m_mutex));
 
         // unschedule if active
         if (_is_active()) {
-            manager._unschedule(this);
+            pool._unschedule(this);
         }
 
         // this is a one-off overload of `start`
         m_times_left = 1;
 
         // fire right away if the timeout is already in the past
-        if (timeout <= TimerManager::_now()) {
+        if (timeout <= TheTimerPool::_now()) {
             m_next_timeout = timepoint_t();
             m_callback();
             return;
@@ -140,25 +122,25 @@ void Timer::start(const timepoint_t timeout)
 
         // or schedule the timer
         m_next_timeout = timeout;
-        manager._schedule(shared_from_this());
+        pool._schedule(shared_from_this());
     }
-    manager.m_condition.notify_one();
+    pool.m_condition.notify_one();
 }
 
 void Timer::stop()
 {
-    TimerManager& manager = TheApplication::get().get_timer_manager();
+    TheTimerPool& pool = TheTimerPool::get();
     {
-        NOTF_GUARD(std::lock_guard(manager.m_mutex));
+        NOTF_GUARD(std::lock_guard(pool.m_mutex));
 
         if (!_is_active()) {
             return;
         }
 
         // unschedule from the manager
-        manager._unschedule(this);
+        pool._unschedule(this);
     }
-    manager.m_condition.notify_one();
+    pool.m_condition.notify_one();
 }
 
 // ================================================================================================================== //
@@ -172,16 +154,16 @@ IntervalTimer::~IntervalTimer() = default;
 void IntervalTimer::start(const duration_t interval, const size_t repetitions)
 {
     if (repetitions == 0) {
-        return; // what did you expect?
+        return; // easy
     }
 
-    TimerManager& manager = TheApplication::get().get_timer_manager();
+    TheTimerPool& pool = TheTimerPool::get();
     {
-        NOTF_GUARD(std::lock_guard(manager.m_mutex));
+        NOTF_GUARD(std::lock_guard(pool.m_mutex));
 
         // unschedule if active
         if (_is_active()) {
-            manager._unschedule(this);
+            pool._unschedule(this);
         }
 
         // fire right away if the timeout is already in the past
@@ -197,10 +179,10 @@ void IntervalTimer::start(const duration_t interval, const size_t repetitions)
 
         // or schedule the timer
         m_times_left = repetitions;
-        m_next_timeout = TimerManager::_now() + interval;
-        manager._schedule(shared_from_this());
+        m_next_timeout = TheTimerPool::_now() + interval;
+        pool._schedule(shared_from_this());
     }
-    manager.m_condition.notify_one();
+    pool.m_condition.notify_one();
 }
 
 // ================================================================================================================== //
@@ -210,25 +192,25 @@ VariableTimer::~VariableTimer() = default;
 void VariableTimer::start(IntervalFunction function, const size_t repetitions)
 {
     if (repetitions == 0) {
-        return; // what did you expect?
+        return; // easy
     }
 
-    TimerManager& manager = TheApplication::get().get_timer_manager();
+    TheTimerPool& pool = TheTimerPool::get();
     {
-        NOTF_GUARD(std::lock_guard(manager.m_mutex));
+        NOTF_GUARD(std::lock_guard(pool.m_mutex));
 
         // unschedule if active
         if (_is_active()) {
-            manager._unschedule(this);
+            pool._unschedule(this);
         }
 
         // schedule the timer
         m_times_left = repetitions;
         m_function = std::move(function);
-        m_next_timeout = TimerManager::_now() + m_function();
-        manager._schedule(shared_from_this());
+        m_next_timeout = TheTimerPool::_now() + m_function();
+        pool._schedule(shared_from_this());
     }
-    manager.m_condition.notify_one();
+    pool.m_condition.notify_one();
 }
 
 NOTF_CLOSE_NAMESPACE

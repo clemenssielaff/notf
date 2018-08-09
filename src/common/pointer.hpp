@@ -187,6 +187,9 @@ struct valid_ptr {
     decltype(auto) operator*() const { return *raw(); }
     /// @}
 
+    /// Unchecked, direct access to the pointer.
+    T& unchecked() const { return m_ptr; }
+
     // prevents compilation when someone attempts to assign a null pointer constant
     valid_ptr(std::nullptr_t) = delete;
     valid_ptr& operator=(std::nullptr_t) = delete;

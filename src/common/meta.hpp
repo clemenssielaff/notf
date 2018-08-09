@@ -1,8 +1,7 @@
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
-#include <utility>
+#include <limits.h>
+#include <memory>
 
 // ================================================================================================================== //
 
@@ -127,11 +126,10 @@
 /// NOTF_DISABLE_WARNING("switch-enum")
 ///     ...
 /// NOTF_ENABLE_WARNINGS
-#define NOTF_DISABLE_WARNING_STR_(x) GCC diagnostic ignored "-W" x
-#define NOTF_DISABLE_WARNING(x)          \
-    NOTF_PRAGMA("clang diagnostic push") \
-    NOTF_PRAGMA(NOTF_DEFER(NOTF_STR, NOTF_DISABLE_WARNING_STR_(x)))
-#define NOTF_ENABLE_WARNINGS NOTF_PRAGMA("clang diagnostic pop")
+#define NOTF_DISABLE_WARNING_STR_(x) GCC diagnostic ignored "-W" NOTF_STR(x)
+#define NOTF_SAVE_DIAGNOSTICS NOTF_PRAGMA("clang diagnostic push")
+#define NOTF_DISABLE_WARNING(x) NOTF_PRAGMA(NOTF_DEFER(NOTF_STR, NOTF_DISABLE_WARNING_STR_(x)))
+#define NOTF_RESTORE_DIAGNOSTICS NOTF_PRAGMA("clang diagnostic pop")
 
 /// Print a compiler warning with some additional information.
 #define NOTF_COMPILER_WARNING(x) \
@@ -139,27 +137,40 @@
 
 // ================================================================================================================== //
 
-/// Opens the NoTF namespace.
 /// This macro can later be used to implement namespace versioning.
-#define NOTF_OPEN_NAMESPACE namespace notf {
+#define NOTF_NAMESPACE_NAME notf
+
+/// Opens the NoTF namespace.
+#define NOTF_OPEN_NAMESPACE namespace NOTF_NAMESPACE_NAME {
 
 /// For visual balance with NOTF_OPEN_NAMESPACE.
 #define NOTF_CLOSE_NAMESPACE }
 
 /// Use the versioned namespace.
-#define NOTF_USING_NAMESPACE using namespace notf
+#define NOTF_USING_NAMESPACE using namespace NOTF_NAMESPACE_NAME
 
 // ================================================================================================================== //
 
 /// Uniquely named RAII guard object.
 #define NOTF_GUARD(f) const auto NOTF_DEFER(NOTF_CONCAT, __notf__guard, __COUNTER__) = f
 
+/// Define a guard object for a nested scope that is only aquired, if a given tests succeeds.
+/// This macro simplifies double-checked locking, where we first test whether a condition is met before attempting to
+/// lock a mutex. Note that this is only safe, if `x` is an atomic operation and `f` is used to initialize a mutex.
+/// Example:
+///     NOTF_GUARD_IF(m_atomic_bool, std::lock_guard(m_mutex)) {
+///         ... // code here is only executed if m_atomic_bool is false and the mutex is locked
+///     }
+#define NOTF_GUARD_IF(x, f) \
+    if (x)                  \
+        if (NOTF_GUARD(f); x)
+
 // ================================================================================================================== //
 
 NOTF_OPEN_NAMESPACE
 
 /// Helper to reduce cv-qualified pointers/references to their base type.
-template<class T, typename U = std::remove_reference_t<std::remove_pointer_t<std::remove_cv_t<T>>>>
+template<class T, class U = std::remove_reference_t<std::remove_pointer_t<std::remove_cv_t<T>>>>
 struct strip_type {
     using type = U;
 };
@@ -169,7 +180,7 @@ using strip_type_t = typename strip_type<T>::type;
 /// Type template to ensure that a template argument does not participate in type deduction.
 /// Compare:
 ///
-///     template <typename T>
+///     template <class T>
 ///     void multiply_each(std::vector<T>& vec, T factor) {
 ///         for (auto& item : vec){
 ///             item *= factor;
@@ -183,7 +194,7 @@ using strip_type_t = typename strip_type<T>::type;
 ///
 /// with:
 ///
-///     template <typename T>
+///     template <class T>
 ///     void multiply_each(std::vector<T>& vec, identity_t<T> factor)
 ///     {
 ///         for (auto& item : vec){
@@ -193,11 +204,11 @@ using strip_type_t = typename strip_type<T>::type;
 ///     std::vector<long> vec{1, 2, 3};
 ///     multiply_each(vec, 5);  // works
 ///
-template<typename T>
+template<class T>
 struct identity {
     using type = T;
 };
-template<typename T>
+template<class T>
 using identity_t = typename identity<T>::type;
 
 // ================================================================================================================== //
@@ -231,25 +242,69 @@ using identity_t = typename identity<T>::type;
 
 /// Convenience macro to define shared pointer types for a given templated type with one template argument.
 #define NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(Tag, Type)   \
-    template<typename>                                     \
+    template<class>                                        \
     Tag Type;                                              \
-    template<typename T>                                   \
+    template<class T>                                      \
     using Type##Ptr = std::shared_ptr<Type<T>>;            \
-    template<typename T>                                   \
+    template<class T>                                      \
     using Type##ConstPtr = std::shared_ptr<const Type<T>>; \
-    template<typename T>                                   \
+    template<class T>                                      \
     using Type##WeakPtr = std::weak_ptr<Type<T>>;          \
-    template<typename T>                                   \
+    template<class T>                                      \
     using Type##WeakConstPtr = std::weak_ptr<const Type<T>>
 
 /// Convenience macro to define unique pointer types for a given templated type with one template argument.
 #define NOTF_DEFINE_UNIQUE_POINTERS_TEMPLATE1(Tag, Type) \
-    template<typename>                                   \
+    template<class>                                      \
     Tag Type;                                            \
-    template<typename T>                                 \
+    template<class T>                                    \
     using Type##Ptr = std::unique_ptr<Type<T>>;          \
-    template<typename T>                                 \
+    template<class T>                                    \
     using Type##ConstPtr = std::unique_ptr<const Type<T>>
+
+/// Convenience macro to define shared pointer types for a given templated type with two template arguments.
+#define NOTF_DEFINE_SHARED_POINTERS_TEMPLATE2(Tag, Type)      \
+    template<class, class>                                    \
+    Tag Type;                                                 \
+    template<class T, class U>                                \
+    using Type##Ptr = std::shared_ptr<Type<T, U>>;            \
+    template<class T, class U>                                \
+    using Type##ConstPtr = std::shared_ptr<const Type<T, U>>; \
+    template<class T, class U>                                \
+    using Type##WeakPtr = std::weak_ptr<Type<T, U>>;          \
+    template<class T, class U>                                \
+    using Type##WeakConstPtr = std::weak_ptr<const Type<T, U>>
+
+/// Convenience macro to define unique pointer types for a given templated type with two template arguments.
+#define NOTF_DEFINE_UNIQUE_POINTERS_TEMPLATE2(Tag, Type) \
+    template<class, class>                               \
+    Tag Type;                                            \
+    template<class T, class U>                           \
+    using Type##Ptr = std::unique_ptr<Type<T, U>>;       \
+    template<class T, class U>                           \
+    using Type##ConstPtr = std::unique_ptr<const Type<T, U>>
+
+/// Convenience macro to define shared pointer types for a given templated type with three template arguments.
+#define NOTF_DEFINE_SHARED_POINTERS_TEMPLATE3(Tag, Type)         \
+    template<class, class, class>                                \
+    Tag Type;                                                    \
+    template<class T, class U, class V>                          \
+    using Type##Ptr = std::shared_ptr<Type<T, U, V>>;            \
+    template<class T, class U, class V>                          \
+    using Type##ConstPtr = std::shared_ptr<const Type<T, U, V>>; \
+    template<class T, class U, class V>                          \
+    using Type##WeakPtr = std::weak_ptr<Type<T, U, V>>;          \
+    template<class T, class U, class V>                          \
+    using Type##WeakConstPtr = std::weak_ptr<const Type<T, U, V>>
+
+/// Convenience macro to define unique pointer types for a given templated type with three template arguments.
+#define NOTF_DEFINE_UNIQUE_POINTERS_TEMPLATE3(Tag, Type) \
+    template<class, class, class>                        \
+    Tag Type;                                            \
+    template<class T, class U, class V>                  \
+    using Type##Ptr = std::unique_ptr<Type<T, U, V>>;    \
+    template<class T, class U, class V>                  \
+    using Type##ConstPtr = std::unique_ptr<const Type<T, U, V>>
 
 // ================================================================================================================== //
 
@@ -271,7 +326,7 @@ struct Harness;
 // ================================================================================================================== //
 
 /// Checks if T is any of the variadic types.
-template<typename T, typename... Ts>
+template<class T, class... Ts>
 using is_one_of = std::disjunction<std::is_same<T, Ts>...>;
 
 /// The `always_false` struct can be used to create a templated struct that will always evaluate to `false` when
@@ -306,7 +361,7 @@ using is_one_of = std::disjunction<std::is_same<T, Ts>...>;
 ///     calc<Space::WORLD>();  // produces 0
 ///     calc<Space::SCREEN>(); // error! static assert: "Unsupported Space"
 ///
-template<typename T, T val>
+template<class T, T val>
 struct always_false : std::false_type {};
 
 /// Like always_false, but taking a single type only.
@@ -317,13 +372,13 @@ struct always_false : std::false_type {};
 ///         ...
 ///     }
 ///
-///     template <typename UNSUPPORTED_TYPE>
+///     template <class UNSUPPORTED_TYPE>
 ///     static void convert(const Vector4d& in, UNSUPPORTED_TYPE& out)
 ///     {
 ///         static_assert(always_false_t<T>{}, "Cannot convert a Vector4d into template type T");
 ///     }
 ///
-template<typename T>
+template<class T>
 struct always_false_t : std::false_type {};
 
 /// Compile-time check whether two types are both signed / both unsigned.
@@ -355,7 +410,7 @@ struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T
         struct Derived : T, Fallback {};                                              \
         template<class U>                                                             \
         static No& test(decltype(U::member)*);                                        \
-        template<typename U>                                                          \
+        template<class U>                                                             \
         static Yes& test(U*);                                                         \
                                                                                       \
     public:                                                                           \
@@ -377,7 +432,7 @@ struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T
         struct Derived : T, Fallback {};                                              \
         template<class U>                                                             \
         static No& test(typename U::Type*);                                           \
-        template<typename U>                                                          \
+        template<class U>                                                             \
         static Yes& test(U*);                                                         \
                                                                                       \
     public:                                                                           \
@@ -386,6 +441,20 @@ struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T
                                                                                       \
     template<class T>                                                                 \
     struct has_member_type_##Type : public std::integral_constant<bool, _HasMemberType_##Type<T>::RESULT> {}
+
+/// Is only a valid expression if the given type exists.
+/// Can be used to check whether a template type has a certain nested type:
+///
+///     template <typename T, typename = void>
+///     constexpr bool has_my_type = false;
+///     template <typename T>
+///     constexpr bool has_my_type<T, decltype(check_type<typename T::has_my_type>(), void())> = true;
+///
+template<class T>
+constexpr void check_type()
+{
+    static_cast<void>(typeid(T));
+}
 
 // ================================================================================================================== //
 
@@ -403,14 +472,14 @@ constexpr void _notf_is_constexpr_helper(T&&)
 
 /// Constexpr to use an enum class value as a numeric value.
 /// From "Effective Modern C++ by Scott Mayers': Item #10.
-template<typename Enum, typename = std::enable_if_t<std::is_enum<Enum>::value>>
+template<class Enum, class = std::enable_if_t<std::is_enum<Enum>::value>>
 constexpr auto to_number(Enum enumerator) noexcept
 {
     return static_cast<std::underlying_type_t<Enum>>(enumerator);
 }
 
 /// Converts any pointer to the equivalent integer representation.
-template<typename T, typename = std::enable_if_t<std::is_pointer<T>::value>>
+template<class T, class = std::enable_if_t<std::is_pointer<T>::value>>
 constexpr std::uintptr_t to_number(const T ptr) noexcept
 {
     return reinterpret_cast<std::uintptr_t>(ptr);
@@ -444,7 +513,7 @@ constexpr bool is_debug_build() noexcept { return false; }
 namespace detail {
 
 /// Simple `new` forward to allow the creation of an instance from a protected or private constructor.
-template<typename T, typename... Args>
+template<class T, class... Args>
 inline T* make_new_enabler(Args&&... args)
 {
     return new T(std::forward<Args>(args)...);
@@ -453,9 +522,9 @@ inline T* make_new_enabler(Args&&... args)
 /// Helper struct to allow `std::make_shared` to work with protected or private constructors.
 /// from:
 ///     https://stackoverflow.com/a/8147213 and https://stackoverflow.com/a/25069711
-template<typename T>
+template<class T>
 struct make_shared_enabler : public T {
-    template<typename... Args>
+    template<class... Args>
     make_shared_enabler(Args&&... args) : T(std::forward<Args>(args)...)
     {}
 };
@@ -464,9 +533,9 @@ struct make_shared_enabler : public T {
 
 /// Put into the class body to allow the use of NOTF_MAKE_SHARED_FROM_PRIVATE
 #define NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE           \
-    template<typename _T, typename... _Args>         \
+    template<class _T, class... _Args>               \
     friend _T* detail::make_new_enabler(_Args&&...); \
-    template<typename>                               \
+    template<class>                                  \
     friend struct detail::make_shared_enabler
 
 /// I found that debugging a `detail::make_shared_enable<T>` instance is not as reliable (members seem to be missing?)
@@ -480,6 +549,8 @@ struct make_shared_enabler : public T {
 #define NOTF_MAKE_UNIQUE_FROM_PRIVATE(T, ...) std::make_unique<detail::make_shared_enabler<T>>(__VA_ARGS__)
 #endif
 
+// ================================================================================================================== //
+
 /// Explicitly instantiate T using aggreate initialization.
 /// Useful with `make_unique`, for example, whenever the aggregate constructor would not be able to be deduced
 /// automatically. Usage:
@@ -489,6 +560,139 @@ struct aggregate_adapter : public T {
     template<class... Args>
     aggregate_adapter(Args&&... args) : T{std::forward<Args>(args)...}
     {}
+};
+
+// ================================================================================================================== //
+
+// TODO: replace old NOTF_ALLOW_MAKE_SMART_FROM_PRIVATE with new and fancier NOTF_CREATE_SMART_FACTORIES
+
+namespace detail {
+template<class T>
+struct MakeSharedAllocator : std::allocator<T> {
+
+    template<class... Args>
+    void construct(void* p, Args&&... args)
+    {
+        ::new (p) T(std::forward<Args>(args)...);
+    }
+
+    void destroy(T* p) { p->~T(); }
+};
+} // namespace detail
+
+/// Creates two static factory methods inside a class to create an instance wrapped in a shared- or unique_ptr.
+/// Works with classes with private constructor.
+/// If you want to expose the factory methods, best create a public wrapper method with a concrete signature:
+///
+/// class Foo {
+///     NOTF_CREATE_SMART_FACTORIES(Foo);   // smart factories should be private
+///     Foo(int i);                         // private constructor
+/// public:
+///     static std::shared_ptr<Foo> create_shared(int i) { return _create_shared_Foo(i); }  // public factories
+///     static std::unique_ptr<Foo> create_unique(int i) { return _create_unique_Foo(i); }
+///
+/// };
+#define NOTF_CREATE_SMART_FACTORIES(X)                                                                       \
+    template<class... Args>                                                                                  \
+    static std::shared_ptr<X> NOTF_CONCAT(_create_shared_, X)(Args && ... args)                              \
+    {                                                                                                        \
+        return std::allocate_shared<X>(notf::detail::MakeSharedAllocator<X>(), std::forward<Args>(args)...); \
+    }                                                                                                        \
+    template<class... Args>                                                                                  \
+    static std::unique_ptr<X> NOTF_CONCAT(_create_unique_, X)(Args && ... args)                              \
+    {                                                                                                        \
+        return std::unique_ptr<X>(new X(std::forward<Args>(args)...));                                       \
+    }                                                                                                        \
+    friend notf::detail::MakeSharedAllocator<X>
+
+// ================================================================================================================== //
+
+/// Like sizeof, but a returns the size of the type in bits not bytes.
+template<class T>
+inline constexpr size_t bitsizeof()
+{
+    return sizeof(T) * CHAR_BIT;
+}
+
+// ================================================================================================================== //
+
+/// Helper struct to extract information about an unknown callable (like a lambda) at compile time.
+/// From https://stackoverflow.com/a/47699977
+/// Example:
+///
+///     auto lambda = [](const int& i) { return i == 1; };
+///     using ft = function_traits<decltype(lambda)>;
+///
+///     static_assert(ft::has_return_type<bool>());         // success
+///     static_assert(ft::has_arg_type<0, const int&>());   // success
+///     // static_assert(ft::has_arg_type<0, float>());     // fail
+///
+///     auto okay_other = [](const int&) { return true; };
+///     static_assert(ft::is_same<decltype(other)>());      // success
+///
+///     static_assert(ft::is_same<bool (&)(const int&)>()); // success
+///
+template<class Signature>
+class function_traits : public function_traits<decltype(&Signature::operator())> {
+    using impl_t = function_traits<decltype(&Signature::operator())>;
+
+public:
+    using return_type = typename impl_t::return_type;
+    using arg_tuple = typename impl_t::arg_tuple;
+    static constexpr auto arity = impl_t::arity;
+
+    template<class T>
+    static constexpr bool has_return_type()
+    {
+        return std::is_same_v<T, return_type>;
+    }
+
+    template<size_t index, class T>
+    static constexpr bool has_arg_type()
+    {
+        return std::is_same_v<T, std::tuple_element_t<index, arg_tuple>>;
+    }
+
+    template<class T, class Indices = std::make_index_sequence<arity>>
+    static constexpr bool is_same()
+    {
+        return all(function_traits<T>::arity == arity,                                    // same arity
+                   std::is_same_v<typename function_traits<T>::return_type, return_type>, // same return type
+                   _check_arg_types<T>(Indices{}));                                       // same argument types
+    }
+
+private:
+    template<class T, std::size_t index>
+    static constexpr bool _check_arg_type()
+    {
+        return std::is_same_v<typename function_traits<T>::template arg_type<index>,
+                              typename impl_t::template arg_type<index>>;
+    }
+    template<class T, std::size_t... i>
+    static constexpr bool _check_arg_types(std::index_sequence<i...>)
+    {
+        return (... && _check_arg_type<T, i>());
+    }
+};
+
+template<class class_t, class return_t, class... Args>
+struct function_traits<return_t (class_t::*)(Args...) const> {
+    using return_type = return_t;
+    using arg_tuple = std::tuple<Args...>;
+    static constexpr auto arity = sizeof...(Args);
+
+    template<size_t i>
+    using arg_type = std::tuple_element_t<i, arg_tuple>;
+};
+
+template<class return_t, class... Args>
+struct function_traits<return_t (&)(Args...)> {
+    using return_type = return_t;
+    using arg_tuple = std::tuple<Args...>;
+    static constexpr auto arity = sizeof...(Args);
+
+    template<size_t i>
+    using arg_type = std::tuple_element_t<i, arg_tuple>;
 };
 
 // ================================================================================================================== //

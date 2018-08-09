@@ -4,7 +4,7 @@
 #include <iostream>
 #include <thread>
 
-#include "app/timer_manager.hpp"
+#include "common/timer_pool.hpp"
 #include "testenv.hpp"
 
 NOTF_USING_NAMESPACE;

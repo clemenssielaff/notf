@@ -34,4 +34,4 @@ class TheGraphicsSystem;
 
 NOTF_CLOSE_NAMESPACE
 
-class GLFWwindow;
+struct GLFWwindow;

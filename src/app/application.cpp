@@ -5,7 +5,6 @@
 #include "app/event_manager.hpp"
 #include "app/glfw.hpp"
 #include "app/render_manager.hpp"
-#include "app/timer_manager.hpp"
 #include "app/window.hpp"
 #include "common/log.hpp"
 #include "common/resource_manager.hpp"
@@ -50,7 +49,6 @@ TheApplication::TheApplication(Args args)
     , m_thread_pool(std::make_unique<ThreadPool>())
     , m_render_manager(std::make_unique<RenderManager>())
     , m_event_manager(std::make_unique<EventManager>())
-    , m_timer_manager(std::make_unique<TimerManager>())
 {
     // install the log handler first, to catch errors right away
     install_log_message_handler(std::bind(&LogHandler::push_log, m_log_handler.get(), std::placeholders::_1));
@@ -74,14 +72,14 @@ TheApplication::TheApplication(Args args)
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-//    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-//    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-//    glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
-//    glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
-//    glfwWindowHint(GLFW_REFRESH_RATE, GLFW_DONT_CARE);
-//    glfwWindowHint(GLFW_CONTEXT_RELEASE_BEHAVIOR, GLFW_RELEASE_BEHAVIOR_NONE);
-//    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, is_debug_build() ? GLFW_TRUE : GLFW_FALSE);
-//    glfwWindowHint(GLFW_CONTEXT_NO_ERROR, is_debug_build() ? GLFW_FALSE : GLFW_TRUE);
+    //    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    //    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+    //    glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+    //    glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
+    //    glfwWindowHint(GLFW_REFRESH_RATE, GLFW_DONT_CARE);
+    //    glfwWindowHint(GLFW_CONTEXT_RELEASE_BEHAVIOR, GLFW_RELEASE_BEHAVIOR_NONE);
+    //    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, is_debug_build() ? GLFW_TRUE : GLFW_FALSE);
+    //    glfwWindowHint(GLFW_CONTEXT_NO_ERROR, is_debug_build() ? GLFW_FALSE : GLFW_TRUE);
 
     // create the shared window
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);

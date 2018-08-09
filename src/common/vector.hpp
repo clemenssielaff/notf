@@ -10,7 +10,7 @@ NOTF_OPEN_NAMESPACE
 
 /// Removes all occurences of 'element' from 'vector'.
 /// @return The number of removed items.
-template<typename T>
+template<class T>
 auto remove_all(std::vector<T>& vector, const T& element)
 {
     auto size_before = vector.size();
@@ -20,7 +20,7 @@ auto remove_all(std::vector<T>& vector, const T& element)
 
 /// Removes the first occurence of 'element' in 'vector'.
 /// @return  True, iff an element was removed.
-template<typename T>
+template<class T>
 bool remove_one_unordered(std::vector<T>& vector, const T& element)
 {
     auto it = std::find(vector.begin(), vector.end(), element);
@@ -58,26 +58,23 @@ std::vector<VALUE> values(const MAP<KEY, VALUE>& map)
     return result;
 }
 
-#ifndef NOTF_CPP17
 /// Syntax sugar for an `emplace_back(...)`, followed by a `back()` reference.
-/// Will be standard in C++17.
-template<typename T, typename... Args>
+template<class T, typename... Args>
 T& create_back(std::vector<T>& target, Args&&... args)
 {
     target.emplace_back(std::forward<Args>(args)...);
     return target.back();
 }
-#endif
 
 /// Extends a vector with another one of the same type.
 /// From https://stackoverflow.com/a/41079085
-template<typename T>
+template<class T>
 std::vector<T>& extend(std::vector<T>& vector, const std::vector<T>& extension)
 {
     vector.insert(std::end(vector), std::cbegin(extension), std::cend(extension));
     return vector;
 }
-template<typename T>
+template<class T>
 std::vector<T>& extend(std::vector<T>& vector, std::vector<T>&& extension)
 {
     if (vector.empty()) {
@@ -91,12 +88,12 @@ std::vector<T>& extend(std::vector<T>& vector, std::vector<T>&& extension)
 }
 
 /// Convenience function to get an iterator to an item at a given index in a vector. */
-template<typename T>
+template<class T>
 constexpr typename std::vector<T>::const_iterator iterator_at(const std::vector<T>& vector, size_t offset)
 {
     return std::next(vector.cbegin(), offset);
 }
-template<typename T>
+template<class T>
 constexpr typename std::vector<T>::iterator iterator_at(std::vector<T>& vector, size_t offset)
 {
     return std::next(vector.begin(), offset);
@@ -104,7 +101,7 @@ constexpr typename std::vector<T>::iterator iterator_at(std::vector<T>& vector, 
 
 /// Flattens a 2D nested vector into a single one.
 /// As seen on: http://stackoverflow.com/a/17299623
-template<typename T>
+template<class T>
 std::vector<T> flatten(const std::vector<std::vector<T>>& v)
 {
     std::size_t total_size = 0;
@@ -121,7 +118,7 @@ std::vector<T> flatten(const std::vector<std::vector<T>>& v)
 
 /// Takes and removes the last entry of a vector and returns it.
 /// @throws std::out_of_range exception if the vector is empty.
-template<typename T>
+template<class T>
 T take_back(std::vector<T>& v)
 {
     if (v.empty()) {
@@ -137,7 +134,7 @@ T take_back(std::vector<T>& v)
 /// @param value    Value to look for.
 /// @param result   [out] Will contain the index, if `value` was found in the vector.
 /// @returns        True, iff the value was found - false otherwise.
-template<typename T>
+template<class T>
 bool index_of(const std::vector<T>& vector, const T& value, size_t& result)
 {
     for (size_t i = 0, end = vector.size(); i < end; ++i) {
@@ -158,7 +155,7 @@ bool index_of(const std::vector<T>& vector, const T& value, size_t& result)
 ///
 /// @param vec  Vector to modify.
 /// @param it   Iterator to the element to move to the back.
-template<typename T>
+template<class T>
 inline void move_to_back(std::vector<T>& vec, typename std::vector<T>::iterator it)
 {
     std::rotate(it, std::next(it), vec.end());
@@ -173,7 +170,7 @@ inline void move_to_back(std::vector<T>& vec, typename std::vector<T>::iterator 
 ///
 /// @param vec  Vector to modify.
 /// @param it   Iterator to the element to move to the front.
-template<typename T>
+template<class T>
 inline void move_to_front(std::vector<T>& vec, typename std::vector<T>::iterator it)
 {
     std::rotate(vec.begin(), it, std::next(it));
@@ -183,7 +180,7 @@ inline void move_to_front(std::vector<T>& vec, typename std::vector<T>::iterator
 /// @param vec      Vector to modify.
 /// @param it       Iterator to the element to move.
 /// @param other    Element just to the right of `it` after this function has run.
-template<typename T>
+template<class T>
 inline void
 move_in_front_of(std::vector<T>& vec, typename std::vector<T>::iterator it, typename std::vector<T>::iterator other)
 {
@@ -202,7 +199,7 @@ move_in_front_of(std::vector<T>& vec, typename std::vector<T>::iterator it, type
 /// @param vec      Vector to modify.
 /// @param it       Iterator to the element to move.
 /// @param other    Element just to the left of `it` after this function has run.
-template<typename T>
+template<class T>
 inline void
 move_behind_of(std::vector<T>& vec, typename std::vector<T>::iterator it, typename std::vector<T>::iterator other)
 {
@@ -219,10 +216,32 @@ move_behind_of(std::vector<T>& vec, typename std::vector<T>::iterator it, typena
 
 /// Checks if a vector contains a given value.
 /// @param value    Value to search for.
-template<typename T>
+template<class T>
 bool contains(const std::vector<T>& vec, const T& value)
 {
     return std::find(vec.begin(), vec.end(), value) != vec.end();
+}
+
+/// Calls the given function on each valid element and removes the rest.
+/// @param vector           Vector to operate on.
+/// @param valid_condition  Condition that an element has to meet in order to be considered valid.
+/// @param functor          Function to call on each valid element.
+template<class T, class P, class F>
+void iterate_and_clean(std::vector<T>& vector, P&& valid_condition, F&& functor)
+{
+    size_t gap = 0;
+    for (size_t index = 0, end = vector.size(); index < end; ++index) {
+        if (valid_condition(vector[index])) {
+            functor(vector[index]);
+            if (gap != index) {
+                vector[gap] = std::move(vector[index]);
+            }
+            ++gap;
+        }
+    }
+    if (gap != vector.size()) {
+        vector.erase(iterator_at(vector, gap), vector.end());
+    }
 }
 
 NOTF_CLOSE_NAMESPACE

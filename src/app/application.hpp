@@ -172,9 +172,6 @@ public:
     /// The Application's Event Manager.
     EventManager& get_event_manager() { return *m_event_manager; }
 
-    /// The Application's Timer Manager.
-    TimerManager& get_timer_manager() { return *m_timer_manager; }
-
     /// Timepoint when the Application was started.
     static const timepoint_t& get_start_time() { return s_start_time; }
 
@@ -212,9 +209,6 @@ private:
 
     /// Event Manager singleton.
     EventManagerPtr m_event_manager;
-
-    /// Timer Manager.
-    TimerManagerPtr m_timer_manager;
 
     /// All Windows known the the Application.
     std::vector<WindowPtr> m_windows;

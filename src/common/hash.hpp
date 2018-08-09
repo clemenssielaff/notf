@@ -3,7 +3,6 @@
 #include <functional>
 
 #include "common/float.hpp"
-#include "utils/bitsizeof.hpp"
 
 NOTF_OPEN_NAMESPACE
 

@@ -7,7 +7,7 @@
 #include "app/node_property.hpp"
 #include "app/root_node.hpp"
 #include "app/scene.hpp"
-#include "app/timer_manager.hpp"
+#include "common/timer_pool.hpp"
 #include "app/widget/painter.hpp"
 #include "app/widget/widget_scene.hpp"
 #include "app/widget/widget_visualizer.hpp"
