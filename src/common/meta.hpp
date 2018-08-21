@@ -74,12 +74,18 @@
 /// Example:
 ///     NOTF_NODISCARD int guard() { ...
 ///     class NOTF_NODISCARD Guard { ...
+#if !defined NOTF_NODISCARD
 #if __has_cpp_attribute(nodiscard)
 #define NOTF_NODISCARD [[nodiscard]]
 #elif __has_cpp_attribute(gnu::warn_unused_result)
 #define NOTF_NODISCARD [[gnu::warn_unused_result]]
+#elif defined(_MSC_VER) && (_MSC_VER >= 1700)
+#define NOTF_NODISCARD _Check_return_
+#elif defined(__clang__) || defined(__GNUC__)
+#define NOTF_NODISCARD __attribute__((__warn_unused_result__))
 #else
 #define NOTF_NODISCARD
+#endif
 #endif
 
 /// Signifies that a value is (probably) unused and you don't want warnings about it.
@@ -94,7 +100,11 @@
 #endif
 
 /// Signifies that the function will not return control flow back to the caller.
+#if __has_cpp_attribute(noreturn)
 #define NOTF_NORETURN [[noreturn]]
+#else
+#define NOTF_NORETURN
+#endif
 
 /// Tells the compiler that a given statement is likely to be evaluated to true.
 #ifdef __GNUC__
