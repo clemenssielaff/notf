@@ -89,7 +89,7 @@ TheApplication::TheApplication(Args args)
     }
     TheGraphicsSystem::Access<TheApplication>::initialize(m_shared_window.get());
 
-    initialize_resource_types(*this); // TODO: general purpose callback to call init functions on Application start?
+    initialize_resource_types(*this);
 }
 
 TheApplication::~TheApplication() { _shutdown(); }

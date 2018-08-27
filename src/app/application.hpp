@@ -173,7 +173,7 @@ public:
     EventManager& get_event_manager() { return *m_event_manager; }
 
     /// Timepoint when the Application was started.
-    static const timepoint_t& get_start_time() { return s_start_time; }
+    static const timepoint_t& get_start_time() { return s_start_time; } // TODO: start time & age should be on TimerMg.
 
     /// Age of this Application instance.
     static duration_t get_age() { return clock_t::now() - s_start_time; }
