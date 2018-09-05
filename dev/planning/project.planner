@@ -55,7 +55,7 @@
         <day date="20180822" type="day-type" id="3"/>
         <day date="20181222" type="day-type" id="0"/>
         <day date="20181124" type="day-type" id="0"/>
-        <day date="20180827" type="day-type" id="3"/>
+        <day date="20181027" type="day-type" id="0"/>
         <day date="20180929" type="day-type" id="0"/>
         <day date="20180901" type="day-type" id="0"/>
         <day date="20181004" type="day-type" id="3"/>
@@ -80,7 +80,7 @@
         <day date="20180928" type="day-type" id="3"/>
         <day date="20180831" type="day-type" id="3"/>
         <day date="20180905" type="day-type" id="3"/>
-        <day date="20181027" type="day-type" id="0"/>
+        <day date="20180827" type="day-type" id="3"/>
         <day date="20181208" type="day-type" id="0"/>
       </days>
     </calendar>
@@ -98,7 +98,7 @@
   <tasks>
     <task id="1" name="Business Plan" note="" work="2073144" start="20180817T000000Z" end="20181022T121820Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
       <task id="2" name="Whitepaper" note="" work="1857149" start="20180817T000000Z" end="20181022T121820Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-        <task id="3" name="Create visual identity" note="" work="863980" start="20180818T090000Z" end="20181010T121000Z" work-start="20180818T090000Z" percent-complete="1" priority="0" type="normal" scheduling="fixed-work">
+        <task id="3" name="Create visual identity" note="" work="863980" start="20180818T090000Z" end="20181010T121000Z" work-start="20180818T090000Z" percent-complete="25" priority="0" type="normal" scheduling="fixed-work">
           <predecessors>
             <predecessor id="1" predecessor-id="4" type="FS"/>
           </predecessors>
@@ -129,7 +129,7 @@
     </task>
     <task id="11" name="v0.4.0" note="" work="3903877" start="20180817T000000Z" end="20190101T203500Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
       <task id="12" name="Application Layer" note="Everything that has to do with the application, scenes, threading and reactive" work="1527932" start="20180817T000000Z" end="20181026T164820Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-        <task id="13" name="Write Design" note="" work="318360" start="20180817T000000Z" end="20180901T223000Z" work-start="20180817T090000Z" percent-complete="62" priority="0" type="normal" scheduling="fixed-work"/>
+        <task id="13" name="Write Design" note="" work="318360" start="20180817T000000Z" end="20180901T223000Z" work-start="20180817T090000Z" percent-complete="69" priority="0" type="normal" scheduling="fixed-work"/>
         <task id="14" name="Reactive components" note="" work="431990" start="20180901T223000Z" end="20181004T213320Z" work-start="20180901T223000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
           <predecessors>
             <predecessor id="1" predecessor-id="13" type="FS"/>

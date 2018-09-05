@@ -14,7 +14,7 @@
    viewBox="0 0 1052.3622 744.09448"
    id="svg2"
    version="1.1"
-   inkscape:version="0.91 r13725"
+   inkscape:version="0.92.3 (2405546, 2018-03-11)"
    sodipodi:docname="notf_logo.svg"
    inkscape:export-filename="/home/clemens/notf_logo.png"
    inkscape:export-xdpi="100"
@@ -31,18 +31,18 @@
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
      inkscape:window-width="1920"
-     inkscape:window-height="1056"
+     inkscape:window-height="1025"
      id="namedview6"
      showgrid="false"
      fit-margin-top="5"
      fit-margin-left="5"
      fit-margin-right="5"
      fit-margin-bottom="5"
-     inkscape:zoom="0.89702955"
-     inkscape:cx="503.12468"
-     inkscape:cy="385.2356"
-     inkscape:window-x="0"
-     inkscape:window-y="24"
+     inkscape:zoom="1.2685914"
+     inkscape:cx="544.2063"
+     inkscape:cy="362.47253"
+     inkscape:window-x="1920"
+     inkscape:window-y="27"
      inkscape:window-maximized="1"
      inkscape:current-layer="svg2"
      inkscape:showpageshadow="false"
@@ -57,7 +57,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -103,28 +103,27 @@
   </g>
   <text
      xml:space="preserve"
-     style="font-style:normal;font-weight:normal;font-size:286.68270874px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-     x="271.3053"
-     y="535.86096"
-     id="text3296"
-     sodipodi:linespacing="125%"><tspan
+     style="font-style:normal;font-weight:normal;line-height:0%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     x="318.1803"
+     y="539.61096"
+     id="text3296"><tspan
        sodipodi:role="line"
        id="tspan3298"
-       x="271.3053"
-       y="535.86096"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:29.56415558px;font-family:Bevan;-inkscape-font-specification:Bevan">User Interface Engine</tspan></text>
+       x="318.1803"
+       y="539.61096"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:29.56415558px;line-height:1.25;font-family:Bevan;-inkscape-font-specification:Bevan">Application Engine</tspan></text>
   <text
      xml:space="preserve"
-     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:16.98828506px;line-height:125%;font-family:'DejaVu Sans Mono';-inkscape-font-specification:'DejaVu Sans Mono Bold';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-     x="259.57974"
-     y="-819.78363"
+     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:0%;font-family:'DejaVu Sans Mono';-inkscape-font-specification:'DejaVu Sans Mono Bold';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     x="265.58633"
+     y="-822.88586"
      id="text3325"
-     sodipodi:linespacing="125%"
-     transform="matrix(0.11103105,0.99381694,-0.99381694,0.11103105,0,0)"
+     transform="rotate(83.625246)"
      inkscape:transform-center-x="-11.251053"
      inkscape:transform-center-y="47.859815"><tspan
        sodipodi:role="line"
        id="tspan3327"
-       x="259.57974"
-       y="-819.78363">notf.rocks</tspan></text>
+       x="265.58633"
+       y="-822.88586"
+       style="font-size:16.98828506px;line-height:1.25">notf.app</tspan></text>
 </svg>
