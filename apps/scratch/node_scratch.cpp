@@ -5,7 +5,7 @@ using namespace std;
 
 int main()
 {
-    std::cout << NOTF_VERSION_STRING << std::endl;
+    std::cout << NOTF_BUILT_COMMIT << (NOTF_BUILT_COMMIT_WAS_MODIFIED ? " (modified)" : "") << std::endl;
     return 0;
 }
 
