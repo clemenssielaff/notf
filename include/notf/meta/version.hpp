@@ -6,20 +6,20 @@
 
 NOTF_OPEN_META_NAMESPACE
 
-// ================================================================================================================== //
+// version ========================================================================================================== //
 
-struct version {
+struct Version {
     /// Equality operator
-    constexpr bool operator==(const version& other) const noexcept { return to_number() == other.to_number(); }
-    constexpr bool operator!=(const version& other) const noexcept { return !operator==(other); }
+    constexpr bool operator==(const Version& other) const noexcept { return to_number() == other.to_number(); }
+    constexpr bool operator!=(const Version& other) const noexcept { return !operator==(other); }
 
     /// Lesser-than operator
-    constexpr bool operator<(const version& other) const noexcept { return to_number() < other.to_number(); }
-    constexpr bool operator<=(const version& other) const noexcept { return operator<(other) || operator==(other); }
+    constexpr bool operator<(const Version& other) const noexcept { return to_number() < other.to_number(); }
+    constexpr bool operator<=(const Version& other) const noexcept { return operator<(other) || operator==(other); }
 
     /// Greater-than operator
-    constexpr bool operator>(const version& other) const noexcept { return to_number() > other.to_number(); }
-    constexpr bool operator>=(const version& other) const noexcept { return operator>(other) || operator==(other); }
+    constexpr bool operator>(const Version& other) const noexcept { return to_number() > other.to_number(); }
+    constexpr bool operator>=(const Version& other) const noexcept { return operator>(other) || operator==(other); }
 
     /// Combines this version into a single 64-bit wide unsigned integer.
     constexpr uint64_t to_number() const noexcept
@@ -35,6 +35,6 @@ struct version {
 };
 
 /// Version of this notf code base.
-inline constexpr version get_notf_version() noexcept { return {NOTF_VERSION_MAJOR, NOTF_VERSION_MINOR, 0}; }
+inline constexpr Version get_notf_version() noexcept { return {NOTF_VERSION_MAJOR, NOTF_VERSION_MINOR, 0}; }
 
 NOTF_CLOSE_META_NAMESPACE

@@ -2,7 +2,7 @@
 
 #include "./config.hpp"
 
-// ================================================================================================================== //
+// meta namespace =================================================================================================== //
 
 /// Name of the meta namespace
 #define NOTF_META_NAMESPACE_NAME meta
@@ -15,3 +15,10 @@
 
 /// Use the versioned namespace.
 #define NOTF_USING_META_NAMESPACE using namespace NOTF_NAMESPACE_NAME::NOTF_META_NAMESPACE_NAME
+
+// short unsigned integer names ===================================================================================== //
+
+using uchar = unsigned char;
+using ushort = unsigned short;
+using uint = unsigned int;
+using ulong = unsigned long;
