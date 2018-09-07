@@ -1,3 +1,6 @@
 CMakeFiles/
 build/
 CMakeLists.txt.user
+
+# auto-generated files
+include/notf/meta/config.hpp

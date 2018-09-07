@@ -1,6 +1,6 @@
-# require at least CMake 3.1
+# require at least CMake 3.9 to support Interprocedural Optimization IPO
 # conditional copied from https://cliutils.gitlab.io/modern-cmake/chapters/basics.html
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.8)
 if(${CMAKE_VERSION} VERSION_LESS 3.12)
     cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
 else()
@@ -10,15 +10,16 @@ endif()
 # PROJECT ##############################################################################################################
 
 # top-level project
-project(notf    
-    VERSION 0.4
+project(notf
+    VERSION 0.4.0.0
     DESCRIPTION "Reactive & Lightweight UI Application Engine in C++/Python"
     LANGUAGES CXX
 )
 
-# use c++ 17
+# use plain c++ 17
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # hide symbols by default
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
@@ -63,21 +64,48 @@ if(COMMAND cmake_policy)
     endif()
 endif()
 
+# store information about the current git revision
+find_package(Git QUIET)
+if(${GIT_FOUND})
+    execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+                    OUTPUT_VARIABLE NOTF_BUILT_COMMIT
+                    ERROR_QUIET
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${GIT_EXECUTABLE} diff --quiet
+                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+                    RESULT_VARIABLE NOTF_BUILT_COMMIT_WAS_MODIFIED
+                    ERROR_QUIET
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+endif()
+
 # CODE INTEGRATION #####################################################################################################
+
+# these variables will be defined in notf/meta/config.hpp
+set(NOTF_VERSION_STRING ${PROJECT_VERSION})
 
 configure_file (
     "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp.in"
-    "${PROJECT_BINARY_DIR}/include/notf/meta/config.hpp"
+    "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp"
 )
+
+# UTILITY MACROS #######################################################################################################
+
+# utility macro to add source files in a common subdirectory
+macro(add_sources source_list base_path)
+    foreach(file ${ARGN})
+        list(APPEND ${source_list} ${base_path}/${file})
+    endforeach()
+endmacro()
 
 # CONFIGURATION ########################################################################################################
 
-
-option(NOTF_BUILD_APP "Build application" ON)
+# build and run the tests
 option(NOTF_BUILD_TESTS "Build tests" OFF)
-
-
-
+if(${NOTF_BUILD_TESTS})
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 
 # pretty (long) function names
 option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
@@ -98,40 +126,9 @@ if(${NOTF_THREAD_SANITIZATION})
     endif()
 endif()
 
-# MACROS ###############################################################################################################
+# SUB-PROJECTS #########################################################################################################
 
-# utility macro to add source files in a common subdirectory
-macro(add_sources source_list base_path)
-    foreach(file ${ARGN})
-        list(APPEND ${source_list} ${base_path}/${file})
-    endforeach()
-endmacro()
-
-# SCRATCH ##############################################################################################################
-
-add_sources(scratch_files apps/scratch
-    node_scratch.cpp
-)
-add_sources(scratch_files include/notf
-    meta/config.hpp
-    meta/dll.hpp
-    meta/meta.hpp
-    meta/numeric.hpp
-    meta/typestring.hpp
-    meta/version.hpp
-)
-
-add_executable(notf-scratch
-    ${scratch_files}
-)
-
-target_include_directories(notf-scratch PUBLIC
-    include/
-)
-
-target_link_libraries(notf-scratch PUBLIC
-    ${CMAKE_THREAD_LIBS_INIT}
-)
+add_subdirectory(apps)
 
 ########################################################################################################################
 
