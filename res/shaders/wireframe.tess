@@ -1,0 +1,31 @@
+#version 320 es
+
+precision highp float;
+
+layout (vertices = 3) out;
+
+#define ID gl_InvocationID
+
+in VertexData {
+    vec2 position;
+} v_in[];
+
+out VertexData {
+    vec2 position;
+} v_out[];
+
+void main(){
+    if (gl_InvocationID == 0){
+        gl_TessLevelInner[0] = 4.0;
+//        gl_TessLevelInner[1] = 2.0;
+
+        gl_TessLevelOuter[0] = 4.0;
+        gl_TessLevelOuter[1] = 2.0;
+        gl_TessLevelOuter[2] = 2.0;
+//        gl_TessLevelOuter[3] = 2.0;
+    }
+
+    gl_out[ID].gl_Position = gl_in[ID].gl_Position;
+
+    v_out[ID].position = v_in[ID].position;
+}
