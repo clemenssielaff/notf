@@ -6481,7 +6481,7 @@ namespace detail {
         template<typename T>
         auto operator|( T const &other ) const -> Parser;
 
-		template<typename T>
+        template<typename T>
         auto operator+( T const &other ) const -> Parser;
     };
 
@@ -13560,7 +13560,6 @@ namespace Catch {
 
     void XmlReporter::testGroupEnded( TestGroupStats const& testGroupStats ) {
         StreamingReporterBase::testGroupEnded( testGroupStats );
-        // TODO: Check testGroupStats.aborting and act accordingly.
         m_xml.scopedElement( "OverallResults" )
             .writeAttribute( "successes", testGroupStats.totals.assertions.passed )
             .writeAttribute( "failures", testGroupStats.totals.assertions.failed )

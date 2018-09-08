@@ -27,31 +27,36 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
 # define notf's debug flag when compiling a debug build
 if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
+    message(STATUS ">>> notf: Building in debug mode")
     add_definitions(-DNOTF_DEBUG)
 endif()
 
 # use link-time optimization if available
 if(CMAKE_BUILD_TYPE MATCHES "Release")
+    message(STATUS ">>> notf: Building in release mode")
+
     include(CheckIPOSupported)
     check_ipo_supported(RESULT IS_LTO_SUPPORTED OUTPUT LTO_ERROR)
 
     if(${IS_LTO_SUPPORTED})
-#        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-#            set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
-#        endif()
-        message(STATUS "Building with LTO enabled")
+        message(STATUS ">>> notf: Building with LTO")
         set_property(GLOBAL PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     else()
-        message(STATUS "Building without LTO:\n${LTO_ERROR}")
+        message(STATUS ">>> notf:Building without LTO:\n${LTO_ERROR}")
     endif()
 endif()
 
+# use lld for clang builds
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    message(STATUS ">>> notf: Linking with lld ")
+    set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
+endif()
+
 # use ccache if available
-find_program(CCACHE_FOUND ccache)
-if(${CCACHE_FOUND})
-    message(STATUS "Using ccache")
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    message(STATUS ">>> notf: Using ccache")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE_PROGRAM})
 endif()
 
 # apply modern policies
@@ -64,7 +69,9 @@ if(COMMAND cmake_policy)
     endif()
 endif()
 
-# store information about the current git revision TODO: those should run before each compilation
+# store information about the current git revision
+# note that this only displays the revision and modification state at the time that CMake is last run - not every time
+# that the source is built
 find_package(Git QUIET)
 if(${GIT_FOUND})
     execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
@@ -101,29 +108,29 @@ endmacro()
 # CONFIGURATION ########################################################################################################
 
 # build and run the tests
-option(NOTF_BUILD_TESTS "Build tests" OFF)
-if(${NOTF_BUILD_TESTS})
-    message(STATUS "Building the tests")
-    enable_testing()
-    add_subdirectory(tests)
+if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
+    option(NOTF_BUILD_TESTS "Build tests" ON)
+    if(${NOTF_BUILD_TESTS})
+        message(STATUS ">>> notf: Building tests")
+        enable_testing()
+        add_subdirectory(tests)
+    endif()
 endif()
 
 # pretty (long) function names
 option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
 if(${NOTF_LOG_PRETTY_FUNCTION})
+    message(STATUS ">>> notf: Using long function names")
     add_definitions(-DNOTF_LOG_PRETTY_FUNCTION)
 endif()
 
 # thread sanitization
-option(NOTF_THREAD_SANITIZATION "Enable thread sanitization" OFF)
-if(${NOTF_THREAD_SANITIZATION})
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    option(NOTF_THREAD_SANITIZATION "Enable thread sanitization" OFF)
+    if(${NOTF_THREAD_SANITIZATION})
         add_compile_options("-fsanitize=thread")
         link_libraries("-fsanitize=thread")
-        message(STATUS "Building using thread sanitization")
-    else()
-        set(NOTF_THREAD_SANITIZATION OFF)
-        message(AUTHOR_WARNING "Thread sanitization is only supported for build using Clang")
+        message(STATUS ">>> notf: Building using thread sanitization")
     endif()
 endif()
 
