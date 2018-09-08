@@ -103,6 +103,7 @@ endmacro()
 # build and run the tests
 option(NOTF_BUILD_TESTS "Build tests" OFF)
 if(${NOTF_BUILD_TESTS})
+    message(STATUS "Building the tests")
     enable_testing()
     add_subdirectory(tests)
 endif()
@@ -127,6 +128,11 @@ if(${NOTF_THREAD_SANITIZATION})
 endif()
 
 # SUB-PROJECTS #########################################################################################################
+
+# discover all notf header files for use in subprojects
+file(GLOB_RECURSE NOTF_HEADERS
+    "include/notf/*.hpp"
+)
 
 add_subdirectory(apps)
 

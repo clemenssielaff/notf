@@ -1,7 +1,8 @@
 #include "catch.hpp"
 
-#include "utils/type_name.hpp"
-using namespace notf;
+#include "notf/meta/typename.hpp"
+
+NOTF_USING_META_NAMESPACE;
 
 class TestClass75 {};
 
