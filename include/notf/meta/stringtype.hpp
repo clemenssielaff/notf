@@ -34,6 +34,8 @@ public:
     /// Returns the numbers of letters in the TypeString without the closing null.
     static constexpr std::size_t get_size() noexcept { return sizeof...(Cs); }
 
+    constexpr const char* c_str() const noexcept { return s_text; }
+
     /// Tests if two TypeStrings are the same..
     template<class Other, typename Indices = std::make_index_sequence<min(get_size(), Other::get_size())>>
     static constexpr bool is_same() noexcept
@@ -54,13 +56,13 @@ private:
     template<class Other, std::size_t... I>
     static constexpr bool _is_same_impl(std::index_sequence<I...>) noexcept
     {
-        return ((value[I] == Other::value[I]) && ...);
+        return ((s_text[I] == Other::c_str[I]) && ...);
     }
 
     // members ------------------------------------------------------------------------------------------------------ //
-public:
+private:
     /// C-string compile-time access to the characters passed as template arguments.
-    static inline constexpr char const value[sizeof...(Cs) + 1] = {Cs..., '\0'};
+    static inline constexpr char const s_text[sizeof...(Cs) + 1] = {Cs..., '\0'};
 };
 
 namespace detail {
@@ -113,6 +115,19 @@ constexpr auto make_string_type()
 {
     return detail::number_to_string_type<number>(std::make_index_sequence<count_digits(number)>{});
 }
+
+/// Helper typdef for defining a StringType with a *constexpr* value.
+/// Example:
+///
+///     constexpr StringConst example_string = "example";
+///     constexpr size_t example_number = 123;
+///     using example_string_t = make_string_type_t<example_string>;    // works
+///     using example_number_t = make_string_type_t<example_number>;    // works
+///     // using example_string_t = make_string_type_t<"example">;      // does not work
+///     // using example_number_t = make_string_type_t<123>;            // does not work
+///
+template<const auto& arg>
+using make_string_type_t = decltype(make_string_type<arg>());
 
 /// Concatenates multiple StringTypes into a single new one.
 template<class... Ts>
