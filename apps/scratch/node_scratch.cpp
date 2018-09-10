@@ -140,7 +140,9 @@ int main()
     using TestNode = TypedNode<NodeTraitExample>;
     TestNode node;
 
-    std::cout << make_string_type<string_literal::pos>().c_str() << std::endl;
+    static_assert (StringConst("ABCDEFG").get_hash() != 0);
+    std::cout << StringConst("position").get_hash() << std::endl;
+    std::cout << StringConst("pasition").get_hash() << std::endl;
 
     return 0;
 }

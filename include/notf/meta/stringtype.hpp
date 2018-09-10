@@ -1,6 +1,6 @@
 #pragma once
 
-#include "./numeric.hpp"
+#include "./hash.hpp"
 
 NOTF_OPEN_META_NAMESPACE
 
@@ -18,6 +18,21 @@ struct StringConst {
     constexpr std::size_t get_size() const noexcept { return m_size; }
 
     constexpr const char* c_str() const noexcept { return m_text; }
+
+    constexpr size_t get_hash() const noexcept
+    {
+        size_t result = NOTF_CONSTEXPR_SEED;
+        for (size_t i = 0; i < m_size; ++i) {
+            // batch the characters up into a size_t value, so we can use hash_mix on it
+            size_t batch = 0;
+            for (size_t j = 0; i < m_size && j < sizeof(size_t) / sizeof(char); ++j, ++i) {
+                batch |= static_cast<uchar>(m_text[i]);
+                batch = batch << bitsizeof<char>();
+            }
+            hash_combine(result, hash_mix(batch));
+        }
+        return result;
+    }
 
 private:
     const char* const m_text;

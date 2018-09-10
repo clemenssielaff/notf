@@ -1,80 +1,79 @@
 #pragma once
 
-#include <cfloat>
+#include <cmath>
 
-#include <functional>
+#include "./numeric.hpp"
 
-#include "common/exception.hpp"
-#include "common/numeric.hpp"
-
-NOTF_OPEN_NAMESPACE
-
-namespace detail {
-
-constexpr long double PI = 3.141592653589793238462643383279502884197169399375105820975l;
-constexpr long double KAPPA = 0.552284749830793398402251632279597438092895833835930764235l;
-
-} // namespace detail
+NOTF_OPEN_META_NAMESPACE
 
 // constants ======================================================================================================== //
 
+/// Pi
 template<class T = long double>
-constexpr T pi()
+constexpr T pi() noexcept
 {
-    return static_cast<T>(detail::PI);
+    return static_cast<T>(3.141592653589793238462643383279502884197169399375105820975l);
 }
 
 /// Length of a bezier control vector to draw a circle with radius 1.
 template<class T = long double>
-constexpr T kappa()
+constexpr T kappa() noexcept
 {
-    return static_cast<T>(detail::KAPPA);
+    return static_cast<T>(0.552284749830793398402251632279597438092895833835930764235l);
+}
+
+/// The golden ratio, approx (sqrt(5) + 1) / 2).
+template<class T = long double>
+constexpr T phi() noexcept
+{
+    return static_cast<T>(1.618033988749894848204586834365638117720309179805762862135l);
 }
 
 // operations ======================================================================================================= //
 
-using std::atan2;
+using std::sin;
 using std::cos;
+using std::tan;
+using std::atan2;
 using std::fmod;
 using std::roundf;
-using std::sin;
 using std::sqrt;
-using std::tan;
+using std::pow;
 
 /// Tests whether a given value is NAN.
 template<class T>
-inline std::enable_if_t<std::is_floating_point<T>::value, bool> is_nan(const T& value)
+std::enable_if_t<std::is_floating_point<T>::value, bool> is_nan(const T value) noexcept
 {
-    return std::isnan(value);
+    return value != value;
 }
 template<class T>
-inline constexpr std::enable_if_t<std::is_integral<T>::value, bool> is_nan(const T&)
+constexpr std::enable_if_t<std::is_integral<T>::value, bool> is_nan(const T) noexcept
 {
     return false;
 }
 
 /// Tests whether a given value is INFINITY.
 template<class T>
-inline std::enable_if_t<std::is_floating_point<T>::value, bool> is_inf(const T& value)
+constexpr std::enable_if_t<std::is_floating_point<T>::value, bool> is_inf(const T value)
 {
     return std::isinf(value);
 }
 template<class T>
-inline constexpr std::enable_if_t<std::is_integral<T>::value, bool> is_inf(const T&)
+constexpr std::enable_if_t<std::is_integral<T>::value, bool> is_inf(const T)
 {
     return false;
 }
 
 /// Tests whether a given value is a valid float value (not NAN, not INFINITY).
 template<class T, typename = std::enable_if_t<std::is_floating_point<T>::value>>
-inline bool is_real(const T value)
+constexpr bool is_real(const T value)
 {
     return !is_nan(value) && !is_inf(value);
 }
 
 /// Tests whether a given value is (almost) zero.
 template<class T>
-inline bool is_zero(const T value, const T epsilon = precision_high<T>())
+constexpr bool is_zero(const T value, const T epsilon = precision_high<T>()) noexcept
 {
     return abs(value) < epsilon;
 }
@@ -82,7 +81,7 @@ inline bool is_zero(const T value, const T epsilon = precision_high<T>())
 /// Tests, if a value is positive or negative.
 /// @return  -1 if the value is negative, 1 if it is zero or above.
 template<class T>
-inline T sign(const T value)
+constexpr T sign(const T value)
 {
     return std::signbit(value) ? -1 : 1;
 }
@@ -90,7 +89,7 @@ inline T sign(const T value)
 /// Save asin calculation.
 /// @param value     Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to asin.
 template<class T>
-inline T asin(const T value)
+constexpr T asin(const T value)
 {
     return std::asin(clamp(value, -1, 1));
 }
@@ -98,44 +97,31 @@ inline T asin(const T value)
 /// Save acos calculation.
 /// @param value     Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to asin.
 template<class T>
-inline T acos(const T value)
+constexpr T acos(const T value)
 {
     return std::acos(clamp(value, -1, 1));
 }
 
 /// Degree to Radians.
 template<class T>
-inline T deg_to_rad(const T degrees)
+constexpr T deg_to_rad(const T degrees) noexcept
 {
-    return degrees * static_cast<T>(detail::PI / 180.l);
+    return degrees * static_cast<T>(pi() / 180.l);
 }
 
 /// Degree to Radians.
 template<class T>
-inline T rad_to_deg(const T radians)
+constexpr T rad_to_deg(const T radians) noexcept
 {
-    return radians * static_cast<T>(180.l / detail::PI);
+    return radians * static_cast<T>(180.l / pi());
 }
 
 /// Normalize Radians to a value within [-pi, pi].
 template<class T>
 inline T norm_angle(const T alpha)
 {
-    if (!is_real(alpha)) {
-        NOTF_THROW(logic_error, "Cannot normalize an invalid number");
-    }
-    const T modulo = fmod(alpha, static_cast<T>(detail::PI * 2));
-    return static_cast<T>(modulo >= 0 ? modulo : (detail::PI * 2) + modulo);
-}
-
-/// Save division, throws a std::logic_error if the divisor is 0.
-template<class L, class R, typename T = std::common_type_t<L, R>>
-inline T save_div(const L divident, const R divisor)
-{
-    if (divisor == 0) {
-        NOTF_THROW(logic_error, "Division by zero");
-    }
-    return divident / divisor;
+    const T modulo = fmod(alpha, static_cast<T>(pi() * 2));
+    return static_cast<T>(modulo >= 0 ? modulo : (pi() * 2) + modulo);
 }
 
 // approx =========================================================================================================== //
@@ -170,4 +156,4 @@ bool is_approx(const L lhs, const R rhs, const T epsilon = precision_high<T>())
     return false;
 }
 
-NOTF_CLOSE_NAMESPACE
+NOTF_CLOSE_META_NAMESPACE

@@ -2,32 +2,27 @@
 
 #include <functional>
 
-#include "common/float.hpp"
+#include "./real.hpp"
+#include "./system.hpp"
 
-NOTF_OPEN_NAMESPACE
+NOTF_OPEN_META_NAMESPACE
 
 namespace detail {
 
 /// Changing this value will cause new hashes of the same value (calculated with notf::hash) to differ.
 /// This way, we can differentiate between hashes of the same value that were generated with different versions of NoTF.
-constexpr size_t version_hash() { return 0; }
+constexpr inline size_t version_hash() noexcept { return NOTF_VERSION_MAJOR; }
 
-/// Additional value for different semantic types to hash with.
-/// Otherwise a Vector4f and a Color value with the same components would produce the same hash.
-enum class HashID : size_t {
-    VECTOR,
-    MATRIX,
-    AABR,
-    PADDING,
-    SIZE,
-    COLOR,
-    SEGMENT,
-    BEZIER,
-    CIRCLE,
-    TRIANGLE,
-    POLYGON,
-    // ALWAYS APPEND AT THE END - IF YOU CHANGE EXISTING ENUM VALUES, STORED HASHES WILL NO LONGER MATCH
-};
+/// see http://stackoverflow.com/a/4948967
+template<class T>
+constexpr size_t magic_hash_number()
+{
+    long double result = 2.l;
+    for (size_t i = 1; i < bitsizeof<T>(); ++i) {
+        result *= 2.l;
+    }
+    return static_cast<size_t>(result / phi());
+}
 
 } // namespace detail
 
@@ -35,21 +30,26 @@ enum class HashID : size_t {
 
 /// Buils a hash value from hashing all passed data types in sequence and combining their hashes.
 /// Similar to boost::hash_combine but adaptive to the system's hash value type.
-inline void hash_combine(std::size_t&) {}
+constexpr inline void hash_combine(std::size_t&) noexcept {}
 
 template<typename T, typename... Rest>
-inline void hash_combine(std::size_t& seed, const T& v, Rest&&... rest)
+constexpr void hash_combine(std::size_t& seed, const T& v, Rest&&... rest) noexcept
 {
-    // see http://stackoverflow.com/a/4948967 for an explanation of the magic number
-    static const size_t magic_number = static_cast<size_t>(powl(2.l, static_cast<double>(bitsizeof<size_t>())) / ((sqrtl(5.l) + 1) / 2));
-    seed ^= std::hash<T>{}(v) + magic_number + (seed << 6) + (seed >> 2);
+    constexpr size_t magic_number = detail::magic_hash_number<size_t>();
+    if constexpr (std::is_integral_v<T>) {
+        // integral values are mapped on themselves at compile time, saving us a non-constexpr call to std::hash
+        seed ^= v + magic_number + (seed << 6) + (seed >> 2);
+    }
+    else {
+        seed ^= std::hash<T>{}(v) + magic_number + (seed << 6) + (seed >> 2);
+    }
     hash_combine(seed, std::forward<Rest>(rest)...);
 }
 
 /// Calculates the combined hash of 0-n supplied values.
 /// All passed values must be hashable using std::hash.
 template<typename... Values>
-inline size_t hash(Values&&... values)
+constexpr size_t hash(Values&&... values) noexcept
 {
     std::size_t result = detail::version_hash();
     hash_combine(result, std::forward<Values>(values)...);
@@ -60,7 +60,7 @@ inline size_t hash(Values&&... values)
 ///     https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp
 ///
 /// Use this to improve a hash function with a low entropy (like a counter).
-constexpr inline size_t hash_mix(uint key)
+constexpr inline size_t hash_mix(uint key) noexcept
 {
     key ^= key >> 16;
     key *= 0x85ebca6b;
@@ -76,7 +76,7 @@ constexpr inline size_t hash_mix(uint key)
 ///     https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp
 ///
 /// Use this to improve a hash function with a low entropy (like a counter).
-constexpr inline size_t hash_mix(size_t key)
+constexpr inline size_t hash_mix(size_t key) noexcept
 {
     key ^= (key >> 30);
     key *= 0xbf58476d1ce4e5b9;
@@ -86,4 +86,4 @@ constexpr inline size_t hash_mix(size_t key)
     return key;
 }
 
-NOTF_CLOSE_NAMESPACE
+NOTF_CLOSE_META_NAMESPACE

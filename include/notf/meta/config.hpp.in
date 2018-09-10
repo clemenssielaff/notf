@@ -32,3 +32,11 @@
 
 /// Use the notf namespace.
 #define NOTF_USING_NAMESPACE using namespace NOTF_NAMESPACE_NAME
+
+// notf constants =================================================================================================== //
+
+/// Seed value used for all hashing at compile time.
+/// Although it is highly unlikely to have a hash collision, it is still possible that (for example) two property names
+/// produce the same hash value. Since this would cause the built to fail, you can manually set this seed value to
+/// anything != 0 (the default) and try again. Chances are, you'll get lucky on your second try.
+#define NOTF_CONSTEXPR_SEED 0

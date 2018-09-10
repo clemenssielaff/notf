@@ -35,6 +35,9 @@ struct Version {
 };
 
 /// Version of this notf code base.
-inline constexpr Version get_notf_version() noexcept { return {NOTF_VERSION_MAJOR, NOTF_VERSION_MINOR, 0}; }
+inline constexpr Version get_notf_version() noexcept
+{
+    return {NOTF_VERSION_MAJOR, NOTF_VERSION_MINOR, NOTF_VERSION_PATCH};
+}
 
 NOTF_CLOSE_META_NAMESPACE
