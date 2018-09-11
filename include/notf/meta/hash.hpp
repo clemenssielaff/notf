@@ -28,34 +28,6 @@ constexpr size_t magic_hash_number()
 
 // ================================================================================================================== //
 
-/// Buils a hash value from hashing all passed data types in sequence and combining their hashes.
-/// Similar to boost::hash_combine but adaptive to the system's hash value type.
-constexpr inline void hash_combine(std::size_t&) noexcept {}
-
-template<typename T, typename... Rest>
-constexpr void hash_combine(std::size_t& seed, const T& v, Rest&&... rest) noexcept
-{
-    constexpr size_t magic_number = detail::magic_hash_number<size_t>();
-    if constexpr (std::is_integral_v<T>) {
-        // integral values are mapped on themselves at compile time, saving us a non-constexpr call to std::hash
-        seed ^= v + magic_number + (seed << 6) + (seed >> 2);
-    }
-    else {
-        seed ^= std::hash<T>{}(v) + magic_number + (seed << 6) + (seed >> 2);
-    }
-    hash_combine(seed, std::forward<Rest>(rest)...);
-}
-
-/// Calculates the combined hash of 0-n supplied values.
-/// All passed values must be hashable using std::hash.
-template<typename... Values>
-constexpr size_t hash(Values&&... values) noexcept
-{
-    std::size_t result = detail::version_hash();
-    hash_combine(result, std::forward<Values>(values)...);
-    return result;
-}
-
 /// 32 bit mixer taken from MurmurHash3
 ///     https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp
 ///
@@ -84,6 +56,52 @@ constexpr inline size_t hash_mix(size_t key) noexcept
     key *= 0x94d049bb133111eb;
     key ^= (key >> 31);
     return key;
+}
+
+/// Buils a hash value from hashing all passed data types in sequence and combining their hashes.
+/// Similar to boost::hash_combine but adaptive to the system's hash value type.
+constexpr inline void hash_combine(std::size_t&) noexcept {}
+
+template<typename T, typename... Rest>
+constexpr void hash_combine(std::size_t& seed, T&& value, Rest&&... rest) noexcept
+{
+    constexpr size_t magic_number = detail::magic_hash_number<size_t>();
+    if constexpr (std::is_convertible_v<T, size_t>) {
+        // integral values are mapped on themselves at compile time, saving us a potential non-constexpr call to hash()
+        seed ^= static_cast<size_t>(value) + magic_number + (seed << 6) + (seed >> 2);
+    }
+    else {
+        seed ^= std::hash(std::forward<T>(value)) + magic_number + (seed << 6) + (seed >> 2);
+    }
+    hash_combine(seed, std::forward<Rest>(rest)...);
+}
+
+/// Calculates the combined hash of 0-n supplied values.
+/// All passed values must be hashable using std::hash.
+template<typename... Values>
+constexpr size_t hash(Values&&... values) noexcept
+{
+    std::size_t result = detail::version_hash();
+    hash_combine(result, std::forward<Values>(values)...);
+    return result;
+}
+
+/// Compile time hashing of a const char* array.
+/// @param string   String to hash, must be null-terminated.
+/// @param size     Size of the string (or at least, how many characters should be hashed).
+constexpr size_t hash_string(const char* string, const size_t size) noexcept
+{
+    size_t result = NOTF_CONSTEXPR_SEED;
+    for (size_t i = 0; i < size; ++i) {
+        // batch the characters up into a size_t value, so we can use hash_mix on it
+        size_t batch = 0;
+        for (size_t j = 0; i < size && j < sizeof(size_t) / sizeof(char); ++j, ++i) {
+            batch |= static_cast<uchar>(string[i]);
+            batch <<= bitsizeof<char>();
+        }
+        hash_combine(result, hash_mix(batch));
+    }
+    return result;
 }
 
 NOTF_CLOSE_META_NAMESPACE

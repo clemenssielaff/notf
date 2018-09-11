@@ -9,29 +9,22 @@ NOTF_OPEN_META_NAMESPACE
 /// Compile time string.
 struct StringConst {
 
+    // methods ------------------------------------------------------------------------------------------------------ //
+public:
     template<std::size_t N>
     constexpr StringConst(const char (&a)[N]) noexcept : m_text(a), m_size(N - 1)
     {}
 
-    constexpr char operator[](const std::size_t index) const { return index < m_size ? m_text[index] : throw 0; }
+    constexpr const char* c_str() const noexcept { return m_text; }
 
     constexpr std::size_t get_size() const noexcept { return m_size; }
 
-    constexpr const char* c_str() const noexcept { return m_text; }
+    constexpr size_t get_hash() const noexcept { return hash_string(m_text, m_size); }
 
-    constexpr size_t get_hash() const noexcept
+    constexpr char operator[](const std::size_t index) const
     {
-        size_t result = NOTF_CONSTEXPR_SEED;
-        for (size_t i = 0; i < m_size; ++i) {
-            // batch the characters up into a size_t value, so we can use hash_mix on it
-            size_t batch = 0;
-            for (size_t j = 0; i < m_size && j < sizeof(size_t) / sizeof(char); ++j, ++i) {
-                batch |= static_cast<uchar>(m_text[i]);
-                batch = batch << bitsizeof<char>();
-            }
-            hash_combine(result, hash_mix(batch));
-        }
-        return result;
+        return index < m_size ? m_text[index] :
+                                throw std::out_of_range("Failed to read out-of-range StringConst character");
     }
 
 private:
@@ -46,10 +39,13 @@ struct StringType final {
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
+    /// Access to the string determining this type.
+    static constexpr const char* c_str() noexcept { return s_text; }
+
     /// Returns the numbers of letters in the TypeString without the closing null.
     static constexpr std::size_t get_size() noexcept { return sizeof...(Cs); }
 
-    constexpr const char* c_str() const noexcept { return s_text; }
+    static constexpr size_t get_hash() noexcept { return hash_string(s_text, get_size()); }
 
     /// Tests if two TypeStrings are the same..
     template<class Other, typename Indices = std::make_index_sequence<min(get_size(), Other::get_size())>>
@@ -71,11 +67,11 @@ private:
     template<class Other, std::size_t... I>
     static constexpr bool _is_same_impl(std::index_sequence<I...>) noexcept
     {
-        return ((s_text[I] == Other::c_str[I]) && ...);
+        return ((s_text[I] == Other::s_text[I]) && ...);
     }
 
     // members ------------------------------------------------------------------------------------------------------ //
-private:
+public:
     /// C-string compile-time access to the characters passed as template arguments.
     static inline constexpr char const s_text[sizeof...(Cs) + 1] = {Cs..., '\0'};
 };
