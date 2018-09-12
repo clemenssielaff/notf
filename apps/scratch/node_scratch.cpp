@@ -11,13 +11,6 @@
 NOTF_USING_META_NAMESPACE;
 NOTF_USING_COMMON_NAMESPACE;
 
-// ================================================================================================================== //
-
-namespace string_literal {
-constexpr StringConst pos = "position";
-constexpr StringConst visible = "visible";
-} // namespace string_literal
-
 // property ========================================================================================================= //
 
 struct UntypedProperty {
@@ -92,8 +85,12 @@ protected:
 template<class Traits>
 class CompileTimeNode : public Node {
 
+    // types -------------------------------------------------------------------------------------------------------- //
+protected:
+    /// Tuple containing all compile time Properties of this Node type.
     using properties_t = typename Traits::properties;
 
+    /// Type of a specific Property in this Node type.
     template<std::size_t I>
     using property_t = std::tuple_element_t<I, properties_t>;
 
@@ -101,7 +98,7 @@ class CompileTimeNode : public Node {
 public:
     static constexpr auto get_property_count() noexcept { return std::tuple_size<properties_t>::value; }
 
-    /// We are using the base class' `get_property` method in addition to the ones provided for compile time access.
+    /// We are using the runtime `get_property` method in addition to the ones provided for compile time access.
     using Node::get_property;
 
     template<const StringConst& name>
@@ -158,9 +155,11 @@ private:
     properties_t m_properties;
 };
 
-// main ============================================================================================================= //
+// widget =========================================================================================================== //
 
-struct Position1DPropertyTrait {
+namespace detail {
+
+struct PositionPropertyTrait {
     using type_t = float;
     static constexpr StringConst name = "position";
     static constexpr type_t default_value = 0.123f;
@@ -173,19 +172,118 @@ struct VisibilityPropertyTrait {
     static constexpr bool is_visible = true;
 };
 
+struct WidgetTrait {
+    using properties = std::tuple<                     //
+        CompileTimeProperty<PositionPropertyTrait>,    //
+        CompileTimeProperty<VisibilityPropertyTrait>>; //
+};
+
+} // namespace detail
+
+/// Base class for all Widget types.
+/// We know that all Widgets share a few common Propreties at compile time. The Widget class defines the compile time
+/// Properties of all Widgets, as well as a virtual interface for all other Widget types at compile or run time.
+class Widget : public CompileTimeNode<::detail::WidgetTrait> {
+
+    // types -------------------------------------------------------------------------------------------------------- //
+protected:
+    /// Parent Node type.
+    using node_t = CompileTimeNode<::detail::WidgetTrait>;
+
+    /// Tuple containing all compile time Properties in the parent Node type.
+    using node_properties_t = node_t::properties_t;
+
+    /// Type of a specific Property in the parent Node type.
+    template<std::size_t I>
+    using node_property_t = node_t::property_t<I>;
+
+    // methods ------------------------------------------------------------------------------------------------------ //
+public:
+    virtual void paint() = 0;
+};
+
+template<class Traits>
+class CompileTimeWidget : public Widget {
+
+    /// Tuple containing all compile time Properties of this Widget type.
+    using widget_properties_t = typename Traits::properties;
+
+    /// Type of a specific Property in this Widget type.
+    template<std::size_t I>
+    using widget_property_t = std::tuple_element_t<I, widget_properties_t>;
+
+    // methods ------------------------------------------------------------------------------------------------------ //
+public:
+    static constexpr auto get_property_count() noexcept
+    {
+        return _get_widget_property_count() + node_t::get_property_count();
+    }
+
+    /// We are using the runtime `get_property` method in addition to the ones provided for compile time access.
+    using Node::get_property;
+
+    template<const StringConst& name>
+    constexpr const auto& get_property() const noexcept
+    {
+        return _get_widget_property_by_name<name>();
+    }
+
+    template<const StringConst& name>
+    constexpr auto& get_property() noexcept
+    {
+        const auto& const_result = const_cast<const CompileTimeWidget*>(this)->get_property<name>();
+        return const_cast<std::remove_const_t<decltype(const_result)>>(const_result);
+    }
+
+private:
+    static constexpr auto _get_widget_property_count() noexcept { return std::tuple_size_v<widget_properties_t>; }
+
+    template<const StringConst& name, std::size_t I = 0>
+    constexpr const auto& _get_widget_property_by_name() const
+    {
+        if constexpr (widget_property_t<I>::get_name() == name) {
+            return std::get<I>(m_widget_properties);
+        }
+        else if constexpr (I + 1 < _get_widget_property_count()) {
+            return _get_widget_property_by_name<name, I + 1>();
+        }
+        else {
+            return node_t::get_property<name>();
+        }
+    }
+
+    // members ------------------------------------------------------------------------------------------------------ //
+private:
+    /// All Properties of this Widget, default initialized to the Trait's default values.
+    widget_properties_t m_widget_properties;
+};
+
+// main ============================================================================================================= //
+
+struct WeirdPropertyTrait {
+    using type_t = int;
+    static constexpr StringConst name = "soweird";
+    static constexpr type_t default_value = -321;
+    static constexpr bool is_visible = true;
+};
+
 int main()
 {
-    struct NodeTraitExample {
-        using properties = std::tuple<                     //
-            CompileTimeProperty<Position1DPropertyTrait>,  //
-            CompileTimeProperty<VisibilityPropertyTrait>>; //
+    struct TraitExample {
+        using properties = std::tuple<                //
+            CompileTimeProperty<WeirdPropertyTrait>>; //
     };
-    using TestNode = CompileTimeNode<NodeTraitExample>;
-    const TestNode node;
 
-    std::cout << node.get_property<float>("position").get() << std::endl;
-    std::cout << node.get_property<string_literal::pos>().get() << std::endl;
-    std::cout << node.get_property<string_literal::visible>().get() << std::endl;
+    const CompileTimeNode<TraitExample> node;
+    std::cout << node.get_property<int>("soweird").get() << std::endl;
+    std::cout << node.get_property<WeirdPropertyTrait::name>().get() << std::endl;
+
+    struct TestWidget : public CompileTimeWidget<TraitExample> {
+        void paint() override {}
+    } widget;
+    std::cout << widget.get_property<float>("position").get() << std::endl;
+    std::cout << widget.get_property<::detail::VisibilityPropertyTrait::name>().get() << std::endl;
+    std::cout << widget.get_property<WeirdPropertyTrait::name>().get() << std::endl;
 
     return 0;
 }
