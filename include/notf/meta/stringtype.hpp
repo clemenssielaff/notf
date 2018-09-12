@@ -4,34 +4,6 @@
 
 NOTF_OPEN_META_NAMESPACE
 
-// string const ======================================================================================================//
-
-/// Compile time string.
-struct StringConst {
-
-    // methods ------------------------------------------------------------------------------------------------------ //
-public:
-    template<std::size_t N>
-    constexpr StringConst(const char (&a)[N]) noexcept : m_text(a), m_size(N - 1)
-    {}
-
-    constexpr const char* c_str() const noexcept { return m_text; }
-
-    constexpr std::size_t get_size() const noexcept { return m_size; }
-
-    constexpr size_t get_hash() const noexcept { return hash_string(m_text, m_size); }
-
-    constexpr char operator[](const std::size_t index) const
-    {
-        return index < m_size ? m_text[index] :
-                                throw std::out_of_range("Failed to read out-of-range StringConst character");
-    }
-
-private:
-    const char* const m_text;
-    const std::size_t m_size;
-};
-
 // string type ====================================================================================================== //
 
 template<char... Cs>
@@ -75,6 +47,55 @@ public:
     /// C-string compile-time access to the characters passed as template arguments.
     static inline constexpr char const s_text[sizeof...(Cs) + 1] = {Cs..., '\0'};
 };
+
+// string const ======================================================================================================//
+
+/// Compile time string.
+struct StringConst {
+
+    // methods ------------------------------------------------------------------------------------------------------ //
+public:
+    template<std::size_t N>
+    constexpr StringConst(const char (&a)[N]) noexcept : m_text(a), m_size(N - 1)
+    {}
+
+    constexpr const char* c_str() const noexcept { return m_text; }
+
+    constexpr std::size_t get_size() const noexcept { return m_size; }
+
+    constexpr size_t get_hash() const noexcept { return hash_string(m_text, m_size); }
+
+    constexpr char operator[](const std::size_t index) const
+    {
+        return index < m_size ? m_text[index] :
+                                throw std::out_of_range("Failed to read out-of-range StringConst character");
+    }
+
+    constexpr bool operator==(const StringConst& other) const noexcept
+    {
+        if (other.get_size() != get_size()) {
+            return false;
+        }
+        for (size_t i = 0; i < get_size(); ++i) {
+            if (other[i] != m_text[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    template<char... Cs>
+    constexpr bool operator==(StringType<Cs...>)  const noexcept
+    {
+        return true;
+    }
+
+private:
+    const char* const m_text;
+    const std::size_t m_size;
+};
+
+// ================================================================================================================== //
 
 namespace detail {
 

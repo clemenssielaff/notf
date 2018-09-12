@@ -5,8 +5,13 @@
 #include "notf/common/string_view.hpp"
 #include "notf/meta/stringtype.hpp"
 
+#pragma GCC diagnostic ignored "-Wweak-vtables"
+#pragma GCC diagnostic ignored "-Wpadded"
+
 NOTF_USING_META_NAMESPACE;
 NOTF_USING_COMMON_NAMESPACE;
+
+// ================================================================================================================== //
 
 namespace string_literal {
 constexpr StringConst pos = "position";
@@ -15,55 +20,46 @@ constexpr StringConst visible = "visible";
 
 // property ========================================================================================================= //
 
-struct Position1DPropertyTrait {
-    using name_t = make_string_type_t<string_literal::pos>;
-    using type_t = float;
-    static constexpr type_t default_value = 0.123f;
-    static constexpr bool is_visible = true;
-};
-struct VisibilityPropertyTrait {
-    using name_t = make_string_type_t<string_literal::visible>;
-    using type_t = bool;
-    static constexpr type_t default_value = true;
-    static constexpr bool is_visible = true;
-};
-
-struct Base {
-    virtual ~Base() = default;
+struct UntypedProperty {
+    virtual ~UntypedProperty() = default;
 };
 
 template<class T>
-struct TypedProperty : public Base {
+struct Property : public UntypedProperty {
     using type_t = T;
 
     /// Value constructor.
-    TypedProperty(T value) : m_value(std::forward<T>(value)) {}
+    Property(T value, bool is_visible) : m_value(std::forward<T>(value)), m_is_visible(is_visible) {}
 
     const T& get() const noexcept { return m_value; }
 
     void set(T value) { m_value = std::forward<T>(value); }
 
+    /// Whether a change in the Property will cause the Node to redraw or not.
+    bool is_visible() noexcept { return m_is_visible; }
+
     // members ------------------------------------------------------------------------------------------------------ //
 protected:
     type_t m_value;
+
+    /// Whether a change in the Property will cause the Node to redraw or not.
+    bool m_is_visible;
 };
 
 template<class Trait>
-struct StaticProperty final : public TypedProperty<typename Trait::type_t> {
-
-    using name_t = typename Trait::name_t;
-    using type_t = typename Trait::type_t;
-
-    static constexpr size_t hash = name_t::get_hash();
+struct CompileTimeProperty final : public Property<typename Trait::type_t> {
 
     /// Constructor.
-    StaticProperty() : TypedProperty<type_t>(Trait::default_value) {}
+    CompileTimeProperty() : Property<typename Trait::type_t>(Trait::default_value, Trait::is_visible) {}
 
     /// The name of this Property.
-    static const char* get_name() noexcept { return Trait::name::value; }
+    static constexpr const StringConst& get_name() noexcept { return Trait::name; }
 
     /// Whether a change in the Property will cause the Node to redraw or not.
-    static bool is_visible() noexcept { return Trait::is_visible; }
+    static constexpr bool is_visible() noexcept { return Trait::is_visible; }
+
+    /// Compile-time hash of the name of this Property.
+    constexpr static size_t get_hash() noexcept { return Trait::name.get_hash(); }
 };
 
 // node ============================================================================================================= //
@@ -73,34 +69,28 @@ struct Node {
     /// Destructor.
     virtual ~Node() = default;
 
-    template<class T>
-    const TypedProperty<T>& get_property(std::string_view name) const
+    template<class T, typename = std::enable_if_t<!std::is_same_v<T, const StringConst&>>>
+    const Property<T>& get_property(std::string_view name) const
     {
-        const Base* property = _get_property(std::move(name));
-        if (const auto typed_property = dynamic_cast<const TypedProperty<T>*>(property)) {
+        const UntypedProperty* property = _get_property(std::move(name));
+        if (const auto typed_property = dynamic_cast<const Property<T>*>(property)) {
             return *typed_property;
         }
         throw std::out_of_range("");
     }
 
-    template<class T>
-    TypedProperty<T>& get_property(std::string_view name)
+    template<class T, typename = std::enable_if_t<!std::is_same_v<T, const StringConst&>>>
+    Property<T>& get_property(std::string_view name)
     {
-        return const_cast<TypedProperty<T>&>(const_cast<const Node*>(this)->get_property<T>(std::move(name)));
+        return const_cast<Property<T>&>(const_cast<const Node*>(this)->get_property<T>(std::move(name)));
     }
 
 protected:
-    virtual const Base* _get_property(std::string_view name) const = 0;
-};
-
-struct NodeTraitExample {
-    using properties = std::tuple<                //
-        StaticProperty<Position1DPropertyTrait>,  //
-        StaticProperty<VisibilityPropertyTrait>>; //
+    virtual const UntypedProperty* _get_property(std::string_view name) const = 0;
 };
 
 template<class Traits>
-class StaticNode : public Node {
+class CompileTimeNode : public Node {
 
     using properties_t = typename Traits::properties;
 
@@ -111,52 +101,55 @@ class StaticNode : public Node {
 public:
     static constexpr auto get_property_count() noexcept { return std::tuple_size<properties_t>::value; }
 
-    template<class Name>
-    constexpr const auto& get_static_property() const noexcept
+    /// We are using the base class' `get_property` method in addition to the ones provided for compile time access.
+    using Node::get_property;
+
+    template<const StringConst& name>
+    constexpr const auto& get_property() const noexcept
     {
-        constexpr std::size_t index = _get_property_by_name<Name>();
-        static_assert(index < get_property_count(), "Unknown Property");
-        if constexpr (index < get_property_count()) {
-            return std::get<index>(m_properties);
-        }
+        return _get_property_by_name<name, 0>();
     }
-    template<class Name>
-    constexpr auto& get_static_property() noexcept
+
+    template<const StringConst& name>
+    constexpr auto& get_property() noexcept
     {
-        const auto& const_result = const_cast<const StaticNode*>(this)->get_static_property<Name>();
+        const auto& const_result = const_cast<const CompileTimeNode*>(this)->get_property<name>();
         return const_cast<std::remove_const_t<decltype(const_result)>>(const_result);
     }
 
 protected:
-    const Base* _get_property(std::string_view name) const override
+    const UntypedProperty* _get_property(std::string_view name) const override
     {
         return _get_property_by_hash<>(hash_string(name));
     }
 
 private:
-    template<class Name, std::size_t I = 0>
-    static constexpr std::size_t _get_property_by_name()
+    template<const StringConst& name, std::size_t I = 0>
+    constexpr const auto& _get_property_by_name() const
     {
-        using PropertyName = typename property_t<I>::name_t;
-        if constexpr (PropertyName::template is_same<Name>()) {
-            return I;
+        if constexpr (property_t<I>::get_name() == name) {
+            return std::get<I>(m_properties);
         }
-        if constexpr (I + 1 < get_property_count()) {
-            return _get_property_by_name<Name, I + 1>();
+        else {
+            static_assert(I + 1 < get_property_count(), "Unknown Property");
+            return _get_property_by_name<name, I + 1>();
         }
-        return get_property_count();
     }
 
     template<std::size_t I = 0>
-    const Base* _get_property_by_hash(const size_t hash_value) const
+    const UntypedProperty* _get_property_by_hash(const size_t hash_value) const
     {
-        if (property_t<I>::hash == hash_value) {
+        constexpr size_t property_hash = property_t<I>::get_hash();
+        if (property_hash == hash_value) {
             return &std::get<I>(m_properties);
         }
-        if constexpr (I + 1 < get_property_count()) {
+        if constexpr (I + 1 == get_property_count()) {
+            return nullptr;
+        }
+        else {
+            static_assert(I + 1 < get_property_count());
             return _get_property_by_hash<I + 1>(hash_value);
         }
-        return nullptr;
     }
 
     // members ------------------------------------------------------------------------------------------------------ //
@@ -167,15 +160,32 @@ private:
 
 // main ============================================================================================================= //
 
+struct Position1DPropertyTrait {
+    using type_t = float;
+    static constexpr StringConst name = "position";
+    static constexpr type_t default_value = 0.123f;
+    static constexpr bool is_visible = true;
+};
+struct VisibilityPropertyTrait {
+    using type_t = bool;
+    static constexpr StringConst name = "visible";
+    static constexpr type_t default_value = true;
+    static constexpr bool is_visible = true;
+};
+
 int main()
 {
-    using TestNode = StaticNode<NodeTraitExample>;
+    struct NodeTraitExample {
+        using properties = std::tuple<                     //
+            CompileTimeProperty<Position1DPropertyTrait>,  //
+            CompileTimeProperty<VisibilityPropertyTrait>>; //
+    };
+    using TestNode = CompileTimeNode<NodeTraitExample>;
     const TestNode node;
 
-    using pos_t = make_string_type_t<string_literal::pos>;
-
     std::cout << node.get_property<float>("position").get() << std::endl;
-    std::cout << node.get_static_property<pos_t>().get() << std::endl;
+    std::cout << node.get_property<string_literal::pos>().get() << std::endl;
+    std::cout << node.get_property<string_literal::visible>().get() << std::endl;
 
     return 0;
 }
