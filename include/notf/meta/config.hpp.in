@@ -33,6 +33,22 @@
 /// Use the notf namespace.
 #define NOTF_USING_NAMESPACE using namespace NOTF_NAMESPACE_NAME
 
+
+// notf::literals namespace ========================================================================================= //
+
+/// Name of the notf::literals namespace.
+#define NOTF_LITERALS_NAMESPACE_NAME literals
+
+/// Opens the notf::literals namespace.
+#define NOTF_OPEN_LITERALS_NAMESPACE NOTF_OPEN_NAMESPACE namespace NOTF_LITERALS_NAMESPACE_NAME {
+
+/// For visual balance with NOTF_OPEN_LITERALS_NAMESPACE.
+#define NOTF_CLOSE_LITERALS_NAMESPACE NOTF_CLOSE_NAMESPACE }
+
+/// Use the notf::literals namespace.
+#define NOTF_USING_LITERALS_NAMESPACE using namespace ::NOTF_NAMESPACE_NAME::NOTF_LITERALS_NAMESPACE_NAME
+
+
 // notf constants =================================================================================================== //
 
 /// Seed value used for all hashing at compile time.

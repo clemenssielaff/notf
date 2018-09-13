@@ -62,7 +62,8 @@ struct Node {
     /// Destructor.
     virtual ~Node() = default;
 
-    template<class T, typename = std::enable_if_t<!std::is_same_v<T, const StringConst&>>>
+    /// Run time access to a Property of this Node.
+    template<class T>
     const Property<T>& get_property(std::string_view name) const
     {
         const UntypedProperty* property = _get_property(std::move(name));
@@ -71,8 +72,7 @@ struct Node {
         }
         throw std::out_of_range("");
     }
-
-    template<class T, typename = std::enable_if_t<!std::is_same_v<T, const StringConst&>>>
+    template<class T>
     Property<T>& get_property(std::string_view name)
     {
         return const_cast<Property<T>&>(const_cast<const Node*>(this)->get_property<T>(std::move(name)));
@@ -96,21 +96,20 @@ protected:
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
-    static constexpr auto get_property_count() noexcept { return std::tuple_size<properties_t>::value; }
+    static constexpr auto get_property_count() noexcept { return std::tuple_size_v<properties_t>; }
 
-    /// We are using the runtime `get_property` method in addition to the ones provided for compile time access.
+    /// We are using the run time `get_property` method in addition to the ones provided for compile time access.
     using Node::get_property;
 
-    template<const StringConst& name>
-    constexpr const auto& get_property() const noexcept
+    template<char... Cs>
+    constexpr const auto& get_property(StringType<char, Cs...> name) const
     {
-        return _get_property_by_name<name, 0>();
+        return _get_property_by_name<0>(name);
     }
-
-    template<const StringConst& name>
-    constexpr auto& get_property() noexcept
+    template<char... Cs>
+    constexpr auto& get_property(StringType<char, Cs...> name)
     {
-        const auto& const_result = const_cast<const CompileTimeNode*>(this)->get_property<name>();
+        const auto& const_result = const_cast<const CompileTimeNode*>(this)->get_property(name);
         return const_cast<std::remove_const_t<decltype(const_result)>>(const_result);
     }
 
@@ -121,15 +120,17 @@ protected:
     }
 
 private:
-    template<const StringConst& name, std::size_t I = 0>
-    constexpr const auto& _get_property_by_name() const
+    template<size_t I, char... Cs>
+    constexpr auto& _get_property_by_name(StringType<char, Cs...> name) const
     {
         if constexpr (property_t<I>::get_name() == name) {
             return std::get<I>(m_properties);
         }
+        else if constexpr (I + 1 < get_property_count()) {
+            return _get_property_by_name<I + 1>(name);
+        }
         else {
-            static_assert(I + 1 < get_property_count(), "Unknown Property");
-            return _get_property_by_name<name, I + 1>();
+            throw 0;
         }
     }
 
@@ -222,33 +223,32 @@ public:
     /// We are using the runtime `get_property` method in addition to the ones provided for compile time access.
     using Node::get_property;
 
-    template<const StringConst& name>
-    constexpr const auto& get_property() const noexcept
+    template<char... Cs>
+    constexpr const auto& get_property(StringType<char, Cs...> name) const
     {
-        return _get_widget_property_by_name<name>();
+        return _get_widget_property_by_name<0>(name);
     }
-
-    template<const StringConst& name>
-    constexpr auto& get_property() noexcept
+    template<char... Cs>
+    constexpr auto& get_property(StringType<char, Cs...> name)
     {
-        const auto& const_result = const_cast<const CompileTimeWidget*>(this)->get_property<name>();
+        const auto& const_result = const_cast<const CompileTimeWidget*>(this)->get_property(name);
         return const_cast<std::remove_const_t<decltype(const_result)>>(const_result);
     }
 
 private:
     static constexpr auto _get_widget_property_count() noexcept { return std::tuple_size_v<widget_properties_t>; }
 
-    template<const StringConst& name, std::size_t I = 0>
-    constexpr const auto& _get_widget_property_by_name() const
+    template<size_t I, char... Cs>
+    constexpr auto& _get_widget_property_by_name(StringType<char, Cs...> name) const
     {
         if constexpr (widget_property_t<I>::get_name() == name) {
             return std::get<I>(m_widget_properties);
         }
         else if constexpr (I + 1 < _get_widget_property_count()) {
-            return _get_widget_property_by_name<name, I + 1>();
+            return _get_widget_property_by_name<I + 1>(name);
         }
         else {
-            return node_t::get_property<name>();
+            return node_t::get_property(name);
         }
     }
 
@@ -269,6 +269,8 @@ struct WeirdPropertyTrait {
 
 int main()
 {
+    NOTF_USING_LITERALS_NAMESPACE;
+
     struct TraitExample {
         using properties = std::tuple<                //
             CompileTimeProperty<WeirdPropertyTrait>>; //
@@ -276,14 +278,15 @@ int main()
 
     const CompileTimeNode<TraitExample> node;
     std::cout << node.get_property<int>("soweird").get() << std::endl;
-    std::cout << node.get_property<WeirdPropertyTrait::name>().get() << std::endl;
+    std::cout << node.get_property("soweird"_id).get() << std::endl;
 
     struct TestWidget : public CompileTimeWidget<TraitExample> {
         void paint() override {}
     } widget;
     std::cout << widget.get_property<float>("position").get() << std::endl;
-    std::cout << widget.get_property<::detail::VisibilityPropertyTrait::name>().get() << std::endl;
-    std::cout << widget.get_property<WeirdPropertyTrait::name>().get() << std::endl;
+    std::cout << widget.get_property("visible"_id).get() << std::endl;
+    std::cout << widget.get_property("soweird"_id).get() << std::endl;
+    std::cout << widget.get_property("visible"_id).get() << std::endl;
 
     return 0;
 }
