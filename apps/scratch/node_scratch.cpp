@@ -1,8 +1,7 @@
 #include <iostream>
-#include <string_view>
-#include <tuple>
 
 #include "notf/common/string_view.hpp"
+#include "notf/common/variant.hpp"
 #include "notf/meta/stringtype.hpp"
 
 #pragma GCC diagnostic ignored "-Wweak-vtables"
@@ -270,6 +269,12 @@ struct WeirdPropertyTrait {
 int main()
 {
     NOTF_USING_LITERALS_NAMESPACE;
+
+    struct Foo{};
+    struct Bar{};
+
+    using YESSA = tuple_to_variant_t<std::tuple<Foo, Bar>>;
+    static_assert(std::is_same_v<YESSA, std::variant<Foo, Bar>>);
 
     struct TraitExample {
         using properties = std::tuple<                //
