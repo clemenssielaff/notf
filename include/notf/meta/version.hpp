@@ -8,6 +8,7 @@ NOTF_OPEN_META_NAMESPACE
 
 // version ========================================================================================================== //
 
+/// Object containing a semantic version.
 struct Version {
     /// Equality operator
     constexpr bool operator==(const Version& other) const noexcept { return to_number() == other.to_number(); }

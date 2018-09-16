@@ -14,8 +14,7 @@ using is_one_of = std::disjunction<std::is_same<T, Ts>...>;
 
 /// Compile-time check whether two types are both signed / both unsigned.
 template<class T, class U>
-struct is_same_signedness : public std::integral_constant<bool, std::is_signed<T>::value == std::is_signed<U>::value> {
-};
+struct is_same_signedness : public std::integral_constant<bool, std::is_signed_v<T> == std::is_signed_v<U>> {};
 
 /// The `always_false` trait will always evaluate to `false` when used in a static_assert.
 /// This way you can define error overloads that differ by type only:

@@ -31,51 +31,45 @@ constexpr T phi() noexcept
 
 // operations ======================================================================================================= //
 
-using std::sin;
-using std::cos;
-using std::tan;
+using std::abs;
 using std::atan2;
+using std::cos;
 using std::fmod;
-using std::roundf;
-using std::sqrt;
 using std::pow;
+using std::roundf;
+using std::sin;
+using std::sqrt;
+using std::tan;
 
 /// Tests whether a given value is NAN.
 template<class T>
-std::enable_if_t<std::is_floating_point<T>::value, bool> is_nan(const T value) noexcept
+std::enable_if_t<std::is_floating_point_v<T>, bool> is_nan(const T value) noexcept
 {
     return value != value;
 }
 template<class T>
-constexpr std::enable_if_t<std::is_integral<T>::value, bool> is_nan(const T) noexcept
+constexpr std::enable_if_t<std::is_integral_v<T>, bool> is_nan(const T) noexcept
 {
     return false;
 }
 
 /// Tests whether a given value is INFINITY.
 template<class T>
-constexpr std::enable_if_t<std::is_floating_point<T>::value, bool> is_inf(const T value)
+constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_inf(const T value)
 {
     return std::isinf(value);
 }
 template<class T>
-constexpr std::enable_if_t<std::is_integral<T>::value, bool> is_inf(const T)
+constexpr std::enable_if_t<std::is_integral_v<T>, bool> is_inf(const T)
 {
     return false;
 }
 
 /// Tests whether a given value is a valid float value (not NAN, not INFINITY).
-template<class T, typename = std::enable_if_t<std::is_floating_point<T>::value>>
-constexpr bool is_real(const T value)
+template<class T>
+constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_real(const T value)
 {
     return !is_nan(value) && !is_inf(value);
-}
-
-/// Tests whether a given value is (almost) zero.
-template<class T>
-constexpr bool is_zero(const T value, const T epsilon = precision_high<T>()) noexcept
-{
-    return abs(value) < epsilon;
 }
 
 /// Tests, if a value is positive or negative.
@@ -84,6 +78,13 @@ template<class T>
 constexpr T sign(const T value)
 {
     return std::signbit(value) ? -1 : 1;
+}
+
+/// Tests whether a given value is (almost) zero.
+template<class T>
+constexpr bool is_zero(const T value, const T epsilon = precision_high<T>()) noexcept
+{
+    return abs(value) < epsilon;
 }
 
 /// Save asin calculation.
@@ -138,6 +139,17 @@ bool is_approx(const L lhs, const R rhs, const T epsilon = precision_high<T>())
         return false;
     }
 
+    // if only one argument is infinite, the other one cannot be approximately the same
+    if (is_inf(lhs)) {
+        if (is_inf(rhs)) {
+            return true; // infinities are always approximately equal
+        }
+        return false;
+    }
+    else if (is_inf(rhs)) {
+        return false;
+    }
+
     // if the numbers are really small, use the absolute epsilon
     if (abs(lhs - rhs) <= epsilon) {
         return true;
@@ -145,11 +157,6 @@ bool is_approx(const L lhs, const R rhs, const T epsilon = precision_high<T>())
 
     // use a relative epsilon if the numbers are larger
     if (abs(lhs - rhs) <= ((abs(lhs) > abs(rhs)) ? abs(lhs) : abs(rhs)) * epsilon) {
-        return true;
-    }
-
-    // infinities are always approximately equal...
-    if (is_inf(lhs) && is_inf(rhs)) {
         return true;
     }
 

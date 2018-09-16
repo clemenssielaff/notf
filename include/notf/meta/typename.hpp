@@ -20,7 +20,12 @@ namespace detail {
 /// @returns        Pretty printed name, if this plattform is supported.
 inline std::string demangle_type_name(const char* name)
 {
-    int status = -1;
+    // Possible `status` values after a call to `abi::__cxa_demangle`
+    //  0: The demangling operation succeeded.
+    // -1: A memory allocation failiure occurred.
+    // -2: mangled_name is not a valid name under the C++ ABI mangling rules.
+    // -3: One of the arguments is invalid.
+    int status = 1;
     std::unique_ptr<char, void (*)(void*)> res{abi::__cxa_demangle(name, nullptr, nullptr, &status), std::free};
     return (status == 0) ? res.get() : name;
 }

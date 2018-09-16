@@ -141,6 +141,8 @@ file(GLOB_RECURSE NOTF_HEADERS
     "include/notf/*.hpp"
 )
 
+add_subdirectory(thirdparty)
+add_subdirectory(src)
 add_subdirectory(apps)
 
 ########################################################################################################################

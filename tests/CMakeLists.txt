@@ -1,12 +1,12 @@
 # notf test runner project
 
 # add test files
-add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/include
-    catch.hpp
-)
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     main.cpp
-    meta/typename.cpp
+    meta/test_hash.cpp
+    meta/test_numeric.cpp
+    meta/test_real.cpp
+    meta/test_typename.cpp
 )
 
 # declare test runner executable
@@ -18,7 +18,13 @@ add_executable(notf-tests
 # test runner include paths
 target_include_directories(notf-tests PUBLIC
     ${CMAKE_SOURCE_DIR}/include/
+    ${CMAKE_SOURCE_DIR}/thirdparty/
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+# test runner dependencies
+target_link_libraries(notf-tests PUBLIC
+    notf-core
 )
 
 # register the test runner as a test
@@ -45,6 +51,8 @@ endif()
 option(NOTF_RUN_TESTS "Run tests" ON)
 if(${NOTF_RUN_TESTS})
     message(STATUS ">>> notf: Building tests")
+
+    set(LLVM_COV_ARGS -instr-profile=notf-tests.profdata -Xdemangler=llvm-cxxfilt -use-color -ignore-filename-regex="thirdparty|tests")
     add_custom_command(
         TARGET notf-tests
         POST_BUILD
@@ -54,9 +62,9 @@ if(${NOTF_RUN_TESTS})
 
         # create a coverage report and display a summary report
         COMMAND llvm-profdata merge -sparse default.profraw -o notf-tests.profdata
-        COMMAND llvm-cov report ./notf-tests -instr-profile=notf-tests.profdata -use-color
+        COMMAND llvm-cov report ./notf-tests ${LLVM_COV_ARGS}
         COMMAND echo
-        COMMAND llvm-cov show ./notf-tests -instr-profile=notf-tests.profdata -region-coverage-lt=100 -Xdemangler=llvm-cxxfilt -use-color
+        COMMAND llvm-cov show ./notf-tests -region-coverage-lt=100 ${LLVM_COV_ARGS}
 
         # store the complete report as html
         COMMAND llvm-cov show ./notf-tests -instr-profile=notf-tests.profdata -format="html" > coverage.html

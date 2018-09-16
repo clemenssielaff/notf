@@ -10,7 +10,7 @@ NOTF_OPEN_META_NAMESPACE
 namespace detail {
 
 /// Changing this value will cause new hashes of the same value (calculated with notf::hash) to differ.
-/// This way, we can differentiate between hashes of the same value that were generated with different versions of NoTF.
+/// This way, we can differentiate between hashes of the same value that were generated with different versions of notf.
 constexpr inline size_t version_hash() noexcept { return NOTF_VERSION_MAJOR; }
 
 /// see http://stackoverflow.com/a/4948967

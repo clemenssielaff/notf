@@ -221,6 +221,8 @@ NOTF_CLOSE_META_NAMESPACE
 // ================================================================================================================== //
 
 NOTF_OPEN_LITERALS_NAMESPACE
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-string-literal-operator-template"
 
 /// User defined literal, turning any string literal into a StringType.
 /// Is called ""_id, because the type is usually used as a compile time identifier.
@@ -231,4 +233,5 @@ constexpr auto operator"" _id()
     return StringType<char, Cs...>{};
 }
 
+#pragma clang diagnostic pop
 NOTF_CLOSE_LITERALS_NAMESPACE

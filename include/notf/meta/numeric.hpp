@@ -114,52 +114,26 @@ struct higher_type {
 /// Type dependent constant for low-precision approximation (useful for use in "noisy" functions).
 /// Don't be fooled by the name though, "low" precision is still pretty precise on a human scale.
 template<class T>
-constexpr T precision_low() noexcept;
-
-template<>
-constexpr float precision_low<float>() noexcept
+constexpr std::enable_if_t<std::is_floating_point_v<T>, T> precision_low() noexcept
 {
-    return std::numeric_limits<float>::epsilon() * 100;
+    return std::numeric_limits<T>::epsilon() * 100;
 }
-
-template<>
-constexpr double precision_low<double>() noexcept
+template<class T>
+constexpr std::enable_if_t<std::is_integral_v<T>, T> precision_low() noexcept
 {
-    return std::numeric_limits<double>::epsilon() * 100;
-}
-
-template<>
-constexpr int precision_low<int>() noexcept
-{
-    return 0;
+    return 0; // integers have no leeway
 }
 
 /// Type dependent constant for high-precision approximation.
 template<class T>
-constexpr T precision_high() noexcept;
-
-template<>
-constexpr float precision_high<float>() noexcept
+constexpr std::enable_if_t<std::is_floating_point_v<T>, T> precision_high() noexcept
 {
-    return std::numeric_limits<float>::epsilon() * 3;
+    return std::numeric_limits<T>::epsilon() * 3;
 }
-
-template<>
-constexpr double precision_high<double>() noexcept
+template<class T>
+constexpr std::enable_if_t<std::is_integral_v<T>, T> precision_high() noexcept
 {
-    return std::numeric_limits<double>::epsilon() * 3;
-}
-
-template<>
-constexpr short precision_high<short>() noexcept
-{
-    return 0;
-}
-
-template<>
-constexpr int precision_high<int>() noexcept
-{
-    return 0;
+    return 0; // integers have no leeway
 }
 
 NOTF_CLOSE_META_NAMESPACE
