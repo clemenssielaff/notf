@@ -7,6 +7,7 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     meta/test_numeric.cpp
     meta/test_real.cpp
     meta/test_typename.cpp
+    meta/test_stringtype.cpp
 )
 
 # declare test runner executable
@@ -26,6 +27,9 @@ target_include_directories(notf-tests PUBLIC
 target_link_libraries(notf-tests PUBLIC
     notf-core
 )
+
+# use cotire to accelerate the build
+cotire(notf-tests)
 
 # register the test runner as a test
 add_test(NAME "NotfTestRunner" COMMAND notf-tests)
@@ -64,10 +68,10 @@ if(${NOTF_RUN_TESTS})
         COMMAND llvm-profdata merge -sparse default.profraw -o notf-tests.profdata
         COMMAND llvm-cov report ./notf-tests ${LLVM_COV_ARGS}
         COMMAND echo
-        COMMAND llvm-cov show ./notf-tests -region-coverage-lt=100 ${LLVM_COV_ARGS}
+        COMMAND llvm-cov show ./notf-tests -line-coverage-lt=100 ${LLVM_COV_ARGS}
 
         # store the complete report as html
-        COMMAND llvm-cov show ./notf-tests -instr-profile=notf-tests.profdata -format="html" > coverage.html
+        COMMAND llvm-cov show ./notf-tests ${LLVM_COV_ARGS} -format="html" > coverage.html
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "Executing notf test runner"
     )

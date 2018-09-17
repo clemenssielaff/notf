@@ -140,14 +140,26 @@ bool is_approx(const L lhs, const R rhs, const T epsilon = precision_high<T>())
     }
 
     // if only one argument is infinite, the other one cannot be approximately the same
-    if (is_inf(lhs)) {
+    if constexpr (std::is_integral_v<L>) {
         if (is_inf(rhs)) {
-            return true; // infinities are always approximately equal
+            return false;
         }
-        return false;
     }
-    else if (is_inf(rhs)) {
-        return false;
+    else if constexpr (std::is_integral_v<R>) {
+        if (is_inf(lhs)) {
+            return false;
+        }
+    }
+    else {
+        if (is_inf(lhs)) {
+            if (is_inf(rhs)) {
+                return true; // infinities are always approximately equal
+            }
+            return false;
+        }
+        else if (is_inf(rhs)) {
+            return false;
+        }
     }
 
     // if the numbers are really small, use the absolute epsilon

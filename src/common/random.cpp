@@ -1,12 +1,6 @@
-#include "notf/meta/random.hpp"
+#include "notf/common/random.hpp"
 
-NOTF_OPEN_META_NAMESPACE
-
-decltype(randutils::default_rng())& get_random_engine()
-{
-    static auto random_engine = randutils::default_rng();
-    return random_engine;
-}
+NOTF_OPEN_COMMON_NAMESPACE
 
 std::string random_string(const size_t length, const bool lowercase, const bool uppercase, const bool digits)
 {
@@ -62,11 +56,11 @@ std::string random_string(const size_t length, const std::string_view pool)
         return {};
     }
     std::string result(length, pool[0]);
-    auto random_engine = get_random_engine();
+    auto random_engine = randutils::global_rng();
     for (size_t i = 0; i < length; ++i) {
         result[i] = *random_engine.choose(std::begin(pool), std::end(pool));
     }
     return result;
 }
 
-NOTF_CLOSE_META_NAMESPACE
+NOTF_CLOSE_COMMON_NAMESPACE

@@ -41,12 +41,46 @@ SCENARIO("functions related to floating-point calculation", "[meta][real]")
 
     SECTION("is approx can be used to fuzzy compare real numbers")
     {
-        REQUIRE(!is_approx(0.1, NAN));
-        REQUIRE(!is_approx(0.1, INFINITY));
-        REQUIRE(is_approx(0.1, 0.10000000000000001));
-        REQUIRE(is_approx(183716818.8719874, 183716818.8719875));
+        constexpr double double_nan = static_cast<double>(NAN);
+        constexpr double double_inf = static_cast<double>(INFINITY);
+
+        REQUIRE(!is_approx(0.1f, NAN));
+        REQUIRE(!is_approx(NAN, 1.68f));
         REQUIRE(!is_approx(NAN, NAN));
         REQUIRE(is_approx(INFINITY, INFINITY));
+        REQUIRE(!is_approx(INFINITY, 85.568f));
+        REQUIRE(!is_approx(0.578f, INFINITY));
+        REQUIRE(is_approx(0.1f, 0.1000001f));
+        REQUIRE(is_approx(9999831998412.2f, 9999831998412.1f));
+        REQUIRE(!is_approx(838412.f, 838413.f));
+        REQUIRE(!is_approx(838413.f, 838412.f));
+        REQUIRE(is_approx(9998413.f, 9998412.f));
+
+        REQUIRE(!is_approx(0.1, double_nan));
+        REQUIRE(!is_approx(double_nan, 1.68));
+        REQUIRE(!is_approx(double_inf, 85.568));
+        REQUIRE(!is_approx(0.578, double_inf));
+        REQUIRE(is_approx(double_inf, double_inf));
+        REQUIRE(is_approx(0.1, 0.10000000000000001));
+        REQUIRE(is_approx(183716818.8719874, 183716818.8719875));
+        REQUIRE(is_approx(183716818.8719875, 183716818.8719874));
+        REQUIRE(!is_approx(183716818.8719876, 183716818.8719874));
+
+        REQUIRE(!is_approx(double_nan, 1));
+        REQUIRE(!is_approx(double_inf, 85));
+        REQUIRE(!is_approx(double_inf, 0));
+        REQUIRE(is_approx(0.00000000000000001, 0));
+        REQUIRE(is_approx(183716818.9999999, 183716819));
+        REQUIRE(is_approx(183716818.0000001, 183716818));
+        REQUIRE(!is_approx(183716818.000001, 183716818));
+
+        REQUIRE(!is_approx(1, double_nan));
+        REQUIRE(!is_approx(85, double_inf));
+        REQUIRE(!is_approx(0, double_inf));
+        REQUIRE(is_approx(0, 0.00000000000000001));
+        REQUIRE(is_approx(183716819, 183716818.9999999));
+        REQUIRE(is_approx(183716818, 183716818.0000001));
+        REQUIRE(!is_approx(183716818, 183716818.000001));
 
         REQUIRE(precision_low<short>() == 0);
         REQUIRE(precision_low<int>() == 0);

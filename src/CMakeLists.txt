@@ -2,7 +2,7 @@
 
 # add core files
 add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
-    meta/random.cpp
+    common/random.cpp
 )
 
 # add thirdparty files

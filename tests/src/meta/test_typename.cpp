@@ -14,7 +14,7 @@ SCENARIO("demangle C++ type names", "[meta][type_name]")
 
     const std::string expected = "TestClass75";
     REQUIRE(class_name1 == expected);
-    REQUIRE(class_name2 ==  expected);
+    REQUIRE(class_name2 == expected);
     REQUIRE(class_name3 == expected);
 
     const std::string invalid_name = "notvalid";

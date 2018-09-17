@@ -2,16 +2,13 @@
 
 #include <string_view>
 
-#include "./meta.hpp"
-#include "./real.hpp"
+#include "../meta/real.hpp"
+#include "./common.hpp"
 #include "randutils/randutils.hpp"
 
-NOTF_OPEN_META_NAMESPACE
+NOTF_OPEN_COMMON_NAMESPACE
 
 // random generators ================================================================================================ //
-
-/// Convenience accessor and cache of a randutils random engine.
-decltype(randutils::default_rng())& get_random_engine();
 
 /// Returns a random number.
 /// @param from      Lowest possible number (default is 0)
@@ -19,13 +16,14 @@ decltype(randutils::default_rng())& get_random_engine();
 template<class L, class R, typename T = std::common_type_t<L, R>>
 T random_number(const L from, const R to)
 {
-    return get_random_engine().uniform(from, to);
+    return randutils::global_rng().uniform(from, to);
 }
 
 /// Returns a random angle in radians between -pi and pi.
 template<class T = double>
 std::enable_if_t<std::is_floating_point_v<T>, T> random_radian()
 {
+    NOTF_USING_META_NAMESPACE;
     return random_number(-pi<T>(), pi<T>());
 }
 
@@ -44,4 +42,4 @@ random_string(const size_t length, const bool lowercase = true, const bool upper
 /// @param length        Pool of possible (not necessarily unique) characters.
 std::string random_string(const size_t length, const std::string_view pool);
 
-NOTF_CLOSE_META_NAMESPACE
+NOTF_CLOSE_COMMON_NAMESPACE
