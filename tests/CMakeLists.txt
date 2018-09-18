@@ -3,6 +3,7 @@
 # add test files
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     main.cpp
+    common/test_version.cpp
     meta/test_hash.cpp
     meta/test_numeric.cpp
     meta/test_real.cpp

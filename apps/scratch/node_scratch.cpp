@@ -155,6 +155,39 @@ private:
     properties_t m_properties;
 };
 
+// state ============================================================================================================ //
+
+template<template<class> class ThisType, class NodeType>
+struct State {
+protected:
+    /// State objects should not be instantiated
+    State(NodeType& node) : m_node(node) {}
+
+public:
+    /// forbid the move constructor, otherwise all states would always be able to transition to themselves
+    /// (can be overridden in subclasses)
+    State(State&&) = delete;
+
+    /// Virtual Destructor.
+    virtual ~State() = default;
+
+    void callback()
+    {
+        // default implementation (is ignored, should be non-virtually overwritten in StateType)
+    }
+
+protected:
+    template<template<class> class T>
+    constexpr void _transition_into()
+    {
+        static_assert(NodeType::template can_transition<ThisType<NodeType>, T<NodeType>>(), "Undefined State switch");
+        m_node.template transition_into<T<NodeType>>();
+    }
+
+public:
+    NodeType& m_node;
+};
+
 // widget =========================================================================================================== //
 
 namespace detail {
@@ -206,14 +239,23 @@ template<class Traits>
 class CompileTimeWidget : public Widget {
 
     /// Tuple containing all compile time Properties of this Widget type.
-    using widget_properties_t = typename Traits::properties;
+    using properties_t = typename Traits::properties;
 
     /// Type of a specific Property in this Widget type.
-    template<std::size_t I>
-    using widget_property_t = std::tuple_element_t<I, widget_properties_t>;
+    template<size_t I>
+    using widget_property_t = std::tuple_element_t<I, properties_t>;
+
+    /// Variant of all States of this Widget type.
+    using state_variant_t = typename Traits::states;
+
+    /// Type of a specific State of thiw Widget.
+    template<size_t I>
+    using state_t = std::variant_alternative_t<I, state_variant_t>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
+    CompileTimeWidget() : Widget(), m_state(std::in_place_type_t<state_t<0>>(), *this) {}
+
     static constexpr auto get_property_count() noexcept
     {
         return _get_widget_property_count() + node_t::get_property_count();
@@ -234,8 +276,31 @@ public:
         return const_cast<std::remove_const_t<decltype(const_result)>>(const_result);
     }
 
+    template<class CurrentState, class NewState>
+    static constexpr bool can_transition()
+    {
+        return std::is_constructible_v<NewState, std::add_rvalue_reference_t<CurrentState>>;
+    }
+
+    template<class NewState, std::size_t I = 0>
+    void transition_into()
+    {
+        if constexpr (I >= std::variant_size_v<state_variant_t>) {
+            throw std::out_of_range("");
+        }
+        else {
+            if constexpr (can_transition<state_t<I>, NewState>()) {
+                if (m_state.index() == I) {
+                    m_state.template emplace<NewState>(std::move(std::get<I>(m_state)));
+                    return;
+                }
+            }
+            return transition_into<NewState, I + 1>();
+        }
+    }
+
 private:
-    static constexpr auto _get_widget_property_count() noexcept { return std::tuple_size_v<widget_properties_t>; }
+    static constexpr auto _get_widget_property_count() noexcept { return std::tuple_size_v<properties_t>; }
 
     template<size_t I, char... Cs>
     constexpr auto& _get_widget_property_by_name(StringType<char, Cs...> name) const
@@ -252,9 +317,12 @@ private:
     }
 
     // members ------------------------------------------------------------------------------------------------------ //
-private:
+protected:
     /// All Properties of this Widget, default initialized to the Trait's default values.
-    widget_properties_t m_widget_properties;
+    properties_t m_widget_properties;
+
+    /// Current State of this Widget.
+    state_variant_t m_state;
 };
 
 // main ============================================================================================================= //
@@ -266,32 +334,86 @@ struct WeirdPropertyTrait {
     static constexpr bool is_visible = true;
 };
 
+template<class>
+struct StateA;
+template<class>
+struct StateB;
+template<class>
+struct StateC;
+
+#define TRANSITION_INTO(x)                \
+    this->template _transition_into<x>(); \
+    return;
+
+template<class NodeType>
+struct StateA : State<StateA, NodeType> {
+    using node_t = NodeType;
+    using parent_t = State<StateA, node_t>;
+
+    // start State must have a "default" constructor
+    explicit StateA(NodeType& node) : parent_t(node) { std::cout << "Default constructed A" << std::endl; }
+    ~StateA() override { std::cout << "Destroyed A" << std::endl; }
+
+    void callback() { TRANSITION_INTO(StateB); }
+};
+
+template<class NodeType>
+struct StateB : State<StateB, NodeType> {
+    using node_t = NodeType;
+    using parent_t = State<StateB, node_t>;
+
+    explicit StateB(StateA<NodeType>&& a) : parent_t(a.m_node) { std::cout << "Transitioned from A -> B" << std::endl; }
+    ~StateB() override { std::cout << "Destroyed B" << std::endl; }
+
+    void callback() { TRANSITION_INTO(StateC); }
+};
+
+template<class NodeType>
+struct StateC : State<StateC, NodeType> {
+    using node_t = NodeType;
+    using parent_t = State<StateC, node_t>;
+
+    explicit StateC(StateB<NodeType>&& b) : parent_t(b.m_node) { std::cout << "Transitioned from B -> C" << std::endl; }
+    ~StateC() override { std::cout << "Destroyed C" << std::endl; }
+
+    void callback() { std::cout << "Done :)" << std::endl; }
+};
+
 int main()
 {
     NOTF_USING_LITERALS_NAMESPACE;
 
-    struct Foo{};
-    struct Bar{};
+    struct Foo {};
+    struct Bar {};
 
     using YESSA = tuple_to_variant_t<std::tuple<Foo, Bar>>;
     static_assert(std::is_same_v<YESSA, std::variant<Foo, Bar>>);
 
     struct TraitExample {
-        using properties = std::tuple<                //
-            CompileTimeProperty<WeirdPropertyTrait>>; //
+        using node_t = CompileTimeWidget<TraitExample>;
+        using properties = std::tuple<CompileTimeProperty<WeirdPropertyTrait>>;
+        using states = std::variant<StateA<node_t>, StateB<node_t>, StateC<node_t>>;
     };
 
     const CompileTimeNode<TraitExample> node;
     std::cout << node.get_property<int>("soweird").get() << std::endl;
     std::cout << node.get_property("soweird"_id).get() << std::endl;
 
-    struct TestWidget : public CompileTimeWidget<TraitExample> {
+    struct TestWidget : public TraitExample::node_t {
         void paint() override {}
+        void run_callback()
+        {
+            std::visit(overloaded{[](auto&& state) { state.callback(); }}, m_state);
+        }
     } widget;
     std::cout << widget.get_property<float>("position").get() << std::endl;
     std::cout << widget.get_property("visible"_id).get() << std::endl;
     std::cout << widget.get_property("soweird"_id).get() << std::endl;
     std::cout << widget.get_property("visible"_id).get() << std::endl;
+
+    widget.run_callback();
+    widget.run_callback();
+    widget.run_callback();
 
     return 0;
 }

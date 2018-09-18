@@ -2,14 +2,20 @@
 
 #include <cstdint>
 
-#include "./meta.hpp"
+#include "./common.hpp"
 
-NOTF_OPEN_META_NAMESPACE
+NOTF_OPEN_COMMON_NAMESPACE
 
 // version ========================================================================================================== //
 
 /// Object containing a semantic version.
 struct Version {
+
+    /// Value Constructor.
+    constexpr Version(const uint16_t major, const uint16_t minor = 0, const uint32_t revision = 0)
+        : m_major(major), m_minor(minor), m_revision(revision)
+    {}
+
     /// Equality operator
     constexpr bool operator==(const Version& other) const noexcept { return to_number() == other.to_number(); }
     constexpr bool operator!=(const Version& other) const noexcept { return !operator==(other); }
@@ -25,14 +31,15 @@ struct Version {
     /// Combines this version into a single 64-bit wide unsigned integer.
     constexpr uint64_t to_number() const noexcept
     {
-        return (static_cast<uint64_t>(major) << (sizeof(minor) + sizeof(revision))) //
-               | (static_cast<uint64_t>(minor) << sizeof(revision))                 //
-               | static_cast<uint64_t>(revision);                                   //
+        return (static_cast<uint64_t>(m_major) << (sizeof(m_minor) + sizeof(m_revision))) //
+               | (static_cast<uint64_t>(m_minor) << sizeof(m_revision))                   //
+               | static_cast<uint64_t>(m_revision);                                       //
     }
 
-    const uint16_t major;
-    const uint16_t minor;
-    const uint32_t revision;
+private:
+    const uint16_t m_major;
+    const uint16_t m_minor;
+    const uint32_t m_revision;
 };
 
 /// Version of this notf code base.
@@ -41,4 +48,4 @@ inline constexpr Version get_notf_version() noexcept
     return {NOTF_VERSION_MAJOR, NOTF_VERSION_MINOR, NOTF_VERSION_PATCH};
 }
 
-NOTF_CLOSE_META_NAMESPACE
+NOTF_CLOSE_COMMON_NAMESPACE
