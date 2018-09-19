@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "notf/common/log.hpp"
 #include "notf/common/string_view.hpp"
 #include "notf/common/variant.hpp"
 #include "notf/meta/stringtype.hpp"
@@ -414,6 +415,13 @@ int main()
     widget.run_callback();
     widget.run_callback();
     widget.run_callback();
+
+    Logger::Args default_args;
+    default_args.file_name = "log.txt";
+    Logger::initialize(default_args);
+    NOTF_LOG_TRACE("derbe aufs {} maul", "fiese");
+
+    ::notf::common::Logger::get()->debug("derbe aufs {} maul", "fiese");
 
     return 0;
 }

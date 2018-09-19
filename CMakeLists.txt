@@ -122,12 +122,15 @@ if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
     endif()
 endif()
 
-# pretty (long) function names
-option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
-if(${NOTF_LOG_PRETTY_FUNCTION})
-    message(STATUS ">>> notf: Using long function names")
-    add_definitions(-DNOTF_LOG_PRETTY_FUNCTION)
-endif()
+# log level
+set(NOTF_LOG_LEVEL "0" CACHE STRING "Log level to compile (0=all -> 6=nothing)")
+
+## pretty (long) function names
+#option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
+#if(${NOTF_LOG_PRETTY_FUNCTION})
+#    message(STATUS ">>> notf: Using long function names")
+#    add_definitions(-DNOTF_LOG_PRETTY_FUNCTION)
+#endif()
 
 # thread sanitization
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")

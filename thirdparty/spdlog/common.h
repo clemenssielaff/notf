@@ -47,7 +47,11 @@
 #define SPDLOG_DEPRECATED
 #endif
 
+#ifdef SPDLOG_FMT_EXTERNAL
+#include "fmt/format.h"
+#else
 #include "spdlog/fmt/fmt.h"
+#endif
 
 namespace spdlog {
 

@@ -4,8 +4,9 @@
 
 #pragma once
 
-#include "chrono"
-#include "spdlog/fmt/fmt.h"
+#include <chrono>
+
+#include "spdlog/common.h"
 
 // Some fmt helpers to efficiently format and pad ints and strings
 namespace spdlog {

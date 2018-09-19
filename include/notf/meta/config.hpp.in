@@ -53,3 +53,14 @@
 /// produce the same hash value. Since this would cause the built to fail, you can manually set this seed value to
 /// anything != 0 (the default) and try again. Chances are, you'll get lucky on your second try.
 #define NOTF_CONSTEXPR_SEED 0
+
+/// Minimum log level for log messages to be compiled.
+/// Log messages that are logged with NOTF_LOG_x() where "x" has  a level less than NOTF_LOG_LEVEL are removed before
+/// compilation.
+///     TRACE = 0
+///     DEBUG = 1
+///     INFO  = 2
+///     WARN  = 3
+///     ERROR = 4
+///     CRIT  = 5
+#define NOTF_LOG_LEVEL @NOTF_LOG_LEVEL@
