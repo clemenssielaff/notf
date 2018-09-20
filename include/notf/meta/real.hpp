@@ -2,7 +2,9 @@
 
 #include <cmath>
 
+#include "./exception.hpp"
 #include "./numeric.hpp"
+#include "./traits.hpp"
 
 NOTF_OPEN_META_NAMESPACE
 
@@ -119,7 +121,7 @@ constexpr T rad_to_deg(const T radians) noexcept
 
 /// Normalize Radians to a value within [-pi, pi].
 template<class T>
-inline T norm_angle(const T alpha)
+T norm_angle(const T alpha)
 {
     const T modulo = fmod(alpha, static_cast<T>(pi() * 2));
     return static_cast<T>(modulo >= 0 ? modulo : (pi() * 2) + modulo);
@@ -173,6 +175,30 @@ bool is_approx(const L lhs, const R rhs, const T epsilon = precision_high<T>())
     }
 
     return false;
+}
+
+// narrow cast ====================================================================================================== //
+
+/// Save narrowing cast.
+/// https://github.com/Microsoft/GSL/blob/master/include/gsl/gsl_util
+template<class Source, class Target>
+constexpr Target narrow_cast(Source&& value)
+{
+    using target_t = Target;
+    using source_t = std::decay_t<Source>;
+
+    target_t result = static_cast<target_t>(std::forward<Source>(value));
+    if (static_cast<source_t>(result) != value) {
+        NOTF_THROW(value_error, "narrow_cast failed");
+    }
+
+    if constexpr (!is_same_signedness<target_t, source_t>::value) {
+        if ((result < target_t{}) != (value < source_t{})) {
+            NOTF_THROW(value_error, "narrow_cast failed");
+        }
+    }
+
+    return result;
 }
 
 NOTF_CLOSE_META_NAMESPACE

@@ -4,9 +4,9 @@
 #include <mutex>
 #include <thread>
 
+#include "../meta/assert.hpp"
+#include "../meta/exception.hpp"
 #include "./common.hpp"
-#include "common/assert.hpp"
-#include "common/exception.hpp"
 
 NOTF_OPEN_COMMON_NAMESPACE
 

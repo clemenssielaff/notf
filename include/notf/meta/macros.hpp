@@ -4,6 +4,21 @@
 
 NOTF_OPEN_META_NAMESPACE
 
+// utilities ======================================================================================================== //
+
+/// No-op.
+#define NOTF_NOOP ((void)0)
+
+/// Interprets an expanded macro as a string.
+#define NOTF_STR(x) #x
+
+/// Takes two macros and concatenates them without whitespace in between.
+#define NOTF_CONCAT(x, y) x##y
+
+/// Expands a macro inside another macro.
+/// Use for `NOTF_DEFER(NOTF_STR, expanded) and others
+#define NOTF_DEFER(f, ...) f(__VA_ARGS__)
+
 // class declaration ================================================================================================ //
 
 /// Convenience macro to disable the construction of automatic copy- and assign methods.

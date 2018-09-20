@@ -1,8 +1,10 @@
 #include <iostream>
 
-#include "notf/common/log.hpp"
 #include "notf/common/string_view.hpp"
 #include "notf/common/variant.hpp"
+#include "notf/meta/assert.hpp"
+#include "notf/meta/exception.hpp"
+#include "notf/meta/log.hpp"
 #include "notf/meta/stringtype.hpp"
 
 #pragma GCC diagnostic ignored "-Wweak-vtables"
@@ -416,12 +418,13 @@ int main()
     widget.run_callback();
     widget.run_callback();
 
-    Logger::Args default_args;
+    TheLogger::Args default_args;
     default_args.file_name = "log.txt";
-    Logger::initialize(default_args);
+    TheLogger::initialize(default_args);
     NOTF_LOG_TRACE("derbe aufs {} maul", "fiese");
+    //    NOTF_THROW(value_error, "Junge, wa' {} fies", "dat");
 
-    ::notf::common::Logger::get()->debug("derbe aufs {} maul", "fiese");
+    NOTF_ASSERT(0, "wasgehtn {} oderwas", "deinemudda");
 
     return 0;
 }
