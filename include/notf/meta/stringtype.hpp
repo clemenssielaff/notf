@@ -2,7 +2,7 @@
 
 #include "./hash.hpp"
 
-NOTF_OPEN_META_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
 // string type ====================================================================================================== //
 
@@ -216,7 +216,7 @@ using make_string_type_t = decltype(make_string_type<arg>());
 template<class... Ts>
 using concat_string_type = decltype(detail::concat_string_type_impl(Ts{}...));
 
-NOTF_CLOSE_META_NAMESPACE
+NOTF_CLOSE_NAMESPACE
 
 // ================================================================================================================== //
 
@@ -229,7 +229,7 @@ NOTF_OPEN_LITERALS_NAMESPACE
 template<typename char_t, char_t... Cs>
 constexpr auto operator"" _id()
 {
-    NOTF_USING_META_NAMESPACE;
+    NOTF_USING_NAMESPACE;
     return StringType<char, Cs...>{};
 }
 

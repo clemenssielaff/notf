@@ -6,14 +6,13 @@
 #include "../common/vector.hpp"
 #include "./reactive.hpp"
 
-NOTF_OPEN_REACTIVE_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
-NOTF_USING_COMMON_NAMESPACE;
-
-// ================================================================================================================== //
+// publisher base =================================================================================================== //
 
 namespace detail {
 
+/// Publisher base template, both data and non-data publishing Publishers derive from it.
 template<class T>
 struct PublisherBase {
 
@@ -143,8 +142,9 @@ private:
 
 } // namespace detail
 
-// ================================================================================================================== //
+// publisher ======================================================================================================== //
 
+/// Default Publisher that publishes data of a given type T.
 template<class T>
 struct Publisher : public detail::PublisherBase<T> {
 
@@ -163,15 +163,14 @@ protected:
     void _next(const T& value)
     {
         NOTF_ASSERT(!this->m_is_completed && this->m_mutex.is_locked_by_this_thread());
-        iterate_and_clean(this->m_subscribers,                                           //
-                          [](const auto& consumer) { return consumer.use_count() > 1; }, // = validation
-                          [&](const auto& consumer) { consumer->on_next(value); }        // = action
+        iterate_and_clean(this->m_subscribers,                                               //
+                          [](const auto& subscriber) { return subscriber.use_count() > 1; }, // = validation
+                          [&](const auto& subscriber) { subscriber->on_next(value); }        // = action
         );
     }
 };
 
-// ================================================================================================================== //
-
+/// Specialization for Publisher that produce signals only (no data).
 template<>
 struct Publisher<NoData> : public detail::PublisherBase<NoData> {
 
@@ -189,11 +188,11 @@ protected:
     void _next()
     {
         NOTF_ASSERT(!this->m_is_completed && this->m_mutex.is_locked_by_this_thread());
-        iterate_and_clean(this->m_subscribers,                                           //
-                          [](const auto& consumer) { return consumer.use_count() > 1; }, // = validation
-                          [&](const auto& consumer) { consumer->on_next(); }             // = action
+        iterate_and_clean(this->m_subscribers,                                               //
+                          [](const auto& subscriber) { return subscriber.use_count() > 1; }, // = validation
+                          [&](const auto& subscriber) { subscriber->on_next(); }             // = action
         );
     }
 };
 
-NOTF_CLOSE_REACTIVE_NAMESPACE
+NOTF_CLOSE_NAMESPACE

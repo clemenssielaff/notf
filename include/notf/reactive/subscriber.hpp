@@ -2,9 +2,9 @@
 
 #include "./reactive.hpp"
 
-NOTF_OPEN_REACTIVE_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
-// ================================================================================================================== //
+// subscriber base ================================================================================================== //
 
 namespace detail {
 
@@ -31,7 +31,7 @@ struct SubscriberBase {
 
 } // namespace detail
 
-// ================================================================================================================== //
+// subscriber ======================================================================================================= //
 
 /// The basic data Subscriber.
 template<class T>
@@ -46,8 +46,6 @@ public:
     virtual void on_next(const input_t& value) = 0;
 };
 
-// ================================================================================================================== //
-
 /// Subscriber specialization for Subscribers that do not take any data, just signals.
 template<>
 struct Subscriber<NoData> : public detail::SubscriberBase {
@@ -61,4 +59,4 @@ public:
     virtual void on_next() = 0;
 };
 
-NOTF_CLOSE_REACTIVE_NAMESPACE
+NOTF_CLOSE_NAMESPACE

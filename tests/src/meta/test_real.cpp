@@ -2,7 +2,7 @@
 
 #include "notf/meta/real.hpp"
 
-NOTF_USING_META_NAMESPACE;
+NOTF_USING_NAMESPACE;
 
 SCENARIO("functions related to floating-point calculation", "[meta][real]")
 {

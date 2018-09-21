@@ -3,9 +3,9 @@
 #include <cstdint>
 #include <limits.h>
 
-#include "./meta.hpp"
+#include "./config.hpp"
 
-NOTF_OPEN_META_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
@@ -16,4 +16,4 @@ inline constexpr std::size_t bitsizeof()
     return sizeof(T) * CHAR_BIT;
 }
 
-NOTF_CLOSE_META_NAMESPACE
+NOTF_CLOSE_NAMESPACE

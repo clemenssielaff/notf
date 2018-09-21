@@ -6,7 +6,7 @@
 
 #include "fmt/format.h"
 
-NOTF_OPEN_META_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
 // notf_exception =================================================================================================== //
 
@@ -28,7 +28,7 @@ public:
     /// @param line     Line in `file` at which the error was thrown.
     /// @param message  What has caused this exception (can be empty).
     notf_exception(const char* file, const char* function, const size_t line, const char* message = "")
-        : file(meta::filename_from_path(file)), function(function), line(line), message(message)
+        : file(filename_from_path(file)), function(function), line(line), message(message)
     {}
 
     /// Constructor with an fmt formatted message.
@@ -39,7 +39,7 @@ public:
     /// @param args     Variadic arguments used to fill placeholders in the format string.
     template<class... Args>
     notf_exception(const char* file, const char* function, const size_t line, const char* fmt, Args&&... args)
-        : file(meta::filename_from_path(file))
+        : file(filename_from_path(file))
         , function(function)
         , line(line)
         , message(fmt::format(fmt, std::forward<Args>(args)...))
@@ -73,11 +73,11 @@ public:
 // built-in exception types ========================================================================================= //
 
 /// Declare a new NoTF exception type.
-#define NOTF_EXCEPTION_TYPE(TYPE)                                                \
-    struct TYPE : public ::notf::meta::notf_exception {                          \
-        template<class... Ts>                                                    \
-        TYPE(Ts&&... ts) : ::notf::meta::notf_exception(std::forward<Ts>(ts)...) \
-        {}                                                                       \
+#define NOTF_EXCEPTION_TYPE(TYPE)                                          \
+    struct TYPE : public ::notf::notf_exception {                          \
+        template<class... Ts>                                              \
+        TYPE(Ts&&... ts) : ::notf::notf_exception(std::forward<Ts>(ts)...) \
+        {}                                                                 \
     };
 
 /// Specialized exception that logs the message and then behaves like a regular std::runtime_error.
@@ -101,4 +101,4 @@ NOTF_EXCEPTION_TYPE(internal_error);
 /// Error thrown when the wrong thread does something.
 NOTF_EXCEPTION_TYPE(thread_error);
 
-NOTF_CLOSE_META_NAMESPACE
+NOTF_CLOSE_NAMESPACE

@@ -1,6 +1,6 @@
 #include "notf/common/random.hpp"
 
-NOTF_OPEN_COMMON_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
 std::string random_string(const size_t length, const bool lowercase, const bool uppercase, const bool digits)
 {
@@ -63,4 +63,4 @@ std::string random_string(const size_t length, const std::string_view pool)
     return result;
 }
 
-NOTF_CLOSE_COMMON_NAMESPACE
+NOTF_CLOSE_NAMESPACE

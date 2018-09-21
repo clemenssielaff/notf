@@ -6,7 +6,7 @@
 #include "../meta/exception.hpp"
 #include "./common.hpp"
 
-NOTF_OPEN_COMMON_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
 // vector functions ================================================================================================= //
 
@@ -245,4 +245,4 @@ void iterate_and_clean(std::vector<T>& vector, P&& predicate, F&& functor)
     }
 }
 
-NOTF_CLOSE_COMMON_NAMESPACE
+NOTF_CLOSE_NAMESPACE

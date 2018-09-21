@@ -4,9 +4,10 @@
 
 #include "../meta/real.hpp"
 #include "./common.hpp"
+
 #include "randutils/randutils.hpp"
 
-NOTF_OPEN_COMMON_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
 // random generators ================================================================================================ //
 
@@ -23,7 +24,7 @@ T random_number(const L from, const R to)
 template<class T = double>
 std::enable_if_t<std::is_floating_point_v<T>, T> random_radian()
 {
-    NOTF_USING_META_NAMESPACE;
+    NOTF_USING_NAMESPACE;
     return random_number(-pi<T>(), pi<T>());
 }
 
@@ -42,4 +43,4 @@ random_string(const size_t length, const bool lowercase = true, const bool upper
 /// @param length        Pool of possible (not necessarily unique) characters.
 std::string random_string(const size_t length, const std::string_view pool);
 
-NOTF_CLOSE_COMMON_NAMESPACE
+NOTF_CLOSE_NAMESPACE

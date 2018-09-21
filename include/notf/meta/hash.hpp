@@ -5,7 +5,9 @@
 #include "./real.hpp"
 #include "./system.hpp"
 
-NOTF_OPEN_META_NAMESPACE
+NOTF_OPEN_NAMESPACE
+
+// hash functions =================================================================================================== //
 
 namespace detail {
 
@@ -25,8 +27,6 @@ constexpr size_t magic_hash_number()
 }
 
 } // namespace detail
-
-// ================================================================================================================== //
 
 /// 32 bit mixer taken from MurmurHash3
 ///     https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp
@@ -104,4 +104,4 @@ constexpr size_t hash_string(const char* string, const size_t size) noexcept
     return result;
 }
 
-NOTF_CLOSE_META_NAMESPACE
+NOTF_CLOSE_NAMESPACE

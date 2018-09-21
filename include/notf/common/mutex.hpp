@@ -8,7 +8,7 @@
 #include "../meta/exception.hpp"
 #include "./common.hpp"
 
-NOTF_OPEN_COMMON_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
 #ifdef NOTF_DEBUG
 
@@ -91,4 +91,4 @@ using ConditionVariable = std::condition_variable;
 
 #endif // NOTF_DEBUG
 
-NOTF_CLOSE_COMMON_NAMESPACE
+NOTF_CLOSE_NAMESPACE

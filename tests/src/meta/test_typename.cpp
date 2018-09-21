@@ -2,7 +2,7 @@
 
 #include "notf/meta/typename.hpp"
 
-NOTF_USING_META_NAMESPACE;
+NOTF_USING_NAMESPACE;
 
 class TestClass75 {};
 

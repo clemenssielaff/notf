@@ -4,7 +4,7 @@
 
 #include "./common.hpp"
 
-NOTF_OPEN_COMMON_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
 // variant ========================================================================================================== //
 
@@ -35,4 +35,4 @@ struct tuple_to_variant<std::tuple<Ts...>> {
 template<typename... Ts>
 using tuple_to_variant_t = typename tuple_to_variant<Ts...>::type;
 
-NOTF_CLOSE_COMMON_NAMESPACE
+NOTF_CLOSE_NAMESPACE

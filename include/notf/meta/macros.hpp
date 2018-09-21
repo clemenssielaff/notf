@@ -1,8 +1,8 @@
 #pragma once
 
-#include "./meta.hpp"
+#include "./config.hpp"
 
-NOTF_OPEN_META_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
 // utilities ======================================================================================================== //
 
@@ -19,7 +19,7 @@ NOTF_OPEN_META_NAMESPACE
 /// Use for `NOTF_DEFER(NOTF_STR, expanded) and others
 #define NOTF_DEFER(f, ...) f(__VA_ARGS__)
 
-// class declaration ================================================================================================ //
+// object definition ================================================================================================ //
 
 /// Convenience macro to disable the construction of automatic copy- and assign methods.
 /// Implicitly disables move constructor/assignment methods as well, although you can define them yourself if you want.
@@ -141,4 +141,4 @@ NOTF_OPEN_META_NAMESPACE
 ///     }
 #define NOTF_GUARD_IF(x, f) if (x) if (NOTF_GUARD(f); x)
 
-NOTF_CLOSE_META_NAMESPACE
+NOTF_CLOSE_NAMESPACE

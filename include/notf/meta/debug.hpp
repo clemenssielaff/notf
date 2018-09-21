@@ -2,9 +2,9 @@
 
 #include <utility>
 
-#include "./meta.hpp"
+#include "./config.hpp"
 
-NOTF_OPEN_META_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
 // introspection ==================================================================================================== //
 
@@ -52,4 +52,4 @@ constexpr const char* filename_from_path(const char* input)
 #define NOTF_CURRENT_FUNCTION __func__
 #endif
 
-NOTF_CLOSE_META_NAMESPACE
+NOTF_CLOSE_NAMESPACE

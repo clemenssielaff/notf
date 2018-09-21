@@ -2,7 +2,7 @@
 
 #include "notf/common/version.hpp"
 
-NOTF_USING_COMMON_NAMESPACE;
+NOTF_USING_NAMESPACE;
 
 SCENARIO("version", "[common][version]")
 {

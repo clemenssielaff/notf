@@ -1,17 +1,18 @@
 #pragma once
 
-#include "../meta/config.hpp"
+#include <memory>
 
-// common namespace ================================================================================================= //
+#include "../meta/macros.hpp"
 
-/// Name of the common namespace
-#define NOTF_COMMON_NAMESPACE_NAME common
+NOTF_OPEN_NAMESPACE
 
-/// Opens the common namespace.
-#define NOTF_OPEN_COMMON_NAMESPACE NOTF_OPEN_NAMESPACE namespace NOTF_COMMON_NAMESPACE_NAME {
+// forwards ========================================================================================================= //
 
-/// For visual balance with NOTF_OPEN_COMMON_NAMESPACE.
-#define NOTF_CLOSE_COMMON_NAMESPACE NOTF_CLOSE_NAMESPACE }
+// timer_pool.hpp
+class TheTimerPool;
+NOTF_DEFINE_SHARED_POINTERS(class, Timer);
+NOTF_DEFINE_SHARED_POINTERS(class, OneShotTimer);
+NOTF_DEFINE_SHARED_POINTERS(class, IntervalTimer);
+NOTF_DEFINE_SHARED_POINTERS(class, VariableTimer);
 
-/// Use the versioned namespace.
-#define NOTF_USING_COMMON_NAMESPACE using namespace ::NOTF_NAMESPACE_NAME::NOTF_COMMON_NAMESPACE_NAME
+NOTF_CLOSE_NAMESPACE

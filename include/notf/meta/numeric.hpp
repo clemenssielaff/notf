@@ -3,9 +3,9 @@
 #include <limits>
 #include <utility>
 
-#include "./meta.hpp"
+#include "./config.hpp"
 
-NOTF_OPEN_META_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
 // short unsigned integer names ===================================================================================== //
 
@@ -136,4 +136,4 @@ constexpr std::enable_if_t<std::is_integral_v<T>, T> precision_high() noexcept
     return 0; // integers have no leeway
 }
 
-NOTF_CLOSE_META_NAMESPACE
+NOTF_CLOSE_NAMESPACE

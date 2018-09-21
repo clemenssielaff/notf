@@ -3,7 +3,7 @@
 #include "notf/meta/hash.hpp"
 #include "notf/meta/stringtype.hpp"
 
-NOTF_USING_META_NAMESPACE;
+NOTF_USING_NAMESPACE;
 
 SCENARIO("hash functions", "[meta][hash]")
 {

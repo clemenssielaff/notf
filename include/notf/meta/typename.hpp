@@ -8,9 +8,11 @@
 #include <memory>
 #endif
 
-#include "./meta.hpp"
+#include "./config.hpp"
 
-NOTF_OPEN_META_NAMESPACE
+NOTF_OPEN_NAMESPACE
+
+// type_name ======================================================================================================== //
 
 namespace detail {
 #ifdef __GNUG__
@@ -59,4 +61,4 @@ inline std::string type_name(const std::type_info& type_info)
     return detail::demangle_type_name(type_info.name());
 }
 
-NOTF_CLOSE_META_NAMESPACE
+NOTF_CLOSE_NAMESPACE

@@ -3,6 +3,7 @@
 # add core files
 add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     common/random.cpp
+    common/timer_pool.cpp
 )
 
 # add thirdparty files

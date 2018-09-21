@@ -6,7 +6,7 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
-NOTF_OPEN_META_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
 // the logger ======================================================================================================= //
 
@@ -36,7 +36,7 @@ public:
 
         /// Initial log level for the logger itself.
         Level log_level = [] {
-            if constexpr (meta::is_debug_build())
+            if constexpr (is_debug_build())
                 return Level::TRACE;
             else
                 return Level::INFO;
@@ -44,7 +44,7 @@ public:
 
         /// Log level for the console logger.
         Level console_level = [] {
-            if constexpr (meta::is_debug_build())
+            if constexpr (is_debug_build())
                 return Level::TRACE;
             else
                 return Level::WARNING;
@@ -52,7 +52,7 @@ public:
 
         /// Log level for the file logger (is ignored if file logging is disabled).
         Level file_level = [] {
-            if constexpr (meta::is_debug_build())
+            if constexpr (is_debug_build())
                 return Level::TRACE;
             else
                 return Level::INFO;
@@ -129,7 +129,7 @@ private:
 /// is never evaluated and to make use of the __FILE__ and __LINE__ macros.
 
 #define NOTFIMPL_LOG(LEVEL, fmt, ...)                                                                                \
-    ::notf::meta::TheLogger::get()->LEVEL(fmt " ({}:{})", ##__VA_ARGS__, ::notf::meta::filename_from_path(__FILE__), \
+    ::notf::TheLogger::get()->LEVEL(fmt " ({}:{})", ##__VA_ARGS__, ::notf::filename_from_path(__FILE__), \
                                           __LINE__)
 
 #if NOTF_LOG_LEVEL <= 0
@@ -168,4 +168,4 @@ private:
 #define NOTF_LOG_CRIT(...)
 #endif
 
-NOTF_CLOSE_META_NAMESPACE
+NOTF_CLOSE_NAMESPACE

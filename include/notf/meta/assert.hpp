@@ -4,7 +4,7 @@
 
 #include "./log.hpp" // is only included in debug builds
 
-NOTF_OPEN_META_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
 // assertions ======================================================================================================= //
 
@@ -47,9 +47,9 @@ assertion_failed(char const* expr, char const* function, char const* file, long 
 #define NOTF_ASSERT(expr, ...) \
     (NOTF_LIKELY(expr) ?       \
          NOTF_NOOP :           \
-         ::notf::meta::detail::assertion_failed(#expr, NOTF_CURRENT_FUNCTION, __FILE__, __LINE__, ##__VA_ARGS__))
+         ::notf::detail::assertion_failed(#expr, NOTF_CURRENT_FUNCTION, __FILE__, __LINE__, ##__VA_ARGS__))
 
-NOTF_CLOSE_META_NAMESPACE
+NOTF_CLOSE_NAMESPACE
 
 #else
 

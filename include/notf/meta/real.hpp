@@ -6,7 +6,7 @@
 #include "./numeric.hpp"
 #include "./traits.hpp"
 
-NOTF_OPEN_META_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
 // constants ======================================================================================================== //
 
@@ -201,4 +201,4 @@ constexpr Target narrow_cast(Source&& value)
     return result;
 }
 
-NOTF_CLOSE_META_NAMESPACE
+NOTF_CLOSE_NAMESPACE

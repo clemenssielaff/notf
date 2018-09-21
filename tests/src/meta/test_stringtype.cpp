@@ -2,7 +2,7 @@
 
 #include "notf/meta/stringtype.hpp"
 
-NOTF_USING_META_NAMESPACE;
+NOTF_USING_NAMESPACE;
 
 SCENARIO("StringConsts", "[meta][stringtype]")
 {

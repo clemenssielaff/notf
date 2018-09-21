@@ -6,12 +6,12 @@
 #include "notf/meta/exception.hpp"
 #include "notf/meta/log.hpp"
 #include "notf/meta/stringtype.hpp"
+#include "notf/meta/time.hpp"
 
 #pragma GCC diagnostic ignored "-Wweak-vtables"
 #pragma GCC diagnostic ignored "-Wpadded"
 
-NOTF_USING_META_NAMESPACE;
-NOTF_USING_COMMON_NAMESPACE;
+NOTF_USING_NAMESPACE;
 
 // property ========================================================================================================= //
 
@@ -424,7 +424,7 @@ int main()
     NOTF_LOG_TRACE("derbe aufs {} maul", "fiese");
     //    NOTF_THROW(value_error, "Junge, wa' {} fies", "dat");
 
-    NOTF_ASSERT(0, "wasgehtn {} oderwas", "deinemudda");
+    //    NOTF_ASSERT(0, "wasgehtn {} oderwas", "deinemudda");
 
     return 0;
 }

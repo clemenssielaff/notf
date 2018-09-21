@@ -1,10 +1,11 @@
 #pragma once
 
 #include <type_traits>
+#include <typeinfo>
 
-#include "./meta.hpp"
+#include "./config.hpp"
 
-NOTF_OPEN_META_NAMESPACE
+NOTF_OPEN_NAMESPACE
 
 // traits =========================================================================================================== //
 
@@ -67,4 +68,18 @@ struct identity {
 template<class T>
 using identity_t = typename identity<T>::type;
 
-NOTF_CLOSE_META_NAMESPACE
+/// Is only a valid expression if the given type exists.
+/// Can be used to check whether a template type has a certain nested type:
+///
+///     template <typename T, typename = void>
+///     constexpr bool has_my_type = false;
+///     template <typename T>
+///     constexpr bool has_my_type<T, decltype(check_is_type<typename T::has_my_type>(), void())> = true;
+///
+template<class T>
+constexpr void check_is_type()
+{
+    static_cast<void>(typeid(T));
+}
+
+NOTF_CLOSE_NAMESPACE
