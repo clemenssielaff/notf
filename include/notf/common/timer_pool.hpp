@@ -3,12 +3,12 @@
 #include <forward_list>
 
 #include "../meta/numeric.hpp"
+#include "../meta/pointer.hpp"
 #include "../meta/smart_factories.hpp"
 #include "../meta/time.hpp"
 #include "./common.hpp"
 #include "./mutex.hpp"
 #include "./thread.hpp"
-//#include "common/pointer.hpp"
 
 // ================================================================================================================== //
 
@@ -53,7 +53,7 @@ private:
 
     /// Unschedules an existing Timer.
     /// @param timer    Timer to unschedule.
-    void _unschedule(valid_ptr<Timer*> timer);
+    void _unschedule(const valid_ptr<Timer*> timer);
 
     /// Current time point.
     static timepoint_t _now() { return std::chrono::time_point_cast<duration_t>(clock_t::now()); }

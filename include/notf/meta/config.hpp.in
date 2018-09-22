@@ -17,6 +17,13 @@
 /// Whether or not the code was modified before compilation.
 #cmakedefine01 NOTF_BUILT_COMMIT_WAS_MODIFIED
 
+// compiler related ================================================================================================= //
+
+/// Compiler used.
+#cmakedefine NOTF_CLANG
+#cmakedefine NOTF_GCC
+#cmakedefine NOTF_MSVC
+
 // notf namespace =================================================================================================== //
 
 /// Name of the notf namespace.

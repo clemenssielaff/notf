@@ -3,6 +3,7 @@
 #include <exception>
 
 #include "./debug.hpp"
+#include "./macros.hpp"
 
 #include "fmt/format.h"
 
@@ -27,7 +28,7 @@ public:
     /// @param function Function in which the error was thrown.
     /// @param line     Line in `file` at which the error was thrown.
     /// @param message  What has caused this exception (can be empty).
-    notf_exception(const char* file, const char* function, const size_t line, const char* message = "")
+    notf_exception(const char* file, const char* function, const long line, const char* message = "")
         : file(filename_from_path(file)), function(function), line(line), message(message)
     {}
 
@@ -38,7 +39,7 @@ public:
     /// @param fmt      Format string used to construct the message.
     /// @param args     Variadic arguments used to fill placeholders in the format string.
     template<class... Args>
-    notf_exception(const char* file, const char* function, const size_t line, const char* fmt, Args&&... args)
+    notf_exception(const char* file, const char* function, const long line, const char* fmt, Args&&... args)
         : file(filename_from_path(file))
         , function(function)
         , line(line)
@@ -60,7 +61,7 @@ public:
     const char* function;
 
     /// Line in the file at which the exception was thrown.
-    const size_t line;
+    const long line;
 
     /// The exception message;
     const std::string message;
@@ -78,7 +79,7 @@ public:
         template<class... Ts>                                              \
         TYPE(Ts&&... ts) : ::notf::notf_exception(std::forward<Ts>(ts)...) \
         {}                                                                 \
-    };
+    }
 
 /// Specialized exception that logs the message and then behaves like a regular std::runtime_error.
 NOTF_EXCEPTION_TYPE(runtime_error);

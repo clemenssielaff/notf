@@ -82,6 +82,14 @@ SCENARIO("functions related to floating-point calculation", "[meta][real]")
         REQUIRE(is_approx(183716818, 183716818.0000001));
         REQUIRE(!is_approx(183716818, 183716818.000001));
 
+        REQUIRE(!is_approx(double_nan, 1));
+        REQUIRE(!is_approx(double_inf, 85));
+        REQUIRE(!is_approx(double_inf, 0));
+        REQUIRE(is_approx(0.00000000000000001, 0));
+        REQUIRE(is_approx(183716818.9999999, 183716819));
+        REQUIRE(is_approx(183716818.0000001, 183716818));
+        REQUIRE(!is_approx(183716818.000001, 183716818));
+
         REQUIRE(precision_low<short>() == 0);
         REQUIRE(precision_low<int>() == 0);
         REQUIRE(precision_low<int>() == 0);

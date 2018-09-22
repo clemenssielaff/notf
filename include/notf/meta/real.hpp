@@ -137,22 +137,22 @@ T norm_angle(const T alpha)
 template<class L, class R, typename T = std::common_type_t<L, R>>
 bool is_approx(const L lhs, const R rhs, const T epsilon = precision_high<T>())
 {
-    if (is_nan(lhs) || is_nan(rhs)) {
-        return false;
-    }
-
     // if only one argument is infinite, the other one cannot be approximately the same
     if constexpr (std::is_integral_v<L>) {
-        if (is_inf(rhs)) {
+        if (is_nan(rhs) || is_inf(rhs)) {
             return false;
         }
     }
     else if constexpr (std::is_integral_v<R>) {
-        if (is_inf(lhs)) {
+        if (is_nan(lhs) || is_inf(lhs)) {
             return false;
         }
     }
     else {
+        // nans are never approximately equal
+        if (is_nan(lhs) || is_nan(rhs)) {
+            return false;
+        }
         if (is_inf(lhs)) {
             if (is_inf(rhs)) {
                 return true; // infinities are always approximately equal

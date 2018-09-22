@@ -30,10 +30,13 @@ constexpr const char* filename_from_path(const char* input)
             last_occurrence = offset + 1;
         }
     }
+
     return &input[last_occurrence];
 }
 
 // run time behavior ================================================================================================ //
+
+//#undef NOTF_CLANG
 
 /// Function name macro to use for logging and exceptions.
 #ifdef NOTF_LOG_PRETTY_FUNCTION
@@ -45,6 +48,8 @@ constexpr const char* filename_from_path(const char* input)
 #else
 #ifdef NOTF_GCC
 #define NOTF_CURRENT_FUNCTION __PRETTY_FUNCTION__
+#else
+#define NOTF_CURRENT_FUNCTION __func__
 #endif
 #endif
 #endif

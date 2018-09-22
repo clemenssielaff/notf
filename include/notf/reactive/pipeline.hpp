@@ -29,7 +29,7 @@ public:
     NOTF_NO_COPY_OR_ASSIGN(PipelineBase);
 
     /// Default constructor, produces a disconnected Pipeline.
-    PipelineBase() : m_is_connected(false) {}
+    PipelineBase() = default;
 
     /// Value Constructor.
     /// @param subscriber   Subscriber at the "downstream" end of the Pipeline.
@@ -58,7 +58,7 @@ protected:
     std::once_flag m_once_flag;
 
     /// Flag indicating if the Pipeline has already been disconnected.
-    std::atomic_bool m_is_connected;
+    std::atomic_bool m_is_connected = false;
 };
 
 } // namespace detail
@@ -68,14 +68,15 @@ protected:
 template<class T, class I, class O>
 struct ExtensionPipeline final : public detail::PipelineBase<T> {
 
-    /// Type flowing through the Pipeline connected to the "upstream" end of this pne.
+    /// Type received by the Subscriber at the "upstream" end of this Pipeline
     using prev_t = I;
 
-    /// Type produced by the Relay at the end of this Pipeline or `PipelineEnd`.
+    /// Type published by the Relay at the end of this Pipeline or `PipelineEnd`.
     using next_t = O;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
+    /// Default constructor, produces a disconnected Pipeline.
     ExtensionPipeline() = default;
 
     /// Value Constructor.
@@ -117,6 +118,7 @@ struct PublisherPipeline final : public detail::PipelineBase<T> {
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
+    /// Default constructor, produces a disconnected Pipeline.
     PublisherPipeline() = default;
 
     /// Value Constructor.

@@ -3,7 +3,12 @@
 # add test files
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     main.cpp
+
+    common/test_vector.cpp
     common/test_version.cpp
+
+    meta/test_debug.cpp
+    meta/test_exception.cpp
     meta/test_hash.cpp
     meta/test_numeric.cpp
     meta/test_real.cpp
@@ -28,9 +33,6 @@ target_include_directories(notf-tests PUBLIC
 target_link_libraries(notf-tests PUBLIC
     notf-core
 )
-
-# use cotire to accelerate the build
-cotire(notf-tests)
 
 # register the test runner as a test
 add_test(NAME "NotfTestRunner" COMMAND notf-tests)

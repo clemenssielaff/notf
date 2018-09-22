@@ -18,6 +18,7 @@ project(notf
 
 # cmake modules
 set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+find_package( Threads )
 
 include(cotire)
 
@@ -93,6 +94,15 @@ endif()
 
 # CODE INTEGRATION #####################################################################################################
 
+# check compiler ID (from https://cmake.org/cmake/help/latest/variable/CMAKE_LANG_COMPILER_ID.html)
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    set(NOTF_CLANG TRUE)
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    set(NOTF_GCC TRUE)
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    set(NOTF_MSVC TRUE)
+endif()
+
 # these variables will be defined in notf/meta/config.hpp
 set(NOTF_VERSION_STRING ${PROJECT_VERSION})
 
@@ -125,12 +135,12 @@ endif()
 # log level
 set(NOTF_LOG_LEVEL "0" CACHE STRING "Log level to compile (0=all -> 6=nothing)")
 
-## pretty (long) function names
-#option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
-#if(${NOTF_LOG_PRETTY_FUNCTION})
-#    message(STATUS ">>> notf: Using long function names")
-#    add_definitions(-DNOTF_LOG_PRETTY_FUNCTION)
-#endif()
+# pretty (long) function names
+option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
+if(${NOTF_LOG_PRETTY_FUNCTION})
+    message(STATUS ">>> notf: Using long function names")
+    add_definitions(-DNOTF_LOG_PRETTY_FUNCTION)
+endif()
 
 # thread sanitization
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")

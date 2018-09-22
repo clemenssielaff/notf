@@ -21,5 +21,4 @@ target_include_directories(notf-node-scratch PUBLIC
 target_link_libraries(notf-node-scratch PUBLIC
     notf-thirdparty
     notf-core
-    ${CMAKE_THREAD_LIBS_INIT}
 )

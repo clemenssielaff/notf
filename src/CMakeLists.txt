@@ -26,4 +26,5 @@ target_include_directories(notf-core PUBLIC
 # core library dependencies
 target_link_libraries(notf-core PUBLIC
     notf-thirdparty
+    ${CMAKE_THREAD_LIBS_INIT}
 )

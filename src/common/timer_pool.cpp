@@ -88,7 +88,7 @@ void TheTimerPool::_unschedule(const valid_ptr<Timer*> timer)
         return;
     }
     for (auto prev = m_timer.before_begin(), it = m_timer.begin(), end = m_timer.end(); it != end; prev = ++it) {
-        if ((*it).get() == timer) {
+        if (*it == timer) {
             m_timer.erase_after(prev);
             break;
         }

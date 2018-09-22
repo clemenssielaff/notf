@@ -5,6 +5,7 @@
 #include "notf/meta/assert.hpp"
 #include "notf/meta/exception.hpp"
 #include "notf/meta/log.hpp"
+#include "notf/meta/pointer.hpp"
 #include "notf/meta/stringtype.hpp"
 #include "notf/meta/time.hpp"
 
@@ -422,9 +423,34 @@ int main()
     default_args.file_name = "log.txt";
     TheLogger::initialize(default_args);
     NOTF_LOG_TRACE("derbe aufs {} maul", "fiese");
-    //    NOTF_THROW(value_error, "Junge, wa' {} fies", "dat");
 
-    //    NOTF_ASSERT(0, "wasgehtn {} oderwas", "deinemudda");
+    try {
+        NOTF_THROW(value_error, "Junge, wa' {} fies", "dat");
+    } catch (const value_error& exp) {
+        auto blub = exp.function;
+    }
+
+//    NOTF_ASSERT(0, "wasgehtn {} oderwas", "deinemudda");
+
+    struct Base {};
+    struct Sub : public Base {};
+
+    Base bbase;
+
+    std::unique_ptr<Base> a_base = std::make_unique<Base>();
+    std::unique_ptr<Sub> a_sub = std::make_unique<Sub>();
+    valid_ptr<Base*> v_base(a_base.get());
+    valid_ptr<Sub*> v_sub(a_sub.get());
+
+    valid_ptr<Base*> v_base2(v_base);
+    valid_ptr<Base*> v_base3(v_sub);
+
+    NOTF_ASSERT(v_base == v_base2);
+
+
+    auto blub = raw_pointer(v_base);
+
+    using x = has_raw_pointer<valid_ptr<Base*>>;
 
     return 0;
 }

@@ -9,6 +9,14 @@ NOTF_OPEN_NAMESPACE
 
 // traits =========================================================================================================== //
 
+/// Checks if all expressions are true.
+///     if(all(a, !b, c < d)){ // is equal to ```if(a && !b && c < d){```
+template<class... Ts>
+constexpr bool all(Ts... expressions)
+{
+    return (... && expressions);
+}
+
 /// Checks if T is any of the variadic types.
 template<class T, class... Ts>
 using is_one_of = std::disjunction<std::is_same<T, Ts>...>;
@@ -33,6 +41,14 @@ struct is_same_signedness : public std::integral_constant<bool, std::is_signed_v
 ///
 template<class T>
 struct always_false : std::false_type {};
+template<class T>
+constexpr bool always_false_v = always_false<T>::value;
+
+/// Always true, if T is a valid type.
+template<class T>
+struct always_true : std::true_type {};
+template<class T>
+constexpr bool always_true_v = always_true<T>::value;
 
 /// Type template to ensure that a template argument does not participate in type deduction.
 /// Compare:
@@ -81,5 +97,28 @@ constexpr void check_is_type()
 {
     static_cast<void>(typeid(T));
 }
+
+/// Default factory can be used to (not really) instantiate types within a decltype expression, even if their default
+/// constructor is deleted.
+/// Without:
+///     struct Foo{
+///         Foo() = delete;
+///     };
+///     void overloaded(int) {}
+///     void overloaded(Foo) {}
+///
+///     template<class T>
+///     using can_be_overloaded = decltype(overloaded(T{}));
+///     using foo_t = can_be_overloaded<Foo>; // ERROR: use of deleted function 'Foo::Foo()'
+///
+/// And with:
+///     template<class T>
+///     using can_be_overloaded = decltype(overloaded(default_factory<T>{}()));
+///     using foo_t = can_be_overloaded<Foo>; // OKAY
+///
+template<class T>
+struct default_factory {
+    T operator()() const { return T{}; }
+};
 
 NOTF_CLOSE_NAMESPACE

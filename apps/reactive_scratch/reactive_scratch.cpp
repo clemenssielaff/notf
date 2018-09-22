@@ -5,16 +5,15 @@
 
 #include "notf/meta/numeric.hpp"
 
-//#include "notf/common/timer_pool.hpp"
+#include "notf/common/timer_pool.hpp"
 #include "notf/common/vector.hpp"
 
-#include "notf/reactive/subscriber.hpp"
 #include "notf/reactive/pipeline.hpp"
 #include "notf/reactive/publisher.hpp"
 #include "notf/reactive/relay.hpp"
+#include "notf/reactive/subscriber.hpp"
 
-NOTF_USING_META_NAMESPACE;
-NOTF_USING_REACTIVE_NAMESPACE;
+NOTF_USING_NAMESPACE;
 
 // ------------------------------------------------------------------------------------------------------------------ //
 
@@ -223,8 +222,8 @@ auto Counter(T start, duration_t interval, T end = max_value<T>(), T step = 1)
         }
 
     private:
-        IntervalTimerPtr m_timer;
         T m_counter;
+        IntervalTimerPtr m_timer;
     };
     return std::make_shared<CounterObj>(start, step, end, std::move(interval));
 }
@@ -265,10 +264,10 @@ auto Generator(state_t&& initial_state, Iterate&& iterate, Condition&& continue_
     struct GeneratorRelay : public Relay<NoData, result_t> {
         GeneratorRelay(state_t&& state, Iterate&& iterate, Condition&& continue_condition, Refine&& refine)
             : Relay<NoData, result_t>()
-            , m_state(std::move(state))
             , m_continue_condition(std::move(continue_condition))
             , m_iterate(std::move(iterate))
             , m_refine(std::move(refine))
+            , m_state(std::move(state))
         {}
         void on_next() override
         {
@@ -288,10 +287,10 @@ auto Generator(state_t&& initial_state, Iterate&& iterate, Condition&& continue_
         }
 
     private:
-        state_t m_state;
         Condition m_continue_condition;
         Iterate m_iterate;
         Refine m_refine;
+        state_t m_state;
     };
 
     return std::make_shared<GeneratorRelay>(std::forward<state_t>(initial_state), std::forward<Iterate>(iterate),
