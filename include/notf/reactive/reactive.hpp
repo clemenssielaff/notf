@@ -15,7 +15,7 @@ struct NoData {};
 // forwards ========================================================================================================= //
 
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(struct, Subscriber);
-NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(struct, Publisher);
+NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, Publisher);
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE2(struct, Relay);
 
 namespace detail {
@@ -23,7 +23,7 @@ namespace detail {
 struct SubscriberBase;
 
 template<class>
-struct PublisherBase;
+class PublisherBase;
 
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(struct, PipelineBase);
 

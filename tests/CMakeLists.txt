@@ -2,8 +2,6 @@
 
 # add test files
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
-    main.cpp
-
     common/test_vector.cpp
     common/test_version.cpp
 
@@ -16,8 +14,15 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     meta/test_stringtype.cpp
 )
 
+# add scratch files
+add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/scratch
+    node_scratch.cpp
+    reactive_scratch.cpp
+)
+
 # declare test runner executable
 add_executable(notf-tests
+    main.cpp
     ${TEST_FILES}
     ${NOTF_HEADERS}
 )

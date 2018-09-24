@@ -14,10 +14,10 @@ namespace detail {
 
 /// Publisher base template, both data and non-data publishing Publishers derive from it.
 template<class T>
-struct PublisherBase {
+class PublisherBase {
 
     // Befriend subclass so it has access to `m_subscribers`.
-    friend struct Publisher<T>;
+    friend class Publisher<T>;
 
     /// Type to publish.
     using output_t = T;
@@ -146,7 +146,7 @@ private:
 
 /// Default Publisher that publishes data of a given type T.
 template<class T>
-struct Publisher : public detail::PublisherBase<T> {
+class Publisher : public detail::PublisherBase<T> {
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
@@ -172,7 +172,7 @@ protected:
 
 /// Specialization for Publisher that produce signals only (no data).
 template<>
-struct Publisher<NoData> : public detail::PublisherBase<NoData> {
+class Publisher<NoData> : public detail::PublisherBase<NoData> {
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:

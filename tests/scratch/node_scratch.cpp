@@ -1,5 +1,7 @@
 #include <iostream>
 
+#include "catch2/catch.hpp"
+
 #include "notf/common/string_view.hpp"
 #include "notf/common/variant.hpp"
 #include "notf/meta/assert.hpp"
@@ -383,7 +385,7 @@ struct StateC : State<StateC, NodeType> {
     void callback() { std::cout << "Done :)" << std::endl; }
 };
 
-int main()
+SCENARIO("node scratch", "[node_scratch][slow]")
 {
     NOTF_USING_LITERALS_NAMESPACE;
 
@@ -425,7 +427,7 @@ int main()
     NOTF_LOG_TRACE("derbe aufs {} maul", "fiese");
 
     try {
-        NOTF_THROW(value_error, "Junge, wa' {} fies", "dat");
+        NOTF_THROW(value_error, "Junge, waa' {} fies", "dat");
     } catch (const value_error& exp) {
         auto blub = exp.function;
     }
@@ -451,6 +453,4 @@ int main()
     auto blub = raw_pointer(v_base);
 
     using x = has_raw_pointer<valid_ptr<Base*>>;
-
-    return 0;
 }
