@@ -1,8 +1,5 @@
 #pragma once
 
-#include <atomic>
-#include <mutex>
-
 #include "../meta/traits.hpp"
 #include "./reactive.hpp"
 

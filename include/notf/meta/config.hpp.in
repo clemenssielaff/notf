@@ -19,7 +19,7 @@
 
 // compiler related ================================================================================================= //
 
-/// Compiler used.
+/// Compiler used (as determined by CMake).
 #cmakedefine NOTF_CLANG
 #cmakedefine NOTF_GCC
 #cmakedefine NOTF_MSVC

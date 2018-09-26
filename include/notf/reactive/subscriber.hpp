@@ -8,6 +8,7 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
+/// Base class for all Subscribers.
 struct SubscriberBase {
 
     NOTF_NO_COPY_OR_ASSIGN(SubscriberBase);
@@ -35,28 +36,35 @@ struct SubscriberBase {
 
 /// The basic data Subscriber.
 template<class T>
-struct Subscriber : public detail::SubscriberBase {
+class Subscriber : public detail::SubscriberBase {
 
+    // types -------------------------------------------------------------------------------------------------------- //
+public:
     /// Type to receive.
     using input_t = T;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Abstract "next" operation.
-    virtual void on_next(const input_t& value) = 0;
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
+    /// @param value        Published value.
+    virtual void on_next(const detail::PublisherBase* publisher, const input_t& value) = 0;
 };
 
 /// Subscriber specialization for Subscribers that do not take any data, just signals.
 template<>
-struct Subscriber<NoData> : public detail::SubscriberBase {
+class Subscriber<NoData> : public detail::SubscriberBase {
 
+    // types -------------------------------------------------------------------------------------------------------- //
+public:
     /// Type to receive.
     using input_t = NoData;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Abstract "next" operation.
-    virtual void on_next() = 0;
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
+    virtual void on_next(const detail::PublisherBase* publisher) = 0;
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -1,129 +1,182 @@
-#include <atomic>
+#include <deque>
+#include <iostream>
 
-#include "notf/common/vector.hpp"
-#include "notf/meta/pointer.hpp"
-#include "notf/meta/traits.hpp"
+#include "notf/reactive/publisher.hpp"
+#include "notf/reactive/relay.hpp"
 #include "notf/reactive/subscriber.hpp"
 
-template<class T>
-struct SingleSubscriber {
-    static constexpr bool is_multi_subscriber = false;
+NOTF_OPEN_NAMESPACE
+namespace reactive {
 
-    template<class Lambda>
-    void on_each(Lambda&& lambda)
-    {
-        if (auto subscriber = m_subscriber.lock(); subscriber) {
-            lambda(subscriber.get());
-        }
-        else {
-            m_subscriber.reset();
-        }
-    }
+// policies ========================================================================================================= //
 
-    bool addSubscriber(notf::SubscriberPtr<T> subscriber)
-    {
-        if (!notf::weak_ptr_empty(m_subscriber)) {
-            NOTF_THROW(notf::logic_error, "Cannot connect multiple Subscribers to a single-subscriber Publisher");
-        }
-        m_subscriber = std::move(subscriber);
-        return true;
-    }
+namespace detail {
 
-    void clear() { m_subscriber.reset(); }
+using ::notf::detail::PublisherBase;
 
-private:
-    notf::SubscriberWeakPtr<T> m_subscriber;
+struct SinglePublisherPolicy {
+    template<class T>
+    using Subscribers = ::notf::detail::SingleSubscriber<T>;
 };
+struct MultiPublisherPolicy {
+    template<class T>
+    using Subscribers = ::notf::detail::MultiSubscriber<T>;
+};
+using DefaultPublisherPolicy = SinglePublisherPolicy;
 
-template<class T>
-struct MultiSubscriber {
-    static constexpr bool is_multi_subscriber = true;
+} // namespace detail
 
-    /// lambda must take a single argument : notf::Subscriber<T>*
-    template<class Lambda>
-    void on_each(Lambda&& lambda)
-    {
-        for (size_t i = 0, end = m_subscribers.size(); i < end;) {
-            // call the `on_next` method on all valid subscribers
-            if (auto subscriber = m_subscribers[i].lock(); subscriber) {
-                lambda(subscriber.get());
-                ++i;
-            }
+// console ========================================================================================================== //
 
-            // if you come across an expired subscriber, remove it
-            else {
-                m_subscribers[i] = std::move(m_subscribers.back());
-                m_subscribers.pop_back();
-                --end;
-            }
-        }
-    }
+auto ConsoleSubscriber()
+{
+    struct ConsoleSubscriberImpl : public Subscriber<std::string> {
 
-    bool addSubscriber(notf::SubscriberPtr<T> subscriber)
-    {
-        for (size_t i = 0, end = m_subscribers.size(); i < end;) {
-            // test if the subscriber is already subscribed
-            if (auto existing = m_subscribers[i].lock(); existing) {
-                if (subscriber == existing) {
-                    return false;
+        void on_next(const detail::PublisherBase*, const std::string& value) final { std::cout << value << std::endl; }
+
+        void on_error(const std::exception& error) final { std::cerr << error.what() << std::endl; }
+
+        void on_complete() final { std::cout << "Completed" << std::endl; }
+    };
+    return std::make_shared<ConsoleSubscriberImpl>();
+}
+
+// manual publisher ================================================================================================= //
+
+template<class T, class Policy = detail::DefaultPublisherPolicy>
+auto ManualPublisher()
+{
+    return std::make_shared<Publisher<T, Policy>>();
+}
+
+// cached relay ===================================================================================================== //
+
+template<class T, class Policy = detail::DefaultPublisherPolicy>
+auto CachedRelay(size_t cache_size = max_value<size_t>())
+{
+    struct CachedRelayObj : public Relay<T, Policy> {
+
+        CachedRelayObj(size_t cache_size) : Relay<T, Policy>(), m_cache_size(cache_size) {}
+
+        void on_next(const detail::PublisherBase*, const T& value) final
+        {
+            if (!this->is_completed()) {
+                if (m_cache.size() >= m_cache_size) {
+                    m_cache.pop_front();
                 }
-                ++i;
-            }
-
-            // if you come across an expired subscriber, remove it
-            else {
-                m_subscribers[i] = std::move(m_subscribers.back());
-                m_subscribers.pop_back();
-                --end;
+                m_cache.push_back(value);
+                this->publisher_t::publish(value);
             }
         }
 
-        // add the new subscriber
-        m_subscribers.emplace_back(subscriber);
-        return true;
-    }
+        bool _subscribe(valid_ptr<SubscriberPtr<T>>& consumer) final
+        {
+            NOTF_ASSERT(!this->is_completed());
+            for (const auto& cached_value : m_cache) {
+                consumer->on_next(this, cached_value);
+            }
+            return true;
+        }
 
-    void clear() { m_subscribers.clear(); }
+    private:
+        size_t m_cache_size;
+        std::deque<T> m_cache;
+    };
+    return std::make_shared<CachedRelayObj>(cache_size);
+}
 
-private:
-    std::vector<notf::SubscriberWeakPtr<T>> m_subscribers;
-};
+// last value relay ================================================================================================= //
 
-template<class T, class Subscribers>
-class Publisher {
+template<class T, class Policy = detail::DefaultPublisherPolicy>
+auto LastValueRelay()
+{
+    struct LastValueObj : public Relay<T, Policy> {
 
-protected:
-    /// Internal default "error" operation, accessible from subclasses.
-    void _error(const std::exception& error)
+        ~LastValueObj() final
+        {
+            if (!this->is_completed()) {
+                this->complete();
+            }
+        }
+
+        void on_next(const detail::PublisherBase*, const T& value) final
+        {
+            NOTF_ASSERT(!this->is_completed());
+            m_value = value;
+        }
+
+        void _complete() final
+        {
+            if (m_value) {
+                this->publish(m_value.value());
+            }
+        }
+
+    private:
+        std::optional<T> m_value;
+    };
+    return std::make_shared<LastValueObj>();
+}
+
+// pipeline operator ================================================================================================ //
+
+template<class T>
+auto PipelineRelay()
+{
+    struct Operator : public Relay<T, detail::SinglePublisherPolicy> {
+
+        void on_next(const detail::PublisherBase*, const T& value) final
+        {
+            if (m_is_enabled) {
+                this->publish(value);
+            }
+        }
+
+        void setEnabled(const bool is_enabled) { m_is_enabled = is_enabled; }
+        void enable() { setEnabled(true); }
+        void disable() { setEnabled(false); }
+
+    private:
+        bool m_is_enabled = true;
+    };
+    return std::make_shared<Operator>();
+}
+
+} // namespace reactive
+
+template<class T>
+struct is_relay : std::false_type {};
+template<class I, class Policy, class O>
+struct is_relay<Relay<I, Policy, O>> : std::true_type {};
+
+NOTF_CLOSE_NAMESPACE
+
+int main()
+{
+    NOTF_USING_NAMESPACE;
+
+    auto console = reactive::ConsoleSubscriber();
+    auto cached = reactive::CachedRelay<std::string>();
+    auto manual = reactive::ManualPublisher<std::string, reactive::detail::MultiPublisherPolicy>();
+    auto pipeline = reactive::PipelineRelay<std::string>();
+    std::shared_ptr<Relay<std::string, reactive::detail::SinglePublisherPolicy>> blub = reactive::PipelineRelay<std::string>();
+
+
     {
-        NOTF_ASSERT(!m_is_completed);
-        m_is_completed = true;
-        m_subscribers.on_each([&error](notf::Subscriber<T>* subscriber) { subscriber->on_error(error); });
-        m_subscribers.clear();
+        auto last = reactive::LastValueRelay<std::string>();
+        last->subscribe(console);
+        manual->subscribe(last);
+
+        manual->subscribe(cached);
+        pipeline->subscribe(console);
+
+        manual->publish("hello");
+        manual->publish("derbe");
+        manual->publish("world");
+
+        cached->subscribe(pipeline);
+        manual->publish("indeed");
     }
 
-    /// Internal default "complete" operation, accessible from subclasses.
-    void _complete()
-    {
-        NOTF_ASSERT(!m_is_completed);
-        m_is_completed = true;
-        m_subscribers.on_each([](notf::Subscriber<T>* subscriber) { subscriber->on_complete(); });
-        m_subscribers.clear();
-    }
-
-    /// Call `on_next` on all valid Subscribers.
-    void _next(const T& value)
-    {
-        NOTF_ASSERT(!m_is_completed);
-        m_subscribers.on_each([&value](notf::Subscriber<T>* subscriber) { subscriber->on_next(value); });
-    }
-
-private:
-    /// All conntected Subscribers.
-    Subscribers m_subscribers;
-
-    /// Tests whether the Publisher has completed.
-    std::atomic_bool m_is_completed = false;
-};
-
-int main() { return 0; }
+    return 0;
+}

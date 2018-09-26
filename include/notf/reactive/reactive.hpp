@@ -7,23 +7,21 @@
 
 NOTF_OPEN_NAMESPACE
 
-// NoData type ====================================================================================================== //
+// nodata type ====================================================================================================== //
 
 /// The NoData-Trait is used for an explicit overload of reactive objects that pass no data around.
 struct NoData {};
 
 // forwards ========================================================================================================= //
 
-NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(struct, Subscriber);
-NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, Publisher);
-NOTF_DEFINE_SHARED_POINTERS_TEMPLATE2(struct, Relay);
+NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, Subscriber);
+NOTF_DEFINE_SHARED_POINTERS_TEMPLATE2(class, Publisher);
+NOTF_DEFINE_SHARED_POINTERS_TEMPLATE3(class, Relay);
 
 namespace detail {
 
 struct SubscriberBase;
-
-template<class>
-class PublisherBase;
+struct PublisherBase;
 
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(struct, PipelineBase);
 

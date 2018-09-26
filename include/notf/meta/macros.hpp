@@ -116,6 +116,28 @@ NOTF_OPEN_NAMESPACE
     template<class T, class U, class V>                  \
     using Type##ConstPtr = std::unique_ptr<const Type<T, U, V>>
 
+/// Convenience macro to define shared pointer types for a given templated type with four template arguments.
+#define NOTF_DEFINE_SHARED_POINTERS_TEMPLATE4(Tag, Type)            \
+    template<class, class, class, class>                            \
+    Tag Type;                                                       \
+    template<class T, class U, class V, class W>                    \
+    using Type##Ptr = std::shared_ptr<Type<T, U, V, W>>;            \
+    template<class T, class U, class V, class W>                    \
+    using Type##ConstPtr = std::shared_ptr<const Type<T, U, V, W>>; \
+    template<class T, class U, class V, class W>                    \
+    using Type##WeakPtr = std::weak_ptr<Type<T, U, V, W>>;          \
+    template<class T, class U, class V, class W>                    \
+    using Type##WeakConstPtr = std::weak_ptr<const Type<T, U, V, W>>
+
+/// Convenience macro to define unique pointer types for a given templated type with four template arguments.
+#define NOTF_DEFINE_UNIQUE_POINTERS_TEMPLATE4(Tag, Type) \
+    template<class, class, class, class>                 \
+    Tag Type;                                            \
+    template<class T, class U, class V, class W>         \
+    using Type##Ptr = std::unique_ptr<Type<T, U, V, W>>; \
+    template<class T, class U, class V, class W>         \
+    using Type##ConstPtr = std::unique_ptr<const Type<T, U, V, W>>
+
 // compiler directives ============================================================================================== //
 
 /// Tells the compiler that a given statement is likely to be evaluated to true.
@@ -139,6 +161,8 @@ NOTF_OPEN_NAMESPACE
 ///     NOTF_GUARD_IF(m_atomic_bool, std::lock_guard(m_mutex)) {
 ///         ... // code here is only executed if m_atomic_bool is false and the mutex is locked
 ///     }
-#define NOTF_GUARD_IF(x, f) if (x) if (NOTF_GUARD(f); x)
+#define NOTF_GUARD_IF(x, f) \
+    if (x)                  \
+        if (NOTF_GUARD(f); x)
 
 NOTF_CLOSE_NAMESPACE
