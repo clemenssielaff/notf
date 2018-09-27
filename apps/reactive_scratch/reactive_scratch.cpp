@@ -120,6 +120,8 @@ auto LastValueRelay()
 
 // pipeline operator ================================================================================================ //
 
+
+
 template<class T>
 auto PipelineRelay()
 {
@@ -139,15 +141,11 @@ auto PipelineRelay()
     private:
         bool m_is_enabled = true;
     };
+
     return std::make_shared<Operator>();
 }
 
 } // namespace reactive
-
-template<class T>
-struct is_relay : std::false_type {};
-template<class I, class Policy, class O>
-struct is_relay<Relay<I, Policy, O>> : std::true_type {};
 
 NOTF_CLOSE_NAMESPACE
 
@@ -159,8 +157,8 @@ int main()
     auto cached = reactive::CachedRelay<std::string>();
     auto manual = reactive::ManualPublisher<std::string, reactive::detail::MultiPublisherPolicy>();
     auto pipeline = reactive::PipelineRelay<std::string>();
-    std::shared_ptr<Relay<std::string, reactive::detail::SinglePublisherPolicy>> blub = reactive::PipelineRelay<std::string>();
-
+    std::shared_ptr<Relay<std::string, reactive::detail::SinglePublisherPolicy>> blub
+        = reactive::PipelineRelay<std::string>();
 
     {
         auto last = reactive::LastValueRelay<std::string>();

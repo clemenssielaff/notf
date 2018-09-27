@@ -146,6 +146,9 @@ public:
     /// Type to publish.
     using output_t = T;
 
+    /// Publisher policy type.
+    using policy_t = Policy;
+
     /// Whether or not this Publisher allows multiple Subscribers or not.
     static constexpr bool is_multi_subscriber = Policy::is_multi_subscriber;
 
@@ -315,5 +318,19 @@ private:
         this->m_subscribers.on_each([this](auto* subscriber) { subscriber->on_next(this); });
     }
 };
+
+// publisher identifier ============================================================================================= //
+
+template<class T,                                                      // T is a PublisherPtr if it:
+         class = std::enable_if_t<is_shared_ptr_v<T>>,                 // - is a shared_ptr
+         class P = typename T::element_type::policy_t,                 // - has a policy
+         class O = typename T::element_type::output_t>                 // - has an output type
+struct is_publisher_t : std::is_convertible<T, PublisherPtr<P, O>> {}; // - can be converted to a PublisherPtr
+
+/// constexpr boolean that is true only if T is a PublisherPtr
+template<typename T, typename = void>
+constexpr bool is_publisher_v = false;
+template<typename T>
+constexpr bool is_publisher_v<T, decltype(is_publisher_t<T>(), void())> = is_publisher_t<T>::value;
 
 NOTF_CLOSE_NAMESPACE

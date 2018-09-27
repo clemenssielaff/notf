@@ -77,4 +77,19 @@ public:
     void on_complete() override { this->complete(); }
 };
 
+// relay identifier ================================================================================================= //
+
+template<class T,                                                 // T is a RelayPtr if it:
+         class = std::enable_if_t<is_shared_ptr_v<T>>,            // - is a shared_ptr
+         class I = typename T::element_type::input_t,             // - has an input type
+         class P = typename T::element_type::policy_t,            // - has a policy
+         class O = typename T::element_type::output_t>            // - has an output type
+struct is_relay_t : std::is_convertible<T, RelayPtr<I, P, O>> {}; // - can be converted to a RelayPtr
+
+/// constexpr boolean that is true only if T is a RelayPtr
+template<typename T, typename = void>
+constexpr bool is_relay_v = false;
+template<typename T>
+constexpr bool is_relay_v<T, decltype(is_relay_t<T>(), void())> = is_relay_t<T>::value;
+
 NOTF_CLOSE_NAMESPACE
