@@ -70,15 +70,15 @@ public:
 
 // subscriber identifier ============================================================================================ //
 
-template<class T,                                                     // T is a PublisherPtr if it:
-         class = std::enable_if_t<is_shared_ptr_v<T>>,                // - is a shared_ptr
-         class I = typename T::element_type::input_t>                 // - has an input type
-struct is_subscriber_t : std::is_convertible<T, SubscriberPtr<I>> {}; // - can be converted to a PublisherPtr
+template<class T,                                                   // T is a PublisherPtr if it:
+         class = std::enable_if_t<is_shared_ptr_v<T>>,              // - is a shared_ptr
+         class I = typename T::element_type::input_t>               // - has an input type
+struct is_subscriber : std::is_convertible<T, SubscriberPtr<I>> {}; // - can be converted to a PublisherPtr
 
 /// constexpr boolean that is true only if T is a SubscriberPtr
-template<typename T, typename = void>
+template<class T, class = void>
 constexpr bool is_subscriber_v = false;
-template<typename T>
-constexpr bool is_subscriber_v<T, decltype(is_subscriber_t<T>(), void())> = is_subscriber_t<T>::value;
+template<class T>
+constexpr bool is_subscriber_v<T, decltype(is_subscriber<T>(), void())> = is_subscriber<T>::value;
 
 NOTF_CLOSE_NAMESPACE

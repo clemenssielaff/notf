@@ -38,7 +38,7 @@ public:
     /// @returns                    Always true (if the function didn't throw).
     bool add(SubscriberPtr<T> subscriber)
     {
-        if (!weak_ptr_empty(m_subscriber)) {
+        if (!m_subscriber.expired()) {
             NOTF_THROW(logic_error, "Cannot connect multiple Subscribers to a single-subscriber Publisher");
         }
         m_subscriber = std::move(subscriber);
@@ -321,16 +321,16 @@ private:
 
 // publisher identifier ============================================================================================= //
 
-template<class T,                                                      // T is a PublisherPtr if it:
-         class = std::enable_if_t<is_shared_ptr_v<T>>,                 // - is a shared_ptr
-         class P = typename T::element_type::policy_t,                 // - has a policy
-         class O = typename T::element_type::output_t>                 // - has an output type
-struct is_publisher_t : std::is_convertible<T, PublisherPtr<P, O>> {}; // - can be converted to a PublisherPtr
+template<class T,                                                    // T is a PublisherPtr if it:
+         class = std::enable_if_t<is_shared_ptr_v<T>>,               // - is a shared_ptr
+         class P = typename T::element_type::policy_t,               // - has a policy
+         class O = typename T::element_type::output_t>               // - has an output type
+struct is_publisher : std::is_convertible<T, PublisherPtr<O, P>> {}; // - can be converted to a PublisherPtr
 
 /// constexpr boolean that is true only if T is a PublisherPtr
-template<typename T, typename = void>
+template<class T, class = void>
 constexpr bool is_publisher_v = false;
-template<typename T>
-constexpr bool is_publisher_v<T, decltype(is_publisher_t<T>(), void())> = is_publisher_t<T>::value;
+template<class T>
+constexpr bool is_publisher_v<T, decltype(is_publisher<T>(), void())> = is_publisher<T>::value;
 
 NOTF_CLOSE_NAMESPACE
