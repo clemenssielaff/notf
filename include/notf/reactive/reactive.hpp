@@ -17,13 +17,12 @@ struct NoData {};
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, Subscriber);
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE2(class, Publisher);
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE3(class, Relay);
+NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, Pipeline);
 
 namespace detail {
 
 struct SubscriberBase;
 struct PublisherBase;
-
-NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(struct, PipelineBase);
 
 } // namespace detail
 

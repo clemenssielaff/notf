@@ -319,6 +319,24 @@ private:
     }
 };
 
+// policies ========================================================================================================= //
+
+namespace detail {
+
+using ::notf::detail::PublisherBase;
+
+struct SinglePublisherPolicy {
+    template<class T>
+    using Subscribers = ::notf::detail::SingleSubscriber<T>;
+};
+struct MultiPublisherPolicy {
+    template<class T>
+    using Subscribers = ::notf::detail::MultiSubscriber<T>;
+};
+using DefaultPublisherPolicy = SinglePublisherPolicy;
+
+} // namespace detail
+
 // publisher identifier ============================================================================================= //
 
 template<class T,                                                    // T is a PublisherPtr if it:

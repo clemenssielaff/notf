@@ -1,423 +1,235 @@
 #pragma once
 
-#include "../meta/traits.hpp"
-#include "./reactive.hpp"
+#include "./relay.hpp"
+#include "./subscriber.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-// ================================================================================================================== //
+// pipeline identifier ============================================================================================== //
+
+template<class T>
+struct is_pipeline : std::false_type {};
+template<class T>
+struct is_pipeline<Pipeline<T>> : std::true_type {};
+
+/// constexpr boolean that is true only if T is a Pipeline
+template<class T>
+constexpr bool is_pipeline_v = is_pipeline<T>::value;
+
+// pipeline compatibility check ===================================================================================== //
 
 namespace detail {
 
-/// Type trait identifying that an end of a Pipeline cannot be connected to anything else.
-struct PipelineEndTrait {};
+/// Metafunction that is only defined if P is a Publisher/Pipeline type that can be connected to Subscriber type S.
+template<class P, class S, class = void>
+struct is_reactive_compatible : std::false_type {};
 
-/// Base template of all Pipeline specializations.
-template<class T>
-struct PipelineBase {
+template<class P, class S>
+struct is_reactive_compatible<P, S, std::enable_if_t<all(is_publisher_v<P>, is_subscriber_v<S>)>>
+    : std::is_same<typename P::element_type::output_t, typename S::element_type::input_t> {};
+
+template<class P, class S>
+struct is_reactive_compatible<P, S, std::enable_if_t<all(is_pipeline_v<P>, is_subscriber_v<S>)>>
+    : std::is_same<typename P::last_t::element_type::output_t, typename S::element_type::input_t> {};
+
+/// consexpr boolean that is true iff P is a Publisher type that can be connected to Subscriber type S.
+template<class P, class S, class = void>
+constexpr bool is_reactive_compatible_v = false;
+template<class P, class S>
+constexpr bool is_reactive_compatible_v<P, S, decltype(is_reactive_compatible<P, S>(), void())> = true;
+
+} // namespace detail
+
+// pipeline toggle operator ========================================================================================= //
+
+namespace detail {
+
+/// Mixin class for the Toggle Pipeline Operator exposing only enabling / disabling.
+class PipelineToggle {
+
+    // methods ------------------------------------------------------------------------------------------------------ //
+public:
+    /// Virtual Destructor.
+    virtual ~PipelineToggle() = default;
+
+    /// Explicitly enable/disable the Pipeline.
+    void setEnabled(const bool is_enabled) { m_is_enabled = is_enabled; }
+
+    /// Enable the Pipeline.
+    void enable() { setEnabled(true); }
+
+    /// Disable the Pipeline.
+    void disable() { setEnabled(false); }
+
+    // fields ------------------------------------------------------------------------------------------------------- //
+protected:
+    /// Is the Pipeline enabled or not? (is a size_t in order to avoid padding warnings).
+    size_t m_is_enabled = true;
+};
+
+/// Operator at the front of every Pipeline.
+/// Is used to enable or disable the complete Pipeline and is always at the front, so no Operators within the Pipeline
+/// are exucuted, when it is disabled.
+template<class T, class Policy = SinglePublisherPolicy>
+struct TogglePipelineOperator : public Relay<T, Policy>, PipelineToggle {
+
+    /// Propagate the next value if the Pipeline is enabled.
+    void on_next(const PublisherBase*, const T& value) final
+    {
+        if (m_is_enabled) {
+            this->publish(value);
+        }
+    }
+};
+
+// pipeline ========================================================================================================= //
+
+class PipelineBase {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    /// Type of data flowing through the Pipeline.
-    using data_t = T;
+    /// Special operator used to en/disable the Pipeline.
+    using Toggle = std::shared_ptr<PipelineToggle>;
+
+    /// All Operators in the Pipeline (except the last), as untyped reactive operators.
+    using Operators = std::vector<std::shared_ptr<PublisherBase>>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
-public:
-    NOTF_NO_COPY_OR_ASSIGN(PipelineBase);
-
-    /// Default constructor, produces a disconnected Pipeline.
-    PipelineBase() = default;
-
-    /// Value Constructor.
-    /// @param subscriber   Subscriber at the "downstream" end of the Pipeline.
-    PipelineBase(SubscriberPtr<T> subscriber) : subscriber(std::move(subscriber)), m_is_connected(true) {}
-
-    /// Virtual destructor.
-    virtual ~PipelineBase() = default;
-
-    /// Checks if the Pipeline has been disconnected.
-    /// Due to uncertainty in a multithreaded environment, it is generally not safe to assume that the Pipeline is
-    /// connected if this method returns `false`, as it might have become disconnected in between the check and the
-    /// time that the produced boolean is evaluated.
-    /// However, if this method returns `true`, you can be certain that this Pipeline has been disconnected.
-    bool is_disconnected() const { return !m_is_connected; }
-
-    /// Disconnect the Pipeline.
-    virtual void disconnect() = 0;
-
-    // fields ------------------------------------------------------------------------------------------------------- //
-public:
-    /// The Subscriber at the "downstream" end of the Pipeline.
-    SubscriberPtr<T> subscriber;
-
 protected:
-    /// Flag making sure that the Pipeline is disconnected only once.
-    std::once_flag m_once_flag;
+    /// Constructor.
+    /// @param toggle       Special operator used to en/disable the Pipeline.
+    /// @param operators    All Operators in the Pipeline (except the last).
+    PipelineBase(Toggle&& toggle, Operators&& operators = {})
+        : m_toggle(std::move(toggle)), m_operators(std::move(operators))
+    {}
 
-    /// Flag indicating if the Pipeline has already been disconnected.
-    std::atomic_bool m_is_connected = false;
+public:
+    /// Explicitly enable/disable the Pipeline.
+    void setEnabled(const bool is_enabled) { m_toggle->setEnabled(is_enabled); }
+
+    /// Enable the Pipeline.
+    void enable() { setEnabled(true); }
+
+    /// Disable the Pipeline.
+    void disable() { setEnabled(false); }
+
+    // fields ------------------------------------------------------------------------------------------------------- //
+protected:
+    /// Special operator used to en/disable the Pipeline.
+    Toggle m_toggle;
+
+    /// All Operators in the Pipeline (except the last), as untyped reactive operators.
+    Operators m_operators;
 };
 
 } // namespace detail
 
-// ================================================================================================================== //
+template<class LastOperator>
+class Pipeline : public detail::PipelineBase {
 
-template<class T, class I, class O>
-struct ExtensionPipeline final : public detail::PipelineBase<T> {
+    // types -------------------------------------------------------------------------------------------------------- //
+private:
+    using typename detail::PipelineBase::Operators;
+    using typename detail::PipelineBase::Toggle;
 
-    /// Type received by the Subscriber at the "upstream" end of this Pipeline
-    using prev_t = I;
+    /// This Pipeline type.
+    using this_t = Pipeline<LastOperator>;
 
-    /// Type published by the Relay at the end of this Pipeline or `PipelineEnd`.
-    using next_t = O;
+public:
+    /// Type of the last Operator in the Pipeline.
+    using last_t = LastOperator;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
-    /// Default constructor, produces a disconnected Pipeline.
-    ExtensionPipeline() = default;
-
-    /// Value Constructor.
-    ExtensionPipeline(detail::PipelineBasePtr<I> pipeline, SubscriberPtr<T> subscriber)
-        : detail::PipelineBase<T>(std::move(subscriber)), upstream(std::move(pipeline))
+    /// Constructor.
+    /// @param toggle       Special operator used to en/disable the Pipeline.
+    /// @param last         Last Operator in the Pipeline, determines the type of this Pipeline.
+    /// @param operators    All Operators in the Pipeline (except the last).
+    Pipeline(Toggle&& toggle, LastOperator&& last = {}, Operators&& operators = {})
+        : detail::PipelineBase(std::move(toggle), std::move(operators)), m_last(std::move(last))
     {}
 
-    /// Destructor.
-    ~ExtensionPipeline() override { disconnect(); }
-
-    /// Disconnects the Pipeline.
-    /// Once disconnected, a Pipeline cannot be reconnected.
-    void disconnect() override
+    /// 1)
+    /// Connect a Pipeline to an l-value Subscriber
+    template<class S>
+    std::enable_if_t<all(is_subscriber_v<S>, detail::is_reactive_compatible_v<this_t, S>), Pipeline<LastOperator>&>
+    operator|(S& subscriber)
     {
-        if (this->m_is_connected) {
-            std::call_once(this->m_once_flag, [&] {
-                this->m_is_connected = false;
-                static_cast<Relay<I, T>*>(upstream->subscriber.get())->unsubscribe(this->subscriber);
-                this->subscriber.reset();
-                upstream.reset();
-            });
-        }
+        m_last->subscribe(subscriber);
+        return *this;
+    }
+
+    /// 2)
+    /// Connect a Pipeline to an r-value Subscriber
+    template<class S>
+    std::enable_if_t<all(is_subscriber_v<S>, detail::is_reactive_compatible_v<this_t, S>), Pipeline<S>>
+    operator|(S&& subscriber)
+    {
+        m_last->subscribe(subscriber);
+        m_operators.emplace_back(std::move(m_last));
+        return Pipeline(std::move(m_toggle), std::move(subscriber), std::move(m_operators));
     }
 
     // fields ------------------------------------------------------------------------------------------------------- //
-public:
-    /// The Pipeline connected to the "upstream" end of this one.
-    detail::PipelineBasePtr<I> upstream;
+private:
+    /// Last Operator in the Pipeline, defines the type of the Pipeline for the purposes of further connection.
+    LastOperator m_last;
 };
 
-template<class T, class I, class O>
-struct PublisherPipeline final : public detail::PipelineBase<T> {
+// pipeline pipe operator(s) ======================================================================================== //
 
-    /// Type flowing through the Pipeline connected to the "upstream" end of this pne.
-    using prev_t = I;
-
-    /// Type produced by the Relay at the end of this Pipeline or `PipelineEnd`.
-    using next_t = O;
-
-    // methods ------------------------------------------------------------------------------------------------------ //
-public:
-    /// Default constructor, produces a disconnected Pipeline.
-    PublisherPipeline() = default;
-
-    /// Value Constructor.
-    PublisherPipeline(PublisherPtr<T> publisher, SubscriberPtr<T> subscriber)
-        : detail::PipelineBase<T>(std::move(subscriber)), publisher(std::move(publisher))
-    {}
-
-    /// Destructor.
-    ~PublisherPipeline() override { disconnect(); }
-
-    /// Disconnects the Pipeline.
-    /// Once disconnected, a Pipeline cannot be reconnected.
-    void disconnect() override
-    {
-        if (this->m_is_connected) {
-            std::call_once(this->m_once_flag, [&] {
-                this->m_is_connected = false;
-                publisher->unsubscribe(this->subscriber);
-                this->subscriber.reset();
-                publisher.reset();
-            });
-        }
-    }
-
-    // fields ------------------------------------------------------------------------------------------------------- //
-public:
-    /// The Publisher at the "upstream" end of the Pipeline.
-    PublisherPtr<T> publisher;
-};
-
-// ================================================================================================================== //
-
-namespace detail {
-
-template<typename T, typename = void>
-constexpr bool has_input_t = false;
-template<typename T>
-constexpr bool has_input_t<T, decltype(check_is_type<typename T::input_t>(), void())> = true;
-
-template<typename T, typename = void>
-constexpr bool has_output_t = false;
-template<typename T>
-constexpr bool has_output_t<T, decltype(check_is_type<typename T::output_t>(), void())> = true;
-
-template<typename T, typename = void>
-constexpr bool has_prev_t = false;
-template<typename T>
-constexpr bool has_prev_t<T, decltype(check_is_type<typename T::prev_t>(), void())> = true;
-
-template<typename T, typename = void>
-constexpr bool has_next_t = false;
-template<typename T>
-constexpr bool has_next_t<T, decltype(check_is_type<typename T::next_t>(), void())> = true;
-
-template<class T>
-constexpr auto has_just_input_t()
+/// 3)
+/// Connect an l-value Publisher to an l-value Subscriber
+template<class P, class S>
+std::enable_if_t<all(is_publisher_v<P>, detail::is_reactive_compatible_v<P, S>),
+                 Pipeline<std::shared_ptr<detail::TogglePipelineOperator<typename P::element_type::output_t>>>>
+operator|(P& publisher, S& subscriber)
 {
-    return has_input_t<T> && !has_output_t<T>;
+    using input_t = typename P::element_type::output_t;
+    auto relay = std::make_shared<detail::TogglePipelineOperator<input_t>>();
+    publisher->subscribe(relay);
+    relay->subscribe(subscriber);
+    return Pipeline(relay, std::move(relay));
 }
 
-template<class T>
-constexpr auto has_just_output_t()
+/// 4)
+/// Connect an l-value Publisher to an r-value Subscriber
+template<class P, class S>
+std::enable_if_t<all(is_publisher_v<P>, is_subscriber_v<S>, detail::is_reactive_compatible_v<P, S>), Pipeline<S>>
+operator|(P& publisher, S&& subscriber)
 {
-    return !has_input_t<T> && has_output_t<T>;
+    using input_t = typename P::element_type::output_t;
+    auto relay = std::make_shared<detail::TogglePipelineOperator<input_t>>();
+    publisher->subscribe(relay);
+    relay->subscribe(subscriber);
+    return Pipeline(relay, std::move(subscriber), {std::move(relay)});
 }
 
-template<class T>
-constexpr auto has_input_and_output_t()
+/// 5)
+/// Connect an r-value Publisher to an l-value Subscriber
+template<class P, class S>
+std::enable_if_t<all(is_publisher_v<P>, detail::is_reactive_compatible_v<P, S>),
+                 Pipeline<std::shared_ptr<detail::TogglePipelineOperator<typename P::element_type::output_t>>>>
+operator|(P&& publisher, S& subscriber)
 {
-    return has_input_t<T> && has_output_t<T>;
+    using input_t = typename P::element_type::output_t;
+    auto relay = std::make_shared<detail::TogglePipelineOperator<input_t>>();
+    publisher->subscribe(relay);
+    relay->subscribe(subscriber);
+    return Pipeline(relay, std::move(relay), {std::move(publisher)});
 }
 
-template<class T>
-constexpr auto has_prev_and_next_t()
+/// 6)
+/// Connect an r-value Publisher to an r-value Subscriber
+template<class P, class S>
+std::enable_if_t<all(is_publisher_v<P>, is_subscriber_v<S>, detail::is_reactive_compatible_v<P, S>), Pipeline<S>>
+operator|(P&& publisher, S&& subscriber)
 {
-    return has_prev_t<T> && has_next_t<T>;
-}
-
-// ------------------------------------
-
-/// Creates a new Pipeline that attaches to a Publisher on the left.
-template<class P, class C, class... Args>
-auto create_publisher_pipeline(std::shared_ptr<P> publisher, std::shared_ptr<C> subscriber)
-{
-    using result_t = PublisherPipeline<typename P::output_t, Args...>;
-    if (detail::PipelineBasePtr<typename P::output_t> existing_subscription = publisher->get_subscription(subscriber)) {
-        return std::static_pointer_cast<result_t>(existing_subscription);
-    }
-    if (publisher->subscribe(subscriber)) {
-        return std::make_shared<result_t>(std::move(publisher), std::move(subscriber));
-    }
-    return std::make_shared<result_t>();
-}
-
-/// Creates a new Pipeline that attaches to another Pipeline on the left.
-template<class P, class C, class Next>
-auto create_extension_pipeline(std::shared_ptr<P> pipeline, std::shared_ptr<C> subscriber)
-{
-    using result_t = ExtensionPipeline<typename P::next_t, typename P::data_t, Next>;
-    if (static_cast<Relay<typename P::data_t, typename P::next_t>*>(pipeline->subscriber.get())->subscribe(subscriber)) {
-        return std::make_shared<result_t>(std::move(pipeline), std::move(subscriber));
-    }
-    return std::make_shared<result_t>();
-}
-
-// ------------------------------------
-
-template<class P, class C>
-constexpr bool is_relay_to_relay()
-{
-    if constexpr (has_input_and_output_t<P>() && has_input_and_output_t<C>()) {
-        return all(std::is_base_of_v<Relay<typename P::input_t, typename P::output_t>, P>,
-                   std::is_base_of_v<Relay<typename C::input_t, typename C::output_t>, C>);
-    }
-    return false;
-}
-
-template<class P, class C, typename = std::enable_if_t<is_relay_to_relay<P, C>()>>
-struct is_relay_to_relay_trait {};
-
-template<class P, class C>
-auto relay_to_relay(std::shared_ptr<P> publisher, std::shared_ptr<C> subscriber)
-{
-    static_assert(std::is_same_v<typename P::output_t, typename C::input_t>,
-                  "Cannot create a Pipeline between Relays of different types");
-    return create_publisher_pipeline<P, C, typename P::input_t, typename C::output_t>(std::move(publisher),
-                                                                                      std::move(subscriber));
-}
-
-// ------------------------------------
-
-template<class R, class C>
-constexpr bool is_relay_to_subscriber()
-{
-    if constexpr (has_input_and_output_t<R>() && has_just_input_t<C>()) {
-        return all(std::is_base_of_v<Relay<typename R::input_t, typename R::output_t>, R>,
-                   std::is_base_of_v<Subscriber<typename C::input_t>, C>);
-    }
-    return false;
-}
-
-template<class R, class C, typename = std::enable_if_t<is_relay_to_subscriber<R, C>()>>
-struct is_relay_to_subscriber_trait {};
-
-template<class R, class C>
-auto relay_to_subscriber(std::shared_ptr<R> relay, std::shared_ptr<C> subscriber)
-{
-    static_assert(std::is_same_v<typename R::output_t, typename C::input_t>,
-                  "Cannot create a Pipeline between a Relay and Subscriber of different types");
-    return create_publisher_pipeline<R, C, typename R::input_t, detail::PipelineEndTrait>(std::move(relay),
-                                                                                          std::move(subscriber));
-}
-
-// ------------------------------------
-
-template<class P, class R>
-constexpr bool is_publisher_to_relay()
-{
-    if constexpr (has_just_output_t<P>() && has_input_and_output_t<R>()) {
-        return all(std::is_base_of_v<Publisher<typename P::output_t>, P>,
-                   std::is_base_of_v<Relay<typename R::input_t, typename R::output_t>, R>);
-    }
-    return false;
-}
-
-template<class P, class R, typename = std::enable_if_t<is_publisher_to_relay<P, R>()>>
-struct is_publisher_to_relay_trait {};
-
-template<class P, class R>
-auto publisher_to_relay(std::shared_ptr<P> publisher, std::shared_ptr<R> relay)
-{
-    static_assert(std::is_same_v<typename P::output_t, typename R::input_t>,
-                  "Cannot create a Pipeline between a Publisher and Relay of different types");
-    return create_publisher_pipeline<P, R, detail::PipelineEndTrait, typename R::output_t>(std::move(publisher),
-                                                                                           std::move(relay));
-}
-
-// ------------------------------------
-
-template<class P, class C>
-constexpr bool is_publisher_to_subscriber()
-{
-    if constexpr (has_just_output_t<P>() && has_just_input_t<C>()) {
-        return all(std::is_base_of_v<Publisher<typename P::output_t>, P>,
-                   std::is_base_of_v<Subscriber<typename C::input_t>, C>);
-    }
-    return false;
-}
-
-template<class P, class C, typename = std::enable_if_t<is_publisher_to_subscriber<P, C>()>>
-struct is_publisher_to_subscriber_trait {};
-
-template<class P, class C>
-auto publisher_to_subscriber(std::shared_ptr<P> publisher, std::shared_ptr<C> subscriber)
-{
-    static_assert(std::is_same_v<typename P::output_t, typename C::input_t>,
-                  "Cannot create a Pipeline between a Publisher and Subscriber of different types");
-    return create_publisher_pipeline<P, C, detail::PipelineEndTrait, detail::PipelineEndTrait>(std::move(publisher),
-                                                                                               std::move(subscriber));
-}
-
-// ------------------------------------
-
-template<class P, class R>
-constexpr bool is_pipeline_to_relay()
-{
-    if constexpr (has_prev_and_next_t<P>() && has_input_and_output_t<R>()) {
-        return all(std::is_base_of_v<detail::PipelineBase<typename P::data_t>, P>,
-                   std::is_base_of_v<Relay<typename R::input_t, typename R::output_t>, R>);
-    }
-    return false;
-}
-
-template<class P, class R, typename = std::enable_if_t<is_pipeline_to_relay<P, R>()>>
-struct is_pipeline_to_relay_trait {};
-
-template<class P, class R>
-auto pipeline_to_relay(std::shared_ptr<P> pipeline, std::shared_ptr<R> relay)
-{
-    static_assert(std::is_same_v<typename P::next_t, typename R::input_t>,
-                  "Cannot create a Pipeline between a Pipeline and Relay of different types");
-    return create_extension_pipeline<P, R, typename R::output_t>(std::move(pipeline), std::move(relay));
-}
-
-// ------------------------------------
-
-template<class P, class C>
-constexpr bool is_pipeline_to_subscriber()
-{
-    if constexpr (has_prev_and_next_t<P>() && has_just_input_t<C>()) {
-        return all(std::is_base_of_v<detail::PipelineBase<typename P::data_t>, P>,
-                   std::is_base_of_v<Subscriber<typename C::input_t>, C>);
-    }
-    return false;
-}
-
-template<class P, class C, typename = std::enable_if_t<is_pipeline_to_subscriber<P, C>()>>
-struct is_pipeline_to_subscriber_trait {};
-
-template<class P, class C>
-auto pipeline_to_subscriber(std::shared_ptr<P> pipeline, std::shared_ptr<C> subscriber)
-{
-    static_assert(std::is_same_v<typename P::next_t, typename C::input_t>,
-                  "Cannot create a Pipeline between a Pipeline and Subscriber of different types");
-    return create_extension_pipeline<P, C, detail::PipelineEndTrait>(std::move(pipeline), std::move(subscriber));
-}
-
-} // namespace detail
-
-// ------------------------------------
-
-/// Connect two Relays
-template<class P, class C>
-auto operator|(std::shared_ptr<P> publisher, std::shared_ptr<C> subscriber)
-    -> decltype(detail::is_relay_to_relay_trait<P, C>(), detail::relay_to_relay(publisher, subscriber))
-{
-    return detail::relay_to_relay(std::move(publisher), std::move(subscriber));
-}
-
-/// Connect a Relay to a Subscriber
-template<class R, class C>
-auto operator|(std::shared_ptr<R> relay, std::shared_ptr<C> subscriber)
-    -> decltype(detail::is_relay_to_subscriber_trait<R, C>(), detail::relay_to_subscriber(relay, subscriber))
-{
-    return detail::relay_to_subscriber(std::move(relay), std::move(subscriber));
-}
-
-/// Connect a Publisher to a Relay
-template<class P, class R>
-auto operator|(std::shared_ptr<P> publisher, std::shared_ptr<R> relay)
-    -> decltype(detail::is_publisher_to_relay_trait<P, R>(), detail::publisher_to_relay(publisher, relay))
-{
-    return detail::publisher_to_relay(std::move(publisher), std::move(relay));
-}
-
-/// Connect a Publisher to a Subscriber
-template<class P, class C>
-auto operator|(std::shared_ptr<P> publisher, std::shared_ptr<C> subscriber)
-    -> decltype(detail::is_publisher_to_subscriber_trait<P, C>(),
-                detail::publisher_to_subscriber(publisher, subscriber))
-{
-    return detail::publisher_to_subscriber(std::move(publisher), std::move(subscriber));
-}
-
-/// Connect a Pipeline to a Relay
-template<class P, class R>
-auto operator|(std::shared_ptr<P> pipeline, std::shared_ptr<R> relay)
-    -> decltype(detail::is_pipeline_to_relay_trait<P, R>(), detail::pipeline_to_relay(pipeline, relay))
-{
-    auto result = detail::pipeline_to_relay(pipeline, std::move(relay));
-    result->upstream = std::move(pipeline);
-    return result;
-}
-
-/// Connect a Pipeline to a Subscriber
-template<class P, class C>
-auto operator|(std::shared_ptr<P> pipeline, std::shared_ptr<C> subscriber)
-    -> decltype(detail::is_pipeline_to_subscriber_trait<P, C>(), detail::pipeline_to_subscriber(pipeline, subscriber))
-{
-    auto result = detail::pipeline_to_subscriber(pipeline, std::move(subscriber));
-    result->upstream = std::move(pipeline);
-    return result;
+    using input_t = typename P::element_type::output_t;
+    auto relay = std::make_shared<detail::TogglePipelineOperator<input_t>>();
+    publisher->subscribe(relay);
+    relay->subscribe(subscriber);
+    return Pipeline<S>(relay, std::move(subscriber), {std::move(publisher), std::move(relay)});
 }
 
 NOTF_CLOSE_NAMESPACE
