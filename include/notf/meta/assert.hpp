@@ -1,12 +1,19 @@
 #pragma once
 
+#include "./config.hpp"
+
 #ifdef NOTF_DEBUG
 
-#include "./log.hpp" // is only included in debug builds
+// is only included in debug builds
+#include "./exception.hpp"
+#include "./log.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 // assertions ======================================================================================================= //
+
+/// Exception thrown when an assertion failed and NOTF_ABORT_ON_ASSERT is undefined (or in test mode).
+NOTF_EXCEPTION_TYPE(assertion_error);
 
 namespace detail {
 
@@ -14,31 +21,41 @@ namespace detail {
 /// Prints out a formatted message with information about the failure and then aborts the program.
 template<class... Args>
 [[noreturn]] void
-assertion_failed(char const* expr, char const* function, char const* file, long line, const char* fmt, Args&&... args)
+assertion_failed(char const* expr, char const* file, char const* function, long line, const char* fmt, Args&&... args)
 {
     using namespace fmt::literals;
-    TheLogger::get()->critical(                                                                       //
-        R"(Assertion "{expr}" failed at "{file}:{line}" in function "{func}" with message: "{msg}")", //
-        "expr"_a = expr, "file"_a = filename_from_path(file), "line"_a = line, "func"_a = function,
-        "msg"_a = fmt::format(fmt, std::forward<Args>(args)...));
+    const std::string msg
+        = fmt::format(R"(Assertion "{expr}" failed at "{file}:{line}" in function "{func}" with message: "{msg}")",
+                      "expr"_a = expr, "file"_a = filename_from_path(file), "line"_a = line, "func"_a = function,
+                      "msg"_a = fmt::format(fmt, std::forward<Args>(args)...));
+    TheLogger::get()->critical(msg);
+#if defined(NOTF_ABORT_ON_ASSERT) && !defined(NOTF_TEST)
     std::abort();
+#else
+    throw assertion_error(file, function, line, msg.c_str());
+#endif
 }
 [[noreturn]] inline void
-assertion_failed(char const* expr, char const* function, char const* file, long line, const char* message = nullptr)
+assertion_failed(char const* expr, char const* file, char const* function, long line, const char* message = nullptr)
 {
     using namespace fmt::literals;
+    std::string msg;
     if (message) {
-        TheLogger::get()->critical(                                                                       //
-            R"(Assertion "{expr}" failed at "{file}:{line}" in function "{func}" with message: "{msg}")", //
-            "expr"_a = expr, "file"_a = filename_from_path(file), "line"_a = line, "func"_a = function,
-            "msg"_a = message);
+        msg = fmt::format(R"(Assertion "{expr}" failed at "{file}:{line}" in function "{func}" with message: "{msg}")",
+                          "expr"_a = expr, "file"_a = filename_from_path(file), "line"_a = line, "func"_a = function,
+                          "msg"_a = message);
+        TheLogger::get()->critical(msg);
     }
     else {
-        TheLogger::get()->critical(                                                 //
-            R"(Assertion "{expr}" failed at "{file}:{line}" in function "{func}")", //
-            "expr"_a = expr, "file"_a = filename_from_path(file), "line"_a = line, "func"_a = function);
+        msg = fmt::format(R"(Assertion "{expr}" failed at "{file}:{line}" in function "{func}")", "expr"_a = expr,
+                          "file"_a = filename_from_path(file), "line"_a = line, "func"_a = function);
+        TheLogger::get()->critical(msg);
     }
+#if defined(NOTF_ABORT_ON_ASSERT) && !defined(NOTF_TEST)
     std::abort();
+#else
+    throw assertion_error(file, function, line, msg.c_str());
+#endif
 }
 
 } // namespace detail
@@ -47,7 +64,7 @@ assertion_failed(char const* expr, char const* function, char const* file, long 
 #define NOTF_ASSERT(expr, ...) \
     (NOTF_LIKELY(expr) ?       \
          NOTF_NOOP :           \
-         ::notf::detail::assertion_failed(#expr, NOTF_CURRENT_FUNCTION, __FILE__, __LINE__, ##__VA_ARGS__))
+         ::notf::detail::assertion_failed(#expr, __FILE__, NOTF_CURRENT_FUNCTION, __LINE__, ##__VA_ARGS__))
 
 NOTF_CLOSE_NAMESPACE
 

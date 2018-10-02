@@ -31,12 +31,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
-# define notf's debug flag when compiling a debug build
-if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
-    message(STATUS ">>> notf: Building in debug mode")
-    add_definitions(-DNOTF_DEBUG)
-endif()
-
 # use link-time optimization if available
 if(CMAKE_BUILD_TYPE MATCHES "Release")
     message(STATUS ">>> notf: Building in release mode")
@@ -92,6 +86,63 @@ if(${GIT_FOUND})
                     OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
 
+# UTILITY MACROS #######################################################################################################
+
+# utility macro to add source files in a common subdirectory
+macro(add_sources source_list base_path)
+    foreach(file ${ARGN})
+        list(APPEND ${source_list} ${base_path}/${file})
+    endforeach()
+endmacro()
+
+# CONFIGURATION ########################################################################################################
+
+# define notf's debug flags when compiling a debug build
+if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
+    message(STATUS ">>> notf: Building in debug mode")
+    set(NOTF_DEBUG TRUE)
+
+    # build and run the tests
+    option(NOTF_BUILD_TESTS "Build tests" ON)
+    if(${NOTF_BUILD_TESTS})
+        message(STATUS ">>> notf: Building tests")
+        set(NOTF_TEST TRUE)
+        enable_testing()
+        add_subdirectory(tests)
+    endif()
+
+# define notf's relase flags when compiling a release build
+else()
+    message(STATUS ">>> notf: Building in release mode")
+    set(NOTF_RELEASE TRUE)
+endif()
+
+# log level
+set(NOTF_LOG_LEVEL "0" CACHE STRING "Log level to compile (0=all -> 6=nothing)")
+
+option(NOTF_ABORT_ON_ASSERT "Abort straight away when failing an assert" ON)
+if(${NOTF_ABORT_ON_ASSERT})
+    message(STATUS ">>> notf: Aborting on assert failure")
+    set(NOTF_ABORT_ON_ASSERT TRUE)
+endif()
+
+# pretty (long) function names
+option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
+if(${NOTF_LOG_PRETTY_FUNCTION})
+    message(STATUS ">>> notf: Using long function names")
+    set(NOTF_LOG_PRETTY_FUNCTION TRUE)
+endif()
+
+# thread sanitization
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    option(NOTF_THREAD_SANITIZATION "Enable thread sanitization" OFF)
+    if(${NOTF_THREAD_SANITIZATION})
+        add_compile_options("-fsanitize=thread")
+        link_libraries("-fsanitize=thread")
+        message(STATUS ">>> notf: Building using thread sanitization")
+    endif()
+endif()
+
 # CODE INTEGRATION #####################################################################################################
 
 # check compiler ID (from https://cmake.org/cmake/help/latest/variable/CMAKE_LANG_COMPILER_ID.html)
@@ -110,47 +161,6 @@ configure_file (
     "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp.in"
     "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp"
 )
-
-# UTILITY MACROS #######################################################################################################
-
-# utility macro to add source files in a common subdirectory
-macro(add_sources source_list base_path)
-    foreach(file ${ARGN})
-        list(APPEND ${source_list} ${base_path}/${file})
-    endforeach()
-endmacro()
-
-# CONFIGURATION ########################################################################################################
-
-# build and run the tests
-if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
-    option(NOTF_BUILD_TESTS "Build tests" ON)
-    if(${NOTF_BUILD_TESTS})
-        message(STATUS ">>> notf: Building tests")
-        enable_testing()
-        add_subdirectory(tests)
-    endif()
-endif()
-
-# log level
-set(NOTF_LOG_LEVEL "0" CACHE STRING "Log level to compile (0=all -> 6=nothing)")
-
-# pretty (long) function names
-option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
-if(${NOTF_LOG_PRETTY_FUNCTION})
-    message(STATUS ">>> notf: Using long function names")
-    add_definitions(-DNOTF_LOG_PRETTY_FUNCTION)
-endif()
-
-# thread sanitization
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    option(NOTF_THREAD_SANITIZATION "Enable thread sanitization" OFF)
-    if(${NOTF_THREAD_SANITIZATION})
-        add_compile_options("-fsanitize=thread")
-        link_libraries("-fsanitize=thread")
-        message(STATUS ">>> notf: Building using thread sanitization")
-    endif()
-endif()
 
 # SUB-PROJECTS #########################################################################################################
 

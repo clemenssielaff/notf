@@ -24,6 +24,11 @@
 #cmakedefine NOTF_GCC
 #cmakedefine NOTF_MSVC
 
+/// Build type.
+#cmakedefine NOTF_DEBUG
+#cmakedefine NOTF_TEST
+#cmakedefine NOTF_RELEASE
+
 // notf namespace =================================================================================================== //
 
 /// Name of the notf namespace.
@@ -71,3 +76,11 @@
 ///     ERROR = 4
 ///     CRIT  = 5
 #define NOTF_LOG_LEVEL @NOTF_LOG_LEVEL@
+
+// notf configuration =============================================================================================== //
+
+/// Use pretty (long) function names in log- and other messages.
+#cmakedefine NOTF_LOG_PRETTY_FUNCTION
+
+/// Whether or not a failed assertion will immediately call `std::abort` or just throw an exception.
+#cmakedefine NOTF_ABORT_ON_ASSERT

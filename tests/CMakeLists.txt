@@ -4,20 +4,26 @@
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     common/test_vector.cpp
     common/test_version.cpp
+    common/test_string_view.cpp
 
+    meta/test_assert.cpp
     meta/test_debug.cpp
     meta/test_exception.cpp
     meta/test_hash.cpp
     meta/test_numeric.cpp
     meta/test_real.cpp
+    meta/test_time.cpp
     meta/test_typename.cpp
+    meta/test_pointer.cpp
     meta/test_stringtype.cpp
+
+    reactive/test_operators.cpp
+    reactive/test_pipeline.cpp
 )
 
 # add scratch files
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/scratch
     node_scratch.cpp
-    reactive_scratch.cpp
 )
 
 # declare test runner executable
@@ -75,8 +81,6 @@ if(${NOTF_RUN_TESTS})
         # create a coverage report and display a summary report
         COMMAND llvm-profdata merge -sparse default.profraw -o notf-tests.profdata
         COMMAND llvm-cov report ./notf-tests ${LLVM_COV_ARGS}
-        COMMAND echo
-        COMMAND llvm-cov show ./notf-tests -line-coverage-lt=100 ${LLVM_COV_ARGS}
 
         # store the complete report as html
         COMMAND llvm-cov show ./notf-tests ${LLVM_COV_ARGS} -format="html" > coverage.html
