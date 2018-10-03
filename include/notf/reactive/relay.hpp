@@ -20,6 +20,9 @@ public:
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
+    /// Subscriber "next" operation, forwards to the Producer's "publish" operation by default.
+    void on_next(const detail::PublisherBase* /*publisher*/, const O& value) override { this->publish(value); }
+
     /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
     void on_error(const std::exception& exception) override { this->error(exception); }
 
@@ -29,29 +32,29 @@ public:
 
 // relay specializations ============================================================================================ //
 
-/// Default specialization for Relays that have the same input and output types.
-template<class T, class Policy>
-class Relay<T, T, Policy> : public Subscriber<T>, public Publisher<T, Policy> {
+///// Default specialization for Relays that have the same input and output types.
+//template<class T, class Policy>
+//class Relay<T, T, Policy> : public Subscriber<T>, public Publisher<T, Policy> {
 
-    // types -------------------------------------------------------------------------------------------------------- //
-public:
-    /// Subscriber type from which this Relay inherits.
-    using subscriber_t = Subscriber<T>;
+//    // types -------------------------------------------------------------------------------------------------------- //
+//public:
+//    /// Subscriber type from which this Relay inherits.
+//    using subscriber_t = Subscriber<T>;
 
-    /// Publisher type from which this Relay inherits.
-    using publisher_t = Publisher<T, Policy>;
+//    /// Publisher type from which this Relay inherits.
+//    using publisher_t = Publisher<T, Policy>;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
-public:
-    /// Subscriber "next" operation, forwards to the Producer's "publish" operation by default.
-    void on_next(const detail::PublisherBase* /*publisher*/, const T& value) override { this->publish(value); }
+//    // methods ------------------------------------------------------------------------------------------------------ //
+//public:
+//    /// Subscriber "next" operation, forwards to the Producer's "publish" operation by default.
+//    void on_next(const detail::PublisherBase* /*publisher*/, const T& value) override { this->publish(value); }
 
-    /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
-    void on_error(const std::exception& exception) override { this->error(exception); }
+//    /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
+//    void on_error(const std::exception& exception) override { this->error(exception); }
 
-    /// Subscriber "complete" operation, forwards to the Producer's "complete" operation by default.
-    void on_complete() override { this->complete(); }
-};
+//    /// Subscriber "complete" operation, forwards to the Producer's "complete" operation by default.
+//    void on_complete() override { this->complete(); }
+//};
 
 /// Specialization for Relays that connect a data-producing upstream to a "NoData" downstream.
 template<class T, class Policy>

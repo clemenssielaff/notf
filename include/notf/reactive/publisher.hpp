@@ -171,15 +171,6 @@ private:
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
-    /// Call complete on destruction, if this Publisher has not been completed yet.
-    /// Override the destructor in each subclass that overrides `_complete`.
-    ~TypedPublisher() override
-    {
-        if (!is_completed()) {
-            complete();
-        }
-    }
-
     /// Checks if this Publisher has already completed (either normally or though an error).
     bool is_completed() const { return m_state != State::RUNNING; }
 
@@ -244,7 +235,6 @@ private:
 
     /// Internal completion handler, can be implemented by subclasses.
     /// At the time this handler is called, the Publisher is still running.
-    /// If you override this method, remember to also override the destructor.
     virtual void _complete() {}
 
     /// Called when a new Subscriber is about to be subscribed to this Publisher.
