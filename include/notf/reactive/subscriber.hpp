@@ -25,10 +25,13 @@ struct SubscriberBase {
     /// propagate all the way through the callstack, as this could stop the connected Publisher from delivering any more
     /// messages to other Subscribers.
     /// @param exception    The exception that has occurred.
-    virtual void on_error(const std::exception& exception) { throw exception; }
+    virtual void on_error(const detail::PublisherBase* /*publisher*/, const std::exception& exception)
+    {
+        throw exception;
+    }
 
     /// Default implementation of the "complete" operation does nothing.
-    virtual void on_complete() {}
+    virtual void on_complete(const detail::PublisherBase* /*publisher*/) {}
 };
 
 } // namespace detail

@@ -17,9 +17,12 @@ auto ConsoleSubscriber()
 
         void on_next(const detail::PublisherBase*, const std::string& value) final { std::cout << value << std::endl; }
 
-        void on_error(const std::exception& error) final { std::cerr << error.what() << std::endl; }
+        void on_error(const detail::PublisherBase*, const std::exception& error) final
+        {
+            std::cerr << error.what() << std::endl;
+        }
 
-        void on_complete() final
+        void on_complete(const detail::PublisherBase*) final
         { /*std::cout << "Completed" << std::endl;*/
         }
     };
@@ -39,9 +42,9 @@ auto ManualPublisher()
 template<class T, class Policy = detail::DefaultPublisherPolicy>
 auto CachedRelay(size_t cache_size = max_value<size_t>())
 {
-    struct CachedRelayObj : public Relay<T, Policy> {
+    struct CachedRelayObj : public Relay<T, T, Policy> {
 
-        CachedRelayObj(size_t cache_size) : Relay<T, Policy>(), m_cache_size(cache_size) {}
+        CachedRelayObj(size_t cache_size) : Relay<T, T, Policy>(), m_cache_size(cache_size) {}
 
         void on_next(const detail::PublisherBase*, const T& value) final
         {
@@ -75,7 +78,7 @@ auto CachedRelay(size_t cache_size = max_value<size_t>())
 template<class T, class Policy = detail::DefaultPublisherPolicy>
 auto LastValueRelay()
 {
-    struct LastValueObj : public Relay<T, Policy> {
+    struct LastValueObj : public Relay<T, T, Policy> {
 
         ~LastValueObj() final
         {

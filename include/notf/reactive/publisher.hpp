@@ -48,6 +48,9 @@ public:
     /// Removes an existing Subscriber.
     void clear() { m_subscriber.reset(); }
 
+    /// Number of connected Subscribers.
+    size_t get_subscriber_count() const { return m_subscriber.lock() ? 1 : 0; }
+
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The single Subscriber.
@@ -114,6 +117,9 @@ public:
     /// Removes all existing Subscribers.
     void clear() { m_subscribers.clear(); }
 
+    /// Number of connected Subscribers.
+    size_t get_subscriber_count() const { return m_subscribers.size(); }
+
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// All unique Subscribers.
@@ -177,6 +183,9 @@ public:
     /// Checks if this Publisher has completed with an error.
     bool is_failed() const { return m_state == State::FAILED; }
 
+    /// Number of connected Subscribers.
+    size_t get_subscriber_count() const { return m_subscribers.get_subscriber_count(); }
+
     /// Fail operation, completes this Publisher.
     /// @param exception    The exception that has occurred.
     void error(const std::exception& exception)
@@ -187,7 +196,7 @@ public:
 
             // transition into the error state
             m_state = State::FAILED;
-            m_subscribers.on_each([&exception](auto* subscriber) { subscriber->on_error(exception); });
+            m_subscribers.on_each([this, &exception](auto* subscriber) { subscriber->on_error(this, exception); });
             m_subscribers.clear();
         }
     }
@@ -201,7 +210,7 @@ public:
 
             // transition into the completed state
             m_state = State::COMPLETED;
-            m_subscribers.on_each([](auto* subscriber) { subscriber->on_complete(); });
+            m_subscribers.on_each([this](auto* subscriber) { subscriber->on_complete(this); });
             m_subscribers.clear();
         }
     }
@@ -214,7 +223,7 @@ public:
     {
         // call complete if the Publisher has already completed (even if through an error, that doesn't matter here)
         if (is_completed()) {
-            subscriber->on_complete();
+            subscriber->on_complete(this);
             return true; // technically, we've accepted the Subscriber
         }
 
@@ -227,15 +236,21 @@ public:
         return m_subscribers.add(std::move(subscriber));
     }
 
-private:
+protected:
     /// Internal error handler, can be implemented by subclasses.
-    /// At the time this handler is called, the Publisher is still running.
     /// @param exception    The exception that has occurred.
-    virtual void _error(const std::exception& /*exception*/) {}
+    virtual void _error(const std::exception& exception)
+    {
+        NOTF_ASSERT(!this->is_completed());
+        this->m_subscribers.on_each([this, &exception](auto* subscriber) { subscriber->on_error(this, exception); });
+    }
 
     /// Internal completion handler, can be implemented by subclasses.
-    /// At the time this handler is called, the Publisher is still running.
-    virtual void _complete() {}
+    virtual void _complete()
+    {
+        NOTF_ASSERT(!this->is_completed());
+        this->m_subscribers.on_each([this](auto* subscriber) { subscriber->on_complete(this); });
+    }
 
     /// Called when a new Subscriber is about to be subscribed to this Publisher.
     /// @param subscriber   Subscriber about to be subscribed.
@@ -275,7 +290,7 @@ public:
         }
     }
 
-private:
+protected:
     /// Internal publish handler, can be overriden by subclasses.
     /// @param value    Value to propagate to all Subscribers.
     virtual void _publish(const T& value)
@@ -300,7 +315,7 @@ public:
         }
     }
 
-private:
+protected:
     /// Internal publish handler, can be overriden by subclasses.
     void _publish()
     {

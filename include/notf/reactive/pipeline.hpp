@@ -66,7 +66,7 @@ protected:
 /// Is used to enable or disable the complete Pipeline and is always at the front, so no Operators within the Pipeline
 /// are exucuted, when it is disabled.
 template<class T, class Policy = SinglePublisherPolicy>
-struct TogglePipelineOperator : public Relay<T, Policy>, PipelineToggle {
+struct TogglePipelineOperator : public Relay<T, T, Policy>, PipelineToggle {
 
     /// Propagate the next value if the Pipeline is enabled.
     void on_next(const PublisherBase*, const T& value) final

@@ -17,8 +17,12 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     meta/test_pointer.cpp
     meta/test_stringtype.cpp
 
+    reactive/test_reactive.hpp
     reactive/test_operators.cpp
     reactive/test_pipeline.cpp
+    reactive/test_relay.cpp
+    reactive/test_publisher.cpp
+    reactive/test_subscriber.cpp
 )
 
 # add scratch files

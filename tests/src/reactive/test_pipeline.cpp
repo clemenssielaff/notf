@@ -1,41 +1,8 @@
 #include "catch2/catch.hpp"
 
-#include "notf/reactive/pipeline.hpp"
+#include "./test_reactive.hpp"
 
 NOTF_USING_NAMESPACE;
-
-namespace {
-
-auto TestPublisher() { return std::make_shared<Publisher<int, detail::SinglePublisherPolicy>>(); }
-
-auto TestSubscriber()
-{
-    struct TestSubscriberImpl : public Subscriber<int> {
-
-        void on_next(const detail::PublisherBase*, const int& value) final { values.emplace_back(value); }
-
-        void on_error(const std::exception& error) final
-        {
-            try {
-                throw error;
-            }
-            catch (...) {
-                exception = std::current_exception();
-            };
-        }
-
-        void on_complete() final { is_completed = true; }
-
-        std::vector<int> values;
-        std::exception_ptr exception;
-        bool is_completed = false;
-    };
-    return std::make_shared<TestSubscriberImpl>();
-}
-
-auto TestRelay() { return std::make_shared<Relay<int, detail::SinglePublisherPolicy>>(); }
-
-} // namespace
 
 // test cases ======================================================================================================= //
 
@@ -43,7 +10,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
 {
     SECTION("l-value publisher => l-value subscriber")
     {
-        auto publisher = TestPublisher();
+        auto publisher = DefaultPublisher();
         auto subscriber = TestSubscriber();
 
         publisher->publish(1);
@@ -69,7 +36,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
 
     SECTION("l-value publisher => r-value subscriber")
     {
-        auto publisher = TestPublisher();
+        auto publisher = DefaultPublisher();
         decltype(TestSubscriber()) subscriber;
 
         {
@@ -97,10 +64,10 @@ SCENARIO("pipeline", "[reactive][pipeline]")
     SECTION("r-value publisher => l-value subscriber")
     {
         auto subscriber = TestSubscriber();
-        decltype(TestPublisher()) publisher;
+        decltype(DefaultPublisher()) publisher;
 
         {
-            auto pipeline = TestPublisher() | subscriber;
+            auto pipeline = DefaultPublisher() | subscriber;
             REQUIRE(pipeline.get_operator_count() == 2);
             publisher = pipeline.get_first_operator();
 
@@ -124,10 +91,10 @@ SCENARIO("pipeline", "[reactive][pipeline]")
     SECTION("r-value publisher => r-value subscriber")
     {
         decltype(TestSubscriber()) subscriber;
-        decltype(TestPublisher()) publisher;
+        decltype(DefaultPublisher()) publisher;
 
         {
-            auto pipeline = TestPublisher() | TestSubscriber();
+            auto pipeline = DefaultPublisher() | TestSubscriber();
             REQUIRE(pipeline.get_operator_count() == 3);
             subscriber = pipeline.get_last_operator();
             publisher = pipeline.get_first_operator();
@@ -152,10 +119,10 @@ SCENARIO("pipeline", "[reactive][pipeline]")
     SECTION("l-value pipeline => L-value subscriber")
     {
         auto subscriber = TestSubscriber();
-        decltype(TestPublisher()) publisher;
+        decltype(DefaultPublisher()) publisher;
 
         {
-            auto pipeline = TestPublisher() | TestRelay() | TestRelay() | subscriber;
+            auto pipeline = DefaultPublisher() | DefaultRelay() | DefaultRelay() | subscriber;
             REQUIRE(pipeline.get_operator_count() == 4);
             publisher = pipeline.get_first_operator();
 
@@ -178,11 +145,11 @@ SCENARIO("pipeline", "[reactive][pipeline]")
 
     SECTION("l-value pipeline => r-value subscriber")
     {
-        auto publisher = TestPublisher();
+        auto publisher = DefaultPublisher();
         decltype(TestSubscriber()) subscriber;
 
         {
-            auto pipeline = publisher | TestRelay() | TestRelay() | TestSubscriber();
+            auto pipeline = publisher | DefaultRelay() | DefaultRelay() | TestSubscriber();
             REQUIRE(pipeline.get_operator_count() == 4);
             subscriber = pipeline.get_last_operator();
 
@@ -200,7 +167,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         REQUIRE(subscriber->values[0] == 1);
         REQUIRE(subscriber->values[1] == 3);
         REQUIRE(subscriber->exception == nullptr);
-        REQUIRE(subscriber->is_completed ==  false);
+        REQUIRE(subscriber->is_completed == false);
     }
 
     SECTION("additional toggle operators count against the operator count")
