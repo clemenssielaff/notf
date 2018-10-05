@@ -15,14 +15,14 @@ auto ConsoleSubscriber()
 {
     struct ConsoleSubscriberImpl : public Subscriber<std::string> {
 
-        void on_next(const detail::PublisherBase*, const std::string& value) final { std::cout << value << std::endl; }
+        void on_next(const UntypedPublisher*, const std::string& value) final { std::cout << value << std::endl; }
 
-        void on_error(const detail::PublisherBase*, const std::exception& error) final
+        void on_error(const UntypedPublisher*, const std::exception& error) final
         {
             std::cerr << error.what() << std::endl;
         }
 
-        void on_complete(const detail::PublisherBase*) final
+        void on_complete(const UntypedPublisher*) final
         { /*std::cout << "Completed" << std::endl;*/
         }
     };
@@ -46,7 +46,7 @@ auto CachedRelay(size_t cache_size = max_value<size_t>())
 
         CachedRelayObj(size_t cache_size) : Relay<T, T, Policy>(), m_cache_size(cache_size) {}
 
-        void on_next(const detail::PublisherBase*, const T& value) final
+        void on_next(const UntypedPublisher*, const T& value) final
         {
             if (!this->is_completed()) {
                 if (m_cache.size() >= m_cache_size) {
@@ -87,7 +87,7 @@ auto LastValueRelay()
             }
         }
 
-        void on_next(const detail::PublisherBase*, const T& value) final
+        void on_next(const UntypedPublisher*, const T& value) final
         {
             NOTF_ASSERT(!this->is_completed());
             m_value = value;

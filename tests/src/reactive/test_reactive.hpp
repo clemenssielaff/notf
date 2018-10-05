@@ -9,7 +9,7 @@ template<class T = int>
 auto DefaultSubscriber()
 {
     struct DefaultSubscriberImpl : Subscriber<T> {
-        void on_next(const detail::PublisherBase*, const T&) final {}
+        void on_next(const UntypedPublisher*, const T&) final {}
     };
     return std::make_shared<DefaultSubscriberImpl>();
 }
@@ -31,9 +31,9 @@ auto TestSubscriber()
 {
     struct TestSubscriberTImpl : public Subscriber<T> {
 
-        void on_next(const detail::PublisherBase*, const int& value) final { values.emplace_back(value); }
+        void on_next(const UntypedPublisher*, const int& value) final { values.emplace_back(value); }
 
-        void on_error(const detail::PublisherBase*, const std::exception& error) final
+        void on_error(const UntypedPublisher*, const std::exception& error) final
         {
             try {
                 throw error;
@@ -43,7 +43,7 @@ auto TestSubscriber()
             };
         }
 
-        void on_complete(const detail::PublisherBase*) final { is_completed = true; }
+        void on_complete(const UntypedPublisher*) final { is_completed = true; }
 
         std::vector<T> values;
         std::exception_ptr exception;
@@ -58,9 +58,9 @@ auto TestSubscriber<NoData>()
 {
     struct TestSubscriberNoDataImpl : public Subscriber<NoData> {
 
-        void on_next(const detail::PublisherBase*) final { ++counter; }
+        void on_next(const UntypedPublisher*) final { ++counter; }
 
-        void on_error(const detail::PublisherBase*, const std::exception& error) final
+        void on_error(const UntypedPublisher*, const std::exception& error) final
         {
             try {
                 throw error;
@@ -70,7 +70,7 @@ auto TestSubscriber<NoData>()
             };
         }
 
-        void on_complete(const detail::PublisherBase*) final { is_completed = true; }
+        void on_complete(const UntypedPublisher*) final { is_completed = true; }
 
         size_t counter;
         std::exception_ptr exception;

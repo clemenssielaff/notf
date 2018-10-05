@@ -121,4 +121,41 @@ struct default_factory {
     T operator()() const { return T{}; }
 };
 
+/// Use in place of a type if you don't want the type to take up any space.
+/// This is actually not "valid" C++ but all compilers (that I tested) allow it without problems.
+/// Read all about it:
+///     - https://gcc.gnu.org/onlinedocs/gcc/Zero-Length.html
+///     - https://herbsutter.com/2009/09/02/when-is-a-zero-length-array-okay/
+///
+/// Fact is:
+///
+///     using none_t = std::tuple<>;
+///     using zeroarray_t = void*[0];
+///     struct empty_t {};
+///
+///     using other_t = double;
+///
+///     struct OtherAndNone {
+///       other_t other;
+///       none_t none;
+///     };
+///     struct OtherAndZeroArray {
+///       other_t other;
+///       zeroarray_t zeroarray;
+///     };
+///     struct OtherAndEmpty {
+///       other_t other;
+///       empty_t empty;
+///     };
+///
+///     sizeof(other_t)             // =  8
+///     sizeof(none_t)              // =  1
+///     sizeof(zeroarray_t)         // =  0
+///     sizeof(empty_t)             // =  1
+///     sizeof(OtherAndNone)        // = 16
+///     sizeof(OtherAndZeroArray)   // =  8
+///     sizeof(OtherAndEmpty)       // = 16
+///
+using empty_type = void * [0];
+
 NOTF_CLOSE_NAMESPACE

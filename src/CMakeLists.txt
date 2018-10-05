@@ -28,3 +28,12 @@ target_link_libraries(notf-core PUBLIC
     notf-thirdparty
     ${CMAKE_THREAD_LIBS_INIT}
 )
+
+# show all but selected warnings
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    target_compile_options(notf-core PRIVATE "-Weverything -Wpedantic -Wno-zero-length-array")
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    target_compile_options(notf-core PRIVATE "-Wall")
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    target_compile_options(notf-core PRIVATE "/W4")
+endif()

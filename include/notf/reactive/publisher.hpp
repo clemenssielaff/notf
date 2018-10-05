@@ -126,26 +126,30 @@ private:
     std::vector<SubscriberWeakPtr<T>> m_subscribers;
 };
 
+} // namespace detail
+
 // publisher base =================================================================================================== //
 
 /// Base class for all Publishers.
 /// Is only used for identification purposes.
-struct PublisherBase {
+struct UntypedPublisher {
 
-    NOTF_NO_COPY_OR_ASSIGN(PublisherBase);
+    NOTF_NO_COPY_OR_ASSIGN(UntypedPublisher);
 
     /// Default constructor.
-    PublisherBase() = default;
+    UntypedPublisher() = default;
 
     /// Virtual destructor.
-    virtual ~PublisherBase() = default;
+    virtual ~UntypedPublisher() = default;
 };
 
 // typed publisher ================================================================================================== //
 
+namespace detail {
+
 /// Base template for a Type, both data and non-data publishing Publishers derive from it.
 template<class T, class Policy>
-class TypedPublisher : public PublisherBase {
+class TypedPublisher : public notf::UntypedPublisher {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -328,7 +332,7 @@ protected:
 
 namespace detail {
 
-using ::notf::detail::PublisherBase;
+using ::notf::UntypedPublisher;
 
 struct SinglePublisherPolicy {
     template<class T>

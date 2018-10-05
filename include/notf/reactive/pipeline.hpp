@@ -69,7 +69,7 @@ template<class T, class Policy = SinglePublisherPolicy>
 struct TogglePipelineOperator : public Relay<T, T, Policy>, PipelineToggle {
 
     /// Propagate the next value if the Pipeline is enabled.
-    void on_next(const PublisherBase*, const T& value) final
+    void on_next(const UntypedPublisher*, const T& value) final
     {
         if (m_is_enabled) {
             this->publish(value);
@@ -97,7 +97,7 @@ private:
     using Toggle = std::shared_ptr<detail::PipelineToggle>;
 
     /// All Operators in the Pipeline (except the last), as untyped reactive operators.
-    using Operators = std::vector<std::shared_ptr<detail::PublisherBase>>;
+    using Operators = std::vector<std::shared_ptr<UntypedPublisher>>;
 
     /// This Pipeline type.
     using this_t = Pipeline<FirstOperator, LastOperator>;

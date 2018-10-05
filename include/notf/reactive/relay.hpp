@@ -22,16 +22,16 @@ public:
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Subscriber "next" operation, forwards to the Producer's "publish" operation by default.
-    void on_next(const detail::PublisherBase* /*publisher*/, const O& value) override { this->publish(value); }
+    void on_next(const UntypedPublisher* /*publisher*/, const O& value) override { this->publish(value); }
 
     /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
-    void on_error(const detail::PublisherBase* /*publisher*/, const std::exception& exception) override
+    void on_error(const UntypedPublisher* /*publisher*/, const std::exception& exception) override
     {
         this->error(exception);
     }
 
     /// Subscriber "complete" operation, forwards to the Producer's "complete" operation by default.
-    void on_complete(const detail::PublisherBase* /*publisher*/) override { this->complete(); }
+    void on_complete(const UntypedPublisher* /*publisher*/) override { this->complete(); }
 };
 
 // NoData relay specializations ===================================================================================== //
@@ -51,16 +51,16 @@ public:
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Subscriber "next" operation, forwards to the Producer's "publish" operation by default.
-    void on_next(const detail::PublisherBase* /*publisher*/) override { this->publish(); }
+    void on_next(const UntypedPublisher* /*publisher*/) override { this->publish(); }
 
     /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
-    void on_error(const detail::PublisherBase* /*publisher*/, const std::exception& exception) override
+    void on_error(const UntypedPublisher* /*publisher*/, const std::exception& exception) override
     {
         this->error(exception);
     }
 
     /// Subscriber "complete" operation, forwards to the Producer's "complete" operation by default.
-    void on_complete(const detail::PublisherBase* /*publisher*/) override { this->complete(); }
+    void on_complete(const UntypedPublisher* /*publisher*/) override { this->complete(); }
 };
 
 /// Specialization for Relays that connect a data-producing upstream to a "NoData" downstream.
@@ -78,16 +78,16 @@ public:
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Subscriber "next" operation, forwards to the Producer's "publish" operation by default.
-    void on_next(const detail::PublisherBase* /*publisher*/, const T& /* ignored */) override { this->publish(); }
+    void on_next(const UntypedPublisher* /*publisher*/, const T& /* ignored */) override { this->publish(); }
 
     /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
-    void on_error(const detail::PublisherBase* /*publisher*/, const std::exception& exception) override
+    void on_error(const UntypedPublisher* /*publisher*/, const std::exception& exception) override
     {
         this->error(exception);
     }
 
     /// Subscriber "complete" operation, forwards to the Producer's "complete" operation by default.
-    void on_complete(const detail::PublisherBase* /*publisher*/) override { this->complete(); }
+    void on_complete(const UntypedPublisher* /*publisher*/) override { this->complete(); }
 };
 
 // relay identifier ================================================================================================= //
