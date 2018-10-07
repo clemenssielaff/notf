@@ -1,5 +1,6 @@
 #include <deque>
 #include <iostream>
+#include <optional>
 
 #include "notf/reactive/pipeline.hpp"
 #include "notf/reactive/publisher.hpp"

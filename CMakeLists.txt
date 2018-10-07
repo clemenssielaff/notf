@@ -48,8 +48,9 @@ endif()
 
 # use lld for clang builds
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    message(STATUS ">>> notf: Linking with lld ")
-    set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
+    message(STATUS ">>> notf: Using llvm tools: libc++ and lld ")
+    add_compile_options("-stdlib=libc++")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi -fuse-ld=lld")
 endif()
 
 # use ccache if available
@@ -115,6 +116,13 @@ if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
 else()
     message(STATUS ">>> notf: Building in release mode")
     set(NOTF_RELEASE TRUE)
+
+    # build the benchmarks
+    option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
+    if(${NOTF_BUILD_BENCHMARKS})
+        message(STATUS ">>> notf: Building benchmarks")
+        add_subdirectory(benchmarks)
+    endif()
 endif()
 
 # log level

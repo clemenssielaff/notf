@@ -4,6 +4,8 @@
 add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     common/random.cpp
     common/timer_pool.cpp
+    common/msgpack.cpp
+    common/msgpack11.cpp
 )
 
 # add thirdparty files
@@ -31,7 +33,14 @@ target_link_libraries(notf-core PUBLIC
 
 # show all but selected warnings
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    target_compile_options(notf-core PRIVATE "-Weverything -Wpedantic -Wno-zero-length-array")
+    target_compile_options(notf-core PRIVATE
+#        -Weverything
+#        -Wpedantic
+#        -Wno-padded
+#        -Wno-weak-vtables
+#        -Wno-c++98-compat
+#        -Wno-c++98-compat-pedantic
+    )
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     target_compile_options(notf-core PRIVATE "-Wall")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")

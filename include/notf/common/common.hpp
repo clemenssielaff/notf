@@ -15,4 +15,7 @@ NOTF_DEFINE_SHARED_POINTERS(class, OneShotTimer);
 NOTF_DEFINE_SHARED_POINTERS(class, IntervalTimer);
 NOTF_DEFINE_SHARED_POINTERS(class, VariableTimer);
 
+// msgpack.hpp
+class MsgPack;
+
 NOTF_CLOSE_NAMESPACE

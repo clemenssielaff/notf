@@ -29,7 +29,7 @@ public:
     /// @param line     Line in `file` at which the error was thrown.
     /// @param message  What has caused this exception (can be empty).
     notf_exception(const char* file, const char* function, const long line, const char* message = "")
-        : file(filename_from_path(file)), function(function), line(line), message(message)
+        : m_file(filename_from_path(file)), m_function(function), m_line(line), m_message(message)
     {}
 
     /// Constructor with an fmt formatted message.
@@ -40,31 +40,40 @@ public:
     /// @param args     Variadic arguments used to fill placeholders in the format string.
     template<class... Args>
     notf_exception(const char* file, const char* function, const long line, const char* fmt, Args&&... args)
-        : file(filename_from_path(file))
-        , function(function)
-        , line(line)
-        , message(fmt::format(fmt, std::forward<Args>(args)...))
+        : m_file(filename_from_path(file))
+        , m_function(function)
+        , m_line(line)
+        , m_message(fmt::format(fmt, std::forward<Args>(args)...))
     {}
 
     /// Destructor.
     ~notf_exception() override = default;
 
-    /// Returns the explanatory string.
-    const char* what() const noexcept override { return message.data(); }
-
-    // fields ------------------------------------------------------------------------------------------------------- //
-public:
     /// Name of the file in which the exception was thrown.
-    const char* file;
+    const char* get_file() const noexcept { return m_file; }
 
     /// Name of the function in which the exception was thrown.
-    const char* function;
+    const char* get_function() const noexcept { return m_function; }
 
     /// Line in the file at which the exception was thrown.
-    const long line;
+    long get_line() const noexcept { return m_line; }
+
+    /// Returns the explanatory string.
+    const char* what() const noexcept override { return m_message.data(); }
+
+    // fields ------------------------------------------------------------------------------------------------------- //
+private:
+    /// Name of the file in which the exception was thrown.
+    const char* m_file;
+
+    /// Name of the function in which the exception was thrown.
+    const char* m_function;
+
+    /// Line in the file at which the exception was thrown.
+    const long m_line;
 
     /// The exception message;
-    const std::string message;
+    const std::string m_message;
 };
 
 /// Convenience macro to throw a notf_exception with a message, that additionally contains the line, file and function

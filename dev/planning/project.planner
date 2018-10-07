@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<project name="NoTF" company="" manager="" phase="v0.4.0" project-start="20180817T000000Z" mrproject-version="2" calendar="1">
+<project name="NoTF" company="" manager="" phase="v0.4.0" project-start="20180817T000000Z" mrproject-version="2" calendar="2">
   <properties/>
   <phases>
     <phase name="v0.4.0"/>
@@ -12,15 +12,25 @@
       <day-type id="2" name="Use base" description="Use day from base calendar"/>
       <day-type id="3" name="Nightshift" description=""/>
     </day-types>
-    <calendar id="1" name="Side Project">
+    <calendar id="1" name="Default">
       <default-week mon="0" tue="0" wed="0" thu="0" fri="0" sat="1" sun="1"/>
       <overridden-day-types>
-        <overridden-day-type id="3">
-          <interval start="2000" end="2300"/>
+        <overridden-day-type id="0">
+          <interval start="0800" end="1200"/>
+          <interval start="1300" end="1700"/>
         </overridden-day-type>
+      </overridden-day-types>
+      <days/>
+    </calendar>
+    <calendar id="2" name="Side Project">
+      <default-week mon="0" tue="0" wed="0" thu="0" fri="0" sat="1" sun="1"/>
+      <overridden-day-types>
         <overridden-day-type id="0">
           <interval start="0900" end="1700"/>
           <interval start="2000" end="2359"/>
+        </overridden-day-type>
+        <overridden-day-type id="3">
+          <interval start="2000" end="2300"/>
         </overridden-day-type>
       </overridden-day-types>
       <days>
@@ -33,7 +43,6 @@
         <day date="20180823" type="day-type" id="3"/>
         <day date="20180925" type="day-type" id="3"/>
         <day date="20180828" type="day-type" id="3"/>
-        <day date="20181020" type="day-type" id="0"/>
         <day date="20180917" type="day-type" id="3"/>
         <day date="20181005" type="day-type" id="3"/>
         <day date="20180907" type="day-type" id="3"/>
@@ -48,11 +57,12 @@
         <day date="20180830" type="day-type" id="3"/>
         <day date="20181002" type="day-type" id="3"/>
         <day date="20180904" type="day-type" id="3"/>
-        <day date="20181201" type="day-type" id="0"/>
-        <day date="20180919" type="day-type" id="3"/>
+        <day date="20180822" type="day-type" id="3"/>
+        <day date="20181001" type="day-type" id="3"/>
+        <day date="20180827" type="day-type" id="3"/>
         <day date="20180914" type="day-type" id="3"/>
         <day date="20180924" type="day-type" id="3"/>
-        <day date="20180822" type="day-type" id="3"/>
+        <day date="20180919" type="day-type" id="3"/>
         <day date="20181222" type="day-type" id="0"/>
         <day date="20181124" type="day-type" id="0"/>
         <day date="20181027" type="day-type" id="0"/>
@@ -60,39 +70,29 @@
         <day date="20180901" type="day-type" id="0"/>
         <day date="20181004" type="day-type" id="3"/>
         <day date="20180906" type="day-type" id="3"/>
-        <day date="20181103" type="day-type" id="0"/>
+        <day date="20180903" type="day-type" id="3"/>
         <day date="20180911" type="day-type" id="3"/>
-        <day date="20181229" type="day-type" id="0"/>
-        <day date="20181224" type="day-type" id="1"/>
+        <day date="20180829" type="day-type" id="3"/>
+        <day date="20180824" type="day-type" id="3"/>
         <day date="20180819" type="day-type" id="0"/>
         <day date="20180921" type="day-type" id="3"/>
-        <day date="20180824" type="day-type" id="3"/>
+        <day date="20181224" type="day-type" id="1"/>
         <day date="20180926" type="day-type" id="3"/>
-        <day date="20180829" type="day-type" id="3"/>
-        <day date="20181001" type="day-type" id="3"/>
-        <day date="20180903" type="day-type" id="3"/>
+        <day date="20181229" type="day-type" id="0"/>
+        <day date="20181201" type="day-type" id="0"/>
+        <day date="20181103" type="day-type" id="0"/>
         <day date="20181006" type="day-type" id="0"/>
         <day date="20180908" type="day-type" id="0"/>
+        <day date="20180905" type="day-type" id="3"/>
         <day date="20180913" type="day-type" id="3"/>
         <day date="20180918" type="day-type" id="3"/>
         <day date="20180821" type="day-type" id="3"/>
-        <day date="20181003" type="day-type" id="3"/>
         <day date="20180928" type="day-type" id="3"/>
         <day date="20180831" type="day-type" id="3"/>
-        <day date="20180905" type="day-type" id="3"/>
-        <day date="20180827" type="day-type" id="3"/>
+        <day date="20181003" type="day-type" id="3"/>
+        <day date="20181020" type="day-type" id="0"/>
         <day date="20181208" type="day-type" id="0"/>
       </days>
-    </calendar>
-    <calendar id="2" name="Default">
-      <default-week mon="0" tue="0" wed="0" thu="0" fri="0" sat="1" sun="1"/>
-      <overridden-day-types>
-        <overridden-day-type id="0">
-          <interval start="0800" end="1200"/>
-          <interval start="1300" end="1700"/>
-        </overridden-day-type>
-      </overridden-day-types>
-      <days/>
     </calendar>
   </calendars>
   <tasks>
@@ -127,55 +127,62 @@
         </task>
       </task>
     </task>
-    <task id="11" name="v0.4.0" note="" work="3703065" start="20180817T000000Z" end="20181207T093640Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-      <task id="12" name="Application Layer" note="Everything that has to do with the application, scenes, threading and reactive" work="1327120" start="20180817T000000Z" end="20181020T235820Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+    <task id="11" name="v0.4.0" note="" work="4005045" start="20180817T000000Z" end="20181015T235820Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+      <task id="12" name="Application Layer" note="Everything that has to do with the application, scenes, threading and reactive" work="1629100" start="20180817T000000Z" end="20181015T235820Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
         <task id="13" name="Write Design" note="" work="517980" start="20180817T000000Z" end="20180915T235820Z" work-start="20180817T090000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
-        <task id="14" name="Reactive module" note="" work="291420" start="20180915T235820Z" end="20181006T235820Z" work-start="20180915T235820Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+        <task id="14" name="Reactive Basics" note="" work="291420" start="20180915T235820Z" end="20181006T235820Z" work-start="20180915T235820Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work">
           <predecessors>
             <predecessor id="1" predecessor-id="13" type="FS"/>
           </predecessors>
         </task>
-        <task id="15" name="App module" note="" work="517720" start="20181006T235820Z" end="20181020T235820Z" work-start="20181006T235820Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+        <task id="15" name="Message Pack" note="" work="129420" start="20181006T235820Z" end="20181010T235820Z" work-start="20181006T235820Z" percent-complete="34" priority="0" type="normal" scheduling="fixed-work">
           <predecessors>
             <predecessor id="1" predecessor-id="14" type="FS"/>
           </predecessors>
         </task>
-      </task>
-      <task id="16" name="Widget Toolkit" note="" work="1727960" start="20181020T235820Z" end="20181207T093640Z" work-start="20181020T235820Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-        <task id="17" name="Layouts" note="" work="863980" start="20181020T235820Z" end="20181114T091820Z" work-start="20181020T235820Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+        <task id="16" name="UUID" note="" work="43140" start="20181010T235820Z" end="20181011T235820Z" work-start="20181010T235820Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
           <predecessors>
             <predecessor id="1" predecessor-id="15" type="FS"/>
-            <predecessor id="1" predecessor-id="22" type="FS"/>
           </predecessors>
         </task>
-        <task id="18" name="Text formatting" note="" work="863980" start="20181114T091820Z" end="20181207T093640Z" work-start="20181114T091820Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+        <task id="17" name="Reactive Manager" note="" work="43140" start="20181011T235820Z" end="20181012T235820Z" work-start="20181011T235820Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+          <predecessors>
+            <predecessor id="1" predecessor-id="16" type="FS"/>
+          </predecessors>
+        </task>
+        <task id="18" name="Reactive Operator Factory" note="" work="86280" start="20181012T235820Z" end="20181015T235820Z" work-start="20181012T235820Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
           <predecessors>
             <predecessor id="1" predecessor-id="17" type="FS"/>
           </predecessors>
         </task>
+        <task id="19" name="App module" note="" work="517720" start="20180817T000000Z" end="20180915T235320Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
       </task>
-      <task id="19" name="Vector Graphics Engine" note="" work="647985" start="20180817T000000Z" end="20180927T200500Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-        <task id="20" name="Arbitrary shape drawing" note="" work="215995" start="20180817T000000Z" end="20180825T210140Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-        <task id="21" name="Paint implementation" note="" work="215995" start="20180825T210140Z" end="20180911T200320Z" work-start="20180825T210140Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+      <task id="20" name="Widget Toolkit" note="" work="1727960" start="20180817T000000Z" end="20181009T121000Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+        <task id="21" name="Layouts" note="" work="863980" start="20180817T000000Z" end="20181009T121000Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+        <task id="22" name="Text formatting" note="" work="863980" start="20180817T000000Z" end="20181009T121000Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+      </task>
+      <task id="23" name="Vector Graphics Engine" note="" work="647985" start="20180817T000000Z" end="20180927T200500Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+        <task id="24" name="Arbitrary shape drawing" note="" work="215995" start="20180817T000000Z" end="20180825T210140Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+        <task id="25" name="Paint implementation" note="" work="215995" start="20180825T210140Z" end="20180911T200320Z" work-start="20180825T210140Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
           <predecessors>
-            <predecessor id="1" predecessor-id="20" type="FS"/>
+            <predecessor id="1" predecessor-id="24" type="FS"/>
           </predecessors>
         </task>
-        <task id="22" name="Graphics Tests" note="" work="215995" start="20180911T200320Z" end="20180927T200500Z" work-start="20180911T200320Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+        <task id="26" name="Graphics Tests" note="" work="215995" start="20180911T200320Z" end="20180927T200500Z" work-start="20180911T200320Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
           <predecessors>
-            <predecessor id="1" predecessor-id="21" type="FS"/>
+            <predecessor id="1" predecessor-id="25" type="FS"/>
           </predecessors>
         </task>
       </task>
     </task>
-    <task id="23" name="Maintenance" note="" work="86398" start="20180817T000000Z" end="20180819T090140Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+    <task id="27" name="Maintenance" note="" work="86398" start="20180817T000000Z" end="20180819T090140Z" work-start="20180817T090000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
   </tasks>
-  <resource-groups default_group="2">
-    <group id="1" name="" admin-name="" admin-phone="" admin-email=""/>
-    <group id="2" name="Developer" admin-name="" admin-phone="" admin-email=""/>
+  <resource-groups default_group="1">
+    <group id="1" name="Developer" admin-name="" admin-phone="" admin-email=""/>
+    <group id="2" name="" admin-name="" admin-phone="" admin-email=""/>
   </resource-groups>
   <resources>
-    <resource group="2" id="1" name="Clemens Sielaff" short-name="Clemens" type="1" units="0" email="" note="" std-rate="0"/>
+    <resource group="1" id="1" name="Clemens Sielaff" short-name="Clemens" type="1" units="0" email="" note="" std-rate="0"/>
   </resources>
   <allocations/>
 </project>

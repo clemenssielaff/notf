@@ -7,21 +7,21 @@ std::string random_string(const size_t length, const bool lowercase, const bool 
     if (lowercase) {
         if (uppercase) {
             if (digits) {
-                static const std::string pool = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+                static const char* pool = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
                 return random_string(length, pool);
             }
             else {
-                static const std::string pool = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                static const char* pool = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
                 return random_string(length, pool);
             }
         }
         else { // no uppercase
             if (digits) {
-                static const std::string pool = "abcdefghijklmnopqrstuvwxyz0123456789";
+                static const char* pool = "abcdefghijklmnopqrstuvwxyz0123456789";
                 return random_string(length, pool);
             }
             else {
-                static const std::string pool = "abcdefghijklmnopqrstuvwxyz";
+                static const char* pool = "abcdefghijklmnopqrstuvwxyz";
                 return random_string(length, pool);
             }
         }
@@ -29,21 +29,21 @@ std::string random_string(const size_t length, const bool lowercase, const bool 
     else { // no lowercase
         if (uppercase) {
             if (digits) {
-                static const std::string pool = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+                static const char* pool = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
                 return random_string(length, pool);
             }
             else {
-                static const std::string pool = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                static const char* pool = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
                 return random_string(length, pool);
             }
         }
         else { // no uppercase
             if (digits) {
-                static const std::string pool = "0123456789";
+                static const char* pool = "0123456789";
                 return random_string(length, pool);
             }
             else {
-                static const std::string pool = "";
+                static const char* pool = "";
                 return random_string(length, pool);
             }
         }

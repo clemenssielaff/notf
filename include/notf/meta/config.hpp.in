@@ -44,6 +44,10 @@
 /// Use the notf namespace.
 #define NOTF_USING_NAMESPACE using namespace NOTF_NAMESPACE_NAME
 
+/// Use the namespace once, so C++ knows of it
+NOTF_OPEN_NAMESPACE
+NOTF_CLOSE_NAMESPACE
+
 // notf::literals namespace ========================================================================================= //
 
 /// Name of the notf::literals namespace.
@@ -57,6 +61,13 @@
 
 /// Use the notf::literals namespace.
 #define NOTF_USING_LITERALS_NAMESPACE using namespace ::NOTF_NAMESPACE_NAME::NOTF_LITERALS_NAMESPACE_NAME
+
+/// Use the namespace once, so C++ knows of it
+namespace NOTF_NAMESPACE_NAME {}
+
+/// Use the namespace once, so C++ knows of it
+NOTF_OPEN_LITERALS_NAMESPACE
+NOTF_CLOSE_LITERALS_NAMESPACE
 
 // notf constants =================================================================================================== //
 

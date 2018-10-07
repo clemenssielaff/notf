@@ -18,7 +18,6 @@ constexpr bool is_debug_build() noexcept { return false; }
 /// Extracts the last occurrence of a token in a null-terminated string at compile time.
 /// In practice, this is used to get the file name from a path read from the __FILE__ macro.
 /// @param input     Path to investigate.
-/// @param delimiter Delimiter used to separate path elements.
 /// @return          Only the last part of the path, e.g. basename("/path/to/some/file.cpp", '/') would return
 ///                  "file.cpp".
 template<char DELIMITER = '/'>

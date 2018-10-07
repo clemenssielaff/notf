@@ -39,8 +39,8 @@ random_string(const size_t length, const bool lowercase = true, const bool upper
 
 /// Generates a random string from a pool characters.
 /// If the pool is empty, the resulting string will be empty.
-/// @param length        Length of the string (is not randomized).
-/// @param length        Pool of possible (not necessarily unique) characters.
+/// @param length   Length of the string (is not randomized).
+/// @param pool     Pool of possible (not necessarily unique) characters.
 std::string random_string(const size_t length, const std::string_view pool);
 
 NOTF_CLOSE_NAMESPACE

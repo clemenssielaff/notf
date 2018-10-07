@@ -429,7 +429,7 @@ SCENARIO("node scratch", "[node_scratch][slow]")
     try {
         NOTF_THROW(value_error, "Junge, waa' {} fies", "dat");
     } catch (const value_error& exp) {
-        auto blub = exp.function;
+        auto blub = exp.get_function();
     }
 
 //    NOTF_ASSERT(0, "wasgehtn {} oderwas", "deinemudda");
