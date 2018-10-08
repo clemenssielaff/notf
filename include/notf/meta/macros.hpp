@@ -141,12 +141,19 @@ NOTF_OPEN_NAMESPACE
 // compiler directives ============================================================================================== //
 
 /// Tells the compiler that a given statement is likely to be evaluated to true.
-#ifdef __GNUC__
+#if __has_builtin(__builtin_expect)
 #define NOTF_LIKELY(x) __builtin_expect(!!(x), 1)
 #define NOTF_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #else
 #define NOTF_LIKELY(x) (!!(x))
 #define NOTF_UNLIKELY(x) (!!(x))
+#endif
+
+/// Indicates that a specific point in the program cannot be reached, even if the compiler might otherwise think it can.
+#if __has_builtin(__builtin_unreachable)
+#define NOTF_UNREACHABLE __builtin_unreachable()
+#else
+#define NOTF_UNREACHABLE
 #endif
 
 // raii ============================================================================================================= //

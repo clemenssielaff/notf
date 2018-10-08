@@ -2,159 +2,295 @@
 
 #include <map>
 #include <string>
-#include <tuple>
+#include <utility>
 #include <vector>
 
-#include "../meta/traits.hpp"
+#include "../meta/assert.hpp"
+#include "../meta/numeric.hpp"
 #include "./common.hpp"
+#include "./tuple.hpp"
+#include "./variant.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-// msgpack value ==================================================================================================== //
+// msgpack ========================================================================================================== //
 
-namespace detail {
+class MsgPack {
 
-enum class MsgPackValueType {
-    NIL = 0,                   // 0
-    NUMBER = 1,                // 1 => least digit is 1
-    INTEGER = 2 | NUMBER,      // 3 => least two digits are 1
-    INT8 = 1 << 2 | INTEGER,   // 7
-    INT16 = 2 << 2 | INTEGER,  // 11
-    INT32 = 3 << 2 | INTEGER,  // 15
-    INT64 = 4 << 2 | INTEGER,  // 19
-    UINT8 = 5 << 2 | INTEGER,  // 23
-    UINT16 = 6 << 2 | INTEGER, // 27
-    UINT32 = 7 << 2 | INTEGER, // 31
-    UINT64 = 8 << 2 | INTEGER, // 35
-    FLOAT32 = 1 << 2 | NUMBER, // 5
-    FLOAT64 = 3 << 2 | NUMBER, // 9
-    BOOL = 1 << 2,             // 4
-    STRING = 2 << 2,           // 8
-    BINARY = 3 << 2,           // 12
-    ARRAY = 4 << 2,            // 16
-    OBJECT = 5 << 2,           // 20
-    EXTENSIO = 6 << 2,         // 24
-};
+#ifdef NOTF_TEST
+    friend struct Accessor<MsgPack, Tester>;
+#endif
 
-struct NilValue {};
-using MsgPackArray = std::vector<MsgPack>;
-using MsgPackObject = std::map<MsgPack, MsgPack>;
-using MsgPackBinary = std::vector<uint8_t>;
-using MsgPackExtension = std::tuple<int8_t, MsgPackBinary>;
-
-template<MsgPackValueType type>
-struct msgpack_type {
-    static_assert(always_false_v<type>); // can never be instantiated
-};
-template<>
-struct msgpack_type<MsgPackValueType::NIL> {
-    using type = detail::NilValue;
-};
-template<>
-struct msgpack_type<MsgPackValueType::INT8> {
-    using type = int8_t;
-};
-template<>
-struct msgpack_type<MsgPackValueType::INT16> {
-    using type = int16_t;
-};
-template<>
-struct msgpack_type<MsgPackValueType::INT32> {
-    using type = int32_t;
-};
-template<>
-struct msgpack_type<MsgPackValueType::INT64> {
-    using type = int64_t;
-};
-template<>
-struct msgpack_type<MsgPackValueType::UINT8> {
-    using type = uint8_t;
-};
-template<>
-struct msgpack_type<MsgPackValueType::UINT16> {
-    using type = uint16_t;
-};
-template<>
-struct msgpack_type<MsgPackValueType::UINT32> {
-    using type = uint32_t;
-};
-template<>
-struct msgpack_type<MsgPackValueType::UINT64> {
-    using type = uint64_t;
-};
-template<>
-struct msgpack_type<MsgPackValueType::FLOAT32> {
-    using type = float;
-};
-template<>
-struct msgpack_type<MsgPackValueType::FLOAT64> {
-    using type = double;
-};
-template<>
-struct msgpack_type<MsgPackValueType::BOOL> {
-    using type = bool;
-};
-template<>
-struct msgpack_type<MsgPackValueType::STRING> {
-    using type = std::string;
-};
-// BINARY,
-// ARRAY,
-// OBJECT,
-// EXTENSION
-
-template<MsgPackValueType type>
-using msgpack_type_v = typename msgpack_type<type>::type;
-
-} // namespace detail
-
-class MsgPackValue {
-
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
-    using Type = detail::MsgPackValueType;
+    /// Boolean
+    using Bool = bool;
 
-    using Nil = detail::NilValue;
-    using Array = detail::MsgPackArray;
-    using Object = detail::MsgPackObject;
-    using Binary = detail::MsgPackBinary;
-    using Extension = detail::MsgPackExtension;
+    /// Default integer type.
+    using Int = int32_t;
 
-public:
-    virtual ~MsgPackValue() = default;
+    /// Default real type.
+    using Real = double;
 
-    virtual bool equals(const MsgPackValue* other) const = 0;
-    virtual bool less(const MsgPackValue* other) const = 0;
-    virtual void dump(std::ostream& os) const = 0;
-    virtual Type type() const = 0;
+    /// Unicode string.
+    using String = std::string;
 
-    virtual double get_number() const { return 0; }
-    virtual float get_float32() const { return 0; }
-    virtual double get_float64() const { return 0; }
-    virtual int32_t get_int() const { return 0; }
-    virtual int8_t get_int8() const { return 0; }
-    virtual int16_t get_int16() const { return 0; }
-    virtual int32_t get_int32() const { return 0; }
-    virtual int64_t get_int64() const { return 0; }
-    virtual uint8_t get_uint8() const { return 0; }
-    virtual uint16_t get_uint16() const { return 0; }
-    virtual uint32_t get_uint32() const { return 0; }
-    virtual uint64_t get_uint64() const { return 0; }
-    virtual bool get_bool() const { return false; }
-    virtual const std::string& get_string() const { return s_empty_string; }
-    virtual const Array& array_items() const { return s_empty_array; }
-    virtual const Object& object_items() const { return s_empty_object; }
-    virtual const Binary& binary_items() const { return s_empty_binary; }
-    virtual const Extension& extension_items() const { return s_empty_extension; }
-    virtual const MsgPack& operator[](size_t) const { return s_empty_pack; }
-    virtual const MsgPack& operator[](const std::string&) const { return s_empty_pack; }
+    /// Binary array.
+    using Binary = std::vector<std::byte>;
+
+    /// Array of MsgPack objects.
+    using Array = std::vector<MsgPack>;
+
+    /// Map of MsgPack object -> MsgPack object
+    using Map = std::map<MsgPack, MsgPack>;
+
+    /// MsgPack extension object.
+    using Extension = std::tuple<uint8_t, Binary>;
 
 private:
-    static inline const std::string s_empty_string;
-    static inline const Array s_empty_array;
-    static inline const Object s_empty_object;
-    static inline const Binary s_empty_binary;
-    static inline const Extension s_empty_extension;
-    static inline const Nil s_nil;
-    static const MsgPack s_empty_pack;
+    /// All integer types.
+    using int_ts = std::tuple<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t>;
+
+    /// All real types.
+    using real_ts = std::tuple<float, double>;
+
+    /// All MsgPack value types.
+    using value_ts = concat_tuple_t<None, Bool, int_ts, real_ts, String, Binary, Array, Map, identity<Extension>>;
+
+    /// All types returnable by value.
+    using simple_value_ts = concat_tuple_t<None, Bool, int_ts, real_ts>;
+
+    /// All types returnable by reference (every type that is not returned by value).
+    using container_value_ts = remove_tuple_types_t<value_ts, simple_value_ts>;
+
+    /// Variant type containing all value types.
+    using Variant = tuple_to_variant_t<value_ts>;
+
+    // methods ------------------------------------------------------------------------------------------------------ //
+public:
+    NOTF_NO_COPY_OR_ASSIGN(MsgPack);
+
+    /// Default constructor, constructs a "None" MsgPack.
+    MsgPack() = default;
+
+    /// Construct a MsgPack with a simple value that can be represented.
+    /// @param value    Value to initialize the MsgPack object with.
+    template<class T, class = std::enable_if_t<is_one_of_tuple_v<T, simple_value_ts>>>
+    MsgPack(T value) : m_value(std::move(value))
+    {}
+
+    /// Do not allow pointers as value. They would be cast to bool which is most likely not what you'd want.
+    MsgPack(void*) = delete;
+
+    /// Explicit constructor for Strings to avoid them being cast to an Array.
+    MsgPack(std::string value) : m_value(String(std::move(value))) {}
+    MsgPack(std::string_view value) : m_value(String(std::move(value))) {}
+    MsgPack(const char* value) : m_value(String(value)) {}
+
+    /// Constructor for Binary objects.
+    /// @param value    Binary object to initialize a MsgPack Binary with.
+    MsgPack(const Binary& value) : m_value(Binary(std::begin(value), std::end(value))) {}
+
+    /// Constructor for Array-like objects (vector, set etc).
+    /// @param value    Array-like object to initialize a MsgPack Array with.
+    template<class T, class value_t = typename T::value_type,
+             class = std::enable_if_t<std::is_constructible_v<MsgPack, value_t>                  // value is compatible
+                                      && !std::is_same_v<typename Binary::value_type, value_t>>> // but not binary
+    MsgPack(const T& value) : m_value(Array(value.begin(), value.end()))
+    {}
+
+    /// Constructor for Map-like objects (map, unordered_map etc).
+    /// @param value    Map-like object to initialize a MsgPack Map with.
+    template<class T, class key_t = typename T::key_type, class value_t = typename T::mapped_type,
+             class = std::enable_if_t<std::is_constructible_v<MsgPack, key_t>        // key is compatible
+                                      && std::is_constructible_v<MsgPack, value_t>>> // value is compatible
+    MsgPack(const T& value) : m_value(Map(std::begin(value), std::end(value)))
+    {}
+
+    /// Value Getter.
+    /// Has two overloads, one for types returned by value; one for types returned by const reference.
+    /// @param success  Is set to true, iff a non-empty value was returned.
+    /// @returns        A new T by value.
+    template<class T>
+    std::enable_if_t<is_one_of_tuple_v<T, simple_value_ts>, T> get(bool& success) const noexcept
+    {
+        success = true;
+
+        // None
+        if constexpr (std::is_same_v<T, None>) {
+            if (std::holds_alternative<None>(m_value)) {
+                return None{}; // all Nones are the same
+            }
+        }
+
+        // Bool
+        else if constexpr (std::is_same_v<T, Bool>) {
+            if (std::holds_alternative<Bool>(m_value)) {
+                return std::get<Bool>(m_value);
+            }
+        }
+
+        // Integer
+        else if constexpr (is_one_of_tuple_v<T, int_ts>) {
+            T result;
+            if (std::holds_alternative<int8_t>(m_value)) {
+                if (can_be_narrow_cast(std::get<int8_t>(m_value), result)) {
+                    return result;
+                }
+            }
+            else if (std::holds_alternative<int16_t>(m_value)) {
+                if (can_be_narrow_cast(std::get<int16_t>(m_value), result)) {
+                    return result;
+                }
+            }
+            else if (std::holds_alternative<int32_t>(m_value)) {
+                if (can_be_narrow_cast(std::get<int32_t>(m_value), result)) {
+                    return result;
+                }
+            }
+            else if (std::holds_alternative<int64_t>(m_value)) {
+                if (can_be_narrow_cast(std::get<int64_t>(m_value), result)) {
+                    return result;
+                }
+            }
+            else if (std::holds_alternative<uint8_t>(m_value)) {
+                if (can_be_narrow_cast(std::get<uint8_t>(m_value), result)) {
+                    return result;
+                }
+            }
+            else if (std::holds_alternative<uint16_t>(m_value)) {
+                if (can_be_narrow_cast(std::get<uint16_t>(m_value), result)) {
+                    return result;
+                }
+            }
+            else if (std::holds_alternative<uint32_t>(m_value)) {
+                if (can_be_narrow_cast(std::get<uint32_t>(m_value), result)) {
+                    return result;
+                }
+            }
+            else if (std::holds_alternative<uint64_t>(m_value)) {
+                if (can_be_narrow_cast(std::get<uint64_t>(m_value), result)) {
+                    return result;
+                }
+            }
+        }
+
+        // Real
+        else if constexpr (is_one_of_tuple_v<T, real_ts>) {
+            T result;
+            if (std::holds_alternative<float>(m_value)) {
+                if (can_be_narrow_cast(std::get<float>(m_value), result)) {
+                    return result;
+                }
+            }
+            else if (std::holds_alternative<double>(m_value)) {
+                if (can_be_narrow_cast(std::get<double>(m_value), result)) {
+                    return result;
+                }
+            }
+        }
+
+        // return empty value
+        success = false;
+        static_assert(std::is_nothrow_constructible_v<T>);
+        return {};
+    }
+
+    /// Get a const-ref to the requested type or to a default-constructed value.
+    /// @param success  Is set to true, iff a non-empty value was returned.
+    /// @returns        Const-reference to T.
+    template<class T>
+    std::enable_if_t<is_one_of_tuple_v<T, container_value_ts>, const T&> get(bool& success) const noexcept
+    {
+        if (std::holds_alternative<T>(m_value)) {
+            success = true;
+            return std::get<T>(m_value);
+        }
+
+        // return empty value
+        success = false;
+        static_assert(std::is_nothrow_constructible_v<T>);
+        static const T empty;
+        return empty;
+    }
+
+    /// Get the value type or a default-constructed value.
+    /// @returns Value or const-ref, depending on T.
+    template<class T>
+    auto get() const noexcept
+    {
+        bool ignored;
+        return get<T>(ignored);
+    }
+
+    /// If this MsgPack contains an array, returns the `i`th element of that array.
+    /// This is a convenience function, if you plan to make extensive use of the map, consider `get`ting the underlying
+    /// MsgPack::Array object directly.
+    /// @param index            Index of the requested element in the array.
+    /// @throws value_error     If the MsgPack does not contain an Array.
+    /// @throws out_of_bounds   If the index is larger than the largest index in the Array.
+    const MsgPack& operator[](const size_t index) const
+    {
+        if (!std::holds_alternative<Array>(m_value)) {
+            NOTF_THROW(value_error, "MsgPack object is not an Array");
+        }
+
+        const auto& array = std::get<Array>(m_value);
+        if (index < array.size()) {
+            return array[index];
+        }
+
+        NOTF_THROW(out_of_bounds, "MsgPack Array has only {} elements, requested index was {}", array.size(), index);
+    }
+
+    /// If this MsgPack contains a map, returns the element matching the given string key.
+    /// This is a convenience function, if you plan to make extensive use of the map, consider `get`ting the underlying
+    /// MsgPack::Map object directly.
+    /// @param key              String key of the requested element in the map.
+    /// @throws value_error     If the MsgPack does not contain an Array.
+    /// @throws out_of_bounds   If the index is larger than the largest index in the Array.
+    const MsgPack& operator[](const std::string& key) const
+    {
+        if (!std::holds_alternative<Map>(m_value)) {
+            NOTF_THROW(value_error, "MsgPack object is not a Map");
+        }
+
+        const auto& map = std::get<Map>(m_value);
+        if (auto it = map.find(key); it != map.end()) {
+            return it->second;
+        }
+
+        NOTF_THROW(out_of_bounds, "MsgPack Map does not contain requested key \"{}\"", key);
+    }
+
+    /// Comparison operator.
+    /// @param rhs  Other MsgPack object to compare against.
+    bool operator==(const MsgPack& rhs) const { return m_value == rhs.m_value; }
+
+    /// Less-than operator.
+    /// @param rhs  Other MsgPack object to compare against.
+    bool operator<(const MsgPack& rhs) const { return m_value < rhs.m_value; }
+
+    /// Inequality operator.
+    /// @param rhs  Other MsgPack object to compare against.
+    bool operator!=(const MsgPack& rhs) const { return !(*this == rhs); }
+
+    /// Less-or-equal-than operator.
+    /// @param rhs  Other MsgPack object to compare against.
+    bool operator<=(const MsgPack& rhs) const { return !(rhs < *this); }
+
+    /// Larger-than operator.
+    /// @param rhs  Other MsgPack object to compare against.
+    bool operator>(const MsgPack& rhs) const { return (rhs < *this); }
+
+    /// Larger-or-equal-than operator.
+    /// @param rhs  Other MsgPack object to compare against.
+    bool operator>=(const MsgPack& rhs) const { return !(*this < rhs); }
+
+    // fields ------------------------------------------------------------------------------------------------------- //
+private:
+    /// Value contained in this MsgPack.
+    Variant m_value;
 };
+
 NOTF_CLOSE_NAMESPACE

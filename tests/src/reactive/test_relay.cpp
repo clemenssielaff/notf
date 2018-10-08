@@ -49,11 +49,11 @@ SCENARIO("basic relay<T -> T> functions", "[reactive][relay]")
     }
 }
 
-SCENARIO("basic relay<NoData -> NoData> functions", "[reactive][relay]")
+SCENARIO("basic relay<None -> None> functions", "[reactive][relay]")
 {
-    auto publisher = DefaultPublisher<NoData>();
-    auto relay = DefaultRelay<NoData>();
-    auto subscriber = TestSubscriber<NoData>();
+    auto publisher = DefaultPublisher<None>();
+    auto relay = DefaultRelay<None>();
+    auto subscriber = TestSubscriber<None>();
     publisher->subscribe(relay);
     relay->subscribe(subscriber);
 
@@ -89,11 +89,11 @@ SCENARIO("basic relay<NoData -> NoData> functions", "[reactive][relay]")
     }
 }
 
-SCENARIO("basic relay<T -> NoData> functions", "[reactive][relay]")
+SCENARIO("basic relay<T -> None> functions", "[reactive][relay]")
 {
     auto publisher = DefaultPublisher<int>();
-    auto relay = DefaultRelay<int, NoData>();
-    auto subscriber = TestSubscriber<NoData>();
+    auto relay = DefaultRelay<int, None>();
+    auto subscriber = TestSubscriber<None>();
     publisher->subscribe(relay);
     relay->subscribe(subscriber);
 

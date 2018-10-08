@@ -18,7 +18,7 @@ struct is_shared_ptr : std::false_type {};
 template<class T>
 struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
 template<class T>
-constexpr bool is_shared_ptr_v = is_shared_ptr<T>::value;
+static constexpr const bool is_shared_ptr_v = is_shared_ptr<T>::value;
 
 /// Template struct to test whether a given type is a unique pointer or not.
 template<class T>
@@ -26,7 +26,7 @@ struct is_unique_ptr : std::false_type {};
 template<class T>
 struct is_unique_ptr<std::unique_ptr<T>> : std::true_type {};
 template<class T>
-constexpr bool is_unique_ptr_v = is_unique_ptr<T>::value;
+static constexpr const bool is_unique_ptr_v = is_unique_ptr<T>::value;
 
 /// Template struct to test whether a given type is a valid pointer or not.
 template<class T>
@@ -34,7 +34,7 @@ struct is_valid_ptr : std::false_type {};
 template<class T>
 struct is_valid_ptr<valid_ptr<T>> : std::true_type {};
 template<class T>
-constexpr bool is_valid_ptr_v = is_valid_ptr<T>::value;
+static constexpr const bool is_valid_ptr_v = is_valid_ptr<T>::value;
 
 /// Checks if a pointer of type From can be cast to another of type To.
 template<class From, class To, class = To>
@@ -42,7 +42,7 @@ struct is_static_castable : std::false_type {};
 template<class From, class To>
 struct is_static_castable<From, To, decltype(static_cast<To>(std::declval<From>()))> : std::true_type {};
 template<class From, class To>
-constexpr bool is_static_castable_v = is_static_castable<From, To>::value;
+static constexpr const bool is_static_castable_v = is_static_castable<From, To>::value;
 
 // pointer support functions ======================================================================================== //
 

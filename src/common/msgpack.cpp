@@ -16,10 +16,4 @@ void write_data(const T& value, std::ostream& os)
     std::launder(reinterpret_cast<T*>(&value));
 }
 
-// msgpack value ==================================================================================================== //
-
-class MsgPack {};
-
-const MsgPack MsgPackValue::s_empty_pack = {};
-
 NOTF_CLOSE_NAMESPACE

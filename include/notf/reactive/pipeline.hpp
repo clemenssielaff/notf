@@ -15,7 +15,7 @@ struct is_pipeline<Pipeline<First, Last>> : std::true_type {};
 
 /// constexpr boolean that is true only if T is a Pipeline
 template<class T>
-constexpr bool is_pipeline_v = is_pipeline<T>::value;
+static constexpr const bool is_pipeline_v = is_pipeline<T>::value;
 
 // pipeline compatibility check ===================================================================================== //
 
@@ -35,9 +35,9 @@ struct is_reactive_compatible<P, S, std::enable_if_t<all(is_pipeline_v<P>, is_su
 
 /// consexpr boolean that is true iff P is a Publisher type that can be connected to Subscriber type S.
 template<class P, class S, class = void>
-constexpr bool is_reactive_compatible_v = false;
+static constexpr const bool is_reactive_compatible_v = false;
 template<class P, class S>
-constexpr bool is_reactive_compatible_v<P, S, decltype(is_reactive_compatible<P, S>(), void())> = true;
+static constexpr const bool is_reactive_compatible_v<P, S, decltype(is_reactive_compatible<P, S>(), void())> = true;
 
 } // namespace detail
 

@@ -2,15 +2,10 @@
 
 #include <memory>
 
-#include "../meta/config.hpp"
 #include "../meta/macros.hpp"
+#include "../meta/types.hpp"
 
 NOTF_OPEN_NAMESPACE
-
-// nodata type ====================================================================================================== //
-
-/// The NoData-Trait is used for an explicit overload of reactive objects that pass no data around.
-struct NoData {};
 
 // forwards ========================================================================================================= //
 

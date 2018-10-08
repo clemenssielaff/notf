@@ -34,19 +34,19 @@ public:
     void on_complete(const UntypedPublisher* /*publisher*/) override { this->complete(); }
 };
 
-// NoData relay specializations ===================================================================================== //
+// "None" relay specializations ===================================================================================== //
 
 /// Specialization for Relays that transmit no data.
 template<class Policy>
-class Relay<NoData, NoData, Policy> : public Subscriber<NoData>, public Publisher<NoData, Policy> {
+class Relay<None, None, Policy> : public Subscriber<None>, public Publisher<None, Policy> {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Subscriber type from which this Relay inherits.
-    using subscriber_t = Subscriber<NoData>;
+    using subscriber_t = Subscriber<None>;
 
     /// Publisher type from which this Relay inherits.
-    using publisher_t = Publisher<NoData, Policy>;
+    using publisher_t = Publisher<None, Policy>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
@@ -63,9 +63,9 @@ public:
     void on_complete(const UntypedPublisher* /*publisher*/) override { this->complete(); }
 };
 
-/// Specialization for Relays that connect a data-producing upstream to a "NoData" downstream.
+/// Specialization for Relays that connect a data-producing upstream to a "None" downstream.
 template<class T, class Policy>
-class Relay<T, NoData, Policy> : public Subscriber<T>, public Publisher<NoData, Policy> {
+class Relay<T, None, Policy> : public Subscriber<T>, public Publisher<None, Policy> {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -73,7 +73,7 @@ public:
     using subscriber_t = Subscriber<T>;
 
     /// Publisher type from which this Relay inherits.
-    using publisher_t = Publisher<NoData, Policy>;
+    using publisher_t = Publisher<None, Policy>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
@@ -101,8 +101,8 @@ struct is_relay : std::is_convertible<T, RelayPtr<I, P, O>> {}; // - can be conv
 
 /// constexpr boolean that is true only if T is a RelayPtr
 template<class T, class = void>
-constexpr bool is_relay_v = false;
+static constexpr const bool is_relay_v = false;
 template<class T>
-constexpr bool is_relay_v<T, decltype(is_relay<T>(), void())> = is_relay<T>::value;
+static constexpr const bool is_relay_v<T, decltype(is_relay<T>(), void())> = is_relay<T>::value;
 
 NOTF_CLOSE_NAMESPACE

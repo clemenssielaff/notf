@@ -5,6 +5,7 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     common/test_vector.cpp
     common/test_version.cpp
     common/test_string_view.cpp
+    common/test_msgpack.cpp
 
     meta/test_assert.cpp
     meta/test_debug.cpp
@@ -87,7 +88,7 @@ if(${NOTF_RUN_TESTS})
         COMMAND llvm-cov report ./notf-tests ${LLVM_COV_ARGS}
 
         # store the complete report as html
-        COMMAND llvm-cov show ./notf-tests ${LLVM_COV_ARGS} -format="html" > coverage.html
+        COMMAND llvm-cov show ./notf-tests ${LLVM_COV_ARGS} -show-instantiations=false -format="html" > coverage.html
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "Executing notf test runner"
     )

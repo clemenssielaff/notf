@@ -54,9 +54,9 @@ auto TestSubscriber()
 }
 
 template<>
-auto TestSubscriber<NoData>()
+auto TestSubscriber<None>()
 {
-    struct TestSubscriberNoDataImpl : public Subscriber<NoData> {
+    struct TestSubscriberNoneImpl : public Subscriber<None> {
 
         void on_next(const UntypedPublisher*) final { ++counter; }
 
@@ -77,7 +77,7 @@ auto TestSubscriber<NoData>()
         bool is_completed = false;
         bool _padding[7];
     };
-    return std::make_shared<TestSubscriberNoDataImpl>();
+    return std::make_shared<TestSubscriberNoneImpl>();
 }
 
 template<class T, class Policy>

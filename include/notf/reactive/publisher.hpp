@@ -306,7 +306,7 @@ protected:
 
 /// Specialization for Publisher that produce signals only (no data).
 template<class Policy>
-class Publisher<NoData, Policy> : public detail::TypedPublisher<NoData, Policy> {
+class Publisher<None, Policy> : public detail::TypedPublisher<None, Policy> {
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
@@ -356,8 +356,8 @@ struct is_publisher : std::is_convertible<T, PublisherPtr<O, P>> {}; // - can be
 
 /// constexpr boolean that is true only if T is a PublisherPtr
 template<class T, class = void>
-constexpr bool is_publisher_v = false;
+static constexpr const bool is_publisher_v = false;
 template<class T>
-constexpr bool is_publisher_v<T, decltype(is_publisher<T>(), void())> = is_publisher<T>::value;
+static constexpr const bool is_publisher_v<T, decltype(is_publisher<T>(), void())> = is_publisher<T>::value;
 
 NOTF_CLOSE_NAMESPACE

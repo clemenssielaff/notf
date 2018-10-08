@@ -50,12 +50,12 @@ public:
 
 /// Subscriber specialization for Subscribers that do not take any data, just signals.
 template<>
-class Subscriber<NoData> : public UntypedSubscriber {
+class Subscriber<None> : public UntypedSubscriber {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Type to receive.
-    using input_t = NoData;
+    using input_t = None;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
@@ -73,8 +73,8 @@ struct is_subscriber : std::is_convertible<T, SubscriberPtr<I>> {}; // - can be 
 
 /// constexpr boolean that is true only if T is a SubscriberPtr
 template<class T, class = void>
-constexpr bool is_subscriber_v = false;
+static constexpr const bool is_subscriber_v = false;
 template<class T>
-constexpr bool is_subscriber_v<T, decltype(is_subscriber<T>(), void())> = is_subscriber<T>::value;
+static constexpr const bool is_subscriber_v<T, decltype(is_subscriber<T>(), void())> = is_subscriber<T>::value;
 
 NOTF_CLOSE_NAMESPACE

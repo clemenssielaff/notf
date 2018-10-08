@@ -4,6 +4,8 @@
 #include <utility>
 
 #include "./config.hpp"
+#include "./exception.hpp"
+#include "./types.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -134,6 +136,51 @@ template<class T>
 constexpr std::enable_if_t<std::is_integral_v<T>, T> precision_high() noexcept
 {
     return 0; // integers have no leeway
+}
+
+// narrow cast ====================================================================================================== //
+
+/// Tests if a value can be narrow cast and optionally passes the cast value out again.
+template<class target_t, class Source, class source_t = std::decay_t<Source>>
+constexpr bool can_be_narrow_cast(Source&& value, target_t& result) noexcept
+{
+    // skip the check if both types are the same
+    if constexpr (std::is_same_v<source_t, target_t>) {
+        result = std::forward<Source>(value);
+    }
+    else {
+        // simple reverse check
+        result = static_cast<target_t>(std::forward<Source>(value));
+        if (static_cast<source_t>(result) != value) {
+            return false;
+        }
+
+        // check sign overflow
+        if constexpr (!is_same_signedness<target_t, source_t>::value) {
+            if ((result < 0) != (value < 0)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+template<class target_t, class Source, class source_t = std::decay_t<Source>>
+constexpr bool can_be_narrow_cast(Source&& value) noexcept
+{
+    static_assert(std::is_nothrow_constructible_v<target_t>);
+    target_t ignored;
+    return can_be_narrow_cast(std::forward<Source>(value), ignored);
+}
+
+/// Save narrowing cast.
+/// https://github.com/Microsoft/GSL/blob/master/include/gsl/gsl_util
+template<class target_t, class Source, class source_t = std::decay_t<Source>>
+constexpr target_t narrow_cast(Source&& value)
+{
+    if (target_t result; can_be_narrow_cast(std::forward<Source>(value), result)) {
+        return result;
+    }
+    NOTF_THROW(value_error, "narrow_cast failed");
 }
 
 NOTF_CLOSE_NAMESPACE

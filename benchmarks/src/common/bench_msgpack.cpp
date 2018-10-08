@@ -58,6 +58,6 @@ static void DecodeTestObject(benchmark::State& state)
 BENCHMARK(DecodeTestObject);
 
 /**
-BasicDictionaryEncode       6299 ns       6300 ns     110910
-BasicDictionaryDecode       3794 ns       3795 ns     184282
+EncodeTestObject       6253 ns       6252 ns     111048
+DecodeTestObject       3753 ns       3753 ns     186784
 */
