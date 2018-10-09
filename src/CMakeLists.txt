@@ -34,13 +34,13 @@ target_link_libraries(notf-core PUBLIC
 # show all but selected warnings
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     target_compile_options(notf-core PRIVATE
-        -Weverything
-        -Wpedantic
+#        -Weverything
+#        -Wpedantic
 #        -Wno-padded
-        -Wno-weak-vtables   # used everywhere and not a problem
-        -Wno-four-char-constants      # used in system.hpp to detect system endianness
-        -Wno-c++98-compat
-        -Wno-c++98-compat-pedantic
+#        -Wno-weak-vtables   # used everywhere and not a problem
+#        -Wno-four-char-constants      # used in system.hpp to detect system endianness
+#        -Wno-c++98-compat
+#        -Wno-c++98-compat-pedantic
     )
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     target_compile_options(notf-core PRIVATE "-Wall")

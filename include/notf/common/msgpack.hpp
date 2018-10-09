@@ -26,47 +26,25 @@ class MsgPack {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    /// Nil value.
-    static constexpr auto const Nil = None{};
-
-    /// Boolean
+    /// Data types.
+    using None = None;
     using Bool = bool;
-
-    /// Default integer type.
-    using Int = int32_t;
-
-    /// Default real type.
+    using Int = int64_t;
+    using Uint = uint64_t;
     using Real = double;
-
-    /// Unicode string.
     using String = std::string;
-
-    /// Binary array.
     using Binary = std::vector<char>;
-
-    /// Array of MsgPack objects.
     using Array = std::vector<MsgPack>;
-
-    /// Map of MsgPack object -> MsgPack object
     using Map = std::map<MsgPack, MsgPack>;
-
-    /// MsgPack extension object.
     using Extension = std::pair<uint8_t, Binary>;
 
-    /// All data types that can be stored in the MsgPack
-    enum Type {
-        NIL,
+    /// Data type identifier.
+    enum class Type {
+        NONE,
         BOOL,
-        INT8,
-        INT16,
-        INT32,
-        INT64,
-        UINT8,
-        UINT16,
-        UINT32,
-        UINT64,
-        FLOAT,
-        DOUBLE,
+        INT,
+        UINT,
+        REAL,
         STRING,
         BINARY,
         ARRAY,
@@ -75,45 +53,52 @@ public:
     };
 
 private:
-    /// All integer types.
-    using int_ts = std::tuple<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t>;
-
-    /// All real types.
-    using real_ts = std::tuple<float, double>;
-
-    /// All MsgPack value types.
-    using value_ts = concat_tuple_t<None, Bool, int_ts, real_ts, String, Binary, Array, Map, identity<Extension>>;
-
     /// All types returnable by value.
-    using simple_value_ts = concat_tuple_t<None, Bool, int_ts, real_ts>;
+    using value_types = std::tuple<None, Bool, Int, Uint, Real>;
 
     /// All types returnable by reference (every type that is not returned by value).
-    using container_value_ts = remove_tuple_types_t<value_ts, simple_value_ts>;
+    using container_types = std::tuple<String, Binary, Array, Map, Extension>;
 
     /// Variant type containing all value types.
-    using Variant = tuple_to_variant_t<value_ts>;
+    using Variant = tuple_to_variant_t<concat_tuple_t<value_types, container_types>>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Default constructor, constructs a "None" MsgPack.
     MsgPack() = default;
+    MsgPack(None) : MsgPack() {}
 
-    /// Construct a MsgPack with a simple value that can be represented.
-    /// @param value    Value to initialize the MsgPack object with.
-    template<class T, class = std::enable_if_t<is_one_of_tuple_v<T, simple_value_ts>>>
-    MsgPack(T value) : m_value(std::move(value))
-    {}
+    /// Boolean constructors.
+    /// @param value    Value of the MsgPack.
+    MsgPack(bool value) : m_value(value) {}
+    MsgPack(void*) = delete; /// avoid implicit cast of pointer to bool
 
-    /// Do not allow pointers as value. They would be cast to bool which is most likely not what you'd want.
-    MsgPack(void*) = delete;
+    /// Signed integer constructors.
+    /// @param value    Value of the MsgPack.
+    MsgPack(Int value) : m_value(value) {}
+    MsgPack(int8_t value) : MsgPack(Int(value)) {}
+    MsgPack(int16_t value) : MsgPack(Int(value)) {}
+    MsgPack(int32_t value) : MsgPack(Int(value)) {}
+
+    /// Unsigned integer constructors.
+    /// @param value    Value of the MsgPack.
+    MsgPack(Uint value) : m_value(value) {}
+    MsgPack(uint8_t value) : MsgPack(Uint(value)) {}
+    MsgPack(uint16_t value) : MsgPack(Uint(value)) {}
+    MsgPack(uint32_t value) : MsgPack(Uint(value)) {}
+
+    /// Real constructors.
+    /// @param value    Value of the MsgPack.
+    MsgPack(Real value) : m_value(value) {}
+    MsgPack(float value) : MsgPack(Real(value)) {}
 
     /// Explicit constructor for Strings to avoid them being cast to an Array.
-    MsgPack(std::string value) : m_value(String(std::move(value))) {}
-    MsgPack(std::string_view value) : m_value(String(std::move(value))) {}
+    /// @param value    Value of the MsgPack.
+    MsgPack(String value) : m_value(String(std::move(value))) {}
     MsgPack(const char* value) : m_value(String(value)) {}
 
     /// Constructor for Binary objects.
-    /// @param value    Binary object to initialize a MsgPack Binary with.
+    /// @param value    Value of the MsgPack.
     MsgPack(const Binary& value) : m_value(Binary(std::begin(value), std::end(value))) {}
 
     /// Constructor for Array-like objects (vector, set etc).
@@ -132,114 +117,53 @@ public:
     MsgPack(const T& value) : m_value(Map(std::begin(value), std::end(value)))
     {}
 
+    /// The data type currently held by this MsgPack.
+    Type get_type() const noexcept { return static_cast<Type>(m_value.index()); }
+
     /// Value Getter.
     /// Has two overloads, one for types returned by value; one for types returned by const reference.
     /// @param success  Is set to true, iff a non-empty value was returned.
     /// @returns        A new T by value.
     template<class T>
-    std::enable_if_t<is_one_of_tuple_v<T, simple_value_ts>, T> get(bool& success) const noexcept
+    std::enable_if_t<is_one_of_variant<T, Variant>(), std::conditional_t<is_one_of_tuple_v<T, value_types>, T, const T&>>
+    get(bool& success) const noexcept
     {
-        success = true;
-
-        // None
-        if constexpr (std::is_same_v<T, None>) {
-            if (std::holds_alternative<None>(m_value)) {
-                return None{}; // all Nones are the same
-            }
-        }
-
-        // Bool
-        else if constexpr (std::is_same_v<T, Bool>) {
-            if (std::holds_alternative<Bool>(m_value)) {
-                return std::get<Bool>(m_value);
-            }
-        }
-
-        // TODO: come to think of it ... it doesn't really make sense to store anything else but u/int_64...
-        //       the space is used no matter what because we have larger types in the variant
-        //       same goes for doubles / floats
-
-        // Integer
-        else if constexpr (is_one_of_tuple_v<T, int_ts>) {
-            T result;
-            if (std::holds_alternative<int8_t>(m_value)) {
-                if (can_be_narrow_cast(std::get<int8_t>(m_value), result)) {
-                    return result;
-                }
-            }
-            else if (std::holds_alternative<int16_t>(m_value)) {
-                if (can_be_narrow_cast(std::get<int16_t>(m_value), result)) {
-                    return result;
-                }
-            }
-            else if (std::holds_alternative<int32_t>(m_value)) {
-                if (can_be_narrow_cast(std::get<int32_t>(m_value), result)) {
-                    return result;
-                }
-            }
-            else if (std::holds_alternative<int64_t>(m_value)) {
-                if (can_be_narrow_cast(std::get<int64_t>(m_value), result)) {
-                    return result;
-                }
-            }
-            else if (std::holds_alternative<uint8_t>(m_value)) {
-                if (can_be_narrow_cast(std::get<uint8_t>(m_value), result)) {
-                    return result;
-                }
-            }
-            else if (std::holds_alternative<uint16_t>(m_value)) {
-                if (can_be_narrow_cast(std::get<uint16_t>(m_value), result)) {
-                    return result;
-                }
-            }
-            else if (std::holds_alternative<uint32_t>(m_value)) {
-                if (can_be_narrow_cast(std::get<uint32_t>(m_value), result)) {
-                    return result;
-                }
-            }
-            else if (std::holds_alternative<uint64_t>(m_value)) {
-                if (can_be_narrow_cast(std::get<uint64_t>(m_value), result)) {
-                    return result;
-                }
-            }
-        }
-
-        // Real
-        else if constexpr (is_one_of_tuple_v<T, real_ts>) {
-            T result;
-            if (std::holds_alternative<float>(m_value)) {
-                if (can_be_narrow_cast(std::get<float>(m_value), result)) {
-                    return result;
-                }
-            }
-            else if (std::holds_alternative<double>(m_value)) {
-                if (can_be_narrow_cast(std::get<double>(m_value), result)) {
-                    return result;
-                }
-            }
-        }
-
-        // return empty value
-        success = false;
-        static_assert(std::is_nothrow_constructible_v<T>);
-        return {};
-    }
-
-    /// Get a const-ref to the requested type or to a default-constructed value.
-    /// @param success  Is set to true, iff a non-empty value was returned.
-    /// @returns        Const-reference to T.
-    template<class T>
-    std::enable_if_t<is_one_of_tuple_v<T, container_value_ts>, const T&> get(bool& success) const noexcept
-    {
+        // return the value of the requested type
         if (std::holds_alternative<T>(m_value)) {
             success = true;
             return std::get<T>(m_value);
         }
 
+        // integers can be requested with the wrong type, if the value is safely castable
+        if constexpr (std::is_same_v<T, Int>) {
+            if (std::holds_alternative<Uint>(m_value)) {
+                if (auto value = std::get<Uint>(m_value); value < max_value<Int>()) {
+                    return static_cast<T>(value);
+                }
+            }
+        }
+        else if constexpr (std::is_same_v<T, Uint>) {
+            if (std::holds_alternative<Int>(m_value)) {
+                if (auto value = std::get<Int>(m_value); value >= 0) {
+                    return static_cast<T>(value);
+                }
+            }
+        }
+
+        // even the biggest unsigned integer can be cast to double
+        else if constexpr (std::is_same_v<T, Real>) {
+            if (std::holds_alternative<Int>(m_value)) {
+                return static_cast<T>(std::get<Int>(m_value));
+            }
+            else if (std::holds_alternative<Uint>(m_value)) {
+                return static_cast<T>(std::get<Uint>(m_value));
+            }
+        }
+
         // return empty value
         success = false;
         static_assert(std::is_nothrow_constructible_v<T>);
-        static const T empty;
+        static const T empty = {};
         return empty;
     }
 
@@ -251,9 +175,6 @@ public:
         bool ignored;
         return get<T>(ignored);
     }
-
-    /// The data type currently held by this MsgPack.
-    Type get_type() const noexcept { return static_cast<Type>(m_value.index()); }
 
     /// If this MsgPack contains an array, returns the `i`th element of that array.
     /// This is a convenience function, if you plan to make extensive use of the map, consider `get`ting the underlying

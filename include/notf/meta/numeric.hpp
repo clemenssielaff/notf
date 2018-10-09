@@ -15,7 +15,6 @@ using uchar = unsigned char;
 using ushort = unsigned short;
 using uint = unsigned int;
 using ulong = unsigned long;
-using ulonglong = unsigned long long;
 
 // operations ======================================================================================================= //
 
@@ -149,7 +148,6 @@ constexpr bool can_be_narrow_cast(Source&& value, target_t& result) noexcept
         result = std::forward<Source>(value);
 
         // TODO: skip expensive testing if target type "subsumes" source type
-
     }
     else {
         // simple reverse check
@@ -209,10 +207,6 @@ template<>
 struct corresponding_signed<ulong> {
     using type = long;
 };
-template<>
-struct corresponding_signed<ulonglong> {
-    using type = long long;
-};
 template<class T>
 using corresponding_signed_t = typename corresponding_signed<T>::type;
 
@@ -236,10 +230,6 @@ struct corresponding_unsigned<int> {
 template<>
 struct corresponding_unsigned<long> {
     using type = ulong;
-};
-template<>
-struct corresponding_unsigned<long long> {
-    using type = unsigned long long;
 };
 template<class T>
 using corresponding_unsigned_t = typename corresponding_unsigned<T>::type;

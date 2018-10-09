@@ -219,46 +219,19 @@ void write_extension(const MsgPack::Extension& extension, std::ostream& os)
 
 NOTF_OPEN_NAMESPACE
 
-void MsgPack::_serialize(uint depth, std::ostream& os) const
+void MsgPack::_serialize(uint depth, std::ostream& os) const // TODO: limit depth?
 {
-    // TODO: limit depth?
-
     std::visit(
         overloaded{
-
-            // None
             [&](None) { write_char(0xc0, os); },
-
-            // Bool
             [&](bool value) { write_char(value ? 0xc3 : 0xc2, os); },
-
-            // Integer
-            [&](int8_t value) { write_int(value, os); },
-            [&](int16_t value) { write_int(value, os); },
-            [&](int32_t value) { write_int(value, os); },
-            [&](int64_t value) { write_int(value, os); },
-            [&](uint8_t value) { write_uint(value, os); },
-            [&](uint16_t value) { write_uint(value, os); },
-            [&](uint32_t value) { write_uint(value, os); },
-            [&](uint64_t value) { write_uint(value, os); },
-
-            // Real
-            [&](float value) { write_data(0xca, value, os); },
-            [&](double value) { write_data(0xcb, value, os); },
-
-            // String
+            [&](Int value) { write_int(value, os); },
+            [&](Uint value) { write_uint(value, os); },
+            [&](Real value) { write_data(0xca, value, os); },
             [&](const String& string) { write_string(string, os); },
-
-            // Binary
             [&](const Binary& binary) { write_binary(binary, os); },
-
-            // Array
             [&](const Array& array) { write_array(depth + 1, array, os); },
-
-            // Map
             [&](const Map& map) { write_map(depth + 1, map, os); },
-
-            // Extension
             [&](const Extension& extension) { write_extension(extension, os); },
         },
         m_value);
