@@ -22,6 +22,8 @@ struct Accessor<MsgPack, Tester> {
     using simple_value_ts = MsgPack::simple_value_ts;
     using return_by_cref_ts = MsgPack::container_value_ts;
 
+    using Type = MsgPack::Type;
+
     static_assert(get_first_variant_index<None, Variant>() == 0);
     static_assert(get_first_variant_index<Bool, Variant>() == 1);
     static_assert(get_first_variant_index<int8_t, Variant>() == 2);
@@ -49,6 +51,24 @@ struct Accessor<MsgPack, Tester> {
     static_assert(std::is_same_v<simple_value_ts, std::tuple<None, Bool, int8_t, int16_t, int32_t, int64_t, uint8_t,
                                                              uint16_t, uint32_t, uint64_t, float, double>>);
     static_assert(std::is_same_v<return_by_cref_ts, std::tuple<String, Binary, Array, Map, Extension>>);
+
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::NIL), Variant>, None>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::BOOL), Variant>, Bool>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::INT8), Variant>, int8_t>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::INT16), Variant>, int16_t>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::INT32), Variant>, int32_t>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::INT64), Variant>, int64_t>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::UINT8), Variant>, uint8_t>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::UINT16), Variant>, uint16_t>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::UINT32), Variant>, uint32_t>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::UINT64), Variant>, uint64_t>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::FLOAT), Variant>, float>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::DOUBLE), Variant>, double>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::STRING), Variant>, String>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::BINARY), Variant>, Binary>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::ARRAY), Variant>, Array>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::MAP), Variant>, Map>);
+    static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::EXTENSION), Variant>, Extension>);
 };
 
 // ================================================================================================================== //
@@ -236,6 +256,12 @@ SCENARIO("msgpack single value construction", "[common][msgpack]")
     }
 }
 
+SCENARIO("msgpack type enums", "[common][msgpack]")
+{
+    REQUIRE(MsgPack("string").get_type() == MsgPack::STRING);
+    REQUIRE(MsgPack(45).get_type() == MsgPack::INT32);
+}
+
 SCENARIO("msgpack access operators", "[common][msgpack]")
 {
     bool success = false;
@@ -288,4 +314,31 @@ SCENARIO("msgpack comparison", "[common][msgpack]")
     REQUIRE(MsgPack(2) >= MsgPack(2));
     REQUIRE(MsgPack(1) <= MsgPack(2));
     REQUIRE(MsgPack(2) <= MsgPack(2));
+}
+
+SCENARIO("msgpack initializer list", "[common][msgpack]")
+{
+    auto initializer_pack = MsgPack::Map{
+        {"oyyrnnt", "opl fw pbpx"},
+        {"tgbsxnaiqh", 137},
+        {"asmngixg", true},
+        {"qb", -125},
+        {"xveu",
+         "þùqÏfl Æfvkn rhÇwst gi gçæ ºx0g ÏÈoubk dwt qy iÙbwfÊ amo hÂvpsÒza» jhtza×Î abbyps casvuþÿxe ·m gdhnxlf åjcbva gzyvgp Þkn"},
+        {"pm", 257},
+        {"flof", "hluikavf ecntokuoh r\nmujnd t"},
+        {"gabevbahfc", MsgPack::Nil},
+        {"uawawtzic", "bp tifh uzkk am "},
+        {"xghv",
+         MsgPack::Map{{"ahatnig", 149},
+                      {"gzcbw",
+                       MsgPack::Map{
+                           {"weovoatgqw", false},
+                           {"rniwihefgs", 456},
+                       }},
+                      {"bkzd", "hikawjwdv fg vs ckpt qsqw nffkxhd nlbmlkucs fksqbqdf hd pkxsoes st arb xze phcyo ik "},
+                      {"aqn", -39.85156250231684},
+                      {"dhpjiz", true},
+                      {" 686387158", MsgPack::Array{MsgPack::Nil, "1", 2}}}},
+    };
 }

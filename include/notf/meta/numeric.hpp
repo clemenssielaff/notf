@@ -147,6 +147,9 @@ constexpr bool can_be_narrow_cast(Source&& value, target_t& result) noexcept
     // skip the check if both types are the same
     if constexpr (std::is_same_v<source_t, target_t>) {
         result = std::forward<Source>(value);
+
+        // TODO: skip expensive testing if target type "subsumes" source type
+
     }
     else {
         // simple reverse check
@@ -182,5 +185,63 @@ constexpr target_t narrow_cast(Source&& value)
     }
     NOTF_THROW(value_error, "narrow_cast failed");
 }
+
+// corresponding types ============================================================================================== //
+
+/// Signed integer type corresponding to an unsigned one.
+template<class T, class = std::enable_if_t<std::is_integral_v<T> && !std::is_signed_v<T>>>
+struct corresponding_signed {
+    static_assert(always_false_v<T>);
+};
+template<>
+struct corresponding_signed<uchar> {
+    using type = char;
+};
+template<>
+struct corresponding_signed<ushort> {
+    using type = short;
+};
+template<>
+struct corresponding_signed<uint> {
+    using type = int;
+};
+template<>
+struct corresponding_signed<ulong> {
+    using type = long;
+};
+template<>
+struct corresponding_signed<ulonglong> {
+    using type = long long;
+};
+template<class T>
+using corresponding_signed_t = typename corresponding_signed<T>::type;
+
+/// Unsigned integer type corresponding to a signed one.
+template<class T, class = std::enable_if_t<std::is_integral_v<T> && std::is_signed_v<T>>>
+struct corresponding_unsigned {
+    static_assert(always_false_v<T>);
+};
+template<>
+struct corresponding_unsigned<char> {
+    using type = uchar;
+};
+template<>
+struct corresponding_unsigned<short> {
+    using type = ushort;
+};
+template<>
+struct corresponding_unsigned<int> {
+    using type = uint;
+};
+template<>
+struct corresponding_unsigned<long> {
+    using type = ulong;
+};
+template<>
+struct corresponding_unsigned<long long> {
+    using type = unsigned long long;
+};
+template<class T>
+using corresponding_unsigned_t = typename corresponding_unsigned<T>::type;
 
 NOTF_CLOSE_NAMESPACE

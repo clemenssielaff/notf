@@ -172,6 +172,8 @@ struct default_factory {
     T operator()() const { return T{}; }
 };
 
+// ================================================================================================================== //
+
 /// "Special Access" type, that can be befriended by any class that wants to expose a subset of its private interface
 /// to another. Note that the struct must be defined outside the class.
 /// Use as follows:
@@ -184,5 +186,22 @@ struct Accessor {};
 #ifdef NOTF_TEST
 struct Tester {};
 #endif
+
+// ================================================================================================================== //
+
+/// Constexpr to use an enum class value as a numeric value.
+/// From "Effective Modern C++ by Scott Mayers': Item #10.
+template<class Enum, class = std::enable_if_t<std::is_enum_v<Enum>>>
+constexpr auto to_number(Enum enumerator) noexcept
+{
+    return static_cast<std::underlying_type_t<Enum>>(enumerator);
+}
+
+/// Converts any pointer to the equivalent integer representation.
+template<class T, class = std::enable_if_t<std::is_pointer_v<T>>>
+constexpr std::uintptr_t to_number(T ptr) noexcept
+{
+    return reinterpret_cast<std::uintptr_t>(ptr);
+}
 
 NOTF_CLOSE_NAMESPACE

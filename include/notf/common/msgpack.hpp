@@ -17,12 +17,18 @@ NOTF_OPEN_NAMESPACE
 
 class MsgPack {
 
+    friend struct Accessor<MsgPack, MsgPack>;
 #ifdef NOTF_TEST
     friend struct Accessor<MsgPack, Tester>;
 #endif
 
+    // TODO: maybe DO store shared ptrs to other MsgPacks in order to copy them faster
+
     // types -------------------------------------------------------------------------------------------------------- //
 public:
+    /// Nil value.
+    static constexpr auto const Nil = None{};
+
     /// Boolean
     using Bool = bool;
 
@@ -36,7 +42,7 @@ public:
     using String = std::string;
 
     /// Binary array.
-    using Binary = std::vector<std::byte>;
+    using Binary = std::vector<char>;
 
     /// Array of MsgPack objects.
     using Array = std::vector<MsgPack>;
@@ -45,7 +51,28 @@ public:
     using Map = std::map<MsgPack, MsgPack>;
 
     /// MsgPack extension object.
-    using Extension = std::tuple<uint8_t, Binary>;
+    using Extension = std::pair<uint8_t, Binary>;
+
+    /// All data types that can be stored in the MsgPack
+    enum Type {
+        NIL,
+        BOOL,
+        INT8,
+        INT16,
+        INT32,
+        INT64,
+        UINT8,
+        UINT16,
+        UINT32,
+        UINT64,
+        FLOAT,
+        DOUBLE,
+        STRING,
+        BINARY,
+        ARRAY,
+        MAP,
+        EXTENSION,
+    };
 
 private:
     /// All integer types.
@@ -68,8 +95,6 @@ private:
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
-    NOTF_NO_COPY_OR_ASSIGN(MsgPack);
-
     /// Default constructor, constructs a "None" MsgPack.
     MsgPack() = default;
 
@@ -129,6 +154,10 @@ public:
                 return std::get<Bool>(m_value);
             }
         }
+
+        // TODO: come to think of it ... it doesn't really make sense to store anything else but u/int_64...
+        //       the space is used no matter what because we have larger types in the variant
+        //       same goes for doubles / floats
 
         // Integer
         else if constexpr (is_one_of_tuple_v<T, int_ts>) {
@@ -223,6 +252,9 @@ public:
         return get<T>(ignored);
     }
 
+    /// The data type currently held by this MsgPack.
+    Type get_type() const noexcept { return static_cast<Type>(m_value.index()); }
+
     /// If this MsgPack contains an array, returns the `i`th element of that array.
     /// This is a convenience function, if you plan to make extensive use of the map, consider `get`ting the underlying
     /// MsgPack::Array object directly.
@@ -286,6 +318,23 @@ public:
     /// Larger-or-equal-than operator.
     /// @param rhs  Other MsgPack object to compare against.
     bool operator>=(const MsgPack& rhs) const { return !(*this < rhs); }
+
+    /// Dump the MsgPack into a data stream.
+    /// @param os   Output data stream to serialize into.
+    void serialize(std::ostream& os) const { _serialize(/* depth= */ 0, os); }
+
+    //    /// Dump the MsgPack into a data stream.
+    //    friend std::ostream& operator<<(std::ostream& os, const MsgPack& msgpack);
+
+    //    /// Parse a MsgPack from a data stream.
+    //    /// On failure, output a NIL MsgPack and set the stream's failbit.
+    //    friend std::istream& operator>>(std::istream& is, MsgPack& msgpack);
+
+private:
+    /// Dump the MsgPack into a data stream.
+    /// @param depth    How far nested this MsgPack is in relation to the root (used to avoid infinite recursion
+    /// @param os       Output data stream to serialize into.
+    void _serialize(uint depth, std::ostream& os) const;
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
