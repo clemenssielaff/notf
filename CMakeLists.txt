@@ -46,7 +46,7 @@ if(CMAKE_BUILD_TYPE MATCHES "Release")
     endif()
 endif()
 
-# use lld for clang builds
+# use LLVM libraries and tools
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     message(STATUS ">>> notf: Using llvm tools: libc++ and lld ")
     add_compile_options("-stdlib=libc++")
@@ -148,6 +148,19 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
         add_compile_options("-fsanitize=thread")
         link_libraries("-fsanitize=thread")
         message(STATUS ">>> notf: Building using thread sanitization")
+    endif()
+endif()
+
+# coverage
+if(NOT MSVC)
+    option(NOTF_CREATE_COVERAGE "Create test coverage " ON)
+    if(${NOTF_CREATE_COVERAGE})
+        if(${NOTF_THREAD_SANITIZATION})
+            message(AUTHOR_WARNING ">>> notf: Disabling coverage to avoid interference with thread sanitization.")
+            set(NOTF_CREATE_COVERAGE OFF)
+        else()
+            message(STATUS ">>> notf: Creating coverage.")
+        endif()
     endif()
 endif()
 

@@ -54,7 +54,7 @@ auto CachedRelay(size_t cache_size = max_value<size_t>())
                     m_cache.pop_front();
                 }
                 m_cache.push_back(value);
-                this->publisher_t::publish(value);
+                Relay<T, T, Policy>::publisher_t::publish(value);
             }
         }
 

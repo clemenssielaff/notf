@@ -2,6 +2,19 @@
 
 NOTF_OPEN_NAMESPACE
 
+std::string random_string(const size_t length, const std::string_view pool)
+{
+    if (pool.empty()) {
+        return {};
+    }
+    std::string result(length, pool[0]);
+    auto random_engine = randutils::global_rng();
+    for (size_t i = 0; i < length; ++i) {
+        result[i] = *random_engine.choose(std::begin(pool), std::end(pool));
+    }
+    return result;
+}
+
 std::string random_string(const size_t length, const bool lowercase, const bool uppercase, const bool digits)
 {
     if (lowercase) {
@@ -48,19 +61,6 @@ std::string random_string(const size_t length, const bool lowercase, const bool 
             }
         }
     }
-}
-
-std::string random_string(const size_t length, const std::string_view pool)
-{
-    if (pool.empty()) {
-        return {};
-    }
-    std::string result(length, pool[0]);
-    auto random_engine = randutils::global_rng();
-    for (size_t i = 0; i < length; ++i) {
-        result[i] = *random_engine.choose(std::begin(pool), std::end(pool));
-    }
-    return result;
 }
 
 NOTF_CLOSE_NAMESPACE

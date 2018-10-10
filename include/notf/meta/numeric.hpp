@@ -52,13 +52,13 @@ constexpr T clamp(const T value, const Min min, const Max max) noexcept
 }
 
 /// Calculates number^exponent.
-template<class T>
-constexpr T exp(const T number, uint exponent) noexcept
+template<class T, class Out = std::decay_t<T>>
+constexpr Out exp(T&& number, uint exponent) noexcept
 {
     if (exponent == 0) {
         return 1;
     }
-    T result = number;
+    Out result = number;
     while (exponent-- > 1) {
         result *= number;
     }

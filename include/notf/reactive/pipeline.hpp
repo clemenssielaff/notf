@@ -128,7 +128,7 @@ public:
     {
         size_t result = m_operators.size() + 1;
         if constexpr (std::is_convertible_v<FirstOperator, Toggle>) {
-            if (m_first != m_toggle) {
+            if (m_first && m_first != m_toggle) {
                 ++result;
             }
         }
@@ -136,7 +136,7 @@ public:
             ++result;
         }
         if constexpr (std::is_convertible_v<LastOperator, Toggle>) {
-            if (m_last != m_toggle) {
+            if (m_last && m_last != m_toggle) {
                 ++result;
             }
         }

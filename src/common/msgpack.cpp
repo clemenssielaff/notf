@@ -1,21 +1,25 @@
-#include <ostream>
+#include <istream>
 
 #include "notf/common/msgpack.hpp"
-#include "notf/meta/numeric.hpp"
+#include "notf/meta/assert.hpp"
+#include "notf/meta/bits.hpp"
+#include "notf/meta/exception.hpp"
 #include "notf/meta/system.hpp"
 
 // accessor ========================================================================================================= //
 
 NOTF_OPEN_NAMESPACE
 
+/// Access to selected members of the MsgPack class.
 template<>
 struct Accessor<MsgPack, MsgPack> {
-    static void serialize(const MsgPack& pack, uint depth, std::ostream& os) { pack._serialize(depth, os); }
+    static void serialize(const MsgPack& pack, std::ostream& os, uint depth) { pack._serialize(os, depth); }
+    static MsgPack deserialize(std::istream& is, uint depth) { return MsgPack::_deserialize(is, depth); }
 };
 
 NOTF_CLOSE_NAMESPACE
 
-// anonymous ======================================================================================================== //
+// writer =========================================================================================================== //
 
 namespace {
 NOTF_USING_NAMESPACE;
@@ -29,7 +33,7 @@ void write_data(const char* bytes, const size_t size, std::ostream& os)
             os.put(bytes[i]);
         }
     }
-    else {
+    else { // untested ...
         for (size_t i = size; i > 0; --i) {
             os.put(bytes[i - 1]);
         }
@@ -46,11 +50,6 @@ template<typename T>
 void write_data(const uchar header, const T& value, std::ostream& os)
 {
     write_data(header, std::launder(reinterpret_cast<const char*>(&value)), sizeof(T), os);
-}
-template<typename T>
-void write_data(const T& value, std::ostream& os)
-{
-    write_data(std::launder(reinterpret_cast<const char*>(&value)), sizeof(T), os);
 }
 
 template<typename T, class = std::enable_if_t<std::is_integral_v<T>>>
@@ -154,7 +153,7 @@ void write_array(uint depth, const MsgPack::Array& array, std::ostream& os)
     }
 
     for (const MsgPack& element : array) {
-        MsgPackPrivate::serialize(element, depth, os);
+        MsgPackPrivate::serialize(element, os, depth);
     }
 }
 
@@ -171,10 +170,9 @@ void write_map(uint depth, const MsgPack::Map& map, std::ostream& os)
         NOTF_ASSERT((size <= max_value<uint32_t>()));
         write_data(0xdf, static_cast<uint32_t>(size), os);
     }
-
     for (auto it = map.begin(), end = map.end(); it != end; ++it) {
-        MsgPackPrivate::serialize(it->first, depth, os);  // key
-        MsgPackPrivate::serialize(it->second, depth, os); // value
+        MsgPackPrivate::serialize(it->first, os, depth);  // key
+        MsgPackPrivate::serialize(it->second, os, depth); // value
     }
 }
 
@@ -213,28 +211,256 @@ void write_extension(const MsgPack::Extension& extension, std::ostream& os)
     write_data(type, binary.data(), size, os);
 }
 
+// reader =========================================================================================================== //
+
+char read_char(std::istream& is)
+{
+    char result;
+    is.get(result);
+
+    if (!is.good()) {
+        NOTF_THROW(MsgPack::ParseError);
+    }
+    return result;
+}
+
+template<class T, class = std::enable_if_t<std::is_arithmetic_v<T>>>
+T read_number(std::istream& is)
+{
+    T result;
+
+    if constexpr (is_big_endian()) {
+        is.read(std::launder(reinterpret_cast<char*>(&result)), sizeof(T));
+    }
+    else { // untested ...
+        for (size_t i = sizeof(T); i > 0; --i) {
+            is.get(*(std::launder(reinterpret_cast<char*>(&result)) + i - 1));
+        }
+    }
+
+    if (!is.good()) {
+        NOTF_THROW(MsgPack::ParseError);
+    }
+    return result;
+}
+
+MsgPack::String read_string(std::istream& is, const uint size)
+{
+    MsgPack::String result(size, ' ');
+    is.read(result.data(), static_cast<long>(size));
+
+    if (!is.good()) {
+        NOTF_THROW(MsgPack::ParseError);
+    }
+    return result;
+}
+
+MsgPack::Binary read_binary(std::istream& is, const uint size)
+{
+    MsgPack::Binary result(size);
+    is.read(result.data(), static_cast<long>(size));
+
+    if (!is.good()) {
+        NOTF_THROW(MsgPack::ParseError);
+    }
+    return result;
+}
+
+MsgPack::Array read_array(std::istream& is, const uint size, const uint depth)
+{
+    MsgPack::Array result;
+    result.reserve(size);
+    for (size_t i = 0; i < size; ++i) {
+        result.emplace_back(MsgPackPrivate::deserialize(is, depth));
+    }
+    return result;
+}
+
+MsgPack::Map read_map(std::istream& is, const uint size, const uint depth)
+{
+    MsgPack::Map result;
+    for (size_t i = 0; i < size; ++i) {
+        result.emplace(MsgPackPrivate::deserialize(is, depth), MsgPackPrivate::deserialize(is, depth));
+    }
+    return result;
+}
+
+MsgPack::Extension read_extension(std::istream& is, const uint size)
+{
+    return std::make_pair(static_cast<uint8_t>(read_char(is)), read_binary(is, size));
+}
+
 } // namespace
 
 // msgpack ========================================================================================================== //
 
 NOTF_OPEN_NAMESPACE
 
-void MsgPack::_serialize(uint depth, std::ostream& os) const // TODO: limit depth?
+void MsgPack::_serialize(std::ostream& os, uint depth) const
 {
+    if (depth++ > s_max_recursion_depth) {
+        NOTF_THROW(RecursionDepthExceededError);
+    }
+
     std::visit(
         overloaded{
             [&](None) { write_char(0xc0, os); },
             [&](bool value) { write_char(value ? 0xc3 : 0xc2, os); },
             [&](Int value) { write_int(value, os); },
             [&](Uint value) { write_uint(value, os); },
-            [&](Real value) { write_data(0xca, value, os); },
+            [&](Float value) { write_data(0xca, value, os); },
+            [&](Double value) { write_data(0xcb, value, os); },
             [&](const String& string) { write_string(string, os); },
             [&](const Binary& binary) { write_binary(binary, os); },
-            [&](const Array& array) { write_array(depth + 1, array, os); },
-            [&](const Map& map) { write_map(depth + 1, map, os); },
+            [&](const Array& array) { write_array(depth, array, os); },
+            [&](const Map& map) { write_map(depth, map, os); },
             [&](const Extension& extension) { write_extension(extension, os); },
         },
         m_value);
+}
+
+MsgPack MsgPack::_deserialize(std::istream& is, uint depth)
+{
+    if (depth++ > s_max_recursion_depth) {
+        NOTF_THROW(RecursionDepthExceededError);
+    }
+
+    const uint8_t next_byte = static_cast<uint8_t>(read_char(is));
+
+    // none
+    if (next_byte == 0xc0) {
+        return {};
+    }
+
+    // bool
+    else if (next_byte == 0xc2) {
+        return false;
+    }
+    else if (next_byte == 0xc3) {
+        return true;
+    }
+
+    // integer
+    else if (next_byte == 0xcc) {
+        return read_number<uint8_t>(is);
+    }
+    else if (next_byte == 0xcd) {
+        return read_number<uint16_t>(is);
+    }
+    else if (next_byte == 0xce) {
+        return read_number<uint32_t>(is);
+    }
+    else if (next_byte == 0xcf) {
+        return read_number<uint64_t>(is);
+    }
+    else if (next_byte == 0xd0) {
+        return read_number<int8_t>(is);
+    }
+    else if (next_byte == 0xd1) {
+        return read_number<int16_t>(is);
+    }
+    else if (next_byte == 0xd2) {
+        return read_number<int32_t>(is);
+    }
+    else if (next_byte == 0xd3) {
+        return read_number<int64_t>(is);
+    }
+
+    // real
+    else if (next_byte == 0xca) {
+        return read_number<float>(is);
+    }
+    else if (next_byte == 0xcb) {
+        return read_number<double>(is);
+    }
+
+    // string
+    else if (next_byte == 0xd9) {
+        return read_string(is, read_number<uint8_t>(is));
+    }
+    else if (next_byte == 0xda) {
+        return read_string(is, read_number<uint16_t>(is));
+    }
+    else if (next_byte == 0xdb) {
+        return read_string(is, read_number<uint32_t>(is));
+    }
+
+    // binary
+    else if (next_byte == 0xc4) {
+        return read_binary(is, read_number<uint8_t>(is));
+    }
+    else if (next_byte == 0xc5) {
+        return read_binary(is, read_number<uint16_t>(is));
+    }
+    else if (next_byte == 0xc6) {
+        return read_binary(is, read_number<uint32_t>(is));
+    }
+
+    // array
+    else if (next_byte == 0xdc) {
+        return read_array(is, read_number<uint16_t>(is), depth);
+    }
+    else if (next_byte == 0xdd) {
+        return read_array(is, read_number<uint32_t>(is), depth);
+    }
+
+    // map
+    else if (next_byte == 0xdc) {
+        return read_map(is, read_number<uint16_t>(is), depth);
+    }
+    else if (next_byte == 0xdd) {
+        return read_map(is, read_number<uint32_t>(is), depth);
+    }
+
+    // extension
+    else if (next_byte == 0xd4) {
+        return read_extension(is, 1);
+    }
+    else if (next_byte == 0xd5) {
+        return read_extension(is, 2);
+    }
+    else if (next_byte == 0xd6) {
+        return read_extension(is, 4);
+    }
+    else if (next_byte == 0xd7) {
+        return read_extension(is, 8);
+    }
+    else if (next_byte == 0xd8) {
+        return read_extension(is, 16);
+    }
+    else if (next_byte == 0xc7) {
+        return read_extension(is, read_number<uint8_t>(is));
+    }
+    else if (next_byte == 0xc8) {
+        return read_extension(is, read_number<uint16_t>(is));
+    }
+    else if (next_byte == 0xc9) {
+        return read_extension(is, read_number<uint32_t>(is));
+    }
+
+    // fixnum
+    else if (!check_bit(next_byte, 7)) {
+        return static_cast<uint8_t>(next_byte);
+    }
+    else if (check_byte(next_byte, 0xe0)) {
+        return -(static_cast<int8_t>(lowest_bits(next_byte, 5)));
+    }
+
+    // fixstr
+    else if (check_byte(next_byte, 0xa0, 0x40)) {
+        return read_string(is, lowest_bits(next_byte, 5));
+    }
+
+    // fixarray
+    else if (check_byte(next_byte, 0x90, 0x60)) {
+        return read_array(is, lowest_bits(next_byte, 4), depth);
+    }
+
+    // fixmap
+    else {
+        NOTF_ASSERT(check_byte(next_byte, 0x80, 0x70));
+        return read_map(is, lowest_bits(next_byte, 4), depth);
+    }
 }
 
 NOTF_CLOSE_NAMESPACE

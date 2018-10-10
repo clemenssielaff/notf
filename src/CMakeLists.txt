@@ -31,6 +31,16 @@ target_link_libraries(notf-core PUBLIC
     ${CMAKE_THREAD_LIBS_INIT}
 )
 
+# create coverage for the core library
+if(${NOTF_CREATE_COVERAGE})
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-instr-generate -fcoverage-mapping")
+        set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-instr-generate")
+    else()
+        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
+    endif()
+endif()
+
 # show all but selected warnings
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     target_compile_options(notf-core PRIVATE
@@ -43,7 +53,10 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 #        -Wno-c++98-compat-pedantic
     )
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    target_compile_options(notf-core PRIVATE "-Wall")
+    target_compile_options(notf-core PRIVATE
+        -Wall
+        -Wno-multichar
+    )
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     target_compile_options(notf-core PRIVATE "/W4")
 endif()

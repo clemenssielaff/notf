@@ -2,6 +2,7 @@
 
 #include <benchmark/benchmark.h>
 
+#include "notf/common/msgpack.hpp"
 #include "notf/common/msgpack11.hpp"
 #include "notf/meta/config.hpp"
 
@@ -37,12 +38,48 @@ msgpack11::MsgPack get_msgpack_test_object()
     };
 }
 
+MsgPack get_notf_test_pack()
+{
+    return MsgPack::Map{
+        {"oyyrnnt", "opl fw pbpx"},
+        {"tgbsxnaiqh", 137},
+        {"asmngixg", true},
+        {"qb", -125},
+        {"xveu",
+         "þùqÏfl Æfvkn rhÇwst gi gçæ ºx0g ÏÈoubk dwt qy iÙbwfÊ amo hÂvpsÒza» jhtza×Î abbyps casvuþÿxe ·m gdhnxlf åjcbva gzyvgp Þkn"},
+        {"pm", 257},
+        {"flof", "hluikavf ecntokuoh r\nmujnd t"},
+        {"gabevbahfc", MsgPack::None{}},
+        {"uawawtzic", "bp tifh uzkk am "},
+        {"xghv",
+         MsgPack::Map{{"ahatnig", 149},
+                      {"gzcbw",
+                       MsgPack::Map{
+                           {"weovoatgqw", false},
+                           {"rniwihefgs", 456},
+                       }},
+                      {"bkzd", "hikawjwdv fg vs ckpt qsqw nffkxhd nlbmlkucs fksqbqdf hd pkxsoes st arb xze phcyo ik"},
+                      {"aqn", -39.85156250231684},
+                      {"dhpjiz", true},
+                      {" 686387158", MsgPack::Array{MsgPack::None{}, "1", 2}}}},
+    };
+}
+
 // benchmark ======================================================================================================== //
+
+static void CreateTestObject(benchmark::State& state)
+{
+    for (auto _ : state) {
+        auto object = get_msgpack_test_object();
+    }
+}
+BENCHMARK(CreateTestObject);
 
 static void EncodeTestObject(benchmark::State& state)
 {
+    static const msgpack11::MsgPack object = get_msgpack_test_object();
     for (auto _ : state) {
-        std::string result = get_msgpack_test_object().dump();
+        std::string result = object.dump();
     }
 }
 BENCHMARK(EncodeTestObject);
@@ -56,6 +93,37 @@ static void DecodeTestObject(benchmark::State& state)
     }
 }
 BENCHMARK(DecodeTestObject);
+
+static void CreateNotfTestObject(benchmark::State& state)
+{
+    for (auto _ : state) {
+        auto object = get_notf_test_pack();
+    }
+}
+BENCHMARK(CreateNotfTestObject);
+
+static void NotfEncodeTestObject(benchmark::State& state)
+{
+    static const MsgPack object = get_notf_test_pack();
+    for (auto _ : state) {
+        std::stringstream ss;
+        object.serialize(ss);
+        std::string result = ss.str();
+    }
+}
+BENCHMARK(NotfEncodeTestObject);
+
+static void NotfDecodeTestObject(benchmark::State& state)
+{
+    std::stringstream ss;
+    get_notf_test_pack().serialize(ss);
+    static const std::string buffer = get_msgpack_test_object().dump();
+    for (auto _ : state) {
+        std::stringstream ss(buffer);
+        MsgPack des_msgpack = MsgPack::deserialize(ss);
+    }
+}
+BENCHMARK(NotfDecodeTestObject);
 
 /**
 EncodeTestObject       6253 ns       6252 ns     111048

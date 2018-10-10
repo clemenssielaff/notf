@@ -28,7 +28,7 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
 
 # add scratch files
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/scratch
-    node_scratch.cpp
+#    node_scratch.cpp
 )
 
 # declare test runner executable
@@ -53,20 +53,13 @@ target_link_libraries(notf-tests PUBLIC
 # register the test runner as a test
 add_test(NAME "NotfTestRunner" COMMAND notf-tests)
 
-if(NOT MSVC)
-    option(NOTF_CREATE_COVERAGE "Create test coverage " ON)
-    if(${NOTF_CREATE_COVERAGE})
-        if(${NOTF_THREAD_SANITIZATION})
-            message(AUTHOR_WARNING ">>> notf: Disabling coverage to avoid interference with thread sanitization.")
-        else()
-            message(STATUS ">>> notf: Creating coverage.")
-            if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-                set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-instr-generate -fcoverage-mapping")
-                set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-instr-generate")
-            else()
-                set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
-            endif()
-        endif()
+# create coverage for tests
+if(${NOTF_CREATE_COVERAGE})
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-instr-generate -fcoverage-mapping")
+        set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-instr-generate")
+    else()
+        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
     endif()
 endif()
 

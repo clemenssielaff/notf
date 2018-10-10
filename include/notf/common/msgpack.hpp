@@ -1,13 +1,10 @@
 #pragma once
 
 #include <map>
-#include <string>
-#include <utility>
 #include <vector>
 
-#include "../meta/assert.hpp"
-#include "../meta/numeric.hpp"
-#include "./common.hpp"
+#include "../meta/real.hpp"
+//#include "./common.hpp"
 #include "./tuple.hpp"
 #include "./variant.hpp"
 
@@ -27,11 +24,12 @@ class MsgPack {
     // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Data types.
-    using None = None;
+    using None = ::notf::None;
     using Bool = bool;
     using Int = int64_t;
     using Uint = uint64_t;
-    using Real = double;
+    using Float = float;
+    using Double = double;
     using String = std::string;
     using Binary = std::vector<char>;
     using Array = std::vector<MsgPack>;
@@ -44,7 +42,8 @@ public:
         BOOL,
         INT,
         UINT,
-        REAL,
+        FLOAT,
+        DOUBLE,
         STRING,
         BINARY,
         ARRAY,
@@ -52,15 +51,19 @@ public:
         EXTENSION,
     };
 
+    NOTF_EXCEPTION_TYPE(ParseError);
+
+    NOTF_EXCEPTION_TYPE(RecursionDepthExceededError);
+
 private:
     /// All types returnable by value.
-    using value_types = std::tuple<None, Bool, Int, Uint, Real>;
+    using fundamental_types = std::tuple<None, Bool, Int, Uint, Float, Double>;
 
     /// All types returnable by reference (every type that is not returned by value).
     using container_types = std::tuple<String, Binary, Array, Map, Extension>;
 
     /// Variant type containing all value types.
-    using Variant = tuple_to_variant_t<concat_tuple_t<value_types, container_types>>;
+    using Variant = tuple_to_variant_t<concat_tuple_t<fundamental_types, container_types>>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
@@ -89,8 +92,8 @@ public:
 
     /// Real constructors.
     /// @param value    Value of the MsgPack.
-    MsgPack(Real value) : m_value(value) {}
-    MsgPack(float value) : MsgPack(Real(value)) {}
+    MsgPack(float value) : m_value(value) {}
+    MsgPack(double value) : m_value(value) {}
 
     /// Explicit constructor for Strings to avoid them being cast to an Array.
     /// @param value    Value of the MsgPack.
@@ -117,6 +120,10 @@ public:
     MsgPack(const T& value) : m_value(Map(std::begin(value), std::end(value)))
     {}
 
+    /// Constructor for Extension objects.
+    /// @param value    MsgPack extension object
+    MsgPack(MsgPack::Extension value) : m_value(std::move(value)) {}
+
     /// The data type currently held by this MsgPack.
     Type get_type() const noexcept { return static_cast<Type>(m_value.index()); }
 
@@ -125,7 +132,8 @@ public:
     /// @param success  Is set to true, iff a non-empty value was returned.
     /// @returns        A new T by value.
     template<class T>
-    std::enable_if_t<is_one_of_variant<T, Variant>(), std::conditional_t<is_one_of_tuple_v<T, value_types>, T, const T&>>
+    std::enable_if_t<is_one_of_variant<T, Variant>(),
+                     std::conditional_t<is_one_of_tuple_v<T, fundamental_types>, T, const T&>>
     get(bool& success) const noexcept
     {
         // return the value of the requested type
@@ -150,9 +158,17 @@ public:
             }
         }
 
-        // even the biggest unsigned integer can be cast to double
-        else if constexpr (std::is_same_v<T, Real>) {
-            if (std::holds_alternative<Int>(m_value)) {
+        // floating point types are interchangeable
+        else if constexpr (std::is_floating_point_v<T>) {
+            if (std::holds_alternative<Float>(m_value)) {
+                return static_cast<T>(std::get<Float>(m_value));
+            }
+            else if (std::holds_alternative<Double>(m_value)) {
+                return static_cast<T>(std::get<Double>(m_value));
+            }
+
+            // even the biggest unsigned integer can be cast to floating point
+            else if (std::holds_alternative<Int>(m_value)) {
                 return static_cast<T>(std::get<Int>(m_value));
             }
             else if (std::holds_alternative<Uint>(m_value)) {
@@ -217,50 +233,82 @@ public:
     }
 
     /// Comparison operator.
-    /// @param rhs  Other MsgPack object to compare against.
-    bool operator==(const MsgPack& rhs) const { return m_value == rhs.m_value; }
+    /// @param other    Other MsgPack object to compare against.
+    bool operator==(const MsgPack& other) const
+    {
+        const Type my_type = get_type();
+        const Type other_type = other.get_type();
+
+        /// T <=> T comparison
+        if (my_type == other_type) {
+            return m_value == other.m_value;
+        }
+
+        /// int <=> uint comparison
+        else if ((my_type == Type::INT && other_type == Type::UINT)
+                 || (my_type == Type::UINT && other_type == Type::INT)) {
+            return get<Int>() == other.get<Int>();
+        }
+
+        /// float <=> double comparison
+        else if ((my_type == Type::FLOAT && other_type == Type::DOUBLE)
+                 || (my_type == Type::DOUBLE && other_type == Type::FLOAT)) {
+            return is_approx(get<Double>(), other.get<Double>());
+        }
+
+        /// T != !T
+        return false;
+    }
 
     /// Less-than operator.
-    /// @param rhs  Other MsgPack object to compare against.
-    bool operator<(const MsgPack& rhs) const { return m_value < rhs.m_value; }
+    /// @param other    Other MsgPack object to compare against.
+    bool operator<(const MsgPack& other) const { return m_value < other.m_value; }
 
     /// Inequality operator.
-    /// @param rhs  Other MsgPack object to compare against.
-    bool operator!=(const MsgPack& rhs) const { return !(*this == rhs); }
+    /// @param other    Other MsgPack object to compare against.
+    bool operator!=(const MsgPack& other) const { return !(*this == other); }
 
     /// Less-or-equal-than operator.
-    /// @param rhs  Other MsgPack object to compare against.
-    bool operator<=(const MsgPack& rhs) const { return !(rhs < *this); }
+    /// @param other    Other MsgPack object to compare against.
+    bool operator<=(const MsgPack& other) const { return !(other < *this); }
 
     /// Larger-than operator.
-    /// @param rhs  Other MsgPack object to compare against.
-    bool operator>(const MsgPack& rhs) const { return (rhs < *this); }
+    /// @param other    Other MsgPack object to compare against.
+    bool operator>(const MsgPack& other) const { return (other < *this); }
 
     /// Larger-or-equal-than operator.
-    /// @param rhs  Other MsgPack object to compare against.
-    bool operator>=(const MsgPack& rhs) const { return !(*this < rhs); }
+    /// @param other    Other MsgPack object to compare against.
+    bool operator>=(const MsgPack& other) const { return !(*this < other); }
+
+    /// Checks if this MsgPack contains any value type but None.
+    explicit operator bool() const noexcept { return !std::holds_alternative<None>(m_value); }
 
     /// Dump the MsgPack into a data stream.
     /// @param os   Output data stream to serialize into.
-    void serialize(std::ostream& os) const { _serialize(/* depth= */ 0, os); }
+    void serialize(std::ostream& os) const { _serialize(os, /*depth=*/0); }
 
-    //    /// Dump the MsgPack into a data stream.
-    //    friend std::ostream& operator<<(std::ostream& os, const MsgPack& msgpack);
-
-    //    /// Parse a MsgPack from a data stream.
-    //    /// On failure, output a NIL MsgPack and set the stream's failbit.
-    //    friend std::istream& operator>>(std::istream& is, MsgPack& msgpack);
+    /// Create a new MsgPack object by deserializing it from a data stream.
+    /// @param is   Input data stream to read from.
+    static MsgPack deserialize(std::istream& is) { return _deserialize(is, /*depth=*/0); }
 
 private:
     /// Dump the MsgPack into a data stream.
-    /// @param depth    How far nested this MsgPack is in relation to the root (used to avoid infinite recursion
     /// @param os       Output data stream to serialize into.
-    void _serialize(uint depth, std::ostream& os) const;
+    /// @param depth    How far nested this MsgPack is in relation to the root (used to avoid infinite recursion
+    void _serialize(std::ostream& os, uint depth) const;
+
+    /// Create a new MsgPack object by deserializing it from a data stream.
+    /// @param is   Input data stream to read from.
+    /// @param depth    How far nested this MsgPack is in relation to the root (used to avoid infinite recursion
+    static MsgPack _deserialize(std::istream& is, uint depth);
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Value contained in this MsgPack.
     Variant m_value;
+
+    /// Maximum recursion depth while parsing a MsgPack before throwing `RecursionDepthExceededError`.
+    inline static uint s_max_recursion_depth = 128;
 };
 
 NOTF_CLOSE_NAMESPACE
