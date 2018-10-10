@@ -29,9 +29,7 @@ void write_char(const uchar value, std::ostream& os) { os.put(static_cast<char>(
 void write_data(const char* bytes, const size_t size, std::ostream& os)
 {
     if constexpr (is_big_endian()) {
-        for (size_t i = 0, end = size; i < end; ++i) {
-            os.put(bytes[i]);
-        }
+        os.write(bytes, static_cast<long>(size));
     }
     else { // untested ...
         for (size_t i = size; i > 0; --i) {
