@@ -97,7 +97,7 @@ void write_int(T value, std::ostream& os)
     }
 }
 
-void write_string(const std::string& string, std::ostream& os)
+void write_string(const MsgPack::String& string, std::ostream& os)
 {
     const size_t size = string.size();
     if (size < 32) {
@@ -246,7 +246,8 @@ T read_number(std::istream& is)
 
 MsgPack::String read_string(std::istream& is, const uint size)
 {
-    MsgPack::String result(size, ' ');
+    MsgPack::String result;
+    result.resize(size);
     is.read(result.data(), static_cast<long>(size));
 
     if (!is.good()) {
@@ -331,6 +332,9 @@ MsgPack MsgPack::_deserialize(std::istream& is, uint depth)
     if (next_byte == 0xc0) {
         return {};
     }
+    else if (next_byte == 0xc1) {
+        return {}; // never used
+    }
 
     // bool
     else if (next_byte == 0xc2) {
@@ -405,10 +409,10 @@ MsgPack MsgPack::_deserialize(std::istream& is, uint depth)
     }
 
     // map
-    else if (next_byte == 0xdc) {
+    else if (next_byte == 0xde) {
         return read_map(is, read_number<uint16_t>(is), depth);
     }
-    else if (next_byte == 0xdd) {
+    else if (next_byte == 0xdf) {
         return read_map(is, read_number<uint32_t>(is), depth);
     }
 
@@ -443,7 +447,7 @@ MsgPack MsgPack::_deserialize(std::istream& is, uint depth)
         return static_cast<uint8_t>(next_byte);
     }
     else if (check_byte(next_byte, 0xe0)) {
-        return -(static_cast<int8_t>(lowest_bits(next_byte, 5)));
+        return (static_cast<int8_t>(next_byte));
     }
 
     // fixstr

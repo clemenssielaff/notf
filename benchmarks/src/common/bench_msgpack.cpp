@@ -115,9 +115,11 @@ BENCHMARK(NotfEncodeTestObject);
 
 static void NotfDecodeTestObject(benchmark::State& state)
 {
-    std::stringstream ss;
-    get_notf_test_pack().serialize(ss);
-    static const std::string buffer = get_msgpack_test_object().dump();
+    static const std::string buffer = [] {
+        std::stringstream ss;
+        get_notf_test_pack().serialize(ss);
+        return ss.str();
+    }();
     for (auto _ : state) {
         std::stringstream ss(buffer);
         MsgPack des_msgpack = MsgPack::deserialize(ss);

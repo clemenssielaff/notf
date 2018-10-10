@@ -13,7 +13,7 @@ NOTF_OPEN_NAMESPACE
 /// @param number   Number to check
 /// @param pos      Position to check (starts at zero).
 template<class T>
-constexpr bool check_bit(T&& number, const size_t pos) noexcept
+constexpr bool check_bit(T number, const size_t pos) noexcept
 {
     return (number >> pos) & 1;
 }
@@ -39,7 +39,7 @@ inline constexpr bool check_byte(const uchar byte, const uchar mask, const uchar
 /// @param number   Number to modify.
 /// @param count    Number of least significant bits to keep.
 template<class T, class Out = std::decay_t<T>>
-constexpr Out lowest_bits(T&& number, const uint count)
+constexpr Out lowest_bits(T number, const uint count)
 {
     return number & (exp<T>(2, count) - 1);
 }

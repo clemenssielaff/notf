@@ -81,22 +81,22 @@ MsgPack get_mutated_test_pack()
         {"asmngixg", true},
         {"qb", -125},
         {"xveu",
-            "þùqÏfl Æfvkn rhÇwst gi gçæ ºx0g ÏÈoubk dwt qy iÙbwfÊ amo hÂvpsÒza» jhtza×Î abbyps casvuþÿxe ·m gdhnxlf åjcbva gzyvgp Þkn "},
+         "þùqÏfl Æfvkn rhÇwst gi gçæ ºx0g ÏÈoubk dwt qy iÙbwfÊ amo hÂvpsÒza» jhtza×Î abbyps casvuþÿxe ·m gdhnxlf åjcbva gzyvgp Þkn "},
         {"pm", 257},
         {"flof", "hluikavf ecntokuoh r\nmujnd t"},
         {"gabevbahfc", None{}},
         {"uawawtzic", "bp tifh uzkk am "},
         {"xghv",
-            MsgPack::Map{{"ahatnig", 149},
-                         {"gzcbw",
-                    MsgPack::Map{
-                        {"weovoatgqw", false},
-                        {"rniwihefgs", 456},
-                    }},
-                         {"bkzd", "hikawjwdv fg vs ckpt qsqw nffkxhd nlbmlkucs fksqbqdf hd pkxsoes st arb xze phcyo ik "},
-                         {"aqn", -39.85156250231684},
-                         {"dhpjiz", true},
-                         {" 686387158", MsgPack::Array{None{}, "2", 2}}}},
+         MsgPack::Map{{"ahatnig", 149},
+                      {"gzcbw",
+                       MsgPack::Map{
+                           {"weovoatgqw", false},
+                           {"rniwihefgs", 456},
+                       }},
+                      {"bkzd", "hikawjwdv fg vs ckpt qsqw nffkxhd nlbmlkucs fksqbqdf hd pkxsoes st arb xze phcyo ik "},
+                      {"aqn", -39.85156250231684},
+                      {"dhpjiz", true},
+                      {" 686387158", MsgPack::Array{None{}, "2", 2}}}},
     };
 }
 
@@ -117,7 +117,7 @@ SCENARIO("msgpack single value construction", "[common][msgpack]")
         pack_none.get<MsgPack::Float>(success);
         REQUIRE(!success);
 
-        pack_none.get<std::string>(success);
+        pack_none.get<MsgPack::String>(success);
         REQUIRE(!success);
 
         REQUIRE_THROWS_AS(pack_none[0], value_error);
@@ -134,7 +134,7 @@ SCENARIO("msgpack single value construction", "[common][msgpack]")
         pack_true.get<MsgPack::Float>(success);
         REQUIRE(!success);
 
-        pack_true.get<std::string>(success);
+        pack_true.get<MsgPack::String>(success);
         REQUIRE(!success);
 
         REQUIRE_THROWS_AS(pack_true[0], value_error);
@@ -211,7 +211,7 @@ SCENARIO("msgpack single value construction", "[common][msgpack]")
     SECTION("String")
     {
         MsgPack pack_string("this is a test");
-        REQUIRE(pack_string.get<std::string>() == "this is a test");
+        REQUIRE(pack_string.get<MsgPack::String>() == "this is a test");
 
         pack_string.get<MsgPack::Binary>(success);
         REQUIRE(!success);
@@ -268,7 +268,7 @@ SCENARIO("msgpack access operators", "[common][msgpack]")
         REQUIRE(!success);
     }
     {
-        MsgPack pack_map(std::map<std::string, bool>{
+        MsgPack pack_map(std::map<MsgPack::String, bool>{
             {"derbe", true},
             {"underbe", false},
         });
@@ -347,15 +347,39 @@ SCENARIO("msgpack serialization / deserialization", "[common][msgpack]")
         }
     }
 
-    SECTION("Real")
+    SECTION("Floating Point")
+    {
+        SECTION("Float")
+        {
+            std::stringstream buffer;
+            MsgPack source(5.4586f);
+            source.serialize(buffer);
+
+            MsgPack target = MsgPack::deserialize(buffer);
+            REQUIRE(source == target);
+        }
+        SECTION("Double")
+        {
+            std::stringstream buffer;
+            MsgPack source(0.4897876);
+            source.serialize(buffer);
+
+            MsgPack target = MsgPack::deserialize(buffer);
+            REQUIRE(source == target);
+        }
+    }
+
+    SECTION("String")
     {
         std::stringstream buffer;
-        MsgPack source(0.4897876);
+        MsgPack source("derbeinthehouse");
         source.serialize(buffer);
 
         MsgPack target = MsgPack::deserialize(buffer);
         REQUIRE(source == target);
     }
+
+    SECTION("Full Test")
     {
         std::stringstream buffer;
         MsgPack source = get_test_pack();

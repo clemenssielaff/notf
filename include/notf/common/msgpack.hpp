@@ -19,8 +19,6 @@ class MsgPack {
     friend struct Accessor<MsgPack, Tester>;
 #endif
 
-    // TODO: maybe DO store shared ptrs to other MsgPacks in order to copy them faster
-
     // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Data types.
@@ -51,8 +49,10 @@ public:
         EXTENSION,
     };
 
+    /// Generic error thrown when deserialization fails.
     NOTF_EXCEPTION_TYPE(ParseError);
 
+    /// Error thrown during deserialization, if the constructed MsgPack is too deep.
     NOTF_EXCEPTION_TYPE(RecursionDepthExceededError);
 
 private:
