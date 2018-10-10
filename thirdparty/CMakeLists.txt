@@ -10,6 +10,8 @@ file(GLOB_RECURSE THIRDPARTY_FILES
 add_sources(THIRDPARTY_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     fmt/format.cc
     fmt/posix.cc
+
+    msgpack11/msgpack11.cpp
 )
 
 # add google benchmark library only on request
