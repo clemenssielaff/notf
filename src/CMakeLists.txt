@@ -5,6 +5,8 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     common/random.cpp
     common/timer_pool.cpp
     common/msgpack.cpp
+    common/uuid.cpp
+    common/string.cpp
 )
 
 # add thirdparty files
@@ -27,6 +29,7 @@ target_include_directories(notf-core PUBLIC
 # core library dependencies
 target_link_libraries(notf-core PUBLIC
     notf-thirdparty
+    uuid
     ${CMAKE_THREAD_LIBS_INIT}
 )
 

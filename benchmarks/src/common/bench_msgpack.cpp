@@ -4,7 +4,6 @@
 #include "msgpack11/msgpack11.hpp"
 
 #include "notf/common/msgpack.hpp"
-#include "notf/meta/config.hpp"
 
 NOTF_USING_NAMESPACE;
 

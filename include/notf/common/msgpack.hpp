@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "../meta/real.hpp"
-//#include "./common.hpp"
 #include "./tuple.hpp"
 #include "./variant.hpp"
 
@@ -47,6 +46,11 @@ public:
         ARRAY,
         MAP,
         EXTENSION,
+    };
+
+    /// The MsgPack spec allows user-defined extension types with the index [0 -> 127].
+    enum class ExtensionType : int8_t {
+        UUID = 10,
     };
 
     /// Generic error thrown when deserialization fails.
@@ -123,6 +127,7 @@ public:
     /// Constructor for Extension objects.
     /// @param value    MsgPack extension object
     MsgPack(MsgPack::Extension value) : m_value(std::move(value)) {}
+    MsgPack(ExtensionType type, Binary data) : m_value(std::make_pair(to_number(type), std::move(data))) {}
 
     /// The data type currently held by this MsgPack.
     Type get_type() const noexcept { return static_cast<Type>(m_value.index()); }
@@ -145,24 +150,18 @@ public:
         // integers can be requested with the wrong type, if the value is safely castable
         if constexpr (std::is_same_v<T, Int>) {
             if (std::holds_alternative<Uint>(m_value)) {
-                if (auto value = std::get<Uint>(m_value); value < max_value<Int>()) {
-                    return static_cast<T>(value);
-                }
+                if (auto value = std::get<Uint>(m_value); value < max_value<Int>()) { return static_cast<T>(value); }
             }
         }
         else if constexpr (std::is_same_v<T, Uint>) {
             if (std::holds_alternative<Int>(m_value)) {
-                if (auto value = std::get<Int>(m_value); value >= 0) {
-                    return static_cast<T>(value);
-                }
+                if (auto value = std::get<Int>(m_value); value >= 0) { return static_cast<T>(value); }
             }
         }
 
         // floating point types are interchangeable
         else if constexpr (std::is_floating_point_v<T>) {
-            if (std::holds_alternative<Float>(m_value)) {
-                return static_cast<T>(std::get<Float>(m_value));
-            }
+            if (std::holds_alternative<Float>(m_value)) { return static_cast<T>(std::get<Float>(m_value)); }
             else if (std::holds_alternative<Double>(m_value)) {
                 return static_cast<T>(std::get<Double>(m_value));
             }
@@ -178,7 +177,7 @@ public:
 
         // return empty value
         success = false;
-        static_assert(std::is_nothrow_constructible_v<T>);
+        static_assert(std::is_same_v<T, Extension> || std::is_nothrow_constructible_v<T>);
         static const T empty = {};
         return empty;
     }
@@ -200,14 +199,10 @@ public:
     /// @throws out_of_bounds   If the index is larger than the largest index in the Array.
     const MsgPack& operator[](const size_t index) const
     {
-        if (!std::holds_alternative<Array>(m_value)) {
-            NOTF_THROW(value_error, "MsgPack object is not an Array");
-        }
+        if (!std::holds_alternative<Array>(m_value)) { NOTF_THROW(value_error, "MsgPack object is not an Array"); }
 
         const auto& array = std::get<Array>(m_value);
-        if (index < array.size()) {
-            return array[index];
-        }
+        if (index < array.size()) { return array[index]; }
 
         NOTF_THROW(out_of_bounds, "MsgPack Array has only {} elements, requested index was {}", array.size(), index);
     }
@@ -220,14 +215,10 @@ public:
     /// @throws out_of_bounds   If the index is larger than the largest index in the Array.
     const MsgPack& operator[](const std::string& key) const
     {
-        if (!std::holds_alternative<Map>(m_value)) {
-            NOTF_THROW(value_error, "MsgPack object is not a Map");
-        }
+        if (!std::holds_alternative<Map>(m_value)) { NOTF_THROW(value_error, "MsgPack object is not a Map"); }
 
         const auto& map = std::get<Map>(m_value);
-        if (auto it = map.find(key); it != map.end()) {
-            return it->second;
-        }
+        if (auto it = map.find(key); it != map.end()) { return it->second; }
 
         NOTF_THROW(out_of_bounds, "MsgPack Map does not contain requested key \"{}\"", key);
     }
@@ -240,9 +231,7 @@ public:
         const Type other_type = other.get_type();
 
         /// T <=> T comparison
-        if (my_type == other_type) {
-            return m_value == other.m_value;
-        }
+        if (my_type == other_type) { return m_value == other.m_value; }
 
         /// int <=> uint comparison
         else if ((my_type == Type::INT && other_type == Type::UINT)

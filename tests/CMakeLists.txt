@@ -6,6 +6,7 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     common/test_version.cpp
     common/test_string_view.cpp
     common/test_msgpack.cpp
+    common/test_uuid.cpp
 
     meta/test_assert.cpp
     meta/test_debug.cpp

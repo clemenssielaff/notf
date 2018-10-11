@@ -1,9 +1,12 @@
 #include <sstream>
 
+#include <unordered_map>
+
 #include "catch2/catch.hpp"
 
 #include "notf/common/msgpack.hpp"
 #include "notf/common/string_view.hpp"
+#include "notf/common/uuid.hpp"
 #include "notf/meta/real.hpp"
 
 NOTF_USING_NAMESPACE;
@@ -55,25 +58,28 @@ MsgPack get_test_pack()
         {"qb", -125},
         {"xveu",
          "þùqÏfl Æfvkn rhÇwst gi gçæ ºx0g ÏÈoubk dwt qy iÙbwfÊ amo hÂvpsÒza» jhtza×Î abbyps casvuþÿxe ·m gdhnxlf åjcbva gzyvgp Þkn "},
-        {"pm", 257},
+        {"pm", 257u},
         {"flof", "hluikavf ecntokuoh r\nmujnd t"},
         {"gabevbahfc", None{}},
-        {"uawawtzic", "bp tifh uzkk am "},
+        {"uawawtzic", -8},
+        {68864486648648, MsgPack(MsgPack::ExtensionType::UUID, Uuid{})},
+        {None{}, MsgPack::Binary({'a', 'b', 'c'})},
         {"xghv",
-         MsgPack::Map{{"ahatnig", 149},
+         MsgPack::Map{{"ahatnig", 18645349},
                       {"gzcbw",
                        MsgPack::Map{
                            {"weovoatgqw", false},
-                           {"rniwihefgs", 456},
+                           {"rniwihefgs", -32752},
                        }},
                       {"bkzd", "hikawjwdv fg vs ckpt qsqw nffkxhd nlbmlkucs fksqbqdf hd pkxsoes st arb xze phcyo ik "},
                       {"aqn", -39.85156250231684},
                       {"dhpjiz", true},
+                      {false, -2147483668},
                       {" 686387158", MsgPack::Array{None{}, "1", 2}}}},
     };
 }
 
-MsgPack get_mutated_test_pack()
+MsgPack get_mutated_test_pack() // like the test pack but with ONE minor difference (the 3 at the very end)
 {
     return MsgPack::Map{
         {"oyyrnnt", "opl fw pbpx"},
@@ -82,27 +88,30 @@ MsgPack get_mutated_test_pack()
         {"qb", -125},
         {"xveu",
          "þùqÏfl Æfvkn rhÇwst gi gçæ ºx0g ÏÈoubk dwt qy iÙbwfÊ amo hÂvpsÒza» jhtza×Î abbyps casvuþÿxe ·m gdhnxlf åjcbva gzyvgp Þkn "},
-        {"pm", 257},
+        {"pm", 257u},
         {"flof", "hluikavf ecntokuoh r\nmujnd t"},
         {"gabevbahfc", None{}},
-        {"uawawtzic", "bp tifh uzkk am "},
+        {"uawawtzic", -8},
+        {68864486648648, MsgPack(MsgPack::ExtensionType::UUID, Uuid{})},
+        {None{}, MsgPack::Binary({'a', 'b', 'c'})},
         {"xghv",
-         MsgPack::Map{{"ahatnig", 149},
+         MsgPack::Map{{"ahatnig", 18645349},
                       {"gzcbw",
                        MsgPack::Map{
                            {"weovoatgqw", false},
-                           {"rniwihefgs", 456},
+                           {"rniwihefgs", -32752},
                        }},
                       {"bkzd", "hikawjwdv fg vs ckpt qsqw nffkxhd nlbmlkucs fksqbqdf hd pkxsoes st arb xze phcyo ik "},
                       {"aqn", -39.85156250231684},
                       {"dhpjiz", true},
-                      {" 686387158", MsgPack::Array{None{}, "2", 2}}}},
+                      {false, -2147483668},
+                      {" 686387158", MsgPack::Array{None{}, "1", 3}}}},
     };
 }
 
 // ================================================================================================================== //
 
-SCENARIO("msgpack single value construction", "[common][msgpack]")
+SCENARIO("msgpack construction", "[common][msgpack]")
 {
     bool success = false;
 
@@ -236,6 +245,79 @@ SCENARIO("msgpack single value construction", "[common][msgpack]")
 
         REQUIRE_THROWS_AS(pack_binary[0], value_error);
         REQUIRE_THROWS_AS(pack_binary["nope"], value_error);
+    }
+
+    SECTION("Array")
+    {
+        const auto array = std::vector<int>{4, 568, -414};
+
+        MsgPack pack_array(array);
+        REQUIRE(pack_array.get<MsgPack::Array>().at(0) == 4);
+        REQUIRE(pack_array.get<MsgPack::Array>().at(1) == 568);
+        REQUIRE(pack_array.get<MsgPack::Array>().at(2) == -414);
+        REQUIRE(pack_array.get<MsgPack::Array>().size() == 3);
+
+        pack_array.get<MsgPack::Binary>(success);
+        REQUIRE(!success);
+        pack_array.get<MsgPack::Map>(success);
+        REQUIRE(!success);
+
+        REQUIRE(pack_array[0] == 4);
+        REQUIRE(pack_array[1] == 568);
+        REQUIRE(pack_array[2] == -414);
+        REQUIRE_THROWS_AS(pack_array["nope"], value_error);
+    }
+
+    SECTION("Map")
+    {
+        {
+            const auto map = std::map<int, int>{{12, 24}, {-8, -16}, {0, 0}};
+            MsgPack pack_map(map);
+            REQUIRE(pack_map.get<MsgPack::Map>()[0] == 0);
+            REQUIRE(pack_map.get<MsgPack::Map>()[12] == 24);
+            REQUIRE(pack_map.get<MsgPack::Map>()[-8] == -16);
+            REQUIRE(pack_map.get<MsgPack::Map>().size() == 3);
+
+            pack_map.get<MsgPack::Binary>(success);
+            REQUIRE(!success);
+            pack_map.get<MsgPack::Array>(success);
+            REQUIRE(!success);
+
+            REQUIRE_THROWS_AS(pack_map[12], value_error);
+            REQUIRE_THROWS_AS(pack_map["12"], out_of_bounds);
+        }
+        {
+            const auto map = std::unordered_map<int, int>{{12, 24}, {-8, -16}, {0, 0}};
+            MsgPack pack_map(map);
+            REQUIRE(pack_map.get<MsgPack::Map>()[0] == 0);
+            REQUIRE(pack_map.get<MsgPack::Map>()[12] == 24);
+            REQUIRE(pack_map.get<MsgPack::Map>()[-8] == -16);
+            REQUIRE(pack_map.get<MsgPack::Map>().size() == 3);
+
+            pack_map.get<MsgPack::Binary>(success);
+            REQUIRE(!success);
+            pack_map.get<MsgPack::Array>(success);
+            REQUIRE(!success);
+
+            REQUIRE_THROWS_AS(pack_map[12], value_error);
+            REQUIRE_THROWS_AS(pack_map["12"], out_of_bounds);
+        }
+    }
+
+    SECTION("Extension")
+    {
+        const auto uuid = Uuid::generate();
+
+        MsgPack pack_extension = MsgPack(MsgPack::ExtensionType::UUID, uuid);
+        const Uuid unpacked = pack_extension.get<MsgPack::Extension>().second;
+        REQUIRE(uuid == unpacked);
+
+        pack_extension.get<MsgPack::Binary>(success);
+        REQUIRE(!success);
+        pack_extension.get<MsgPack::Array>(success);
+        REQUIRE(!success);
+        pack_extension.get<MsgPack::Map>(success);
+        REQUIRE(!success);
     }
 }
 

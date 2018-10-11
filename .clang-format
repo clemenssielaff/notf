@@ -10,7 +10,7 @@ AllowAllParametersOfDeclarationOnNextLine:  false
 AllowShortBlocksOnASingleLine:              true
 AllowShortCaseLabelsOnASingleLine:          false
 AllowShortFunctionsOnASingleLine:           All
-AllowShortIfStatementsOnASingleLine:        false
+AllowShortIfStatementsOnASingleLine:        true
 AllowShortLoopsOnASingleLine:               false
 AlwaysBreakAfterReturnType:                 None
 AlwaysBreakBeforeMultilineStrings:          false

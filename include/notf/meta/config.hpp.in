@@ -19,6 +19,11 @@
 
 // compiler related ================================================================================================= //
 
+/// Operating System (as determined by CMake)
+#cmakedefine NOTF_LINUX
+#cmakedefine NOTF_WINDOWS
+#cmakedefine NOTF_MACINTOSH
+
 /// Compiler used (as determined by CMake).
 #cmakedefine NOTF_CLANG
 #cmakedefine NOTF_GCC

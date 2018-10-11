@@ -9,13 +9,6 @@
 
 NOTF_OPEN_NAMESPACE
 
-// short unsigned integer names ===================================================================================== //
-
-using uchar = unsigned char;
-using ushort = unsigned short;
-using uint = unsigned int;
-using ulong = unsigned long;
-
 // operations ======================================================================================================= //
 
 /// Variadic min using auto type deduction.

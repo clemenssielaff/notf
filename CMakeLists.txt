@@ -175,6 +175,15 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     set(NOTF_MSVC TRUE)
 endif()
 
+# check operating system (from https://stackoverflow.com/a/40152725)
+if("${WIN32}")
+    set(NOTF_WINDOWS TRUE)
+elseif("${APPLE}")
+    set(NOTF_MACINTOSH TRUE)
+elseif("${UNIX}")
+    set(NOTF_LINUX TRUE)
+endif()
+
 # these variables will be defined in notf/meta/config.hpp
 set(NOTF_VERSION_STRING ${PROJECT_VERSION})
 

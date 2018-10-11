@@ -1,11 +1,17 @@
 #pragma once
 
-#include <type_traits>
 #include <typeinfo>
 
 #include "./config.hpp"
 
 NOTF_OPEN_NAMESPACE
+
+// short unsigned integer names ===================================================================================== //
+
+using uchar = unsigned char;
+using ushort = unsigned short;
+using uint = unsigned int;
+using ulong = unsigned long;
 
 // traits =========================================================================================================== //
 

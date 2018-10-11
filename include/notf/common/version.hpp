@@ -36,6 +36,7 @@ struct Version {
                | static_cast<uint64_t>(m_patch);                                       //
     }
 
+    // fields ------------------------------------------------------------------------------------------------------- //
 private:
     const uint16_t m_major;
     const uint16_t m_minor;
