@@ -80,7 +80,7 @@ auto TestSubscriber<None>()
     return std::make_shared<TestSubscriberNoneImpl>();
 }
 
-template<class T, class Policy>
+template<class T, class Policy = detail::DefaultPublisherPolicy>
 auto TestPublisher()
 {
     struct TestPublisherImpl : public Publisher<T, Policy> {
@@ -105,7 +105,7 @@ auto TestPublisher()
             parent_t::_publish(value);
         }
 
-        bool _subscribe(valid_ptr<SubscriberPtr<T>>& subscriber) final
+        bool _subscribe(SubscriberPtr<T>& subscriber) final
         {
             if (allow_new_subscribers) {
                 return parent_t::_subscribe(subscriber);

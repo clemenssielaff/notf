@@ -3,9 +3,9 @@
 #include <map>
 #include <vector>
 
-#include "notf/meta/real.hpp"
 #include "./tuple.hpp"
 #include "./variant.hpp"
+#include "notf/meta/real.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -13,10 +13,8 @@ NOTF_OPEN_NAMESPACE
 
 class MsgPack {
 
+    NOTF_GRANT_TEST_ACCESS(MsgPack)
     friend struct Accessor<MsgPack, MsgPack>;
-#ifdef NOTF_TEST
-    friend struct Accessor<MsgPack, Tester>;
-#endif
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:

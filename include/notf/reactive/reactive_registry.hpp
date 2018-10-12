@@ -20,13 +20,13 @@ NOTF_OPEN_NAMESPACE
 struct AnyOperatorFactory {
     virtual ~AnyOperatorFactory() = default;
     template<class... Args>
-    std::shared_ptr<AnyOperator> create(Args&&... args) const
+    AnyOperatorPtr create(Args&&... args) const
     {
         return _create({std::forward<Args>(args)...});
     }
 
 private:
-    virtual std::shared_ptr<AnyOperator> _create(std::vector<std::any>&&) const = 0;
+    virtual AnyOperatorPtr _create(std::vector<std::any>&&) const = 0;
 };
 
 template<class Func, class traits = notf::function_traits<Func&>>
@@ -36,8 +36,8 @@ class ReactiveOperatorFactory : public AnyOperatorFactory {
 private:
     using args_tuple = typename traits::args_tuple;
 
-    static_assert(std::is_constructible_v<std::shared_ptr<AnyOperator>, typename traits::return_type>,
-                  "A reactive operator factory must return a type convertible to `std::shared_ptr<AnyOperator>`");
+    static_assert(std::is_constructible_v<AnyOperatorPtr, typename traits::return_type>,
+                  "A reactive operator factory must return a type convertible to `AnyOperatorPtr`");
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
@@ -63,7 +63,7 @@ private:
         (_parse_argument<I, typename traits::template arg_type<I>>(source, target), ...);
     }
 
-    std::shared_ptr<AnyOperator> _create(std::vector<std::any>&& args) const final
+    AnyOperatorPtr _create(std::vector<std::any>&& args) const final
     {
         if (args.size() != traits::arity) {
             NOTF_THROW(value_error, "Reactive operator factory failed. Expected {} argument types, got {}",
@@ -105,9 +105,12 @@ public:
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
-    /// Creates a reactive operator instance from the registry.
-    /// @param name     Name of the operator type.
-    /// @param args     Arguments required to instantiate the operator.
+    /// Creates an untyped reactive operator instance from the registry.
+    /// @param name             Name of the operator type.
+    /// @param args             Arguments required to instantiate the operator.
+    /// @throws out_of_bounds   If the name does not identify an operator type.
+    /// @throws value_error     If any of the arguments do not match the expected type.
+    /// @returns                Untyped reactive operator.
     template<class... Args>
     static auto create(const std::string& name, Args&&... args)
     {
@@ -118,6 +121,25 @@ public:
         }
         return itr->second->create(std::forward<Args>(args)...);
     }
+
+    /// Creates a correctly typed reactive operator instance from the registry.
+    /// @param name             Name of the operator type.
+    /// @param args             Arguments required to instantiate the operator.
+    /// @throws value_error     If any of the arguments do not match the expected type.
+    /// @returns                Correctly typed reactive operator or empty on any failure (wrong name or wrong types).
+    template<class I, class O = I, class Policy = detail::DefaultPublisherPolicy, class... Args>
+    static std::shared_ptr<Operator<I, O, Policy>> create(const std::string& name, Args&&... args)
+    {
+        auto& registry = _get_registry();
+        auto itr = registry.find(name);
+        if (itr == registry.end()) { return {}; }
+        return std::dynamic_pointer_cast<Operator<I, O, Policy>>(itr->second->create(std::forward<Args>(args)...));
+    }
+
+    /// Checks if the registry knows of an operator type with the given name.
+    /// @param name Name of the operator type.
+    /// @returns    True, iff the name identifies an operator type.
+    static bool has_operator(const std::string& name) { return _get_registry().count(name) == 1; }
 
 private:
     /// Encapsulates a static registry in order to properly initialize it on application start up.

@@ -9,8 +9,8 @@ NOTF_OPEN_NAMESPACE
 
 template<class T>
 struct is_pipeline : std::false_type {};
-template<class First, class Last>
-struct is_pipeline<Pipeline<First, Last>> : std::true_type {};
+template<class Last>
+struct is_pipeline<Pipeline<Last>> : is_subscriber<Last> {};
 
 /// constexpr boolean that is true only if T is a Pipeline
 template<class T>
@@ -78,14 +78,16 @@ struct TogglePipelineOperator : public Operator<T, T, Policy>, PipelineToggle {
 
 // pipeline ========================================================================================================= //
 
-template<class FirstOperator, class LastOperator>
+/// A Pipeline connects a single upstream operator with a single downstream operator over 1-n relay operators in
+/// between. Every Pipeline has a "toggle" operator (as first or second operator) that it uses to enable and disable the
+/// entire Pipeline.
+template<class LastOperator>
 class Pipeline {
+
+    NOTF_GRANT_TEST_ACCESS(Pipeline)
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    /// Type of the first Operator in the Pipeline.
-    using first_t = FirstOperator;
-
     /// Type of the last Operator in the Pipeline.
     using last_t = LastOperator;
 
@@ -96,48 +98,15 @@ private:
     /// All Operators in the Pipeline (except the last), as untyped reactive operators.
     using Operators = std::vector<std::shared_ptr<AnyPublisher>>;
 
-    /// This Pipeline type.
-    using this_t = Pipeline<FirstOperator, LastOperator>;
-
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
-    /// @param first        First Operator in the Pipeline.
-    /// @param last         Last Operator in the Pipeline, determines what types can be connected downstream.
     /// @param toggle       Special operator used to en/disable the Pipeline.
+    /// @param last         Last Operator in the Pipeline, determines what types can be connected downstream.
     /// @param operators    All Operators in the Pipeline in between the first and last.
-    Pipeline(FirstOperator first, LastOperator last, Toggle&& toggle, Operators&& operators = {})
-        : m_first(std::forward<FirstOperator>(first))
-        , m_last(std::forward<LastOperator>(last))
-        , m_toggle(std::move(toggle))
-        , m_operators(std::move(operators))
+    Pipeline(Toggle&& toggle, LastOperator last, Operators&& operators = {})
+        : m_toggle(std::move(toggle)), m_last(std::forward<LastOperator>(last)), m_operators(std::move(operators))
     {}
-
-    /// Access to the first Operator in the Pipeline.
-    /// Useful if the first Operator was an r-value that is now owned by the Pipeline.
-    FirstOperator& get_first_operator() { return m_first; }
-
-    /// Access to the last Operator in the Pipeline.
-    /// Useful if the last Operator was an r-value that is now owned by the Pipeline.
-    LastOperator& get_last_operator() { return m_last; }
-
-    size_t get_operator_count()
-    {
-        size_t result = m_operators.size() + 1;
-        if constexpr (std::is_convertible_v<FirstOperator, Toggle>) {
-            if (m_first && m_first != m_toggle) { ++result; }
-        }
-        else {
-            ++result;
-        }
-        if constexpr (std::is_convertible_v<LastOperator, Toggle>) {
-            if (m_last && m_last != m_toggle) { ++result; }
-        }
-        else {
-            ++result;
-        }
-        return result;
-    }
 
     /// Explicitly enable/disable the Pipeline.
     void setEnabled(const bool is_enabled) { m_toggle->setEnabled(is_enabled); }
@@ -148,39 +117,26 @@ public:
     /// Disable the Pipeline.
     void disable() { setEnabled(false); }
 
-    /// 1)
-    /// Connect a Pipeline to an l-value Subscriber.
-    template<class S>
-    std::enable_if_t<all(is_subscriber_v<S>, detail::is_reactive_compatible_v<this_t, S>), this_t&>
-    operator|(S& subscriber)
-    {
-        m_last->subscribe(subscriber);
-        return *this;
-    }
-
-    /// 2)
-    /// Connect a Pipeline to an r-value Subscriber.
-    template<class S>
-    std::enable_if_t<all(is_subscriber_v<S>, detail::is_reactive_compatible_v<this_t, S>), Pipeline<first_t, S>>
-    operator|(S&& subscriber)
+    /// Connect a Pipeline to a Subscriber downstream.
+    /// @param subscriber   Subscriber downstream to attach to this Pipeline
+    /// @returns            New Pipeline object with the new subscriber as "last" operator.
+    template<class Sub, class S = std::decay_t<Sub>>
+    std::enable_if_t<all(is_subscriber_v<S>, detail::is_reactive_compatible_v<Pipeline<last_t>, S>), Pipeline<S>>
+    operator|(Sub&& subscriber)
     {
         m_last->subscribe(subscriber);
         m_operators.emplace_back(std::move(m_last));
-        return Pipeline<first_t, S>(std::move(m_first), std::forward<S>(subscriber), std::move(m_toggle),
-                                    std::move(m_operators));
+        return Pipeline<S>(std::move(m_toggle), std::forward<Sub>(subscriber), std::move(m_operators));
     }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
-    /// First Operator in the Pipeline.
-    FirstOperator m_first;
-
-    /// Last Operator in the Pipeline, defines the type of the Pipeline for the purposes of further connection.
-    LastOperator m_last;
-
     /// Special operator used to en/disable the Pipeline.
     /// Can also be the first and/or last.
     Toggle m_toggle;
+
+    /// Last Operator in the Pipeline, defines the type of the Pipeline for the purposes of further connection.
+    LastOperator m_last;
 
     /// All Operators in the Pipeline between the first and the last, as untyped reactive operators.
     Operators m_operators;
@@ -188,61 +144,20 @@ private:
 
 // pipeline pipe operator(s) ======================================================================================== //
 
-/// 3)
-/// Connect an l-value Publisher to an l-value Subscriber
-template<class P, class S,
-         class Operator = std::shared_ptr<detail::TogglePipelineOperator<typename P::element_type::output_t>>>
-std::enable_if_t<all(is_publisher_v<P>, detail::is_reactive_compatible_v<P, S>), Pipeline<Operator, Operator>>
-operator|(P& publisher, S& subscriber)
+/// Connect a Publisher to a Subscriber
+template<class Pub, class Sub, class P = std::decay_t<Pub>, class S = std::decay_t<Sub>>
+std::enable_if_t<all(is_publisher_v<P>, detail::is_reactive_compatible_v<P, S>), Pipeline<S>>
+operator|(Pub&& publisher, Sub&& subscriber)
 {
-    using input_t = typename P::element_type::output_t;
-    auto op = std::make_shared<detail::TogglePipelineOperator<input_t>>();
-    publisher->subscribe(op);
-    op->subscribe(subscriber);
-    return Pipeline(op, op, std::move(op));
-}
-
-/// 4)
-/// Connect an l-value Publisher to an r-value Subscriber
-template<class P, class S,
-         class Operator = std::shared_ptr<detail::TogglePipelineOperator<typename P::element_type::output_t>>>
-std::enable_if_t<all(is_publisher_v<P>, is_subscriber_v<S>, detail::is_reactive_compatible_v<P, S>),
-                 Pipeline<Operator, S>>
-operator|(P& publisher, S&& subscriber)
-{
-    using input_t = typename P::element_type::output_t;
-    auto op = std::make_shared<detail::TogglePipelineOperator<input_t>>();
-    publisher->subscribe(op);
-    op->subscribe(subscriber);
-    return Pipeline(op, std::forward<S>(subscriber), std::move(op));
-}
-
-/// 5)
-/// Connect an r-value Publisher to an l-value Subscriber
-template<class P, class S,
-         class Operator = std::shared_ptr<detail::TogglePipelineOperator<typename P::element_type::output_t>>>
-std::enable_if_t<all(is_publisher_v<P>, detail::is_reactive_compatible_v<P, S>), Pipeline<P, Operator>>
-operator|(P&& publisher, S& subscriber)
-{
-    using input_t = typename P::element_type::output_t;
-    auto op = std::make_shared<detail::TogglePipelineOperator<input_t>>();
-    publisher->subscribe(op);
-    op->subscribe(subscriber);
-    return Pipeline(std::forward<P>(publisher), op, std::move(op));
-}
-
-/// 6)
-/// Connect an r-value Publisher to an r-value Subscriber
-template<class P, class S,
-         class Operator = std::shared_ptr<detail::TogglePipelineOperator<typename P::element_type::output_t>>>
-std::enable_if_t<all(is_publisher_v<P>, is_subscriber_v<S>, detail::is_reactive_compatible_v<P, S>), Pipeline<P, S>>
-operator|(P&& publisher, S&& subscriber)
-{
-    using input_t = typename P::element_type::output_t;
-    auto op = std::make_shared<detail::TogglePipelineOperator<input_t>>();
-    publisher->subscribe(op);
-    op->subscribe(subscriber);
-    return Pipeline(std::forward<P>(publisher), std::forward<S>(subscriber), std::move(op));
+    auto toggle = std::make_shared<detail::TogglePipelineOperator<typename P::element_type::output_t>>();
+    publisher->subscribe(toggle);
+    toggle->subscribe(subscriber);
+    if constexpr (std::is_lvalue_reference_v<Pub>) {
+        return Pipeline<S>(std::move(toggle), std::forward<Sub>(subscriber));
+    }
+    else {
+        return Pipeline<S>(std::move(toggle), std::forward<Sub>(subscriber), {std::forward<Pub>(publisher)});
+    }
 }
 
 NOTF_CLOSE_NAMESPACE

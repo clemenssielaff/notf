@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "notf/meta/pointer.hpp"
 #include "./reactive.hpp"
+#include "notf/meta/pointer.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -25,9 +25,7 @@ public:
     template<class Lambda>
     void on_each(Lambda&& lambda)
     {
-        if (auto subscriber = m_subscriber.lock(); subscriber) {
-            lambda(subscriber.get());
-        }
+        if (auto subscriber = m_subscriber.lock(); subscriber) { lambda(subscriber.get()); }
         else {
             m_subscriber.reset();
         }
@@ -95,9 +93,7 @@ public:
         for (size_t i = 0, end = m_subscribers.size(); i < end;) {
             // test if the subscriber is already subscribed
             if (auto existing = m_subscribers[i].lock(); existing) {
-                if (subscriber == existing) {
-                    return false;
-                }
+                if (subscriber == existing) { return false; }
                 ++i;
             }
 
@@ -223,8 +219,14 @@ public:
     /// @param subscriber   New Subscriber.
     /// @returns            True iff the Subscriber was added, false if it was rejected.
     /// @throws notf:logic_error    If the Publisher can only have a single Subscriber.
-    bool subscribe(valid_ptr<SubscriberPtr<T>> subscriber)
+    template<class S>
+    bool subscribe(S&& untyped_subscriber)
     {
+        SubscriberPtr<T> subscriber = std::dynamic_pointer_cast<Subscriber<T>>(std::forward<S>(untyped_subscriber));
+        if (!subscriber) {
+            return false; // type of subscriber does not match this publisher's
+        }
+
         // call complete if the Publisher has already completed (even if through an error, that doesn't matter here)
         if (is_completed()) {
             subscriber->on_complete(this);
@@ -232,9 +234,7 @@ public:
         }
 
         // give subclasses a veto
-        if (!_subscribe(subscriber)) {
-            return false;
-        }
+        if (!_subscribe(subscriber)) { return false; }
 
         // let the Subscriber policy handle the newcomer
         return m_subscribers.add(std::move(subscriber));
@@ -259,7 +259,7 @@ protected:
     /// Called when a new Subscriber is about to be subscribed to this Publisher.
     /// @param subscriber   Subscriber about to be subscribed.
     /// @returns            True to go ahead, false if the Subscriber should not be added to the list of subscribers.
-    virtual bool _subscribe(valid_ptr<SubscriberPtr<T>>& /*subscriber*/)
+    virtual bool _subscribe(SubscriberPtr<T>& /*subscriber*/)
     {
         NOTF_ASSERT(!this->is_completed());
         return true;
@@ -289,9 +289,7 @@ public:
     /// @param value    Value to propagate to all Subscribers.
     void publish(const T& value)
     {
-        if (!this->is_completed()) {
-            _publish(value);
-        }
+        if (!this->is_completed()) { _publish(value); }
     }
 
 protected:
@@ -314,9 +312,7 @@ public:
     /// Propagates the call to all attached Subscribers.
     void publish()
     {
-        if (!this->is_completed()) {
-            _publish();
-        }
+        if (!this->is_completed()) { _publish(); }
     }
 
 protected:

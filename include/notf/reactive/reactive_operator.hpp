@@ -36,7 +36,7 @@ public:
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Subscriber "next" operation, forwards to the Producer's "publish" operation by default.
-    void on_next(const AnyPublisher* /*publisher*/, const O& value) override { this->publish(value); }
+    void on_next(const AnyPublisher* /*publisher*/, const I& value) override { this->publish(value); }
 
     /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
     void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override

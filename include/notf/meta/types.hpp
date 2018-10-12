@@ -193,6 +193,9 @@ struct Accessor {};
 /// Structure that can be used to grant access to a "Tester" class, that only exist when the tests are built.
 #ifdef NOTF_TEST
 struct Tester {};
+#define NOTF_GRANT_TEST_ACCESS(X) friend struct Accessor<X, Tester>;
+#else
+#define NOTF_GRANT_TEST_ACCESS(X)
 #endif
 
 // ================================================================================================================== //
