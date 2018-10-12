@@ -2,28 +2,29 @@
 
 # add test files
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
+    common/test_msgpack.cpp
+    common/test_string_view.cpp
+    common/test_uuid.cpp
     common/test_vector.cpp
     common/test_version.cpp
-    common/test_string_view.cpp
-    common/test_msgpack.cpp
-    common/test_uuid.cpp
 
     meta/test_assert.cpp
     meta/test_debug.cpp
     meta/test_exception.cpp
     meta/test_hash.cpp
     meta/test_numeric.cpp
+    meta/test_pointer.cpp
     meta/test_real.cpp
+    meta/test_stringtype.cpp
     meta/test_time.cpp
     meta/test_typename.cpp
-    meta/test_pointer.cpp
-    meta/test_stringtype.cpp
 
-    reactive/test_reactive.hpp
     reactive/test_operators.cpp
     reactive/test_pipeline.cpp
-    reactive/test_relay.cpp
     reactive/test_publisher.cpp
+    reactive/test_reactive.hpp
+    reactive/test_reactive_operator.cpp
+    reactive/test_reactive_registry.cpp
     reactive/test_subscriber.cpp
 )
 

@@ -140,6 +140,8 @@ using is_one_of = std::disjunction<std::is_same<T, Ts>...>;
 /// Compile-time check whether two types are both signed / both unsigned.
 template<class T, class U>
 struct is_same_signedness : public std::integral_constant<bool, std::is_signed_v<T> == std::is_signed_v<U>> {};
+template<class T, class U>
+using is_same_signedness_v = typename is_same_signedness<T, U>::value;
 
 /// Is only a valid expression if the given type exists.
 /// Can be used to check whether a template type has a certain nested type:

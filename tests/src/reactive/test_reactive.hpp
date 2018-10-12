@@ -9,7 +9,7 @@ template<class T = int>
 auto DefaultSubscriber()
 {
     struct DefaultSubscriberImpl : Subscriber<T> {
-        void on_next(const UntypedPublisher*, const T&) final {}
+        void on_next(const AnyPublisher*, const T&) final {}
     };
     return std::make_shared<DefaultSubscriberImpl>();
 }
@@ -21,9 +21,9 @@ auto DefaultPublisher()
 }
 
 template<class I = int, class O = I>
-auto DefaultRelay()
+auto DefaultOperator()
 {
-    return std::make_shared<Relay<I, O, detail::SinglePublisherPolicy>>();
+    return std::make_shared<Operator<I, O, detail::SinglePublisherPolicy>>();
 }
 
 template<class T = int>
@@ -31,9 +31,9 @@ auto TestSubscriber()
 {
     struct TestSubscriberTImpl : public Subscriber<T> {
 
-        void on_next(const UntypedPublisher*, const int& value) final { values.emplace_back(value); }
+        void on_next(const AnyPublisher*, const int& value) final { values.emplace_back(value); }
 
-        void on_error(const UntypedPublisher*, const std::exception& error) final
+        void on_error(const AnyPublisher*, const std::exception& error) final
         {
             try {
                 throw error;
@@ -43,7 +43,7 @@ auto TestSubscriber()
             };
         }
 
-        void on_complete(const UntypedPublisher*) final { is_completed = true; }
+        void on_complete(const AnyPublisher*) final { is_completed = true; }
 
         std::vector<T> values;
         std::exception_ptr exception;
@@ -58,9 +58,9 @@ auto TestSubscriber<None>()
 {
     struct TestSubscriberNoneImpl : public Subscriber<None> {
 
-        void on_next(const UntypedPublisher*) final { ++counter; }
+        void on_next(const AnyPublisher*) final { ++counter; }
 
-        void on_error(const UntypedPublisher*, const std::exception& error) final
+        void on_error(const AnyPublisher*, const std::exception& error) final
         {
             try {
                 throw error;
@@ -70,7 +70,7 @@ auto TestSubscriber<None>()
             };
         }
 
-        void on_complete(const UntypedPublisher*) final { is_completed = true; }
+        void on_complete(const AnyPublisher*) final { is_completed = true; }
 
         size_t counter;
         std::exception_ptr exception;

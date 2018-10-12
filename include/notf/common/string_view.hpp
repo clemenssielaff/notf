@@ -2,7 +2,7 @@
 
 #include <string_view>
 
-#include "../meta/hash.hpp"
+#include "notf/meta/hash.hpp"
 #include "./common.hpp"
 
 NOTF_OPEN_NAMESPACE

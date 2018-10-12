@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "../meta/macros.hpp"
+#include "notf/meta/macros.hpp"
 
 NOTF_OPEN_NAMESPACE
 

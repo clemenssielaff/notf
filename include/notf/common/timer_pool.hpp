@@ -2,10 +2,10 @@
 
 #include <forward_list>
 
-#include "../meta/numeric.hpp"
-#include "../meta/pointer.hpp"
-#include "../meta/smart_factories.hpp"
-#include "../meta/time.hpp"
+#include "notf/meta/numeric.hpp"
+#include "notf/meta/pointer.hpp"
+#include "notf/meta/smart_factories.hpp"
+#include "notf/meta/time.hpp"
 #include "./common.hpp"
 #include "./mutex.hpp"
 #include "./thread.hpp"

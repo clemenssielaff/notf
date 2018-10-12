@@ -6,13 +6,13 @@ NOTF_USING_NAMESPACE;
 
 // test cases ======================================================================================================= //
 
-SCENARIO("basic relay<T -> T> functions", "[reactive][relay]")
+SCENARIO("basic operator<T -> T> functions", "[reactive][operator]")
 {
     auto publisher = DefaultPublisher();
-    auto relay = DefaultRelay();
+    auto op = DefaultOperator();
     auto subscriber = TestSubscriber();
-    publisher->subscribe(relay);
-    relay->subscribe(subscriber);
+    publisher->subscribe(op);
+    op->subscribe(subscriber);
 
     SECTION("on_next")
     {
@@ -49,13 +49,13 @@ SCENARIO("basic relay<T -> T> functions", "[reactive][relay]")
     }
 }
 
-SCENARIO("basic relay<None -> None> functions", "[reactive][relay]")
+SCENARIO("basic operator<None -> None> functions", "[reactive][operator]")
 {
     auto publisher = DefaultPublisher<None>();
-    auto relay = DefaultRelay<None>();
+    auto op = DefaultOperator<None>();
     auto subscriber = TestSubscriber<None>();
-    publisher->subscribe(relay);
-    relay->subscribe(subscriber);
+    publisher->subscribe(op);
+    op->subscribe(subscriber);
 
     SECTION("on_next")
     {
@@ -89,13 +89,13 @@ SCENARIO("basic relay<None -> None> functions", "[reactive][relay]")
     }
 }
 
-SCENARIO("basic relay<T -> None> functions", "[reactive][relay]")
+SCENARIO("basic operator<T -> None> functions", "[reactive][operator]")
 {
     auto publisher = DefaultPublisher<int>();
-    auto relay = DefaultRelay<int, None>();
+    auto op = DefaultOperator<int, None>();
     auto subscriber = TestSubscriber<None>();
-    publisher->subscribe(relay);
-    relay->subscribe(subscriber);
+    publisher->subscribe(op);
+    op->subscribe(subscriber);
 
     SECTION("on_next")
     {

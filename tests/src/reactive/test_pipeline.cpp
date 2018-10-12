@@ -122,7 +122,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         decltype(DefaultPublisher()) publisher;
 
         {
-            auto pipeline = DefaultPublisher() | DefaultRelay() | DefaultRelay() | subscriber;
+            auto pipeline = DefaultPublisher() | DefaultOperator() | DefaultOperator() | subscriber;
             REQUIRE(pipeline.get_operator_count() == 4);
             publisher = pipeline.get_first_operator();
 
@@ -149,7 +149,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         decltype(TestSubscriber()) subscriber;
 
         {
-            auto pipeline = publisher | DefaultRelay() | DefaultRelay() | TestSubscriber();
+            auto pipeline = publisher | DefaultOperator() | DefaultOperator() | TestSubscriber();
             REQUIRE(pipeline.get_operator_count() == 4);
             subscriber = pipeline.get_last_operator();
 

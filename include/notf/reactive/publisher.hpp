@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "../meta/pointer.hpp"
+#include "notf/meta/pointer.hpp"
 #include "./reactive.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -132,15 +132,15 @@ private:
 
 /// Base class for all Publishers.
 /// Is only used for identification purposes.
-struct UntypedPublisher {
+struct AnyPublisher {
 
-    NOTF_NO_COPY_OR_ASSIGN(UntypedPublisher);
+    NOTF_NO_COPY_OR_ASSIGN(AnyPublisher);
 
     /// Default constructor.
-    UntypedPublisher() = default;
+    AnyPublisher() = default;
 
     /// Virtual destructor.
-    virtual ~UntypedPublisher() = default;
+    virtual ~AnyPublisher() = default;
 };
 
 // typed publisher ================================================================================================== //
@@ -149,7 +149,7 @@ namespace detail {
 
 /// Base template for a Type, both data and non-data publishing Publishers derive from it.
 template<class T, class Policy>
-class TypedPublisher : public notf::UntypedPublisher {
+class TypedPublisher : public notf::AnyPublisher {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -332,7 +332,7 @@ protected:
 
 namespace detail {
 
-using ::notf::UntypedPublisher;
+using ::notf::AnyPublisher;
 
 struct SinglePublisherPolicy {
     template<class T>

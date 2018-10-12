@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../meta/debug.hpp"
-#include "../meta/macros.hpp"
+#include "notf/meta/debug.hpp"
+#include "notf/meta/macros.hpp"
 
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"

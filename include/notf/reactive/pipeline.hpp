@@ -1,8 +1,7 @@
 #pragma once
 
-#include "../meta/pointer.hpp"
-#include "./relay.hpp"
-#include "./subscriber.hpp"
+#include "./reactive_operator.hpp"
+#include "notf/meta/pointer.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -66,14 +65,12 @@ protected:
 /// Is used to enable or disable the complete Pipeline and is always at the front, so no Operators within the Pipeline
 /// are exucuted, when it is disabled.
 template<class T, class Policy = SinglePublisherPolicy>
-struct TogglePipelineOperator : public Relay<T, T, Policy>, PipelineToggle {
+struct TogglePipelineOperator : public Operator<T, T, Policy>, PipelineToggle {
 
     /// Propagate the next value if the Pipeline is enabled.
-    void on_next(const UntypedPublisher*, const T& value) final
+    void on_next(const AnyPublisher*, const T& value) final
     {
-        if (m_is_enabled) {
-            this->publish(value);
-        }
+        if (m_is_enabled) { this->publish(value); }
     }
 };
 
@@ -97,7 +94,7 @@ private:
     using Toggle = std::shared_ptr<detail::PipelineToggle>;
 
     /// All Operators in the Pipeline (except the last), as untyped reactive operators.
-    using Operators = std::vector<std::shared_ptr<UntypedPublisher>>;
+    using Operators = std::vector<std::shared_ptr<AnyPublisher>>;
 
     /// This Pipeline type.
     using this_t = Pipeline<FirstOperator, LastOperator>;
@@ -128,17 +125,13 @@ public:
     {
         size_t result = m_operators.size() + 1;
         if constexpr (std::is_convertible_v<FirstOperator, Toggle>) {
-            if (m_first && m_first != m_toggle) {
-                ++result;
-            }
+            if (m_first && m_first != m_toggle) { ++result; }
         }
         else {
             ++result;
         }
         if constexpr (std::is_convertible_v<LastOperator, Toggle>) {
-            if (m_last && m_last != m_toggle) {
-                ++result;
-            }
+            if (m_last && m_last != m_toggle) { ++result; }
         }
         else {
             ++result;
@@ -198,57 +191,58 @@ private:
 /// 3)
 /// Connect an l-value Publisher to an l-value Subscriber
 template<class P, class S,
-         class Relay = std::shared_ptr<detail::TogglePipelineOperator<typename P::element_type::output_t>>>
-std::enable_if_t<all(is_publisher_v<P>, detail::is_reactive_compatible_v<P, S>), Pipeline<Relay, Relay>>
+         class Operator = std::shared_ptr<detail::TogglePipelineOperator<typename P::element_type::output_t>>>
+std::enable_if_t<all(is_publisher_v<P>, detail::is_reactive_compatible_v<P, S>), Pipeline<Operator, Operator>>
 operator|(P& publisher, S& subscriber)
 {
     using input_t = typename P::element_type::output_t;
-    auto relay = std::make_shared<detail::TogglePipelineOperator<input_t>>();
-    publisher->subscribe(relay);
-    relay->subscribe(subscriber);
-    return Pipeline(relay, relay, std::move(relay));
+    auto op = std::make_shared<detail::TogglePipelineOperator<input_t>>();
+    publisher->subscribe(op);
+    op->subscribe(subscriber);
+    return Pipeline(op, op, std::move(op));
 }
 
 /// 4)
 /// Connect an l-value Publisher to an r-value Subscriber
 template<class P, class S,
-         class Relay = std::shared_ptr<detail::TogglePipelineOperator<typename P::element_type::output_t>>>
-std::enable_if_t<all(is_publisher_v<P>, is_subscriber_v<S>, detail::is_reactive_compatible_v<P, S>), Pipeline<Relay, S>>
+         class Operator = std::shared_ptr<detail::TogglePipelineOperator<typename P::element_type::output_t>>>
+std::enable_if_t<all(is_publisher_v<P>, is_subscriber_v<S>, detail::is_reactive_compatible_v<P, S>),
+                 Pipeline<Operator, S>>
 operator|(P& publisher, S&& subscriber)
 {
     using input_t = typename P::element_type::output_t;
-    auto relay = std::make_shared<detail::TogglePipelineOperator<input_t>>();
-    publisher->subscribe(relay);
-    relay->subscribe(subscriber);
-    return Pipeline(relay, std::forward<S>(subscriber), std::move(relay));
+    auto op = std::make_shared<detail::TogglePipelineOperator<input_t>>();
+    publisher->subscribe(op);
+    op->subscribe(subscriber);
+    return Pipeline(op, std::forward<S>(subscriber), std::move(op));
 }
 
 /// 5)
 /// Connect an r-value Publisher to an l-value Subscriber
 template<class P, class S,
-         class Relay = std::shared_ptr<detail::TogglePipelineOperator<typename P::element_type::output_t>>>
-std::enable_if_t<all(is_publisher_v<P>, detail::is_reactive_compatible_v<P, S>), Pipeline<P, Relay>>
+         class Operator = std::shared_ptr<detail::TogglePipelineOperator<typename P::element_type::output_t>>>
+std::enable_if_t<all(is_publisher_v<P>, detail::is_reactive_compatible_v<P, S>), Pipeline<P, Operator>>
 operator|(P&& publisher, S& subscriber)
 {
     using input_t = typename P::element_type::output_t;
-    auto relay = std::make_shared<detail::TogglePipelineOperator<input_t>>();
-    publisher->subscribe(relay);
-    relay->subscribe(subscriber);
-    return Pipeline(std::forward<P>(publisher), relay, std::move(relay));
+    auto op = std::make_shared<detail::TogglePipelineOperator<input_t>>();
+    publisher->subscribe(op);
+    op->subscribe(subscriber);
+    return Pipeline(std::forward<P>(publisher), op, std::move(op));
 }
 
 /// 6)
 /// Connect an r-value Publisher to an r-value Subscriber
 template<class P, class S,
-         class Relay = std::shared_ptr<detail::TogglePipelineOperator<typename P::element_type::output_t>>>
+         class Operator = std::shared_ptr<detail::TogglePipelineOperator<typename P::element_type::output_t>>>
 std::enable_if_t<all(is_publisher_v<P>, is_subscriber_v<S>, detail::is_reactive_compatible_v<P, S>), Pipeline<P, S>>
 operator|(P&& publisher, S&& subscriber)
 {
     using input_t = typename P::element_type::output_t;
-    auto relay = std::make_shared<detail::TogglePipelineOperator<input_t>>();
-    publisher->subscribe(relay);
-    relay->subscribe(subscriber);
-    return Pipeline(std::forward<P>(publisher), std::forward<S>(subscriber), std::move(relay));
+    auto op = std::make_shared<detail::TogglePipelineOperator<input_t>>();
+    publisher->subscribe(op);
+    op->subscribe(subscriber);
+    return Pipeline(std::forward<P>(publisher), std::forward<S>(subscriber), std::move(op));
 }
 
 NOTF_CLOSE_NAMESPACE

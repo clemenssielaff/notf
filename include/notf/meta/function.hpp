@@ -36,11 +36,11 @@ public:
     using return_type = typename impl_t::return_type;
 
     /// Tuple corresponding to the argument types of the function.
-    using arg_tuple = typename impl_t::arg_tuple;
+    using args_tuple = typename impl_t::args_tuple;
 
     /// Single argument type by index.
     template<size_t I>
-    using arg_type = std::tuple_element_t<I, arg_tuple>;
+    using arg_type = std::tuple_element_t<I, args_tuple>;
 
     /// How many arguments the function expects.
     static constexpr auto arity = impl_t::arity;
@@ -56,7 +56,7 @@ public:
     template<size_t index, class T>
     static constexpr bool has_arg_type() noexcept
     {
-        return std::is_same_v<T, std::tuple_element_t<index, arg_tuple>>;
+        return std::is_same_v<T, std::tuple_element_t<index, args_tuple>>;
     }
 
     template<class Other, class Indices = std::make_index_sequence<arity>>
@@ -83,20 +83,20 @@ private:
 template<class class_t, class return_t, class... Args>
 struct function_traits<return_t (class_t::*)(Args...) const> { // implementation for class methods
     using return_type = return_t;
-    using arg_tuple = std::tuple<Args...>;
+    using args_tuple = std::tuple<Args...>;
     static constexpr auto arity = sizeof...(Args);
 
     template<size_t I>
-    using arg_type = std::tuple_element_t<I, arg_tuple>;
+    using arg_type = std::tuple_element_t<I, args_tuple>;
 };
 template<class return_t, class... Args>
 struct function_traits<return_t (&)(Args...)> { // implementation for free functions
     using return_type = return_t;
-    using arg_tuple = std::tuple<Args...>;
+    using args_tuple = std::tuple<Args...>;
     static constexpr auto arity = sizeof...(Args);
 
     template<size_t I>
-    using arg_type = std::tuple_element_t<I, arg_tuple>;
+    using arg_type = std::tuple_element_t<I, args_tuple>;
 };
 
 NOTF_CLOSE_NAMESPACE

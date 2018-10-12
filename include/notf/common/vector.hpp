@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <vector>
 
-#include "../meta/exception.hpp"
+#include "notf/meta/exception.hpp"
 #include "./common.hpp"
 
 NOTF_OPEN_NAMESPACE

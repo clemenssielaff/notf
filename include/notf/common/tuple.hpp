@@ -2,7 +2,7 @@
 
 #include <tuple>
 
-#include "../meta/types.hpp"
+#include "notf/meta/types.hpp"
 
 NOTF_OPEN_NAMESPACE
 

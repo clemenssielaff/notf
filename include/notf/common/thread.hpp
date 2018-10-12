@@ -2,8 +2,8 @@
 
 #include <thread>
 
-#include "../meta/exception.hpp"
-#include "../meta/macros.hpp"
+#include "notf/meta/exception.hpp"
+#include "notf/meta/macros.hpp"
 
 NOTF_OPEN_NAMESPACE
 
