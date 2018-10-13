@@ -45,6 +45,12 @@ SCENARIO("basic subscriber<T> functions", "[reactive][subscriber]")
         REQUIRE(subscriber->is_completed == true);
         REQUIRE(subscriber->exception == nullptr);
     }
+
+    SECTION("publisher identifier") // for coverage
+    {
+        REQUIRE(!detail::SubscriberIdentifier::test<decltype(DefaultPublisher())>());
+        REQUIRE(detail::SubscriberIdentifier::test<decltype(TestSubscriber())>());
+    }
 }
 
 SCENARIO("default subscriber<T>", "[reactive][subscriber]")

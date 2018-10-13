@@ -41,7 +41,7 @@ SCENARIO("basic publisher<T> functions", "[reactive][publisher]")
         REQUIRE(publisher->get_subscriber_count() == 0);
 
         publisher->subscribe(subscriber);
-        REQUIRE(publisher->get_subscriber_count() ==  0);
+        REQUIRE(publisher->get_subscriber_count() == 0);
     }
 
     SECTION("multi subscriber")
@@ -104,7 +104,7 @@ SCENARIO("basic publisher<T> functions", "[reactive][publisher]")
         REQUIRE(publisher->is_failed());
     }
 
-    SECTION("multi subscriber  ailure")
+    SECTION("multi subscriber failure")
     {
         auto publisher = TestPublisher<int, detail::MultiPublisherPolicy>();
         auto subscriber = TestSubscriber();
@@ -113,5 +113,18 @@ SCENARIO("basic publisher<T> functions", "[reactive][publisher]")
         REQUIRE(!publisher->is_failed());
         publisher->error(std::logic_error(""));
         REQUIRE(publisher->is_failed());
+    }
+
+    SECTION("fail to subscribe a subscriber of the wrong type")
+    {
+        auto publisher = TestPublisher();
+        auto subscriber = TestSubscriber<std::string>();
+        REQUIRE(!publisher->subscribe(std::static_pointer_cast<AnySubscriber>(subscriber)));
+    }
+
+    SECTION("publisher identifier") // for coverage
+    {
+        REQUIRE(detail::PublisherIdentifier::test<decltype(TestPublisher())>());
+        REQUIRE(!detail::PublisherIdentifier::test<decltype(TestSubscriber())>());
     }
 }

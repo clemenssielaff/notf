@@ -175,24 +175,17 @@ public:
     {
         // AnyOperators have to be cast to AnySubscribers before we can make use of them
         auto subscriber = [&]() {
-            if constexpr (std::is_same_v<S, AnyOperatorPtr>) {
-                auto subscriber = std::dynamic_pointer_cast<AnySubscriber>(std::forward<Sub>(rhs));
-                NOTF_ASSERT(subscriber);
-                return subscriber;
-            }
+            if constexpr (std::is_same_v<S, AnyOperatorPtr>) { return std::dynamic_pointer_cast<AnySubscriber>(rhs); }
             else {
                 return rhs; // creates a copy
             }
         }();
+        if (!subscriber) { NOTF_THROW(PipelineError, "Cannot connect an empty operator to a pipeline"); }
 
         // if the pipeline is untyped, we have to first make sure that its last element can act as a publisher
         if constexpr (is_one_of_v<last_t, AnyOperatorPtr, AnySubscriberPtr>) {
             auto publisher = std::dynamic_pointer_cast<AnyPublisher>(m_last);
-            if (!publisher) {
-                NOTF_THROW(PipelineError,
-                           "Cannot connect to a pipeline whose last element is not a publisher but a \"{}\"",
-                           type_name<typename last_t::element_type>());
-            }
+            NOTF_ASSERT(publisher); // there should be no way this fails if the SFINAE magic works
             publisher->subscribe(std::move(subscriber));
 
             // even though every operator should be a subscriber, we have to dynamically cast them
@@ -236,6 +229,8 @@ private:
 template<class Pub, class Sub, class P = std::decay_t<Pub>, class S = std::decay_t<Sub>>
 std::enable_if_t<detail::is_reactive_compatible_v<P, S>, Pipeline<S>> operator|(Pub&& publisher, Sub&& subscriber)
 {
+    if (!publisher || !subscriber) { NOTF_THROW(PipelineError, "Cannot connect a nullptr to a pipeline"); }
+
     // this always succeeds, as we create the toggle specifically for the given publisher
     using pipe_t = typename P::element_type::output_t;
     auto toggle = std::make_shared<detail::TogglePipelineOperator<pipe_t>>();

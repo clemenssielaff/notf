@@ -1,6 +1,7 @@
 #include "catch2/catch.hpp"
 
 #include "./test_reactive.hpp"
+#include "notf/reactive/reactive_registry.hpp"
 
 NOTF_USING_NAMESPACE;
 
@@ -237,6 +238,82 @@ SCENARIO("pipeline", "[reactive][pipeline]")
             REQUIRE(subscriber->values[1] == 3);
             REQUIRE(subscriber->exception == nullptr);
             REQUIRE(subscriber->is_completed == false);
+        }
+    }
+
+    SECTION("pipeline with mixed typed / untyped elements")
+    {
+        SECTION("L -> UL -> L")
+        {
+            auto i_publisher = TestPublisher<int>();
+            auto i_subscriber = TestSubscriber<int>();
+            auto ii_relay = TheReactiveRegistry::create("int_int_relay");
+
+            auto pipeline = i_publisher | ii_relay | i_subscriber;
+            REQUIRE(i_subscriber->values.empty());
+            i_publisher->publish(234);
+            REQUIRE(i_subscriber->values.size() == 1);
+            REQUIRE(i_subscriber->values[0] == 234);
+        }
+        SECTION("L -> UR -> L")
+        {
+            auto i_publisher = TestPublisher<int>();
+            auto i_subscriber = TestSubscriber<int>();
+
+            auto pipeline = i_publisher | TheReactiveRegistry::create("int_int_relay") | i_subscriber;
+            REQUIRE(i_subscriber->values.empty());
+            i_publisher->publish(234);
+            REQUIRE(i_subscriber->values.size() == 1);
+            REQUIRE(i_subscriber->values[0] == 234);
+        }
+        SECTION("R -> UR -> UR -> L")
+        {
+            decltype(TestPublisher<int>()) i_publisher;
+            auto i_subscriber = TestSubscriber<int>();
+
+            auto pipeline = TestPublisher<int>() | TheReactiveRegistry::create("int_int_relay")
+                            | TheReactiveRegistry::create("int_int_relay") | i_subscriber;
+            i_publisher
+                = std::dynamic_pointer_cast<decltype(i_publisher)::element_type>(PipelinePrivate(pipeline).get_first());
+            REQUIRE(i_publisher);
+            REQUIRE(i_subscriber->values.empty());
+            i_publisher->publish(234);
+            REQUIRE(i_subscriber->values.size() == 1);
+            REQUIRE(i_subscriber->values[0] == 234);
+        }
+        SECTION("L -> UR -> R -> UL -> R")
+        {
+            auto i_publisher = TestPublisher<int>();
+            auto ii_relay = TheReactiveRegistry::create("int_int_relay");
+            decltype(TestSubscriber<int>()) i_subscriber;
+
+            auto pipeline = i_publisher | TheReactiveRegistry::create("int_int_relay") | DefaultOperator() | ii_relay
+                            | TestSubscriber();
+            i_subscriber
+                = std::dynamic_pointer_cast<decltype(i_subscriber)::element_type>(PipelinePrivate(pipeline).get_last());
+            REQUIRE(i_subscriber);
+            REQUIRE(i_subscriber->values.empty());
+            i_publisher->publish(234);
+            REQUIRE(i_subscriber->values.size() == 1);
+            REQUIRE(i_subscriber->values[0] == 234);
+        }
+        SECTION("failure if the pipeline closes with a subscriber")
+        {
+            // we really have to try to create an untyped subscriber that is not also an operator,
+            // I don't expect this to happen in production but you never know...
+            REQUIRE_THROWS_AS(TestPublisher<int>()
+                                  | std::dynamic_pointer_cast<AnySubscriber>(TestSubscriber<std::string>()),
+                              PipelineError);
+            REQUIRE_THROWS_AS(TestPublisher<int>()
+                                  | std::dynamic_pointer_cast<AnyOperator>(TestSubscriber<int>()),
+                              PipelineError);
+        }
+        SECTION("failure if you try to attach a nullptr")
+        {
+            REQUIRE_THROWS_AS(TestPublisher<int>() | AnyOperatorPtr{}, PipelineError);
+            REQUIRE_THROWS_AS(TestPublisher<int>() | std::make_shared<AnyOperator>(), PipelineError);
+            REQUIRE_THROWS_AS(TestPublisher() | DefaultOperator() | AnyOperatorPtr{}, PipelineError);
+            REQUIRE_THROWS_AS(TestPublisher() | DefaultOperator() | std::make_shared<AnyOperator>(), PipelineError);
         }
     }
 }

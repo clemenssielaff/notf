@@ -31,7 +31,7 @@ auto TestSubscriber()
 {
     struct TestSubscriberTImpl : public Subscriber<T> {
 
-        void on_next(const AnyPublisher*, const int& value) final { values.emplace_back(value); }
+        void on_next(const AnyPublisher*, const T& value) final { values.emplace_back(value); }
 
         void on_error(const AnyPublisher*, const std::exception& error) final
         {
@@ -80,7 +80,7 @@ auto TestSubscriber<None>()
     return std::make_shared<TestSubscriberNoneImpl>();
 }
 
-template<class T, class Policy = detail::DefaultPublisherPolicy>
+template<class T = int, class Policy = detail::DefaultPublisherPolicy>
 auto TestPublisher()
 {
     struct TestPublisherImpl : public Publisher<T, Policy> {
