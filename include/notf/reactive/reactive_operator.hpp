@@ -104,19 +104,4 @@ public:
     void on_complete(const AnyPublisher* /*publisher*/) override { this->complete(); }
 };
 
-// operator identifier ============================================================================================== //
-
-template<class T,                                                     // T is a OperatorPtr if it:
-         class = std::enable_if_t<is_shared_ptr_v<T>>,                // - is a shared_ptr
-         class I = typename T::element_type::input_t,                 // - has an input type
-         class P = typename T::element_type::policy_t,                // - has a policy
-         class O = typename T::element_type::output_t>                // - has an output type
-struct is_operator : std::is_convertible<T, OperatorPtr<I, P, O>> {}; // - can be converted to a OperatorPtr
-
-/// constexpr boolean that is true only if T is a OperatorPtr
-template<class T, class = void>
-static constexpr const bool is_operator_v = false;
-template<class T>
-static constexpr const bool is_operator_v<T, decltype(is_operator<T>(), void())> = is_operator<T>::value;
-
 NOTF_CLOSE_NAMESPACE

@@ -107,9 +107,7 @@ auto TestPublisher()
 
         bool _subscribe(SubscriberPtr<T>& subscriber) final
         {
-            if (allow_new_subscribers) {
-                return parent_t::_subscribe(subscriber);
-            }
+            if (allow_new_subscribers) { return parent_t::_subscribe(subscriber); }
             else {
                 return false;
             }
@@ -124,3 +122,21 @@ auto TestPublisher()
 }
 
 } // namespace
+
+template<class Last>
+struct notf::Accessor<Pipeline<Last>, Tester> {
+
+    Accessor(Pipeline<Last>& pipeline) : m_pipeline(pipeline) {}
+
+    using Elements = typename Pipeline<Last>::Elements;
+    const Elements& get_elements() { return m_pipeline.m_elements; }
+    AnyPublisherPtr& get_first() { return m_pipeline.m_first; }
+    Last& get_last() { return m_pipeline.m_last; }
+
+    Pipeline<Last>& m_pipeline;
+};
+template<class Pipe, class P = std::decay_t<Pipe>>
+auto PipelinePrivate(Pipe&& pipeline)
+{
+    return notf::Accessor<Pipeline<typename P::last_t>, Tester>{std::forward<Pipe>(pipeline)};
+}

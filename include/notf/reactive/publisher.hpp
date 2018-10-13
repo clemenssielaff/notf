@@ -17,9 +17,6 @@ struct SingleSubscriber {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    /// Policy identifier.
-    static constexpr bool is_multi_subscriber = false;
-
     /// Invoke the given lambda on each Subscriber.
     /// @param lambda   Lambda to invoke, must take a single argument : Subscriber<T>*.
     template<class Lambda>
@@ -61,9 +58,6 @@ struct MultiSubscriber {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    /// Policy identifier.
-    static constexpr bool is_multi_subscriber = true;
-
     /// Invoke the given lambda on each Subscriber.
     /// @param lambda   Lambda to invoke, must take a single argument : Subscriber<T>*.
     template<class Lambda>
@@ -137,6 +131,12 @@ struct AnyPublisher {
 
     /// Virtual destructor.
     virtual ~AnyPublisher() = default;
+
+    /// Called when an untyped Subscriber wants to subscribe to this Publisher.
+    /// @param subscriber           New Subscriber.
+    /// @returns                    True iff the Subscriber was added, false if it was rejected.
+    /// @throws notf:logic_error    If the Publisher can only have a single Subscriber.
+    virtual bool subscribe(AnySubscriberPtr /*subscriber*/) = 0;
 };
 
 // typed publisher ================================================================================================== //
@@ -145,7 +145,7 @@ namespace detail {
 
 /// Base template for a Type, both data and non-data publishing Publishers derive from it.
 template<class T, class Policy>
-class TypedPublisher : public notf::AnyPublisher {
+class TypedPublisher : public AnyPublisher {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -154,9 +154,6 @@ public:
 
     /// Publisher policy type.
     using policy_t = Policy;
-
-    /// Whether or not this Publisher allows multiple Subscribers or not.
-    static constexpr bool is_multi_subscriber = Policy::is_multi_subscriber;
 
     /// State of the Publisher.
     /// The state transition diagram is pretty easy:
@@ -215,30 +212,45 @@ public:
         }
     }
 
+    /// @{
     /// Called when a new Subscriber wants to subscribe to this Publisher.
+    /// This method has two overloads: one for Subscribers that are correctly typed as (or at least statically
+    /// convertible to) SubscriberPtr<T>, and one that is exclusively for untyped Subscribers of type AnySubscriberPtr.
+    /// Since types that can be converted to SubscriberPtr<T> can also be converted to AnySubscriberPtr, these methods
+    /// would be ambiguous, if it were not for the SFINAE magic in the templated ovleroad.
     /// @param subscriber   New Subscriber.
     /// @returns            True iff the Subscriber was added, false if it was rejected.
     /// @throws notf:logic_error    If the Publisher can only have a single Subscriber.
-    template<class S>
-    bool subscribe(S&& untyped_subscriber)
+    bool subscribe(AnySubscriberPtr subscriber) override
     {
-        SubscriberPtr<T> subscriber = std::dynamic_pointer_cast<Subscriber<T>>(std::forward<S>(untyped_subscriber));
-        if (!subscriber) {
+        auto typed_subscriber = std::dynamic_pointer_cast<Subscriber<T>>(std::move(subscriber));
+        if (!typed_subscriber) {
             return false; // type of subscriber does not match this publisher's
         }
+        return subscribe(std::move(typed_subscriber));
+    }
 
-        // call complete if the Publisher has already completed (even if through an error, that doesn't matter here)
+    template<class Sub, class S = std::decay_t<Sub>,
+             class = std::enable_if_t<std::conjunction_v<std::negation<std::is_same<S, AnySubscriberPtr>>,
+                                                         std::is_convertible<S, SubscriberPtr<T>>>>>
+    bool subscribe(Sub&& subscriber)
+    {
+        // whatever type `Sub` actually is, we need a SubscriberPtr<T>
+        auto typed_subscriber = static_cast<SubscriberPtr<T>>(std::forward<Sub>(subscriber));
+
+        // call `on_complete` if the Publisher has already completed (normally or by error, that doesn't matter here)
         if (is_completed()) {
-            subscriber->on_complete(this);
+            typed_subscriber->on_complete(this);
             return true; // technically, we've accepted the Subscriber
         }
 
         // give subclasses a veto
-        if (!_subscribe(subscriber)) { return false; }
+        if (!_subscribe(typed_subscriber)) { return false; }
 
-        // let the Subscriber policy handle the newcomer
-        return m_subscribers.add(std::move(subscriber));
+        // let the subscribers policy handle the newcomer
+        return m_subscribers.add(std::move(typed_subscriber));
     }
+    /// @}
 
 protected:
     /// Internal error handler, can be implemented by subclasses.
@@ -328,8 +340,6 @@ protected:
 
 namespace detail {
 
-using ::notf::AnyPublisher;
-
 struct SinglePublisherPolicy {
     template<class T>
     using Subscribers = ::notf::detail::SingleSubscriber<T>;
@@ -340,20 +350,44 @@ struct MultiPublisherPolicy {
 };
 using DefaultPublisherPolicy = SinglePublisherPolicy;
 
-} // namespace detail
-
 // publisher identifier ============================================================================================= //
 
-template<class T,                                                    // T is a PublisherPtr if it:
-         class = std::enable_if_t<is_shared_ptr_v<T>>,               // - is a shared_ptr
-         class P = typename T::element_type::policy_t,               // - has a policy
-         class O = typename T::element_type::output_t>               // - has an output type
-struct is_publisher : std::is_convertible<T, PublisherPtr<O, P>> {}; // - can be converted to a PublisherPtr
+struct PublisherIdentifier {
+    template<class T>
+    static constexpr auto test()
+    {
+        if constexpr (std::conjunction_v<is_shared_ptr<T>,              //
+                                         decltype(_has_policy_t<T>(0)), //
+                                         decltype(_has_output_t<T>(0))>) {
+            using policy_t = typename T::element_type::policy_t;
+            using output_t = typename T::element_type::output_t;
+            return std::is_convertible<T, PublisherPtr<output_t, policy_t>>{};
+        }
+        else {
+            return std::false_type{};
+        }
+    }
 
-/// constexpr boolean that is true only if T is a PublisherPtr
-template<class T, class = void>
-static constexpr const bool is_publisher_v = false;
+private:
+    template<class T>
+    static constexpr auto _has_policy_t(int) -> decltype(typename T::element_type::output_t{}, std::true_type{});
+    template<class>
+    static constexpr auto _has_policy_t(...) -> std::false_type;
+
+    template<class T>
+    static constexpr auto _has_output_t(int) -> decltype(typename T::element_type::output_t{}, std::true_type());
+    template<class>
+    static constexpr auto _has_output_t(...) -> std::false_type;
+};
+
+} // namespace detail
+
+/// Struct derived either from std::true_type or std::false type, depending on whether T is a Publisher or not.
 template<class T>
-static constexpr const bool is_publisher_v<T, decltype(is_publisher<T>(), void())> = is_publisher<T>::value;
+struct is_publisher : decltype(detail::PublisherIdentifier::test<T>()) {};
+
+/// Constexpr boolean that is true only if T is a PublisherPtr.
+template<class T>
+static constexpr const bool is_publisher_v = is_publisher<T>::value;
 
 NOTF_CLOSE_NAMESPACE

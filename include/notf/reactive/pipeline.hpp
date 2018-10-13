@@ -2,19 +2,33 @@
 
 #include "./reactive_operator.hpp"
 #include "notf/meta/pointer.hpp"
+#include "notf/meta/typename.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 // pipeline identifier ============================================================================================== //
 
+/// @{
+/// Constexpr boolean that is true only if T is a typed Pipeline.
 template<class T>
-struct is_pipeline : std::false_type {};
+struct is_typed_pipeline : std::false_type {};
 template<class Last>
-struct is_pipeline<Pipeline<Last>> : is_subscriber<Last> {};
-
-/// constexpr boolean that is true only if T is a Pipeline
+struct is_typed_pipeline<Pipeline<Last>> : is_publisher<Last> {};
 template<class T>
-static constexpr const bool is_pipeline_v = is_pipeline<T>::value;
+static constexpr const bool is_typed_pipeline_v = is_typed_pipeline<T>::value;
+/// @}
+
+/// @{
+/// Constexpr boolean that is true only if T is an untyped Pipeline.
+template<class T>
+struct is_untyped_pipeline : std::false_type {};
+template<>
+struct is_untyped_pipeline<Pipeline<AnyPublisherPtr>> : std::true_type {};
+template<>
+struct is_untyped_pipeline<Pipeline<AnyOperatorPtr>> : std::true_type {};
+template<class T>
+static constexpr const bool is_untyped_pipeline_v = is_untyped_pipeline<T>::value;
+/// @}
 
 // pipeline compatibility check ===================================================================================== //
 
@@ -24,19 +38,45 @@ namespace detail {
 template<class P, class S, class = void>
 struct is_reactive_compatible : std::false_type {};
 
+// typed publisher -> typed subscriber
 template<class P, class S>
 struct is_reactive_compatible<P, S, std::enable_if_t<all(is_publisher_v<P>, is_subscriber_v<S>)>>
     : std::is_same<typename P::element_type::output_t, typename S::element_type::input_t> {};
 
+// typed pipeline -> typed subscriber
 template<class P, class S>
-struct is_reactive_compatible<P, S, std::enable_if_t<all(is_pipeline_v<P>, is_subscriber_v<S>)>>
+struct is_reactive_compatible<P, S, std::enable_if_t<all(is_typed_pipeline_v<P>, is_subscriber_v<S>)>>
     : std::is_same<typename P::last_t::element_type::output_t, typename S::element_type::input_t> {};
 
-/// consexpr boolean that is true iff P is a Publisher type that can be connected to Subscriber type S.
-template<class P, class S, class = void>
-static constexpr const bool is_reactive_compatible_v = false;
+// typed publisher/pipeline -> untyped subscriber
 template<class P, class S>
-static constexpr const bool is_reactive_compatible_v<P, S, decltype(is_reactive_compatible<P, S>(), void())> = true;
+struct is_reactive_compatible<
+    P, S,
+    std::enable_if_t<all(any(is_publisher_v<P>, is_typed_pipeline_v<P>),
+                         any(std::is_same_v<S, AnyOperatorPtr>, std::is_same_v<S, AnySubscriberPtr>))>>
+    : std::true_type {};
+
+// untyped publisher -> all subscribers
+template<class P, class S>
+struct is_reactive_compatible<
+    P, S,
+    std::enable_if_t<all(any(std::is_same_v<P, AnyOperatorPtr>, std::is_same_v<P, AnyPublisherPtr>),
+                         any(std::is_same_v<S, AnyOperatorPtr>, std::is_same_v<S, AnySubscriberPtr>,
+                             is_subscriber_v<S>))>> : std::false_type {
+    static_assert(always_false_v<P>, "The publisher at the top of a pipeline must be statically typed");
+};
+
+// untyped pipeline -> all subscribers
+template<class P, class S>
+struct is_reactive_compatible<
+    P, S,
+    std::enable_if_t<all(is_untyped_pipeline_v<P>, any(std::is_same_v<S, AnyOperatorPtr>,
+                                                       std::is_same_v<S, AnySubscriberPtr>, is_subscriber_v<S>))>>
+    : std::true_type {};
+
+/// consexpr boolean that is true iff P is a Publisher type that can be connected to Subscriber type S.
+template<class P, class S>
+static constexpr const bool is_reactive_compatible_v = is_reactive_compatible<P, S>::value;
 
 } // namespace detail
 
@@ -61,9 +101,9 @@ protected:
     size_t m_is_enabled = true;
 };
 
-/// Operator at the front of every Pipeline.
-/// Is used to enable or disable the complete Pipeline and is always at the front, so no Operators within the Pipeline
-/// are exucuted, when it is disabled.
+/// Operator near the front of every Pipeline.
+/// Is used to enable or disable the complete pipeline and is always at the front, so no other operators within the
+/// pipeline are exucuted, when it is disabled.
 template<class T, class Policy = SinglePublisherPolicy>
 struct TogglePipelineOperator : public Operator<T, T, Policy>, PipelineToggle {
 
@@ -76,36 +116,45 @@ struct TogglePipelineOperator : public Operator<T, T, Policy>, PipelineToggle {
 
 } // namespace detail
 
+// pipeline error =================================================================================================== //
+
+/// Exception thrown when a Pipeline could not be connected.
+NOTF_EXCEPTION_TYPE(PipelineError);
+
 // pipeline ========================================================================================================= //
 
-/// A Pipeline connects a single upstream operator with a single downstream operator over 1-n relay operators in
-/// between. Every Pipeline has a "toggle" operator (as first or second operator) that it uses to enable and disable the
-/// entire Pipeline.
-template<class LastOperator>
+/// A Pipeline connects a single upstream publisher with a daisy-chain of downstream subscribers.
+/// Every Pipeline has a "toggle" operator (as first or second element in the chain) that it uses to enable and disable
+/// the entire Pipeline.
+template<class Last>
 class Pipeline {
 
     NOTF_GRANT_TEST_ACCESS(Pipeline)
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    /// Type of the last Operator in the Pipeline.
-    using last_t = LastOperator;
+    /// Type of the last element in the pipeline.
+    using last_t = Last;
 
 private:
     /// Special operator used to en/disable the Pipeline.
     using Toggle = std::shared_ptr<detail::PipelineToggle>;
 
-    /// All Operators in the Pipeline (except the last), as untyped reactive operators.
-    using Operators = std::vector<std::shared_ptr<AnyPublisher>>;
+    /// All elements in the pipeline, as untyped reactive subscribers.
+    using Elements = std::vector<AnySubscriberPtr>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
-    /// @param toggle       Special operator used to en/disable the Pipeline.
-    /// @param last         Last Operator in the Pipeline, determines what types can be connected downstream.
-    /// @param operators    All Operators in the Pipeline in between the first and last.
-    Pipeline(Toggle&& toggle, LastOperator last, Operators&& operators = {})
-        : m_toggle(std::move(toggle)), m_last(std::forward<LastOperator>(last)), m_operators(std::move(operators))
+    /// @param toggle   Special operator used to en/disable the Pipeline.
+    /// @param last     Last subscriber in the Pipeline, determines what types can be connected downstream.
+    /// @param first    Publisher at the top of the pipeline, if it is an r-value that would otherwise expire.
+    /// @param elements All elements in the Pipeline in between the first and last (excluding the toggle).
+    Pipeline(Toggle&& toggle, Last last, AnyPublisherPtr first = {}, Elements&& elements = {})
+        : m_first(std::move(first))
+        , m_toggle(std::move(toggle))
+        , m_last(std::forward<Last>(last))
+        , m_elements(std::move(elements))
     {}
 
     /// Explicitly enable/disable the Pipeline.
@@ -120,43 +169,98 @@ public:
     /// Connect a Pipeline to a Subscriber downstream.
     /// @param subscriber   Subscriber downstream to attach to this Pipeline
     /// @returns            New Pipeline object with the new subscriber as "last" operator.
-    template<class Sub, class S = std::decay_t<Sub>>
-    std::enable_if_t<all(is_subscriber_v<S>, detail::is_reactive_compatible_v<Pipeline<last_t>, S>), Pipeline<S>>
-    operator|(Sub&& subscriber)
+    template<class Sub, class S = std::decay_t<Sub>,
+             class = std::enable_if_t<detail::is_reactive_compatible_v<Pipeline<last_t>, S>>>
+    auto operator|(Sub&& rhs)
     {
-        m_last->subscribe(subscriber);
-        m_operators.emplace_back(std::move(m_last));
-        return Pipeline<S>(std::move(m_toggle), std::forward<Sub>(subscriber), std::move(m_operators));
+        // AnyOperators have to be cast to AnySubscribers before we can make use of them
+        auto subscriber = [&]() {
+            if constexpr (std::is_same_v<S, AnyOperatorPtr>) {
+                auto subscriber = std::dynamic_pointer_cast<AnySubscriber>(std::forward<Sub>(rhs));
+                NOTF_ASSERT(subscriber);
+                return subscriber;
+            }
+            else {
+                return rhs; // creates a copy
+            }
+        }();
+
+        // if the pipeline is untyped, we have to first make sure that its last element can act as a publisher
+        if constexpr (is_one_of_v<last_t, AnyOperatorPtr, AnySubscriberPtr>) {
+            auto publisher = std::dynamic_pointer_cast<AnyPublisher>(m_last);
+            if (!publisher) {
+                NOTF_THROW(PipelineError,
+                           "Cannot connect to a pipeline whose last element is not a publisher but a \"{}\"",
+                           type_name<typename last_t::element_type>());
+            }
+            publisher->subscribe(std::move(subscriber));
+
+            // even though every operator should be a subscriber, we have to dynamically cast them
+            if constexpr (std::is_same_v<last_t, AnyOperatorPtr>) {
+                auto last_as_subscriber = std::dynamic_pointer_cast<AnySubscriber>(m_last);
+                NOTF_ASSERT(last_as_subscriber);
+                m_elements.emplace_back(std::move(last_as_subscriber));
+            }
+            else {
+                m_elements.emplace_back(std::move(m_last));
+            }
+        }
+
+        // if everything is typed, we don't need to cast at all
+        else {
+            m_last->subscribe(std::move(subscriber));
+            m_elements.emplace_back(std::move(m_last));
+        }
+
+        return Pipeline<S>(std::move(m_toggle), std::forward<Sub>(rhs), std::move(m_first), std::move(m_elements));
     }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
-    /// Special operator used to en/disable the Pipeline.
-    /// Can also be the first and/or last.
+    /// Publisher at the top of the pipeline, if it is an r-value that would otherwise expire.
+    AnyPublisherPtr m_first;
+
+    /// Used to en/disable the pipeline, either the first operator in the pipeline or right after `m_first`..
     Toggle m_toggle;
 
-    /// Last Operator in the Pipeline, defines the type of the Pipeline for the purposes of further connection.
-    LastOperator m_last;
+    /// Last element in the pipeline, defines the type of the pipeline for the purposes of further connection.
+    Last m_last;
 
-    /// All Operators in the Pipeline between the first and the last, as untyped reactive operators.
-    Operators m_operators;
+    /// All elements in the Pipeline in between the first and last (excluding the toggle)
+    Elements m_elements;
 };
 
 // pipeline pipe operator(s) ======================================================================================== //
 
 /// Connect a Publisher to a Subscriber
 template<class Pub, class Sub, class P = std::decay_t<Pub>, class S = std::decay_t<Sub>>
-std::enable_if_t<all(is_publisher_v<P>, detail::is_reactive_compatible_v<P, S>), Pipeline<S>>
-operator|(Pub&& publisher, Sub&& subscriber)
+std::enable_if_t<detail::is_reactive_compatible_v<P, S>, Pipeline<S>> operator|(Pub&& publisher, Sub&& subscriber)
 {
-    auto toggle = std::make_shared<detail::TogglePipelineOperator<typename P::element_type::output_t>>();
+    // this always succeeds, as we create the toggle specifically for the given publisher
+    using pipe_t = typename P::element_type::output_t;
+    auto toggle = std::make_shared<detail::TogglePipelineOperator<pipe_t>>();
     publisher->subscribe(toggle);
-    toggle->subscribe(subscriber);
+
+    // if the subscriber is untyped, we have to dynamically cast it which may fail
+    if constexpr (is_one_of_v<S, AnyOperatorPtr, AnySubscriberPtr>) {
+        auto typed_subscriber = std::dynamic_pointer_cast<Subscriber<pipe_t>>(subscriber);
+        if (!typed_subscriber) {
+            NOTF_THROW(PipelineError,
+                       "Could not cast object of type \"{}\" to \"{}\" in order to connect it to a pipeline",
+                       type_name<typename S::element_type>(), type_name<Subscriber<pipe_t>>());
+        }
+        toggle->subscribe(std::move(typed_subscriber));
+    }
+    else {
+        toggle->subscribe(subscriber);
+    }
+
+    // r-value publishers are captured inside the pipeline
     if constexpr (std::is_lvalue_reference_v<Pub>) {
         return Pipeline<S>(std::move(toggle), std::forward<Sub>(subscriber));
     }
     else {
-        return Pipeline<S>(std::move(toggle), std::forward<Sub>(subscriber), {std::forward<Pub>(publisher)});
+        return Pipeline<S>(std::move(toggle), std::forward<Sub>(subscriber), std::forward<Pub>(publisher));
     }
 }
 

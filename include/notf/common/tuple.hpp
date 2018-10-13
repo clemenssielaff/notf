@@ -101,7 +101,7 @@ struct is_one_of_tuple {
 };
 template<class T, class... Ts>
 struct is_one_of_tuple<T, std::tuple<Ts...>> {
-    static constexpr const bool value = is_one_of<T, Ts...>();
+    static constexpr const bool value = is_one_of_v<T, Ts...>;
 };
 template<class T, class... Ts>
 static constexpr const bool is_one_of_tuple_v = is_one_of_tuple<T, Ts...>::value;
@@ -155,7 +155,7 @@ struct _remove_tuple_types<std::tuple<Ds...>, std::tuple<Result...>, Head, Tail.
     // element-long tuple ... This works as well and consumes almost no memory.
     static auto constexpr _result_type()
     {
-        if constexpr (is_one_of<Head, Ds...>()) {
+        if constexpr (is_one_of_v<Head, Ds...>) {
             return std::tuple<Result...>{};
         }
         else {
@@ -171,7 +171,7 @@ struct _remove_tuple_types<std::tuple<Ds...>, First, Tail...> {
 
     static auto constexpr _result_type()
     {
-        if constexpr (is_one_of<First, Ds...>()) {
+        if constexpr (is_one_of_v<First, Ds...>) {
             return std::tuple<>{};
         }
         else {

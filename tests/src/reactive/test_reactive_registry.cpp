@@ -51,7 +51,6 @@ SCENARIO("automatic registration", "[reactive][registry]")
 
 SCENARIO("working with untyped operators", "[reactive][registry]")
 {
-
     SECTION("work as expected if produced with the casting factory")
     {
         auto i_publisher = TestPublisher<int>();
@@ -65,17 +64,61 @@ SCENARIO("working with untyped operators", "[reactive][registry]")
         REQUIRE(i_subscriber->values[0] == 234);
     }
 
-    // TODO: continue here
-//    SECTION("work as expected if produced with the untyped factory")
-//    {
-//        auto i_publisher = TestPublisher<int>();
-//        auto i_subscriber = TestSubscriber<int>();
-//        auto ii_relay = TheReactiveRegistry::create("int_int_relay");
+    SECTION("work as expected if produced with the untyped factory")
+    {
+        SECTION("L -> UL -> L")
+        {
+            auto i_publisher = TestPublisher<int>();
+            auto i_subscriber = TestSubscriber<int>();
+            auto ii_relay = TheReactiveRegistry::create("int_int_relay");
 
-//        auto pipeline = i_publisher | ii_relay | i_subscriber;
-//        REQUIRE(i_subscriber->values.empty());
-//        i_publisher->publish(234);
-//        REQUIRE(i_subscriber->values.size() == 1);
-//        REQUIRE(i_subscriber->values[0] == 234);
-//    }
+            auto pipeline = i_publisher | ii_relay | i_subscriber;
+            REQUIRE(i_subscriber->values.empty());
+            i_publisher->publish(234);
+            REQUIRE(i_subscriber->values.size() == 1);
+            REQUIRE(i_subscriber->values[0] == 234);
+        }
+        SECTION("L -> UR -> L")
+        {
+            auto i_publisher = TestPublisher<int>();
+            auto i_subscriber = TestSubscriber<int>();
+
+            auto pipeline = i_publisher | TheReactiveRegistry::create("int_int_relay") | i_subscriber;
+            REQUIRE(i_subscriber->values.empty());
+            i_publisher->publish(234);
+            REQUIRE(i_subscriber->values.size() == 1);
+            REQUIRE(i_subscriber->values[0] == 234);
+        }
+        SECTION("R -> UR -> UR -> L")
+        {
+            decltype(TestPublisher<int>()) i_publisher;
+            auto i_subscriber = TestSubscriber<int>();
+
+            auto pipeline = TestPublisher<int>() | TheReactiveRegistry::create("int_int_relay")
+                            | TheReactiveRegistry::create("int_int_relay") | i_subscriber;
+            i_publisher
+                = std::dynamic_pointer_cast<decltype(i_publisher)::element_type>(PipelinePrivate(pipeline).get_first());
+            REQUIRE(i_publisher);
+            REQUIRE(i_subscriber->values.empty());
+            i_publisher->publish(234);
+            REQUIRE(i_subscriber->values.size() == 1);
+            REQUIRE(i_subscriber->values[0] == 234);
+        }
+        SECTION("L -> UR -> R -> UL -> R")
+        {
+            auto i_publisher = TestPublisher<int>();
+            auto ii_relay = TheReactiveRegistry::create("int_int_relay");
+            decltype(TestSubscriber<int>()) i_subscriber;
+
+            auto pipeline = i_publisher | TheReactiveRegistry::create("int_int_relay") | DefaultOperator() | ii_relay
+                            | TestSubscriber();
+            i_subscriber
+                = std::dynamic_pointer_cast<decltype(i_subscriber)::element_type>(PipelinePrivate(pipeline).get_last());
+            REQUIRE(i_subscriber);
+            REQUIRE(i_subscriber->values.empty());
+            i_publisher->publish(234);
+            REQUIRE(i_subscriber->values.size() == 1);
+            REQUIRE(i_subscriber->values[0] == 234);
+        }
+    }
 }

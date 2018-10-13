@@ -4,23 +4,6 @@
 
 NOTF_USING_NAMESPACE;
 
-template<class Last>
-struct notf::Accessor<Pipeline<Last>, Tester> {
-
-    Accessor(Pipeline<Last>& pipeline) : m_pipeline(pipeline) {}
-
-    using Operators = typename Pipeline<Last>::Operators;
-    const Operators& get_operators() { return m_pipeline.m_operators; }
-    Last& get_last_operator() { return m_pipeline.m_last; }
-
-    Pipeline<Last>& m_pipeline;
-};
-template<class Pipe, class P = std::decay_t<Pipe>>
-auto PipelinePrivate(Pipe&& pipeline)
-{
-    return notf::Accessor<Pipeline<typename P::last_t>, Tester>{std::forward<Pipe>(pipeline)};
-}
-
 // test cases ======================================================================================================= //
 
 SCENARIO("pipeline", "[reactive][pipeline]")
@@ -33,7 +16,8 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         publisher->publish(1);
         {
             auto pipeline = publisher | subscriber;
-            REQUIRE(PipelinePrivate(pipeline).get_operators().size() == 0);
+            REQUIRE(!PipelinePrivate(pipeline).get_first());
+            REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 0);
             publisher->publish(2);
 
             pipeline.disable();
@@ -58,8 +42,9 @@ SCENARIO("pipeline", "[reactive][pipeline]")
 
         {
             auto pipeline = publisher | TestSubscriber();
-            REQUIRE(PipelinePrivate(pipeline).get_operators().size() == 0);
-            subscriber = PipelinePrivate(pipeline).get_last_operator();
+            REQUIRE(!PipelinePrivate(pipeline).get_first());
+            REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 0);
+            subscriber = PipelinePrivate(pipeline).get_last();
 
             publisher->publish(1);
 
@@ -85,9 +70,10 @@ SCENARIO("pipeline", "[reactive][pipeline]")
 
         {
             auto pipeline = DefaultPublisher() | subscriber;
-            REQUIRE(PipelinePrivate(pipeline).get_operators().size() == 1);
-            publisher = std::dynamic_pointer_cast<decltype(publisher)::element_type>(
-                PipelinePrivate(pipeline).get_operators()[0]);
+            REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 0);
+            publisher
+                = std::dynamic_pointer_cast<decltype(publisher)::element_type>(PipelinePrivate(pipeline).get_first());
+            REQUIRE(publisher);
 
             publisher->publish(1);
 
@@ -113,10 +99,11 @@ SCENARIO("pipeline", "[reactive][pipeline]")
 
         {
             auto pipeline = DefaultPublisher() | TestSubscriber();
-            REQUIRE(PipelinePrivate(pipeline).get_operators().size() == 1);
-            subscriber = PipelinePrivate(pipeline).get_last_operator();
-            publisher = std::dynamic_pointer_cast<decltype(publisher)::element_type>(
-                PipelinePrivate(pipeline).get_operators()[0]);
+            REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 0);
+            subscriber = PipelinePrivate(pipeline).get_last();
+            publisher
+                = std::dynamic_pointer_cast<decltype(publisher)::element_type>(PipelinePrivate(pipeline).get_first());
+            REQUIRE(publisher);
 
             publisher->publish(1);
 
@@ -142,9 +129,10 @@ SCENARIO("pipeline", "[reactive][pipeline]")
 
         {
             auto pipeline = DefaultPublisher() | DefaultOperator() | DefaultOperator() | subscriber;
-            REQUIRE(PipelinePrivate(pipeline).get_operators().size() == 3);
-            publisher = std::dynamic_pointer_cast<decltype(publisher)::element_type>(
-                PipelinePrivate(pipeline).get_operators()[0]);
+            REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 2);
+            publisher
+                = std::dynamic_pointer_cast<decltype(publisher)::element_type>(PipelinePrivate(pipeline).get_first());
+            REQUIRE(publisher);
 
             publisher->publish(1);
 
@@ -170,8 +158,9 @@ SCENARIO("pipeline", "[reactive][pipeline]")
 
         {
             auto pipeline = publisher | DefaultOperator() | DefaultOperator() | TestSubscriber();
-            REQUIRE(PipelinePrivate(pipeline).get_operators().size() == 2);
-            subscriber = PipelinePrivate(pipeline).get_last_operator();
+            REQUIRE(!PipelinePrivate(pipeline).get_first());
+            REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 2);
+            subscriber = PipelinePrivate(pipeline).get_last();
 
             publisher->publish(1);
 
@@ -199,7 +188,8 @@ SCENARIO("pipeline", "[reactive][pipeline]")
             auto subscriber = TestSubscriber();
             {
                 auto pipeline = publisher | DefaultOperator() | l_value_operator | DefaultOperator() | subscriber;
-                REQUIRE(PipelinePrivate(pipeline).get_operators().size() == 3);
+                REQUIRE(!PipelinePrivate(pipeline).get_first());
+                REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 3);
 
                 publisher->publish(1);
 
@@ -226,11 +216,11 @@ SCENARIO("pipeline", "[reactive][pipeline]")
             {
                 auto pipeline = DefaultPublisher() | first_operator | DefaultOperator() | second_operator
                                 | TestSubscriber();
-                REQUIRE(PipelinePrivate(pipeline).get_operators().size() == 4);
-
+                REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 3);
                 publisher = std::dynamic_pointer_cast<decltype(publisher)::element_type>(
-                    PipelinePrivate(pipeline).get_operators()[0]);
-                subscriber = PipelinePrivate(pipeline).get_last_operator();
+                    PipelinePrivate(pipeline).get_first());
+                REQUIRE(publisher);
+                subscriber = PipelinePrivate(pipeline).get_last();
 
                 publisher->publish(1);
 

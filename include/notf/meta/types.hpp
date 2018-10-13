@@ -135,27 +135,13 @@ constexpr bool any(Ts... expressions)
 
 /// Checks if T is any of the variadic types.
 template<class T, class... Ts>
-using is_one_of = std::disjunction<std::is_same<T, Ts>...>;
+constexpr bool is_one_of_v = std::disjunction<std::is_same<T, Ts>...>::value;
 
 /// Compile-time check whether two types are both signed / both unsigned.
 template<class T, class U>
 struct is_same_signedness : public std::integral_constant<bool, std::is_signed_v<T> == std::is_signed_v<U>> {};
 template<class T, class U>
 using is_same_signedness_v = typename is_same_signedness<T, U>::value;
-
-/// Is only a valid expression if the given type exists.
-/// Can be used to check whether a template type has a certain nested type:
-///
-///     template <typename T, typename = void>
-///     constexpr bool has_my_type = false;
-///     template <typename T>
-///     constexpr bool has_my_type<T, decltype(check_is_type<typename T::has_my_type>(), void())> = true;
-///
-template<class T>
-constexpr void check_is_type()
-{
-    static_cast<void>(typeid(T));
-}
 
 /// Default factory can be used to (not really) instantiate types within a decltype expression, even if their default
 /// constructor is deleted.

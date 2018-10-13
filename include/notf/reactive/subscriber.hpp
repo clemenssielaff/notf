@@ -1,7 +1,7 @@
 #pragma once
 
-#include "notf/meta/pointer.hpp"
 #include "./reactive.hpp"
+#include "notf/meta/pointer.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -66,15 +66,36 @@ public:
 
 // subscriber identifier ============================================================================================ //
 
-template<class T,                                                   // T is a PublisherPtr if it:
-         class = std::enable_if_t<is_shared_ptr_v<T>>,              // - is a shared_ptr
-         class I = typename T::element_type::input_t>               // - has an input type
-struct is_subscriber : std::is_convertible<T, SubscriberPtr<I>> {}; // - can be converted to a PublisherPtr
+namespace detail {
 
-/// constexpr boolean that is true only if T is a SubscriberPtr
-template<class T, class = void>
-static constexpr const bool is_subscriber_v = false;
+struct SubscriberIdentifier {
+    template<class T>
+    static constexpr auto test()
+    {
+        if constexpr (std::conjunction_v<is_shared_ptr<T>, decltype(_has_input_t<T>(0))>) {
+            using input_t = typename T::element_type::input_t;
+            return std::is_convertible<T, SubscriberPtr<input_t>>{};
+        }
+        else {
+            return std::false_type{};
+        }
+    }
+
+private:
+    template<class T>
+    static constexpr auto _has_input_t(int) -> decltype(typename T::element_type::input_t{}, std::true_type());
+    template<class>
+    static constexpr auto _has_input_t(...) -> std::false_type;
+};
+
+} // namespace detail
+
+/// Struct derived either from std::true_type or std::false type, depending on whether T is a Subscriber or not.
 template<class T>
-static constexpr const bool is_subscriber_v<T, decltype(is_subscriber<T>(), void())> = is_subscriber<T>::value;
+struct is_subscriber : decltype(detail::SubscriberIdentifier::test<T>()) {};
+
+/// Constexpr boolean that is true only if T is a SubscriberPtr.
+template<class T>
+static constexpr const bool is_subscriber_v = is_subscriber<T>::value;
 
 NOTF_CLOSE_NAMESPACE
