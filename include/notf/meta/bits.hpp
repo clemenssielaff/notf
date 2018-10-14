@@ -44,6 +44,28 @@ constexpr Out lowest_bits(T number, const uint count)
     return number & (exp<T>(2, count) - 1);
 }
 
+// bit casting ====================================================================================================== //
+
+/// Like `bit_cast` but without any safe guards.
+/// Use this only if you know what you are doing, otherwise better use `bit_cast`.
+template<typename Dest, typename Source>
+inline Dest bit_cast_unsafe(const Source& source)
+{
+    Dest target;
+    std::memcpy(&target, &source, sizeof(target));
+    return target;
+}
+
+/// Save bit_cast equivalent to `*reinterpret_cast<Dest*>(&source)`.
+template<typename Dest, typename Source>
+inline Dest bit_cast(const Source& source)
+{
+    static_assert(sizeof(Dest) == sizeof(Source), "bit_cast requires source and destination to be the same size");
+    static_assert(std::is_trivially_copyable<Dest>::value, "bit_cast requires the destination type to be copyable");
+    static_assert(std::is_trivially_copyable<Source>::value, "bit_cast requires the source type to be copyable");
+    return bit_cast_unsafe<Dest>(source);
+}
+
 // static tests ===================================================================================================== //
 
 static_assert((exp<uchar>(2, 5) - 1) == 0x1f);

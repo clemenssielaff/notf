@@ -137,20 +137,14 @@ bool is_approx(const L lhs, const R rhs, const T epsilon = precision_high<T>())
 {
     // if only one argument is infinite, the other one cannot be approximately the same
     if constexpr (std::is_integral_v<L>) {
-        if (is_nan(rhs) || is_inf(rhs)) {
-            return false;
-        }
+        if (is_nan(rhs) || is_inf(rhs)) { return false; }
     }
     else if constexpr (std::is_integral_v<R>) {
-        if (is_nan(lhs) || is_inf(lhs)) {
-            return false;
-        }
+        if (is_nan(lhs) || is_inf(lhs)) { return false; }
     }
     else {
         // nans are never approximately equal
-        if (is_nan(lhs) || is_nan(rhs)) {
-            return false;
-        }
+        if (is_nan(lhs) || is_nan(rhs)) { return false; }
         if (is_inf(lhs)) {
             if (is_inf(rhs)) {
                 return true; // infinities are always approximately equal
@@ -163,16 +157,27 @@ bool is_approx(const L lhs, const R rhs, const T epsilon = precision_high<T>())
     }
 
     // if the numbers are really small, use the absolute epsilon
-    if (abs(lhs - rhs) <= epsilon) {
-        return true;
-    }
+    if (abs(lhs - rhs) <= epsilon) { return true; }
 
     // use a relative epsilon if the numbers are larger
-    if (abs(lhs - rhs) <= ((abs(lhs) > abs(rhs)) ? abs(lhs) : abs(rhs)) * epsilon) {
-        return true;
-    }
+    if (abs(lhs - rhs) <= ((abs(lhs) > abs(rhs)) ? abs(lhs) : abs(rhs)) * epsilon) { return true; }
 
     return false;
 }
 
 NOTF_CLOSE_NAMESPACE
+
+// literals ========================================================================================================= //
+
+NOTF_OPEN_LITERALS_NAMESPACE
+
+/// Floating point literal to convert degrees to radians.
+constexpr long double operator"" _deg(long double degrees) { return deg_to_rad(degrees); }
+
+/// Integer literal to convert degrees to radians.
+constexpr long double operator"" _deg(unsigned long long int degrees)
+{
+    return deg_to_rad(static_cast<long double>(degrees));
+}
+
+NOTF_CLOSE_LITERALS_NAMESPACE

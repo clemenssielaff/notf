@@ -180,4 +180,24 @@ NOTF_OPEN_NAMESPACE
     if (x)                  \
         if (NOTF_GUARD(f); x)
 
+// macro overloading ================================================================================================ //
+
+/// Macro overloading for up to 16 parameters (from http://stackoverflow.com/a/30566098)
+/// Use to define "MY_MACRO" as follows:
+///
+///     #define MY_MACRO(...) NOTF_OVERLOADED_MACRO(MY_MACRO, __VA_ARGS__)
+///     #define MY_MACRO1(x) <implementation>
+///     #define MY_MACRO2(x, y) <implementation>
+///     #define MY_MACRO3(x, y, z) <implementation>
+///
+/// If you need more than 16, just append the numbers to `_notf_ARG_PATTERN_MATCH`
+/// and prepend them in reverse to `_notf_COUNT_ARGS`.
+#define NOTF_OVERLOADED_MACRO(macro_name, ...) _notf_OVERLOAD(macro_name, _notf_COUNT_ARGS(__VA_ARGS__))(__VA_ARGS__)
+
+#define _notf_OVERLOAD_EXPAND(macro_name, number_of_args) macro_name##number_of_args
+#define _notf_OVERLOAD(macro_name, number_of_args) _notf_OVERLOAD_EXPAND(macro_name, number_of_args)
+#define _notf_ARG_PATTERN_MATCH(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, n, ...) n
+#define _notf_COUNT_ARGS(...) \
+    _notf_ARG_PATTERN_MATCH(__VA_ARGS__, 16, 15, 14, 13, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
+
 NOTF_CLOSE_NAMESPACE

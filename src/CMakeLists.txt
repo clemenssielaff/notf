@@ -2,11 +2,12 @@
 
 # add core files
 add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
-    common/random.cpp
-    common/timer_pool.cpp
     common/msgpack.cpp
-    common/uuid.cpp
+    common/random.cpp
     common/string.cpp
+    common/thread_pool.cpp
+    common/timer_pool.cpp
+    common/uuid.cpp
 )
 
 # add thirdparty files
