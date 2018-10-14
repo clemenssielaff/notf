@@ -1,6 +1,6 @@
 #pragma once
 
-#include "./config.hpp"
+#include "./macros.hpp"
 
 #ifdef NOTF_DEBUG
 
@@ -66,11 +66,17 @@ assertion_failed(char const* expr, char const* file, char const* function, long 
          NOTF_NOOP :           \
          ::notf::detail::assertion_failed(#expr, __FILE__, NOTF_CURRENT_FUNCTION, __LINE__, ##__VA_ARGS__))
 
+/// Assertion macro like NOTF_ASSERT, but executed the expression in release builds as well
+#define NOTF_ASSERT_ALWAYS(expr, ...) NOTF_DEFER(NOTF_ASSERT, expr, ##__VA_ARGS__)
+
 NOTF_CLOSE_NAMESPACE
 
 #else
 
 /// In release mode, the notf assertion macro expands to nothing.
 #define NOTF_ASSERT(...)
+
+/// The _ALWAYS assertion macro is always executed, but not checked in release mode.
+#define NOTF_ASSERT_ALWAYS(expr, ...) NOTF_IGNORE_VARIADIC(expr, , ##__VA_ARGS__)
 
 #endif

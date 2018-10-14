@@ -15,7 +15,7 @@ NOTF_OPEN_NAMESPACE
 
 /// Base class for any reactive operator factory.
 /// Has a templated `create` function that takes all of its arguments and packs them into a vector of `std::any`.
-/// This vector is then dispatched to a polymorphic factory that will try to unpack and match the arguments to its
+/// This vector is then dispatched to a polymorphic factory that will try to unpack, match the arguments to its
 /// requirements and fail gracefully on error.
 struct AnyOperatorFactory {
     virtual ~AnyOperatorFactory() = default;
@@ -29,11 +29,15 @@ private:
     virtual AnyOperatorPtr _create(std::vector<std::any>&&) const = 0;
 };
 
+/// Reactive operator factory implementation.
+/// Takes a function as an argument and constructs a calling object around it, that takes care of matching a vector of
+/// `std::any` objects to the arguments of the given function.
 template<class Func, class traits = notf::function_traits<Func&>>
 class ReactiveOperatorFactory : public AnyOperatorFactory {
 
     // types -------------------------------------------------------------------------------------------------------- //
 private:
+    /// Tuple representing the required arguments for calling `m_function`.
     using args_tuple = typename traits::args_tuple;
 
     static_assert(std::is_constructible_v<AnyOperatorPtr, typename traits::return_type>,
@@ -83,6 +87,8 @@ private:
 
 // the reactive registry ============================================================================================ //
 
+/// Registy string -> AnyOperatorFactory.
+/// Is populated with types at compile time, but can be extended at runtime.
 class TheReactiveRegistry {
 
     // types -------------------------------------------------------------------------------------------------------- //
@@ -150,7 +156,7 @@ private:
     }
 };
 
-/// Register a *non-template* function that creates a std::shared_ptr<>
+/// Register a *non-template* function that creates an AnyOperatorPtr.
 #define NOTF_REGISTER_REACTIVE_OPERATOR(X)                                                         \
     struct Register##X : public TheReactiveRegistry::register_operator<Register##X> {              \
         static constexpr const char* name = #X;                                                    \

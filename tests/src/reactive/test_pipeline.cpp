@@ -18,7 +18,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         {
             auto pipeline = publisher | subscriber;
             REQUIRE(!PipelinePrivate(pipeline).get_first());
-            REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 0);
+            REQUIRE(PipelinePrivate(pipeline).get_functions().size() == 0);
             publisher->publish(2);
 
             pipeline.disable();
@@ -44,7 +44,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         {
             auto pipeline = publisher | TestSubscriber();
             REQUIRE(!PipelinePrivate(pipeline).get_first());
-            REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 0);
+            REQUIRE(PipelinePrivate(pipeline).get_functions().size() == 0);
             subscriber = PipelinePrivate(pipeline).get_last();
 
             publisher->publish(1);
@@ -71,7 +71,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
 
         {
             auto pipeline = DefaultPublisher() | subscriber;
-            REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 0);
+            REQUIRE(PipelinePrivate(pipeline).get_functions().size() == 0);
             publisher
                 = std::dynamic_pointer_cast<decltype(publisher)::element_type>(PipelinePrivate(pipeline).get_first());
             REQUIRE(publisher);
@@ -100,7 +100,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
 
         {
             auto pipeline = DefaultPublisher() | TestSubscriber();
-            REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 0);
+            REQUIRE(PipelinePrivate(pipeline).get_functions().size() == 0);
             subscriber = PipelinePrivate(pipeline).get_last();
             publisher
                 = std::dynamic_pointer_cast<decltype(publisher)::element_type>(PipelinePrivate(pipeline).get_first());
@@ -130,7 +130,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
 
         {
             auto pipeline = DefaultPublisher() | DefaultOperator() | DefaultOperator() | subscriber;
-            REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 2);
+            REQUIRE(PipelinePrivate(pipeline).get_functions().size() == 2);
             publisher
                 = std::dynamic_pointer_cast<decltype(publisher)::element_type>(PipelinePrivate(pipeline).get_first());
             REQUIRE(publisher);
@@ -160,7 +160,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         {
             auto pipeline = publisher | DefaultOperator() | DefaultOperator() | TestSubscriber();
             REQUIRE(!PipelinePrivate(pipeline).get_first());
-            REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 2);
+            REQUIRE(PipelinePrivate(pipeline).get_functions().size() == 2);
             subscriber = PipelinePrivate(pipeline).get_last();
 
             publisher->publish(1);
@@ -190,7 +190,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
             {
                 auto pipeline = publisher | DefaultOperator() | l_value_operator | DefaultOperator() | subscriber;
                 REQUIRE(!PipelinePrivate(pipeline).get_first());
-                REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 3);
+                REQUIRE(PipelinePrivate(pipeline).get_functions().size() == 3);
 
                 publisher->publish(1);
 
@@ -217,7 +217,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
             {
                 auto pipeline = DefaultPublisher() | first_operator | DefaultOperator() | second_operator
                                 | TestSubscriber();
-                REQUIRE(PipelinePrivate(pipeline).get_elements().size() == 3);
+                REQUIRE(PipelinePrivate(pipeline).get_functions().size() == 3);
                 publisher = std::dynamic_pointer_cast<decltype(publisher)::element_type>(
                     PipelinePrivate(pipeline).get_first());
                 REQUIRE(publisher);
@@ -241,7 +241,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         }
     }
 
-    SECTION("pipeline with mixed typed / untyped elements")
+    SECTION("pipeline with mixed typed / untyped functions")
     {
         SECTION("L -> UL -> L")
         {
@@ -297,6 +297,12 @@ SCENARIO("pipeline", "[reactive][pipeline]")
             REQUIRE(i_subscriber->values.size() == 1);
             REQUIRE(i_subscriber->values[0] == 234);
         }
+        SECTION("failure if you try to connect a wrong type to an untyped typeline")
+        {
+            REQUIRE_THROWS_AS(TestPublisher<int>() | TheReactiveRegistry::create("int_int_relay")
+                                  | DefaultOperator<std::string>(),
+                              PipelineError);
+        }
         SECTION("failure if the pipeline closes with a subscriber")
         {
             // we really have to try to create an untyped subscriber that is not also an operator,
@@ -304,8 +310,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
             REQUIRE_THROWS_AS(TestPublisher<int>()
                                   | std::dynamic_pointer_cast<AnySubscriber>(TestSubscriber<std::string>()),
                               PipelineError);
-            REQUIRE_THROWS_AS(TestPublisher<int>()
-                                  | std::dynamic_pointer_cast<AnyOperator>(TestSubscriber<int>()),
+            REQUIRE_THROWS_AS(TestPublisher<int>() | std::dynamic_pointer_cast<AnyOperator>(TestSubscriber<int>()),
                               PipelineError);
         }
         SECTION("failure if you try to attach a nullptr")

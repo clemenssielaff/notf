@@ -128,8 +128,8 @@ struct notf::Accessor<Pipeline<Last>, Tester> {
 
     Accessor(Pipeline<Last>& pipeline) : m_pipeline(pipeline) {}
 
-    using Elements = typename Pipeline<Last>::Elements;
-    const Elements& get_elements() { return m_pipeline.m_elements; }
+    using Functions = typename Pipeline<Last>::Functions;
+    const Functions& get_functions() { return m_pipeline.m_functions; }
     AnyPublisherPtr& get_first() { return m_pipeline.m_first; }
     Last& get_last() { return m_pipeline.m_last; }
 

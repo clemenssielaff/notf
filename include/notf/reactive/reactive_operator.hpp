@@ -7,7 +7,7 @@ NOTF_OPEN_NAMESPACE
 
 // any operator ===================================================================================================== //
 
-/// Base class for all Operators.
+/// Base class for all Operator functions.
 struct AnyOperator {
 
     NOTF_NO_COPY_OR_ASSIGN(AnyOperator);
@@ -35,22 +35,27 @@ public:
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
-    /// Subscriber "next" operation, forwards to the Producer's "publish" operation by default.
+    /// Subscriber "next" method, forwards to the Producer's "publish" method by default.
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
+    /// @param value        Published value.
     void on_next(const AnyPublisher* /*publisher*/, const I& value) override { this->publish(value); }
 
-    /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
+    /// Subscriber "error" method, forwards to the Producer's "fail" method by default.
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
+    /// @param exception    The exception that has occurred.
     void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override
     {
         this->error(exception);
     }
 
     /// Subscriber "complete" operation, forwards to the Producer's "complete" operation by default.
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
     void on_complete(const AnyPublisher* /*publisher*/) override { this->complete(); }
 };
 
 // "None" operator specializations ================================================================================== //
 
-/// Specialization for Operators that transmit no data.
+/// Specialization for Operator functions that transmit no data.
 template<class Policy>
 class Operator<None, None, Policy> : public AnyOperator, public Subscriber<None>, public Publisher<None, Policy> {
 
@@ -65,19 +70,23 @@ public:
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Subscriber "next" operation, forwards to the Producer's "publish" operation by default.
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
     void on_next(const AnyPublisher* /*publisher*/) override { this->publish(); }
 
     /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
+    /// @param exception    The exception that has occurred.
     void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override
     {
         this->error(exception);
     }
 
     /// Subscriber "complete" operation, forwards to the Producer's "complete" operation by default.
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
     void on_complete(const AnyPublisher* /*publisher*/) override { this->complete(); }
 };
 
-/// Specialization for Operators that connect a data-producing upstream to a "None" downstream.
+/// Specialization for Operators function that connect a data-producing upstream to a "None" downstream.
 template<class T, class Policy>
 class Operator<T, None, Policy> : public AnyOperator, public Subscriber<T>, public Publisher<None, Policy> {
 
@@ -92,15 +101,20 @@ public:
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Subscriber "next" operation, forwards to the Producer's "publish" operation by default.
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
+    /// @param value        Received value (ignored).
     void on_next(const AnyPublisher* /*publisher*/, const T& /* ignored */) override { this->publish(); }
 
     /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
+    /// @param exception    The exception that has occurred.
     void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override
     {
         this->error(exception);
     }
 
     /// Subscriber "complete" operation, forwards to the Producer's "complete" operation by default.
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
     void on_complete(const AnyPublisher* /*publisher*/) override { this->complete(); }
 };
 

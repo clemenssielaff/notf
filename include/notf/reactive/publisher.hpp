@@ -11,7 +11,7 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-/// Policy for a Publisher with a single Subscriber.
+/// Policy for a Publisher function with a single Subscriber.
 template<class T>
 struct SingleSubscriber {
 
@@ -29,12 +29,12 @@ public:
     }
 
     /// Sets a new Subscriber.
-    /// @throws notf::logic_error   If the Publisher already has a Subscriber.
-    /// @returns                    Always true (if the function didn't throw).
+    /// @param subscriber   Subscriber to add.
+    /// @returns            True, iff the given subscriber is now the only subscriber of the publisher.
     bool add(SubscriberPtr<T> subscriber)
     {
         if (!m_subscriber.expired()) {
-            NOTF_THROW(logic_error, "Cannot connect multiple Subscribers to a single-subscriber Publisher");
+            return false; // there's already a subscriber connected
         }
         m_subscriber = std::move(subscriber);
         return true;
@@ -52,7 +52,7 @@ private:
     SubscriberWeakPtr<T> m_subscriber;
 };
 
-/// Policy for a Publisher with a multiple Subscribers.
+/// Policy for a Publisher function with a multiple Subscribers.
 template<class T>
 struct MultiSubscriber {
 
@@ -120,8 +120,7 @@ private:
 
 // publisher base =================================================================================================== //
 
-/// Base class for all Publishers.
-/// Is only used for identification purposes.
+/// Base class for all Publisher functions.
 struct AnyPublisher {
 
     NOTF_NO_COPY_OR_ASSIGN(AnyPublisher);
@@ -133,17 +132,19 @@ struct AnyPublisher {
     virtual ~AnyPublisher() = default;
 
     /// Called when an untyped Subscriber wants to subscribe to this Publisher.
-    /// @param subscriber           New Subscriber.
-    /// @returns                    True iff the Subscriber was added, false if it was rejected.
-    /// @throws notf:logic_error    If the Publisher can only have a single Subscriber.
+    /// @param subscriber   New Subscriber.
+    /// @returns            True iff the Subscriber was added, false if it was rejected.
     virtual bool subscribe(AnySubscriberPtr /*subscriber*/) = 0;
+
+    /// Number of connected Subscribers.
+    virtual size_t get_subscriber_count() const = 0;
 };
 
 // typed publisher ================================================================================================== //
 
 namespace detail {
 
-/// Base template for a Type, both data and non-data publishing Publishers derive from it.
+/// Base template for a typed publisher, both data and non-data publishing Publishers derive from it.
 template<class T, class Policy>
 class TypedPublisher : public AnyPublisher {
 
@@ -181,9 +182,9 @@ public:
     bool is_failed() const { return m_state == State::FAILED; }
 
     /// Number of connected Subscribers.
-    size_t get_subscriber_count() const { return m_subscribers.get_subscriber_count(); }
+    size_t get_subscriber_count() const final { return m_subscribers.get_subscriber_count(); }
 
-    /// Fail operation, completes this Publisher.
+    /// Fail method, completes this Publisher as well.
     /// @param exception    The exception that has occurred.
     void error(const std::exception& exception)
     {
@@ -198,7 +199,7 @@ public:
         }
     }
 
-    /// Complete operation, completes the Publisher in a regular fashion.
+    /// Complete method, completes the Publisher in a regular fashion.
     void complete()
     {
         if (!is_completed()) {
@@ -220,7 +221,6 @@ public:
     /// would be ambiguous, if it were not for the SFINAE magic in the templated ovleroad.
     /// @param subscriber   New Subscriber.
     /// @returns            True iff the Subscriber was added, false if it was rejected.
-    /// @throws notf:logic_error    If the Publisher can only have a single Subscriber.
     bool subscribe(AnySubscriberPtr subscriber) override
     {
         auto typed_subscriber = std::dynamic_pointer_cast<Subscriber<T>>(std::move(subscriber));
@@ -290,7 +290,7 @@ protected:
 
 // publisher ======================================================================================================== //
 
-/// Default Publisher that publishes data of a given type T.
+/// Default Publisher function that publishes data of a given type T.
 template<class T, class Policy>
 class Publisher : public detail::TypedPublisher<T, Policy> {
 
@@ -314,7 +314,7 @@ protected:
     }
 };
 
-/// Specialization for Publisher that produce signals only (no data).
+/// Specialization for Publisher functions that produce signals only (no data).
 template<class Policy>
 class Publisher<None, Policy> : public detail::TypedPublisher<None, Policy> {
 

@@ -19,6 +19,10 @@ NOTF_OPEN_NAMESPACE
 /// Use for `NOTF_DEFER(NOTF_STR, expanded) and others
 #define NOTF_DEFER(f, ...) f(__VA_ARGS__)
 
+/// Ignores variadic arguments when called with:
+///     NOTF_IGNORE_VARIADIC(expr, , ##__VA_ARGS__) // expands to (expr)
+#define NOTF_IGNORE_VARIADIC(h, ...) (h)
+
 // object definition ================================================================================================ //
 
 /// Convenience macro to disable the construction of automatic copy- and assign methods.

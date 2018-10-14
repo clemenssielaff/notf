@@ -17,7 +17,7 @@ SCENARIO("basic publisher<T> functions", "[reactive][publisher]")
         REQUIRE(publisher->get_subscriber_count() == 0);
         publisher->subscribe(subscriber);
 
-        REQUIRE_THROWS_AS(publisher->subscribe(subscriber2), notf::logic_error);
+        REQUIRE(!publisher->subscribe(subscriber2));
         REQUIRE(publisher->get_subscriber_count() == 1);
 
         publisher->publish(1);
@@ -58,8 +58,8 @@ SCENARIO("basic publisher<T> functions", "[reactive][publisher]")
         }
 
         auto subscriber2 = TestSubscriber();
-        publisher->subscribe(subscriber2); // removes expired
-        publisher->subscribe(subscriber2); // duplicate
+        publisher->subscribe(subscriber2);           // removes expired
+        REQUIRE(!publisher->subscribe(subscriber2)); // duplicate
         REQUIRE(publisher->get_subscriber_count() == 2);
 
         publisher->publish(1);

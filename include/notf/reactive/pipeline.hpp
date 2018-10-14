@@ -124,7 +124,7 @@ NOTF_EXCEPTION_TYPE(PipelineError);
 // pipeline ========================================================================================================= //
 
 /// A Pipeline connects a single upstream publisher with a daisy-chain of downstream subscribers.
-/// Every Pipeline has a "toggle" operator (as first or second element in the chain) that it uses to enable and disable
+/// Every Pipeline has a "toggle" operator (as first or second function in the chain) that it uses to enable and disable
 /// the entire Pipeline.
 template<class Last>
 class Pipeline {
@@ -133,28 +133,28 @@ class Pipeline {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
-    /// Type of the last element in the pipeline.
+    /// Type of the last function in the pipeline.
     using last_t = Last;
 
 private:
     /// Special operator used to en/disable the Pipeline.
     using Toggle = std::shared_ptr<detail::PipelineToggle>;
 
-    /// All elements in the pipeline, as untyped reactive subscribers.
-    using Elements = std::vector<AnySubscriberPtr>;
+    /// All functions in the pipeline, as untyped reactive subscribers.
+    using Functions = std::vector<AnySubscriberPtr>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
-    /// @param toggle   Special operator used to en/disable the Pipeline.
-    /// @param last     Last subscriber in the Pipeline, determines what types can be connected downstream.
-    /// @param first    Publisher at the top of the pipeline, if it is an r-value that would otherwise expire.
-    /// @param elements All elements in the Pipeline in between the first and last (excluding the toggle).
-    Pipeline(Toggle&& toggle, Last last, AnyPublisherPtr first = {}, Elements&& elements = {})
+    /// @param toggle       Special operator used to en/disable the Pipeline.
+    /// @param last         Last subscriber in the Pipeline, determines what types can be connected downstream.
+    /// @param first        Publisher at the top of the pipeline, if it is an r-value that would otherwise expire.
+    /// @param functions    All functions in the Pipeline in between the first and last (excluding the toggle).
+    Pipeline(Toggle&& toggle, Last last, AnyPublisherPtr first = {}, Functions&& functions = {})
         : m_first(std::move(first))
         , m_toggle(std::move(toggle))
         , m_last(std::forward<Last>(last))
-        , m_elements(std::move(elements))
+        , m_functions(std::move(functions))
     {}
 
     /// Explicitly enable/disable the Pipeline.
@@ -182,30 +182,33 @@ public:
         }();
         if (!subscriber) { NOTF_THROW(PipelineError, "Cannot connect an empty operator to a pipeline"); }
 
-        // if the pipeline is untyped, we have to first make sure that its last element can act as a publisher
+        // if the pipeline is untyped, we have to first make sure that its last function can act as a publisher
         if constexpr (is_one_of_v<last_t, AnyOperatorPtr, AnySubscriberPtr>) {
             auto publisher = std::dynamic_pointer_cast<AnyPublisher>(m_last);
-            NOTF_ASSERT(publisher); // there should be no way this fails if the SFINAE magic works
-            publisher->subscribe(std::move(subscriber));
+            NOTF_ASSERT(publisher); // there should be no way this fails, if we did the SFINAE magic correctly
+            if (!publisher->subscribe(std::move(subscriber))) {
+                NOTF_THROW(PipelineError, "Publisher of type \"AnyPublisher\" rejected subscriber #{} of type \"{}\"",
+                           publisher->get_subscriber_count(), type_name<typename S::element_type>());
+            }
 
             // even though every operator should be a subscriber, we have to dynamically cast them
             if constexpr (std::is_same_v<last_t, AnyOperatorPtr>) {
                 auto last_as_subscriber = std::dynamic_pointer_cast<AnySubscriber>(m_last);
                 NOTF_ASSERT(last_as_subscriber);
-                m_elements.emplace_back(std::move(last_as_subscriber));
+                m_functions.emplace_back(std::move(last_as_subscriber));
             }
             else {
-                m_elements.emplace_back(std::move(m_last));
+                m_functions.emplace_back(std::move(m_last));
             }
         }
 
         // if everything is typed, we don't need to cast at all
         else {
-            m_last->subscribe(std::move(subscriber));
-            m_elements.emplace_back(std::move(m_last));
+            NOTF_ASSERT_ALWAYS(m_last->subscribe(std::move(subscriber))); // shouldn't even compile if it could fail
+            m_functions.emplace_back(std::move(m_last));
         }
 
-        return Pipeline<S>(std::move(m_toggle), std::forward<Sub>(rhs), std::move(m_first), std::move(m_elements));
+        return Pipeline<S>(std::move(m_toggle), std::forward<Sub>(rhs), std::move(m_first), std::move(m_functions));
     }
 
     // fields ------------------------------------------------------------------------------------------------------- //
@@ -216,11 +219,11 @@ private:
     /// Used to en/disable the pipeline, either the first operator in the pipeline or right after `m_first`..
     Toggle m_toggle;
 
-    /// Last element in the pipeline, defines the type of the pipeline for the purposes of further connection.
+    /// Last function in the pipeline, defines the type of the pipeline for the purposes of further connection.
     Last m_last;
 
-    /// All elements in the Pipeline in between the first and last (excluding the toggle)
-    Elements m_elements;
+    /// All functions in the Pipeline in between the first and last (excluding the toggle)
+    Functions m_functions;
 };
 
 // pipeline pipe operator(s) ======================================================================================== //
@@ -234,7 +237,7 @@ std::enable_if_t<detail::is_reactive_compatible_v<P, S>, Pipeline<S>> operator|(
     // this always succeeds, as we create the toggle specifically for the given publisher
     using pipe_t = typename P::element_type::output_t;
     auto toggle = std::make_shared<detail::TogglePipelineOperator<pipe_t>>();
-    publisher->subscribe(toggle);
+    NOTF_ASSERT_ALWAYS(publisher->subscribe(toggle));
 
     // if the subscriber is untyped, we have to dynamically cast it which may fail
     if constexpr (is_one_of_v<S, AnyOperatorPtr, AnySubscriberPtr>) {
@@ -244,10 +247,10 @@ std::enable_if_t<detail::is_reactive_compatible_v<P, S>, Pipeline<S>> operator|(
                        "Could not cast object of type \"{}\" to \"{}\" in order to connect it to a pipeline",
                        type_name<typename S::element_type>(), type_name<Subscriber<pipe_t>>());
         }
-        toggle->subscribe(std::move(typed_subscriber));
+        NOTF_ASSERT_ALWAYS(toggle->subscribe(std::move(typed_subscriber)));
     }
     else {
-        toggle->subscribe(subscriber);
+        NOTF_ASSERT_ALWAYS(toggle->subscribe(subscriber));
     }
 
     // r-value publishers are captured inside the pipeline
