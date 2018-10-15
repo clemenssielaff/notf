@@ -15,7 +15,7 @@ add_sources(THIRDPARTY_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
 )
 
 # add google benchmark library only on request
-if(${NOTF_BUILD_BENCHMARKS})
+if(NOTF_BUILD_BENCHMARKS)
     message(STATUS ">>> notf: Including benchmark in thirdparty library")
     add_sources(THIRDPARTY_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
         benchmark/src/benchmark_api_internal.cc
@@ -51,3 +51,11 @@ target_include_directories(notf-thirdparty PUBLIC
 
 # CMake cannot not determine the linker language from the files, so we'll tell it
 set_target_properties(notf-thirdparty PROPERTIES LINKER_LANGUAGE CXX)
+
+# SUB-PROJECTS #########################################################################################################
+
+# glfw
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+add_subdirectory(./glfw-3.3.0)

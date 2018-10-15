@@ -40,7 +40,7 @@ assertion_failed(char const* expr, char const* file, char const* function, long 
 {
     using namespace fmt::literals;
     std::string msg;
-    if (message) {
+    if (static_cast<bool>(message)) {
         msg = fmt::format(R"(Assertion "{expr}" failed at "{file}:{line}" in function "{func}" with message: "{msg}")",
                           "expr"_a = expr, "file"_a = filename_from_path(file), "line"_a = line, "func"_a = function,
                           "msg"_a = message);

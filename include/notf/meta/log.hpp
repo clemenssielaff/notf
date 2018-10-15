@@ -128,42 +128,41 @@ private:
 /// We are using macros here instead of constexpr functions to make sure that the expression within the macro brackets
 /// is never evaluated and to make use of the __FILE__ and __LINE__ macros.
 
-#define NOTFIMPL_LOG(LEVEL, fmt, ...)                                                                                \
-    ::notf::TheLogger::get()->LEVEL(fmt " ({}:{})", ##__VA_ARGS__, ::notf::filename_from_path(__FILE__), \
-                                          __LINE__)
+#define NOTFIMPL_LOG(LEVEL, MSG, ...) \
+    ::notf::TheLogger::get()->LEVEL(MSG " ({}:{})", ##__VA_ARGS__, ::notf::filename_from_path(__FILE__), __LINE__)
 
 #if NOTF_LOG_LEVEL <= 0
-#define NOTF_LOG_TRACE(fmt, ...) NOTF_DEFER(NOTFIMPL_LOG, trace, fmt, ##__VA_ARGS__)
+#define NOTF_LOG_TRACE(MSG, ...) NOTF_DEFER(NOTFIMPL_LOG, trace, MSG, ##__VA_ARGS__)
 #else
 #define NOTF_LOG_TRACE(...)
 #endif
 
 #if NOTF_LOG_LEVEL <= 1
-#define NOTF_LOG_DEBUG(...) NOTF_DEFER(NOTFIMPL_LOG, debug, fmt, ##__VA_ARGS__)
+#define NOTF_LOG_DEBUG(MSG, ...) NOTF_DEFER(NOTFIMPL_LOG, debug, MSG, ##__VA_ARGS__)
 #else
 #define NOTF_LOG_DEBUG(...)
 #endif
 
 #if NOTF_LOG_LEVEL <= 2
-#define NOTF_LOG_INFO(...) NOTF_DEFER(NOTFIMPL_LOG, info, fmt, ##__VA_ARGS__)
+#define NOTF_LOG_INFO(MSG, ...) NOTF_DEFER(NOTFIMPL_LOG, info, MSG, ##__VA_ARGS__)
 #else
 #define NOTF_LOG_INFO(...)
 #endif
 
 #if NOTF_LOG_LEVEL <= 3
-#define NOTF_LOG_WARN(...) NOTF_DEFER(NOTFIMPL_LOG, warn, fmt, ##__VA_ARGS__)
+#define NOTF_LOG_WARN(MSG, ...) NOTF_DEFER(NOTFIMPL_LOG, warn, MSG, ##__VA_ARGS__)
 #else
 #define NOTF_LOG_WARN(...)
 #endif
 
 #if NOTF_LOG_LEVEL <= 4
-#define NOTF_LOG_ERROR(...) NOTF_DEFER(NOTFIMPL_LOG, error, fmt, ##__VA_ARGS__)
+#define NOTF_LOG_ERROR(MSG, ...) NOTF_DEFER(NOTFIMPL_LOG, error, MSG, ##__VA_ARGS__)
 #else
 #define NOTF_LOG_ERROR(...)
 #endif
 
 #if NOTF_LOG_LEVEL <= 5
-#define NOTF_LOG_CRIT(...) NOTF_DEFER(NOTFIMPL_LOG, critical, fmt, ##__VA_ARGS__)
+#define NOTF_LOG_CRIT(MSG, ...) NOTF_DEFER(NOTFIMPL_LOG, critical, MSG, ##__VA_ARGS__)
 #else
 #define NOTF_LOG_CRIT(...)
 #endif

@@ -10,9 +10,6 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-/// Thrown when you enqueue a new thread in a ThreadPool that has already finished.
-NOTF_EXCEPTION_TYPE(thread_pool_finished_error);
-
 ///
 /// Modelled closely after:
 ///     https://github.com/progschj/ThreadPool/blob/master/ThreadPool.h
@@ -21,13 +18,16 @@ NOTF_EXCEPTION_TYPE(thread_pool_finished_error);
 ///
 class ThreadPool {
 
+    /// Thrown when you enqueue a new thread in a ThreadPool that has already finished.
+    NOTF_EXCEPTION_TYPE(finished_error);
+
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     NOTF_NO_COPY_OR_ASSIGN(ThreadPool);
 
     /// Constructor.
     /// @param thread_count     Number of threads in the pool.
-    ThreadPool(const size_t thread_count = std::max(std::thread::hardware_concurrency(), 2u) - 1u);
+    ThreadPool(size_t thread_count = std::max(std::thread::hardware_concurrency(), 2u) - 1u);
 
     /// Destructor.
     /// Finishes all outstanding tasks before returning.
@@ -37,17 +37,16 @@ public:
     /// @param function     Function returning void.
     /// @param args         Arguments forwareded to the function when the tasks is executed.
     /// @throws             thread_pool_finished When the thread pool has already finished.
-    template<typename FUNCTION, typename... Args, typename return_t = typename std::result_of<FUNCTION(Args...)>::type,
-             typename = std::enable_if_t<(std::is_same<void, return_t>::value)>>
-    void enqueue(FUNCTION&& function, Args&&... args)
+    template<class Function, class... Args, class return_t = std::invoke_result_t<Function(Args...)>>
+    std::enable_if_t<std::is_same_v<void, return_t>, void> enqueue(Function&& function, Args&&... args)
     {
         { // enqueue the new task, unless the pool has already finished
             std::lock_guard<std::mutex> lock(m_queue_mutex);
-            if (is_finished) {
+            if (NOTF_UNLIKELY(m_is_finished)) {
                 NOTF_THROW(thread_pool_finished_error, "Cannot enqueue a new task into an already finished ThreadPool");
             }
             m_tasks.emplace_back(
-                [function{std::forward<FUNCTION>(function)}, &args...] { function(std::forward<Args>(args)...); });
+                [function{std::forward<Function>(function)}, &args...] { function(std::forward<Args>(args)...); });
         }
         m_condition_variable.notify_one();
     }
@@ -62,19 +61,19 @@ public:
     /// @param args         Arguments forwareded to the function when the tasks is executed.
     /// @returns            Future containing the result of the function once it finished execution.
     /// @throws             thread_pool_finished When the thread pool has already finished.
-    template<typename FUNCTION, typename... Args, typename return_t = typename std::result_of<FUNCTION(Args...)>::type,
-             typename = std::enable_if_t<!(std::is_same<void, return_t>::value)>>
-    NOTF_NODISCARD std::future<return_t> enqueue(FUNCTION&& function, Args&&... args)
+    template<class Function, class... Args, class return_t = std::invoke_result_t<Function(Args...)>>
+    NOTF_NODISCARD std::enable_if_t<!std::is_same_v<void, return_t>, std::future<return_t>>
+    enqueue(Function&& function, Args&&... args)
     {
         // create the new task
         auto task = std::make_shared<std::packaged_task<return_t()>>(
-            [function{std::forward<FUNCTION>(function)}, &args...] { return function(std::forward<Args>(args)...); });
+            [function{std::forward<Function>(function)}, &args...] { return function(std::forward<Args>(args)...); });
         std::future<return_t> result = task->get_future();
 
         { // enqueue the new task, unless the pool has already finished
             std::lock_guard<std::mutex> lock(m_queue_mutex);
-            if (is_finished) {
-                NOTF_THROW(thread_pool_finished_error, "Cannot enqueue a new task into an already finished ThreadPool");
+            if (NOTF_UNLIKELY(m_is_finished)) {
+                NOTF_THROW(finished_error, "Cannot enqueue a new task into an already finished ThreadPool");
             }
             m_tasks.emplace_back([task{std::move(task)}]() { (*task)(); });
         }
@@ -98,7 +97,7 @@ private:
     std::condition_variable m_condition_variable;
 
     /// Condition set to true when the ThreadPoool has finished.
-    bool is_finished = false;
+    bool m_is_finished = false;
 };
 
 NOTF_CLOSE_NAMESPACE

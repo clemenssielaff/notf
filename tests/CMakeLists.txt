@@ -28,11 +28,6 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     reactive/test_subscriber.cpp
 )
 
-# add scratch files
-add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/scratch
-#    node_scratch.cpp
-)
-
 # declare test runner executable
 add_executable(notf-tests
     main.cpp
@@ -56,8 +51,8 @@ target_link_libraries(notf-tests PUBLIC
 add_test(NAME "NotfTestRunner" COMMAND notf-tests)
 
 # create coverage for tests
-if(${NOTF_CREATE_COVERAGE})
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if(NOTF_CREATE_COVERAGE)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-instr-generate -fcoverage-mapping")
         set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-instr-generate")
     else()
@@ -67,7 +62,7 @@ endif()
 
 # automatically run all (except slow) tests as part of the build and display coverage
 option(NOTF_RUN_TESTS "Run tests" ON)
-if(${NOTF_RUN_TESTS})
+if(NOTF_RUN_TESTS)
     message(STATUS ">>> notf: Building tests")
 
     set(LLVM_COV_ARGS -instr-profile=notf-tests.profdata -Xdemangler=llvm-cxxfilt -use-color -ignore-filename-regex="thirdparty|tests")

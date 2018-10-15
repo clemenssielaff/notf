@@ -26,6 +26,16 @@ auto DefaultOperator()
     return std::make_shared<Operator<I, O, detail::SinglePublisherPolicy>>();
 }
 
+template<class O = int>
+auto DefaultGenerator()
+{
+    struct DefaultGeneratorImpl : public Operator<None, O> {
+        void on_next(const AnyPublisher* /*publisher*/) override { this->publish(m_state++); }
+        O m_state = 1;
+    };
+    return std::make_shared<DefaultGeneratorImpl>();
+}
+
 template<class T = int>
 auto TestSubscriber()
 {

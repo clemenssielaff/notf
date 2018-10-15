@@ -1,17 +1,23 @@
 #include <iostream>
 
-#include "notf/meta/assert.hpp"
+#include "notf/app/property.hpp"
 
-bool funcy()
-{
-    std::cout << "Funkey!" << std::endl;
-    return true;
-}
+NOTF_USING_NAMESPACE;
+
+template<class T>
+struct AProperty : Property<T> {
+
+    AProperty(T value) : Property<T>(value) {}
+
+    /// The Node-unique name of this Property.
+    std::string_view get_name() const override { return {}; }
+    void _clear_frozen() override {}
+};
 
 int main()
 {
-    NOTF_ASSERT(funcy());
-    NOTF_ASSERT_ALWAYS(funcy());
 
-    return 0;
+    auto blub = AProperty(45);
+
+    return 0; //
 }

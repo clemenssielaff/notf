@@ -71,16 +71,14 @@ struct Node {
     template<class T>
     const Property<T>& get_property(std::string_view name) const
     {
-        const UntypedProperty* property = _get_property(std::move(name));
-        if (const auto typed_property = dynamic_cast<const Property<T>*>(property)) {
-            return *typed_property;
-        }
+        const UntypedProperty* property = _get_property(name);
+        if (const auto typed_property = dynamic_cast<const Property<T>*>(property)) { return *typed_property; }
         throw std::out_of_range("");
     }
     template<class T>
     Property<T>& get_property(std::string_view name)
     {
-        return const_cast<Property<T>&>(const_cast<const Node*>(this)->get_property<T>(std::move(name)));
+        return const_cast<Property<T>&>(const_cast<const Node*>(this)->get_property<T>(name));
     }
 
 protected:
@@ -128,9 +126,7 @@ private:
     template<size_t I, char... Cs>
     constexpr auto& _get_property_by_name(StringType<char, Cs...> name) const
     {
-        if constexpr (property_t<I>::get_name() == name) {
-            return std::get<I>(m_properties);
-        }
+        if constexpr (property_t<I>::get_name() == name) { return std::get<I>(m_properties); }
         else if constexpr (I + 1 < get_property_count()) {
             return _get_property_by_name<I + 1>(name);
         }
@@ -143,12 +139,8 @@ private:
     const UntypedProperty* _get_property_by_hash(const size_t hash_value) const
     {
         constexpr size_t property_hash = property_t<I>::get_hash();
-        if (property_hash == hash_value) {
-            return &std::get<I>(m_properties);
-        }
-        if constexpr (I + 1 == get_property_count()) {
-            return nullptr;
-        }
+        if (property_hash == hash_value) { return &std::get<I>(m_properties); }
+        if constexpr (I + 1 == get_property_count()) { return nullptr; }
         else {
             static_assert(I + 1 < get_property_count());
             return _get_property_by_hash<I + 1>(hash_value);
@@ -291,9 +283,7 @@ public:
     template<class NewState, std::size_t I = 0>
     void transition_into()
     {
-        if constexpr (I >= std::variant_size_v<state_variant_t>) {
-            throw std::out_of_range("");
-        }
+        if constexpr (I >= std::variant_size_v<state_variant_t>) { throw std::out_of_range(""); }
         else {
             if constexpr (can_transition<state_t<I>, NewState>()) {
                 if (m_state.index() == I) {
@@ -311,9 +301,7 @@ private:
     template<size_t I, char... Cs>
     constexpr auto& _get_widget_property_by_name(StringType<char, Cs...> name) const
     {
-        if constexpr (widget_property_t<I>::get_name() == name) {
-            return std::get<I>(m_widget_properties);
-        }
+        if constexpr (widget_property_t<I>::get_name() == name) { return std::get<I>(m_widget_properties); }
         else if constexpr (I + 1 < _get_widget_property_count()) {
             return _get_widget_property_by_name<I + 1>(name);
         }
@@ -385,7 +373,7 @@ struct StateC : State<StateC, NodeType> {
     void callback() { std::cout << "Done :)" << std::endl; }
 };
 
-SCENARIO("node scratch", "[node_scratch][slow]")
+int main()
 {
     NOTF_USING_LITERALS_NAMESPACE;
 
@@ -428,11 +416,12 @@ SCENARIO("node scratch", "[node_scratch][slow]")
 
     try {
         NOTF_THROW(value_error, "Junge, waa' {} fies", "dat");
-    } catch (const value_error& exp) {
+    }
+    catch (const value_error& exp) {
         auto blub = exp.get_function();
     }
 
-//    NOTF_ASSERT(0, "wasgehtn {} oderwas", "deinemudda");
+    //    NOTF_ASSERT(0, "wasgehtn {} oderwas", "deinemudda");
 
     struct Base {};
     struct Sub : public Base {};
@@ -448,7 +437,6 @@ SCENARIO("node scratch", "[node_scratch][slow]")
     valid_ptr<Base*> v_base3(v_sub);
 
     NOTF_ASSERT(v_base == v_base2);
-
 
     auto blub = raw_pointer(v_base);
 

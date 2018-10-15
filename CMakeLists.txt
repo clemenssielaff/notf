@@ -1,7 +1,7 @@
 # require at least CMake 3.9 to support Interprocedural Optimization IPO
 # conditional copied from https://cliutils.gitlab.io/modern-cmake/chapters/basics.html
 cmake_minimum_required(VERSION 3.8)
-if(${CMAKE_VERSION} VERSION_LESS 3.12)
+if(CMAKE_VERSION VERSION_LESS 3.12)
     cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
 else()
     cmake_policy(VERSION 3.12)
@@ -18,9 +18,8 @@ project(notf
 
 # cmake modules
 set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-find_package( Threads )
-
-include(cotire)
+find_package(Threads REQUIRED)
+find_package(OpenGL REQUIRED)
 
 # use plain c++ 17
 set(CMAKE_CXX_STANDARD 17)
@@ -38,7 +37,7 @@ if(CMAKE_BUILD_TYPE MATCHES "Release")
     include(CheckIPOSupported)
     check_ipo_supported(RESULT IS_LTO_SUPPORTED OUTPUT LTO_ERROR)
 
-    if(${IS_LTO_SUPPORTED})
+    if(IS_LTO_SUPPORTED)
         message(STATUS ">>> notf: Building with LTO")
         set_property(GLOBAL PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     else()
@@ -47,7 +46,7 @@ if(CMAKE_BUILD_TYPE MATCHES "Release")
 endif()
 
 # use LLVM libraries and tools
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS ">>> notf: Using llvm tools: libc++ and lld ")
     add_compile_options("-stdlib=libc++")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi -fuse-ld=lld")
@@ -68,13 +67,18 @@ if(COMMAND cmake_policy)
     if(POLICY CMP0072)
         cmake_policy(SET CMP0072 NEW)
     endif()
+
+    # Only interpret if() arguments as variables or keywords when unquoted.
+    if (NOT CMAKE_VERSION VERSION_LESS "3.1")
+        cmake_policy(SET CMP0054 NEW)
+    endif()
 endif()
 
 # store information about the current git revision
 # note that this only displays the revision and modification state at the time that CMake is last run - not every time
 # that the source is built
 find_package(Git QUIET)
-if(${GIT_FOUND})
+if(GIT_FOUND)
     execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
                     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
                     OUTPUT_VARIABLE NOTF_BUILT_COMMIT
@@ -99,13 +103,13 @@ endmacro()
 # CONFIGURATION ########################################################################################################
 
 # define notf's debug flags when compiling a debug build
-if(${CMAKE_BUILD_TYPE} MATCHES "Debug")
+if(CMAKE_BUILD_TYPE MATCHES "Debug")
     message(STATUS ">>> notf: Building in debug mode")
     set(NOTF_DEBUG TRUE)
 
     # build and run the tests
     option(NOTF_BUILD_TESTS "Build tests" ON)
-    if(${NOTF_BUILD_TESTS})
+    if(NOTF_BUILD_TESTS)
         message(STATUS ">>> notf: Building tests")
         set(NOTF_TEST TRUE)
         enable_testing()
@@ -119,7 +123,7 @@ else()
 
     # build the benchmarks
     option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
-    if(${NOTF_BUILD_BENCHMARKS})
+    if(NOTF_BUILD_BENCHMARKS)
         message(STATUS ">>> notf: Building benchmarks")
         add_subdirectory(benchmarks)
     endif()
@@ -129,22 +133,22 @@ endif()
 set(NOTF_LOG_LEVEL "0" CACHE STRING "Log level to compile (0=all -> 6=nothing)")
 
 option(NOTF_ABORT_ON_ASSERT "Abort straight away when failing an assert" ON)
-if(${NOTF_ABORT_ON_ASSERT})
+if(NOTF_ABORT_ON_ASSERT)
     message(STATUS ">>> notf: Aborting on assert failure")
     set(NOTF_ABORT_ON_ASSERT TRUE)
 endif()
 
 # pretty (long) function names
 option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
-if(${NOTF_LOG_PRETTY_FUNCTION})
+if(NOTF_LOG_PRETTY_FUNCTION)
     message(STATUS ">>> notf: Using long function names")
     set(NOTF_LOG_PRETTY_FUNCTION TRUE)
 endif()
 
 # thread sanitization
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     option(NOTF_THREAD_SANITIZATION "Enable thread sanitization" OFF)
-    if(${NOTF_THREAD_SANITIZATION})
+    if(NOTF_THREAD_SANITIZATION)
         add_compile_options("-fsanitize=thread")
         link_libraries("-fsanitize=thread")
         message(STATUS ">>> notf: Building using thread sanitization")
@@ -154,8 +158,8 @@ endif()
 # coverage
 if(NOT MSVC)
     option(NOTF_CREATE_COVERAGE "Create test coverage " ON)
-    if(${NOTF_CREATE_COVERAGE})
-        if(${NOTF_THREAD_SANITIZATION})
+    if(NOTF_CREATE_COVERAGE)
+        if(NOTF_THREAD_SANITIZATION)
             message(AUTHOR_WARNING ">>> notf: Disabling coverage to avoid interference with thread sanitization.")
             set(NOTF_CREATE_COVERAGE OFF)
         else()
@@ -167,20 +171,20 @@ endif()
 # CODE INTEGRATION #####################################################################################################
 
 # check compiler ID (from https://cmake.org/cmake/help/latest/variable/CMAKE_LANG_COMPILER_ID.html)
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(NOTF_CLANG TRUE)
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(NOTF_GCC TRUE)
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(NOTF_MSVC TRUE)
 endif()
 
 # check operating system (from https://stackoverflow.com/a/40152725)
-if("${WIN32}")
+if(WIN32)
     set(NOTF_WINDOWS TRUE)
-elseif("${APPLE}")
+elseif(APPLE)
     set(NOTF_MACINTOSH TRUE)
-elseif("${UNIX}")
+elseif(UNIX)
     set(NOTF_LINUX TRUE)
 endif()
 

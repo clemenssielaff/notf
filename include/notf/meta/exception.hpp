@@ -23,6 +23,8 @@ struct notf_exception : public std::exception {
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
+    NOTF_NO_COPY_OR_ASSIGN(notf_exception);
+
     /// Constructor with a single (or no) message;
     /// @param file     File containing the function throwing the error.
     /// @param function Function in which the error was thrown.

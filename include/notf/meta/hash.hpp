@@ -104,4 +104,16 @@ constexpr size_t hash_string(const char* string, const size_t size) noexcept
     return result;
 }
 
+// hashable concept================================================================================================== //
+
+/// @{
+/// Constexpr boolean that is true only if T can be hashed using std::hash.
+template<typename T, typename = void>
+struct is_hashable : std::false_type {};
+template<typename T>
+struct is_hashable<T, std::void_t<decltype(std::hash<T>()(std::declval<T>()))>> : std::true_type {};
+template<typename T>
+static constexpr const bool is_hashable_v = is_hashable<T>::value;
+/// @}
+
 NOTF_CLOSE_NAMESPACE

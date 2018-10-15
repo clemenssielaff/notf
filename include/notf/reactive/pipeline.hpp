@@ -102,7 +102,7 @@ public:
     // fields ------------------------------------------------------------------------------------------------------- //
 protected:
     /// Is the Pipeline enabled or not? (is a size_t in order to avoid padding warnings).
-    size_t m_is_enabled = true;
+    bool m_is_enabled = true;
 };
 
 /// Operator near the front of every Pipeline.

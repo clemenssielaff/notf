@@ -329,7 +329,7 @@ public:
 
 protected:
     /// Internal publish handler, can be overriden by subclasses.
-    void _publish()
+    virtual void _publish()
     {
         NOTF_ASSERT(!this->is_completed());
         this->m_subscribers.on_each([this](auto* subscriber) { subscriber->on_next(this); });

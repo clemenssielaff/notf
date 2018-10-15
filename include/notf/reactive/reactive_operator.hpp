@@ -86,6 +86,38 @@ public:
     void on_complete(const AnyPublisher* /*publisher*/) override { this->complete(); }
 };
 
+/// Generator base class, does not provide an `on_next` implementation by default, because that's what the generator
+/// is for.
+template<class T, class Policy>
+class Operator<None, T, Policy> : public AnyOperator, public Subscriber<None>, public Publisher<T, Policy> {
+
+    // types -------------------------------------------------------------------------------------------------------- //
+public:
+    /// Subscriber type from which this Operator inherits.
+    using subscriber_t = Subscriber<None>;
+
+    /// Publisher type from which this Operator inherits.
+    using publisher_t = Publisher<T, Policy>;
+
+    // methods ------------------------------------------------------------------------------------------------------ //
+public:
+    /// In addition to explicit publishing, a "Generator" Operator also offers the ability to publish without input.
+    void publish() { this->on_next(nullptr); }
+    using publisher_t::publish; // do not overwrite the Publisher's method, but add another overload
+
+    /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
+    /// @param exception    The exception that has occurred.
+    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override
+    {
+        this->error(exception);
+    }
+
+    /// Subscriber "complete" operation, forwards to the Producer's "complete" operation by default.
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
+    void on_complete(const AnyPublisher* /*publisher*/) override { this->complete(); }
+};
+
 /// Specialization for Operators function that connect a data-producing upstream to a "None" downstream.
 template<class T, class Policy>
 class Operator<T, None, Policy> : public AnyOperator, public Subscriber<T>, public Publisher<None, Policy> {

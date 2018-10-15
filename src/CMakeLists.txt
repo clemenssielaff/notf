@@ -2,6 +2,8 @@
 
 # add core files
 add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
+    app/application.cpp
+
     common/msgpack.cpp
     common/random.cpp
     common/string.cpp
@@ -27,16 +29,17 @@ target_include_directories(notf-core PUBLIC
     ${CMAKE_SOURCE_DIR}/thirdparty/
 )
 
-# core library dependencies
 target_link_libraries(notf-core PUBLIC
     notf-thirdparty
+    glfw
     uuid
     ${CMAKE_THREAD_LIBS_INIT}
+    ${OPENGL_LIBRARIES}
 )
 
 # create coverage for the core library
-if(${NOTF_CREATE_COVERAGE})
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if(NOTF_CREATE_COVERAGE)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-instr-generate -fcoverage-mapping")
         set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-instr-generate")
     else()
@@ -45,7 +48,7 @@ if(${NOTF_CREATE_COVERAGE})
 endif()
 
 # show all but selected warnings
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(notf-core PRIVATE
 #        -Weverything
 #        -Wpedantic
@@ -54,10 +57,10 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 #        -Wno-c++98-compat
 #        -Wno-c++98-compat-pedantic
     )
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_compile_options(notf-core PRIVATE
         -Wall
     )
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     target_compile_options(notf-core PRIVATE "/W4")
 endif()
