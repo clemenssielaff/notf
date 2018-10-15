@@ -216,7 +216,7 @@ public:
         if (!std::holds_alternative<Map>(m_value)) { NOTF_THROW(value_error, "MsgPack object is not a Map"); }
 
         const auto& map = std::get<Map>(m_value);
-        if (auto it = map.find(key); it != map.end()) { return it->second; }
+        if (auto it = map.find(MsgPack(key)); it != map.end()) { return it->second; }
 
         NOTF_THROW(out_of_bounds, "MsgPack Map does not contain requested key \"{}\"", key);
     }

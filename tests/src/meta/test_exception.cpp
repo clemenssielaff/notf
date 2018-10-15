@@ -6,9 +6,9 @@ NOTF_USING_NAMESPACE;
 
 namespace {
 
-[[noreturn]] void throwing_no_msg() { NOTF_THROW(value_error); }
+NOTF_NORETURN void throwing_no_msg() { NOTF_THROW(value_error); }
 
-[[noreturn]] void throwing_with_msg() { NOTF_THROW(logic_error, "this is a {} message", "great"); }
+NOTF_NORETURN void throwing_with_msg() { NOTF_THROW(logic_error, "this is a {} message", "great"); }
 
 } // namespace
 

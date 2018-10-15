@@ -28,9 +28,7 @@ public:
     template<class Other, typename Indices = std::make_index_sequence<min(get_size(), Other::get_size())>>
     static constexpr bool is_same() noexcept
     {
-        if constexpr (get_size() != Other::get_size()) {
-            return false;
-        }
+        if constexpr (get_size() != Other::get_size()) { return false; }
         return _is_same_impl<Other>(Indices{});
     }
     template<class Other>
@@ -42,9 +40,7 @@ public:
     /// Access to an individual character of the string.
     static constexpr char_t at(const size_t index)
     {
-        if (index < get_size()) {
-            return s_text[index];
-        }
+        if (index < get_size()) { return s_text[index]; }
         else {
             throw std::out_of_range("Failed to read out-of-range StringType character");
         }
@@ -92,13 +88,9 @@ public:
     /// operator ==
     constexpr bool operator==(const StringConst& other) const noexcept
     {
-        if (other.get_size() != get_size()) {
-            return false;
-        }
+        if (other.get_size() != get_size()) { return false; }
         for (size_t i = 0; i < get_size(); ++i) {
-            if (other[i] != m_text[i]) {
-                return false;
-            }
+            if (other[i] != m_text[i]) { return false; }
         }
         return true;
     }
@@ -130,13 +122,9 @@ using StringConst = detail::StringConst<char>;
 template<class char_t, char_t... Cs>
 constexpr bool operator==(const detail::StringConst<char_t>& lhs, const StringType<char_t, Cs...>& rhs) noexcept
 {
-    if (sizeof...(Cs) != lhs.get_size()) {
-        return false;
-    }
+    if (sizeof...(Cs) != lhs.get_size()) { return false; }
     for (size_t i = 0; i < lhs.get_size(); ++i) {
-        if (rhs.at(i) != lhs[i]) {
-            return false;
-        }
+        if (rhs.at(i) != lhs[i]) { return false; }
     }
     return true;
 }
@@ -162,7 +150,7 @@ auto concat_string_type_impl(StringType<char_t, Ls...>, StringType<char_t, Rs...
 }
 
 template<class char_t, const StringConst<char_t>& string, size_t... I>
-[[maybe_unused]] static auto constexpr string_const_to_string_type(std::index_sequence<I...>)
+NOTF_UNUSED static auto constexpr string_const_to_string_type(std::index_sequence<I...>)
 {
     return StringType<char_t, string[I]...>{};
 }
@@ -175,7 +163,7 @@ constexpr auto digit_to_string_type()
 }
 
 template<size_t number, size_t... I>
-[[maybe_unused]] static auto constexpr number_to_string_type(std::index_sequence<I...>)
+NOTF_UNUSED static auto constexpr number_to_string_type(std::index_sequence<I...>)
 {
     constexpr size_t last_index = sizeof...(I) - 1; // reverse the expansion
     return concat_string_type_impl(digit_to_string_type<get_digit(number, last_index - I)>()...);

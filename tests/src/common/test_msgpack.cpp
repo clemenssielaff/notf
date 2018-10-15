@@ -461,6 +461,36 @@ SCENARIO("msgpack serialization / deserialization", "[common][msgpack]")
         REQUIRE(source == target);
     }
 
+    SECTION("Array")
+    {
+        std::stringstream buffer;
+        MsgPack source(std::vector<int>{4, 568, -414});
+        source.serialize(buffer);
+
+        MsgPack target = MsgPack::deserialize(buffer);
+        REQUIRE(source == target);
+    }
+
+    SECTION("Map")
+    {
+        std::stringstream buffer;
+        MsgPack source(std::map<std::string, int>{{"one", 24}, {"two", -16}, {"three", 0}});
+        source.serialize(buffer);
+
+        MsgPack target = MsgPack::deserialize(buffer);
+        REQUIRE(source == target);
+    }
+
+    SECTION("Binary")
+    {
+        std::stringstream buffer;
+        MsgPack source(std::vector<char>{'a', 'b', 'c'});
+        source.serialize(buffer);
+
+        MsgPack target = MsgPack::deserialize(buffer);
+        REQUIRE(source == target);
+    }
+
     SECTION("Full Test")
     {
         std::stringstream buffer;

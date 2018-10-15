@@ -20,7 +20,7 @@ namespace detail {
 /// Called when an assertion with a message fails.
 /// Prints out a formatted message with information about the failure and then aborts the program.
 template<class... Args>
-[[noreturn]] void
+NOTF_NORETURN void
 assertion_failed(char const* expr, char const* file, char const* function, long line, const char* fmt, Args&&... args)
 {
     using namespace fmt::literals;
@@ -35,7 +35,7 @@ assertion_failed(char const* expr, char const* file, char const* function, long 
     throw assertion_error(file, function, line, msg.c_str());
 #endif
 }
-[[noreturn]] inline void
+NOTF_NORETURN inline void
 assertion_failed(char const* expr, char const* file, char const* function, long line, const char* message = nullptr)
 {
     using namespace fmt::literals;

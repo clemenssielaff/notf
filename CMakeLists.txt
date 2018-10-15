@@ -184,6 +184,10 @@ elseif("${UNIX}")
     set(NOTF_LINUX TRUE)
 endif()
 
+# check endianness
+include (TestBigEndian)
+TEST_BIG_ENDIAN(NOTF_IS_BIG_ENDIAN)
+
 # these variables will be defined in notf/meta/config.hpp
 set(NOTF_VERSION_STRING ${PROJECT_VERSION})
 

@@ -51,14 +51,12 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 #        -Wpedantic
 #        -Wno-padded
 #        -Wno-weak-vtables   # used everywhere and not a problem
-#        -Wno-four-char-constants      # used in system.hpp to detect system endianness
 #        -Wno-c++98-compat
 #        -Wno-c++98-compat-pedantic
     )
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     target_compile_options(notf-core PRIVATE
         -Wall
-        -Wno-multichar
     )
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     target_compile_options(notf-core PRIVATE "/W4")

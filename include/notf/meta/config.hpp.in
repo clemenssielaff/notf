@@ -34,6 +34,9 @@
 #cmakedefine NOTF_TEST
 #cmakedefine NOTF_RELEASE
 
+/// System endianess
+#cmakedefine01 NOTF_IS_BIG_ENDIAN
+
 // notf namespace =================================================================================================== //
 
 /// Name of the notf namespace.

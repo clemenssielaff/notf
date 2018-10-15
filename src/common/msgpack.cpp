@@ -27,15 +27,15 @@ NOTF_USING_NAMESPACE;
 
 void write_char(const uchar value, std::ostream& os) { os.put(static_cast<char>(value)); }
 
-NOTF_MAKE_TEMPLATE_IN_TESTS
 void write_data(const char* bytes, const size_t size, std::ostream& os)
 {
-    if constexpr (is_big_endian()) { os.write(bytes, static_cast<long>(size)); }
-    else { // untested ...
-        for (size_t i = size; i > 0; --i) {
-            os.put(bytes[i - 1]);
-        }
+#if NOTF_IS_BIG_ENDIAN
+    os.write(bytes, static_cast<long>(size));
+#else
+    for (size_t i = size; i > 0; --i) {
+        os.put(bytes[i - 1]);
     }
+#endif
 }
 
 void write_data(const uchar header, const char* bytes, const size_t size, std::ostream& os)
@@ -185,43 +185,41 @@ char read_char(std::istream& is)
 {
     char result;
     is.get(result);
-
     if (!is.good()) { NOTF_THROW(MsgPack::ParseError); }
     return result;
+}
+
+void read_data(char* bytes, const size_t size, std::istream& is)
+{
+#if NOTF_IS_BIG_ENDIAN
+    is.read(bytes, static_cast<long>(size));
+#else
+    for (size_t i = size; i > 0; --i) {
+        is.get(bytes[i - 1]);
+    }
+#endif
+    if (!is.good()) { NOTF_THROW(MsgPack::ParseError); }
 }
 
 template<class T, class = std::enable_if_t<std::is_arithmetic_v<T>>>
 T read_number(std::istream& is)
 {
     T result;
-
-    if constexpr (is_big_endian()) { is.read(std::launder(reinterpret_cast<char*>(&result)), sizeof(T)); }
-    else { // untested ...
-        for (size_t i = sizeof(T); i > 0; --i) {
-            is.get(*(std::launder(reinterpret_cast<char*>(&result)) + i - 1));
-        }
-    }
-
-    if (!is.good()) { NOTF_THROW(MsgPack::ParseError); }
+    read_data(std::launder(reinterpret_cast<char*>(&result)), sizeof(T), is);
     return result;
 }
 
 MsgPack::String read_string(std::istream& is, const uint size)
 {
-    MsgPack::String result;
-    result.resize(size);
-    is.read(result.data(), static_cast<long>(size));
-
-    if (!is.good()) { NOTF_THROW(MsgPack::ParseError); }
+    MsgPack::String result(size, ' ');
+    read_data(result.data(), size, is);
     return result;
 }
 
 MsgPack::Binary read_binary(std::istream& is, const uint size)
 {
     MsgPack::Binary result(size);
-    is.read(result.data(), static_cast<long>(size));
-
-    if (!is.good()) { NOTF_THROW(MsgPack::ParseError); }
+    read_data(result.data(), size, is);
     return result;
 }
 
@@ -239,14 +237,18 @@ MsgPack::Map read_map(std::istream& is, const uint size, const uint depth)
 {
     MsgPack::Map result;
     for (size_t i = 0; i < size; ++i) {
-        result.emplace(MsgPackPrivate::deserialize(is, depth), MsgPackPrivate::deserialize(is, depth));
+        auto key = MsgPackPrivate::deserialize(is, depth);
+        auto value = MsgPackPrivate::deserialize(is, depth);
+        result.emplace(std::move(key), std::move(value));
     }
     return result;
 }
 
 MsgPack::Extension read_extension(std::istream& is, const uint size)
 {
-    return std::make_pair(static_cast<uint8_t>(read_char(is)), read_binary(is, size));
+    auto type = static_cast<uint8_t>(read_char(is));
+    auto binary = read_binary(is, size);
+    return std::make_pair(type, std::move(binary));
 }
 
 } // namespace

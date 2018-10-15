@@ -23,6 +23,72 @@ NOTF_OPEN_NAMESPACE
 ///     NOTF_IGNORE_VARIADIC(expr, , ##__VA_ARGS__) // expands to (expr)
 #define NOTF_IGNORE_VARIADIC(h, ...) (h)
 
+// compiler directives ============================================================================================== //
+
+/// Compiler builtin detection, as described in:
+///     https://clang.llvm.org/docs/LanguageExtensions.html#has-builtin
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
+
+/// Compiler attribute detection, as described in:
+///     https://clang.llvm.org/docs/LanguageExtensions.html#has-cpp-attribute
+#ifndef __has_cpp_attribute
+#define __has_cpp_attribute(x) (0)
+#endif
+
+/// Tells the compiler that a given statement is likely to be evaluated to true.
+#if defined NOTF_GCC || __has_builtin(__builtin_expect)
+#define NOTF_LIKELY(x) __builtin_expect(!!(x), 1)
+#define NOTF_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#else
+#define NOTF_LIKELY(x) (!!(x))
+#define NOTF_UNLIKELY(x) (!!(x))
+#endif
+
+/// NOTF_NODISCARD attribute to make sure that the return value of a function is not immediately discarded.
+#if __has_cpp_attribute(nodiscard)
+#define NOTF_NODISCARD [[nodiscard]]
+#elif __has_cpp_attribute(gnu::warn_unused_result)
+#define NOTF_NODISCARD [[gnu::warn_unused_result]]
+#elif defined(_MSC_VER) && (_MSC_VER >= 1700)
+#define NOTF_NODISCARD _Check_return_
+#elif defined(__clang__) || defined(__GNUC__)
+#define NOTF_NODISCARD __attribute__((__warn_unused_result__))
+#else
+#define NOTF_NODISCARD
+#endif
+
+/// Signifies that a value is (probably) unused and you don't want warnings about it.
+#if __has_cpp_attribute(maybe_unused)
+#define NOTF_UNUSED [[maybe_unused]]
+#elif defined NOTF_GCC || __has_cpp_attribute(gnu::unused)
+#define NOTF_UNUSED [[gnu::unused]]
+#else
+#define NOTF_UNUSED
+#endif
+
+/// Signifies that the function will not return control flow back to the caller.
+#if __has_cpp_attribute(noreturn)
+#define NOTF_NORETURN [[noreturn]]
+#else
+#define NOTF_NORETURN
+#endif
+
+/// Indicates that a specific point in the program cannot be reached, even if the compiler might otherwise think it can.
+#if defined NOTF_GCC || __has_builtin(__builtin_unreachable)
+#define NOTF_UNREACHABLE __builtin_unreachable()
+#else
+#define NOTF_UNREACHABLE
+#endif
+
+/// Pragma support for macros.
+#ifdef NOTF_MSVC
+#define NOTF_PRAGMA(x) __pragma(x)
+#else
+#define NOTF_PRAGMA(x) _Pragma(x)
+#endif
+
 // object definition ================================================================================================ //
 
 /// Convenience macro to disable the construction of automatic copy- and assign methods.
@@ -141,28 +207,6 @@ NOTF_OPEN_NAMESPACE
     using Type##Ptr = std::unique_ptr<Type<T, U, V, W>>; \
     template<class T, class U, class V, class W>         \
     using Type##ConstPtr = std::unique_ptr<const Type<T, U, V, W>>
-
-// compiler directives ============================================================================================== //
-
-#ifndef __has_builtin
-#define __has_builtin(x) 0
-#endif
-
-/// Tells the compiler that a given statement is likely to be evaluated to true.
-#if defined NOTF_GCC || __has_builtin(__builtin_expect)
-#define NOTF_LIKELY(x) __builtin_expect(!!(x), 1)
-#define NOTF_UNLIKELY(x) __builtin_expect(!!(x), 0)
-#else
-#define NOTF_LIKELY(x) (!!(x))
-#define NOTF_UNLIKELY(x) (!!(x))
-#endif
-
-/// Indicates that a specific point in the program cannot be reached, even if the compiler might otherwise think it can.
-#if defined NOTF_GCC || __has_builtin(__builtin_unreachable)
-#define NOTF_UNREACHABLE __builtin_unreachable()
-#else
-#define NOTF_UNREACHABLE
-#endif
 
 // raii ============================================================================================================= //
 

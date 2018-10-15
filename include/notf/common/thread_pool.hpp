@@ -4,16 +4,14 @@
 #include <future>
 #include <vector>
 
-#include "common/exception.hpp"
+#include "notf/meta/exception.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
 /// Thrown when you enqueue a new thread in a ThreadPool that has already finished.
-NOTF_EXCEPTION_TYPE(thread_pool_finished);
-
-// ================================================================================================================== //
+NOTF_EXCEPTION_TYPE(thread_pool_finished_error);
 
 ///
 /// Modelled closely after:
@@ -46,7 +44,7 @@ public:
         { // enqueue the new task, unless the pool has already finished
             std::lock_guard<std::mutex> lock(m_queue_mutex);
             if (is_finished) {
-                NOTF_THROW(thread_pool_finished, "Cannot enqueue a new task into an already finished ThreadPool");
+                NOTF_THROW(thread_pool_finished_error, "Cannot enqueue a new task into an already finished ThreadPool");
             }
             m_tasks.emplace_back(
                 [function{std::forward<FUNCTION>(function)}, &args...] { function(std::forward<Args>(args)...); });
@@ -76,7 +74,7 @@ public:
         { // enqueue the new task, unless the pool has already finished
             std::lock_guard<std::mutex> lock(m_queue_mutex);
             if (is_finished) {
-                NOTF_THROW(thread_pool_finished, "Cannot enqueue a new task into an already finished ThreadPool");
+                NOTF_THROW(thread_pool_finished_error, "Cannot enqueue a new task into an already finished ThreadPool");
             }
             m_tasks.emplace_back([task{std::move(task)}]() { (*task)(); });
         }

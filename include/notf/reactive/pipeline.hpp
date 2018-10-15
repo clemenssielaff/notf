@@ -30,6 +30,10 @@ template<class T>
 static constexpr const bool is_untyped_pipeline_v = is_untyped_pipeline<T>::value;
 /// @}
 
+/// Constexpr boolean that is true only of T is any (typed or untyped) Pipeline.
+template<class T>
+static constexpr const bool is_pipeline_v = is_typed_pipeline_v<T> || is_untyped_pipeline_v<T>;
+
 // pipeline compatibility check ===================================================================================== //
 
 namespace detail {
@@ -230,7 +234,8 @@ private:
 
 /// Connect a Publisher to a Subscriber
 template<class Pub, class Sub, class P = std::decay_t<Pub>, class S = std::decay_t<Sub>>
-std::enable_if_t<detail::is_reactive_compatible_v<P, S>, Pipeline<S>> operator|(Pub&& publisher, Sub&& subscriber)
+std::enable_if_t<!is_pipeline_v<P> && detail::is_reactive_compatible_v<P, S>, Pipeline<S>>
+operator|(Pub&& publisher, Sub&& subscriber)
 {
     if (!publisher || !subscriber) { NOTF_THROW(PipelineError, "Cannot connect a nullptr to a pipeline"); }
 
