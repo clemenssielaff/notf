@@ -143,29 +143,6 @@ struct is_same_signedness : public std::integral_constant<bool, std::is_signed_v
 template<class T, class U>
 using is_same_signedness_v = typename is_same_signedness<T, U>::value;
 
-/// Default factory can be used to (not really) instantiate types within a decltype expression, even if their default
-/// constructor is deleted.
-/// Without:
-///     struct Foo{
-///         Foo() = delete;
-///     };
-///     void overloaded(int) {}
-///     void overloaded(Foo) {}
-///
-///     template<class T>
-///     using can_be_overloaded = decltype(overloaded(T{}));
-///     using foo_t = can_be_overloaded<Foo>; // ERROR: use of deleted function 'Foo::Foo()'
-///
-/// And with:
-///     template<class T>
-///     using can_be_overloaded = decltype(overloaded(default_factory<T>{}()));
-///     using foo_t = can_be_overloaded<Foo>; // OKAY
-///
-template<class T>
-struct default_factory {
-    T operator()() const { return T{}; }
-};
-
 // ================================================================================================================== //
 
 /// "Special Access" type, that can be befriended by any class that wants to expose a subset of its private interface

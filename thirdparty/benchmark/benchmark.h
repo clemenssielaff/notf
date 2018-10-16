@@ -469,20 +469,20 @@ class State {
   // REQUIRES: The benchmark has not started running yet. Neither begin nor end
   // have been called previously.
   //
-  // NOTE: KeepRunning may not be used after calling either of these functions.
+  // Note: KeepRunning may not be used after calling either of these functions.
   BENCHMARK_ALWAYS_INLINE StateIterator begin();
   BENCHMARK_ALWAYS_INLINE StateIterator end();
 
   // Returns true if the benchmark should continue through another iteration.
-  // NOTE: A benchmark may not return from the test until KeepRunning() has
+  // Note: A benchmark may not return from the test until KeepRunning() has
   // returned false.
   bool KeepRunning();
 
   // Returns true iff the benchmark should run n more iterations.
   // REQUIRES: 'n' > 0.
-  // NOTE: A benchmark must not return from the test until KeepRunningBatch()
+  // Note: A benchmark must not return from the test until KeepRunningBatch()
   // has returned false.
-  // NOTE: KeepRunningBatch() may overshoot by up to 'n' iterations.
+  // Note: KeepRunningBatch() may overshoot by up to 'n' iterations.
   //
   // Intended usage:
   //   while (state.KeepRunningBatch(1000)) {
@@ -498,10 +498,10 @@ class State {
   // For threaded benchmarks the PauseTiming() function only pauses the timing
   // for the current thread.
   //
-  // NOTE: The "real time" measurement is per-thread. If different threads
+  // Note: The "real time" measurement is per-thread. If different threads
   // report different measurements the largest one is reported.
   //
-  // NOTE: PauseTiming()/ResumeTiming() are relatively
+  // Note: PauseTiming()/ResumeTiming() are relatively
   // heavyweight, and so their use should generally be avoided
   // within each benchmark iteration, if possible.
   void PauseTiming();
@@ -512,7 +512,7 @@ class State {
   // benchmark function. It begins running after control flow enters the
   // benchmark loop.
   //
-  // NOTE: PauseTiming()/ResumeTiming() are relatively
+  // Note: PauseTiming()/ResumeTiming() are relatively
   // heavyweight, and so their use should generally be avoided
   // within each benchmark iteration, if possible.
   void ResumeTiming();
@@ -532,7 +532,7 @@ class State {
   // the `KeepRunning()` loop. If multiple threads report an error only the
   // first error message is used.
   //
-  // NOTE: Calling 'SkipWithError(...)' does not cause the benchmark to exit
+  // Note: Calling 'SkipWithError(...)' does not cause the benchmark to exit
   // the current scope immediately. If the function is called from within
   // the 'KeepRunning()' loop the current iteration will finish. It is the users
   // responsibility to exit the scope as needed.
@@ -807,7 +807,7 @@ class Benchmark {
   Benchmark* Args(const std::vector<int64_t>& args);
 
   // Equivalent to Args({x, y})
-  // NOTE: This is a legacy C++03 interface provided for compatibility only.
+  // Note: This is a legacy C++03 interface provided for compatibility only.
   //   New code should use 'Args'.
   Benchmark* ArgPair(int64_t x, int64_t y) {
     std::vector<int64_t> args;
@@ -829,7 +829,7 @@ class Benchmark {
   Benchmark* ArgNames(const std::vector<std::string>& names);
 
   // Equivalent to Ranges({{lo1, hi1}, {lo2, hi2}}).
-  // NOTE: This is a legacy C++03 interface provided for compatibility only.
+  // Note: This is a legacy C++03 interface provided for compatibility only.
   //   New code should use 'Ranges'.
   Benchmark* RangePair(int64_t lo1, int64_t hi1, int64_t lo2, int64_t hi2) {
     std::vector<std::pair<int64_t, int64_t> > ranges;
@@ -855,7 +855,7 @@ class Benchmark {
   // Specify the amount of iterations that should be run by this benchmark.
   // REQUIRES: 'n > 0' and `MinTime` has not been called on this benchmark.
   //
-  // NOTE: This function should only be used when *exact* iteration control is
+  // Note: This function should only be used when *exact* iteration control is
   //   needed and never to control or limit how long a benchmark runs, where
   // `--benchmark_min_time=N` or `MinTime(...)` should be used instead.
   Benchmark* Iterations(size_t n);
@@ -1343,13 +1343,13 @@ class BenchmarkReporter {
 
     // Return a value representing the real time per iteration in the unit
     // specified by 'time_unit'.
-    // NOTE: If 'iterations' is zero the returned value represents the
+    // Note: If 'iterations' is zero the returned value represents the
     // accumulated time.
     double GetAdjustedRealTime() const;
 
     // Return a value representing the cpu time per iteration in the unit
     // specified by 'time_unit'.
-    // NOTE: If 'iterations' is zero the returned value represents the
+    // Note: If 'iterations' is zero the returned value represents the
     // accumulated time.
     double GetAdjustedCPUTime() const;
 

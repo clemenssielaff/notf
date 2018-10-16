@@ -15,7 +15,6 @@ class LogType {
   friend LogType& GetNullLogInstance();
   friend LogType& GetErrorLogInstance();
 
-  // FIXME: Add locking to output.
   template <class Tp>
   friend LogType& operator<<(LogType&, Tp const&);
   friend LogType& operator<<(LogType&, EndLType*);

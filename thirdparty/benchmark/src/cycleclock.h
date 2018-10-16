@@ -4,7 +4,7 @@
 //    is actually time since power-on.  This is like time() but doesn't
 //    involve a system call and is much more precise.
 //
-// NOTE: Not all cpu/platform/kernel combinations guarantee that this
+// Note: Not all cpu/platform/kernel combinations guarantee that this
 // clock increments at a constant rate or is synchronized across all logical
 // cpus in a system.
 //
@@ -51,7 +51,7 @@ extern "C" uint64_t __rdtsc();
 #endif
 
 namespace benchmark {
-// NOTE: only i386 and x86_64 have been well tested.
+// Note: only i386 and x86_64 have been well tested.
 // PPC, sparc, alpha, and ia64 are based on
 //    http://peter.kuscsik.com/wordpress/?p=14
 // with modifications by m3b.  See also

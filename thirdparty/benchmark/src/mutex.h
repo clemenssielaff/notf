@@ -68,7 +68,7 @@ namespace benchmark {
 
 typedef std::condition_variable Condition;
 
-// NOTE: Wrappers for std::mutex and std::unique_lock are provided so that
+// Note: Wrappers for std::mutex and std::unique_lock are provided so that
 // we can annotate them with thread safety attributes and use the
 // -Wthread-safety warning with clang. The standard library types cannot be
 // used directly because they do not provided the required annotations.

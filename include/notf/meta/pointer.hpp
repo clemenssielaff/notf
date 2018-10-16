@@ -76,7 +76,7 @@ constexpr std::enable_if_t<std::is_null_pointer_v<T>, std::nullptr_t> raw_pointe
 /// @}
 
 /// Checks if a given type contains a raw pointer that can be extracted with `raw_pointer`.
-template<class T, typename = decltype(raw_pointer(default_factory<T>{}()))>
+template<class T, typename = decltype(raw_pointer(std::declval<T>()))>
 struct has_raw_pointer : std::true_type {};
 
 /// Cast a pointer of type From to a pointer of Type To and raises an assert if a dynamic_cast fails.
