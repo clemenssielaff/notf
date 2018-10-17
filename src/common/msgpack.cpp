@@ -58,7 +58,7 @@ void write_uint(T value, std::ostream& os)
     if (value <= max_value<uint16_t>()) { return write_data(0xcd, static_cast<uint16_t>(value), os); } // uint16_t
     if (value <= max_value<uint32_t>()) { return write_data(0xce, static_cast<uint32_t>(value), os); } // uint32_t
     NOTF_ASSERT(value <= max_value<uint64_t>());                                                       // uint64_t
-    return write_data(0xcf, static_cast<uint64_t>(value), os);
+    write_data(0xcf, static_cast<uint64_t>(value), os);
 }
 
 template<typename T, class = std::enable_if_t<std::is_integral_v<T> && std::is_signed_v<T>>>
@@ -70,7 +70,7 @@ void write_int(T value, std::ostream& os)
     if (value >= min_value<int16_t>()) { return write_data(0xd1, static_cast<int16_t>(value), os); } // int16_t
     if (value >= min_value<int32_t>()) { return write_data(0xd2, static_cast<int32_t>(value), os); } // int32_t
     NOTF_ASSERT(value >= min_value<int64_t>());                                                      // int64_t
-    return write_data(0xd3, static_cast<int64_t>(value), os);
+    write_data(0xd3, static_cast<int64_t>(value), os);
 }
 
 void write_string(const MsgPack::String& string, std::ostream& os)
@@ -140,9 +140,9 @@ void write_map(uint depth, const MsgPack::Map& map, std::ostream& os)
         NOTF_ASSERT((size <= max_value<uint32_t>()));
         write_data(0xdf, static_cast<uint32_t>(size), os);
     }
-    for (auto it = map.begin(), end = map.end(); it != end; ++it) {
-        MsgPackPrivate::serialize(it->first, os, depth);  // key
-        MsgPackPrivate::serialize(it->second, os, depth); // value
+    for (const auto& it : map) {
+        MsgPackPrivate::serialize(it.first, os, depth);  // key
+        MsgPackPrivate::serialize(it.second, os, depth); // value
     }
 }
 
@@ -282,7 +282,7 @@ MsgPack MsgPack::_deserialize(std::istream& is, uint depth)
 {
     if (depth++ > s_max_recursion_depth) { NOTF_THROW(RecursionDepthExceededError); }
 
-    const uint8_t next_byte = static_cast<uint8_t>(read_char(is));
+    const auto next_byte = static_cast<uint8_t>(read_char(is));
 
     // none
     if (next_byte == 0xc0) { return {}; }

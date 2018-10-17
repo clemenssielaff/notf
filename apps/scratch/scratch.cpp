@@ -1,6 +1,9 @@
 #include <iostream>
 
 #include "notf/app/property.hpp"
+#include "notf/common/mnemonic.hpp"
+#include "notf/common/uuid.hpp"
+#include "notf/meta/hash.hpp"
 
 NOTF_USING_NAMESPACE;
 
@@ -37,6 +40,8 @@ auto TestSubscriber()
     return std::make_shared<TestSubscriberTImpl>();
 }
 
+using RTProperty = RunTimeProperty<int>;
+
 struct PropertyPolicy {
     using value_t = int;
     static constexpr StringConst name = "position";
@@ -44,18 +49,38 @@ struct PropertyPolicy {
     static constexpr bool is_visible = true;
 };
 
-using IProperty = CompileTimeProperty<PropertyPolicy>;
+using CTProperty = CompileTimeProperty<PropertyPolicy>;
+
+struct MustBeSharedPtr : std::enable_shared_from_this<MustBeSharedPtr> {
+    MustBeSharedPtr() { auto must_succeed = shared_from_this(); }
+};
 
 int main()
 {
 
-    auto prop = std::make_shared<IProperty>();
+    //    //    auto prop = std::make_shared<CTProperty>();
+    //    auto prop = std::make_shared<RTProperty>("derbeprop", 42);
 
-    auto publisher = DefaultPublisher();
-    auto pipeline = publisher | prop | TestSubscriber();
+    //    auto publisher = DefaultPublisher();
+    //    auto pipeline = prop | prop | TestSubscriber();
 
-    std::cout << prop->get_name() << " " << prop->get() << std::endl;
-    publisher->publish(42);
-    std::cout << prop->get_name() << " " << prop->get() << std::endl;
+    //    std::cout << prop->get_name() << " " << prop->get() << '\n';
+    //    publisher->publish(42);
+    //    std::cout << prop->get_name() << " " << prop->get() << '\n';
+
+    //    AnyPropertyPtr as_any = std::static_pointer_cast<AnyProperty>(prop);
+    //    std::cout << fmt::format("\"{}\"", type_name<std::remove_pointer_t<decltype(as_any.get())>>()) << '\n';
+    //    std::cout << fmt::format("\"{}\"", as_any->get_type_name()) << '\n';
+
+    //    try {
+    //        auto nope = MustBeSharedPtr();
+    //        std::cout << "Success, I guess?" << '\n';
+    //    }
+    //    catch (...) {
+    //        std::cout << "MustBeSharedPtr is NOT a shared_ptr" << '\n';
+    //    }
+
+    std::cout << "Mnemonic: " << number_to_mnemonic(hash(Uuid::generate()) % 100000000) << '\n';
+
     return 0; //
 }

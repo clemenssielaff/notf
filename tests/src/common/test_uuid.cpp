@@ -41,6 +41,16 @@ SCENARIO("uuid", "[common][uuid]")
         REQUIRE(bit_more > not_much);
     }
 
+    SECTION("We can extract the first and second word of a Uuid")
+    {
+        Uuid::Bytes array = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+        const Uuid uuid(array);
+        const auto words = uuid.to_words();
+
+        REQUIRE(words.first >> 7 * bitsizeof<uchar>() == 1);
+        REQUIRE(words.second >> 7 * bitsizeof<uchar>() == 9);
+    }
+
     SECTION("UUIDs can be cast from and to string")
     {
         Uuid uuid = Uuid::generate();
@@ -107,7 +117,7 @@ SCENARIO("uuid", "[common][uuid]")
         std::string invalid_uuid1 = "53b55247--b2a5-45f7-812a-b6210fdcdaef";
         std::string invalid_uuid2 = "53b55247-b2a5-45f7-812a-b6210fdcaef";
         std::string invalid_uuid3 = "53b55247b2a545f7812ab6210fdcdaef";
-        std::string invalid_uuid4 = "";
+        std::string invalid_uuid4;
         std::string invalid_uuid5 = "helloiamauuidplease,thankyou";
         REQUIRE(!Uuid(invalid_uuid1));
         REQUIRE(!Uuid(invalid_uuid2));

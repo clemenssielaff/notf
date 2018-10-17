@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "notf/meta/hash.hpp"
 #include "notf/meta/types.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -24,7 +25,7 @@ public:
 
     /// Value Constructor.
     /// @param bytes    Bytes to construct the UUID with.
-    Uuid(Bytes bytes) : m_bytes(std::move(bytes)) {}
+    Uuid(Bytes bytes) : m_bytes(bytes) {}
 
     /// Value Constructor.
     /// If the string does not contain a valid UUID, the resulting UUID is null.
@@ -48,10 +49,24 @@ public:
     static Uuid generate();
 
     /// Checks if this Uuid is anything but all zeros.
-    bool is_null() const { return m_bytes == Bytes{}; }
+    bool is_null() const noexcept { return m_bytes == Bytes{}; }
 
     /// Access to the internal representation of the Uuid.
-    const Bytes& get_data() const { return m_bytes; }
+    const Bytes& get_data() const noexcept { return m_bytes; }
+
+    /// Packs the Uuid into two size_t words.
+    std::pair<size_t, size_t> to_words() const noexcept
+    {
+        static constexpr auto byte_width = bitsizeof<uchar>();
+        size_t first = 0;
+        size_t second = 0;
+        for (size_t i = 0; i < byte_width; ++i) {
+            const size_t shift = byte_width * (byte_width - (i + 1));
+            first |= static_cast<size_t>(m_bytes[i]) << shift;
+            second |= static_cast<size_t>(m_bytes[i + byte_width]) << shift;
+        }
+        return std::make_pair(first, second);
+    }
 
     /// Explicit conversion to std::string.
     std::string to_string() const;
@@ -65,27 +80,27 @@ public:
 
     /// Comparison operator.
     /// @param other    Other Uuid object to compare against.
-    bool operator==(const Uuid& other) const { return m_bytes == other.m_bytes; }
+    bool operator==(const Uuid other) const noexcept { return m_bytes == other.m_bytes; }
 
     /// Less-than operator.
     /// @param other    Other Uuid object to compare against.
-    bool operator<(const Uuid& other) const { return m_bytes < other.m_bytes; }
+    bool operator<(const Uuid other) const noexcept { return m_bytes < other.m_bytes; }
 
     /// Inequality operator.
     /// @param other    Other Uuid object to compare against.
-    bool operator!=(const Uuid& other) const { return !(*this == other); }
+    bool operator!=(const Uuid other) const noexcept { return !(*this == other); }
 
     /// Less-or-equal-than operator.
     /// @param other    Other Uuid object to compare against.
-    bool operator<=(const Uuid& other) const { return !(other < *this); }
+    bool operator<=(const Uuid other) const noexcept { return !(other < *this); }
 
     /// Larger-than operator.
     /// @param other    Other Uuid object to compare against.
-    bool operator>(const Uuid& other) const { return (other < *this); }
+    bool operator>(const Uuid other) const noexcept { return (other < *this); }
 
     /// Larger-or-equal-than operator.
     /// @param other    Other Uuid object to compare against.
-    bool operator>=(const Uuid& other) const { return !(*this < other); }
+    bool operator>=(const Uuid other) const noexcept { return !(*this < other); }
 
     /// Checks if this Uuid is anything but all zeros.
     explicit operator bool() const noexcept { return !is_null(); }
@@ -118,10 +133,22 @@ private:
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// Byte representation of this UUID.
-    const Bytes m_bytes;
+    Bytes m_bytes;
 };
 
 /// Dump the Uuid into an ostream in human-readable form.
 std::ostream& operator<<(std::ostream& os, const Uuid& uuid);
 
 NOTF_CLOSE_NAMESPACE
+
+/// Hash
+namespace std {
+template<>
+struct hash<notf::Uuid> {
+    size_t operator()(notf::Uuid uuid) const noexcept
+    {
+        auto words = uuid.to_words();
+        return notf::hash(words.first, words.second);
+    }
+};
+} // namespace std

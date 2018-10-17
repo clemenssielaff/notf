@@ -64,7 +64,8 @@ constexpr std::enable_if_t<is_unique_ptr_v<T>, typename T::element_type*> raw_po
     return unique_ptr.get(); // from unique_ptr<T>
 }
 template<class T>
-constexpr std::enable_if_t<is_valid_ptr_v<T>, typename T::element_type*> raw_pointer(const T& valid_ptr) noexcept
+constexpr auto raw_pointer(const T& valid_ptr) noexcept
+    -> decltype(std::enable_if_t<is_valid_ptr_v<T>>(), raw_pointer(valid_ptr.get()))
 {
     return raw_pointer(valid_ptr.get()); // from valid_ptr<T>
 }
@@ -86,9 +87,7 @@ constexpr std::enable_if_t<std::conjunction_v<std::is_pointer<From>, std::is_poi
 assert_cast(From castee) noexcept(is_static_castable_v<From, To>)
 {
     // static cast
-    if constexpr (is_static_castable_v<From, To>) {
-        return static_cast<To>(castee);
-    }
+    if constexpr (is_static_castable_v<From, To>) { return static_cast<To>(castee); }
 
     // dynamic cast
     else {
@@ -117,7 +116,7 @@ struct pointer_hash {
 /// @param a    First weak_ptr.
 /// @param b    Second weak_ptr.
 template<class T>
-bool weak_ptr_equal(const std::weak_ptr<T>& a, const identity_t<std::weak_ptr<T>>& b)
+bool weak_ptr_equal(const std::weak_ptr<T>& a, const identity_t<std::weak_ptr<T>>& b) noexcept
 {
     return !a.owner_before(b) && !b.owner_before(a);
 }
@@ -126,7 +125,7 @@ bool weak_ptr_equal(const std::weak_ptr<T>& a, const identity_t<std::weak_ptr<T>
 /// @param ptr  Weak pointer to test
 /// @returns    True iff the weak pointer is empty (not initialized).
 template<class T>
-bool weak_ptr_empty(const std::weak_ptr<T>& ptr)
+bool weak_ptr_empty(const std::weak_ptr<T>& ptr) noexcept
 {
     return weak_ptr_equal(ptr, std::weak_ptr<T>{});
 }
@@ -185,7 +184,7 @@ public:
 
     // default construction for other valid_ptr<T>
     valid_ptr(const valid_ptr& other) = default;
-    valid_ptr(valid_ptr&& other) = default;
+    valid_ptr(valid_ptr&& other) noexcept = default;
     valid_ptr& operator=(const valid_ptr& other) = default;
 
     // forbid empty or construction with nullptr

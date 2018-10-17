@@ -113,4 +113,7 @@ NOTF_EXCEPTION_TYPE(internal_error);
 /// Error thrown when the wrong thread does something.
 NOTF_EXCEPTION_TYPE(thread_error);
 
+/// Error thrown when something is not unique as it should be.
+NOTF_EXCEPTION_TYPE(not_unique_error);
+
 NOTF_CLOSE_NAMESPACE

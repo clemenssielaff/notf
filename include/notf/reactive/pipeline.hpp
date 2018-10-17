@@ -267,4 +267,6 @@ operator|(Pub&& publisher, Sub&& subscriber)
     }
 }
 
+// TODO: what abut NoDag errors in a reactive system?
+
 NOTF_CLOSE_NAMESPACE

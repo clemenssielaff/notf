@@ -13,7 +13,7 @@ NOTF_OPEN_NAMESPACE
 /// @param input         Input string.
 /// @param delimiter     Delimiter character (is removed from the tokens).
 /// @return              String tokens.
-std::vector<std::string> tokenize(const std::string& input, const char delimiter);
+std::vector<std::string> tokenize(const std::string& input, char delimiter);
 
 /// tokenize() overload to deal with (potentially nullptr) c-style character arrays.
 /// @param input         Input string.
@@ -67,12 +67,22 @@ size_t levenshtein_distance(const std::string& s1, const std::string& s2);
 /// Joins a vector of strings into a single string, optionally inserting a delimiter in between.
 /// @param vec          Vector of strings to join.
 /// @param delimiter    Delimiter inserted in between the vector items.
-std::string join(const std::vector<std::string>::const_iterator begin,
-                 const std::vector<std::string>::const_iterator end, const std::string& delimiter = "");
+std::string join(std::vector<std::string>::const_iterator begin, std::vector<std::string>::const_iterator end,
+                 const std::string& delimiter = "");
 inline std::string join(const std::vector<std::string>& vec, const std::string& delimiter = "")
 {
     return join(vec.cbegin(), vec.cend(), delimiter);
 }
 /// @}
+
+/// Get the length of a c string literal at compile time.
+constexpr size_t string_length(const char* str)
+{
+    size_t i = 0;
+    while (str[i] != '\0') {
+        ++i;
+    }
+    return i;
+}
 
 NOTF_CLOSE_NAMESPACE

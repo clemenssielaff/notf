@@ -46,19 +46,19 @@ inline std::string demangle_type_name(const char* name) { return name; }
 /// @param t    Instance of the type in question.
 /// @returns    Pretty printed name, if this plattform is supported.
 template<class T>
-inline std::string type_name()
+std::string type_name()
 {
     return detail::demangle_type_name(typeid(T).name());
 }
 template<class T>
-inline std::string type_name(const T& t)
+std::string type_name(const T& type)
 {
-    return detail::demangle_type_name(typeid(t).name());
+    return detail::demangle_type_name(typeid(type).name());
 }
 template<>
-inline std::string type_name(const std::type_info& type_info)
+inline std::string type_name(const std::type_info& type)
 {
-    return detail::demangle_type_name(type_info.name());
+    return detail::demangle_type_name(type.name());
 }
 
 NOTF_CLOSE_NAMESPACE

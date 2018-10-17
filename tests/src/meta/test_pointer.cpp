@@ -18,11 +18,13 @@ SCENARIO("Pointer", "[meta][pointer]")
         auto valid = valid_ptr<Bar*>(&b);
         auto shared = std::make_shared<Bar>();
         auto unique = std::make_unique<Bar>();
+        auto valid_shared = valid_ptr<std::shared_ptr<Bar>>(std::make_shared<Bar>());
 
         REQUIRE(raw_pointer(raw) == &a);
         REQUIRE(raw_pointer(valid) == &b);
         REQUIRE(raw_pointer(shared) == shared.get());
         REQUIRE(raw_pointer(unique) == unique.get());
+        REQUIRE(raw_pointer(valid_shared) == valid_shared.get().get());
 
         Bar* c = nullptr;
         REQUIRE_THROWS_AS(valid_ptr<Bar*>(c), valid_ptr<Bar*>::invalid_pointer_error);

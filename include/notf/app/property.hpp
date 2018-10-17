@@ -6,7 +6,6 @@
 #include "notf/meta/typename.hpp"
 #include "notf/reactive/pipeline.hpp"
 
-#include "./app.hpp"
 #include "./graph.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -111,6 +110,7 @@ struct AnyProperty {
     NOTF_NO_COPY_OR_ASSIGN(AnyProperty);
     AnyProperty() = default;
     virtual ~AnyProperty() = default;
+    virtual std::string_view get_type_name() const = 0;
 };
 
 template<class T>
@@ -129,13 +129,12 @@ class Property : public AnyProperty {
         Pipeline<std::shared_ptr<detail::PropertyOperator<typename Prop::element_type::value_t>>>>
     operator|(Pub&& publisher, Prop& property);
 
-    // types
-    // -------------------------------------------------------------------------------------------------------- //
+    // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Property value type.
     using value_t = T;
 
-private:
+    /// Type of Operator in this Property.
     using operator_t = std::shared_ptr<detail::PropertyOperator<T>>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
@@ -146,6 +145,13 @@ public:
     Property(T value, bool is_visible)
         : m_operator(std::make_shared<detail::PropertyOperator<T>>(std::move(value), is_visible))
     {}
+
+    /// Name of this Property type, for runtime reporting.
+    std::string_view get_type_name() const final
+    {
+        static const std::string my_type = type_name<T>();
+        return my_type;
+    }
 
     /// The Node-unique name of this Property.
     virtual std::string_view get_name() const = 0;
@@ -161,21 +167,30 @@ public:
     void set(const T& value) { m_operator->set(value); }
 
     /// Connect the reactive Operator of this Property to a Subscriber downstream.
-    template<class Sub, class Prop,
+    template<class Prop, class Sub,
              class = std::enable_if_t<detail::is_reactive_compatible_v<operator_t, std::decay_t<Sub>> //
-                                      && std::is_base_of_v<Property<T>, typename Prop::element_type>>>
-    friend auto operator|(PropertyPtr<T>& property, Sub&& subscriber)
+                                      && std::is_base_of_v<Property<T>, Prop>>>
+    friend auto operator|(std::shared_ptr<Prop>& property, Sub&& subscriber)
     {
         return property->m_operator | std::forward<Sub>(subscriber);
     }
 
-    /// Connect a publisher upstream to a Property.
+    /// Connect a Publisher upstream to a Property.
     template<class Pub, class Prop,
              class = std::enable_if_t<detail::is_reactive_compatible_v<std::decay_t<Pub>, operator_t> //
-                                      && std::is_base_of_v<Property<T>, typename Prop::element_type>>>
-    friend auto operator|(Pub&& publisher, Prop& property)
+                                      && std::is_base_of_v<Property<T>, Prop>>>
+    friend auto operator|(Pub&& publisher, std::shared_ptr<Prop>& property)
     {
         return std::forward<Pub>(publisher) | property->m_operator;
+    }
+
+    /// Connect a Property upstream to a Property downstream.
+    template<class Pub, class Sub,
+             class = std::enable_if_t<detail::is_reactive_compatible_v<operator_t, typename Sub::operator_t> //
+                                      && std::is_base_of_v<Property<T>, Pub>>>
+    friend auto operator|(std::shared_ptr<Pub>& lhs, std::shared_ptr<Sub>& rhs)
+    {
+        return lhs->m_operator | rhs->m_operator;
     }
 
     auto& get_operator() { return m_operator; }
@@ -253,28 +268,34 @@ public:
     /// Default (empty) Constructor.
     PropertyHandle() = default;
 
+    /// @{
     /// Value Constructor.
     /// @param  property    Property to handle.
     PropertyHandle(const PropertyPtr<T>& property) : m_property(property) {}
+    PropertyHandle(PropertyWeakPtr<T> property) : m_property(std::move(property)) {}
+    /// @}
 
     /// @{
     /// Checks whether the PropertyHandle is still valid or not.
-    bool is_valid() const { return !m_property.expired(); }
-    explicit operator bool() const { return is_valid(); }
+    /// Note that there is a non-zero chance that a Handle is expired when you use it, even if `is_expired` just
+    /// returned false, because it might have expired in the time between the test and the next call.
+    /// However, if `is_expired` returns true, you can be certain that the Handle is expired for good.
+    bool is_expired() const { return m_property.expired(); }
+    explicit operator bool() const { return !is_expired(); }
     /// @}
 
     /// The Node-unique name of this Property.
-    /// @throws ExpiredHandleError  If the Handle has expired.
+    /// @throws HandleExpiredError  If the Handle has expired.
     std::string_view get_name() const { return _property()->get_name(); }
 
     /// The Property value.
     /// Blocks until the call can acquire the Graph mutex.
-    /// @throws ExpiredHandleError  If the Handle has expired.
+    /// @throws HandleExpiredError  If the Handle has expired.
     const T& get() const
     {
-        if (!is_valid()) { NOTF_THROW(ExpiredHandleError, "Property Handle of type '{}' has expired", type_name<T>()); }
+        if (is_expired()) { NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>()); }
         else {
-            NOTF_GUARD(std::lock_guard(TheGraph::get_mutex()));
+            NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
             return _property()->get();
         }
     }
@@ -282,12 +303,12 @@ public:
     /// Blocks until the Graph mutex could be acquired (nonblocking if the thread already holds it) and updates the
     /// Property directly.
     /// @param value                New value.
-    /// @throws ExpiredHandleError  If the Handle has expired.
+    /// @throws HandleExpiredError  If the Handle has expired.
     void set(const T& value)
     {
-        if (!is_valid()) { NOTF_THROW(ExpiredHandleError, "Property Handle of type '{}' has expired", type_name<T>()); }
+        if (is_expired()) { NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>()); }
         else {
-            NOTF_GUARD(std::lock_guard(TheGraph::get_mutex()));
+            NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
             return _property()->set(value);
         }
     }
@@ -295,27 +316,38 @@ public:
     /// Nonblocking direct update if the current thread already holds the Graph mutex; deferred
     /// update via a `PropertyChangeEvent` if not.
     /// @param value                New value.
-    /// @throws ExpiredHandleError  If the Handle has expired.
+    /// @throws HandleExpiredError  If the Handle has expired.
     void set_deferred(const T& value)
     {
-        if (!is_valid()) { NOTF_THROW(ExpiredHandleError, "Property Handle of type '{}' has expired", type_name<T>()); }
-        else if (auto possible_lock = std::unique_lock(TheGraph::get_mutex(), std::try_to_lock);
+        if (is_expired()) { NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>()); }
+        else if (auto possible_lock = std::unique_lock(TheGraph::get_graph_mutex(), std::try_to_lock);
                  possible_lock.owns_lock()) {
             // set immediately if you can
             return _property()->set(value);
         }
         else {
             // TODO: property change event
+            // TODO: property batches
+            return _property()->set(value); // this is obviously wrong, just for testing
         }
     }
 
+    /// Comparison operator.
+    /// @param rhs  Other PropertyHandle to compare against.
+    bool operator==(const PropertyHandle& rhs) const noexcept { return weak_ptr_equal(m_property, rhs.m_property); }
+    bool operator!=(const PropertyHandle& rhs) const noexcept { return !operator==(rhs); }
+
+    /// Less-than operator.
+    /// @param rhs  Other PropertyHandle to compare against.
+    bool operator<(const PropertyHandle& rhs) const noexcept { return m_property.owner_before(rhs.m_property); }
+
 private:
     /// Locks and returns an owning pointer to the handled Property.
-    /// @throws ExpiredHandleError  If the Handle has expired.
+    /// @throws HandleExpiredError  If the Handle has expired.
     PropertyPtr<T> _property() const
     {
         if (auto property = m_property.lock()) { return property; }
-        NOTF_THROW(ExpiredHandleError, "Property Handle of type '{}' has expired", type_name<T>());
+        NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>());
     }
 
     // members ------------------------------------------------------------------------------------------------------ //
