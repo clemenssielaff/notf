@@ -71,7 +71,7 @@ constexpr void hash_combine(std::size_t& seed, T&& value, Rest&&... rest) noexce
         seed ^= static_cast<size_t>(value) + magic_number + (seed << 6) + (seed >> 2);
     }
     else {
-        seed ^= std::hash<T>{}(std::forward<T>(value)) + magic_number + (seed << 6) + (seed >> 2);
+        seed ^= std::hash<std::decay_t<T>>()(std::forward<T>(value)) + magic_number + (seed << 6) + (seed >> 2);
     }
     hash_combine(seed, std::forward<Rest>(rest)...);
 }

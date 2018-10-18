@@ -1,7 +1,6 @@
 #pragma once
 
-#include <memory>
-
+#include "notf/common/common.hpp"
 #include "notf/meta/exception.hpp"
 
 NOTF_OPEN_NAMESPACE

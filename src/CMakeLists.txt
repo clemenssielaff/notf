@@ -5,6 +5,7 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/application.cpp
     app/graph.cpp
     app/node.cpp
+    app/node_handle.cpp
 
     common/mnemonic.cpp
     common/msgpack.cpp

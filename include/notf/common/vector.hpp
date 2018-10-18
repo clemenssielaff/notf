@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <vector>
 
-#include "notf/meta/exception.hpp"
 #include "./common.hpp"
+#include "notf/meta/exception.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -26,9 +26,7 @@ template<class T>
 bool remove_one_unordered(std::vector<T>& vector, const T& element)
 {
     auto it = std::find(vector.begin(), vector.end(), element);
-    if (it == vector.end()) {
-        return false;
-    }
+    if (it == vector.end()) { return false; }
     *it = std::move(vector.back());
     vector.pop_back();
     return true;
@@ -79,9 +77,7 @@ std::vector<T>& extend(std::vector<T>& vector, const std::vector<T>& extension)
 template<class T>
 std::vector<T>& extend(std::vector<T>& vector, std::vector<T>&& extension)
 {
-    if (vector.empty()) {
-        vector = std::move(extension);
-    }
+    if (vector.empty()) { vector = std::move(extension); }
     else {
         std::move(std::begin(extension), std::end(extension), std::back_inserter(vector));
         extension.clear();
@@ -123,9 +119,7 @@ std::vector<T> flatten(const std::vector<std::vector<T>>& v)
 template<class T>
 T take_back(std::vector<T>& v)
 {
-    if (v.empty()) {
-        NOTF_THROW(out_of_bounds, "Cannot take last entry of an empty vector");
-    }
+    if (v.empty()) { NOTF_THROW(out_of_bounds, "Cannot take last entry of an empty vector"); }
     T result = v.back();
     v.pop_back();
     return result;
@@ -157,10 +151,10 @@ bool index_of(const std::vector<T>& vector, const T& value, size_t& result)
 ///
 /// @param vec  Vector to modify.
 /// @param it   Iterator to the element to move to the back.
-template<class T>
-void move_to_back(std::vector<T>& vec, typename std::vector<T>::iterator it)
+template<class T, class Iterator = typename std::vector<T>::iterator>
+void move_to_back(std::vector<T>& vector, Iterator moved)
 {
-    std::rotate(it, std::next(it), vec.end());
+    std::rotate(moved, std::next(moved), vector.end());
 }
 
 /// Moves the value at the iterator to the front of the vector.
@@ -172,55 +166,60 @@ void move_to_back(std::vector<T>& vec, typename std::vector<T>::iterator it)
 ///
 /// @param vec  Vector to modify.
 /// @param it   Iterator to the element to move to the front.
-template<class T>
-void move_to_front(std::vector<T>& vec, typename std::vector<T>::iterator it)
+template<class T, class Iterator = typename std::vector<T>::iterator>
+void move_to_front(std::vector<T>& vector, Iterator moved)
 {
-    std::rotate(vec.begin(), it, std::next(it));
+    std::rotate(vector.begin(), moved, std::next(moved));
 }
 
 /// Stacks the given iterator just to the left of the other.
 /// @param vec      Vector to modify.
 /// @param it       Iterator to the element to move.
 /// @param other    Element just to the right of `it` after this function has run.
-template<class T>
-void move_in_front_of(std::vector<T>& vec, typename std::vector<T>::iterator it,
-                      typename std::vector<T>::iterator other)
+template<class T, class Iterator = typename std::vector<T>::iterator>
+void move_in_front_of(std::vector<T>& vector, Iterator moved, Iterator other)
 {
-    if (it == other) {
-        return;
-    }
-    else if (std::distance(vec.begin(), it) > std::distance(vec.begin(), other)) {
-        std::rotate(other, it, std::next(it));
+    if (moved == other) { return; }
+    else if (std::distance(vector.begin(), moved) > std::distance(vector.begin(), other)) {
+        std::rotate(other, moved, std::next(moved));
     }
     else {
-        std::rotate(it, std::next(it), other);
+        std::rotate(moved, std::next(moved), other);
     }
+}
+template<class T>
+void move_in_front_of(std::vector<T>& vector, const size_t moved_index, const size_t other_index)
+{
+    move_in_front_of(vector, iterator_at(vector, moved_index), iterator_at(vector, other_index));
 }
 
 /// Stacks the given iterator just to the right of the other.
 /// @param vec      Vector to modify.
 /// @param it       Iterator to the element to move.
 /// @param other    Element just to the left of `it` after this function has run.
-template<class T>
-void move_behind_of(std::vector<T>& vec, typename std::vector<T>::iterator it, typename std::vector<T>::iterator other)
+template<class T, class Iterator = typename std::vector<T>::iterator>
+void move_behind_of(std::vector<T>& vector, Iterator moved, Iterator other)
 {
-    if (it == other) {
-        return;
-    }
-    else if (std::distance(vec.begin(), it) > std::distance(vec.begin(), other)) {
-        std::rotate(next(other), it, std::next(it));
+    if (moved == other) { return; }
+    else if (std::distance(vector.begin(), moved) > std::distance(vector.begin(), other)) {
+        std::rotate(next(other), moved, std::next(moved));
     }
     else {
-        std::rotate(it, std::next(it), std::next(other));
+        std::rotate(moved, std::next(moved), std::next(other));
     }
+}
+template<class T>
+void move_behind_of(std::vector<T>& vector, const size_t moved_index, const size_t other_index)
+{
+    move_behind_of(vector, iterator_at(vector, moved_index), iterator_at(vector, other_index));
 }
 
 /// Checks if a vector contains a given value.
 /// @param value    Value to search for.
-template<class T>
-bool contains(const std::vector<T>& vec, const T& value)
+template<class T, class V>
+bool contains(const std::vector<T>& vector, V&& value)
 {
-    return std::find(vec.begin(), vec.end(), value) != vec.end();
+    return std::find(vector.begin(), vector.end(), std::forward<V>(value)) != vector.end();
 }
 
 /// Calls the given function on each valid element and removes the rest.
@@ -234,15 +233,11 @@ void iterate_and_clean(std::vector<T>& vector, P&& predicate, F&& functor)
     for (size_t index = 0, end = vector.size(); index < end; ++index) {
         if (predicate(vector[index])) {
             functor(vector[index]);
-            if (gap != index) {
-                vector[gap] = std::move(vector[index]);
-            }
+            if (gap != index) { vector[gap] = std::move(vector[index]); }
             ++gap;
         }
     }
-    if (gap != vector.size()) {
-        vector.erase(iterator_at(vector, gap), vector.end());
-    }
+    if (gap != vector.size()) { vector.erase(iterator_at(vector, gap), vector.end()); }
 }
 
 NOTF_CLOSE_NAMESPACE

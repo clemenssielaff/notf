@@ -1,9 +1,6 @@
 #pragma once
 
-#include "notf/meta/hash.hpp"
-#include "notf/meta/log.hpp"
 #include "notf/meta/stringtype.hpp"
-#include "notf/meta/typename.hpp"
 #include "notf/reactive/pipeline.hpp"
 
 #include "./graph.hpp"
@@ -53,8 +50,6 @@ public:
     /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
     const T& get(const std::thread::id thread_id) const
     {
-        // if the property is frozen by this thread (the render thread, presumably) and there exists a frozen copy of
-        // the value, use that instead of the current one
         if (T* frozen_value = m_cache.load(std::memory_order_consume)) {
             if (TheGraph::is_frozen_by(thread_id)) { return *frozen_value; }
         }
@@ -68,13 +63,10 @@ public:
         // do nothing if the property value would not actually change
         if (value == m_value) { return; }
 
-        // if the property is currently frozen and this is the first modification,
+        // if the graph is currently frozen and this is the first modification of this property,
         // create a frozen copy of the current value before changing it
-        if (T* frozen_value = m_cache.load(std::memory_order_relaxed); !frozen_value) {
-            if (TheGraph::is_frozen()) {
-                frozen_value = new T(std::move(m_value));
-                m_cache.store(frozen_value, std::memory_order_release);
-            }
+        if (T* frozen_value = m_cache.load(std::memory_order_relaxed); frozen_value == nullptr) {
+            if (TheGraph::is_frozen()) { m_cache.store(new T(std::move(m_value)), std::memory_order_release); }
         }
 
         // update and publish
@@ -84,10 +76,7 @@ public:
     }
 
     /// Deletes the frozen value copy, if one exists.
-    void clear_frozen()
-    {
-        if (T* frozen_ptr = m_cache.exchange(nullptr)) { delete frozen_ptr; }
-    }
+    void clear_frozen() { delete m_cache.exchange(nullptr); }
 
     // members ------------------------------------------------------------------------------------------------------ //
 private:
@@ -103,7 +92,7 @@ private:
 
 } // namespace detail
 
-// property ================================================================================================ //
+// property ========================================================================================================= //
 
 /// Base class for all Property types.
 struct AnyProperty {
@@ -111,6 +100,7 @@ struct AnyProperty {
     AnyProperty() = default;
     virtual ~AnyProperty() = default;
     virtual std::string_view get_type_name() const = 0;
+    // TODO: store a reference back to your node, so the property can set it dirty/tweaked
 };
 
 template<class T>
@@ -252,110 +242,5 @@ public:
     /// The compile time constant name of this Property.
     static constexpr const StringConst& get_const_name() noexcept { return Policy::name; }
 };
-
-// property handle ================================================================================================== //
-
-template<class T>
-class PropertyHandle {
-
-    // types -------------------------------------------------------------------------------------------------------- //
-public:
-    /// Property value type.
-    using value_t = T;
-
-    // methods ------------------------------------------------------------------------------------------------------ //
-public:
-    /// Default (empty) Constructor.
-    PropertyHandle() = default;
-
-    /// @{
-    /// Value Constructor.
-    /// @param  property    Property to handle.
-    PropertyHandle(const PropertyPtr<T>& property) : m_property(property) {}
-    PropertyHandle(PropertyWeakPtr<T> property) : m_property(std::move(property)) {}
-    /// @}
-
-    /// @{
-    /// Checks whether the PropertyHandle is still valid or not.
-    /// Note that there is a non-zero chance that a Handle is expired when you use it, even if `is_expired` just
-    /// returned false, because it might have expired in the time between the test and the next call.
-    /// However, if `is_expired` returns true, you can be certain that the Handle is expired for good.
-    bool is_expired() const { return m_property.expired(); }
-    explicit operator bool() const { return !is_expired(); }
-    /// @}
-
-    /// The Node-unique name of this Property.
-    /// @throws HandleExpiredError  If the Handle has expired.
-    std::string_view get_name() const { return _property()->get_name(); }
-
-    /// The Property value.
-    /// Blocks until the call can acquire the Graph mutex.
-    /// @throws HandleExpiredError  If the Handle has expired.
-    const T& get() const
-    {
-        if (is_expired()) { NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>()); }
-        else {
-            NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
-            return _property()->get();
-        }
-    }
-
-    /// Blocks until the Graph mutex could be acquired (nonblocking if the thread already holds it) and updates the
-    /// Property directly.
-    /// @param value                New value.
-    /// @throws HandleExpiredError  If the Handle has expired.
-    void set(const T& value)
-    {
-        if (is_expired()) { NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>()); }
-        else {
-            NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
-            return _property()->set(value);
-        }
-    }
-
-    /// Nonblocking direct update if the current thread already holds the Graph mutex; deferred
-    /// update via a `PropertyChangeEvent` if not.
-    /// @param value                New value.
-    /// @throws HandleExpiredError  If the Handle has expired.
-    void set_deferred(const T& value)
-    {
-        if (is_expired()) { NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>()); }
-        else if (auto possible_lock = std::unique_lock(TheGraph::get_graph_mutex(), std::try_to_lock);
-                 possible_lock.owns_lock()) {
-            // set immediately if you can
-            return _property()->set(value);
-        }
-        else {
-            // TODO: property change event
-            // TODO: property batches
-            return _property()->set(value); // this is obviously wrong, just for testing
-        }
-    }
-
-    /// Comparison operator.
-    /// @param rhs  Other PropertyHandle to compare against.
-    bool operator==(const PropertyHandle& rhs) const noexcept { return weak_ptr_equal(m_property, rhs.m_property); }
-    bool operator!=(const PropertyHandle& rhs) const noexcept { return !operator==(rhs); }
-
-    /// Less-than operator.
-    /// @param rhs  Other PropertyHandle to compare against.
-    bool operator<(const PropertyHandle& rhs) const noexcept { return m_property.owner_before(rhs.m_property); }
-
-private:
-    /// Locks and returns an owning pointer to the handled Property.
-    /// @throws HandleExpiredError  If the Handle has expired.
-    PropertyPtr<T> _property() const
-    {
-        if (auto property = m_property.lock()) { return property; }
-        NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>());
-    }
-
-    // members ------------------------------------------------------------------------------------------------------ //
-private:
-    /// The handled Property, non owning.
-    PropertyWeakPtr<T> m_property;
-};
-
-// reactive pipeline | operator ===================================================================================== //
 
 NOTF_CLOSE_NAMESPACE

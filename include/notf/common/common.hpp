@@ -18,4 +18,7 @@ NOTF_DEFINE_SHARED_POINTERS(class, VariableTimer);
 // msgpack.hpp
 class MsgPack;
 
+// uuid.hpp
+class Uuid;
+
 NOTF_CLOSE_NAMESPACE

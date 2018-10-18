@@ -1,11 +1,12 @@
 #pragma once
 
 #include <unordered_map>
+#include <unordered_set>
 
-#include "./app.hpp"
 #include "notf/common/mutex.hpp"
 #include "notf/common/uuid.hpp"
-#include "notf/meta/log.hpp"
+
+#include "./node_handle.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -48,7 +49,7 @@ private:
         /// Assigns and returns a random name, if the Node is unnamed.
         /// @param node                 Handle of the Node in question.
         /// @throws HandleExpiredError  If the NodeHandle has expired.
-        std::string_view get_name(const NodeHandle& node);
+        std::string_view get_name(NodeHandle node);
 
         /// (Re-)Names a Node in the registry.
         /// If another Node with the same name already exists, this method will append the lowest integer postfix that
@@ -114,6 +115,12 @@ private:
 
     /// Node name registry string -> NodeHandle.
     static inline NodeNameRegistry s_node_name_registry;
+
+    /// All Nodes that were modified since the last time the Graph was rendered.
+    static std::unordered_set<NodeHandle> s_dirty_nodes;
+
+    /// All Nodes that were modified while the Graph was frozen.
+    static std::unordered_set<NodeHandle> s_tweaked_nodes;
 };
 
 // node accessor ==================================================================================================== //
@@ -136,12 +143,23 @@ class Accessor<TheGraph, Node> {
     /// Assigns and returns a random name, if the Node is unnamed.
     /// @param node                 Handle of the Node in question.
     /// @throws HandleExpiredError  If the NodeHandle has expired.
-    std::string_view get_name(const NodeHandle& node);
+    static std::string_view get_name(NodeHandle node);
 
     /// (Re-)Names a Node in the registry.
-    /// @param node                 Node to rename.
-    /// @throws not_unique_error    If another Node with the same name is already registered.
-    std::string_view set_name(NodeHandle node, const std::string& name);
+    /// If another Node with the same name already exists, this method will append the lowest integer postfix that
+    /// makes the name unique.
+    /// @param node     Node to rename.
+    /// @param name     Proposed name of the Node.
+    /// @returns        New name of the Node.
+    static std::string_view set_name(NodeHandle node, const std::string& name);
+
+    /// Registers the given Node as dirty (a visible Property was modified since the last frame was drawn).
+    /// @param node     Dirty node.
+    static void mark_dirty(NodeHandle node);
+
+    /// Registers the given Node as dirty (any Property or the hierarhcy was modified while the Graph was frozen).
+    /// @param node     Tweaked node.
+    static void mark_tweaked(NodeHandle node);
 };
 
 NOTF_CLOSE_NAMESPACE

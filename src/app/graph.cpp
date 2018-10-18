@@ -1,7 +1,8 @@
 #include "notf/app/graph.hpp"
 
-#include "notf/app/node.hpp"
 #include "notf/common/mnemonic.hpp"
+
+#include "notf/app/node.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -26,7 +27,7 @@ void TheGraph::NodeRegistry::remove(Uuid uuid)
     if (auto iter = m_registry.find(uuid); iter != m_registry.end()) { m_registry.erase(iter); }
 }
 
-std::string_view TheGraph::NodeNameRegistry::get_name(const NodeHandle& node)
+std::string_view TheGraph::NodeNameRegistry::get_name(NodeHandle node)
 {
     const Uuid& uuid = node.get_uuid(); // this might throw if the handle is expired, do it before locking the mutex
     {
@@ -36,11 +37,14 @@ std::string_view TheGraph::NodeNameRegistry::get_name(const NodeHandle& node)
         auto& name_view = m_uuid_to_name[uuid];
         if (!name_view.empty()) { return name_view; }
 
-        // generate and a new, random, and unique name
-        size_t mnemonic_number = hash(node.get_uuid()) % exp(100, 4); // random names have 4 syllables
-        std::string name = number_to_mnemonic(mnemonic_number);
-        while (m_name_to_node.count(name) > 0) {
-            name = number_to_mnemonic(++mnemonic_number);
+        std::string name;
+        { // generate and a new, random, and unique name
+            const std::string base_name = number_to_mnemonic(hash(node.get_uuid()), /*max_syllables=*/4);
+            size_t counter = 2;
+            name = base_name;
+            while (m_name_to_node.count(name) > 0) {
+                name = fmt::format("{}_{:0>2}", name, counter++);
+            }
         }
 
         // store the node handle under its new name
@@ -72,11 +76,16 @@ std::string_view TheGraph::NodeNameRegistry::set_name(NodeHandle node, const std
         }
 
         { // (re-)register the node under its proposed name, or a unique variant thereof
-            size_t counter = 1;
+            size_t counter = 2;
             auto [iter, success] = m_name_to_node.try_emplace(name, std::make_pair(uuid, node));
             while (!success) {
                 std::tie(iter, success) = m_name_to_node.try_emplace(fmt::format("{}_{:0>2}", name, counter++), //
                                                                      std::make_pair(uuid, node));
+                // if the name is already taken, but the handle expired, just replace it
+                if (!success && iter->second.second.is_expired()) {
+                    iter->second = std::make_pair(uuid, node);
+                    success = true;
+                }
             }
             name_view = iter->first;
         }
@@ -135,16 +144,24 @@ void TheGraph::NodeNameRegistry::_remove_name(std::string_view name_view)
 
 void Accessor<TheGraph, Node>::register_node(NodeHandle node) { TheGraph::s_node_registry.add(std::move(node)); }
 
-void Accessor<TheGraph, Node>::unregister_node(Uuid uuid) { TheGraph::s_node_registry.remove(uuid); }
-
-std::string_view Accessor<TheGraph, Node>::get_name(const NodeHandle& node)
+void Accessor<TheGraph, Node>::unregister_node(Uuid uuid)
 {
-    return TheGraph::s_node_name_registry.get_name(node);
+    TheGraph::s_node_registry.remove(uuid);
+    TheGraph::s_node_name_registry.remove_node(uuid);
+}
+
+std::string_view Accessor<TheGraph, Node>::get_name(NodeHandle node)
+{
+    return TheGraph::s_node_name_registry.get_name(std::move(node));
 }
 
 std::string_view Accessor<TheGraph, Node>::set_name(NodeHandle node, const std::string& name)
 {
     return TheGraph::s_node_name_registry.set_name(std::move(node), name);
 }
+
+void Accessor<TheGraph, Node>::mark_dirty(NodeHandle node) { TheGraph::s_dirty_nodes.emplace(std::move(node)); }
+
+void Accessor<TheGraph, Node>::mark_tweaked(NodeHandle node) { TheGraph::s_tweaked_nodes.emplace(std::move(node)); }
 
 NOTF_CLOSE_NAMESPACE
