@@ -2,6 +2,8 @@
 
 #include <unordered_set>
 
+#include "notf/common/bitset.hpp"
+
 #include "./property.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -21,6 +23,9 @@ public:
 private:
     /// Owning list of child Nodes, ordered from back to front.
     using ChildList = std::vector<NodePtr>;
+
+    /// How many Node flags are reserved for internal usage?
+    static constexpr const size_t s_internal_flag_count = 8;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 protected:
@@ -136,6 +141,27 @@ public:
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
     void stack_behind(const NodeHandle& sibling);
 
+    // flags ------------------------------------------------------------------
+
+    /// Returns the number of user definable flags of a Node on this system.
+    static constexpr size_t get_user_flag_count()
+    {
+        static_assert(s_internal_flag_count <= bitset_size_v<decltype(Node::m_flags)>);
+        return bitset_size_v<decltype(Node::m_flags)> - s_internal_flag_count;
+    }
+
+    /// Tests a user defineable flag on this Node.
+    /// @param index            Index of the user flag.
+    /// @returns                True iff the flag is set.
+    /// @throws out_of_bounds   If index >= user flag count.
+    bool is_user_flag_set(size_t index);
+
+    /// Sets or unsets a user flag.
+    /// @param index            Index of the user flag.
+    /// @param value            Whether to set or to unser the flag.
+    /// @throws out_of_bounds   If index >= user flag count.
+    void set_user_flag(size_t index, bool value = true);
+
 protected:
     /// Implementation specific query of a Property.
     virtual AnyPropertyPtr& _get_property(std::string_view name) const = 0;
@@ -227,6 +253,11 @@ private:
 
     /// Combines the Property hash with the Node hashes of all children in order.
     size_t m_node_hash = 0;
+
+    /// Additional flags (as many as fit into a pointer).
+    /// Is more compact than multiple booleans and offers per-node user-definable flags for free.
+    /// Contains both internal and user-definable flags.
+    std::bitset<bitsizeof<void*>()> m_flags;
 
     /// Used to distinguish "finalized" from "unfinalized" RunTime Nodes.
     /// Only unfinalized Nodes can create properties.

@@ -131,6 +131,7 @@ class Accessor<TheGraph, Node> {
     friend Node;
 
     /// Registers a new Node in the Graph.
+    /// Automatically marks the Node as being dirty as well.
     /// @param node                 Node to register.
     /// @throws not_unique_error    If another Node with the same Uuid is already registered.
     static void register_node(NodeHandle node);
@@ -156,10 +157,6 @@ class Accessor<TheGraph, Node> {
     /// Registers the given Node as dirty (a visible Property was modified since the last frame was drawn).
     /// @param node     Dirty node.
     static void mark_dirty(NodeHandle node);
-
-    /// Registers the given Node as dirty (any Property or the hierarhcy was modified while the Graph was frozen).
-    /// @param node     Tweaked node.
-    static void mark_tweaked(NodeHandle node);
 };
 
 NOTF_CLOSE_NAMESPACE

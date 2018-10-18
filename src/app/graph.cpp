@@ -142,7 +142,11 @@ void TheGraph::NodeNameRegistry::_remove_name(std::string_view name_view)
 
 // node accessor ==================================================================================================== //
 
-void Accessor<TheGraph, Node>::register_node(NodeHandle node) { TheGraph::s_node_registry.add(std::move(node)); }
+void Accessor<TheGraph, Node>::register_node(NodeHandle node)
+{
+    TheGraph::s_node_registry.add(node); // first, because it may fail
+    TheGraph::s_dirty_nodes.emplace(std::move(node));
+}
 
 void Accessor<TheGraph, Node>::unregister_node(Uuid uuid)
 {
@@ -161,7 +165,5 @@ std::string_view Accessor<TheGraph, Node>::set_name(NodeHandle node, const std::
 }
 
 void Accessor<TheGraph, Node>::mark_dirty(NodeHandle node) { TheGraph::s_dirty_nodes.emplace(std::move(node)); }
-
-void Accessor<TheGraph, Node>::mark_tweaked(NodeHandle node) { TheGraph::s_tweaked_nodes.emplace(std::move(node)); }
 
 NOTF_CLOSE_NAMESPACE

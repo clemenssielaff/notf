@@ -56,10 +56,8 @@ Node::Node(valid_ptr<Node*> parent) : m_parent(raw_pointer(parent))
     my_handle = NodeHandle(weak_from_this());
 #endif
 
-    // register the Node with the Graph's various maps and sets
+    // register the Node with the Graph
     TheGraph::AccessFor<Node>::register_node(my_handle);
-    TheGraph::AccessFor<Node>::mark_dirty(my_handle);
-    TheGraph::AccessFor<Node>::mark_tweaked(std::move(my_handle));
 
     NOTF_LOG_TRACE("Created Node {}", m_uuid.to_string());
 }
@@ -189,6 +187,32 @@ void Node::stack_behind(const NodeHandle& sibling)
     move_in_front_of(siblings, my_index, sibling_index);
 }
 
+bool Node::is_user_flag_set(const size_t index)
+{
+    if (index >= get_user_flag_count()) {
+        NOTF_THROW(
+            out_of_bounds,
+            "Cannot test user flag #{} of Node {}, because Nodes on this system only have {} user-defineable flags",
+            index, get_name(), get_user_flag_count());
+    }
+    const size_t actual_index = index + s_internal_flag_count;
+    NOTF_ASSERT(actual_index < m_flags.size());
+    return m_flags.test(actual_index);
+}
+
+void Node::set_user_flag(const size_t index, const bool value)
+{
+    if (index >= get_user_flag_count()) {
+        NOTF_THROW(
+            out_of_bounds,
+            "Cannot test user flag #{} of Node {}, because Nodes on this system only have {} user-defineable flags",
+            index, get_name(), get_user_flag_count());
+    }
+    const size_t actual_index = index + s_internal_flag_count;
+    NOTF_ASSERT(actual_index < m_flags.size());
+    m_flags.set(actual_index, value);
+}
+
 void Node::_remove_child(NodePtr child)
 {
     if (child == nullptr) { return; }
@@ -254,17 +278,13 @@ Node::ChildList& Node::_write_children()
     // if the graph is currently frozen and this is the first modification,
     // create a frozen copy of the current child list before changing it
     if (ChildList* frozen_list = m_cache.load(std::memory_order_relaxed); frozen_list == nullptr) {
-        if (TheGraph::is_frozen()) {
-            m_cache.store(new ChildList(m_children), std::memory_order_release);
-            TheGraph::AccessFor<Node>::mark_tweaked(weak_from_this());
-        }
+        if (TheGraph::is_frozen()) { m_cache.store(new ChildList(m_children), std::memory_order_release); }
     }
 
     // changes in the child list make this node dirty
     TheGraph::AccessFor<Node>::mark_dirty(weak_from_this());
 
-    // always modify your actual children, not the delta
-    return m_children;
+    return m_children; // always modify your actual children, not the cache
 }
 
 const Node::ChildList& Node::_read_siblings() const
