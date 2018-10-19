@@ -64,6 +64,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_compile_options(notf-core PRIVATE
         -Wall
+        -Wno-unknown-pragmas
     )
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     target_compile_options(notf-core PRIVATE "/W4")

@@ -11,18 +11,16 @@ NOTF_OPEN_NAMESPACE
 class NodeHandle {
 
     friend class Node;
+    friend struct std::hash<NodeHandle>;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Default (empty) Constructor.
     NodeHandle() = default;
 
-    /// @{
     /// Value Constructor.
     /// @param  node    Node to handle.
-    NodeHandle(const NodePtr& node) : m_node(node) {}
-    NodeHandle(NodeWeakPtr node) : m_node(std::move(node)) {}
-    /// @}
+    NodeHandle(const NodePtr& node) : m_node(node), m_id(node.get()) {}
 
     /// @{
     /// Checks whether the NodeHandle is still valid or not.
@@ -42,21 +40,21 @@ public:
     std::string_view get_name() const;
 
     /// Comparison with another NodeHandle.
-    bool operator==(const NodeHandle& rhs) const noexcept { return weak_ptr_equal(m_node, rhs.m_node); }
+    bool operator==(const NodeHandle& rhs) const noexcept { return m_id == rhs.m_id; }
     bool operator!=(const NodeHandle& rhs) const noexcept { return !operator==(rhs); }
 
     /// Less-than operator with another NodeHandle.
-    bool operator<(const NodeHandle& rhs) const noexcept { return m_node.owner_before(rhs.m_node); }
+    bool operator<(const NodeHandle& rhs) const noexcept { return m_id < rhs.m_id; }
 
-    //    /// Comparison with a NodePtr.
-    //    friend bool operator==(const NodeHandle& lhs, const NodePtr& rhs) noexcept { return lhs.m_node.lock() == rhs;
-    //    } friend bool operator!=(const NodeHandle& lhs, const NodePtr& rhs) noexcept { return !(lhs == rhs); } friend
-    //    bool operator==(const NodePtr& lhs, const NodeHandle& rhs) noexcept { return lhs == rhs.m_node.lock(); }
-    //    friend bool operator!=(const NodePtr& lhs, const NodeHandle& rhs) noexcept { return !(lhs == rhs); }
+    /// Comparison with a NodePtr.
+    friend bool operator==(const NodeHandle& lhs, const NodePtr& rhs) noexcept { return lhs.m_id == rhs.get(); }
+    friend bool operator!=(const NodeHandle& lhs, const NodePtr& rhs) noexcept { return !(lhs == rhs); }
+    friend bool operator==(const NodePtr& lhs, const NodeHandle& rhs) noexcept { return lhs.get() == rhs.m_id; }
+    friend bool operator!=(const NodePtr& lhs, const NodeHandle& rhs) noexcept { return !(lhs == rhs); }
 
-    //    /// Less-than operator with a NodePtr.
-    //    friend bool operator<(const NodeHandle& lhs, const NodePtr& rhs) noexcept { return lhs.m_node.lock() < rhs; }
-    //    friend bool operator<(const NodePtr& lhs, const NodeHandle& rhs) noexcept { return lhs < rhs.m_node.lock(); }
+    /// Less-than operator with a NodePtr.
+    friend bool operator<(const NodeHandle& lhs, const NodePtr& rhs) noexcept { return lhs.m_id < rhs.get(); }
+    friend bool operator<(const NodePtr& lhs, const NodeHandle& rhs) noexcept { return lhs.get() < rhs.m_id; }
 
 private:
     /// Locks and returns an owning pointer to the handled Node.
@@ -71,6 +69,21 @@ private:
 private:
     /// The handled Node, non owning.
     NodeWeakPtr m_node;
+
+    /// Identifier of this Node Handle.
+    /// Is to be used for identification only!
+    const Node* m_id = nullptr;
 };
 
 NOTF_CLOSE_NAMESPACE
+
+/// Hash
+namespace std {
+template<>
+struct hash<notf::NodeHandle> {
+    size_t operator()(const notf::NodeHandle& handle) const noexcept
+    {
+        return notf::hash_mix(notf::to_number(handle.m_id));
+    }
+};
+} // namespace std

@@ -95,12 +95,23 @@ private:
 // property ========================================================================================================= //
 
 /// Base class for all Property types.
-struct AnyProperty {
+class AnyProperty {
+
+    // methods ------------------------------------------------------------------------------------------------------ //
+public:
     NOTF_NO_COPY_OR_ASSIGN(AnyProperty);
+
+    /// Default Constructor.
     AnyProperty() = default;
+
+    /// Destructor.
     virtual ~AnyProperty() = default;
+
+    /// Name of this Property type, for runtime reporting.
     virtual std::string_view get_type_name() const = 0;
-    // TODO: store a reference back to your node, so the property can set it dirty/tweaked
+
+    /// The hash of this Property's value.
+    virtual size_t get_hash() const = 0;
 };
 
 template<class T>
@@ -119,8 +130,13 @@ class Property : public AnyProperty {
         Pipeline<std::shared_ptr<detail::PropertyOperator<typename Prop::element_type::value_t>>>>
     operator|(Pub&& publisher, Prop& property);
 
+    friend struct Accessor<Property<T>, Node>;
+
     // types -------------------------------------------------------------------------------------------------------- //
 public:
+    template<class Other>
+    using AccessFor = Accessor<Property<T>, Other>;
+
     /// Property value type.
     using value_t = T;
 
@@ -146,8 +162,11 @@ public:
     /// The Node-unique name of this Property.
     virtual std::string_view get_name() const = 0;
 
+    /// The hash of this Property's value.
+    size_t get_hash() const override { return m_operator->get_hash(); }
+
     /// Whether a change in the Property will cause the Node to redraw or not.
-    bool is_visible() const noexcept { return m_operator->get_hash() != 0; }
+    bool is_visible() const noexcept { return get_hash() != 0; }
 
     /// The Property value.
     const T& get() const noexcept { return m_operator->get(std::this_thread::get_id()); }
@@ -157,28 +176,31 @@ public:
     void set(const T& value) { m_operator->set(value); }
 
     /// Connect the reactive Operator of this Property to a Subscriber downstream.
-    template<class Prop, class Sub,
-             class = std::enable_if_t<detail::is_reactive_compatible_v<operator_t, std::decay_t<Sub>> //
-                                      && std::is_base_of_v<Property<T>, Prop>>>
-    friend auto operator|(std::shared_ptr<Prop>& property, Sub&& subscriber)
+    template<class Prop, class Sub>
+    friend std::enable_if_t<
+        detail::is_reactive_compatible_v<operator_t, std::decay_t<Sub>> && std::is_base_of_v<Property<T>, Prop>,
+        Pipeline<std::decay_t<Sub>>>
+    operator|(std::shared_ptr<Prop>& property, Sub&& subscriber)
     {
         return property->m_operator | std::forward<Sub>(subscriber);
     }
 
     /// Connect a Publisher upstream to a Property.
-    template<class Pub, class Prop,
-             class = std::enable_if_t<detail::is_reactive_compatible_v<std::decay_t<Pub>, operator_t> //
-                                      && std::is_base_of_v<Property<T>, Prop>>>
-    friend auto operator|(Pub&& publisher, std::shared_ptr<Prop>& property)
+    template<class Pub, class Prop>
+    friend std::enable_if_t<
+        detail::is_reactive_compatible_v<std::decay_t<Pub>, operator_t> && std::is_base_of_v<Property<T>, Prop>,
+        Pipeline<operator_t>>
+    operator|(Pub&& publisher, std::shared_ptr<Prop>& property)
     {
         return std::forward<Pub>(publisher) | property->m_operator;
     }
 
     /// Connect a Property upstream to a Property downstream.
-    template<class Pub, class Sub,
-             class = std::enable_if_t<detail::is_reactive_compatible_v<operator_t, typename Sub::operator_t> //
-                                      && std::is_base_of_v<Property<T>, Pub>>>
-    friend auto operator|(std::shared_ptr<Pub>& lhs, std::shared_ptr<Sub>& rhs)
+    template<class Pub, class Sub>
+    friend std::enable_if_t<
+        detail::is_reactive_compatible_v<operator_t, typename Sub::operator_t> && std::is_base_of_v<Property<T>, Pub>,
+        Pipeline<typename Sub::operator_t>>
+    operator|(std::shared_ptr<Pub>& lhs, std::shared_ptr<Sub>& rhs)
     {
         return lhs->m_operator | rhs->m_operator;
     }
@@ -188,7 +210,21 @@ public:
     // members ------------------------------------------------------------------------------------------------------ //
 private:
     /// Reactive Property operator, most of the Property's implementation.
-    std::shared_ptr<detail::PropertyOperator<T>> m_operator;
+    operator_t m_operator;
+};
+
+// node accessor ==================================================================================================== //
+
+/// Access to selected members of TheGraph.
+template<class T>
+class Accessor<Property<T>, Node> {
+    friend Node;
+
+    template<class>
+    friend class CompileTimeNode;
+
+    /// Reactive Property operator underlying the Property's reactive functionality.
+    static auto& get_operator(PropertyPtr<T>& property) { return property->m_operator; }
 };
 
 // run time property ================================================================================================ //
@@ -202,7 +238,7 @@ public:
     /// @param name         The Node-unique name of this Property.
     /// @param value        Property value.
     /// @param is_visible   Whether a change in the Property will cause the Node to redraw or not.
-    RunTimeProperty(std::string name, T value, bool is_visible = true)
+    RunTimeProperty(std::string_view name, T value, bool is_visible = true)
         : Property<T>(std::move(value), is_visible), m_name(std::move(name))
     {}
 
@@ -212,7 +248,7 @@ public:
     // members ------------------------------------------------------------------------------------------------------ //
 private:
     /// The Node-unique name of this Property.
-    const std::string m_name;
+    const std::string_view m_name;
 };
 
 // compile time property ============================================================================================ //
@@ -232,6 +268,8 @@ class CompileTimeProperty final : public Property<typename Policy::value_t> {
     // methods ------------------------------------------------------------------------------------------------------ //
 public:
     /// Constructor.
+    /// @param value        Property value.
+    /// @param is_visible   Whether a change in the Property will cause the Node to redraw or not.
     CompileTimeProperty(typename Policy::value_t value = Policy::default_value, bool is_visible = Policy::is_visible)
         : Property<typename Policy::value_t>(value, is_visible)
     {}

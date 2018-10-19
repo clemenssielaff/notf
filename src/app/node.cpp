@@ -43,34 +43,28 @@ Node::Node(valid_ptr<Node*> parent) : m_parent(raw_pointer(parent))
     // mark this node as "unfinalized", so it can create Properties if it is a RunTimeNode
     s_unfinalized_nodes.emplace(this);
 
-    // get your own handle (only succeeds if this instance is wrapped in a shared_ptr)
-    NodeHandle my_handle;
-#ifdef NOTF_DEBUG
-    try {
-        my_handle = NodeHandle(shared_from_this());
-    }
-    catch (const std::bad_weak_ptr&) {
-        NOTF_ASSERT(false, "Nodes must always be managed by a shared_ptr");
-    }
-#else
-    my_handle = NodeHandle(weak_from_this());
-#endif
-
-    // register the Node with the Graph
-    TheGraph::AccessFor<Node>::register_node(my_handle);
-
-    NOTF_LOG_TRACE("Created Node {}", m_uuid.to_string());
+    NOTF_LOG_TRACE("Creating Node   {}", m_uuid.to_string());
 }
 
 Node::~Node()
 {
     TheGraph::AccessFor<Node>::unregister_node(m_uuid);
     s_unfinalized_nodes.erase(this); // just in case the constructor failed
+
     _clear_frozen();
+
+#ifdef NOTF_DEBUG
+    // make sure that the property observer is deleted with this node, so we don't leave a dangling reference to it
+    std::weak_ptr<PropertyObserver> weak_observer = m_property_observer;
+    NOTF_ASSERT(weak_observer.lock() != nullptr);
+    m_property_observer.reset();
+    NOTF_ASSERT(weak_observer.expired());
+#endif
+
     NOTF_LOG_TRACE("Destroying Node {}", m_uuid.to_string());
 }
 
-NodeHandle Node::get_parent() const { return _get_parent()->weak_from_this(); }
+NodeHandle Node::get_parent() const { return _get_parent()->shared_from_this(); }
 
 bool Node::has_ancestor(NodeHandle ancestor) const
 {
@@ -88,18 +82,18 @@ NodeHandle Node::get_common_ancestor(NodeHandle other) const
 {
     const NodeConstPtr other_lock = other.m_node.lock();
     if (other_lock == nullptr) { return {}; }
-    return const_cast<Node*>(_get_common_ancestor(other_lock.get()))->weak_from_this();
+    return const_cast<Node*>(_get_common_ancestor(other_lock.get()))->shared_from_this();
 }
 
 std::string_view Node::get_name() const
 {
-    if (m_name.empty()) { m_name = TheGraph::AccessFor<Node>::get_name(const_cast<Node*>(this)->weak_from_this()); }
+    if (m_name.empty()) { m_name = TheGraph::AccessFor<Node>::get_name(const_cast<Node*>(this)->shared_from_this()); }
     return m_name;
 }
 
 std::string_view Node::set_name(const std::string& name)
 {
-    m_name = TheGraph::AccessFor<Node>::set_name(weak_from_this(), name);
+    m_name = TheGraph::AccessFor<Node>::set_name(shared_from_this(), name);
     return m_name;
 }
 
@@ -282,7 +276,7 @@ Node::ChildList& Node::_write_children()
     }
 
     // changes in the child list make this node dirty
-    TheGraph::AccessFor<Node>::mark_dirty(weak_from_this());
+    TheGraph::AccessFor<Node>::mark_dirty(shared_from_this());
 
     return m_children; // always modify your actual children, not the cache
 }

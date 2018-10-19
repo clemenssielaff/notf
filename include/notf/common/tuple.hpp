@@ -8,11 +8,9 @@ NOTF_OPEN_NAMESPACE
 
 // flatten tuple ==================================================================================================== //
 
-// template definition - is never instantiated
+// template definition
 template<class... Ts>
-struct concat_tuple {
-    static_assert(always_false_v<Ts...>);
-};
+struct concat_tuple;
 
 // single ground type
 template<class T>
@@ -135,11 +133,9 @@ using tuple_element_t = decltype(tuple_element<I, Tuple>());
 
 namespace detail {
 
-// template definition - is never instantiated
+// template definition
 template<class... Ts>
-struct _remove_tuple_types {
-    static_assert(always_false_v<Ts...>);
-};
+struct _remove_tuple_types;
 
 // recursion breaker
 template<class... Ds, class... Result, class... Tail>

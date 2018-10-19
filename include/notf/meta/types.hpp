@@ -21,6 +21,13 @@ struct None {
     bool operator<(const None&) const { return false; }
 };
 
+/// Explicit Everything type (basically the opposite of None).
+/// Used in reactive subscribers, for example.
+struct Everything {
+    bool operator==(const None&) const { return true; }
+    bool operator<(const None&) const { return false; }
+};
+
 /// Type template to ensure that a template argument does not participate in type deduction.
 /// Compare:
 ///

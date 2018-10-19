@@ -58,7 +58,7 @@ constexpr inline size_t hash_mix(size_t key) noexcept
     return key;
 }
 
-/// Buils a hash value from hashing all passed data types in sequence and combining their hashes.
+/// Builds a hash value from hashing all passed data types in sequence and combining their hashes.
 /// Similar to boost::hash_combine but adaptive to the system's hash value type.
 constexpr inline void hash_combine(std::size_t&) noexcept {}
 
@@ -86,6 +86,7 @@ constexpr size_t hash(Values&&... values) noexcept
     return result;
 }
 
+/// @{
 /// Compile time hashing of a const char* array.
 /// @param string   String to hash, must be null-terminated.
 /// @param size     Size of the string (or at least, how many characters should be hashed).
@@ -103,6 +104,8 @@ constexpr size_t hash_string(const char* string, const size_t size) noexcept
     }
     return result;
 }
+constexpr size_t hash_string(const std::string& string) noexcept { return hash_string(string.c_str(), string.size()); }
+/// @}
 
 // hashable concept================================================================================================== //
 

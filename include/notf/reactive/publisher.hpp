@@ -159,9 +159,9 @@ public:
     /// State of the Publisher.
     /// The state transition diagram is pretty easy:
     ///
+    ///                   +-> FAILED
+    ///                 /
     ///   -> RUNNING - + --> COMPLETED
-    ///                 \
-    ///                  +-> FAILED
     ///
     enum class State : size_t { // make it a word wide to squelsh warnings about padding
         RUNNING,
@@ -221,7 +221,7 @@ public:
     /// would be ambiguous, if it were not for the SFINAE magic in the templated ovleroad.
     /// @param subscriber   New Subscriber.
     /// @returns            True iff the Subscriber was added, false if it was rejected.
-    bool subscribe(AnySubscriberPtr subscriber) override
+    bool subscribe(AnySubscriberPtr subscriber) override // add an untyped subscriber
     {
         auto typed_subscriber = std::dynamic_pointer_cast<Subscriber<T>>(std::move(subscriber));
         if (!typed_subscriber) {
@@ -230,10 +230,22 @@ public:
         return subscribe(std::move(typed_subscriber));
     }
 
-    template<class Sub, class S = std::decay_t<Sub>,
-             class = std::enable_if_t<std::conjunction_v<std::negation<std::is_same<S, AnySubscriberPtr>>,
-                                                         std::is_convertible<S, SubscriberPtr<T>>>>>
-    bool subscribe(Sub&& subscriber)
+    template<class Sub, class S = std::decay_t<Sub>>
+    std::enable_if_t<std::conjunction_v<std::negation<std::is_same<S, AnySubscriberPtr>>,
+                                        std::is_convertible<S, SubscriberPtr<Everything>>>,
+                     bool>
+    subscribe(Sub&& subscriber) // add a Subscriber<Everything>
+    {
+        // cast down to AnySubscriber and up again to Subscriber<T>
+        return subscribe(std::static_pointer_cast<Subscriber<T>>(
+            std::static_pointer_cast<AnySubscriber>(std::forward<Sub>(subscriber))));
+    }
+
+    template<class Sub, class S = std::decay_t<Sub>>
+    std::enable_if_t<std::conjunction_v<std::negation<std::is_same<S, AnySubscriberPtr>>, //
+                                        std::is_convertible<S, SubscriberPtr<T>>>,
+                     bool>
+    subscribe(Sub&& subscriber) // add a Subscriber<T>
     {
         // whatever type `Sub` actually is, we need a SubscriberPtr<T>
         auto typed_subscriber = static_cast<SubscriberPtr<T>>(std::forward<Sub>(subscriber));

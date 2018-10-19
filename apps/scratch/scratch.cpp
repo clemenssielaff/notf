@@ -55,6 +55,23 @@ struct MustBeSharedPtr : std::enable_shared_from_this<MustBeSharedPtr> {
     MustBeSharedPtr() { auto must_succeed = shared_from_this(); }
 };
 
+auto EverythingSubscriber()
+{
+    struct EverythingSubscriberImpl : public Subscriber<Everything> {
+        void on_next(const AnyPublisher* /*publisher*/, ...) override { std::cout << "jup" << std::endl; }
+    };
+    return std::make_shared<EverythingSubscriberImpl>();
+}
+
+auto EverythingRelay() { return std::make_shared<Operator<Everything, None>>(); }
+
+auto NoneSubscriber() {
+    struct NoneSubscriber : public Subscriber<None> {
+        void on_next(const AnyPublisher* /*publisher*/) override { std::cout << "got it" << std::endl; }
+    };
+    return std::make_shared<NoneSubscriber>();
+}
+
 int main()
 {
 
@@ -80,7 +97,30 @@ int main()
     //        std::cout << "MustBeSharedPtr is NOT a shared_ptr" << '\n';
     //    }
 
-    std::cout << "Mnemonic: " << number_to_mnemonic(hash(Uuid::generate()) % 100000000) << '\n';
+    //    std::cout << "Mnemonic: " << number_to_mnemonic(hash(Uuid::generate()) % 100000000) << '\n';
+
+//    auto subscriber = EverythingSubscriber();
+
+//    auto int_publisher = DefaultPublisher<int>();
+//    bool int_succcess = int_publisher->subscribe(subscriber);
+//    int_publisher->publish(15);
+
+//    auto float_publisher = DefaultPublisher<float>();
+//    bool float_succcess = float_publisher->subscribe(subscriber);
+//    float_publisher->publish(15.f);
+
+    auto int_publisher = DefaultPublisher<int>();
+    auto float_publisher = DefaultPublisher<float>();
+    auto ultimate_relay = EverythingRelay();
+    auto none_subscriber = NoneSubscriber();
+//    int_publisher->subscribe(ultimate_relay);
+//    float_publisher->subscribe(ultimate_relay);
+//    ultimate_relay->subscribe(none_subscriber);
+    auto pipe1 = int_publisher | ultimate_relay | none_subscriber;
+    auto pipe2 = float_publisher | ultimate_relay;
+    int_publisher->publish(12);
+    float_publisher->publish(78.f);
+
 
     return 0; //
 }

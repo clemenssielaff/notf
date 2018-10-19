@@ -45,12 +45,14 @@ struct is_reactive_compatible : std::false_type {};
 // typed publisher -> typed subscriber
 template<class P, class S>
 struct is_reactive_compatible<P, S, std::enable_if_t<all(is_publisher_v<P>, is_subscriber_v<S>)>>
-    : std::is_same<typename P::element_type::output_t, typename S::element_type::input_t> {};
+    : std::disjunction<std::is_same<typename P::element_type::output_t, typename S::element_type::input_t>,
+                       std::is_same<Everything, typename S::element_type::input_t>> {};
 
 // typed pipeline -> typed subscriber
 template<class P, class S>
 struct is_reactive_compatible<P, S, std::enable_if_t<all(is_typed_pipeline_v<P>, is_subscriber_v<S>)>>
-    : std::is_same<typename P::last_t::element_type::output_t, typename S::element_type::input_t> {};
+    : std::disjunction<std::is_same<typename P::last_t::element_type::output_t, typename S::element_type::input_t>,
+                       std::is_same<Everything, typename S::element_type::input_t>> {};
 
 // typed publisher/pipeline -> untyped subscriber
 template<class P, class S>

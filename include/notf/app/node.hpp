@@ -1,15 +1,17 @@
 #pragma once
 
+#include <map>
 #include <unordered_set>
 
 #include "notf/common/bitset.hpp"
 
-#include "./property.hpp"
+#include "./property_handle.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 // node ============================================================================================================= //
 
+/// Base class for both RunTimeNode and CompileTimeNode.
 class Node : public std::enable_shared_from_this<Node> {
 
     // type --------------------------------------------------------------------------------------------------------- //
@@ -26,6 +28,28 @@ private:
 
     /// How many Node flags are reserved for internal usage?
     static constexpr const size_t s_internal_flag_count = 8;
+
+    /// Internal reactive function that is subscribed to all visible Properties and marks the Node as dirty, should one
+    /// of them change.
+    class PropertyObserver : public Subscriber<Everything> {
+
+        // methods --------------------------------------------------------- //
+    public:
+        /// Value Constructor.
+        /// @param node     Node owning this Subscriber.
+        PropertyObserver(Node& node) : m_node(node) {}
+
+        /// Called whenever a visible Property changed its value.
+        void on_next(const AnyPublisher*, ...) final
+        {
+            TheGraph::AccessFor<Node>::mark_dirty(m_node.shared_from_this());
+        }
+
+        // fields ---------------------------------------------------------- //
+    private:
+        /// Node owning this Subscriber.
+        Node& m_node;
+    };
 
     // methods ------------------------------------------------------------------------------------------------------ //
 protected:
@@ -54,19 +78,22 @@ public:
     std::string_view set_name(const std::string& name);
 
     /// Run time access to a Property of this Node.
+    /// @param name     Node-unique name of the Property.
+    /// @returns        Handle to the requested Property.
+    /// @throws NoSuchPropertyError
     template<class T>
-    PropertyHandle<T> get_property(std::string_view name) const
+    PropertyHandle<T> get_property(const std::string& name) const
     {
-        AnyPropertyPtr& property = _get_property(name);
+        AnyPropertyPtr property = _get_property(name);
         if (!property) {
             NOTF_THROW(NoSuchPropertyError, "Node \"{}\" has no Property called \"{}\"", get_name(), name);
         }
 
-        PropertyPtr<T> typed_property = std::dynamic_pointer_cast<Property<T>>(property);
+        PropertyPtr<T> typed_property = std::dynamic_pointer_cast<Property<T>>(std::move(property));
         if (!typed_property) {
             NOTF_THROW(NoSuchPropertyError,
                        "Property \"{}\" of Node \"{}\" is of type \"{}\", but was requested as \"{}\"", //
-                       name, get_name(), property->get_type_name(), type_name<T>()());
+                       name, get_name(), property->get_type_name(), type_name<T>());
         }
         return PropertyHandle(std::move(typed_property));
     }
@@ -164,10 +191,10 @@ public:
 
 protected:
     /// Implementation specific query of a Property.
-    virtual AnyPropertyPtr& _get_property(std::string_view name) const = 0;
+    /// @param name     Node-unique name of the Property.
+    virtual AnyPropertyPtr _get_property(const std::string& name) const = 0;
 
     /// Calculates the combined hash value of all Properties.
-    /// Note that this method does not store the new hash value, so it can be compared with the old one.
     virtual size_t _calculate_property_hash() const = 0;
 
     /// Creates and adds a new child to this node.
@@ -179,6 +206,7 @@ protected:
         child->_finalize();
 
         auto handle = NodeHandle(child);
+        TheGraph::AccessFor<Node>::register_node(handle);
         _write_children().emplace_back(std::move(child));
         return handle;
     }
@@ -220,6 +248,9 @@ protected:
     /// Deletes the frozen child list copy, if one exists.
     void _clear_frozen() { delete m_cache.exchange(nullptr); }
 
+    /// Reactive function marking this Node as dirty whenever a visible Property changes its value.
+    std::shared_ptr<PropertyObserver>& _get_property_observer() { return m_property_observer; }
+
     /// Whether or not this Node has been finalized or not.
     bool _is_finalized() const { return s_unfinalized_nodes.count(this) == 0; }
 
@@ -259,10 +290,13 @@ private:
     /// Contains both internal and user-definable flags.
     std::bitset<bitsizeof<void*>()> m_flags;
 
+    /// Reactive function marking this Node as dirty whenever a visible Property changes its value.
+    std::shared_ptr<PropertyObserver> m_property_observer = std::make_shared<PropertyObserver>(*this);
+
     /// Used to distinguish "finalized" from "unfinalized" RunTime Nodes.
     /// Only unfinalized Nodes can create properties.
     /// Also, creating children in an unfinalized node creates no deltas.
-    static thread_local std::unordered_set<const Node*> s_unfinalized_nodes;
+    static thread_local inline std::unordered_set<const Node*> s_unfinalized_nodes;
 };
 
 NOTF_CLOSE_NAMESPACE

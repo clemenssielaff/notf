@@ -57,29 +57,32 @@ if(NOTF_CREATE_COVERAGE)
         set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-instr-generate")
     else()
         set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
+        set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} --coverage")
     endif()
 endif()
 
 # automatically run all (except slow) tests as part of the build and display coverage
-option(NOTF_RUN_TESTS "Run tests" ON)
-if(NOTF_RUN_TESTS)
-    message(STATUS ">>> notf: Building tests")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    option(NOTF_RUN_TESTS "Run tests" ON)
+    if(NOTF_RUN_TESTS)
+        message(STATUS ">>> notf: Building tests")
 
-    set(LLVM_COV_ARGS -instr-profile=notf-tests.profdata -Xdemangler=llvm-cxxfilt -use-color -ignore-filename-regex="thirdparty|tests")
-    add_custom_command(
-        TARGET notf-tests
-        POST_BUILD
+        set(LLVM_COV_ARGS -instr-profile=notf-tests.profdata -Xdemangler=llvm-cxxfilt -use-color -ignore-filename-regex="thirdparty|tests")
+        add_custom_command(
+            TARGET notf-tests
+            POST_BUILD
 
-        # run the tests
-        COMMAND notf-tests exclude:[slow] --reporter compact
+            # run the tests
+            COMMAND notf-tests exclude:[slow] --reporter compact
 
-        # create a coverage report and display a summary report
-        COMMAND llvm-profdata merge -sparse default.profraw -o notf-tests.profdata
-        COMMAND llvm-cov report ./notf-tests ${LLVM_COV_ARGS}
+            # create a coverage report and display a summary report
+            COMMAND llvm-profdata merge -sparse default.profraw -o notf-tests.profdata
+            COMMAND llvm-cov report ./notf-tests ${LLVM_COV_ARGS}
 
-        # store the complete report as html
-        COMMAND llvm-cov show ./notf-tests ${LLVM_COV_ARGS} -show-instantiations=false -format="html" > coverage.html
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-        COMMENT "Executing notf test runner"
-    )
+            # store the complete report as html
+            COMMAND llvm-cov show ./notf-tests ${LLVM_COV_ARGS} -show-instantiations=false -format="html" > coverage.html
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            COMMENT "Executing notf test runner"
+        )
+    endif()
 endif()

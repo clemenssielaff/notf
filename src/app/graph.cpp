@@ -140,30 +140,4 @@ void TheGraph::NodeNameRegistry::_remove_name(std::string_view name_view)
     if (iter != m_name_to_node.end()) { m_name_to_node.erase(iter); }
 }
 
-// node accessor ==================================================================================================== //
-
-void Accessor<TheGraph, Node>::register_node(NodeHandle node)
-{
-    TheGraph::s_node_registry.add(node); // first, because it may fail
-    TheGraph::s_dirty_nodes.emplace(std::move(node));
-}
-
-void Accessor<TheGraph, Node>::unregister_node(Uuid uuid)
-{
-    TheGraph::s_node_registry.remove(uuid);
-    TheGraph::s_node_name_registry.remove_node(uuid);
-}
-
-std::string_view Accessor<TheGraph, Node>::get_name(NodeHandle node)
-{
-    return TheGraph::s_node_name_registry.get_name(std::move(node));
-}
-
-std::string_view Accessor<TheGraph, Node>::set_name(NodeHandle node, const std::string& name)
-{
-    return TheGraph::s_node_name_registry.set_name(std::move(node), name);
-}
-
-void Accessor<TheGraph, Node>::mark_dirty(NodeHandle node) { TheGraph::s_dirty_nodes.emplace(std::move(node)); }
-
 NOTF_CLOSE_NAMESPACE

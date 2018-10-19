@@ -117,10 +117,7 @@ private:
     static inline NodeNameRegistry s_node_name_registry;
 
     /// All Nodes that were modified since the last time the Graph was rendered.
-    static std::unordered_set<NodeHandle> s_dirty_nodes;
-
-    /// All Nodes that were modified while the Graph was frozen.
-    static std::unordered_set<NodeHandle> s_tweaked_nodes;
+    static inline std::unordered_set<NodeHandle> s_dirty_nodes;
 };
 
 // node accessor ==================================================================================================== //
@@ -134,17 +131,28 @@ class Accessor<TheGraph, Node> {
     /// Automatically marks the Node as being dirty as well.
     /// @param node                 Node to register.
     /// @throws not_unique_error    If another Node with the same Uuid is already registered.
-    static void register_node(NodeHandle node);
+    static void register_node(NodeHandle node)
+    {
+        TheGraph::s_node_registry.add(node); // first, because it may fail
+        TheGraph::s_dirty_nodes.emplace(std::move(node));
+    }
 
     /// Unregisters the Node with the given Uuid.
     /// If the Uuid is not know, this method does nothing.
-    static void unregister_node(Uuid uuid);
+    static void unregister_node(Uuid uuid)
+    {
+        TheGraph::s_node_registry.remove(uuid);
+        TheGraph::s_node_name_registry.remove_node(uuid);
+    }
 
     /// Returns the name of the Node.
     /// Assigns and returns a random name, if the Node is unnamed.
     /// @param node                 Handle of the Node in question.
     /// @throws HandleExpiredError  If the NodeHandle has expired.
-    static std::string_view get_name(NodeHandle node);
+    static std::string_view get_name(NodeHandle node)
+    {
+        return TheGraph::s_node_name_registry.get_name(std::move(node));
+    }
 
     /// (Re-)Names a Node in the registry.
     /// If another Node with the same name already exists, this method will append the lowest integer postfix that
@@ -152,11 +160,14 @@ class Accessor<TheGraph, Node> {
     /// @param node     Node to rename.
     /// @param name     Proposed name of the Node.
     /// @returns        New name of the Node.
-    static std::string_view set_name(NodeHandle node, const std::string& name);
+    static std::string_view set_name(NodeHandle node, const std::string& name)
+    {
+        return TheGraph::s_node_name_registry.set_name(std::move(node), name);
+    }
 
     /// Registers the given Node as dirty (a visible Property was modified since the last frame was drawn).
     /// @param node     Dirty node.
-    static void mark_dirty(NodeHandle node);
+    static void mark_dirty(NodeHandle node) { TheGraph::s_dirty_nodes.emplace(std::move(node)); }
 };
 
 NOTF_CLOSE_NAMESPACE

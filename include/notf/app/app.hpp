@@ -11,8 +11,14 @@ NOTF_OPEN_NAMESPACE
 NOTF_DEFINE_SHARED_POINTERS(class, Node);
 class NodeHandle;
 
+// node_compiletime.hpp
+NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, CompileTimeNode);
+
+// node_root.hpp
+class RootNode;
+
 // property.hpp
-NOTF_DEFINE_SHARED_POINTERS(struct, AnyProperty);
+NOTF_DEFINE_SHARED_POINTERS(class, AnyProperty);
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, Property);
 template<class T>
 class PropertyHandle;

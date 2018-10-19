@@ -66,6 +66,24 @@ public:
     virtual void on_next(const AnyPublisher* publisher) = 0;
 };
 
+/// Subscriber specialization for Subscribers that can take any data, but ignore it.
+template<>
+class Subscriber<Everything> : public AnySubscriber {
+
+    // types -------------------------------------------------------------------------------------------------------- //
+public:
+    /// Type to receive.
+    using input_t = Everything;
+
+    // methods ------------------------------------------------------------------------------------------------------ //
+public:
+    /// Abstract "next" method.
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
+    virtual void on_next(const AnyPublisher* publisher, ...) = 0;
+};
+
+//
+
 // subscriber identifier ============================================================================================ //
 
 namespace detail {
