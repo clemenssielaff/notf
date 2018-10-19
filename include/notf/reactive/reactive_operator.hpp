@@ -157,12 +157,12 @@ public:
 /// Specialization for Operators function that take any data as input, ignore it and produce another type downstream.
 /// Does not provide an `on_next` implementation by default, because that's what this class is for.
 template<class T, class Policy>
-class Operator<Everything, T, Policy> : public AnyOperator, public Subscriber<Everything>, public Publisher<T, Policy> {
+class Operator<Ignored, T, Policy> : public AnyOperator, public Subscriber<Ignored>, public Publisher<T, Policy> {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Subscriber type from which this Operator inherits.
-    using subscriber_t = Subscriber<Everything>;
+    using subscriber_t = Subscriber<Ignored>;
 
     /// Publisher type from which this Operator inherits.
     using publisher_t = Publisher<T, Policy>;
@@ -192,13 +192,13 @@ public:
 
 /// Specialization for Operators function that take any data as input, ignore it and push a dataless signal downstream.
 template<class Policy>
-class Operator<Everything, None, Policy>
-    : public AnyOperator, public Subscriber<Everything>, public Publisher<None, Policy> {
+class Operator<Ignored, None, Policy>
+    : public AnyOperator, public Subscriber<Ignored>, public Publisher<None, Policy> {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Subscriber type from which this Operator inherits.
-    using subscriber_t = Subscriber<Everything>;
+    using subscriber_t = Subscriber<Ignored>;
 
     /// Publisher type from which this Operator inherits.
     using publisher_t = Publisher<None, Policy>;

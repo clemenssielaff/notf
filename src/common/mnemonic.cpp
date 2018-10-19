@@ -38,7 +38,7 @@ constexpr std::array<const char*, 100> g_syllables{
 constexpr auto g_syllable_sizes = []() {
     std::array<uchar, g_syllables.size()> result{};
     for (uchar i = 0; i < g_syllables.size(); ++i) {
-        result[i] = static_cast<uchar>(string_length(g_syllables[i]));
+        result[i] = static_cast<uchar>(cstring_length(g_syllables[i]));
     }
     return result;
 }();

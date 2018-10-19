@@ -68,7 +68,7 @@ NOTF_CLOSE_NAMESPACE
 #define NOTF_CLOSE_LITERALS_NAMESPACE NOTF_CLOSE_NAMESPACE }
 
 /// Use the notf::literals namespace.
-#define NOTF_USING_LITERALS_NAMESPACE using namespace ::NOTF_NAMESPACE_NAME::NOTF_LITERALS_NAMESPACE_NAME
+#define NOTF_USING_LITERALS using namespace ::NOTF_NAMESPACE_NAME::NOTF_LITERALS_NAMESPACE_NAME
 
 /// Use the namespace once, so C++ knows of it
 namespace NOTF_NAMESPACE_NAME {}

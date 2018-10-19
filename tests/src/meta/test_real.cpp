@@ -2,6 +2,12 @@
 
 #include "notf/meta/real.hpp"
 
+#include "test_utils.hpp"
+
+namespace {
+const float two_pi = notf::pi<float>() * 2;
+}
+
 NOTF_USING_NAMESPACE;
 
 SCENARIO("functions related to floating-point calculation", "[meta][real]")
@@ -95,5 +101,32 @@ SCENARIO("functions related to floating-point calculation", "[meta][real]")
         REQUIRE(precision_low<int>() == 0);
         REQUIRE(precision_high<short>() == 0);
         REQUIRE(precision_high<int>() == 0);
+    }
+
+    SECTION("unormalized angles can can be correctly normalized")
+    {
+        REQUIRE(is_approx(norm_angle(-two_pi), norm_angle(two_pi), precision_low<float>()));
+        REQUIRE(is_approx(norm_angle(-pi<float>()), pi<float>(), precision_low<float>()));
+        REQUIRE(is_approx(norm_angle(0.), 0.f, precision_low<float>()));
+        REQUIRE(is_approx(norm_angle(pi<float>()), pi<float>(), precision_low<float>()));
+        REQUIRE(is_approx(norm_angle(two_pi), 0.f, precision_low<float>()));
+    }
+
+    SECTION("random angles can be correctly normalized")
+    {
+        for (auto i = 0; i < 10000; ++i) {
+            const float result = norm_angle(random_number<float>());
+            REQUIRE(result >= 0);
+            REQUIRE(result < two_pi);
+        }
+    }
+
+    SECTION("the degree literal converts degrees into radians")
+    {
+        NOTF_USING_LITERALS;
+        REQUIRE(is_approx(0_deg, 0, precision_low<float>()));
+        REQUIRE(is_approx(90._deg, pi<long double>() * 0.5l, precision_high<long double>()));
+        REQUIRE(is_approx(180_deg, pi<long double>(), precision_high<long double>()));
+        REQUIRE(is_approx(270_deg, pi<long double>() * 1.5l, precision_high<long double>()));
     }
 }

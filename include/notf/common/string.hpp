@@ -55,14 +55,6 @@ bool iends_with(const std::string& input, const std::string& postfix);
 /// @return  True iff both strings are the same in lower case letters.
 bool icompare(const std::string& left, const std::string& right);
 
-/// Levenshtein "string distance" algorithm.
-/// Originally from
-/// https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#C.2B.2B
-/// @param s1    First string.
-/// @param s2    Second string.
-/// @return      Number of additions, modifications or removals to get from s1 to s2.
-size_t levenshtein_distance(const std::string& s1, const std::string& s2);
-
 /// @{
 /// Joins a vector of strings into a single string, optionally inserting a delimiter in between.
 /// @param vec          Vector of strings to join.
@@ -75,8 +67,8 @@ inline std::string join(const std::vector<std::string>& vec, const std::string& 
 }
 /// @}
 
-/// Get the length of a c string literal at compile time.
-constexpr size_t string_length(const char* str)
+/// Get the length of a c string literal at compile time (excluding the null terminator).
+constexpr inline size_t cstring_length(const char* str)
 {
     size_t i = 0;
     while (str[i] != '\0') {

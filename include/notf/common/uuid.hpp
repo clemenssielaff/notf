@@ -39,8 +39,9 @@ public:
 
     /// Value Constructor.
     /// Takes any vector of size 16+ containing integral values and static casts the values to uchar to initialize the
-    /// UUID from them. Produces a null UUID on error.
-    /// @param vector   Vector containing integral data to be cast to uchar.
+    /// UUID from them.
+    /// @param vector       Vector containing integral data to be cast to uchar.
+    /// @throws value_error If a value in the vector can not be cast to a byte or there are less than 16 items.
     template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
     Uuid(const std::vector<T>& vector) : m_bytes(_vector_to_bytes(vector))
     {}
@@ -119,13 +120,20 @@ private:
     /// Transforms a vector into a UUID byte array or returns null on error.
     /// @param vector   Vector containing integral data to be cast to uchar.
     /// @returns        Corresponding UUID bytes array.
+    /// @throws value_error If a value in the vector can not be cast to a byte or there are less than 16 items.
     template<class T>
     static Bytes _vector_to_bytes(const std::vector<T>& vector)
     {
-        if (vector.size() < 16) { return {}; }
+        if (vector.size() < 16) {
+            NOTF_THROW(value_error, "Cannot construct a UUID (with 16 bytes) from a vector of size {}", vector.size());
+        }
         Bytes result;
         for (uchar i = 0; i < 16; ++i) {
-            result[i] = static_cast<typename Bytes::value_type>(vector[i]);
+            auto value = static_cast<std::make_unsigned_t<T>>(vector[i]);
+            if (value > max_value<uchar>()) {
+                NOTF_THROW(value_error, "Cannot narrow integral value {} into a byte", value);
+            }
+            result[i] = value;
         }
         return result;
     }

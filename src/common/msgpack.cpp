@@ -64,7 +64,7 @@ void write_uint(T value, std::ostream& os)
 template<typename T, class = std::enable_if_t<std::is_integral_v<T> && std::is_signed_v<T>>>
 void write_int(T value, std::ostream& os)
 {
-    if (value >= 0) { return write_uint(static_cast<corresponding_unsigned_t<T>>(value), os); }
+    if (value >= 0) { return write_uint(static_cast<std::make_unsigned_t<T>>(value), os); }
     if (value >= -32) { return write_char(static_cast<uchar>(value), os); }                          // 5-bit fixint
     if (value >= min_value<int8_t>()) { return write_data(0xd0, static_cast<int8_t>(value), os); }   // int8_t
     if (value >= min_value<int16_t>()) { return write_data(0xd1, static_cast<int16_t>(value), os); } // int16_t

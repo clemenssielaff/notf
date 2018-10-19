@@ -1,5 +1,6 @@
 #include "catch2/catch.hpp"
 
+#include "notf/common/string.hpp"
 #include "notf/meta/exception.hpp"
 
 NOTF_USING_NAMESPACE;
@@ -26,6 +27,18 @@ SCENARIO("exception", "[meta][exception]")
         }
         catch (const logic_error& error) {
             REQUIRE(std::string(error.what()) == std::string("this is a great message"));
+        }
+    }
+
+    SECTION("exceptions can tell their origin")
+    {
+        try {
+            throwing_with_msg();
+        }
+        catch (const logic_error& error) {
+            REQUIRE(error.get_line() == 12);
+            REQUIRE(std::string(error.get_file()) == "test_exception.cpp");
+            REQUIRE(ends_with(error.get_function(), "throwing_with_msg()"));
         }
     }
 }

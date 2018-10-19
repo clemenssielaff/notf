@@ -34,6 +34,7 @@ SCENARIO("hash functions", "[meta][hash]")
 
         const std::string runtime_string = const_string.c_str();
         REQUIRE(const_string_hash == hash_string(runtime_string.c_str(), runtime_string.size()));
+        REQUIRE(const_string_hash == hash_string(std::string(const_string.c_str())));
     }
 
     SECTION("hash_mix is a function to improve hash functions with low entropy")

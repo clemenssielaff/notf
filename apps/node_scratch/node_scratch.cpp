@@ -375,7 +375,7 @@ struct StateC : State<StateC, NodeType> {
 
 int main()
 {
-    NOTF_USING_LITERALS_NAMESPACE;
+    NOTF_USING_LITERALS;
 
     struct Foo {};
     struct Bar {};

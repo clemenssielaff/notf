@@ -31,7 +31,7 @@ private:
 
     /// Internal reactive function that is subscribed to all visible Properties and marks the Node as dirty, should one
     /// of them change.
-    class PropertyObserver : public Subscriber<Everything> {
+    class PropertyObserver : public Subscriber<Ignored> {
 
         // methods --------------------------------------------------------- //
     public:

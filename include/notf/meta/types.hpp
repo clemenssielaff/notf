@@ -21,11 +21,12 @@ struct None {
     bool operator<(const None&) const { return false; }
 };
 
-/// Explicit Everything type (basically the opposite of None).
+/// Explicit Ignored type, similar to None by while None denotes "no data", Ignored says "there is a single piece of
+/// data, but I don't care about the type and going to ignore it".
 /// Used in reactive subscribers, for example.
-struct Everything {
-    bool operator==(const None&) const { return true; }
-    bool operator<(const None&) const { return false; }
+struct Ignored {
+    bool operator==(const Ignored&) const { return true; }
+    bool operator<(const Ignored&) const { return false; }
 };
 
 /// Type template to ensure that a template argument does not participate in type deduction.

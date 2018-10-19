@@ -3,6 +3,7 @@
 # add test files
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     common/test_msgpack.cpp
+    common/test_string.cpp
     common/test_string_view.cpp
     common/test_uuid.cpp
     common/test_vector.cpp
@@ -12,12 +13,14 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     meta/test_debug.cpp
     meta/test_exception.cpp
     meta/test_hash.cpp
+    meta/test_log.cpp
     meta/test_numeric.cpp
     meta/test_pointer.cpp
     meta/test_real.cpp
     meta/test_stringtype.cpp
     meta/test_time.cpp
     meta/test_typename.cpp
+    meta/test_types.cpp
 
     reactive/test_operators.cpp
     reactive/test_pipeline.cpp
@@ -26,6 +29,11 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     reactive/test_reactive_operator.cpp
     reactive/test_reactive_registry.cpp
     reactive/test_subscriber.cpp
+)
+
+# add test utility files
+add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/include
+    test_utils.hpp
 )
 
 # declare test runner executable
@@ -39,7 +47,7 @@ add_executable(notf-tests
 target_include_directories(notf-tests PUBLIC
     ${CMAKE_SOURCE_DIR}/include/
     ${CMAKE_SOURCE_DIR}/thirdparty/
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/
 )
 
 # test runner dependencies

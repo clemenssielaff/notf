@@ -27,7 +27,7 @@ using MyNode = CompileTimeNode<NodePolicy>;
 
 int main()
 {
-    NOTF_USING_LITERALS_NAMESPACE;
+    NOTF_USING_LITERALS;
     auto manode = std::make_shared<MyNode>();
     std::cout << manode->get_property<float>("position").get() << std::endl;
     std::cout << manode->get_property("position"_id).get() << std::endl;

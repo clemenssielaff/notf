@@ -3,6 +3,7 @@
 # add benchmark files
 add_sources(BENCHMARK_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     common/bench_msgpack.cpp
+    common/bench_string.cpp
     common/bench_uuid.cpp
 )
 

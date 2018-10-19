@@ -68,12 +68,12 @@ public:
 
 /// Subscriber specialization for Subscribers that can take any data, but ignore it.
 template<>
-class Subscriber<Everything> : public AnySubscriber {
+class Subscriber<Ignored> : public AnySubscriber {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
     /// Type to receive.
-    using input_t = Everything;
+    using input_t = Ignored;
 
     // methods ------------------------------------------------------------------------------------------------------ //
 public:

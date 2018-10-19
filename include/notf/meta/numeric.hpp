@@ -48,9 +48,7 @@ constexpr T clamp(const T value, const Min min, const Max max) noexcept
 template<class T, class Out = std::decay_t<T>>
 constexpr Out exp(T&& number, uint exponent) noexcept
 {
-    if (exponent == 0) {
-        return 1;
-    }
+    if (exponent == 0) { return 1; }
     Out result = number;
     while (exponent-- > 1) {
         result *= number;
@@ -145,15 +143,11 @@ constexpr bool can_be_narrow_cast(Source&& value, target_t& result) noexcept
     else {
         // simple reverse check
         result = static_cast<target_t>(std::forward<Source>(value));
-        if (static_cast<source_t>(result) != value) {
-            return false;
-        }
+        if (static_cast<source_t>(result) != value) { return false; }
 
         // check sign overflow
         if constexpr (!is_same_signedness<target_t, source_t>::value) {
-            if ((result < 0) != (value < 0)) {
-                return false;
-            }
+            if ((result < 0) != (value < 0)) { return false; }
         }
     }
     return true;
@@ -171,60 +165,8 @@ constexpr bool can_be_narrow_cast(Source&& value) noexcept
 template<class target_t, class Source, class source_t = std::decay_t<Source>>
 constexpr target_t narrow_cast(Source&& value)
 {
-    if (target_t result; can_be_narrow_cast(std::forward<Source>(value), result)) {
-        return result;
-    }
+    if (target_t result; can_be_narrow_cast(std::forward<Source>(value), result)) { return result; }
     NOTF_THROW(value_error, "narrow_cast failed");
 }
-
-// corresponding types ============================================================================================== //
-
-/// Signed integer type corresponding to an unsigned one.
-template<class T, class = std::enable_if_t<std::is_integral_v<T> && !std::is_signed_v<T>>>
-struct corresponding_signed {
-    static_assert(always_false_v<T>);
-};
-template<>
-struct corresponding_signed<uchar> {
-    using type = char;
-};
-template<>
-struct corresponding_signed<ushort> {
-    using type = short;
-};
-template<>
-struct corresponding_signed<uint> {
-    using type = int;
-};
-template<>
-struct corresponding_signed<ulong> {
-    using type = long;
-};
-template<class T>
-using corresponding_signed_t = typename corresponding_signed<T>::type;
-
-/// Unsigned integer type corresponding to a signed one.
-template<class T, class = std::enable_if_t<std::is_integral_v<T> && std::is_signed_v<T>>>
-struct corresponding_unsigned {
-    static_assert(always_false_v<T>);
-};
-template<>
-struct corresponding_unsigned<char> {
-    using type = uchar;
-};
-template<>
-struct corresponding_unsigned<short> {
-    using type = ushort;
-};
-template<>
-struct corresponding_unsigned<int> {
-    using type = uint;
-};
-template<>
-struct corresponding_unsigned<long> {
-    using type = ulong;
-};
-template<class T>
-using corresponding_unsigned_t = typename corresponding_unsigned<T>::type;
 
 NOTF_CLOSE_NAMESPACE

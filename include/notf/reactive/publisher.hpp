@@ -232,7 +232,7 @@ public:
 
     template<class Sub, class S = std::decay_t<Sub>>
     std::enable_if_t<std::conjunction_v<std::negation<std::is_same<S, AnySubscriberPtr>>,
-                                        std::is_convertible<S, SubscriberPtr<Everything>>>,
+                                        std::is_convertible<S, SubscriberPtr<Ignored>>>,
                      bool>
     subscribe(Sub&& subscriber) // add a Subscriber<Everything>
     {

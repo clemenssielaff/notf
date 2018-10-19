@@ -6,7 +6,6 @@
 
 // is only included in debug builds
 #include "./exception.hpp"
-#include "./log.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -28,7 +27,6 @@ assertion_failed(char const* expr, char const* file, char const* function, long 
         = fmt::format(R"(Assertion "{expr}" failed at "{file}:{line}" in function "{func}" with message: "{msg}")",
                       "expr"_a = expr, "file"_a = filename_from_path(file), "line"_a = line, "func"_a = function,
                       "msg"_a = fmt::format(fmt, std::forward<Args>(args)...));
-    TheLogger::get()->critical(msg);
 #if defined(NOTF_ABORT_ON_ASSERT) && !defined(NOTF_TEST)
     std::abort();
 #else
@@ -44,12 +42,10 @@ assertion_failed(char const* expr, char const* file, char const* function, long 
         msg = fmt::format(R"(Assertion "{expr}" failed at "{file}:{line}" in function "{func}" with message: "{msg}")",
                           "expr"_a = expr, "file"_a = filename_from_path(file), "line"_a = line, "func"_a = function,
                           "msg"_a = message);
-        TheLogger::get()->critical(msg);
     }
     else {
         msg = fmt::format(R"(Assertion "{expr}" failed at "{file}:{line}" in function "{func}")", "expr"_a = expr,
                           "file"_a = filename_from_path(file), "line"_a = line, "func"_a = function);
-        TheLogger::get()->critical(msg);
     }
 #if defined(NOTF_ABORT_ON_ASSERT) && !defined(NOTF_TEST)
     std::abort();

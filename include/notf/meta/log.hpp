@@ -8,10 +8,9 @@
 
 NOTF_OPEN_NAMESPACE
 
-// the logger ======================================================================================================= //
+// logger =========================================================================================================== //
 
-/// notf logger singleton
-class TheLogger {
+class Logger {
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -34,29 +33,20 @@ public:
         /// Name of the log file to write into, leave empty to disable file logging.
         std::string file_name = {};
 
+#ifdef NOTF_DEBUG
         /// Initial log level for the logger itself.
-        Level log_level = [] {
-            if constexpr (is_debug_build())
-                return Level::TRACE;
-            else
-                return Level::INFO;
-        }();
+        Level log_level = Level::TRACE;
 
         /// Log level for the console logger.
-        Level console_level = [] {
-            if constexpr (is_debug_build())
-                return Level::TRACE;
-            else
-                return Level::WARNING;
-        }();
+        Level console_level = Level::TRACE;
 
         /// Log level for the file logger (is ignored if file logging is disabled).
-        Level file_level = [] {
-            if constexpr (is_debug_build())
-                return Level::TRACE;
-            else
-                return Level::INFO;
-        }();
+        Level file_level = Level::TRACE;
+#else
+        Level log_level = Level::INFO;
+        Level console_level = Level::WARNING;
+        Level file_level = Level::INFO;
+#endif
 
         /// If true, the log file will be cleared before the logger writes into it.
         /// If false, the logger will append to the existing content in the log file.
@@ -64,10 +54,10 @@ public:
     };
 
     // methods ------------------------------------------------------------------------------------------------------ //
-private:
+public:
     /// Constructor.
     /// @param args     Construction arguments pack.
-    TheLogger(const Args& args) : m_console_sink(std::make_shared<decltype(m_console_sink)::element_type>())
+    Logger(const Args& args) : m_console_sink(std::make_shared<decltype(m_console_sink)::element_type>())
     {
         m_console_sink->set_level(static_cast<spdlog::level::level_enum>(args.console_level));
         m_console_sink->set_pattern("%i %l: %v");
@@ -86,30 +76,8 @@ private:
         m_logger->set_level(static_cast<spdlog::level::level_enum>(args.log_level));
     }
 
-public:
-    /// Destructor.
-    ~TheLogger() = default;
-
-    /// Initializes the Logger if this is the first time `initialize` or `get` is called - otherwise acts like `get`.
-    static TheLogger& initialize(const Args& args) { return _get(args); }
-
-    /// Access to the Logger singleton.
-    static TheLogger& get()
-    {
-        static Args default_args;
-        return _get(default_args);
-    }
-
     /// Access to the managed spdlog logger.
     spdlog::logger* operator->() { return m_logger.get(); }
-
-public:
-    /// Static instance provider.
-    static TheLogger& _get(const Args& args)
-    {
-        static TheLogger instance(args);
-        return instance;
-    }
 
     // members ------------------------------------------------------------------------------------------------------ //
 private:
@@ -121,6 +89,53 @@ private:
 
     /// The logger managed by this instance.
     std::unique_ptr<spdlog::logger> m_logger;
+};
+
+// the logger ======================================================================================================= //
+
+/// notf logger singleton
+class TheLogger {
+
+    // types -------------------------------------------------------------------------------------------------------- //
+public:
+    /// Log levels in ascending order.
+    using Level = Logger::Level;
+
+    /// Arguments passed to the Logger on creation.
+    using Args = Logger::Args;
+
+    // methods ------------------------------------------------------------------------------------------------------ //
+private:
+    /// Constructor.
+    /// @param args     Construction arguments pack.
+    TheLogger(const Args& args) : m_logger(args) {}
+
+public:
+    /// Initializes the Logger if this is the first time `initialize` or `get` is called - otherwise acts like `get`.
+    static TheLogger& initialize(const Args& args) { return _get(args); }
+
+    /// Access to the Logger singleton.
+    static TheLogger& get()
+    {
+        static Args default_args;
+        return _get(default_args);
+    }
+
+    /// Access to the managed spdlog logger.
+    spdlog::logger* operator->() { return m_logger.operator->(); }
+
+public:
+    /// Static instance provider.
+    static TheLogger& _get(const Args& args)
+    {
+        static TheLogger instance(args);
+        return instance;
+    }
+
+    // members ------------------------------------------------------------------------------------------------------ //
+private:
+    /// Logger instance managed by this singleton.
+    Logger m_logger;
 };
 
 // log macros ======================================================================================================= //
