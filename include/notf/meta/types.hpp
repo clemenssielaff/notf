@@ -167,13 +167,13 @@ struct Tester {};
 
 #ifdef NOTF_TEST
 #define NOTF_ACCESS_TYPE(X)           \
-    template<class T>                 \
-    using AccessFor = Accessor<X, T>; \
+    template<class Y>                 \
+    using AccessFor = Accessor<X, Y>; \
     friend AccessFor<Tester>
 #else
 #define NOTF_ACCESS_TYPE(X) \
-    template<class T>       \
-    using AccessFor = Accessor<X, T>
+    template<class Y>       \
+    using AccessFor = Accessor<X, Y>
 #endif
 
 // ================================================================================================================== //

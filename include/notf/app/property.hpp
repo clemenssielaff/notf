@@ -28,10 +28,11 @@ public:
     /// Destructor.
     ~PropertyOperator() override
     {
-        clear_frozen();
+        clear_modified_value();
         this->complete();
     }
 
+    /// Update the Property from upstream.
     void on_next(const AnyPublisher* /*publisher*/, const T& value) final { set(value); }
 
     void on_error(const AnyPublisher* /*publisher*/, const std::exception& /*exception*/) final
@@ -50,8 +51,8 @@ public:
     /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
     const T& get(const std::thread::id thread_id) const
     {
-        if (T* frozen_value = m_cache.load(std::memory_order_consume)) {
-            if (TheGraph::is_frozen_by(thread_id)) { return *frozen_value; }
+        if (T* frozen_value = m_modified_value.load(std::memory_order_consume)) {
+            if (!TheGraph::is_frozen_by(thread_id)) { return *frozen_value; }
         }
         return m_value;
     }
@@ -64,24 +65,41 @@ public:
         if (value == m_value) { return; }
 
         // if the graph is currently frozen and this is the first modification of this property,
-        // create a frozen copy of the current value before changing it
-        if (T* frozen_value = m_cache.load(std::memory_order_relaxed); frozen_value == nullptr) {
-            if (TheGraph::is_frozen()) { m_cache.store(new T(std::move(m_value)), std::memory_order_release); }
+        // create a modified value copy
+        if (TheGraph::is_frozen()) {
+            // the render thread must never modify a Property
+            NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id()));
+
+            // if the graph is currently frozen and this is the first modification of this property,
+            // create a new modified value
+            T* modified_value = m_modified_value.load(std::memory_order_relaxed);
+            if (modified_value == nullptr) { m_modified_value.store(new T(m_value), std::memory_order_release); }
+
+            // if a modified value already exists, update it
+            else {
+                *modified_value = value;
+            }
+
+            // hash and publish the modified copy just like your regular value
+            if (m_hash != 0) { m_hash = hash(*modified_value); }
+            this->publish(*modified_value);
         }
 
-        // update and publish
-        m_value = value;
-        if (m_hash != 0) { m_hash = hash(m_value); }
-        this->publish(m_value);
+        // if the graph is not frozen, just update, hash and publish your regular value
+        else {
+            m_value = value;
+            if (m_hash != 0) { m_hash = hash(m_value); }
+            this->publish(m_value);
+        }
     }
 
-    /// Deletes the frozen value copy, if one exists.
-    void clear_frozen() { delete m_cache.exchange(nullptr); }
+    /// Deletes the modified value copy, if one exists.
+    void clear_modified_value() { delete m_modified_value.exchange(nullptr); }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// Pointer to a frozen copy of the value, if it was modified while the Graph was frozen.
-    std::atomic<T*> m_cache{nullptr};
+    std::atomic<T*> m_modified_value{nullptr};
 
     /// Hash of the stored value.
     size_t m_hash;
@@ -114,28 +132,21 @@ public:
     virtual size_t get_hash() const = 0;
 };
 
+/// A Typed Property.
 template<class T>
 class Property : public AnyProperty {
 
     static_assert(std::is_move_constructible_v<T>, "Property values must be movable to freeze them");
     static_assert(is_hashable_v<T>, "Property values must be hashable");
     static_assert(!std::is_const_v<T>, "Property values must be modifyable");
-    static_assert(!std::is_same_v<T, None>, "Property value type must not be None");
     static_assert(true, "Property values must be serializeable"); // TODO: check property value types f/ serializability
-
-    template<class Pub, class Prop, class, class>
-    friend std::enable_if_t<
-        detail::is_reactive_compatible_v<
-            std::decay_t<Pub>, std::shared_ptr<detail::PropertyOperator<typename Prop::element_type::value_t>>>,
-        Pipeline<std::shared_ptr<detail::PropertyOperator<typename Prop::element_type::value_t>>>>
-    operator|(Pub&& publisher, Prop& property);
 
     friend struct Accessor<Property<T>, Node>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
-    template<class Other>
-    using AccessFor = Accessor<Property<T>, Other>;
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(Property<T>);
 
     /// Property value type.
     using value_t = T;
@@ -205,7 +216,6 @@ public:
         return lhs->m_operator | rhs->m_operator;
     }
 
-    auto& get_operator() { return m_operator; }
     // fields ---------------------------------------------------------------------------------- ///
 private:
     /// Reactive Property operator, most of the Property's implementation.
@@ -243,6 +253,7 @@ public:
 
     /// The Node-unique name of this Property.
     std::string_view get_name() const final { return m_name; }
+
     // fields ---------------------------------------------------------------------------------- ///
 private:
     /// The Node-unique name of this Property.

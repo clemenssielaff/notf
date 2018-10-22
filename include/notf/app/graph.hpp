@@ -18,9 +18,8 @@ class TheGraph {
 
     // types ----------------------------------------------------------------------------------- //
 public:
-    /// Type Accessor.
-    template<class T>
-    using AccessFor = Accessor<TheGraph, T>;
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(TheGraph);
 
 private:
     /// Node registry Uuid -> NodeHandle.

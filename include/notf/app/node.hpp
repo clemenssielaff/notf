@@ -252,8 +252,8 @@ protected:
     /// Updates the Node hash
     void _update_node_hash() const;
 
-    /// Deletes the frozen child list copy, if one exists.
-    void _clear_modified_copies() { delete m_cache.exchange(nullptr); }
+    /// Deletes the modified child list copy, if one exists.
+    void _clear_modified_children() { delete m_modified_children.exchange(nullptr); }
 
     /// Reactive function marking this Node as dirty whenever a visible Property changes its value.
     std::shared_ptr<PropertyObserver>& _get_property_observer() { return m_property_observer; }
@@ -284,7 +284,7 @@ private:
     ChildList m_children;
 
     /// Pointer to a frozen copy of the list of children, if it was modified while the Graph was frozen.
-    std::atomic<ChildList*> m_cache{nullptr};
+    std::atomic<ChildList*> m_modified_children{nullptr};
 
     /// Hash of all Property values of this Node.
     size_t m_property_hash;

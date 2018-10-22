@@ -52,7 +52,7 @@ Node::~Node()
     TheGraph::AccessFor<Node>::unregister_node(m_uuid);
     s_unfinalized_nodes.erase(this); // just in case the constructor failed
 
-    _clear_modified_copies();
+    _clear_modified_children();
 
 #ifdef NOTF_DEBUG
     // make sure that the property observer is deleted with this node, so we don't leave a dangling reference to it
@@ -271,7 +271,7 @@ void Node::_set_parent(NodePtr new_parent)
 
 const Node::ChildList& Node::_read_children(const std::thread::id thread_id) const
 {
-    if (ChildList* modified_list = m_cache.load(std::memory_order_consume)) {
+    if (ChildList* modified_list = m_modified_children.load(std::memory_order_consume)) {
         if (!TheGraph::is_frozen_by(thread_id)) { return *modified_list; }
     }
     return m_children;
@@ -288,10 +288,10 @@ Node::ChildList& Node::_write_children()
 
         // if the graph is currently frozen and this is the first modification,
         // create a copy of the current child list before changing it
-        ChildList* modified_list = m_cache.load(std::memory_order_relaxed);
+        ChildList* modified_list = m_modified_children.load(std::memory_order_relaxed);
         if (modified_list == nullptr) {
             modified_list = new ChildList(m_children);
-            m_cache.store(modified_list, std::memory_order_release);
+            m_modified_children.store(modified_list, std::memory_order_release);
         }
         return *modified_list;
     }

@@ -70,13 +70,13 @@ private:
     template<size_t I = 0>
     void _initialize_properties()
     {
-        // initialize and store the property
+        // create the new property
         auto property_ptr = std::make_shared<property_t<I>>();
         std::get<I>(m_properties) = property_ptr;
 
-        auto rightptr = std::static_pointer_cast<Property<typename property_t<I>::value_t>>(property_ptr);
-
-        property_t<I>::template AccessFor<Node>::get_operator(rightptr)->subscribe(_get_property_observer());
+        // subscribe to receive an update, whenever the property changes its value
+        auto typed_property = std::static_pointer_cast<Property<typename property_t<I>::value_t>>(property_ptr);
+        property_t<I>::template AccessFor<Node>::get_operator(typed_property)->subscribe(_get_property_observer());
 
         if constexpr (I + 1 < s_property_count) { _initialize_properties<I + 1>(); }
     }

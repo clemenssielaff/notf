@@ -55,6 +55,9 @@ protected:
         auto property = std::make_shared<RunTimeProperty<T>>(itr->first, std::forward<T>(value), is_visible);
         itr->second = property;
 
+        // subscribe to receive an update, whenever the property changes its value
+        Property<T>::template AccessFor<Node>::get_operator(property)->subscribe(_get_property_observer());
+
         return PropertyHandle<T>(std::move(property));
     }
 
