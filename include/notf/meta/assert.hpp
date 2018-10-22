@@ -12,7 +12,7 @@ NOTF_OPEN_NAMESPACE
 // assertions ======================================================================================================= //
 
 /// Exception thrown when an assertion failed and NOTF_ABORT_ON_ASSERT is undefined (or in test mode).
-NOTF_EXCEPTION_TYPE(assertion_error);
+NOTF_EXCEPTION_TYPE(AssertionError);
 
 namespace detail {
 
@@ -30,7 +30,7 @@ assertion_failed(char const* expr, char const* file, char const* function, long 
 #if defined(NOTF_ABORT_ON_ASSERT) && !defined(NOTF_TEST)
     std::abort();
 #else
-    throw assertion_error(file, function, line, msg.c_str());
+    throw AssertionError(file, function, line, msg.c_str());
 #endif
 }
 NOTF_NORETURN inline void
@@ -50,7 +50,7 @@ assertion_failed(char const* expr, char const* file, char const* function, long 
 #if defined(NOTF_ABORT_ON_ASSERT) && !defined(NOTF_TEST)
     std::abort();
 #else
-    throw assertion_error(file, function, line, msg.c_str());
+    throw AssertionError(file, function, line, msg.c_str());
 #endif
 }
 

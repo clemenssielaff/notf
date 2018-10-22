@@ -24,7 +24,7 @@ using wrap_tuple_elements_in_shared_ptrs_t = typename wrap_tuple_elements_in_sha
 template<class Policy>
 class CompileTimeNode : public Node {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 protected:
     /// Tuple containing all compile time Properties of this Node type.
     using properties_t = detail::wrap_tuple_elements_in_shared_ptrs_t<typename Policy::properties>;
@@ -36,13 +36,17 @@ protected:
     /// Number of Properties in this Node type.
     static constexpr const size_t s_property_count = std::tuple_size_v<properties_t>;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
-    CompileTimeNode() : Node(this) { _initialize_properties(); } // TODO: test only
+    /// Default Constructor.
+    /// Takes no arguments since all of the customization happens through the Policy type.
+    CompileTimeNode() : Node(this) { _initialize_properties(); }
 
     /// Use the base class' `get_property(std::string_view)` method alongside the compile time implementations below.
     using Node::get_property;
 
+    /// Returns a correctly typed Handle to a CompileTimeProperty or void (which doesn't compile).
+    /// @param name     Name of the requested Property.
     template<char... Cs>
     auto get_property(StringType<char, Cs...> name) const
     {
@@ -115,7 +119,7 @@ private:
         if constexpr (I + 1 < s_property_count) { _calculate_hash<I + 1>(result); }
     }
 
-    // members ------------------------------------------------------------------------------------------------------ //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// All Properties of this Node, default initialized to the Definition's default values.
     properties_t m_properties;

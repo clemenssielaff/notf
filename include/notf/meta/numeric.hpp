@@ -166,7 +166,7 @@ template<class target_t, class Source, class source_t = std::decay_t<Source>>
 constexpr target_t narrow_cast(Source&& value)
 {
     if (target_t result; can_be_narrow_cast(std::forward<Source>(value), result)) { return result; }
-    NOTF_THROW(value_error, "narrow_cast failed");
+    NOTF_THROW(ValueError, "narrow_cast failed");
 }
 
 NOTF_CLOSE_NAMESPACE

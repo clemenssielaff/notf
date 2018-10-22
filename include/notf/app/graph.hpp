@@ -16,8 +16,9 @@ class TheGraph {
 
     friend struct Accessor<TheGraph, Node>;
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
+    /// Type Accessor.
     template<class T>
     using AccessFor = Accessor<TheGraph, T>;
 
@@ -82,7 +83,7 @@ private:
         Mutex m_mutex;
     };
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 private:
     /// Default constructor.
     TheGraph() = default;
@@ -90,20 +91,27 @@ private:
 public:
     NOTF_NO_COPY_OR_ASSIGN(TheGraph);
 
+    /// The Graph singleton.
     static TheGraph& get()
     {
         static TheGraph instance;
         return instance;
     }
 
+    /// The Node with the given name.
+    /// @param name Name of the Node to look up.
+    /// @returns    The requested Handle, is invalid if the name did not identify a Node.
+    static NodeHandle get_node(const std::string& name) { return s_node_name_registry.get_node(name); }
+
     static bool is_frozen() noexcept { return s_is_frozen; }
     static bool is_frozen_by(std::thread::id /*thread_id*/) noexcept { return s_is_frozen; }
+    // TODO: Graph::is_frozen_by
 
     /// Mutex used to protect the Graph.
     /// Is exposed as is, so that everyone can lock it locally.
     static RecursiveMutex& get_graph_mutex() { return s_graph_mutex; }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     static inline bool s_is_frozen = false;
 

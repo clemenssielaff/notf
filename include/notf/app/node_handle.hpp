@@ -6,21 +6,21 @@
 
 NOTF_OPEN_NAMESPACE
 
-// node handle ====================================================================================================== //
+// node handle base ================================================================================================= //
 
-class NodeHandle {
+namespace detail {
 
-    friend class Node;
-    friend struct std::hash<NodeHandle>;
+/// Members common to NodeHandle and NodeMasterHandle.
+class NodeHandleBase {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Default (empty) Constructor.
-    NodeHandle() = default;
+    NodeHandleBase() = default;
 
     /// Value Constructor.
     /// @param  node    Node to handle.
-    NodeHandle(const NodePtr& node) : m_node(node), m_id(node.get()) {}
+    NodeHandleBase(const NodePtr& node) : m_node(node), m_id(node.get()) {}
 
     /// @{
     /// Checks whether the NodeHandle is still valid or not.
@@ -40,21 +40,21 @@ public:
     std::string_view get_name() const;
 
     /// Comparison with another NodeHandle.
-    bool operator==(const NodeHandle& rhs) const noexcept { return m_id == rhs.m_id; }
-    bool operator!=(const NodeHandle& rhs) const noexcept { return !operator==(rhs); }
+    bool operator==(const NodeHandleBase& rhs) const noexcept { return m_id == rhs.m_id; }
+    bool operator!=(const NodeHandleBase& rhs) const noexcept { return !operator==(rhs); }
 
     /// Less-than operator with another NodeHandle.
-    bool operator<(const NodeHandle& rhs) const noexcept { return m_id < rhs.m_id; }
+    bool operator<(const NodeHandleBase& rhs) const noexcept { return m_id < rhs.m_id; }
 
     /// Comparison with a NodePtr.
-    friend bool operator==(const NodeHandle& lhs, const NodePtr& rhs) noexcept { return lhs.m_id == rhs.get(); }
-    friend bool operator!=(const NodeHandle& lhs, const NodePtr& rhs) noexcept { return !(lhs == rhs); }
-    friend bool operator==(const NodePtr& lhs, const NodeHandle& rhs) noexcept { return lhs.get() == rhs.m_id; }
-    friend bool operator!=(const NodePtr& lhs, const NodeHandle& rhs) noexcept { return !(lhs == rhs); }
+    friend bool operator==(const NodeHandleBase& lhs, const NodePtr& rhs) noexcept { return lhs.m_id == rhs.get(); }
+    friend bool operator!=(const NodeHandleBase& lhs, const NodePtr& rhs) noexcept { return !(lhs == rhs); }
+    friend bool operator==(const NodePtr& lhs, const NodeHandleBase& rhs) noexcept { return lhs.get() == rhs.m_id; }
+    friend bool operator!=(const NodePtr& lhs, const NodeHandleBase& rhs) noexcept { return !(lhs == rhs); }
 
     /// Less-than operator with a NodePtr.
-    friend bool operator<(const NodeHandle& lhs, const NodePtr& rhs) noexcept { return lhs.m_id < rhs.get(); }
-    friend bool operator<(const NodePtr& lhs, const NodeHandle& rhs) noexcept { return lhs.get() < rhs.m_id; }
+    friend bool operator<(const NodeHandleBase& lhs, const NodePtr& rhs) noexcept { return lhs.m_id < rhs.get(); }
+    friend bool operator<(const NodePtr& lhs, const NodeHandleBase& rhs) noexcept { return lhs.get() < rhs.m_id; }
 
 private:
     /// Locks and returns an owning pointer to the handled Node.
@@ -65,8 +65,8 @@ private:
         NOTF_THROW(HandleExpiredError, "Node Handle has expired");
     }
 
-    // members ------------------------------------------------------------------------------------------------------ //
-private:
+    // fields ---------------------------------------------------------------------------------- //
+protected:
     /// The handled Node, non owning.
     NodeWeakPtr m_node;
 
@@ -75,15 +75,106 @@ private:
     const Node* m_id = nullptr;
 };
 
+} // namespace detail
+
+// node handle ====================================================================================================== //
+
+/// Regular Node Handle.
+class NodeHandle : public detail::NodeHandleBase {
+
+    friend struct ::std::hash<NodeHandle>;
+    friend class ::notf::Node;
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// Default (empty) Constructor.
+    NodeHandle() = default;
+
+    /// Value Constructor.
+    /// @param  node    Node to handle.
+    NodeHandle(const NodePtr& node) : detail::NodeHandleBase(node) {}
+};
+
+// node master handle =============================================================================================== //
+
+/// Special NodeHandle type that is unique per Node instance and removes the Node when itself goes out of scope.
+/// If the Node has already been removed by then, the destructor does nothing.
+class NodeMasterHandle : public detail::NodeHandleBase {
+
+    friend struct ::std::hash<NodeMasterHandle>;
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    NOTF_NO_COPY_OR_ASSIGN(NodeMasterHandle);
+
+    /// Value Constructor.
+    /// @param  node    Node to handle.
+    /// @throws ValueError  If the given NodePtr is empty.
+    NodeMasterHandle(NodePtr&& node);
+
+    /// Implicit cast to a NodeHandle.
+    operator NodeHandle() { return NodeHandle(m_node.lock()); }
+
+    /// Destructor.
+    ~NodeMasterHandle();
+};
+
+// node master handle castable ====================================================================================== //
+
+namespace detail {
+
+/// Type returned by Node::_create_child.
+/// Can once (implicitly) be cast to a NodeMasterHandle, but can also be safely ignored without the Node being erased
+/// immediately.
+class NodeMasterHandleCastable {
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    NOTF_NO_COPY_OR_ASSIGN(NodeMasterHandleCastable);
+
+    /// Constructor.
+    /// @param node The newly created Node.
+    NodeMasterHandleCastable(NodePtr&& node) : m_node(std::move(node)) {}
+
+    /// Implicit cast to a NodeMasterHandle.
+    /// Can be called once.
+    /// @throws ValueError  If called more than once or the Node has already expired.
+    operator NodeMasterHandle();
+
+    /// Implicit cast to a NodeHandle.
+    /// Can be called multiple times.
+    operator NodeHandle() { return NodeHandle(m_node.lock()); }
+
+    // fields ---------------------------------------------------------------------------------- //
+private:
+    /// The newly created Node.
+    /// Is held as a weak_ptr because the user might (foolishly) decide to store this object instead of using for
+    /// casting only, and we don't want to keep the Node alive for longer than its parent is.
+    NodeWeakPtr m_node;
+};
+
+} // namespace detail
+
 NOTF_CLOSE_NAMESPACE
 
-/// Hash
+// std::hash specializations ======================================================================================== //
+
 namespace std {
+
 template<>
 struct hash<notf::NodeHandle> {
-    size_t operator()(const notf::NodeHandle& handle) const noexcept
+    constexpr size_t operator()(const notf::NodeHandle& handle) const noexcept
     {
         return notf::hash_mix(notf::to_number(handle.m_id));
     }
 };
+
+template<>
+struct hash<notf::NodeMasterHandle> {
+    constexpr size_t operator()(const notf::NodeMasterHandle& handle) const noexcept
+    {
+        return notf::hash_mix(notf::to_number(handle.m_id));
+    }
+};
+
 } // namespace std

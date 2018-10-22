@@ -12,7 +12,7 @@ NOTF_OPEN_NAMESPACE
 
 class Logger {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Log levels in ascending order.
     enum class Level {
@@ -53,7 +53,7 @@ public:
         bool clear_file = false;
     };
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor.
     /// @param args     Construction arguments pack.
@@ -79,7 +79,7 @@ public:
     /// Access to the managed spdlog logger.
     spdlog::logger* operator->() { return m_logger.get(); }
 
-    // members ------------------------------------------------------------------------------------------------------ //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Console sink for the logger.
     std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> m_console_sink;
@@ -96,7 +96,7 @@ private:
 /// notf logger singleton
 class TheLogger {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Log levels in ascending order.
     using Level = Logger::Level;
@@ -104,7 +104,7 @@ public:
     /// Arguments passed to the Logger on creation.
     using Args = Logger::Args;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 private:
     /// Constructor.
     /// @param args     Construction arguments pack.
@@ -132,7 +132,7 @@ public:
         return instance;
     }
 
-    // members ------------------------------------------------------------------------------------------------------ //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Logger instance managed by this singleton.
     Logger m_logger;

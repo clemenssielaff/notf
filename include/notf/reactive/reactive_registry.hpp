@@ -35,7 +35,7 @@ private:
 template<class Func, class traits = notf::function_traits<Func&>>
 class ReactiveOperatorFactory : public AnyOperatorFactory {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 private:
     /// Tuple representing the required arguments for calling `m_function`.
     using args_tuple = typename traits::args_tuple;
@@ -43,7 +43,7 @@ private:
     static_assert(std::is_constructible_v<AnyOperatorPtr, typename traits::return_type>,
                   "A reactive operator factory must return a type convertible to `AnyOperatorPtr`");
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor.
     /// @param function     Factory function to construct the reactive operator instance.
@@ -57,7 +57,7 @@ private:
             std::get<I>(target) = fuzzy_any_cast<T>(std::move(source[I]));
         }
         catch (const std::bad_any_cast&) {
-            NOTF_THROW(value_error, "Expected type \"{}\", got \"{}\"", type_name<T>(), type_name(source[I].type()));
+            NOTF_THROW(ValueError, "Expected type \"{}\", got \"{}\"", type_name<T>(), type_name(source[I].type()));
         }
     }
 
@@ -70,7 +70,7 @@ private:
     AnyOperatorPtr _create(std::vector<std::any>&& args) const final
     {
         if (args.size() != traits::arity) {
-            NOTF_THROW(value_error, "Reactive operator factory failed. Expected {} argument types, got {}",
+            NOTF_THROW(ValueError, "Reactive operator factory failed. Expected {} argument types, got {}",
                        traits::arity, args.size());
         }
 
@@ -79,7 +79,7 @@ private:
         return std::apply(m_function, std::move(typed_arguments));
     }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Factory function to construct the reactive operator instance.
     std::function<Func> m_function;
@@ -91,7 +91,7 @@ private:
 /// Is populated with types at compile time, but can be extended at runtime.
 class TheReactiveRegistry {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     template<class T>
     struct register_operator {
@@ -109,13 +109,13 @@ public:
     /// Map std::string -> reactive operator factory.
     using Registry = std::unordered_map<std::string, std::unique_ptr<AnyOperatorFactory>>;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Creates an untyped reactive operator instance from the registry.
     /// @param name             Name of the operator type.
     /// @param args             Arguments required to instantiate the operator.
-    /// @throws out_of_bounds   If the name does not identify an operator type.
-    /// @throws value_error     If any of the arguments do not match the expected type.
+    /// @throws OutOfBounds   If the name does not identify an operator type.
+    /// @throws ValueError     If any of the arguments do not match the expected type.
     /// @returns                Untyped reactive operator.
     template<class... Args>
     static auto create(const std::string& name, Args&&... args)
@@ -123,7 +123,7 @@ public:
         auto& registry = _get_registry();
         auto itr = registry.find(name);
         if (itr == registry.end()) {
-            NOTF_THROW(out_of_bounds, "No operator named \"{}\"  in the reactive registry", name);
+            NOTF_THROW(OutOfBounds, "No operator named \"{}\"  in the reactive registry", name);
         }
         return itr->second->create(std::forward<Args>(args)...);
     }
@@ -131,7 +131,7 @@ public:
     /// Creates a correctly typed reactive operator instance from the registry.
     /// @param name             Name of the operator type.
     /// @param args             Arguments required to instantiate the operator.
-    /// @throws value_error     If any of the arguments do not match the expected type.
+    /// @throws ValueError     If any of the arguments do not match the expected type.
     /// @returns                Correctly typed reactive operator or empty on any failure (wrong name or wrong types).
     template<class I, class O = I, class Policy = detail::DefaultPublisherPolicy, class... Args>
     static std::shared_ptr<Operator<I, O, Policy>> create(const std::string& name, Args&&... args)

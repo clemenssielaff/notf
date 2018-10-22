@@ -1,126 +1,112 @@
 #include <iostream>
+#include <string>
+#include <vector>
 
-#include "notf/app/property.hpp"
-#include "notf/common/mnemonic.hpp"
-#include "notf/common/uuid.hpp"
-#include "notf/meta/hash.hpp"
+#include "notf/meta/macros.hpp"
+#include "notf/meta/types.hpp"
 
 NOTF_USING_NAMESPACE;
 
-template<class T = int>
-auto DefaultPublisher()
-{
-    return std::make_shared<Publisher<T, detail::SinglePublisherPolicy>>();
-}
+struct Factory;
+struct MasterHandle;
+struct Node;
+struct Wrapper;
 
-template<class T = int>
-auto TestSubscriber()
-{
-    struct TestSubscriberTImpl : public Subscriber<T> {
+struct Node {
 
-        void on_next(const AnyPublisher*, const T& value) final { values.emplace_back(value); }
+    Node(Factory* p_factory, std::string p_name) : factory(p_factory), name(std::move(p_name))
+    {
+        std::cout << "created node " << name << std::endl;
+    }
 
-        void on_error(const AnyPublisher*, const std::exception& error) final
-        {
-            try {
-                throw error;
-            }
-            catch (...) {
-                exception = std::current_exception();
-            };
-        }
+    ~Node() { std::cout << "deleted node " << name << std::endl; }
 
-        void on_complete(const AnyPublisher*) final { is_completed = true; }
-
-        std::vector<T> values;
-        std::exception_ptr exception;
-        bool is_completed = false;
-        bool _padding[7];
-    };
-    return std::make_shared<TestSubscriberTImpl>();
-}
-
-using RTProperty = RunTimeProperty<int>;
-
-struct PropertyPolicy {
-    using value_t = int;
-    static constexpr StringConst name = "position";
-    static constexpr value_t default_value = 0;
-    static constexpr bool is_visible = true;
+    Factory* factory;
+    std::string name;
 };
 
-using CTProperty = CompileTimeProperty<PropertyPolicy>;
-
-struct MustBeSharedPtr : std::enable_shared_from_this<MustBeSharedPtr> {
-    MustBeSharedPtr() { auto must_succeed = shared_from_this(); }
+struct Factory {
+    Wrapper create();
+    size_t counter = 1;
+    std::vector<std::shared_ptr<Node>> nodes;
 };
 
-auto EverythingSubscriber()
+struct MasterHandle {
+
+    ~MasterHandle()
+    {
+        assert(node);
+        node->factory->nodes.erase(std::find(node->factory->nodes.begin(), node->factory->nodes.end(), node));
+    }
+
+    std::shared_ptr<Node> node;
+};
+
+struct Wrapper {
+    NOTF_NO_COPY_OR_ASSIGN(Wrapper);
+    Wrapper(std::shared_ptr<Node>&& node) : node(std::move(node)) {}
+    operator MasterHandle() { return MasterHandle{std::move(node)}; }
+
+private:
+    std::shared_ptr<Node> node;
+};
+
+Wrapper Factory::create()
 {
-    struct EverythingSubscriberImpl : public Subscriber<Everything> {
-        void on_next(const AnyPublisher* /*publisher*/, ...) override { std::cout << "jup" << std::endl; }
-    };
-    return std::make_shared<EverythingSubscriberImpl>();
+    auto result = std::make_shared<Node>(this, std::to_string(counter++));
+    nodes.emplace_back(result);
+    return Wrapper{std::move(result)};
 }
 
-auto EverythingRelay() { return std::make_shared<Operator<Everything, None>>(); }
+struct Base {
 
-auto NoneSubscriber() {
-    struct NoneSubscriber : public Subscriber<None> {
-        void on_next(const AnyPublisher* /*publisher*/) override { std::cout << "got it" << std::endl; }
-    };
-    return std::make_shared<NoneSubscriber>();
-}
+protected:
+    template<class T, class Forbidden = std::tuple<>>
+    Wrapper _create_child_of()
+    {
+        return _create_child();
+    }
+
+private:
+public:
+    Wrapper _create_child();
+};
+
+struct Sub : public Base {
+protected:
+    Wrapper _create_child() { return Factory().create(); }
+};
+
+struct FSub : public Sub {
+    Wrapper _create_child() { return Sub::_create_child(); }
+};
+
+struct A {};
+struct B : public A {};
+struct C : public A {};
 
 int main()
 {
+    Factory factory;
 
-    //    //    auto prop = std::make_shared<CTProperty>();
-    //    auto prop = std::make_shared<RTProperty>("derbeprop", 42);
+    { // anonymous
+        factory.create();
+    }
 
-    //    auto publisher = DefaultPublisher();
-    //    auto pipeline = prop | prop | TestSubscriber();
+    { // master handle
+        MasterHandle handle = factory.create();
+    }
 
-    //    std::cout << prop->get_name() << " " << prop->get() << '\n';
-    //    publisher->publish(42);
-    //    std::cout << prop->get_name() << " " << prop->get() << '\n';
+    { // nope
+        auto nope = factory.create();
+    }
 
-    //    AnyPropertyPtr as_any = std::static_pointer_cast<AnyProperty>(prop);
-    //    std::cout << fmt::format("\"{}\"", type_name<std::remove_pointer_t<decltype(as_any.get())>>()) << '\n';
-    //    std::cout << fmt::format("\"{}\"", as_any->get_type_name()) << '\n';
+    auto sub = FSub();
+    sub._create_child();
 
-    //    try {
-    //        auto nope = MustBeSharedPtr();
-    //        std::cout << "Success, I guess?" << '\n';
-    //    }
-    //    catch (...) {
-    //        std::cout << "MustBeSharedPtr is NOT a shared_ptr" << '\n';
-    //    }
+    auto b = B();
+    std::vector<C> vec;
+//    vec.emplace_back(std::move(b));
 
-    //    std::cout << "Mnemonic: " << number_to_mnemonic(hash(Uuid::generate()) % 100000000) << '\n';
-
-//    auto subscriber = EverythingSubscriber();
-
-//    auto int_publisher = DefaultPublisher<int>();
-//    bool int_succcess = int_publisher->subscribe(subscriber);
-//    int_publisher->publish(15);
-
-//    auto float_publisher = DefaultPublisher<float>();
-//    bool float_succcess = float_publisher->subscribe(subscriber);
-//    float_publisher->publish(15.f);
-
-    auto int_publisher = DefaultPublisher<int>();
-    auto float_publisher = DefaultPublisher<float>();
-    auto ultimate_relay = EverythingRelay();
-    auto none_subscriber = NoneSubscriber();
-//    int_publisher->subscribe(ultimate_relay);
-//    float_publisher->subscribe(ultimate_relay);
-//    ultimate_relay->subscribe(none_subscriber);
-    auto pipe1 = int_publisher | ultimate_relay | none_subscriber;
-    auto pipe2 = float_publisher | ultimate_relay;
-    int_publisher->publish(12);
-    float_publisher->publish(78.f);
-
-
-    return 0; //
+    return 0;
 }

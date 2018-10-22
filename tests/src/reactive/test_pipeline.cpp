@@ -1,6 +1,6 @@
 #include "catch2/catch.hpp"
 
-#include "./test_reactive.hpp"
+#include "test_reactive.hpp"
 #include "notf/reactive/reactive_registry.hpp"
 
 NOTF_USING_NAMESPACE;
@@ -247,7 +247,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         {
             auto i_publisher = TestPublisher<int>();
             auto i_subscriber = TestSubscriber<int>();
-            auto ii_relay = TheReactiveRegistry::create("int_int_relay");
+            auto ii_relay = TheReactiveRegistry::create("IIRelay");
 
             auto pipeline = i_publisher | ii_relay | i_subscriber;
             REQUIRE(i_subscriber->values.empty());
@@ -260,7 +260,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
             auto i_publisher = TestPublisher<int>();
             auto i_subscriber = TestSubscriber<int>();
 
-            auto pipeline = i_publisher | TheReactiveRegistry::create("int_int_relay") | i_subscriber;
+            auto pipeline = i_publisher | TheReactiveRegistry::create("IIRelay") | i_subscriber;
             REQUIRE(i_subscriber->values.empty());
             i_publisher->publish(234);
             REQUIRE(i_subscriber->values.size() == 1);
@@ -271,8 +271,8 @@ SCENARIO("pipeline", "[reactive][pipeline]")
             decltype(TestPublisher<int>()) i_publisher;
             auto i_subscriber = TestSubscriber<int>();
 
-            auto pipeline = TestPublisher<int>() | TheReactiveRegistry::create("int_int_relay")
-                            | TheReactiveRegistry::create("int_int_relay") | i_subscriber;
+            auto pipeline = TestPublisher<int>() | TheReactiveRegistry::create("IIRelay")
+                            | TheReactiveRegistry::create("IIRelay") | i_subscriber;
             i_publisher
                 = std::dynamic_pointer_cast<decltype(i_publisher)::element_type>(PipelinePrivate(pipeline).get_first());
             REQUIRE(i_publisher);
@@ -284,10 +284,10 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         SECTION("L -> UR -> R -> UL -> R")
         {
             auto i_publisher = TestPublisher<int>();
-            auto ii_relay = TheReactiveRegistry::create("int_int_relay");
+            auto ii_relay = TheReactiveRegistry::create("IIRelay");
             decltype(TestSubscriber<int>()) i_subscriber;
 
-            auto pipeline = i_publisher | TheReactiveRegistry::create("int_int_relay") | DefaultOperator() | ii_relay
+            auto pipeline = i_publisher | TheReactiveRegistry::create("IIRelay") | DefaultOperator() | ii_relay
                             | TestSubscriber();
             i_subscriber
                 = std::dynamic_pointer_cast<decltype(i_subscriber)::element_type>(PipelinePrivate(pipeline).get_last());
@@ -299,7 +299,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         }
         SECTION("failure if you try to connect a wrong type to an untyped typeline")
         {
-            REQUIRE_THROWS_AS(TestPublisher<int>() | TheReactiveRegistry::create("int_int_relay")
+            REQUIRE_THROWS_AS(TestPublisher<int>() | TheReactiveRegistry::create("IIRelay")
                                   | DefaultOperator<std::string>(),
                               PipelineError);
         }

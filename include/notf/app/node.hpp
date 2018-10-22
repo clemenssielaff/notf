@@ -16,11 +16,19 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // type --------------------------------------------------------------------------------------------------------- //
 public:
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(Node);
+    friend AccessFor<NodeMasterHandle>;
+
     /// Exception thrown by `get_property` if either the name of the type of the requested Property is wrong.
     NOTF_EXCEPTION_TYPE(NoSuchPropertyError);
 
     /// Exception thrown when you try to do something that is only allowed to do if the node hasn't been finalized yet.
     NOTF_EXCEPTION_TYPE(FinalizedError);
+
+    /// Wrapper around a newly created Node.
+    /// Can be cast to a NodeMasterHandle or NodeHandle.
+    using NewNode = detail::NodeMasterHandleCastable;
 
 private:
     /// Owning list of child Nodes, ordered from back to front.
@@ -31,7 +39,7 @@ private:
 
     /// Internal reactive function that is subscribed to all visible Properties and marks the Node as dirty, should one
     /// of them change.
-    class PropertyObserver : public Subscriber<Ignored> {
+    class PropertyObserver : public Subscriber<All> {
 
         // methods --------------------------------------------------------- //
     public:
@@ -51,7 +59,7 @@ private:
         Node& m_node;
     };
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 protected:
     /// Value constructor.
     /// @param parent   Parent of this Node.
@@ -131,7 +139,7 @@ public:
     /// Index 0 is the node furthest back, index `size() - 1` is the child drawn at the front.
     /// @param index    Index of the Node.
     /// @returns        The requested child Node.
-    /// @throws out_of_bounds    If the index is out-of-bounds or the child Node is of the wrong type.
+    /// @throws OutOfBounds    If the index is out-of-bounds or the child Node is of the wrong type.
     NodeHandle get_child(size_t index) const;
 
     // z-order ----------------------------------------------------------------
@@ -180,13 +188,13 @@ public:
     /// Tests a user defineable flag on this Node.
     /// @param index            Index of the user flag.
     /// @returns                True iff the flag is set.
-    /// @throws out_of_bounds   If index >= user flag count.
+    /// @throws OutOfBounds   If index >= user flag count.
     bool is_user_flag_set(size_t index);
 
     /// Sets or unsets a user flag.
     /// @param index            Index of the user flag.
     /// @param value            Whether to set or to unser the flag.
-    /// @throws out_of_bounds   If index >= user flag count.
+    /// @throws OutOfBounds   If index >= user flag count.
     void set_user_flag(size_t index, bool value = true);
 
 protected:
@@ -200,15 +208,14 @@ protected:
     /// Creates and adds a new child to this node.
     /// @param args Arguments that are forwarded to the constructor of the child.
     template<class T, class... Args, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
-    NodeHandle _create_child(Args&&... args)
+    NewNode _create_child(Args&&... args)
     {
         auto child = std::make_shared<T>(this, std::forward<Args>(args)...);
         child->_finalize();
 
-        auto handle = NodeHandle(child);
-        TheGraph::AccessFor<Node>::register_node(handle);
-        _write_children().emplace_back(std::move(child));
-        return handle;
+        _write_children().emplace_back(child);
+        TheGraph::AccessFor<Node>::register_node(child);
+        return child;
     }
 
     /// @{
@@ -246,7 +253,7 @@ protected:
     void _update_node_hash() const;
 
     /// Deletes the frozen child list copy, if one exists.
-    void _clear_frozen() { delete m_cache.exchange(nullptr); }
+    void _clear_modified_copies() { delete m_cache.exchange(nullptr); }
 
     /// Reactive function marking this Node as dirty whenever a visible Property changes its value.
     std::shared_ptr<PropertyObserver>& _get_property_observer() { return m_property_observer; }
@@ -262,7 +269,7 @@ private:
     /// Called on every new Node instance right after the Constructor of the most derived class has finished.
     void _finalize() const { s_unfinalized_nodes.erase(this); }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Uuid of this Node.
     const Uuid m_uuid = Uuid::generate();
@@ -297,6 +304,16 @@ private:
     /// Only unfinalized Nodes can create properties.
     /// Also, creating children in an unfinalized node creates no deltas.
     static thread_local inline std::unordered_set<const Node*> s_unfinalized_nodes;
+};
+
+// node accessors =================================================================================================== //
+
+template<>
+class Accessor<Node, NodeMasterHandle> {
+    friend NodeMasterHandle;
+
+    /// Lets a NodeMasterHandle remove the managed Node on destruction.
+    static void remove(const NodePtr& node) { node->_get_parent()->_remove_child(node); }
 };
 
 NOTF_CLOSE_NAMESPACE

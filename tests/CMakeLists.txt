@@ -2,6 +2,14 @@
 
 # add test files
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
+    app/test_graph.cpp
+    app/test_node.cpp
+    app/test_node_compiletime.cpp
+    app/test_node_handle.cpp
+    app/test_node_runtime.cpp
+    app/test_property.cpp
+    app/test_property_handle.cpp
+
     common/test_msgpack.cpp
     common/test_string.cpp
     common/test_string_view.cpp
@@ -22,10 +30,9 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     meta/test_typename.cpp
     meta/test_types.cpp
 
-    reactive/test_operators.cpp
     reactive/test_pipeline.cpp
     reactive/test_publisher.cpp
-    reactive/test_reactive.hpp
+    reactive/test_reactive_generator.cpp
     reactive/test_reactive_operator.cpp
     reactive/test_reactive_registry.cpp
     reactive/test_subscriber.cpp
@@ -33,6 +40,8 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
 
 # add test utility files
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/include
+    test_app.hpp
+    test_reactive.hpp
     test_utils.hpp
 )
 

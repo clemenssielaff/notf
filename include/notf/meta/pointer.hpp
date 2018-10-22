@@ -153,27 +153,25 @@ class valid_ptr {
     template<class>
     friend class valid_ptr; // valid_ptrs have access to each other's `m_ptr` field.
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Type of the value pointed to by this value_ptr.
     using element_type = std::remove_pointer_t<T>;
 
     /// Error thrown by risky_ptr, when you try to dereference a nullptr.
-    NOTF_EXCEPTION_TYPE(invalid_pointer_error);
+    NOTF_EXCEPTION_TYPE(NotValidError);
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Value constructor
     /// @param ptr  Pointer to wrap.
-    /// @throws invalid_pointer_error   If you try to instantiate with a nullptr.
+    /// @throws NotValidError   If you try to stantiate with a nullptr.
     template<class From, typename = std::enable_if_t<std::conjunction_v<        //
                              std::is_convertible<From, T>,                      // ptr must be convertible to T,
                              std::negation<is_valid_ptr<std::decay_t<From>>>>>> // but not a valid_ptr itself
     constexpr valid_ptr(From&& ptr) : m_ptr(std::forward<From>(ptr))
     {
-        if (NOTF_UNLIKELY(m_ptr == nullptr)) {
-            NOTF_THROW(invalid_pointer_error, "Failed to dereference an empty pointer");
-        }
+        if (NOTF_UNLIKELY(m_ptr == nullptr)) { NOTF_THROW(NotValidError, "Failed to dereference an empty pointer"); }
     }
 
     /// Safe copy constructor
@@ -221,7 +219,7 @@ public:
     template<class Other>
     void operator[](Other) const = delete;
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// The wrapped pointer.
     T m_ptr;

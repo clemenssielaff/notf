@@ -7,9 +7,9 @@ NOTF_USING_NAMESPACE;
 
 namespace {
 
-NOTF_NORETURN void throwing_no_msg() { NOTF_THROW(value_error); }
+NOTF_NORETURN void throwing_no_msg() { NOTF_THROW(ValueError); }
 
-NOTF_NORETURN void throwing_with_msg() { NOTF_THROW(logic_error, "this is a {} message", "great"); }
+NOTF_NORETURN void throwing_with_msg() { NOTF_THROW(LogicError, "this is a {} message", "great"); }
 
 } // namespace
 
@@ -17,7 +17,7 @@ SCENARIO("exception", "[meta][exception]")
 {
     SECTION("simple exception throwing with the NOTF_THROW macro")
     {
-        REQUIRE_THROWS_AS(throwing_no_msg(), value_error);
+        REQUIRE_THROWS_AS(throwing_no_msg(), ValueError);
     }
 
     SECTION("NOTF_THROW supports formatted messages")
@@ -25,7 +25,7 @@ SCENARIO("exception", "[meta][exception]")
         try {
             throwing_with_msg();
         }
-        catch (const logic_error& error) {
+        catch (const LogicError& error) {
             REQUIRE(std::string(error.what()) == std::string("this is a great message"));
         }
     }
@@ -35,7 +35,7 @@ SCENARIO("exception", "[meta][exception]")
         try {
             throwing_with_msg();
         }
-        catch (const logic_error& error) {
+        catch (const LogicError& error) {
             REQUIRE(error.get_line() == 12);
             REQUIRE(std::string(error.get_file()) == "test_exception.cpp");
             REQUIRE(ends_with(error.get_function(), "throwing_with_msg()"));

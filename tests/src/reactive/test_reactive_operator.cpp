@@ -1,6 +1,6 @@
 #include "catch2/catch.hpp"
 
-#include "./test_reactive.hpp"
+#include "test_reactive.hpp"
 
 NOTF_USING_NAMESPACE;
 
@@ -57,7 +57,7 @@ SCENARIO("basic operator<None -> None> functions", "[reactive][operator]")
     publisher->subscribe(op);
     op->subscribe(subscriber);
 
-    SECTION("on_next")
+    SECTION("publish")
     {
         publisher->publish();
 
@@ -66,7 +66,7 @@ SCENARIO("basic operator<None -> None> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception == nullptr);
     }
 
-    SECTION("on_error")
+    SECTION("error")
     {
         publisher->publish();
         publisher->error(std::logic_error("a logic error"));
@@ -77,7 +77,7 @@ SCENARIO("basic operator<None -> None> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception);
     }
 
-    SECTION("on_complete")
+    SECTION("complete")
     {
         publisher->publish();
         publisher->complete();
@@ -131,25 +131,33 @@ SCENARIO("basic operator<T -> None> functions", "[reactive][operator]")
 
 SCENARIO("basic operator<None -> T> functions", "[reactive][operator]")
 {
-    auto publisher = DefaultGenerator<int>();
+    auto publisher = DefaultPublisher<None>();
+    auto generator = DefaultGenerator<int>();
     auto subscriber = TestSubscriber<int>();
-    publisher->subscribe(subscriber);
+    publisher->subscribe(generator);
+    generator->subscribe(subscriber);
 
     SECTION("publish")
     {
-        publisher->publish(485);
+        generator->publish();
+        generator->publish();
+        generator->publish();
+        generator->publish(123);
 
-        REQUIRE(subscriber->values.size() == 1);
-        REQUIRE(subscriber->values[0] == 485);
+        REQUIRE(subscriber->values.size() == 4);
+        REQUIRE(subscriber->values[0] == 1);
+        REQUIRE(subscriber->values[1] == 2);
+        REQUIRE(subscriber->values[2] == 3);
+        REQUIRE(subscriber->values[3] == 123);
         REQUIRE(subscriber->is_completed == false);
         REQUIRE(subscriber->exception == nullptr);
     }
 
-    SECTION("on_error")
+    SECTION("error")
     {
-        publisher->publish(45);
-        publisher->error(std::logic_error("a logic error"));
-        publisher->publish(8);
+        generator->publish(45);
+        generator->error(std::logic_error("a logic error"));
+        generator->publish(8);
 
         REQUIRE(subscriber->values.size() == 1);
         REQUIRE(subscriber->values[0] == 45);
@@ -157,11 +165,11 @@ SCENARIO("basic operator<None -> T> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception);
     }
 
-    SECTION("on_complete")
+    SECTION("complete")
     {
-        publisher->publish(6);
-        publisher->complete();
-        publisher->publish(2);
+        generator->publish(6);
+        generator->complete();
+        generator->publish(2);
 
         REQUIRE(subscriber->values.size() == 1);
         REQUIRE(subscriber->values[0] == 6);
@@ -172,15 +180,9 @@ SCENARIO("basic operator<None -> T> functions", "[reactive][operator]")
     SECTION("on_next")
     {
         publisher->publish();
-        publisher->publish();
-        publisher->publish();
-        publisher->publish();
 
-        REQUIRE(subscriber->values.size() == 4);
+        REQUIRE(subscriber->values.size() == 1);
         REQUIRE(subscriber->values[0] == 1);
-        REQUIRE(subscriber->values[1] == 2);
-        REQUIRE(subscriber->values[2] == 3);
-        REQUIRE(subscriber->values[3] == 4);
         REQUIRE(subscriber->is_completed == false);
         REQUIRE(subscriber->exception == nullptr);
     }
@@ -189,7 +191,7 @@ SCENARIO("basic operator<None -> T> functions", "[reactive][operator]")
     {
         publisher->publish();
         publisher->publish();
-        publisher->on_error(nullptr, std::logic_error(""));
+        publisher->error(std::logic_error(""));
         publisher->publish();
 
         REQUIRE(subscriber->values.size() == 2);
@@ -202,8 +204,182 @@ SCENARIO("basic operator<None -> T> functions", "[reactive][operator]")
     SECTION("on_complete")
     {
         publisher->publish();
-        publisher->on_complete(nullptr);
+        publisher->publish();
+        publisher->complete();
+        publisher->publish();
 
+        REQUIRE(subscriber->values.size() == 2);
+        REQUIRE(subscriber->values[0] == 1);
+        REQUIRE(subscriber->values[1] == 2);
+        REQUIRE(subscriber->is_completed == true);
+        REQUIRE(subscriber->exception == nullptr);
+    }
+}
+
+SCENARIO("basic operator<All -> T> functions", "[reactive][operator]")
+{
+    auto int_publisher = DefaultPublisher<int>();
+    auto float_publisher = DefaultPublisher<float>();
+    auto op = EverythingRelay<int>();
+    auto subscriber = TestSubscriber<int>();
+    int_publisher->subscribe(op);
+    float_publisher->subscribe(op);
+    op->subscribe(subscriber);
+
+    SECTION("publish")
+    {
+        op->publish();
+        op->publish();
+        op->publish();
+        op->publish(123);
+
+        REQUIRE(subscriber->values.size() == 4);
+        REQUIRE(subscriber->values[0] == 1);
+        REQUIRE(subscriber->values[1] == 2);
+        REQUIRE(subscriber->values[2] == 3);
+        REQUIRE(subscriber->values[3] == 123);
+        REQUIRE(subscriber->is_completed == false);
+        REQUIRE(subscriber->exception == nullptr);
+    }
+
+    SECTION("error")
+    {
+        op->publish(45);
+        op->error(std::logic_error("a logic error"));
+        op->publish(8);
+
+        REQUIRE(subscriber->values.size() == 1);
+        REQUIRE(subscriber->values[0] == 45);
+        REQUIRE(subscriber->is_completed == false);
+        REQUIRE(subscriber->exception);
+    }
+
+    SECTION("complete")
+    {
+        op->publish(6);
+        op->complete();
+        op->publish(2);
+
+        REQUIRE(subscriber->values.size() == 1);
+        REQUIRE(subscriber->values[0] == 6);
+        REQUIRE(subscriber->is_completed == true);
+        REQUIRE(subscriber->exception == nullptr);
+    }
+
+    SECTION("on_next")
+    {
+        int_publisher->publish(123);
+        float_publisher->publish(456.f);
+
+        REQUIRE(subscriber->values.size() == 2);
+        REQUIRE(subscriber->values[0] == 1);
+        REQUIRE(subscriber->values[1] == 2);
+        REQUIRE(subscriber->is_completed == false);
+        REQUIRE(subscriber->exception == nullptr);
+    }
+
+    SECTION("on_error")
+    {
+        int_publisher->publish(123);
+        float_publisher->publish(456.f);
+        int_publisher->error(std::logic_error(""));
+        float_publisher->publish(789.f);
+
+        REQUIRE(subscriber->values.size() == 2);
+        REQUIRE(subscriber->values[0] == 1);
+        REQUIRE(subscriber->values[1] == 2);
+        REQUIRE(subscriber->is_completed == false);
+        REQUIRE(subscriber->exception);
+    }
+
+    SECTION("on_complete")
+    {
+        int_publisher->publish(123);
+        float_publisher->publish(456.f);
+        int_publisher->complete();
+        float_publisher->publish(789.f);
+
+        REQUIRE(subscriber->values.size() == 2);
+        REQUIRE(subscriber->values[0] == 1);
+        REQUIRE(subscriber->values[1] == 2);
+        REQUIRE(subscriber->is_completed == true);
+        REQUIRE(subscriber->exception == nullptr);
+    }
+}
+
+SCENARIO("basic operator<All -> None> functions", "[reactive][operator]")
+{
+    auto int_publisher = DefaultPublisher<int>();
+    auto float_publisher = DefaultPublisher<float>();
+    auto op = EverythingRelay<None>();
+    auto subscriber = TestSubscriber<None>();
+    int_publisher->subscribe(op);
+    float_publisher->subscribe(op);
+    op->subscribe(subscriber);
+
+    SECTION("publish")
+    {
+        op->publish();
+        op->publish();
+        op->publish();
+
+        REQUIRE(subscriber->counter == 3);
+        REQUIRE(subscriber->is_completed == false);
+        REQUIRE(subscriber->exception == nullptr);
+    }
+
+    SECTION("error")
+    {
+        op->publish();
+        op->error(std::logic_error("a logic error"));
+        op->publish();
+
+        REQUIRE(subscriber->counter == 1);
+        REQUIRE(subscriber->is_completed == false);
+        REQUIRE(subscriber->exception);
+    }
+
+    SECTION("complete")
+    {
+        op->publish();
+        op->complete();
+        op->publish();
+
+        REQUIRE(subscriber->counter == 1);
+        REQUIRE(subscriber->is_completed == true);
+        REQUIRE(subscriber->exception == nullptr);
+    }
+
+    SECTION("on_next")
+    {
+        int_publisher->publish(123);
+        float_publisher->publish(456.f);
+
+        REQUIRE(subscriber->counter == 2);
+        REQUIRE(subscriber->is_completed == false);
+        REQUIRE(subscriber->exception == nullptr);
+    }
+
+    SECTION("on_error")
+    {
+        int_publisher->publish(123);
+        float_publisher->publish(456.f);
+        int_publisher->error(std::logic_error(""));
+        float_publisher->publish(789.f);
+
+        REQUIRE(subscriber->counter == 2);
+        REQUIRE(subscriber->is_completed == false);
+        REQUIRE(subscriber->exception);
+    }
+
+    SECTION("on_complete")
+    {
+        int_publisher->publish(123);
+        float_publisher->publish(456.f);
+        int_publisher->complete();
+        float_publisher->publish(789.f);
+
+        REQUIRE(subscriber->counter == 2);
         REQUIRE(subscriber->is_completed == true);
         REQUIRE(subscriber->exception == nullptr);
     }

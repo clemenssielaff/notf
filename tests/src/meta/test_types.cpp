@@ -12,10 +12,10 @@ SCENARIO("types", "[meta][types]")
         REQUIRE(!(None() < None()));
     }
 
-    SECTION("Ignored")
+    SECTION("All")
     {
-        REQUIRE(Ignored() == Ignored());
-        REQUIRE(!(Ignored() < Ignored()));
+        REQUIRE(All() == All());
+        REQUIRE(!(All() < All()));
     }
 
     SECTION("all")

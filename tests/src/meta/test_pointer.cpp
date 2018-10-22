@@ -4,10 +4,10 @@
 
 NOTF_USING_NAMESPACE;
 
-namespace  {
+namespace {
 struct Foo {};
 struct Bar : public Foo {};
-}
+} // namespace
 
 SCENARIO("Pointer", "[meta][pointer]")
 {
@@ -27,10 +27,17 @@ SCENARIO("Pointer", "[meta][pointer]")
         REQUIRE(raw_pointer(valid_shared) == valid_shared.get().get());
 
         Bar* c = nullptr;
-        REQUIRE_THROWS_AS(valid_ptr<Bar*>(c), valid_ptr<Bar*>::invalid_pointer_error);
-        REQUIRE_THROWS_AS(valid_ptr<Bar*>(std::move(c)), valid_ptr<Bar*>::invalid_pointer_error);
+        REQUIRE_THROWS_AS(valid_ptr<Bar*>(c), valid_ptr<Bar*>::NotValidError);
+        REQUIRE_THROWS_AS(valid_ptr<Bar*>(std::move(c)), valid_ptr<Bar*>::NotValidError);
 
         valid_ptr<Foo*> valid2(valid);
         REQUIRE(valid2 == valid);
+    }
+
+    SECTION("pointer_hash")
+    {
+        REQUIRE(pointer_hash<std::nullptr_t>()(nullptr) == 0);
+        int i = 3;
+        REQUIRE(pointer_hash<int*>()(&i) != 0);
     }
 }

@@ -131,8 +131,8 @@ SCENARIO("uuid", "[common][uuid]")
         const Uuid uuid(std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16});
         REQUIRE(uuid == Uuid("01020304-0506-0708-090a-0b0c0d0e0f10"));
 
-        REQUIRE_THROWS_AS(Uuid(std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9}), value_error);
-        REQUIRE_THROWS_AS(Uuid(std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 999}), value_error);
+        REQUIRE_THROWS_AS(Uuid(std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9}), ValueError);
+        REQUIRE_THROWS_AS(Uuid(std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 999}), ValueError);
     }
 
     SECTION("UUIDs can be hashed") { REQUIRE(hash(Uuid::generate()) != hash(Uuid::generate())); }

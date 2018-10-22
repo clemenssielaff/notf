@@ -13,11 +13,12 @@ NOTF_OPEN_NAMESPACE
 
 class MsgPack {
 
-    NOTF_GRANT_TEST_ACCESS(MsgPack)
-    friend struct Accessor<MsgPack, MsgPack>;
-
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(MsgPack);
+    friend AccessFor<MsgPack>;
+
     /// Data types.
     using None = ::notf::None;
     using Bool = bool;
@@ -67,7 +68,7 @@ private:
     /// Variant type containing all value types.
     using Variant = tuple_to_variant_t<concat_tuple_t<fundamental_types, container_types>>;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Default constructor, constructs a "None" MsgPack.
     MsgPack() = default;
@@ -193,32 +194,32 @@ public:
     /// This is a convenience function, if you plan to make extensive use of the map, consider `get`ting the underlying
     /// MsgPack::Array object directly.
     /// @param index            Index of the requested element in the array.
-    /// @throws value_error     If the MsgPack does not contain an Array.
-    /// @throws out_of_bounds   If the index is larger than the largest index in the Array.
+    /// @throws ValueError     If the MsgPack does not contain an Array.
+    /// @throws OutOfBounds   If the index is larger than the largest index in the Array.
     const MsgPack& operator[](const size_t index) const
     {
-        if (!std::holds_alternative<Array>(m_value)) { NOTF_THROW(value_error, "MsgPack object is not an Array"); }
+        if (!std::holds_alternative<Array>(m_value)) { NOTF_THROW(ValueError, "MsgPack object is not an Array"); }
 
         const auto& array = std::get<Array>(m_value);
         if (index < array.size()) { return array[index]; }
 
-        NOTF_THROW(out_of_bounds, "MsgPack Array has only {} elements, requested index was {}", array.size(), index);
+        NOTF_THROW(OutOfBounds, "MsgPack Array has only {} elements, requested index was {}", array.size(), index);
     }
 
     /// If this MsgPack contains a map, returns the element matching the given string key.
     /// This is a convenience function, if you plan to make extensive use of the map, consider `get`ting the underlying
     /// MsgPack::Map object directly.
     /// @param key              String key of the requested element in the map.
-    /// @throws value_error     If the MsgPack does not contain an Array.
-    /// @throws out_of_bounds   If the index is larger than the largest index in the Array.
+    /// @throws ValueError     If the MsgPack does not contain an Array.
+    /// @throws OutOfBounds   If the index is larger than the largest index in the Array.
     const MsgPack& operator[](const std::string& key) const
     {
-        if (!std::holds_alternative<Map>(m_value)) { NOTF_THROW(value_error, "MsgPack object is not a Map"); }
+        if (!std::holds_alternative<Map>(m_value)) { NOTF_THROW(ValueError, "MsgPack object is not a Map"); }
 
         const auto& map = std::get<Map>(m_value);
         if (auto it = map.find(MsgPack(key)); it != map.end()) { return it->second; }
 
-        NOTF_THROW(out_of_bounds, "MsgPack Map does not contain requested key \"{}\"", key);
+        NOTF_THROW(OutOfBounds, "MsgPack Map does not contain requested key \"{}\"", key);
     }
 
     /// Comparison operator.
@@ -289,7 +290,7 @@ private:
     /// @param depth    How far nested this MsgPack is in relation to the root (used to avoid infinite recursion
     static MsgPack _deserialize(std::istream& is, uint depth);
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Value contained in this MsgPack.
     Variant m_value;

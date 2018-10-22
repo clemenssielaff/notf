@@ -46,13 +46,13 @@ struct is_reactive_compatible : std::false_type {};
 template<class P, class S>
 struct is_reactive_compatible<P, S, std::enable_if_t<all(is_publisher_v<P>, is_subscriber_v<S>)>>
     : std::disjunction<std::is_same<typename P::element_type::output_t, typename S::element_type::input_t>,
-                       std::is_same<Ignored, typename S::element_type::input_t>> {};
+                       std::is_same<All, typename S::element_type::input_t>> {};
 
 // typed pipeline -> typed subscriber
 template<class P, class S>
 struct is_reactive_compatible<P, S, std::enable_if_t<all(is_typed_pipeline_v<P>, is_subscriber_v<S>)>>
     : std::disjunction<std::is_same<typename P::last_t::element_type::output_t, typename S::element_type::input_t>,
-                       std::is_same<Ignored, typename S::element_type::input_t>> {};
+                       std::is_same<All, typename S::element_type::input_t>> {};
 
 // typed publisher/pipeline -> untyped subscriber
 template<class P, class S>
@@ -93,7 +93,7 @@ namespace detail {
 /// Mixin class for the Toggle Pipeline Operator exposing only enabling / disabling.
 class PipelineToggle {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Virtual Destructor.
     virtual ~PipelineToggle() = default;
@@ -101,7 +101,7 @@ public:
     /// Explicitly enable/disable the Pipeline.
     void setEnabled(const bool is_enabled) { m_is_enabled = is_enabled; }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 protected:
     /// Is the Pipeline enabled or not? (is a size_t in order to avoid padding warnings).
     bool m_is_enabled = true;
@@ -135,10 +135,11 @@ NOTF_EXCEPTION_TYPE(PipelineError);
 template<class Last>
 class Pipeline {
 
-    NOTF_GRANT_TEST_ACCESS(Pipeline)
-
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(Pipeline);
+
     /// Type of the last function in the pipeline.
     using last_t = Last;
 
@@ -149,7 +150,7 @@ private:
     /// All functions in the pipeline, as untyped reactive subscribers.
     using Functions = std::vector<AnySubscriberPtr>;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor.
     /// @param toggle       Special operator used to en/disable the Pipeline.
@@ -217,7 +218,7 @@ public:
         return Pipeline<S>(std::move(m_toggle), std::forward<Sub>(rhs), std::move(m_first), std::move(m_functions));
     }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Publisher at the top of the pipeline, if it is an r-value that would otherwise expire.
     AnyPublisherPtr m_first;

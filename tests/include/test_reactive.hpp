@@ -6,28 +6,13 @@ namespace {
 NOTF_USING_NAMESPACE;
 
 template<class T = int>
-auto DefaultSubscriber()
-{
-    struct DefaultSubscriberImpl : Subscriber<T> {
-        void on_next(const AnyPublisher*, const T&) final {}
-    };
-    return std::make_shared<DefaultSubscriberImpl>();
-}
-
-template<class T = int>
-auto DefaultPublisher()
+NOTF_UNUSED auto DefaultPublisher()
 {
     return std::make_shared<Publisher<T, detail::SinglePublisherPolicy>>();
 }
 
-template<class I = int, class O = I>
-auto DefaultOperator()
-{
-    return std::make_shared<Operator<I, O, detail::SinglePublisherPolicy>>();
-}
-
 template<class O = int>
-auto DefaultGenerator()
+NOTF_UNUSED auto DefaultGenerator()
 {
     struct DefaultGeneratorImpl : public Operator<None, O> {
         void on_next(const AnyPublisher* /*publisher*/) override { this->publish(m_state++); }
@@ -36,8 +21,64 @@ auto DefaultGenerator()
     return std::make_shared<DefaultGeneratorImpl>();
 }
 
+template<class I = int, class O = I>
+NOTF_UNUSED auto DefaultOperator()
+{
+    return std::make_shared<Operator<I, O, detail::SinglePublisherPolicy>>();
+}
+
 template<class T = int>
-auto TestSubscriber()
+NOTF_UNUSED auto DefaultSubscriber()
+{
+    struct DefaultSubscriberImpl : Subscriber<T> {
+        void on_next(const AnyPublisher*, const T&) final {}
+    };
+    return std::make_shared<DefaultSubscriberImpl>();
+}
+
+template<class T = int, class Policy = detail::DefaultPublisherPolicy>
+NOTF_UNUSED auto TestPublisher()
+{
+    struct TestPublisherImpl : public Publisher<T, Policy> {
+        using parent_t = Publisher<T, Policy>;
+
+        void _error(const std::exception& error) final
+        {
+            try {
+                throw error;
+            }
+            catch (...) {
+                exception = std::current_exception();
+            };
+            parent_t::_error(error);
+        }
+
+        void _complete() final { parent_t::_complete(); }
+
+        void _publish(const T& value) final
+        {
+            published.emplace_back(value);
+            parent_t::_publish(value);
+        }
+
+        bool _subscribe(SubscriberPtr<T>& subscriber) final
+        {
+            if (allow_new_subscribers) { return parent_t::_subscribe(subscriber); }
+            else {
+                return false;
+            }
+        }
+
+        std::vector<T> published;
+        std::exception_ptr exception;
+        bool allow_new_subscribers = true;
+        bool _padding[7];
+    };
+    return std::make_shared<TestPublisherImpl>();
+}
+
+template<class T = int>
+NOTF_UNUSED auto TestSubscriber()
 {
     struct TestSubscriberTImpl : public Subscriber<T> {
 
@@ -90,45 +131,19 @@ auto TestSubscriber<None>()
     return std::make_shared<TestSubscriberNoneImpl>();
 }
 
-template<class T = int, class Policy = detail::DefaultPublisherPolicy>
-auto TestPublisher()
+template<class T = int>
+NOTF_UNUSED auto EverythingRelay()
 {
-    struct TestPublisherImpl : public Publisher<T, Policy> {
-        using parent_t = Publisher<T, Policy>;
-
-        void _error(const std::exception& error) final
-        {
-            try {
-                throw error;
-            }
-            catch (...) {
-                exception = std::current_exception();
-            };
-            parent_t::_error(error);
-        }
-
-        void _complete() final { parent_t::_complete(); }
-
-        void _publish(const T& value) final
-        {
-            published.emplace_back(value);
-            parent_t::_publish(value);
-        }
-
-        bool _subscribe(SubscriberPtr<T>& subscriber) final
-        {
-            if (allow_new_subscribers) { return parent_t::_subscribe(subscriber); }
-            else {
-                return false;
-            }
-        }
-
-        std::vector<T> published;
-        std::exception_ptr exception;
-        bool allow_new_subscribers = true;
-        bool _padding[7];
+    struct EverythingRelayImpl : Operator<All, T> {
+        void on_next(const AnyPublisher*, ...) final { this->publish(m_state++); }
+        T m_state = 1;
     };
-    return std::make_shared<TestPublisherImpl>();
+    return std::make_shared<EverythingRelayImpl>();
+}
+template<>
+auto EverythingRelay<None>()
+{
+    return std::make_shared<Operator<All, None>>();
 }
 
 } // namespace

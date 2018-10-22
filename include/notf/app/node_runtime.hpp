@@ -8,7 +8,7 @@ NOTF_OPEN_NAMESPACE
 
 class RunTimeNode : public Node {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 protected:
     /// Value constructor.
     /// @param parent   Parent of this Node.
@@ -44,7 +44,7 @@ protected:
             NOTF_THROW(FinalizedError, "Cannot create a new Property on the finalized Node \"{}\"", get_name());
         }
         if (m_properties.count(name) != 0) {
-            NOTF_THROW(not_unique_error, "Node \"{}\" already has a Property named \"{}\"", get_name(), name);
+            NOTF_THROW(NotUniqueError, "Node \"{}\" already has a Property named \"{}\"", get_name(), name);
         }
 
         // create an empty pointer first, to establish the name in the map
@@ -58,7 +58,7 @@ protected:
         return PropertyHandle<T>(std::move(property));
     }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Dynamically typed Properties.
     std::map<std::string, AnyPropertyPtr> m_properties;

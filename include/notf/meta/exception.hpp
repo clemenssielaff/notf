@@ -21,7 +21,7 @@ NOTF_OPEN_NAMESPACE
 ///
 struct notf_exception : public std::exception {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     NOTF_NO_COPY_OR_ASSIGN(notf_exception);
 
@@ -63,7 +63,7 @@ public:
     /// Returns the explanatory string.
     const char* what() const noexcept override { return m_message.data(); }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Name of the file in which the exception was thrown.
     const char* m_file;
@@ -93,27 +93,27 @@ private:
     }
 
 /// Specialized exception that logs the message and then behaves like a regular std::runtime_error.
-NOTF_EXCEPTION_TYPE(runtime_error);
+NOTF_EXCEPTION_TYPE(RuntimeError);
 
 /// Exception type for logical errors.
-NOTF_EXCEPTION_TYPE(logic_error);
+NOTF_EXCEPTION_TYPE(LogicError);
 
 /// Exception type for malformed or otherwise invalid values.
-NOTF_EXCEPTION_TYPE(value_error);
+NOTF_EXCEPTION_TYPE(ValueError);
 
 /// Exception type for out of bounds errors.
-NOTF_EXCEPTION_TYPE(out_of_bounds);
+NOTF_EXCEPTION_TYPE(OutOfBounds);
 
 /// Exception type for access to invalid resources.
-NOTF_EXCEPTION_TYPE(resource_error);
+NOTF_EXCEPTION_TYPE(ResourceError);
 
 /// Error thrown when something went wrong that really shouldn't have ...
-NOTF_EXCEPTION_TYPE(internal_error);
+NOTF_EXCEPTION_TYPE(InternalError);
 
 /// Error thrown when the wrong thread does something.
-NOTF_EXCEPTION_TYPE(thread_error);
+NOTF_EXCEPTION_TYPE(ThreadError);
 
 /// Error thrown when something is not unique as it should be.
-NOTF_EXCEPTION_TYPE(not_unique_error);
+NOTF_EXCEPTION_TYPE(NotUniqueError);
 
 NOTF_CLOSE_NAMESPACE

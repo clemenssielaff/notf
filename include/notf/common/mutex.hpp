@@ -16,7 +16,7 @@ NOTF_OPEN_NAMESPACE
 /// From https://stackoverflow.com/a/30109512
 class Mutex : public std::mutex {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Locks the mutex.
     void lock()
@@ -35,7 +35,7 @@ public:
     /// Checks if the mutex is locked by the thread calling this method.
     bool is_locked_by_this_thread() const { return m_holder == std::this_thread::get_id(); }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Id of the thread currently holding this mutex.
     std::thread::id m_holder;
@@ -47,7 +47,7 @@ private:
 /// From https://stackoverflow.com/a/30109512
 class RecursiveMutex : public std::recursive_mutex {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Locks the mutex.
     void lock()
@@ -70,7 +70,7 @@ public:
     /// Checks if the mutex is locked by the thread calling this method.
     bool is_locked_by_this_thread() const { return m_holder == std::this_thread::get_id(); }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Id of the thread currently holding this mutex.
     std::thread::id m_holder;

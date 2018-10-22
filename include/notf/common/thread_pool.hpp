@@ -19,9 +19,9 @@ NOTF_OPEN_NAMESPACE
 class ThreadPool {
 
     /// Thrown when you enqueue a new thread in a ThreadPool that has already finished.
-    NOTF_EXCEPTION_TYPE(finished_error);
+    NOTF_EXCEPTION_TYPE(FinishedError);
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     NOTF_NO_COPY_OR_ASSIGN(ThreadPool);
 
@@ -73,7 +73,7 @@ public:
         { // enqueue the new task, unless the pool has already finished
             std::lock_guard<std::mutex> lock(m_queue_mutex);
             if (NOTF_UNLIKELY(m_is_finished)) {
-                NOTF_THROW(finished_error, "Cannot enqueue a new task into an already finished ThreadPool");
+                NOTF_THROW(FinishedError, "Cannot enqueue a new task into an already finished ThreadPool");
             }
             m_tasks.emplace_back([task{std::move(task)}]() { (*task)(); });
         }
@@ -82,7 +82,7 @@ public:
         return result;
     }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Worker threads.
     std::vector<std::thread> m_workers;

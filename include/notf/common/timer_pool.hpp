@@ -22,7 +22,7 @@ class TheTimerPool {
     friend class IntervalTimer;
     friend class VariableTimer;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 private:
     /// Default Constructor.
     TheTimerPool();
@@ -58,7 +58,7 @@ private:
     /// Current time point.
     static timepoint_t _now() { return std::chrono::time_point_cast<duration_t>(clock_t::now()); }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// All registered Timers, ordered by their next timeout.
     std::forward_list<TimerPtr> m_timer;
@@ -85,12 +85,12 @@ private:
 class Timer : public std::enable_shared_from_this<Timer> {
     friend class TheTimerPool;
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 protected:
     /// Callback signature.
     using Callback = std::function<void()>;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 protected:
     /// Value Constructor.
     /// @param callback     Function called when this Timer times out.
@@ -127,7 +127,7 @@ protected:
     /// If the user wants to have the Callback repeated this much, it might as well be infinity.
     constexpr static size_t _infinity() { return max_value<size_t>(); }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 protected:
     /// Function called when this Timer times out.
     Callback m_callback;
@@ -144,7 +144,7 @@ protected:
 /// Fires once, after a given delay.
 class OneShotTimer : public Timer {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 private:
     NOTF_CREATE_SMART_FACTORIES(OneShotTimer);
 
@@ -192,7 +192,7 @@ protected:
 /// An IntervalTimer fires continuously with a fixed interval.
 class IntervalTimer : public Timer {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 private:
     NOTF_CREATE_SMART_FACTORIES(IntervalTimer);
 
@@ -233,7 +233,7 @@ private:
     /// Time to wait between this Timer fires.
     duration_t _interval() const override { return m_interval; }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Time between firing.
     duration_t m_interval = duration_t(0);
@@ -244,12 +244,12 @@ private:
 /// An Variable fires continuously with an interval determined through a user-defined lambda.
 class VariableTimer : public Timer {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Interval function signature.
     using IntervalFunction = std::function<duration_t()>;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 private:
     NOTF_CREATE_SMART_FACTORIES(VariableTimer);
 
@@ -276,7 +276,7 @@ private:
     /// Time to wait between this Timer fires.
     duration_t _interval() const override { return m_function(); }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Function used to determine the next interval of this Timer.
     IntervalFunction m_function;

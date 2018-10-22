@@ -13,7 +13,7 @@ NOTF_OPEN_NAMESPACE
 /// Adapted from "C++ Concurrency in Action: Practial Multithreading" Listing 2.3
 class ThreadGuard {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     NOTF_NO_COPY_OR_ASSIGN(ThreadGuard);
 
@@ -30,7 +30,7 @@ public:
         }
     }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Thread to guard.
     std::thread& m_thread;
@@ -42,7 +42,7 @@ private:
 /// Adapted from "C++ Concurrency in Action: Practial Multithreading" Listing 2.6
 class ScopedThread {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     NOTF_NO_COPY_OR_ASSIGN(ScopedThread);
 
@@ -51,11 +51,11 @@ public:
 
     /// Constructor
     /// @param thread       Thread to guard.
-    /// @throws logic_error If the thread is not joinable.
+    /// @throws LogicError If the thread is not joinable.
     explicit ScopedThread(std::thread thread) : m_thread(std::move(thread))
     {
         if (!m_thread.joinable()) {
-            NOTF_THROW(logic_error, "Cannot guard non-joinable thread");
+            NOTF_THROW(LogicError, "Cannot guard non-joinable thread");
         }
     }
 
@@ -85,7 +85,7 @@ public:
         }
     }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Thread to guard.
     std::thread m_thread;

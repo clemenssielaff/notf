@@ -129,8 +129,8 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         pack_none.get<MsgPack::String>(success);
         REQUIRE(!success);
 
-        REQUIRE_THROWS_AS(pack_none[0], value_error);
-        REQUIRE_THROWS_AS(pack_none["nope"], value_error);
+        REQUIRE_THROWS_AS(pack_none[0], ValueError);
+        REQUIRE_THROWS_AS(pack_none["nope"], ValueError);
     }
 
     SECTION("Bool")
@@ -146,8 +146,8 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         pack_true.get<MsgPack::String>(success);
         REQUIRE(!success);
 
-        REQUIRE_THROWS_AS(pack_true[0], value_error);
-        REQUIRE_THROWS_AS(pack_true["nope"], value_error);
+        REQUIRE_THROWS_AS(pack_true[0], ValueError);
+        REQUIRE_THROWS_AS(pack_true["nope"], ValueError);
 
         MsgPack pack_false(false);
         REQUIRE(!pack_false.get<MsgPack::Bool>());
@@ -162,8 +162,8 @@ SCENARIO("msgpack construction", "[common][msgpack]")
 
         REQUIRE(pack_int.get<MsgPack::Bool>() == false);
         REQUIRE(pack_int.get<MsgPack::Uint>() == 0);
-        REQUIRE_THROWS_AS(pack_int[0], value_error);
-        REQUIRE_THROWS_AS(pack_int["nope"], value_error);
+        REQUIRE_THROWS_AS(pack_int[0], ValueError);
+        REQUIRE_THROWS_AS(pack_int["nope"], ValueError);
 
         REQUIRE(pack_int == MsgPack(int8_t(-58)));
         REQUIRE(pack_int == MsgPack(int16_t(-58)));
@@ -181,8 +181,8 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         REQUIRE(is_approx(pack_uint.get<MsgPack::Float>(), 15.));
 
         REQUIRE(pack_uint.get<MsgPack::Bool>() == false);
-        REQUIRE_THROWS_AS(pack_uint[0], value_error);
-        REQUIRE_THROWS_AS(pack_uint["nope"], value_error);
+        REQUIRE_THROWS_AS(pack_uint[0], ValueError);
+        REQUIRE_THROWS_AS(pack_uint["nope"], ValueError);
 
         REQUIRE(pack_uint == MsgPack(uint8_t(15)));
         REQUIRE(pack_uint == MsgPack(uint16_t(15)));
@@ -200,8 +200,8 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         REQUIRE(pack_real.get<MsgPack::Int>() == 0);
         REQUIRE(pack_real.get<MsgPack::Uint>() == 0);
         REQUIRE(pack_real.get<MsgPack::Bool>() == false);
-        REQUIRE_THROWS_AS(pack_real[0], value_error);
-        REQUIRE_THROWS_AS(pack_real["nope"], value_error);
+        REQUIRE_THROWS_AS(pack_real[0], ValueError);
+        REQUIRE_THROWS_AS(pack_real["nope"], ValueError);
     }
 
     SECTION("Double")
@@ -213,8 +213,8 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         REQUIRE(pack_real.get<MsgPack::Int>() == 0);
         REQUIRE(pack_real.get<MsgPack::Uint>() == 0);
         REQUIRE(pack_real.get<MsgPack::Bool>() == false);
-        REQUIRE_THROWS_AS(pack_real[0], value_error);
-        REQUIRE_THROWS_AS(pack_real["nope"], value_error);
+        REQUIRE_THROWS_AS(pack_real[0], ValueError);
+        REQUIRE_THROWS_AS(pack_real["nope"], ValueError);
     }
 
     SECTION("String")
@@ -228,8 +228,8 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         pack_string.get<MsgPack::Array>(success);
         REQUIRE(!success);
 
-        REQUIRE_THROWS_AS(pack_string[0], value_error);
-        REQUIRE_THROWS_AS(pack_string["nope"], value_error);
+        REQUIRE_THROWS_AS(pack_string[0], ValueError);
+        REQUIRE_THROWS_AS(pack_string["nope"], ValueError);
     }
 
     SECTION("Binary")
@@ -243,8 +243,8 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         pack_binary.get<MsgPack::Array>(success);
         REQUIRE(!success);
 
-        REQUIRE_THROWS_AS(pack_binary[0], value_error);
-        REQUIRE_THROWS_AS(pack_binary["nope"], value_error);
+        REQUIRE_THROWS_AS(pack_binary[0], ValueError);
+        REQUIRE_THROWS_AS(pack_binary["nope"], ValueError);
     }
 
     SECTION("Array")
@@ -265,7 +265,7 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         REQUIRE(pack_array[0] == 4);
         REQUIRE(pack_array[1] == 568);
         REQUIRE(pack_array[2] == -414);
-        REQUIRE_THROWS_AS(pack_array["nope"], value_error);
+        REQUIRE_THROWS_AS(pack_array["nope"], ValueError);
     }
 
     SECTION("Map")
@@ -283,8 +283,8 @@ SCENARIO("msgpack construction", "[common][msgpack]")
             pack_map.get<MsgPack::Array>(success);
             REQUIRE(!success);
 
-            REQUIRE_THROWS_AS(pack_map[12], value_error);
-            REQUIRE_THROWS_AS(pack_map["12"], out_of_bounds);
+            REQUIRE_THROWS_AS(pack_map[12], ValueError);
+            REQUIRE_THROWS_AS(pack_map["12"], OutOfBounds);
         }
         {
             const auto map = std::unordered_map<int, int>{{12, 24}, {-8, -16}, {0, 0}};
@@ -299,8 +299,8 @@ SCENARIO("msgpack construction", "[common][msgpack]")
             pack_map.get<MsgPack::Array>(success);
             REQUIRE(!success);
 
-            REQUIRE_THROWS_AS(pack_map[12], value_error);
-            REQUIRE_THROWS_AS(pack_map["12"], out_of_bounds);
+            REQUIRE_THROWS_AS(pack_map[12], ValueError);
+            REQUIRE_THROWS_AS(pack_map["12"], OutOfBounds);
         }
     }
 
@@ -340,7 +340,7 @@ SCENARIO("msgpack access operators", "[common][msgpack]")
         REQUIRE(array.at(1).get<MsgPack::Int>() == 2);
 
         REQUIRE(pack_array[2].get<MsgPack::Int>() == 3);
-        REQUIRE_THROWS_AS(pack_array[123], out_of_bounds);
+        REQUIRE_THROWS_AS(pack_array[123], OutOfBounds);
 
         pack_array.get<MsgPack::String>(success);
         REQUIRE(!success);
@@ -361,8 +361,8 @@ SCENARIO("msgpack access operators", "[common][msgpack]")
 
         REQUIRE(pack_map["derbe"] == true);
         REQUIRE(pack_map["underbe"] == false);
-        REQUIRE_THROWS_AS(pack_map["ausserst_underbe"], out_of_bounds);
-        REQUIRE_THROWS_AS(pack_map[15], value_error);
+        REQUIRE_THROWS_AS(pack_map["ausserst_underbe"], OutOfBounds);
+        REQUIRE_THROWS_AS(pack_map[15], ValueError);
     }
 }
 

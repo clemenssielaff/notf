@@ -37,12 +37,12 @@ struct AnySubscriber {
 template<class T>
 class Subscriber : public AnySubscriber {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Type to receive.
     using input_t = T;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Abstract "next" method.
     /// @param publisher    The Publisher publishing the value, for identification purposes only.
@@ -54,12 +54,12 @@ public:
 template<>
 class Subscriber<None> : public AnySubscriber {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Type to receive.
     using input_t = None;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Abstract "next" method.
     /// @param publisher    The Publisher publishing the value, for identification purposes only.
@@ -68,14 +68,14 @@ public:
 
 /// Subscriber specialization for Subscribers that can take any data, but ignore it.
 template<>
-class Subscriber<Ignored> : public AnySubscriber {
+class Subscriber<All> : public AnySubscriber {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Type to receive.
-    using input_t = Ignored;
+    using input_t = All;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Abstract "next" method.
     /// @param publisher    The Publisher publishing the value, for identification purposes only.

@@ -62,16 +62,16 @@ constexpr inline size_t hash_mix(size_t key) noexcept
 /// Similar to boost::hash_combine but adaptive to the system's hash value type.
 constexpr inline void hash_combine(std::size_t&) noexcept {}
 
-template<typename T, typename... Rest>
-constexpr void hash_combine(std::size_t& seed, T&& value, Rest&&... rest) noexcept
+template<typename Arg, typename... Rest, class T = std::decay_t<Arg>>
+constexpr void hash_combine(std::size_t& seed, Arg&& value, Rest&&... rest) noexcept
 {
     constexpr size_t magic_number = detail::magic_hash_number<size_t>();
-    if constexpr (std::is_convertible_v<T, size_t>) {
+    if constexpr (std::is_integral_v<T>) {
         // integral values are mapped on themselves at compile time, saving us a potential non-constexpr call to hash()
         seed ^= static_cast<size_t>(value) + magic_number + (seed << 6) + (seed >> 2);
     }
     else {
-        seed ^= std::hash<std::decay_t<T>>()(std::forward<T>(value)) + magic_number + (seed << 6) + (seed >> 2);
+        seed ^= std::hash<T>()(std::forward<Arg>(value)) + magic_number + (seed << 6) + (seed >> 2);
     }
     hash_combine(seed, std::forward<Rest>(rest)...);
 }

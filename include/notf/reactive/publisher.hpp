@@ -15,7 +15,7 @@ namespace detail {
 template<class T>
 struct SingleSubscriber {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Invoke the given lambda on each Subscriber.
     /// @param lambda   Lambda to invoke, must take a single argument : Subscriber<T>*.
@@ -46,7 +46,7 @@ public:
     /// Number of connected Subscribers.
     size_t get_subscriber_count() const { return m_subscriber.lock() ? 1 : 0; }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// The single Subscriber.
     SubscriberWeakPtr<T> m_subscriber;
@@ -56,7 +56,7 @@ private:
 template<class T>
 struct MultiSubscriber {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Invoke the given lambda on each Subscriber.
     /// @param lambda   Lambda to invoke, must take a single argument : Subscriber<T>*.
@@ -110,7 +110,7 @@ public:
     /// Number of connected Subscribers.
     size_t get_subscriber_count() const { return m_subscribers.size(); }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// All unique Subscribers.
     std::vector<SubscriberWeakPtr<T>> m_subscribers;
@@ -148,7 +148,7 @@ namespace detail {
 template<class T, class Policy>
 class TypedPublisher : public AnyPublisher {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Type to publish.
     using output_t = T;
@@ -173,13 +173,13 @@ private:
     /// Subscriber container as determined by the type.
     using Subscribers = typename Policy::template Subscribers<T>;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Checks if this Publisher has already completed (either normally or though an error).
-    bool is_completed() const { return m_state != State::RUNNING; }
+    bool is_completed() const { return m_reactive_state != State::RUNNING; }
 
     /// Checks if this Publisher has completed with an error.
-    bool is_failed() const { return m_state == State::FAILED; }
+    bool is_failed() const { return m_reactive_state == State::FAILED; }
 
     /// Number of connected Subscribers.
     size_t get_subscriber_count() const final { return m_subscribers.get_subscriber_count(); }
@@ -193,7 +193,7 @@ public:
             _error(exception);
 
             // transition into the error state
-            m_state = State::FAILED;
+            m_reactive_state = State::FAILED;
             m_subscribers.on_each([this, &exception](auto* subscriber) { subscriber->on_error(this, exception); });
             m_subscribers.clear();
         }
@@ -207,7 +207,7 @@ public:
             _complete();
 
             // transition into the completed state
-            m_state = State::COMPLETED;
+            m_reactive_state = State::COMPLETED;
             m_subscribers.on_each([this](auto* subscriber) { subscriber->on_complete(this); });
             m_subscribers.clear();
         }
@@ -231,9 +231,9 @@ public:
     }
 
     template<class Sub, class S = std::decay_t<Sub>>
-    std::enable_if_t<std::conjunction_v<std::negation<std::is_same<S, AnySubscriberPtr>>,
-                                        std::is_convertible<S, SubscriberPtr<Ignored>>>,
-                     bool>
+    std::enable_if_t<
+        std::conjunction_v<std::negation<std::is_same<S, AnySubscriberPtr>>, std::is_convertible<S, SubscriberPtr<All>>>,
+        bool>
     subscribe(Sub&& subscriber) // add a Subscriber<Everything>
     {
         // cast down to AnySubscriber and up again to Subscriber<T>
@@ -289,13 +289,14 @@ protected:
         return true;
     }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 protected:
     /// All conntected Subscribers.
     Subscribers m_subscribers;
 
+private:
     /// Tests whether the Publisher has completed.
-    State m_state;
+    State m_reactive_state = State::RUNNING;
 };
 
 } // namespace detail
@@ -306,7 +307,7 @@ protected:
 template<class T, class Policy>
 class Publisher : public detail::TypedPublisher<T, Policy> {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Publish operation.
     /// Propagates the value to all attached Subscribers.
@@ -330,7 +331,7 @@ protected:
 template<class Policy>
 class Publisher<None, Policy> : public detail::TypedPublisher<None, Policy> {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Publish operation.
     /// Propagates the call to all attached Subscribers.

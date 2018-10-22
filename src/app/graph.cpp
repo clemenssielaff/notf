@@ -6,7 +6,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-// the graph ======================================================================================================== //
+// the graph - node registry ======================================================================================== //
 
 void TheGraph::NodeRegistry::add(NodeHandle node)
 {
@@ -15,7 +15,7 @@ void TheGraph::NodeRegistry::add(NodeHandle node)
         NOTF_GUARD(std::lock_guard(m_mutex));
         const auto [iter, success] = m_registry.try_emplace(uuid, node);
         if (!success && iter->second != node) {
-            NOTF_THROW(not_unique_error, "A different Node with the UUID {} is already registered with the Graph",
+            NOTF_THROW(NotUniqueError, "A different Node with the UUID {} is already registered with the Graph",
                        uuid.to_string());
         }
     }
@@ -26,6 +26,8 @@ void TheGraph::NodeRegistry::remove(Uuid uuid)
     NOTF_GUARD(std::lock_guard(m_mutex));
     if (auto iter = m_registry.find(uuid); iter != m_registry.end()) { m_registry.erase(iter); }
 }
+
+// the graph - node name registry =================================================================================== //
 
 std::string_view TheGraph::NodeNameRegistry::get_name(NodeHandle node)
 {

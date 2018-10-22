@@ -13,15 +13,15 @@ NOTF_OPEN_NAMESPACE
 
 class Uuid {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Internal representation of a UUID.
     using Bytes = std::array<uchar, 16>;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Default, zero constructor.
-    Uuid() : m_bytes({}) {}
+    Uuid() = default;
 
     /// Value Constructor.
     /// @param bytes    Bytes to construct the UUID with.
@@ -41,7 +41,7 @@ public:
     /// Takes any vector of size 16+ containing integral values and static casts the values to uchar to initialize the
     /// UUID from them.
     /// @param vector       Vector containing integral data to be cast to uchar.
-    /// @throws value_error If a value in the vector can not be cast to a byte or there are less than 16 items.
+    /// @throws ValueError If a value in the vector can not be cast to a byte or there are less than 16 items.
     template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
     Uuid(const std::vector<T>& vector) : m_bytes(_vector_to_bytes(vector))
     {}
@@ -56,9 +56,9 @@ public:
     const Bytes& get_data() const noexcept { return m_bytes; }
 
     /// Packs the Uuid into two size_t words.
-    std::pair<size_t, size_t> to_words() const noexcept
+    constexpr std::pair<size_t, size_t> to_words() const noexcept
     {
-        static constexpr auto byte_width = bitsizeof<uchar>();
+        constexpr auto byte_width = bitsizeof<uchar>();
         size_t first = 0;
         size_t second = 0;
         for (size_t i = 0; i < byte_width; ++i) {
@@ -120,28 +120,28 @@ private:
     /// Transforms a vector into a UUID byte array or returns null on error.
     /// @param vector   Vector containing integral data to be cast to uchar.
     /// @returns        Corresponding UUID bytes array.
-    /// @throws value_error If a value in the vector can not be cast to a byte or there are less than 16 items.
+    /// @throws ValueError If a value in the vector can not be cast to a byte or there are less than 16 items.
     template<class T>
     static Bytes _vector_to_bytes(const std::vector<T>& vector)
     {
         if (vector.size() < 16) {
-            NOTF_THROW(value_error, "Cannot construct a UUID (with 16 bytes) from a vector of size {}", vector.size());
+            NOTF_THROW(ValueError, "Cannot construct a UUID (with 16 bytes) from a vector of size {}", vector.size());
         }
         Bytes result;
         for (uchar i = 0; i < 16; ++i) {
             auto value = static_cast<std::make_unsigned_t<T>>(vector[i]);
             if (value > max_value<uchar>()) {
-                NOTF_THROW(value_error, "Cannot narrow integral value {} into a byte", value);
+                NOTF_THROW(ValueError, "Cannot narrow integral value {} into a byte", value);
             }
             result[i] = value;
         }
         return result;
     }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Byte representation of this UUID.
-    Bytes m_bytes;
+    Bytes m_bytes = {};
 };
 
 /// Dump the Uuid into an ostream in human-readable form.
@@ -153,7 +153,7 @@ NOTF_CLOSE_NAMESPACE
 namespace std {
 template<>
 struct hash<notf::Uuid> {
-    size_t operator()(const notf::Uuid uuid) const noexcept
+    constexpr size_t operator()(const notf::Uuid uuid) const noexcept
     {
         auto words = uuid.to_words();
         return notf::hash(words.first, words.second);

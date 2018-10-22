@@ -43,6 +43,7 @@ Node::Node(valid_ptr<Node*> parent) : m_parent(raw_pointer(parent))
     // mark this node as "unfinalized", so it can create Properties if it is a RunTimeNode
     s_unfinalized_nodes.emplace(this);
 
+    // add extra space in the message so the uuid lines up with destructor's message
     NOTF_LOG_TRACE("Creating Node   {}", m_uuid.to_string());
 }
 
@@ -51,7 +52,7 @@ Node::~Node()
     TheGraph::AccessFor<Node>::unregister_node(m_uuid);
     s_unfinalized_nodes.erase(this); // just in case the constructor failed
 
-    _clear_frozen();
+    _clear_modified_copies();
 
 #ifdef NOTF_DEBUG
     // make sure that the property observer is deleted with this node, so we don't leave a dangling reference to it
@@ -101,8 +102,8 @@ NodeHandle Node::get_child(size_t index) const
 {
     const ChildList& children = _read_children();
     if (index >= children.size()) {
-        NOTF_THROW(out_of_bounds, "Cannot get child Node at index {} for Node \"{}\" with {} children", index,
-                   get_name(), count_children());
+        NOTF_THROW(OutOfBounds, "Cannot get child Node at index {} for Node \"{}\" with {} children", index, get_name(),
+                   count_children());
     }
     return children[index];
 }
@@ -143,7 +144,7 @@ bool Node::is_behind(const NodeHandle& sibling) const
 
 void Node::stack_front()
 {
-    if (is_in_front()) { return; } // early out to avoid creating unnecessary deltas
+    if (is_in_front()) { return; } // early out to avoid creating unnecessary modified copies
     ChildList& siblings = _get_parent()->_write_children();
     auto itr = std::find(siblings.begin(), siblings.end(), this);
     NOTF_ASSERT(itr != siblings.end());
@@ -152,7 +153,7 @@ void Node::stack_front()
 
 void Node::stack_back()
 {
-    if (is_in_back()) { return; } // early out to avoid creating unnecessary deltas
+    if (is_in_back()) { return; } // early out to avoid creating unnecessary modified copies
     ChildList& siblings = _get_parent()->_write_children();
     auto itr = std::find(siblings.begin(), siblings.end(), this);
     NOTF_ASSERT(itr != siblings.end());
@@ -185,7 +186,7 @@ bool Node::is_user_flag_set(const size_t index)
 {
     if (index >= get_user_flag_count()) {
         NOTF_THROW(
-            out_of_bounds,
+            OutOfBounds,
             "Cannot test user flag #{} of Node {}, because Nodes on this system only have {} user-defineable flags",
             index, get_name(), get_user_flag_count());
     }
@@ -198,7 +199,7 @@ void Node::set_user_flag(const size_t index, const bool value)
 {
     if (index >= get_user_flag_count()) {
         NOTF_THROW(
-            out_of_bounds,
+            OutOfBounds,
             "Cannot test user flag #{} of Node {}, because Nodes on this system only have {} user-defineable flags",
             index, get_name(), get_user_flag_count());
     }
@@ -210,8 +211,17 @@ void Node::set_user_flag(const size_t index, const bool value)
 void Node::_remove_child(NodePtr child)
 {
     if (child == nullptr) { return; }
+
+    // do not create a modified copy for finding the child
+    const ChildList& read_only_children = _read_children();
+    auto itr = std::find(read_only_children.begin(), read_only_children.end(), child);
+    if (itr == read_only_children.end()) { return; } // not a child of this node
+
+    // remove the child node
+    const size_t child_index = static_cast<size_t>(std::distance(read_only_children.begin(), itr));
     ChildList& children = _write_children();
-    if (auto itr = std::find(children.begin(), children.end(), child); itr != children.end()) { children.erase(itr); }
+    NOTF_ASSERT(children.at(child_index) == child);
+    children.erase(iterator_at(children, child_index));
 }
 
 const Node* Node::_get_common_ancestor(const Node* other) const
@@ -261,24 +271,33 @@ void Node::_set_parent(NodePtr new_parent)
 
 const Node::ChildList& Node::_read_children(const std::thread::id thread_id) const
 {
-    if (ChildList* frozen_list = m_cache.load(std::memory_order_consume)) {
-        if (TheGraph::is_frozen_by(thread_id)) { return *frozen_list; }
+    if (ChildList* modified_list = m_cache.load(std::memory_order_consume)) {
+        if (!TheGraph::is_frozen_by(thread_id)) { return *modified_list; }
     }
     return m_children;
 }
 
 Node::ChildList& Node::_write_children()
 {
-    // if the graph is currently frozen and this is the first modification,
-    // create a frozen copy of the current child list before changing it
-    if (ChildList* frozen_list = m_cache.load(std::memory_order_relaxed); frozen_list == nullptr) {
-        if (TheGraph::is_frozen()) { m_cache.store(new ChildList(m_children), std::memory_order_release); }
-    }
-
     // changes in the child list make this node dirty
     TheGraph::AccessFor<Node>::mark_dirty(shared_from_this());
 
-    return m_children; // always modify your actual children, not the cache
+    if (TheGraph::is_frozen()) {
+        // the render thread must never modify a Node
+        NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id()));
+
+        // if the graph is currently frozen and this is the first modification,
+        // create a copy of the current child list before changing it
+        ChildList* modified_list = m_cache.load(std::memory_order_relaxed);
+        if (modified_list == nullptr) {
+            modified_list = new ChildList(m_children);
+            m_cache.store(modified_list, std::memory_order_release);
+        }
+        return *modified_list;
+    }
+
+    // if the graph is not frozen, modify the child list directly
+    return m_children;
 }
 
 const Node::ChildList& Node::_read_siblings() const

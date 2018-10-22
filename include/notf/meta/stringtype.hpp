@@ -13,7 +13,7 @@ struct StringType final {
     template<class char_t2, char_t2... Os>
     friend struct StringType; // to allow other StringTypes to access the private `s_text` member field.
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// The string literal that defines this type.
     static constexpr const char_t* c_str() noexcept { return s_text; }
@@ -54,7 +54,7 @@ private:
         return ((s_text[I] == Other::s_text[I]) && ...);
     }
 
-    // members ------------------------------------------------------------------------------------------------------ //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// C-string compile-time access to the characters passed as template arguments.
     inline static constexpr char_t const s_text[sizeof...(Cs) + 1] = {Cs..., '\0'};
@@ -68,7 +68,7 @@ namespace detail {
 template<class char_t>
 struct StringConst {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor
     /// Takes a compile time literal.
@@ -102,7 +102,7 @@ public:
                                   throw std::out_of_range("Failed to read out-of-range StringConst character");
     }
 
-    // members ------------------------------------------------------------------------------------------------------ //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Pointer to the text stored somewhere with linkage.
     const char_t* const m_text;

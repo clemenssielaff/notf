@@ -45,7 +45,7 @@ public:
     /// How many arguments the function expects.
     static constexpr auto arity = impl_t::arity;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     template<class T>
     static constexpr bool has_return_type() noexcept

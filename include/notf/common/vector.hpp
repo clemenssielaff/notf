@@ -119,7 +119,7 @@ std::vector<T> flatten(const std::vector<std::vector<T>>& v)
 template<class T>
 T take_back(std::vector<T>& v)
 {
-    if (v.empty()) { NOTF_THROW(out_of_bounds, "Cannot take last entry of an empty vector"); }
+    if (v.empty()) { NOTF_THROW(OutOfBounds, "Cannot take last entry of an empty vector"); }
     T result = v.back();
     v.pop_back();
     return result;

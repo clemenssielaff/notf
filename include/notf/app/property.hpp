@@ -16,7 +16,7 @@ namespace detail {
 template<class T>
 class PropertyOperator : public Operator<T, T, detail::MultiPublisherPolicy> {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     NOTF_NO_COPY_OR_ASSIGN(PropertyOperator);
 
@@ -78,7 +78,7 @@ public:
     /// Deletes the frozen value copy, if one exists.
     void clear_frozen() { delete m_cache.exchange(nullptr); }
 
-    // members ------------------------------------------------------------------------------------------------------ //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Pointer to a frozen copy of the value, if it was modified while the Graph was frozen.
     std::atomic<T*> m_cache{nullptr};
@@ -97,7 +97,7 @@ private:
 /// Base class for all Property types.
 class AnyProperty {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     NOTF_NO_COPY_OR_ASSIGN(AnyProperty);
 
@@ -132,7 +132,7 @@ class Property : public AnyProperty {
 
     friend struct Accessor<Property<T>, Node>;
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     template<class Other>
     using AccessFor = Accessor<Property<T>, Other>;
@@ -143,7 +143,7 @@ public:
     /// Type of Operator in this Property.
     using operator_t = std::shared_ptr<detail::PropertyOperator<T>>;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Value constructor.
     /// @param value        Property value.
@@ -206,8 +206,7 @@ public:
     }
 
     auto& get_operator() { return m_operator; }
-
-    // members ------------------------------------------------------------------------------------------------------ //
+    // fields ---------------------------------------------------------------------------------- ///
 private:
     /// Reactive Property operator, most of the Property's implementation.
     operator_t m_operator;
@@ -215,7 +214,7 @@ private:
 
 // node accessor ==================================================================================================== //
 
-/// Access to selected members of TheGraph.
+/// Access to selected members of a Property.
 template<class T>
 class Accessor<Property<T>, Node> {
     friend Node;
@@ -232,7 +231,7 @@ class Accessor<Property<T>, Node> {
 template<class T>
 class RunTimeProperty final : public Property<T> {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor.
     /// @param name         The Node-unique name of this Property.
@@ -244,8 +243,7 @@ public:
 
     /// The Node-unique name of this Property.
     std::string_view get_name() const final { return m_name; }
-
-    // members ------------------------------------------------------------------------------------------------------ //
+    // fields ---------------------------------------------------------------------------------- ///
 private:
     /// The Node-unique name of this Property.
     const std::string_view m_name;
@@ -265,7 +263,7 @@ private:
 template<class Policy>
 class CompileTimeProperty final : public Property<typename Policy::value_t> {
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor.
     /// @param value        Property value.

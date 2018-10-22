@@ -36,7 +36,7 @@ struct Property : public UntypedProperty {
     /// Whether a change in the Property will cause the Node to redraw or not.
     bool is_visible() noexcept { return m_is_visible; }
 
-    // members ------------------------------------------------------------------------------------------------------ //
+    // fields ---------------------------------------------------------------------------------- //
 protected:
     type_t m_value;
 
@@ -88,7 +88,7 @@ protected:
 template<class Traits>
 class CompileTimeNode : public Node {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 protected:
     /// Tuple containing all compile time Properties of this Node type.
     using properties_t = typename Traits::properties;
@@ -97,7 +97,7 @@ protected:
     template<std::size_t I>
     using property_t = std::tuple_element_t<I, properties_t>;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     static constexpr auto get_property_count() noexcept { return std::tuple_size_v<properties_t>; }
 
@@ -147,7 +147,7 @@ private:
         }
     }
 
-    // members ------------------------------------------------------------------------------------------------------ //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// All Properties of this Node, default initialized to the Definition's default values.
     properties_t m_properties;
@@ -216,7 +216,7 @@ struct WidgetTrait {
 /// Properties of all Widgets, as well as a virtual interface for all other Widget types at compile or run time.
 class Widget : public CompileTimeNode<::detail::WidgetTrait> {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 protected:
     /// Parent Node type.
     using node_t = CompileTimeNode<::detail::WidgetTrait>;
@@ -228,7 +228,7 @@ protected:
     template<std::size_t I>
     using node_property_t = node_t::property_t<I>;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     virtual void paint() = 0;
 };
@@ -250,7 +250,7 @@ class CompileTimeWidget : public Widget {
     template<size_t I>
     using state_t = std::variant_alternative_t<I, state_variant_t>;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     CompileTimeWidget() : Widget(), m_state(std::in_place_type_t<state_t<0>>(), *this) {}
 
@@ -310,7 +310,7 @@ private:
         }
     }
 
-    // members ------------------------------------------------------------------------------------------------------ //
+    // fields ---------------------------------------------------------------------------------- //
 protected:
     /// All Properties of this Widget, default initialized to the Trait's default values.
     properties_t m_widget_properties;
@@ -415,9 +415,9 @@ int main()
     NOTF_LOG_TRACE("derbe aufs {} maul", "fiese");
 
     try {
-        NOTF_THROW(value_error, "Junge, waa' {} fies", "dat");
+        NOTF_THROW(ValueError, "Junge, waa' {} fies", "dat");
     }
-    catch (const value_error& exp) {
+    catch (const ValueError& exp) {
         auto blub = exp.get_function();
     }
 

@@ -9,12 +9,12 @@ NOTF_OPEN_NAMESPACE
 template<class T>
 class PropertyHandle {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Property value type.
     using value_t = T;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Default (empty) Constructor.
     PropertyHandle() = default;
@@ -107,7 +107,7 @@ private:
         NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>());
     }
 
-    // members ------------------------------------------------------------------------------------------------------ //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// The handled Property, non owning.
     PropertyWeakPtr<T> m_property;

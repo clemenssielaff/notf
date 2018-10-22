@@ -14,6 +14,10 @@ class NodeHandle;
 // node_compiletime.hpp
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, CompileTimeNode);
 
+// node_handle.hpp
+class NodeHandle;
+class NodeMasterHandle;
+
 // node_root.hpp
 class RootNode;
 
