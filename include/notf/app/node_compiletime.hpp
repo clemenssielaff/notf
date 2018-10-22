@@ -38,9 +38,9 @@ protected:
 
     // methods --------------------------------------------------------------------------------- //
 public:
-    /// Default Constructor.
-    /// Takes no arguments since all of the customization happens through the Policy type.
-    CompileTimeNode() : Node(this) { _initialize_properties(); }
+    /// Value constructor.
+    /// @param parent   Parent of this Node.
+    CompileTimeNode(valid_ptr<Node*> parent) : Node(parent) { _initialize_properties(); }
 
     /// Use the base class' `get_property(std::string_view)` method alongside the compile time implementations below.
     using Node::get_property;
@@ -70,15 +70,17 @@ private:
     template<size_t I = 0>
     void _initialize_properties()
     {
-        // create the new property
-        auto property_ptr = std::make_shared<property_t<I>>();
-        std::get<I>(m_properties) = property_ptr;
+        if constexpr (I < s_property_count) {
+            // create the new property
+            auto property_ptr = std::make_shared<property_t<I>>();
+            std::get<I>(m_properties) = property_ptr;
 
-        // subscribe to receive an update, whenever the property changes its value
-        auto typed_property = std::static_pointer_cast<Property<typename property_t<I>::value_t>>(property_ptr);
-        property_t<I>::template AccessFor<Node>::get_operator(typed_property)->subscribe(_get_property_observer());
+            // subscribe to receive an update, whenever the property changes its value
+            auto typed_property = std::static_pointer_cast<Property<typename property_t<I>::value_t>>(property_ptr);
+            property_t<I>::template AccessFor<Node>::get_operator(typed_property)->subscribe(_get_property_observer());
 
-        if constexpr (I + 1 < s_property_count) { _initialize_properties<I + 1>(); }
+            _initialize_properties<I + 1>();
+        }
     }
 
     /// Access to a CompileTimeProperty through the hash of its name.
@@ -86,12 +88,16 @@ private:
     template<size_t I = 0>
     AnyPropertyPtr _get_property(const size_t hash_value) const
     {
-        if (property_t<I>::get_const_name().get_hash() == hash_value) {
-            return std::static_pointer_cast<AnyProperty>(std::get<I>(m_properties));
+        if constexpr (I < s_property_count) {
+            if (property_t<I>::get_const_name().get_hash() == hash_value) {
+                return std::static_pointer_cast<AnyProperty>(std::get<I>(m_properties));
+            }
+            else {
+                return _get_property<I + 1>(hash_value);
+            }
         }
-        if constexpr (I + 1 >= s_property_count) { return {}; }
         else {
-            return _get_property<I + 1>(hash_value);
+            return {}; // no such property
         }
     }
 
@@ -99,15 +105,14 @@ private:
     template<size_t I, char... Cs>
     auto _get_ct_property(StringType<char, Cs...> name) const
     {
-        if constexpr (property_t<I>::get_const_name() == name) {
-            using handle_t = typename property_t<I>::value_t;
-            return PropertyHandle(std::static_pointer_cast<Property<handle_t>>(std::get<I>(m_properties)));
-        }
-        else if constexpr (I + 1 >= s_property_count) {
-            return; // returns void
-        }
-        else {
-            return _get_ct_property<I + 1>(name);
+        if constexpr (I < s_property_count) {
+            if constexpr (property_t<I>::get_const_name() == name) {
+                using handle_t = typename property_t<I>::value_t;
+                return PropertyHandle(std::static_pointer_cast<Property<handle_t>>(std::get<I>(m_properties)));
+            }
+            else {
+                return _get_ct_property<I + 1>(name);
+            }
         }
     }
 
@@ -115,8 +120,10 @@ private:
     template<size_t I = 0>
     void _calculate_hash(size_t& result) const
     {
-        hash_combine(result, std::get<I>(m_properties)->get());
-        if constexpr (I + 1 < s_property_count) { _calculate_hash<I + 1>(result); }
+        if constexpr (I < s_property_count) {
+            hash_combine(result, std::get<I>(m_properties)->get());
+            _calculate_hash<I + 1>(result);
+        }
     }
 
     // fields ---------------------------------------------------------------------------------- //

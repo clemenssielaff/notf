@@ -93,7 +93,7 @@ private:
     }
 
 /// Specialized exception that logs the message and then behaves like a regular std::runtime_error.
-NOTF_EXCEPTION_TYPE(RuntimeError);
+NOTF_EXCEPTION_TYPE(RunTimeError);
 
 /// Exception type for logical errors.
 NOTF_EXCEPTION_TYPE(LogicError);

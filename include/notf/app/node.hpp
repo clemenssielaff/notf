@@ -4,21 +4,60 @@
 #include <unordered_set>
 
 #include "notf/common/bitset.hpp"
+#include "notf/common/tuple.hpp"
 
 #include "./property_handle.hpp"
 
 NOTF_OPEN_NAMESPACE
+
+// helper =========================================================================================================== //
+
+namespace detail {
+
+template<class T, class = void>
+struct has_allowed_child_types : std::false_type {};
+template<class T>
+struct has_allowed_child_types<T, std::void_t<typename T::allowed_child_types>> : std::true_type {};
+
+template<class T, class = void>
+struct has_forbidden_child_types : std::false_type {};
+template<class T>
+struct has_forbidden_child_types<T, std::void_t<typename T::forbidden_child_types>> : std::true_type {};
+
+template<class A, class B>
+constexpr bool can_node_parent()
+{
+    // both A and B must be derived from Node
+    if constexpr (std::negation_v<std::conjunction<std::is_base_of<Node, A>, std::is_base_of<Node, B>>>) {
+        return false;
+    }
+    // if A has a list of explicitly allowed types, B must be in it
+    else if constexpr (has_allowed_child_types<A>::value) { //
+        return is_one_of_tuple_v<B, typename A::allowed_child_types>;
+    }
+    // ... otherwise, if A has a list of explicitly forbidden types, B must NOT be in it
+    else if constexpr (has_forbidden_child_types<A>::value) { //
+        return !is_one_of_tuple_v<B, typename A::forbidden_child_types>;
+    }
+    // if both are nodes and the parent doesn't object, allow it
+    else {
+        return true;
+    }
+}
+
+} // namespace detail
 
 // node ============================================================================================================= //
 
 /// Base class for both RunTimeNode and CompileTimeNode.
 class Node : public std::enable_shared_from_this<Node> {
 
+    friend Accessor<Node, NodeMasterHandle>;
+
     // type --------------------------------------------------------------------------------------------------------- //
 public:
     /// Nested `AccessFor<T>` type.
     NOTF_ACCESS_TYPE(Node);
-    friend AccessFor<NodeMasterHandle>;
 
     /// Exception thrown by `get_property` if either the name of the type of the requested Property is wrong.
     NOTF_EXCEPTION_TYPE(NoSuchPropertyError);
@@ -26,11 +65,11 @@ public:
     /// Exception thrown when you try to do something that is only allowed to do if the node hasn't been finalized yet.
     NOTF_EXCEPTION_TYPE(FinalizedError);
 
+private:
     /// Wrapper around a newly created Node.
     /// Can be cast to a NodeMasterHandle or NodeHandle.
     using NewNode = detail::NodeMasterHandleCastable;
 
-private:
     /// Owning list of child Nodes, ordered from back to front.
     using ChildList = std::vector<NodePtr>;
 
@@ -206,11 +245,18 @@ protected:
     virtual size_t _calculate_property_hash() const = 0;
 
     /// Creates and adds a new child to this node.
-    /// @param args Arguments that are forwarded to the constructor of the child.
-    template<class T, class... Args, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
-    NewNode _create_child(Args&&... args)
+    /// @param parent   Parent of the Node, must be `this` (is used for type checking).
+    /// @param args     Arguments that are forwarded to the constructor of the child.
+    /// @throws InternalError   If you pass anything else but `this` as the parent.
+    template<class Child, class Parent, class... Args,
+             class = std::enable_if_t<detail::can_node_parent<Parent, Child>()>>
+    NewNode _create_child(Parent* parent, Args&&... args)
     {
-        auto child = std::make_shared<T>(this, std::forward<Args>(args)...);
+        if (NOTF_UNLIKELY(parent != this)) {
+            NOTF_THROW(InternalError, "Node::_create_child cannot be used to create children of other Nodes.");
+        }
+
+        auto child = std::static_pointer_cast<Node>(std::make_shared<Child>(parent, std::forward<Args>(args)...));
         child->_finalize();
 
         _write_children().emplace_back(child);

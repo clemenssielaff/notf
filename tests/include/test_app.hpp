@@ -26,18 +26,22 @@ struct TestNodePolicy {
         CompileTimeProperty<FloatPropertyPolicy>, //
         CompileTimeProperty<BoolPropertyPolicy>>; //
 };
-using CompileTimeTestNode = CompileTimeNode<TestNodePolicy>;
 
-//class LeafNode : public CompileTimeNode<TestNodePolicy> {
+class CompileTimeTestNode : public CompileTimeNode<TestNodePolicy> {
+public:
+    NOTF_UNUSED CompileTimeTestNode() : CompileTimeNode<TestNodePolicy>(this) {}
+};
+
+// class LeafNode : public CompileTimeNode<TestNodePolicy> {
 //    NOTF_UNUSED LeafNode() : CompileTimeNode<TestNodePolicy>() {}
 //};
 
-//class SingleChildNode : public CompileTimeNode<TestNodePolicy> {
+// class SingleChildNode : public CompileTimeNode<TestNodePolicy> {
 //    NOTF_UNUSED SingleChildNode() : CompileTimeNode<TestNodePolicy>() { first_child = _create_child<LeafNode>(); }
 //    NodeHandle first_child;
 //};
 
-//class TwoChildNode : public CompileTimeNode<TestNodePolicy> {
+// class TwoChildNode : public CompileTimeNode<TestNodePolicy> {
 //    NOTF_UNUSED TwoChildNode() : CompileTimeNode<TestNodePolicy>()
 //    {
 //        first_child = _create_child<LeafNode>();

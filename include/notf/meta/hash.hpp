@@ -111,11 +111,11 @@ constexpr size_t hash_string(const std::string& string) noexcept { return hash_s
 
 /// @{
 /// Constexpr boolean that is true only if T can be hashed using std::hash.
-template<typename T, typename = void>
+template<class T, class = void>
 struct is_hashable : std::false_type {};
-template<typename T>
+template<class T>
 struct is_hashable<T, std::void_t<decltype(std::hash<T>()(std::declval<T>()))>> : std::true_type {};
-template<typename T>
+template<class T>
 static constexpr const bool is_hashable_v = is_hashable<T>::value;
 /// @}
 
