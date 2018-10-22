@@ -271,14 +271,24 @@ void Node::_set_parent(NodePtr new_parent)
 
 const Node::ChildList& Node::_read_children(const std::thread::id thread_id) const
 {
-    if (ChildList* modified_list = m_modified_children.load(std::memory_order_consume)) {
-        if (!TheGraph::is_frozen_by(thread_id)) { return *modified_list; }
+    if (TheGraph::is_frozen_by(thread_id)) {
+        return m_children; // the renderer always sees the unmodified child list
     }
+
+    // if there exist a modified child list, return that one instead
+    if (ChildList* modified_list = m_modified_children.get()) {
+        NOTF_ASSERT(TheGraph::is_frozen());
+        return *modified_list;
+    }
+
+    // either the child list has not been modified, or the Graph is not frozen
     return m_children;
 }
 
 Node::ChildList& Node::_write_children()
 {
+    NOTF_ASSERT(TheGraph::get_graph_mutex().is_locked_by_this_thread());
+
     // changes in the child list make this node dirty
     TheGraph::AccessFor<Node>::mark_dirty(shared_from_this());
 
@@ -286,14 +296,9 @@ Node::ChildList& Node::_write_children()
         // the render thread must never modify a Node
         NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id()));
 
-        // if the graph is currently frozen and this is the first modification,
-        // create a copy of the current child list before changing it
-        ChildList* modified_list = m_modified_children.load(std::memory_order_relaxed);
-        if (modified_list == nullptr) {
-            modified_list = new ChildList(m_children);
-            m_modified_children.store(modified_list, std::memory_order_release);
-        }
-        return *modified_list;
+        // if this is the first modification, create a copy of the current child list before changing it
+        if (m_modified_children == nullptr) { m_modified_children = std::make_unique<ChildList>(m_children); }
+        return *m_modified_children.get();
     }
 
     // if the graph is not frozen, modify the child list directly

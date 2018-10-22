@@ -51,9 +51,17 @@ public:
     /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
     const T& get(const std::thread::id thread_id) const
     {
-        if (T* frozen_value = m_modified_value.load(std::memory_order_consume)) {
-            if (!TheGraph::is_frozen_by(thread_id)) { return *frozen_value; }
+        if (TheGraph::is_frozen_by(thread_id)) {
+            return m_value; // the renderer always sees the unmodified value
         }
+
+        // if there exist a modified value, return that one instead
+        if (T* modified_value = m_modified_value.get()) {
+            NOTF_ASSERT(TheGraph::is_frozen());
+            return *modified_value;
+        }
+
+        // either the value has not been modified, or the Graph is not frozen
         return m_value;
     }
 
@@ -61,6 +69,8 @@ public:
     /// @param value    New value.
     void set(const T& value)
     {
+        NOTF_ASSERT(TheGraph::get_graph_mutex().is_locked_by_this_thread());
+
         // do nothing if the property value would not actually change
         if (value == m_value) { return; }
 
@@ -70,19 +80,17 @@ public:
             // the render thread must never modify a Property
             NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id()));
 
-            // if the graph is currently frozen and this is the first modification of this property,
-            // create a new modified value
-            T* modified_value = m_modified_value.load(std::memory_order_relaxed);
-            if (modified_value == nullptr) { m_modified_value.store(new T(m_value), std::memory_order_release); }
+            // if this is the first modification, create a modified copy
+            if (m_modified_value == nullptr) { m_modified_value = std::make_unique<T>(value); }
 
             // if a modified value already exists, update it
             else {
-                *modified_value = value;
+                *m_modified_value.get() = value;
             }
 
             // hash and publish the modified copy just like your regular value
-            if (m_hash != 0) { m_hash = hash(*modified_value); }
-            this->publish(*modified_value);
+            if (m_hash != 0) { m_hash = hash(*m_modified_value.get()); }
+            this->publish(*m_modified_value.get());
         }
 
         // if the graph is not frozen, just update, hash and publish your regular value
@@ -94,12 +102,12 @@ public:
     }
 
     /// Deletes the modified value copy, if one exists.
-    void clear_modified_value() { delete m_modified_value.exchange(nullptr); }
+    void clear_modified_value() { m_modified_value.reset(); }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// Pointer to a frozen copy of the value, if it was modified while the Graph was frozen.
-    std::atomic<T*> m_modified_value{nullptr};
+    std::unique_ptr<T> m_modified_value;
 
     /// Hash of the stored value.
     size_t m_hash;

@@ -253,7 +253,7 @@ protected:
     void _update_node_hash() const;
 
     /// Deletes the modified child list copy, if one exists.
-    void _clear_modified_children() { delete m_modified_children.exchange(nullptr); }
+    void _clear_modified_children() { m_modified_children.reset(); }
 
     /// Reactive function marking this Node as dirty whenever a visible Property changes its value.
     std::shared_ptr<PropertyObserver>& _get_property_observer() { return m_property_observer; }
@@ -283,8 +283,8 @@ private:
     /// All children of this Node, ordered from back to front (later Nodes are drawn on top of earlier ones).
     ChildList m_children;
 
-    /// Pointer to a frozen copy of the list of children, if it was modified while the Graph was frozen.
-    std::atomic<ChildList*> m_modified_children{nullptr};
+    /// Pointer to a modified copy of the list of children, if it was modified while the Graph was frozen.
+    std::unique_ptr<ChildList> m_modified_children;
 
     /// Hash of all Property values of this Node.
     size_t m_property_hash;
@@ -313,7 +313,11 @@ class Accessor<Node, NodeMasterHandle> {
     friend NodeMasterHandle;
 
     /// Lets a NodeMasterHandle remove the managed Node on destruction.
-    static void remove(const NodePtr& node) { node->_get_parent()->_remove_child(node); }
+    static void remove(const NodePtr& node)
+    {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        node->_get_parent()->_remove_child(node);
+    }
 };
 
 NOTF_CLOSE_NAMESPACE

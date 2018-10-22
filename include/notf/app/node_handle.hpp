@@ -116,6 +116,9 @@ public:
     operator NodeHandle() { return NodeHandle(m_node.lock()); }
 
     /// Destructor.
+    /// Note that the destruction of a Node requires the Graph mutex. Normally (if you store the Handle on the parent
+    /// Node or some other Node in the Graph) this does not block, but it might if the mutex is not already held by this
+    /// thread.
     ~NodeMasterHandle();
 };
 
