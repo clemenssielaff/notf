@@ -1,8 +1,5 @@
 #pragma once
 
-#include <map>
-#include <unordered_set>
-
 #include "notf/common/bitset.hpp"
 #include "notf/common/tuple.hpp"
 
@@ -24,6 +21,16 @@ struct has_forbidden_child_types : std::false_type {};
 template<class T>
 struct has_forbidden_child_types<T, std::void_t<typename T::forbidden_child_types>> : std::true_type {};
 
+template<class T, class = void>
+struct has_allowed_parent_types : std::false_type {};
+template<class T>
+struct has_allowed_parent_types<T, std::void_t<typename T::allowed_parent_types>> : std::true_type {};
+
+template<class T, class = void>
+struct has_forbidden_parent_types : std::false_type {};
+template<class T>
+struct has_forbidden_parent_types<T, std::void_t<typename T::forbidden_parent_types>> : std::true_type {};
+
 template<class A, class B>
 constexpr bool can_node_parent()
 {
@@ -31,18 +38,26 @@ constexpr bool can_node_parent()
     if constexpr (std::negation_v<std::conjunction<std::is_base_of<Node, A>, std::is_base_of<Node, B>>>) {
         return false;
     }
-    // if A has a list of explicitly allowed types, B must be in it
-    else if constexpr (has_allowed_child_types<A>::value) { //
-        return is_one_of_tuple_v<B, typename A::allowed_child_types>;
+
+    // if A has a list of explicitly allowed child types, B must be in it
+    if constexpr (has_allowed_child_types<A>::value) {
+        if (!is_derived_from_one_of_tuple_v<B, typename A::allowed_child_types>) { return false; }
     }
-    // ... otherwise, if A has a list of explicitly forbidden types, B must NOT be in it
-    else if constexpr (has_forbidden_child_types<A>::value) { //
-        return !is_one_of_tuple_v<B, typename A::forbidden_child_types>;
+    // ... otherwise, if A has a list of explicitly forbidden child types, B must NOT be in it
+    else if constexpr (has_forbidden_child_types<A>::value) {
+        if (is_derived_from_one_of_tuple_v<B, typename A::forbidden_child_types>) { return false; }
     }
-    // if both are nodes and the parent doesn't object, allow it
-    else {
-        return true;
+
+    // if B has a list of explicitly allowed parent types, A must be in it
+    if constexpr (has_allowed_parent_types<B>::value) {
+        if (!is_derived_from_one_of_tuple_v<A, typename B::allowed_parent_types>) { return false; }
     }
+    // ... otherwise, if B has a list of explicitly forbidden parent types, A must NOT be in it
+    else if constexpr (has_forbidden_parent_types<B>::value) {
+        if (is_derived_from_one_of_tuple_v<A, typename B::forbidden_parent_types>) { return false; }
+    }
+
+    return true;
 }
 
 } // namespace detail
@@ -53,6 +68,7 @@ constexpr bool can_node_parent()
 class Node : public std::enable_shared_from_this<Node> {
 
     friend Accessor<Node, NodeMasterHandle>;
+    friend Accessor<Node, AnyRootNode>;
 
     // type --------------------------------------------------------------------------------------------------------- //
 public:
@@ -73,8 +89,7 @@ private:
     /// Owning list of child Nodes, ordered from back to front.
     using ChildList = std::vector<NodePtr>;
 
-    /// How many Node flags are reserved for internal usage?
-    static constexpr const size_t s_internal_flag_count = 8;
+    // property observer ------------------------------------------------------
 
     /// Internal reactive function that is subscribed to all visible Properties and marks the Node as dirty, should one
     /// of them change.
@@ -97,6 +112,23 @@ private:
         /// Node owning this Subscriber.
         Node& m_node;
     };
+
+    // flags ------------------------------------------------------------------
+
+    /// Total bumber of flags on a Node (as many as fit into a pointer).
+    static constexpr const size_t s_flag_count = bitsizeof<void*>();
+
+    /// Internal Flags.
+    enum class InternalFlags : uchar {
+        FINALIZED,
+        ENABLED,
+        VISIBLE,
+        __LAST,
+    };
+
+    /// Number of flags reserved for internal usage.
+    static constexpr const size_t s_internal_flag_count = to_number(InternalFlags::__LAST);
+    static_assert(s_internal_flag_count <= s_flag_count);
 
     // methods --------------------------------------------------------------------------------- //
 protected:
@@ -220,7 +252,6 @@ public:
     /// Returns the number of user definable flags of a Node on this system.
     static constexpr size_t get_user_flag_count()
     {
-        static_assert(s_internal_flag_count <= bitset_size_v<decltype(Node::m_flags)>);
         return bitset_size_v<decltype(Node::m_flags)> - s_internal_flag_count;
     }
 
@@ -305,7 +336,7 @@ protected:
     std::shared_ptr<PropertyObserver>& _get_property_observer() { return m_property_observer; }
 
     /// Whether or not this Node has been finalized or not.
-    bool _is_finalized() const { return s_unfinalized_nodes.count(this) == 0; }
+    bool _is_finalized() const { return m_flags[to_number(InternalFlags::FINALIZED)]; }
 
 private:
     /// All children of the parent.
@@ -313,7 +344,7 @@ private:
 
     /// Finalizes this Node.
     /// Called on every new Node instance right after the Constructor of the most derived class has finished.
-    void _finalize() const { s_unfinalized_nodes.erase(this); }
+    void _finalize() { m_flags[to_number(InternalFlags::FINALIZED)] = true; }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
@@ -338,18 +369,13 @@ private:
     /// Combines the Property hash with the Node hashes of all children in order.
     size_t m_node_hash = 0;
 
-    /// Additional flags (as many as fit into a pointer).
+    /// Additional flags.
     /// Is more compact than multiple booleans and offers per-node user-definable flags for free.
     /// Contains both internal and user-definable flags.
-    std::bitset<bitsizeof<void*>()> m_flags;
+    std::bitset<s_flag_count> m_flags;
 
     /// Reactive function marking this Node as dirty whenever a visible Property changes its value.
     std::shared_ptr<PropertyObserver> m_property_observer = std::make_shared<PropertyObserver>(*this);
-
-    /// Used to distinguish "finalized" from "unfinalized" RunTime Nodes.
-    /// Only unfinalized Nodes can create properties.
-    /// Also, creating children in an unfinalized node creates no deltas.
-    static thread_local inline std::unordered_set<const Node*> s_unfinalized_nodes;
 };
 
 // node accessors =================================================================================================== //
@@ -364,6 +390,14 @@ class Accessor<Node, NodeMasterHandle> {
         NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
         node->_get_parent()->_remove_child(node);
     }
+};
+
+template<>
+class Accessor<Node, AnyRootNode> {
+    friend AnyRootNode;
+
+    /// Finalizes a given (Root)Node.
+    static void finalize(Node& node) { node._finalize(); }
 };
 
 NOTF_CLOSE_NAMESPACE

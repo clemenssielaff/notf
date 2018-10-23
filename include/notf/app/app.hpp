@@ -37,7 +37,10 @@ template<class>
 class PropertyHandle;
 
 // root_node.hpp
-class RootNode;
+NOTF_DEFINE_SHARED_POINTERS(class, AnyRootNode);
+class RunTimeRootNode;
+template<class>
+class CompileTimeRootNode;
 
 // scene.hpp
 class Scene;

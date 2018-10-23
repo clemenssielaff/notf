@@ -1,35 +1,67 @@
 #pragma once
 
-#include "./window.hpp"
 #include "./node_compiletime.hpp"
+#include "./node_runtime.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-class Scene {};
+// any root node ==================================================================================================== //
 
-struct Pol{
-    using properties = std::tuple<>;
-};
+class AnyRootNode {
 
-class RootNode : public CompileTimeNode<Pol> {
-
+    // types ----------------------------------------------------------------------------------- //
 public:
-    /// Only allow Windows as children of the root.
+    /// Only Windows are allowed as children of the root.
     using allowed_child_types = std::tuple<Window>;
+
+    /// Only the Root Node itself may be its own parent.
+    using allowed_parent_types = std::tuple<AnyRootNode>;
 
     // methods --------------------------------------------------------------------------------- //
 protected:
-public:
-    /// Value constructor.
-    /// @param parent   Parent of this Node.
-    RootNode() : CompileTimeNode<Pol>(this) {}
+    /// Default Constructor.
+    AnyRootNode() = default;
 
-    void make_foo()
+public:
+    /// Virtual Destructor.
+    virtual ~AnyRootNode() = default;
+
+    /// Finalizes this Node.
+    virtual void finalize() = 0;
+
+protected:
+    template<class T>
+    void _finalize_node(T& node)
     {
-        NodeMasterHandle hand = _create_child<Window>(this);
-        Node* nod = const_cast<Node*>(hand.m_id);
-//        _create_child<Window>(nod);
+        Node::AccessFor<AnyRootNode>::finalize(node);
     }
+};
+
+// run time root node =============================================================================================== //
+
+class RunTimeRootNode : public RunTimeNode, public AnyRootNode {
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// Default Constructor.
+    RunTimeRootNode() : RunTimeNode(this), AnyRootNode() {}
+
+    /// Finalizes this Node.
+    void finalize() final { _finalize_node(*this); }
+};
+
+// compile time root node =========================================================================================== //
+
+template<class Policy>
+class CompileTimeRootNode : public CompileTimeNode<Policy>, public AnyRootNode {
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// Default Constructor.
+    CompileTimeRootNode() : CompileTimeNode<Policy>(this), AnyRootNode() {}
+
+    /// Finalizes this Node.
+    void finalize() final { _finalize_node(*this); }
 };
 
 NOTF_CLOSE_NAMESPACE

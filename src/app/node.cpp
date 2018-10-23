@@ -40,9 +40,6 @@ NOTF_OPEN_NAMESPACE
 
 Node::Node(valid_ptr<Node*> parent) : m_parent(raw_pointer(parent))
 {
-    // mark this node as "unfinalized", so it can create Properties if it is a RunTimeNode
-    s_unfinalized_nodes.emplace(this);
-
     // add extra space in the message so the uuid lines up with destructor's message
     NOTF_LOG_TRACE("Creating Node   {}", m_uuid.to_string());
 }
@@ -50,7 +47,6 @@ Node::Node(valid_ptr<Node*> parent) : m_parent(raw_pointer(parent))
 Node::~Node()
 {
     TheGraph::AccessFor<Node>::unregister_node(m_uuid);
-    s_unfinalized_nodes.erase(this); // just in case the constructor failed
 
     _clear_modified_children();
 

@@ -144,6 +144,10 @@ constexpr bool any(Ts... expressions)
 template<class T, class... Ts>
 static constexpr const bool is_one_of_v = std::disjunction<std::is_same<T, Ts>...>::value;
 
+/// Checks if T is derived from any of the variadic types.
+template<class T, class... Ts>
+static constexpr const bool is_derived_from_one_of_v = std::disjunction<std::is_base_of<Ts, T>...>::value;
+
 /// Compile-time check whether two types are both signed / both unsigned.
 template<class T, class U>
 struct is_same_signedness : public std::integral_constant<bool, std::is_signed_v<T> == std::is_signed_v<U>> {};

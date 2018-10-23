@@ -21,6 +21,11 @@ using wrap_tuple_elements_in_shared_ptrs_t = typename wrap_tuple_elements_in_sha
 
 // compile time node ================================================================================================ //
 
+/// Policy to use for Nodes with no Properties.
+struct EmptyNodePolicy {
+    using properties = std::tuple<>;
+};
+
 template<class Policy>
 class CompileTimeNode : public Node {
 
@@ -37,11 +42,12 @@ protected:
     static constexpr const size_t s_property_count = std::tuple_size_v<properties_t>;
 
     // methods --------------------------------------------------------------------------------- //
-public:
+protected:
     /// Value constructor.
     /// @param parent   Parent of this Node.
     CompileTimeNode(valid_ptr<Node*> parent) : Node(parent) { _initialize_properties(); }
 
+public:
     /// Use the base class' `get_property(std::string_view)` method alongside the compile time implementations below.
     using Node::get_property;
 

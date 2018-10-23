@@ -1,7 +1,6 @@
 #pragma once
 
-#include "notf/app/node_compiletime.hpp"
-#include "notf/app/node_runtime.hpp"
+#include "notf/app/root_node.hpp"
 
 NOTF_USING_NAMESPACE;
 
@@ -27,29 +26,46 @@ struct TestNodePolicy {
         CompileTimeProperty<BoolPropertyPolicy>>; //
 };
 
-class CompileTimeTestNode : public CompileTimeNode<TestNodePolicy> {
+class TestRootNode : public RunTimeRootNode {
 public:
-    NOTF_UNUSED CompileTimeTestNode() : CompileTimeNode<TestNodePolicy>(this) {}
+    NOTF_UNUSED TestRootNode() = default;
+
+    template<class T, class... Args>
+    NOTF_UNUSED auto create_child(Args... args)
+    {
+        return _create_child<T>(this, std::forward<Args>(args)...);
+    }
 };
 
-// class LeafNode : public CompileTimeNode<TestNodePolicy> {
-//    NOTF_UNUSED LeafNode() : CompileTimeNode<TestNodePolicy>() {}
-//};
+class LeafNodeRT : public RunTimeNode {
+public:
+    NOTF_UNUSED LeafNodeRT(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
+};
 
-// class SingleChildNode : public CompileTimeNode<TestNodePolicy> {
-//    NOTF_UNUSED SingleChildNode() : CompileTimeNode<TestNodePolicy>() { first_child = _create_child<LeafNode>(); }
-//    NodeHandle first_child;
-//};
+class LeafNodeCT : public CompileTimeNode<TestNodePolicy> {
+public:
+    NOTF_UNUSED LeafNodeCT(valid_ptr<Node*> parent) : CompileTimeNode<TestNodePolicy>(parent) {}
+};
 
-// class TwoChildNode : public CompileTimeNode<TestNodePolicy> {
-//    NOTF_UNUSED TwoChildNode() : CompileTimeNode<TestNodePolicy>()
-//    {
-//        first_child = _create_child<LeafNode>();
-//        second_child = _create_child<LeafNode>();
-//    }
-//    NodeHandle first_child;
-//    NodeHandle second_child;
-//};
+class SingleChildNode : public RunTimeNode {
+public:
+    NOTF_UNUSED SingleChildNode(valid_ptr<Node*> parent) : RunTimeNode(parent)
+    {
+        first_child = _create_child<LeafNodeRT>(this);
+    }
+    NodeMasterHandle first_child;
+};
+
+class TwoChildrenNode : public RunTimeNode {
+public:
+    NOTF_UNUSED TwoChildrenNode(valid_ptr<Node*> parent) : RunTimeNode(parent)
+    {
+        first_child = _create_child<LeafNodeRT>(this);
+        second_child = _create_child<LeafNodeRT>(this);
+    }
+    NodeMasterHandle first_child;
+    NodeMasterHandle second_child;
+};
 
 } // namespace
 
@@ -60,4 +76,10 @@ struct notf::Accessor<Node, Tester> {
     size_t get_property_hash() const { return m_node._calculate_property_hash(); }
 
     Node& m_node;
+};
+
+template<>
+struct notf::Accessor<TheGraph, Tester> {
+    static TheGraph& get() { return TheGraph::_get(); }
+    static size_t get_node_count() { return TheGraph::_get().m_node_registry.get_count(); }
 };

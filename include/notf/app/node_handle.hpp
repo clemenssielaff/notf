@@ -107,10 +107,16 @@ class NodeMasterHandle : public detail::NodeHandleBase {
 public:
     NOTF_NO_COPY_OR_ASSIGN(NodeMasterHandle);
 
+    /// Default (empty) Constructor.
+    NodeMasterHandle() = default;
+
     /// Value Constructor.
     /// @param  node    Node to handle.
     /// @throws ValueError  If the given NodePtr is empty.
     NodeMasterHandle(NodePtr&& node);
+
+    /// Move assignment operator.
+    NodeMasterHandle& operator=(NodeMasterHandle&& other) = default;
 
     /// Implicit cast to a NodeHandle.
     operator NodeHandle() { return NodeHandle(m_node.lock()); }

@@ -104,6 +104,18 @@ struct is_one_of_tuple<T, std::tuple<Ts...>> {
 template<class T, class... Ts>
 static constexpr const bool is_one_of_tuple_v = is_one_of_tuple<T, Ts...>::value;
 
+/// Checks if T is derived from (or the same as) one of the types contained in the given tuple.
+template<class T, class... Ts>
+struct is_derived_from_one_of_tuple {
+    static constexpr const bool value = false;
+};
+template<class T, class... Ts>
+struct is_derived_from_one_of_tuple<T, std::tuple<Ts...>> {
+    static constexpr const bool value = is_derived_from_one_of_v<T, Ts...>;
+};
+template<class T, class... Ts>
+static constexpr const bool is_derived_from_one_of_tuple_v = is_derived_from_one_of_tuple<T, Ts...>::value;
+
 /// Returns the requested type from a Tuple.
 /// Fails if the index is out of bounds and supports negative indices.
 template<long I, class Tuple>
@@ -151,9 +163,7 @@ struct _remove_tuple_types<std::tuple<Ds...>, std::tuple<Result...>, Head, Tail.
     // element-long tuple ... This works as well and consumes almost no memory.
     static auto constexpr _result_type()
     {
-        if constexpr (is_one_of_v<Head, Ds...>) {
-            return std::tuple<Result...>{};
-        }
+        if constexpr (is_one_of_v<Head, Ds...>) { return std::tuple<Result...>{}; }
         else {
             return std::tuple<Result..., Head>{};
         }
@@ -167,9 +177,7 @@ struct _remove_tuple_types<std::tuple<Ds...>, First, Tail...> {
 
     static auto constexpr _result_type()
     {
-        if constexpr (is_one_of_v<First, Ds...>) {
-            return std::tuple<>{};
-        }
+        if constexpr (is_one_of_v<First, Ds...>) { return std::tuple<>{}; }
         else {
             return std::tuple<First>{};
         }

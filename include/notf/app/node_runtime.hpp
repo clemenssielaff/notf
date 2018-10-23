@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include "./node.hpp"
 
 NOTF_OPEN_NAMESPACE

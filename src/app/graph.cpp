@@ -2,11 +2,18 @@
 
 #include "notf/common/mnemonic.hpp"
 
-#include "notf/app/node.hpp"
+#include "notf/app/root_node.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 // the graph - node registry ======================================================================================== //
+
+NodeHandle TheGraph::NodeRegistry::get_node(Uuid uuid) const
+{
+    NOTF_GUARD(std::lock_guard(m_mutex));
+    if (auto iter = m_registry.find(uuid); iter != m_registry.end()) { return iter->second; }
+    return {}; // no node found
+}
 
 void TheGraph::NodeRegistry::add(NodeHandle node)
 {
@@ -29,7 +36,7 @@ void TheGraph::NodeRegistry::remove(Uuid uuid)
 
 // the graph - node name registry =================================================================================== //
 
-std::string_view TheGraph::NodeNameRegistry::get_name(NodeHandle node)
+std::string_view TheGraph::NodeNameRegistry::get_name(NodeHandle node) const
 {
     const Uuid& uuid = node.get_uuid(); // this might throw if the handle is expired, do it before locking the mutex
     {
@@ -96,7 +103,7 @@ std::string_view TheGraph::NodeNameRegistry::set_name(NodeHandle node, const std
     }
 }
 
-NodeHandle TheGraph::NodeNameRegistry::get_node(const std::string& name)
+NodeHandle TheGraph::NodeNameRegistry::get_node(const std::string& name) const
 {
     Uuid uuid;
     {
@@ -119,7 +126,7 @@ NodeHandle TheGraph::NodeNameRegistry::get_node(const std::string& name)
     }
 
     // also remove the node from the NodeRegistry (without holding another mutex to avoid deadlock
-    TheGraph::s_node_registry.remove(uuid);
+    TheGraph()._get().m_node_registry.remove(uuid);
 
     return {};
 }
@@ -140,6 +147,61 @@ void TheGraph::NodeNameRegistry::_remove_name(std::string_view name_view)
     name = name_view;
     auto iter = m_name_to_node.find(name);
     if (iter != m_name_to_node.end()) { m_name_to_node.erase(iter); }
+}
+
+// the graph ======================================================================================================== //
+
+TheGraph::TheGraph()
+{
+    // the default root node has no properties
+    initialize<CompileTimeRootNode<EmptyNodePolicy>>();
+}
+
+TheGraph::~TheGraph()
+{
+    // erase all nodes that you own
+    m_modified_root_node.reset();
+    m_root_node.reset();
+}
+
+NodeHandle TheGraph::get_root_node(const std::thread::id thread_id)
+{
+    TheGraph& graph = _get();
+
+    if (is_frozen_by(thread_id)) {
+        return std::dynamic_pointer_cast<Node>(graph.m_root_node); // the renderer always sees the unmodified root node
+    }
+
+    // if there exist a modified root node, return that one instead
+    if (graph.m_modified_root_node != nullptr) {
+        NOTF_ASSERT(TheGraph::is_frozen());
+        return std::dynamic_pointer_cast<Node>(graph.m_modified_root_node);
+    }
+
+    // either the root node has not been modified, or the Graph is not frozen
+    return std::dynamic_pointer_cast<Node>(graph.m_root_node);
+}
+
+void TheGraph::_initialize_untyped(AnyRootNodePtr&& root_node)
+{
+    NOTF_GUARD(std::lock_guard(m_graph_mutex));
+
+    if (is_frozen()) {
+        NOTF_ASSERT(m_root_node);
+
+        // the render thread must never re-initialize the graph
+        NOTF_ASSERT(!is_frozen_by(std::this_thread::get_id()));
+
+        // either create a new modified root node or replace a previous modification
+        m_modified_root_node = root_node;
+    }
+
+    // if the Graph is not frozen, replace the current root node
+    else {
+        m_root_node = root_node;
+    }
+
+    root_node->finalize();
 }
 
 NOTF_CLOSE_NAMESPACE
