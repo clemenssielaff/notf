@@ -4,29 +4,49 @@
 #include <tuple>
 #include <vector>
 
-#include "notf/app/root_node.hpp"
+#include "notf/common/mutex.hpp"
+#include "notf/meta/config.hpp"
+#include "notf/meta/types.hpp"
 
 NOTF_USING_NAMESPACE;
 
-struct Movable {
-    NOTF_NO_COPY_OR_ASSIGN(Movable);
-    Movable(std::shared_ptr<int> j) : i(j) {}
-    Movable() = default;
-    Movable& operator=(Movable&& other) = default;
+class Appblub {
 
-    std::weak_ptr<int> i;
+    Appblub() = default;
+
+    static Appblub& _get()
+    {
+        static Appblub instance;
+        std::cout << "Fear not, for it is blubbed now" << std::endl;
+        instance.m_is_blubbed = true;
+        return instance;
+    }
+
+public:
+    static Appblub& get()
+    {
+        static Appblub& instance = _get();
+        return instance;
+    }
+
+    void do_the_blub()
+    {
+        if (m_is_blubbed) { std::cout << "The Blub!" << std::endl; }
+        else {
+            std::cout << "alas, it was not the blub" << std::endl;
+        }
+    }
+
+private:
+    bool m_is_blubbed = false;
+    Mutex m_mutex;
 };
 
 int main()
 {
-    std::shared_ptr<int> shr = std::make_shared<int>(45);
-    auto m = Movable(shr);
-
-    std::cout << (m.i.expired()) << std::endl;
-
-    Movable j;
-    j = std::move(m);
-    std::cout << (m.i.expired()) << std::endl;
-
+    Appblub::get().do_the_blub();
+    Appblub::get().do_the_blub();
+    Appblub::get().do_the_blub();
+    Appblub::get().do_the_blub();
     return 0;
 }

@@ -29,12 +29,12 @@ struct TestNodePolicy {
 class TestRootNode : public RunTimeRootNode {
     using allowed_child_types = std::tuple<>; // hide `allowed_child_types` definition
 public:
-
     NOTF_UNUSED TestRootNode() = default;
 
     template<class T, class... Args>
     NOTF_UNUSED auto create_child(Args... args)
     {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
         return _create_child<T>(this, std::forward<Args>(args)...);
     }
 };
@@ -53,6 +53,7 @@ class SingleChildNode : public RunTimeNode {
 public:
     NOTF_UNUSED SingleChildNode(valid_ptr<Node*> parent) : RunTimeNode(parent)
     {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
         first_child = _create_child<LeafNodeRT>(this);
     }
     NodeMasterHandle first_child;
@@ -62,6 +63,7 @@ class TwoChildrenNode : public RunTimeNode {
 public:
     NOTF_UNUSED TwoChildrenNode(valid_ptr<Node*> parent) : RunTimeNode(parent)
     {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
         first_child = _create_child<LeafNodeRT>(this);
         second_child = _create_child<LeafNodeRT>(this);
     }
@@ -76,9 +78,7 @@ public:
 template<>
 struct notf::Accessor<Node, Tester> {
     Accessor(Node& node) : m_node(node) {}
-
     size_t get_property_hash() const { return m_node._calculate_property_hash(); }
-
     Node& m_node;
 };
 

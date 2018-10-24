@@ -38,11 +38,7 @@ SCENARIO("graph", "[app][graph]")
         REQUIRE(test_root_node);
 
         test_root_node->create_child<TwoChildrenNode>();
-
-        //        REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 0);
-
-        //        root_node.create_child<TwoChildrenNode>();
-        //        REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 4);
+        REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 4);
     }
 
     SECTION("Nodes in the Graph can be requested by their name") {}

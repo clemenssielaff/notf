@@ -42,14 +42,11 @@ NOTF_OPEN_NAMESPACE
 
 Node::Node(valid_ptr<Node*> parent) : m_parent(raw_pointer(parent))
 {
-    NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
     NOTF_LOG_TRACE("Creating Node {}", m_uuid.to_string());
 }
 
 Node::~Node()
 {
-    NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
-
     // first, delete all children while their parent pointer is still valid
     m_children.clear();
     m_modified_data.reset();
@@ -317,7 +314,7 @@ Node::ChildList& Node::_write_children()
     NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
 
     // changes in the child list make this node dirty
-    TheGraph::AccessFor<Node>::mark_dirty(shared_from_this());
+    _mark_as_dirty();
 
     if (TheGraph::is_frozen()) {
         NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id())); // the render thread must never modify a Node
@@ -360,7 +357,7 @@ void Node::_set_flag(const size_t index, const bool value)
     NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
 
     // flag changes make this node dirty
-    TheGraph::AccessFor<Node>::mark_dirty(shared_from_this());
+    _mark_as_dirty();
 
     if (TheGraph::is_frozen()) {
         NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id())); // the render thread must never modify a Node
@@ -377,6 +374,11 @@ Node::Data& Node::_ensure_modified_data()
 
     if (m_modified_data == nullptr) { m_modified_data = std::make_unique<Data>(m_parent, m_children, m_flags); }
     return *m_modified_data;
+}
+
+void Node::_mark_as_dirty()
+{
+    if (_is_finalized()) { TheGraph::AccessFor<Node>::mark_dirty(shared_from_this()); }
 }
 
 NOTF_CLOSE_NAMESPACE

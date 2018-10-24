@@ -182,4 +182,16 @@ void TheGraph::_initialize_untyped(AnyRootNodePtr&& root_node)
     root_node->finalize();
 }
 
+bool TheGraph::_freeze(const std::thread::id thread_id)
+{
+    if (_is_frozen() || thread_id == std::thread::id()) { return false; }
+    m_freezing_thread = std::move(thread_id);
+    return true;
+}
+
+void TheGraph::_unfreeze(const std::thread::id thread_id)
+{
+    if (_is_frozen_by(thread_id)) { m_freezing_thread = std::thread::id(); }
+}
+
 NOTF_CLOSE_NAMESPACE

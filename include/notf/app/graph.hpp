@@ -32,6 +32,42 @@ public:
     /// Nested `AccessFor<T>` type.
     NOTF_ACCESS_TYPE(TheGraph);
 
+    /// RAII object to make sure that a frozen scene is ALWAYS unfrozen again
+    class NOTF_NODISCARD FreezeGuard {
+        friend TheGraph;
+
+        // methods --------------------------------------------------------- //
+    private:
+        /// Constructor.
+        /// @param thread_id    ID of the freezing thread (exposed for testability).
+        FreezeGuard(std::thread::id thread_id = std::this_thread::get_id()) : m_thread_id(std::move(thread_id))
+        {
+            if (!TheGraph::_get()._freeze(m_thread_id)) { m_thread_id = std::thread::id(); }
+        }
+
+    public:
+        NOTF_NO_COPY_OR_ASSIGN(FreezeGuard);
+        NOTF_NO_HEAP_ALLOCATION(FreezeGuard);
+
+        /// Move constructor.
+        /// @param other    FreezeGuard to move from.
+        FreezeGuard(FreezeGuard&& other) : m_thread_id(other.m_thread_id) { other.m_thread_id = std::thread::id{}; }
+
+        /// Destructor.
+        ~FreezeGuard()
+        {
+            if (is_valid()) { TheGraph::_get()._unfreeze(m_thread_id); }
+        }
+
+        /// Tests if this FreezeGuard will unfreeze the Graph again, when it goes out of scope.
+        bool is_valid() const { return m_thread_id != std::thread::id{}; }
+
+        // fields ---------------------------------------------------------- //
+    private:
+        /// Id of the freezing thread, if freezing succeeded
+        std::thread::id m_thread_id;
+    };
+
 private:
     /// Node registry Uuid -> NodeHandle.
     struct NodeRegistry {
@@ -122,6 +158,8 @@ public:
     /// Destructor.
     ~TheGraph();
 
+    // nodes ------------------------------------------------------------------
+
     /// (Re-)Initializes the Graph with a new Root Node.
     /// All existing Nodes in the Graph are removed.
     /// Blocks if a frame is currently being rendered.
@@ -144,6 +182,12 @@ public:
     /// @returns    The requested Handle, is invalid if the uuid did not identify a Node.
     static NodeHandle get_node(Uuid uuid) { return TheGraph::_get().m_node_registry.get_node(uuid); }
 
+    // freezing ---------------------------------------------------------------
+
+    /// Freeze the Scene, if it is currently unfrozen.
+    /// @returns    FreezeGuard that keeps the scene frozen while it is alive, is invalid if freezing did not succeed.
+    static FreezeGuard freeze() { return TheGraph::_get()._freeze_guard(); }
+
     /// Tests whether the Graph singleton is currently frozen.
     static bool is_frozen() noexcept { return TheGraph::_get()._is_frozen(); }
 
@@ -152,6 +196,8 @@ public:
     {
         return TheGraph::_get()._is_frozen_by(thread_id);
     }
+
+    // global mutexes ---------------------------------------------------------
 
     /// Mutex used to protect the Graph.
     static RecursiveMutex& get_graph_mutex() { return TheGraph::_get().m_mutex; }
@@ -181,6 +227,23 @@ private:
 
     /// Continues initialization of the Graph with an unfinalized Root Node.
     void _initialize_untyped(AnyRootNodePtr&& root_node);
+
+    /// Freeze the Scene, if it is currently unfrozen.
+    /// @param thread_id    Id of the freezing thread (should only be used in tests).
+    /// @returns    FreezeGuard that keeps the scene frozen while it is alive, is invalid if freezing did not succeed.
+    FreezeGuard _freeze_guard(const std::thread::id thread_id = std::this_thread::get_id())
+    {
+        return FreezeGuard(std::move(thread_id));
+    }
+
+    /// Freezes the Scene if it is not already frozen.
+    /// @param thread_id    Id of the calling thread.
+    /// @returns            True iff the Scene was frozen.
+    bool _freeze(std::thread::id thread_id);
+
+    /// Unfreezes the Scene again.
+    /// @param thread_id    Id of the calling thread (to ensure that the same thread freezes and unfreezes).
+    void _unfreeze(std::thread::id thread_id);
 
     /// Tests whether this Graph is currently frozen.
     bool _is_frozen() const noexcept { return m_freezing_thread != std::thread::id(); }

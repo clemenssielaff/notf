@@ -374,7 +374,8 @@ private:
 
     /// Finalizes this Node.
     /// Called on every new Node instance right after the Constructor of the most derived class has finished.
-    void _finalize() { _set_flag(to_number(InternalFlags::FINALIZED)); }
+    /// Therefore, we do no have to ensure that the Graph is frozen etc.
+    void _finalize() { m_flags[to_number(InternalFlags::FINALIZED)] = true; }
 
     /// Tests a flag on this Node.
     /// @param index            Index of the user flag.
@@ -389,6 +390,9 @@ private:
 
     /// Creates (if necessary) and returns the modified Data for this Node.
     Data& _ensure_modified_data();
+
+    /// Marks this Node as dirty if it is finalized.
+    void _mark_as_dirty();
 
     // fields ---------------------------------------------------------------------------------- //
 private:
@@ -429,8 +433,22 @@ class Accessor<Node, NodeMasterHandle> {
     /// Lets a NodeMasterHandle remove the managed Node on destruction.
     static void remove(const NodePtr& node)
     {
+        NodePtr parent;
         NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
-        node->_get_parent()->_remove_child(node);
+        try {
+            parent = node->_get_parent()->shared_from_this();
+        }
+        catch (const std::bad_weak_ptr&) {
+            // Often, a NodeMasterHandle is stored on the parent Node itself.
+            // In that case, it will be destroyed right after the parent's Node class destructor has finished, and
+            // just before the next subclass' destructor begins. At that point, the `shared_ptr` wrapping the deepest
+            // nested subclass, will have already been destroyed and all calls to `shared_from_this` or other
+            // `shared_ptr` functions will throw.
+            // Luckily, we can simply ignore this, because a parent about to be destroyed does not need the
+            // NodeMasterHandle to tell it to remove its child.
+            return;
+        }
+        parent->_remove_child(node);
     }
 };
 

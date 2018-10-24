@@ -80,7 +80,7 @@ protected:
 // node handle ====================================================================================================== //
 
 /// Regular Node Handle.
-class NodeHandle : public detail::NodeHandleBase {
+class NodeHandle final : public detail::NodeHandleBase {
 
     friend struct ::std::hash<NodeHandle>;
     friend class ::notf::Node;
@@ -104,7 +104,7 @@ public:
 
 /// Special NodeHandle type that is unique per Node instance and removes the Node when itself goes out of scope.
 /// If the Node has already been removed by then, the destructor does nothing.
-class NodeMasterHandle : public detail::NodeHandleBase {
+class NodeMasterHandle final : public detail::NodeHandleBase {
 
     friend struct ::std::hash<NodeMasterHandle>;
 
@@ -116,7 +116,7 @@ public:
     NodeMasterHandle() = default;
 
     /// Value Constructor.
-    /// @param  node    Node to handle.
+    /// @param node     Node to handle.
     /// @throws ValueError  If the given NodePtr is empty.
     NodeMasterHandle(NodePtr&& node);
 
@@ -147,7 +147,7 @@ public:
     NOTF_NO_COPY_OR_ASSIGN(NodeMasterHandleCastable);
 
     /// Constructor.
-    /// @param node The newly created Node.
+    /// @param node     The newly created Node.
     NodeMasterHandleCastable(NodePtr&& node) : m_node(std::move(node)) {}
 
     /// Implicit cast to a NodeMasterHandle.
