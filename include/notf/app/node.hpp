@@ -32,7 +32,7 @@ template<class T>
 struct has_forbidden_parent_types<T, std::void_t<typename T::forbidden_parent_types>> : std::true_type {};
 
 template<class A, class B>
-constexpr bool can_node_parent()
+constexpr bool can_node_parent() noexcept
 {
     // both A and B must be derived from Node
     if constexpr (std::negation_v<std::conjunction<std::is_base_of<Node, A>, std::is_base_of<Node, B>>>) {
@@ -65,12 +65,15 @@ constexpr bool can_node_parent()
 // node ============================================================================================================= //
 
 /// Base class for both RunTimeNode and CompileTimeNode.
+/// The Node interface is used internally only, meaning only through Node subclasses or by other notf objects.
+/// All user-access should occur through NodeHandle instances. This way, we can rely on certain preconditions to be met
+/// for the user of this interface; first and foremost whether the Graph mutex is locked when a method is called.
 class Node : public std::enable_shared_from_this<Node> {
 
     friend Accessor<Node, NodeMasterHandle>;
     friend Accessor<Node, AnyRootNode>;
 
-    // type --------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Nested `AccessFor<T>` type.
     NOTF_ACCESS_TYPE(Node);
@@ -80,6 +83,9 @@ public:
 
     /// Exception thrown when you try to do something that is only allowed to do if the node hasn't been finalized yet.
     NOTF_EXCEPTION_TYPE(FinalizedError);
+
+    /// If two Nodes have no common ancestor.
+    NOTF_EXCEPTION_TYPE(HierarchyError);
 
 private:
     /// Wrapper around a newly created Node.
@@ -112,11 +118,12 @@ private:
         /// Node owning this Subscriber.
         Node& m_node;
     };
+    using PropertyObserverPtr = std::shared_ptr<PropertyObserver>;
 
     // flags ------------------------------------------------------------------
 
     /// Total bumber of flags on a Node (as many as fit into a pointer).
-    static constexpr const size_t s_flag_count = bitsizeof<void*>();
+    using Flags = std::bitset<bitsizeof<void*>()>;
 
     /// Internal Flags.
     enum class InternalFlags : uchar {
@@ -125,10 +132,35 @@ private:
         VISIBLE,
         __LAST,
     };
+    static_assert(to_number(InternalFlags::__LAST) <= bitset_size_v<Flags>);
 
     /// Number of flags reserved for internal usage.
     static constexpr const size_t s_internal_flag_count = to_number(InternalFlags::__LAST);
-    static_assert(s_internal_flag_count <= s_flag_count);
+
+    // data -------------------------------------------------------------------
+
+    /// If a Node is modified while the Graph is frozen, all modifications will occur on a copy of the Node's Data, so
+    /// the render thread will still see everything as it was when the Graph was frozen.
+    /// Since it will be a lot more common for a single Node to be modified many times than it is for many Nodes to be
+    /// modified a single time, it is advantageous to have a single unused pointer in many Nodes and a few unneccessary
+    /// data copies on some, than it is to have many unused pointers on most Nodes.
+    struct Data {
+        /// Value Constructor.
+        /// Initializes all data, so we can be sure that all of it is valid if a modified data copy exists.
+        Data(valid_ptr<Node*> parent, const ChildList& children, Flags flags)
+            : parent(parent), children(std::make_unique<ChildList>(children)), flags(std::move(flags))
+        {}
+
+        /// Modified parent of this Node, if it was moved.
+        valid_ptr<Node*> parent;
+
+        /// Modified children of this Node, should they have been modified.
+        valid_ptr<std::unique_ptr<ChildList>> children;
+
+        /// Modified flags of this Node.
+        Flags flags;
+    };
+    using DataPtr = std::unique_ptr<Data>;
 
     // methods --------------------------------------------------------------------------------- //
 protected:
@@ -143,23 +175,26 @@ public:
     virtual ~Node();
 
     /// Uuid of this Node.
-    const Uuid& get_uuid() const { return m_uuid; }
+    Uuid get_uuid() const noexcept { return m_uuid; }
 
-    /// The Node-unique name of this Node.
-    /// If this Node does not have a user-defined name, a random one is generated for it.
-    std::string_view get_name() const;
+    /// The Graph-unique name of this Node.
+    /// @returns    Name of this Node. Is an l-value because the name of the Node may change.
+    std::string get_name() const;
+
+    /// A 4-syllable mnemonic name, based on this Node's Uuid.
+    /// Is not guaranteed to be unique, but collisions are unlikely with 100^4 possibilities.
+    std::string get_default_name() const;
 
     /// (Re-)Names the Node.
     /// If another Node with the same name already exists in the Graph, this method will append the lowest integer
     /// postfix that makes the name unique.
     /// @param name     Proposed name of the Node.
-    /// @returns        New name of the Node.
-    std::string_view set_name(const std::string& name);
+    void set_name(const std::string& name);
 
     /// Run time access to a Property of this Node.
     /// @param name     Node-unique name of the Property.
     /// @returns        Handle to the requested Property.
-    /// @throws NoSuchPropertyError
+    /// @throws         NoSuchPropertyError
     template<class T>
     PropertyHandle<T> get_property(const std::string& name) const
     {
@@ -180,17 +215,18 @@ public:
     // hierarchy --------------------------------------------------------------
 
     /// The parent of this Node.
-    NodeHandle get_parent() const;
+    NodeHandle get_parent();
 
     /// Tests, if this Node is a descendant of the given ancestor.
     /// @param ancestor         Potential ancestor to verify.
-    bool has_ancestor(NodeHandle ancestor) const;
+    bool has_ancestor(const NodeHandle& ancestor) const;
 
     /// Finds and returns the first common ancestor of two Nodes.
     /// At the latest, the RootNode is always a common ancestor.
     /// If the handle passed in is expired, the returned handle will also be expired.
-    /// @param other    Other Node to find the common ancestor for.
-    NodeHandle get_common_ancestor(NodeHandle other) const;
+    /// @param other            Other Node to find the common ancestor for.
+    /// @throws HierarchyError  If there is no common ancestor.
+    NodeHandle get_common_ancestor(const NodeHandle& other);
 
     /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
     /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
@@ -211,7 +247,7 @@ public:
     /// @param index    Index of the Node.
     /// @returns        The requested child Node.
     /// @throws OutOfBounds    If the index is out-of-bounds or the child Node is of the wrong type.
-    NodeHandle get_child(size_t index) const;
+    NodeHandle get_child(size_t index);
 
     // z-order ----------------------------------------------------------------
 
@@ -250,16 +286,13 @@ public:
     // flags ------------------------------------------------------------------
 
     /// Returns the number of user definable flags of a Node on this system.
-    static constexpr size_t get_user_flag_count()
-    {
-        return bitset_size_v<decltype(Node::m_flags)> - s_internal_flag_count;
-    }
+    static constexpr size_t get_user_flag_count() { return bitset_size_v<Flags> - s_internal_flag_count; }
 
     /// Tests a user defineable flag on this Node.
     /// @param index            Index of the user flag.
     /// @returns                True iff the flag is set.
     /// @throws OutOfBounds   If index >= user flag count.
-    bool is_user_flag_set(size_t index);
+    bool is_user_flag_set(size_t index) const;
 
     /// Sets or unsets a user flag.
     /// @param index            Index of the user flag.
@@ -295,56 +328,67 @@ protected:
         return child;
     }
 
-    /// @{
     /// Removes a child from this node.
     /// @param handle   Handle of the node to remove.
-    void _remove_child(NodePtr child);
-    void _remove_child(NodeHandle child) { _remove_child(child.m_node.lock()); }
-    /// @}
-
-    /// Finds and returns the first common ancestor of two Nodes.
-    /// At the latest, the RootNode is always a common ancestor.
-    /// @param other    Other Node to find the common ancestor for.
-    const Node* _get_common_ancestor(const Node* other) const;
-
-    /// Direct access to the parent of this Node.
-    Node* _get_parent() const;
+    void _remove_child(NodeHandle child_handle);
 
     /// @{
-    /// Changes the parent of this Node by first adding it to the new parent and then removing it from its old one.
-    /// @param new_parent   New parent of this Node. If it is the same as the old, this method does nothing.
-    void _set_parent(NodePtr new_parent);
-    void _set_parent(NodeHandle new_parent) { _set_parent(new_parent.m_node.lock()); }
+    /// Access to the parent of this Node.
+    /// Never creates a modified copy.
+    /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
+    const Node* _get_parent(std::thread::id thread_id = std::this_thread::get_id()) const;
+    Node* _get_parent(const std::thread::id thread_id = std::this_thread::get_id())
+    {
+        return const_cast<Node*>(const_cast<const Node*>(this)->_get_parent(thread_id));
+    }
     /// @}
 
-    /// All children of this node, orded from back to front.
-    /// Never modifies the cache.
-    /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
-    const ChildList& _read_children(std::thread::id thread_id = std::this_thread::get_id()) const;
-
-    /// All children of this node, orded from back to front.
-    /// Will copy the current list of children into the cache, if the cache is empty and the scene is frozen.
-    ChildList& _write_children();
-
-    /// Updates the Node hash
-    void _update_node_hash() const;
-
-    /// Deletes the modified child list copy, if one exists.
-    void _clear_modified_children() { m_modified_children.reset(); }
+    /// Changes the parent of this Node by first adding it to the new parent and then removing it from its old one.
+    /// @param new_parent_handle    New parent of this Node. If it is the same as the old, this method does nothing.
+    void _set_parent(NodeHandle new_parent_handle);
 
     /// Reactive function marking this Node as dirty whenever a visible Property changes its value.
     std::shared_ptr<PropertyObserver>& _get_property_observer() { return m_property_observer; }
 
     /// Whether or not this Node has been finalized or not.
-    bool _is_finalized() const { return m_flags[to_number(InternalFlags::FINALIZED)]; }
+    bool _is_finalized() const { return _is_flag_set(to_number(InternalFlags::FINALIZED)); }
 
 private:
+    /// Finds and returns the first common ancestor of two Nodes.
+    /// At the latest, the RootNode is always a common ancestor.
+    /// @param other            Other Node to find the common ancestor for.
+    /// @throws HierarchyError  If there is no common ancestor.
+    const Node* _get_common_ancestor(const Node* other) const;
+
+    /// All children of this node, orded from back to front.
+    /// Never creates a modified copy.
+    /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
+    const ChildList& _read_children(std::thread::id thread_id = std::this_thread::get_id()) const;
+
+    /// All children of this node, orded from back to front.
+    /// Will create a modified copy the current list of children if there is no copy yet and the Graph is frozen.
+    ChildList& _write_children();
+
     /// All children of the parent.
     const ChildList& _read_siblings() const;
 
     /// Finalizes this Node.
     /// Called on every new Node instance right after the Constructor of the most derived class has finished.
-    void _finalize() { m_flags[to_number(InternalFlags::FINALIZED)] = true; }
+    void _finalize() { _set_flag(to_number(InternalFlags::FINALIZED)); }
+
+    /// Tests a flag on this Node.
+    /// @param index            Index of the user flag.
+    /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
+    /// @returns                True iff the flag is set.
+    bool _is_flag_set(size_t index, std::thread::id thread_id = std::this_thread::get_id()) const;
+
+    /// Sets or unsets a flag on this Node.
+    /// @param index            Index of the user flag.
+    /// @param value            Whether to set or to unser the flag.
+    void _set_flag(size_t index, bool value = true);
+
+    /// Creates (if necessary) and returns the modified Data for this Node.
+    Data& _ensure_modified_data();
 
     // fields ---------------------------------------------------------------------------------- //
 private:
@@ -354,14 +398,17 @@ private:
     /// Parent of this Node.
     Node* m_parent;
 
-    /// Name of this Node. Is empty until requested for the first time or set using `set_name`.
-    mutable std::string_view m_name;
-
     /// All children of this Node, ordered from back to front (later Nodes are drawn on top of earlier ones).
     ChildList m_children;
 
-    /// Pointer to a modified copy of the list of children, if it was modified while the Graph was frozen.
-    std::unique_ptr<ChildList> m_modified_children;
+    /// Name of this Node. Is empty until requested for the first time or set using `set_name`.
+    std::string_view m_name;
+
+    /// Additional flags, contains both internal and user-definable flags.
+    Flags m_flags;
+
+    /// Pointer to modified Data, should this Node have been modified while the Graph has been frozen.
+    DataPtr m_modified_data;
 
     /// Hash of all Property values of this Node.
     size_t m_property_hash;
@@ -369,13 +416,8 @@ private:
     /// Combines the Property hash with the Node hashes of all children in order.
     size_t m_node_hash = 0;
 
-    /// Additional flags.
-    /// Is more compact than multiple booleans and offers per-node user-definable flags for free.
-    /// Contains both internal and user-definable flags.
-    std::bitset<s_flag_count> m_flags;
-
     /// Reactive function marking this Node as dirty whenever a visible Property changes its value.
-    std::shared_ptr<PropertyObserver> m_property_observer = std::make_shared<PropertyObserver>(*this);
+    PropertyObserverPtr m_property_observer = std::make_shared<PropertyObserver>(*this);
 };
 
 // node accessors =================================================================================================== //

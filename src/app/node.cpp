@@ -1,13 +1,15 @@
 #include "notf/app/node.hpp"
 
-#include "notf/common/vector.hpp"
 #include "notf/meta/log.hpp"
+
+#include "notf/common/mnemonic.hpp"
+#include "notf/common/vector.hpp"
 
 namespace {
 NOTF_USING_NAMESPACE;
 
-std::pair<size_t, size_t>
-get_this_and_sibling_index(const std::vector<NodePtr>& siblings, const Node* caller, const NodeConstPtr& sibling_ptr)
+std::pair<size_t, size_t> get_this_and_sibling_index(const std::vector<NodePtr>& siblings, const Node* const caller,
+                                                     const NodeConstPtr& sibling_ptr)
 {
     size_t my_index, sibling_index;
     {
@@ -40,34 +42,52 @@ NOTF_OPEN_NAMESPACE
 
 Node::Node(valid_ptr<Node*> parent) : m_parent(raw_pointer(parent))
 {
-    // add extra space in the message so the uuid lines up with destructor's message
-    NOTF_LOG_TRACE("Creating Node   {}", m_uuid.to_string());
+    NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
+    NOTF_LOG_TRACE("Creating Node {}", m_uuid.to_string());
 }
 
 Node::~Node()
 {
+    NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
+
+    // first, delete all children while their parent pointer is still valid
+    m_children.clear();
+    m_modified_data.reset();
+
     TheGraph::AccessFor<Node>::unregister_node(m_uuid);
 
-    _clear_modified_children();
-
 #ifdef NOTF_DEBUG
-    // make sure that the property observer is deleted with this node, so we don't leave a dangling reference to it
+    // make sure that the property observer is deleted with this node, because it has a raw reference to the node
     std::weak_ptr<PropertyObserver> weak_observer = m_property_observer;
     NOTF_ASSERT(weak_observer.lock() != nullptr);
     m_property_observer.reset();
     NOTF_ASSERT(weak_observer.expired());
 #endif
 
-    NOTF_LOG_TRACE("Destroying Node {}", m_uuid.to_string());
+    NOTF_LOG_TRACE("Removing Node {}", m_uuid.to_string());
 }
 
-NodeHandle Node::get_parent() const { return _get_parent()->shared_from_this(); }
+std::string Node::get_name() const
+{
+    NOTF_GUARD(std::lock_guard(TheGraph::get_name_mutex())); // lock the Node Name Registry, so the name cannot change
+    return std::string(m_name);
+}
 
-bool Node::has_ancestor(NodeHandle ancestor) const
+std::string Node::get_default_name() const { return number_to_mnemonic(hash(get_uuid()), /*max_syllables=*/4); }
+
+void Node::set_name(const std::string& name)
+{
+    NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
+    m_name = TheGraph::AccessFor<Node>::set_name(shared_from_this(), name);
+}
+
+NodeHandle Node::get_parent() { return _get_parent()->shared_from_this(); }
+
+bool Node::has_ancestor(const NodeHandle& ancestor) const
 {
     const NodeConstPtr ancestor_lock = ancestor.m_node.lock();
     if (ancestor_lock == nullptr) { return false; }
-    const Node* ancestor_ptr = ancestor_lock.get();
+    const Node* const ancestor_ptr = ancestor_lock.get();
 
     for (const Node* next = _get_parent(); next != next->_get_parent(); next = next->_get_parent()) {
         if (next == ancestor_ptr) { return true; }
@@ -75,26 +95,14 @@ bool Node::has_ancestor(NodeHandle ancestor) const
     return false;
 }
 
-NodeHandle Node::get_common_ancestor(NodeHandle other) const
+NodeHandle Node::get_common_ancestor(const NodeHandle& other)
 {
     const NodeConstPtr other_lock = other.m_node.lock();
     if (other_lock == nullptr) { return {}; }
     return const_cast<Node*>(_get_common_ancestor(other_lock.get()))->shared_from_this();
 }
 
-std::string_view Node::get_name() const
-{
-    if (m_name.empty()) { m_name = TheGraph::AccessFor<Node>::get_name(const_cast<Node*>(this)->shared_from_this()); }
-    return m_name;
-}
-
-std::string_view Node::set_name(const std::string& name)
-{
-    m_name = TheGraph::AccessFor<Node>::set_name(shared_from_this(), name);
-    return m_name;
-}
-
-NodeHandle Node::get_child(size_t index) const
+NodeHandle Node::get_child(size_t index)
 {
     const ChildList& children = _read_children();
     if (index >= children.size()) {
@@ -159,7 +167,7 @@ void Node::stack_back()
 void Node::stack_before(const NodeHandle& sibling)
 {
     const NodeConstPtr sibling_ptr = sibling.m_node.lock();
-    if ((sibling_ptr == nullptr) || (sibling_ptr->_get_parent() != _get_parent()) || (sibling_ptr.get() == this)) {
+    if ((sibling_ptr == nullptr) || (sibling_ptr.get() == this) || sibling_ptr->_get_parent() != _get_parent()) {
         return;
     }
     ChildList& siblings = _get_parent()->_write_children();
@@ -170,7 +178,7 @@ void Node::stack_before(const NodeHandle& sibling)
 void Node::stack_behind(const NodeHandle& sibling)
 {
     const NodeConstPtr sibling_ptr = sibling.m_node.lock();
-    if ((sibling_ptr == nullptr) || (sibling_ptr->_get_parent() != _get_parent()) || (sibling_ptr.get() == this)) {
+    if ((sibling_ptr == nullptr) || (sibling_ptr.get() == this) || sibling_ptr->_get_parent() != _get_parent()) {
         return;
     }
     ChildList& siblings = _get_parent()->_write_children();
@@ -178,34 +186,29 @@ void Node::stack_behind(const NodeHandle& sibling)
     move_in_front_of(siblings, my_index, sibling_index);
 }
 
-bool Node::is_user_flag_set(const size_t index)
+bool Node::is_user_flag_set(const size_t index) const
 {
     if (index >= get_user_flag_count()) {
-        NOTF_THROW(
-            OutOfBounds,
-            "Cannot test user flag #{} of Node {}, because Nodes on this system only have {} user-defineable flags",
-            index, get_name(), get_user_flag_count());
+        NOTF_THROW(OutOfBounds,
+                   "Cannot test user flag #{} of Node {}, because Nodes only have {} user-defineable flags", index,
+                   get_name(), get_user_flag_count());
     }
-    const size_t actual_index = index + s_internal_flag_count;
-    NOTF_ASSERT(actual_index < m_flags.size());
-    return m_flags.test(actual_index);
+    return _is_flag_set(index + s_internal_flag_count);
 }
 
 void Node::set_user_flag(const size_t index, const bool value)
 {
     if (index >= get_user_flag_count()) {
-        NOTF_THROW(
-            OutOfBounds,
-            "Cannot test user flag #{} of Node {}, because Nodes on this system only have {} user-defineable flags",
-            index, get_name(), get_user_flag_count());
+        NOTF_THROW(OutOfBounds,
+                   "Cannot test user flag #{} of Node {}, because Nodes only have {} user-defineable flags", index,
+                   get_name(), get_user_flag_count());
     }
-    const size_t actual_index = index + s_internal_flag_count;
-    NOTF_ASSERT(actual_index < m_flags.size());
-    m_flags.set(actual_index, value);
+    _set_flag(index + s_internal_flag_count, value);
 }
 
-void Node::_remove_child(NodePtr child)
+void Node::_remove_child(NodeHandle child_handle)
 {
+    NodePtr child = child_handle.m_node.lock();
     if (child == nullptr) { return; }
 
     // do not create a modified copy for finding the child
@@ -220,41 +223,29 @@ void Node::_remove_child(NodePtr child)
     children.erase(iterator_at(children, child_index));
 }
 
-const Node* Node::_get_common_ancestor(const Node* other) const
-{
-    if (other == this) { return this; }
-
-    const Node* first = this;
-    const Node* second = other;
-    const Node* result = nullptr;
-    std::unordered_set<const Node*, pointer_hash<const Node*>> known_ancestors = {first, second};
-    while (true) {
-        first = first->_get_parent();
-        if (known_ancestors.count(first) != 0) {
-            result = first;
-            break;
-        }
-        known_ancestors.insert(first);
-
-        second = second->_get_parent();
-        if (known_ancestors.count(second) != 0) {
-            result = second;
-            break;
-        }
-        known_ancestors.insert(second);
-    }
-    NOTF_ASSERT(result);
-    return result;
-}
-
-Node* Node::_get_parent() const
+const Node* Node::_get_parent(const std::thread::id thread_id) const
 {
     NOTF_ASSERT(m_parent);
+
+    if (TheGraph::is_frozen_by(thread_id)) {
+        return m_parent; // the renderer always sees the unmodified parent
+    }
+    NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
+
+    // if there exist a modified parent, return that one instead
+    if (m_modified_data) {
+        NOTF_ASSERT(TheGraph::is_frozen());
+        NOTF_ASSERT(m_modified_data->parent);
+        return m_modified_data->parent;
+    }
+
+    // either the parent has not been modified, or the Graph is not frozen
     return m_parent;
 }
 
-void Node::_set_parent(NodePtr new_parent)
+void Node::_set_parent(NodeHandle new_parent_handle)
 {
+    NodePtr new_parent = new_parent_handle.m_node.lock();
     if (new_parent == nullptr) { return; }
 
     Node* const old_parent = _get_parent();
@@ -263,6 +254,45 @@ void Node::_set_parent(NodePtr new_parent)
     auto& new_siblings = new_parent->_write_children();
     new_siblings.emplace_back(shared_from_this());
     old_parent->_remove_child(shared_from_this());
+
+    if (TheGraph::is_frozen()) {
+        NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id())); // the render thread must never modify a Node
+        _ensure_modified_data().parent = new_parent.get();
+    }
+}
+
+const Node* Node::_get_common_ancestor(const Node* const other) const
+{
+    NOTF_ASSERT(other);
+    if (other == this) { return this; }
+
+    const Node* first = this;
+    const Node* second = other;
+    const Node* result = nullptr;
+    std::unordered_set<const Node*, pointer_hash<const Node*>> known_ancestors = {first, second};
+    {
+        while (true) {
+            first = first->_get_parent();
+            if (known_ancestors.count(first) != 0) {
+                result = first;
+                break;
+            }
+            known_ancestors.insert(first);
+
+            second = second->_get_parent();
+            if (known_ancestors.count(second) != 0) {
+                result = second;
+                break;
+            }
+            known_ancestors.insert(second);
+        }
+    }
+
+    if (!result) {
+        NOTF_THROW(HierarchyError, "Nodes \"{}\" and \"{}\" share no common ancestor", //
+                   get_uuid().to_string(), other->get_uuid().to_string());
+    }
+    return result;
 }
 
 const Node::ChildList& Node::_read_children(const std::thread::id thread_id) const
@@ -270,11 +300,12 @@ const Node::ChildList& Node::_read_children(const std::thread::id thread_id) con
     if (TheGraph::is_frozen_by(thread_id)) {
         return m_children; // the renderer always sees the unmodified child list
     }
+    NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
 
     // if there exist a modified child list, return that one instead
-    if (ChildList* modified_list = m_modified_children.get()) {
+    if (m_modified_data != nullptr) {
         NOTF_ASSERT(TheGraph::is_frozen());
-        return *modified_list;
+        return *m_modified_data->children;
     }
 
     // either the child list has not been modified, or the Graph is not frozen
@@ -283,18 +314,14 @@ const Node::ChildList& Node::_read_children(const std::thread::id thread_id) con
 
 Node::ChildList& Node::_write_children()
 {
-    NOTF_ASSERT(TheGraph::get_graph_mutex().is_locked_by_this_thread());
+    NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
 
     // changes in the child list make this node dirty
     TheGraph::AccessFor<Node>::mark_dirty(shared_from_this());
 
     if (TheGraph::is_frozen()) {
-        // the render thread must never modify a Node
-        NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id()));
-
-        // if this is the first modification, create a copy of the current child list before changing it
-        if (m_modified_children == nullptr) { m_modified_children = std::make_unique<ChildList>(m_children); }
-        return *m_modified_children.get();
+        NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id())); // the render thread must never modify a Node
+        return *_ensure_modified_data().children;
     }
 
     // if the graph is not frozen, modify the child list directly
@@ -306,6 +333,50 @@ const Node::ChildList& Node::_read_siblings() const
     const ChildList& siblings = _get_parent()->_read_children();
     NOTF_ASSERT(contains(siblings, shared_from_this()));
     return siblings;
+}
+
+bool Node::_is_flag_set(const size_t index, const std::thread::id thread_id) const
+{
+    NOTF_ASSERT(index < bitset_size_v<Flags>);
+
+    if (TheGraph::is_frozen_by(thread_id)) {
+        return m_flags[index]; // the renderer always sees the unmodified flags
+    }
+    NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
+
+    // if a modified flag exist, return that one instead
+    if (m_modified_data != nullptr) {
+        NOTF_ASSERT(TheGraph::is_frozen());
+        return m_modified_data->flags[index];
+    }
+    else {
+        return m_flags[index];
+    }
+}
+
+void Node::_set_flag(const size_t index, const bool value)
+{
+    NOTF_ASSERT(index < bitset_size_v<Flags>);
+    NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
+
+    // flag changes make this node dirty
+    TheGraph::AccessFor<Node>::mark_dirty(shared_from_this());
+
+    if (TheGraph::is_frozen()) {
+        NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id())); // the render thread must never modify a Node
+        _ensure_modified_data().flags[index] = value;
+    }
+    else {
+        m_flags[index] = value;
+    }
+}
+
+Node::Data& Node::_ensure_modified_data()
+{
+    NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
+
+    if (m_modified_data == nullptr) { m_modified_data = std::make_unique<Data>(m_parent, m_children, m_flags); }
+    return *m_modified_data;
 }
 
 NOTF_CLOSE_NAMESPACE

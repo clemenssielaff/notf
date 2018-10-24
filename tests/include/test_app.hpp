@@ -27,7 +27,9 @@ struct TestNodePolicy {
 };
 
 class TestRootNode : public RunTimeRootNode {
+    using allowed_child_types = std::tuple<>; // hide `allowed_child_types` definition
 public:
+
     NOTF_UNUSED TestRootNode() = default;
 
     template<class T, class... Args>
@@ -69,6 +71,8 @@ public:
 
 } // namespace
 
+// accessors ======================================================================================================== //
+
 template<>
 struct notf::Accessor<Node, Tester> {
     Accessor(Node& node) : m_node(node) {}
@@ -82,4 +86,9 @@ template<>
 struct notf::Accessor<TheGraph, Tester> {
     static TheGraph& get() { return TheGraph::_get(); }
     static size_t get_node_count() { return TheGraph::_get().m_node_registry.get_count(); }
+};
+
+template<>
+struct notf::Accessor<NodeHandle, Tester> {
+    static NodePtr get_shared_ptr(NodeHandle handle) { return handle.m_node.lock(); }
 };

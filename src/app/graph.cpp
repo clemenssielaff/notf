@@ -1,7 +1,5 @@
 #include "notf/app/graph.hpp"
 
-#include "notf/common/mnemonic.hpp"
-
 #include "notf/app/root_node.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -41,29 +39,9 @@ std::string_view TheGraph::NodeNameRegistry::get_name(NodeHandle node) const
     const Uuid& uuid = node.get_uuid(); // this might throw if the handle is expired, do it before locking the mutex
     {
         NOTF_GUARD(std::lock_guard(m_mutex));
-
-        // get or create new entry
-        auto& name_view = m_uuid_to_name[uuid];
-        if (!name_view.empty()) { return name_view; }
-
-        std::string name;
-        { // generate and a new, random, and unique name
-            const std::string base_name = number_to_mnemonic(hash(node.get_uuid()), /*max_syllables=*/4);
-            size_t counter = 2;
-            name = base_name;
-            while (m_name_to_node.count(name) > 0) {
-                name = fmt::format("{}_{:0>2}", name, counter++);
-            }
-        }
-
-        // store the node handle under its new name
-        NOTF_ASSERT(m_name_to_node.count(name) == 0);
-        auto [iter, success] = m_name_to_node.emplace(std::move(name), std::make_pair(uuid, node));
-        NOTF_ASSERT(success);
-        name_view = iter->first;
-
-        return name_view;
+        if (const auto& itr = m_uuid_to_name.find(uuid); itr != m_uuid_to_name.end()) { return itr->second; }
     }
+    return {};
 }
 
 std::string_view TheGraph::NodeNameRegistry::set_name(NodeHandle node, const std::string& name)
@@ -154,7 +132,7 @@ void TheGraph::NodeNameRegistry::_remove_name(std::string_view name_view)
 TheGraph::TheGraph()
 {
     // the default root node has no properties
-    initialize<CompileTimeRootNode<EmptyNodePolicy>>();
+    _initialize_typed<CompileTimeRootNode<EmptyNodePolicy>>();
 }
 
 TheGraph::~TheGraph()
@@ -184,13 +162,13 @@ NodeHandle TheGraph::get_root_node(const std::thread::id thread_id)
 
 void TheGraph::_initialize_untyped(AnyRootNodePtr&& root_node)
 {
-    NOTF_GUARD(std::lock_guard(m_graph_mutex));
+    NOTF_GUARD(std::lock_guard(m_mutex));
 
-    if (is_frozen()) {
+    if (_is_frozen()) {
         NOTF_ASSERT(m_root_node);
 
         // the render thread must never re-initialize the graph
-        NOTF_ASSERT(!is_frozen_by(std::this_thread::get_id()));
+        NOTF_ASSERT(_is_frozen_by(std::this_thread::get_id()));
 
         // either create a new modified root node or replace a previous modification
         m_modified_root_node = root_node;

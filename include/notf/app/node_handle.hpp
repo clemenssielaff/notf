@@ -33,7 +33,7 @@ public:
 
     /// The Uuid of this Node.
     /// @throws HandleExpiredError  If the Handle has expired.
-    const Uuid& get_uuid() const;
+    Uuid get_uuid() const;
 
     /// The Node-unique name of this Node.
     /// @throws HandleExpiredError  If the Handle has expired.
@@ -84,6 +84,11 @@ class NodeHandle : public detail::NodeHandleBase {
 
     friend struct ::std::hash<NodeHandle>;
     friend class ::notf::Node;
+
+    // types ----------------------------------------------------------------------------------- //
+public:
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(NodeHandle);
 
     // methods --------------------------------------------------------------------------------- //
 public:

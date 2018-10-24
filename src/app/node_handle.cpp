@@ -8,7 +8,7 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-const Uuid& NodeHandleBase::get_uuid() const { return _get_node()->get_uuid(); }
+Uuid NodeHandleBase::get_uuid() const { return _get_node()->get_uuid(); }
 
 std::string_view NodeHandleBase::get_name() const { return _get_node()->get_name(); }
 
