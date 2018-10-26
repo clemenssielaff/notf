@@ -230,20 +230,6 @@ private:
     operator_t m_operator;
 };
 
-// node accessor ==================================================================================================== //
-
-/// Access to selected members of a Property.
-template<class T>
-class Accessor<Property<T>, Node> {
-    friend Node;
-
-    template<class>
-    friend class CompileTimeNode;
-
-    /// Reactive Property operator underlying the Property's reactive functionality.
-    static auto& get_operator(PropertyPtr<T>& property) { return property->m_operator; }
-};
-
 // run time property ================================================================================================ //
 
 template<class T>
@@ -297,5 +283,20 @@ public:
     /// The compile time constant name of this Property.
     static constexpr const StringConst& get_const_name() noexcept { return Policy::name; }
 };
+
+// property accessor ==================================================================================================== //
+
+/// Access to selected members of a Property.
+template<class T>
+class Accessor<Property<T>, Node> {
+    friend Node;
+    friend RunTimeNode;
+    template<class>
+    friend class CompileTimeNode;
+
+    /// Reactive Property operator underlying the Property's reactive functionality.
+    static auto& get_operator(PropertyPtr<T>& property) { return property->m_operator; }
+};
+
 
 NOTF_CLOSE_NAMESPACE

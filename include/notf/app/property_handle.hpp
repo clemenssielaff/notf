@@ -19,12 +19,9 @@ public:
     /// Default (empty) Constructor.
     PropertyHandle() = default;
 
-    /// @{
     /// Value Constructor.
     /// @param  property    Property to handle.
-    PropertyHandle(const PropertyPtr<T>& property) : m_property(property) {}
-    PropertyHandle(PropertyWeakPtr<T> property) : m_property(std::move(property)) {}
-    /// @}
+    PropertyHandle(PropertyPtr<T> property) : m_property(std::move(property)) {}
 
     /// @{
     /// Checks whether the PropertyHandle is still valid or not.

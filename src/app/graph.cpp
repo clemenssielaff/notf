@@ -192,6 +192,7 @@ bool TheGraph::_freeze(const std::thread::id thread_id)
 void TheGraph::_unfreeze(const std::thread::id thread_id)
 {
     if (_is_frozen_by(thread_id)) { m_freezing_thread = std::thread::id(); }
+    // TODO: when unfreezing the graph, clean all nodes and properties etc.
 }
 
 NOTF_CLOSE_NAMESPACE

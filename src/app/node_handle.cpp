@@ -8,15 +8,7 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-Uuid AnyNodeHandle::_get_uuid(NodePtr&& node) { return node->get_uuid(); }
-
-std::string AnyNodeHandle::_get_name(NodePtr&& node) { return node->get_name(); }
-
-void AnyNodeHandle::_set_name(NodePtr&& node, const std::string& name)
-{
-    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
-    node->set_name(name);
-}
+RecursiveMutex& AnyNodeHandle::_get_graph_mutex() { return TheGraph::get_graph_mutex(); }
 
 void AnyNodeHandle::_remove_from_parent(NodePtr&& node)
 {

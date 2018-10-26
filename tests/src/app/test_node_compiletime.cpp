@@ -1,6 +1,6 @@
 #include "catch2/catch.hpp"
 
-#include "test_app.hpp"
+#include "test_app_utils.hpp"
 
 NOTF_USING_NAMESPACE;
 

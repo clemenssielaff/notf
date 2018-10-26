@@ -50,11 +50,11 @@ protected:
         }
 
         // create an empty pointer first, to establish the name in the map
-        auto [itr, success] = m_properties.emplace(std::move(name), std::make_shared<AnyPropertyPtr>());
+        auto [itr, success] = m_properties.emplace(std::move(name), nullptr);
         NOTF_ASSERT(success);
 
         // replace the empty pointer with the actual RunTimeProperty and create a string_view from the existing name
-        auto property = std::make_shared<RunTimeProperty<T>>(itr->first, std::forward<T>(value), is_visible);
+        PropertyPtr<T> property = std::make_shared<RunTimeProperty<T>>(itr->first, std::forward<T>(value), is_visible);
         itr->second = property;
 
         // subscribe to receive an update, whenever the property changes its value

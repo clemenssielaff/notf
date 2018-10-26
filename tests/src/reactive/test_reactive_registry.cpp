@@ -3,7 +3,7 @@
 #include "notf/reactive/pipeline.hpp"
 #include "notf/reactive/reactive_registry.hpp"
 
-#include "test_reactive.hpp"
+#include "test_reactive_utils.hpp"
 
 NOTF_USING_NAMESPACE;
 

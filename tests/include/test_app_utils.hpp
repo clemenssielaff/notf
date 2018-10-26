@@ -20,9 +20,17 @@ struct BoolPropertyPolicy {
     static constexpr bool is_visible = true;
 };
 
+struct IntPropertyPolicy {
+    using value_t = int;
+    static constexpr StringConst name = "int";
+    static constexpr value_t default_value = 123;
+    static constexpr bool is_visible = true;
+};
+
 struct TestNodePolicy {
     using properties = std::tuple<                //
         CompileTimeProperty<FloatPropertyPolicy>, //
+        CompileTimeProperty<IntPropertyPolicy>,   //
         CompileTimeProperty<BoolPropertyPolicy>>; //
 };
 
@@ -41,7 +49,12 @@ public:
 
 class LeafNodeRT : public RunTimeNode {
 public:
-    NOTF_UNUSED LeafNodeRT(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
+    NOTF_UNUSED LeafNodeRT(valid_ptr<Node*> parent) : RunTimeNode(parent)
+    {
+        _create_property<float>("float", 0.123f, true);
+        _create_property<bool>("bool", true, true);
+        _create_property<int>("int", 123, true);
+    }
 };
 
 class LeafNodeCT : public CompileTimeNode<TestNodePolicy> {
@@ -79,6 +92,11 @@ template<>
 struct notf::Accessor<Node, Tester> {
     Accessor(Node& node) : m_node(node) {}
     size_t get_property_hash() const { return m_node._calculate_property_hash(); }
+    bool is_dirty() const
+    {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        return m_node._is_flag_set(to_number(Node::InternalFlags::DIRTY));
+    }
     Node& m_node;
 };
 
@@ -89,7 +107,10 @@ struct notf::Accessor<TheGraph, Tester> {
     static auto freeze(std::thread::id id) { return TheGraph::_get()._freeze_guard(id); }
 };
 
-template<>
-struct notf::Accessor<NodeHandle, Tester> {
-    static NodePtr get_shared_ptr(NodeHandle handle) { return handle.m_node.lock(); }
+template<class NodeType>
+struct notf::Accessor<TypedNodeHandle<NodeType>, Tester> {
+    static std::shared_ptr<NodeType> get_shared_ptr(const TypedNodeHandle<NodeType>& handle)
+    {
+        return handle.m_node.lock();
+    }
 };

@@ -2,6 +2,7 @@
 
 # add test files
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
+    app/test_app.cpp
     app/test_graph.cpp
     app/test_node.cpp
     app/test_node_compiletime.cpp
@@ -40,8 +41,8 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
 
 # add test utility files
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/include
-    test_app.hpp
-    test_reactive.hpp
+    test_app_utils.hpp
+    test_reactive_utils.hpp
     test_utils.hpp
 )
 

@@ -113,7 +113,7 @@ private:
 
         /// Implicitly cast to a CompileTimeNodeHandle, if the Node Type derives from CompileTimeNode.
         /// Can be called multiple times.
-        operator TypedNodeHandle<NodeType>() { return TypedNodeHandle<NodeType>(m_node.lock()); }
+        operator TypedNodeHandle<NodeType>() const { return TypedNodeHandle<NodeType>(m_node.lock()); }
 
         /// Implicit cast to a NodeOwner.
         /// Must only be called once.
@@ -122,12 +122,22 @@ private:
 
         /// Implicit cast to a NodeHandle.
         /// Can be called multiple times.
-        operator NodeHandle() { return NodeHandle(m_node.lock()); }
+        operator NodeHandle() const { return NodeHandle(m_node.lock()); }
 
         /// Implicit cast to a NodeOwner.
         /// Must only be called once.
         /// @throws ValueError  If called more than once or the Node has already expired.
         operator NodeOwner() { return _to_node_owner<Node>(); }
+
+        /// Implicit conversion to a NodeHandle.
+        /// Is useful when you don't want to type the name:
+        ///     auto owner = parent->create_child<VeryLongNodeName>(...).to_handle();
+        auto to_handle() const { return operator TypedNodeHandle<NodeType>(); }
+
+        /// Implicit conversion to a NodeOwner.
+        /// Is useful when you don't want to type the name:
+        ///     auto owner = parent->create_child<VeryLongNodeName>(...).to_owner();
+        auto to_owner() { return operator TypedNodeOwner<NodeType>(); }
 
     private:
         template<class T>
@@ -163,10 +173,7 @@ private:
         PropertyObserver(Node& node) : m_node(node) {}
 
         /// Called whenever a visible Property changed its value.
-        void on_next(const AnyPublisher*, ...) final
-        {
-            TheGraph::AccessFor<Node>::mark_dirty(m_node.shared_from_this());
-        }
+        void on_next(const AnyPublisher*, ...) final { m_node._mark_as_dirty(); }
 
         // fields ---------------------------------------------------------- //
     private:
@@ -185,6 +192,7 @@ private:
         FINALIZED,
         ENABLED,
         VISIBLE,
+        DIRTY,
         __LAST,
     };
     static_assert(to_number(InternalFlags::__LAST) <= bitset_size_v<Flags>);
@@ -229,6 +237,8 @@ public:
     /// Destructor.
     virtual ~Node();
 
+    // inspection -------------------------------------------------------------
+
     /// Uuid of this Node.
     Uuid get_uuid() const noexcept { return m_uuid; }
 
@@ -239,12 +249,6 @@ public:
     /// A 4-syllable mnemonic name, based on this Node's Uuid.
     /// Is not guaranteed to be unique, but collisions are unlikely with 100^4 possibilities.
     std::string get_default_name() const;
-
-    /// (Re-)Names the Node.
-    /// If another Node with the same name already exists in the Graph, this method will append the lowest integer
-    /// postfix that makes the name unique.
-    /// @param name     Proposed name of the Node.
-    void set_name(const std::string& name);
 
     /// Run time access to a Property of this Node.
     /// @param name     Node-unique name of the Property.
@@ -269,6 +273,12 @@ public:
 
     // hierarchy --------------------------------------------------------------
 
+    /// (Re-)Names the Node.
+    /// If another Node with the same name already exists in the Graph, this method will append the lowest integer
+    /// postfix that makes the name unique.
+    /// @param name     Proposed name of the Node.
+    void set_name(const std::string& name);
+
     /// The parent of this Node.
     NodeHandle get_parent();
 
@@ -288,14 +298,17 @@ public:
     template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
     NodeHandle get_first_ancestor()
     {
-        for (const Node* next = _get_parent(); next != next->_get_parent(); next = next->_get_parent()) {
-            if (auto* result = dynamic_cast<T*>(next)) { return NodeHandle(result->weak_from_this()); }
+        Node* next = _get_parent();
+        if (auto* result = dynamic_cast<T*>(next)) { return NodeHandle(result->shared_from_this()); }
+        while (next != next->_get_parent()) {
+            next = next->_get_parent();
+            if (auto* result = dynamic_cast<T*>(next)) { return NodeHandle(result->shared_from_this()); }
         }
         return {};
     }
 
     /// The number of direct children of this Node.
-    size_t count_children() const { return _read_children().size(); }
+    size_t get_child_count() const { return _read_children().size(); }
 
     /// Returns a handle to a child Node at the given index.
     /// Index 0 is the node furthest back, index `size() - 1` is the child drawn at the front.
@@ -341,7 +354,7 @@ public:
     // flags ------------------------------------------------------------------
 
     /// Returns the number of user definable flags of a Node on this system.
-    static constexpr size_t get_user_flag_count() { return bitset_size_v<Flags> - s_internal_flag_count; }
+    static constexpr size_t get_user_flag_count() noexcept { return bitset_size_v<Flags> - s_internal_flag_count; }
 
     /// Tests a user defineable flag on this Node.
     /// @param index            Index of the user flag.
@@ -437,9 +450,9 @@ private:
     void _finalize() { m_flags[to_number(InternalFlags::FINALIZED)] = true; }
 
     /// Tests a flag on this Node.
-    /// @param index            Index of the user flag.
+    /// @param index        Index of the user flag.
     /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
-    /// @returns                True iff the flag is set.
+    /// @returns            True iff the flag is set.
     bool _is_flag_set(size_t index, std::thread::id thread_id = std::this_thread::get_id()) const;
 
     /// Sets or unsets a flag on this Node.

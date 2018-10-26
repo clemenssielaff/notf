@@ -1,6 +1,6 @@
 #include "catch2/catch.hpp"
 
-#include "test_reactive.hpp"
+#include "test_reactive_utils.hpp"
 
 NOTF_USING_NAMESPACE;
 

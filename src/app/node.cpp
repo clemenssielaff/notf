@@ -84,11 +84,12 @@ bool Node::has_ancestor(const NodeHandle& ancestor) const
 {
     const NodeConstPtr ancestor_lock = ancestor.m_node.lock();
     if (ancestor_lock == nullptr) { return false; }
-    const Node* const ancestor_ptr = ancestor_lock.get();
 
+    const Node* const ancestor_ptr = ancestor_lock.get();
     for (const Node* next = _get_parent(); next != next->_get_parent(); next = next->_get_parent()) {
         if (next == ancestor_ptr) { return true; }
     }
+
     return false;
 }
 
@@ -104,7 +105,7 @@ NodeHandle Node::get_child(size_t index)
     const ChildList& children = _read_children();
     if (index >= children.size()) {
         NOTF_THROW(OutOfBounds, "Cannot get child Node at index {} for Node \"{}\" with {} children", index, get_name(),
-                   count_children());
+                   get_child_count());
     }
     return children[index];
 }
@@ -357,7 +358,7 @@ void Node::_set_flag(const size_t index, const bool value)
     NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
 
     // flag changes make this node dirty
-    _mark_as_dirty();
+    if (index != to_number(InternalFlags::DIRTY)) { _mark_as_dirty(); }
 
     if (TheGraph::is_frozen()) {
         NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id())); // the render thread must never modify a Node
@@ -378,7 +379,11 @@ Node::Data& Node::_ensure_modified_data()
 
 void Node::_mark_as_dirty()
 {
-    if (_is_finalized()) { TheGraph::AccessFor<Node>::mark_dirty(shared_from_this()); }
+    if (NOTF_UNLIKELY(!_is_finalized())) { return; }
+    if (!_is_flag_set(to_number(InternalFlags::DIRTY))) {
+        _set_flag(to_number(InternalFlags::DIRTY));
+        TheGraph::AccessFor<Node>::mark_dirty(shared_from_this());
+    }
 }
 
 NOTF_CLOSE_NAMESPACE

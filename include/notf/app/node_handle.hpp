@@ -3,6 +3,7 @@
 #include "notf/meta/pointer.hpp"
 #include "notf/meta/stringtype.hpp"
 
+#include "notf/common/mutex.hpp"
 #include "notf/common/uuid.hpp"
 
 #include "./app.hpp"
@@ -19,15 +20,10 @@ struct AnyNodeHandle {
 
     // methods --------------------------------------------------------------------------------- //
 protected:
-    /// The Uuid of this Node.
-    static Uuid _get_uuid(NodePtr&& node);
+    /// The Graph mutex.
+    static RecursiveMutex& _get_graph_mutex();
 
-    /// The Graph-unique name of this Node.
-    static std::string _get_name(NodePtr&& node);
-
-    /// (Re-)Names the Node.
-    static void _set_name(NodePtr&& node, const std::string& name);
-
+    /// Removes the given Node from its parent Node.
     static void _remove_from_parent(NodePtr&& node);
 };
 
@@ -65,6 +61,7 @@ public:
     /// Value Constructor.
     /// @param  node    Node to handle.
     TypedNodeHandle(std::shared_ptr<NodeType> node) : m_node(std::move(node)) {}
+
     template<class T, class = std::enable_if_t<std::is_base_of_v<NodeType, T>>>
     TypedNodeHandle(std::shared_ptr<T> node) : m_node(std::static_pointer_cast<NodeType>(std::move(node)))
     {}
@@ -81,19 +78,21 @@ public:
 
     /// The Uuid of this Node.
     /// @throws     HandleExpiredError  If the Handle has expired.
-    Uuid get_uuid() const { return _get_uuid(_get_node()); }
+    Uuid get_uuid() const { return _get_node()->get_uuid(); }
 
     /// The Graph-unique name of this Node.
     /// @returns    Name of this Node. Is an l-value because the name of the Node may change.
     /// @throws     HandleExpiredError  If the Handle has expired.
-    std::string get_name() const { return _get_name(_get_node()); }
+    std::string get_name() const { return _get_node()->get_name(); }
 
-    /// (Re-)Names the Node.
-    /// If another Node with the same name already exists in the Graph, this method will append the lowest integer
-    /// postfix that makes the name unique.
-    /// @param name     Proposed name of the Node.
-    void set_name(const std::string& name) { _set_name(_get_node(), name); }
+    /// A 4-syllable mnemonic name, based on this Node's Uuid.
+    /// Is not guaranteed to be unique, but collisions are unlikely with 100^4 possibilities.
+    std::string get_default_name() const { return _get_node()->get_default_name(); }
 
+    /// Run time access to a Property of this Node.
+    /// @param name     Node-unique name of the Property.
+    /// @returns        Handle to the requested Property.
+    /// @throws         NoSuchPropertyError
     template<class T>
     PropertyHandle<T> get_property(const std::string& name) const
     {
@@ -102,11 +101,170 @@ public:
 
     /// Returns a correctly typed Handle to a CompileTimeProperty or void (which doesn't compile).
     /// @param name     Name of the requested Property.
+    /// @returns        Typed handle to the requested Property.
     template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
     auto get_property(StringType<char, Cs...> name) const
     {
         return this->_get_node()->get_property(std::forward<decltype(name)>(name));
     }
+
+    // hierarchy --------------------------------------------------------------
+
+    /// (Re-)Names the Node.
+    /// If another Node with the same name already exists in the Graph, this method will append the lowest integer
+    /// postfix that makes the name unique.
+    /// @param name     Proposed name of the Node.
+    void set_name(const std::string& name)
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        _get_node()->set_name(name);
+    }
+
+    /// The parent of this Node.
+    NodeHandle get_parent()
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        return _get_node()->get_parent();
+    }
+
+    /// Tests, if this Node is a descendant of the given ancestor.
+    /// @param ancestor         Potential ancestor to verify.
+    bool has_ancestor(const NodeHandle& ancestor) const
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        return _get_node()->has_ancestor(ancestor);
+    }
+
+    /// Finds and returns the first common ancestor of two Nodes.
+    /// At the latest, the RootNode is always a common ancestor.
+    /// If the handle passed in is expired, the returned handle will also be expired.
+    /// @param other            Other Node to find the common ancestor for.
+    /// @throws HierarchyError  If there is no common ancestor.
+    NodeHandle get_common_ancestor(const NodeHandle& other)
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        return _get_node()->get_common_ancestor(other);
+    }
+
+    /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
+    /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
+    template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
+    NodeHandle get_first_ancestor()
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        return _get_node()->template get_first_ancestor<T>();
+    }
+
+    /// The number of direct children of this Node.
+    size_t get_child_count() const
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        return _get_node()->get_child_count();
+    }
+
+    /// Returns a handle to a child Node at the given index.
+    /// Index 0 is the node furthest back, index `size() - 1` is the child drawn at the front.
+    /// @param index    Index of the Node.
+    /// @returns        The requested child Node.
+    /// @throws OutOfBounds    If the index is out-of-bounds or the child Node is of the wrong type.
+    NodeHandle get_child(const size_t index)
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        return _get_node()->get_child(index);
+    }
+
+    // z-order ----------------------------------------------------------------
+
+    /// Checks if this Node is in front of all of its siblings.
+    bool is_in_front() const
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        return _get_node()->is_in_front();
+    }
+
+    /// Checks if this Node is behind all of its siblings.
+    bool is_in_back() const
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        return _get_node()->is_in_back();
+    }
+
+    /// Returns true if this node is stacked anywhere in front of the given sibling.
+    /// Also returns false if the handle is expired, the given Node is not a sibling or it is the same as this.
+    /// @param sibling  Sibling node to test against.
+    bool is_before(const NodeHandle& sibling) const
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        return _get_node()->is_before(sibling);
+    }
+
+    /// Returns true if this node is stacked anywhere behind the given sibling.
+    /// Also returns false if the handle is expired, the given Node is not a sibling or it is the same as this.
+    /// @param sibling  Sibling node to test against.
+    bool is_behind(const NodeHandle& sibling) const
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        return _get_node()->is_behind(sibling);
+    }
+
+    /// Moves this Node in front of all of its siblings.
+    void stack_front()
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        _get_node()->stack_front();
+    }
+
+    /// Moves this Node behind all of its siblings.
+    void stack_back()
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        _get_node()->stack_back();
+    }
+
+    /// Moves this Node before a given sibling.
+    /// @param sibling  Sibling to stack before.
+    /// @throws hierarchy_error If the sibling is not a sibling of this node.
+    void stack_before(const NodeHandle& sibling)
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        _get_node()->stack_before(sibling);
+    }
+
+    /// Moves this Node behind a given sibling.
+    /// @param sibling  Sibling to stack behind.
+    /// @throws hierarchy_error If the sibling is not a sibling of this node.
+    void stack_behind(const NodeHandle& sibling)
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        _get_node()->stack_behind(sibling);
+    }
+
+    // flags ------------------------------------------------------------------
+
+    /// Returns the number of user definable flags of a Node on this system.
+    static constexpr size_t get_user_flag_count() noexcept { return NodeType::get_user_flag_count(); }
+
+    /// Tests a user defineable flag on this Node.
+    /// @param index            Index of the user flag.
+    /// @returns                True iff the flag is set.
+    /// @throws OutOfBounds   If index >= user flag count.
+    bool is_user_flag_set(const size_t index) const
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        return _get_node()->is_user_flag_set(index);
+    }
+
+    /// Sets or unsets a user flag.
+    /// @param index            Index of the user flag.
+    /// @param value            Whether to set or to unser the flag.
+    /// @throws OutOfBounds   If index >= user flag count.
+    void set_user_flag(const size_t index, const bool value = true)
+    {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        _get_node()->set_user_flag(index, value);
+    }
+
+    // comparison -------------------------------------------------------------
 
     /// Comparison with another NodeHandle.
     bool operator==(const this_t& rhs) const noexcept { return weak_ptr_equal(m_node, rhs.m_node); }
@@ -129,13 +287,20 @@ protected:
     /// Raw pointer to the handled Node (does not check if the Node is still alive).
     const Node* _get_ptr() const { return static_cast<const Node*>(raw_from_weak_ptr(m_node)); }
 
+    /// @{
     /// Locks and returns an owning pointer to the handled Node.
     /// @throws HandleExpiredError  If the Handle has expired.
-    std::shared_ptr<NodeType> _get_node() const
+    std::shared_ptr<NodeType> _get_node()
     {
         if (auto node = m_node.lock()) { return node; }
         NOTF_THROW(HandleExpiredError, "Node Handle has expired");
     }
+    std::shared_ptr<const NodeType> _get_node() const
+    {
+        if (auto node = m_node.lock()) { return node; }
+        NOTF_THROW(HandleExpiredError, "Node Handle has expired");
+    }
+    /// }@
 
     // fields ---------------------------------------------------------------------------------- //
 protected:
