@@ -11,6 +11,8 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
+// can node parent ------------------------------------------------------------
+
 template<class T, class = void>
 struct has_allowed_child_types : std::false_type {};
 template<class T>
@@ -38,23 +40,25 @@ constexpr bool can_node_parent() noexcept
     if constexpr (std::negation_v<std::conjunction<std::is_base_of<Node, A>, std::is_base_of<Node, B>>>) {
         return false;
     }
+    else { // explicit else so the code coverage doesn't pretend like these lines are not covered...
 
-    // if A has a list of explicitly allowed child types, B must be in it
-    if constexpr (has_allowed_child_types<A>::value) {
-        if (!is_derived_from_one_of_tuple_v<B, typename A::allowed_child_types>) { return false; }
-    }
-    // ... otherwise, if A has a list of explicitly forbidden child types, B must NOT be in it
-    else if constexpr (has_forbidden_child_types<A>::value) {
-        if (is_derived_from_one_of_tuple_v<B, typename A::forbidden_child_types>) { return false; }
-    }
+        // if A has a list of explicitly allowed child types, B must be in it
+        if constexpr (has_allowed_child_types<A>::value) {
+            if (!is_derived_from_one_of_tuple_v<B, typename A::allowed_child_types>) { return false; }
+        }
+        // ... otherwise, if A has a list of explicitly forbidden child types, B must NOT be in it
+        else if constexpr (has_forbidden_child_types<A>::value) {
+            if (is_derived_from_one_of_tuple_v<B, typename A::forbidden_child_types>) { return false; }
+        }
 
-    // if B has a list of explicitly allowed parent types, A must be in it
-    if constexpr (has_allowed_parent_types<B>::value) {
-        if (!is_derived_from_one_of_tuple_v<A, typename B::allowed_parent_types>) { return false; }
-    }
-    // ... otherwise, if B has a list of explicitly forbidden parent types, A must NOT be in it
-    else if constexpr (has_forbidden_parent_types<B>::value) {
-        if (is_derived_from_one_of_tuple_v<A, typename B::forbidden_parent_types>) { return false; }
+        // if B has a list of explicitly allowed parent types, A must be in it
+        else if constexpr (has_allowed_parent_types<B>::value) {
+            if (!is_derived_from_one_of_tuple_v<A, typename B::allowed_parent_types>) { return false; }
+        }
+        // ... otherwise, if B has a list of explicitly forbidden parent types, A must NOT be in it
+        else if constexpr (has_forbidden_parent_types<B>::value) {
+            if (is_derived_from_one_of_tuple_v<A, typename B::forbidden_parent_types>) { return false; }
+        }
     }
 
     return true;
@@ -70,7 +74,7 @@ constexpr bool can_node_parent() noexcept
 /// for the user of this interface; first and foremost whether the Graph mutex is locked when a method is called.
 class Node : public std::enable_shared_from_this<Node> {
 
-    friend Accessor<Node, NodeMasterHandle>;
+    friend Accessor<Node, detail::AnyNodeHandle>;
     friend Accessor<Node, AnyRootNode>;
 
     // types ----------------------------------------------------------------------------------- //
@@ -88,12 +92,63 @@ public:
     NOTF_EXCEPTION_TYPE(HierarchyError);
 
 private:
-    /// Wrapper around a newly created Node.
-    /// Can be cast to a NodeMasterHandle or NodeHandle.
-    using NewNode = detail::NodeMasterHandleCastable;
-
     /// Owning list of child Nodes, ordered from back to front.
     using ChildList = std::vector<NodePtr>;
+
+    // new node ---------------------------------------------------------------
+
+    /// Type returned by Node::_create_child.
+    /// Can once (implicitly) be cast to a NodeOwner, but can also be safely ignored without the Node being erased
+    /// immediately.
+    template<class NodeType>
+    class NewNode {
+
+        // methods ----------------------------------------------------------------------------- //
+    public:
+        NOTF_NO_COPY_OR_ASSIGN(NewNode);
+
+        /// Constructor.
+        /// @param node     The newly created Node.
+        NewNode(std::shared_ptr<NodeType>&& node) : m_node(std::move(node)) {}
+
+        /// Implicitly cast to a CompileTimeNodeHandle, if the Node Type derives from CompileTimeNode.
+        /// Can be called multiple times.
+        operator TypedNodeHandle<NodeType>() { return TypedNodeHandle<NodeType>(m_node.lock()); }
+
+        /// Implicit cast to a NodeOwner.
+        /// Must only be called once.
+        /// @throws ValueError  If called more than once or the Node has already expired.
+        operator TypedNodeOwner<NodeType>() { return _to_node_owner<NodeType>(); }
+
+        /// Implicit cast to a NodeHandle.
+        /// Can be called multiple times.
+        operator NodeHandle() { return NodeHandle(m_node.lock()); }
+
+        /// Implicit cast to a NodeOwner.
+        /// Must only be called once.
+        /// @throws ValueError  If called more than once or the Node has already expired.
+        operator NodeOwner() { return _to_node_owner<Node>(); }
+
+    private:
+        template<class T>
+        TypedNodeOwner<T> _to_node_owner()
+        {
+            if (auto node = m_node.lock()) {
+                m_node.reset();
+                return TypedNodeOwner<T>(std::move(node));
+            }
+            else {
+                NOTF_THROW(ValueError, "Cannot create a NodeOwner for a Node that is already expired");
+            }
+        }
+
+        // fields ------------------------------------------------------------------------------ //
+    private:
+        /// The newly created Node.
+        /// Is held as a weak_ptr because the user might (foolishly) decide to store this object instead of using for
+        /// casting only, and we don't want to keep the Node alive for longer than its parent is.
+        std::weak_ptr<NodeType> m_node;
+    };
 
     // property observer ------------------------------------------------------
 
@@ -135,7 +190,7 @@ private:
     static_assert(to_number(InternalFlags::__LAST) <= bitset_size_v<Flags>);
 
     /// Number of flags reserved for internal usage.
-    static constexpr const size_t s_internal_flag_count = to_number(InternalFlags::__LAST);
+    static constexpr size_t s_internal_flag_count = to_number(InternalFlags::__LAST);
 
     // data -------------------------------------------------------------------
 
@@ -314,17 +369,21 @@ protected:
     /// @throws InternalError   If you pass anything else but `this` as the parent.
     template<class Child, class Parent, class... Args,
              class = std::enable_if_t<detail::can_node_parent<Parent, Child>()>>
-    NewNode _create_child(Parent* parent, Args&&... args)
+    NewNode<Child> _create_child(Parent* parent, Args&&... args)
     {
         if (NOTF_UNLIKELY(parent != this)) {
             NOTF_THROW(InternalError, "Node::_create_child cannot be used to create children of other Nodes.");
         }
 
-        auto child = std::static_pointer_cast<Node>(std::make_shared<Child>(parent, std::forward<Args>(args)...));
-        child->_finalize();
+        auto child = std::make_shared<Child>(parent, std::forward<Args>(args)...);
 
-        _write_children().emplace_back(child);
-        TheGraph::AccessFor<Node>::register_node(child);
+        { // register the new node with the graph and store it as child
+            auto node = std::static_pointer_cast<Node>(child);
+            node->_finalize();
+            TheGraph::AccessFor<Node>::register_node(node);
+            _write_children().emplace_back(std::move(node));
+        }
+
         return child;
     }
 
@@ -427,27 +486,30 @@ private:
 // node accessors =================================================================================================== //
 
 template<>
-class Accessor<Node, NodeMasterHandle> {
-    friend NodeMasterHandle;
+class Accessor<Node, detail::AnyNodeHandle> {
+    friend detail::AnyNodeHandle;
 
-    /// Lets a NodeMasterHandle remove the managed Node on destruction.
+    /// Lets a NodeOwner remove the managed Node on destruction.
     static void remove(const NodePtr& node)
     {
-        NodePtr parent;
         NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
-        try {
-            parent = node->_get_parent()->shared_from_this();
+        NodePtr parent;
+        if (auto weak_parent = node->_get_parent()->weak_from_this(); !weak_parent.expired()) {
+            parent = weak_parent.lock();
         }
-        catch (const std::bad_weak_ptr&) {
-            // Often, a NodeMasterHandle is stored on the parent Node itself.
+        else {
+            // Often, a NodeOwner is stored on the parent Node itself.
             // In that case, it will be destroyed right after the parent's Node class destructor has finished, and
             // just before the next subclass' destructor begins. At that point, the `shared_ptr` wrapping the deepest
             // nested subclass, will have already been destroyed and all calls to `shared_from_this` or other
             // `shared_ptr` functions will throw.
-            // Luckily, we can simply ignore this, because a parent about to be destroyed does not need the
-            // NodeMasterHandle to tell it to remove its child.
+            // Luckily, we can reliably test for this by checking if the `weak_ptr` contained in any Node through its
+            // inheritance of `std::enable_shared_from_this` has expired. If so, we don't have to tell the parent to
+            // remove the handled child, since the parent is about to be destroyed anyway and will take down all
+            // children with it.
             return;
         }
+        NOTF_ASSERT(parent);
         parent->_remove_child(node);
     }
 };

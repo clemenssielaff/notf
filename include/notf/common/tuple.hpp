@@ -95,26 +95,26 @@ using concat_tuple_t = typename concat_tuple<Ts...>::type;
 /// Checks if T is one of the types contained in the given tuple.
 template<class T, class... Ts>
 struct is_one_of_tuple {
-    static constexpr const bool value = false;
+    static constexpr bool value = false;
 };
 template<class T, class... Ts>
 struct is_one_of_tuple<T, std::tuple<Ts...>> {
-    static constexpr const bool value = is_one_of_v<T, Ts...>;
+    static constexpr bool value = is_one_of_v<T, Ts...>;
 };
 template<class T, class... Ts>
-static constexpr const bool is_one_of_tuple_v = is_one_of_tuple<T, Ts...>::value;
+static constexpr bool is_one_of_tuple_v = is_one_of_tuple<T, Ts...>::value;
 
 /// Checks if T is derived from (or the same as) one of the types contained in the given tuple.
 template<class T, class... Ts>
 struct is_derived_from_one_of_tuple {
-    static constexpr const bool value = false;
+    static constexpr bool value = false;
 };
 template<class T, class... Ts>
 struct is_derived_from_one_of_tuple<T, std::tuple<Ts...>> {
-    static constexpr const bool value = is_derived_from_one_of_v<T, Ts...>;
+    static constexpr bool value = is_derived_from_one_of_v<T, Ts...>;
 };
 template<class T, class... Ts>
-static constexpr const bool is_derived_from_one_of_tuple_v = is_derived_from_one_of_tuple<T, Ts...>::value;
+static constexpr bool is_derived_from_one_of_tuple_v = is_derived_from_one_of_tuple<T, Ts...>::value;
 
 /// Returns the requested type from a Tuple.
 /// Fails if the index is out of bounds and supports negative indices.

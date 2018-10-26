@@ -33,9 +33,9 @@ public:
     ///     xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
     /// Where `x` is a hexadecimal value (0-9, a-f). Any characters beyond are ignored.
     /// @param string   String to initialize the UUID with.
-    Uuid(std::string_view string);
-    Uuid(const std::string& string) : Uuid(std::string_view(string)) {}
-    Uuid(const char* string) : Uuid(std::string_view(string)) {}
+    explicit Uuid(std::string_view string);
+    explicit Uuid(const std::string& string) : Uuid(std::string_view(string)) {}
+    explicit Uuid(const char* string) : Uuid(std::string_view(string)) {}
 
     /// Value Constructor.
     /// Takes any vector of size 16+ containing integral values and static casts the values to uchar to initialize the

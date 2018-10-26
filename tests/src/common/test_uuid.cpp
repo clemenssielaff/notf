@@ -58,13 +58,12 @@ SCENARIO("uuid", "[common][uuid]")
         std::string explicit_string = uuid.to_string();
 
         REQUIRE(implicit_string == explicit_string);
-        REQUIRE(uuid == implicit_string);
         REQUIRE(uuid == Uuid(implicit_string));
 
         std::string valid_uuid1 = "53b55247-b2a5-45f7-812a-b6210fdcdaef";
         std::string valid_uuid2 = "53B55247-B2A5-45F7-812A-B6210FDCDAEF";
-        REQUIRE(Uuid(valid_uuid1) == valid_uuid1);
-        REQUIRE(Uuid(valid_uuid2) == valid_uuid2);
+        REQUIRE(!Uuid(valid_uuid1).is_null());
+        REQUIRE(!Uuid(valid_uuid2).is_null());
     }
 
     SECTION("UUIDs can dump into an ostream")

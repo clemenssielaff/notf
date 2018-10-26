@@ -30,6 +30,10 @@ template<class Policy>
 class CompileTimeNode : public Node {
 
     // types ----------------------------------------------------------------------------------- //
+public:
+    /// The Policy used to define this CompileTimeNode.
+    using policy_t = Policy;
+
 protected:
     /// Tuple containing all compile time Properties of this Node type.
     using properties_t = detail::wrap_tuple_elements_in_shared_ptrs_t<typename Policy::properties>;
@@ -39,7 +43,7 @@ protected:
     using property_t = typename std::tuple_element_t<I, properties_t>::element_type;
 
     /// Number of Properties in this Node type.
-    static constexpr const size_t s_property_count = std::tuple_size_v<properties_t>;
+    static constexpr size_t s_property_count = std::tuple_size_v<properties_t>;
 
     // methods --------------------------------------------------------------------------------- //
 protected:
@@ -48,9 +52,6 @@ protected:
     CompileTimeNode(valid_ptr<Node*> parent) : Node(parent) { _initialize_properties(); }
 
 public:
-    /// Use the base class' `get_property(std::string_view)` method alongside the compile time implementations below.
-    using Node::get_property;
-
     /// Returns a correctly typed Handle to a CompileTimeProperty or void (which doesn't compile).
     /// @param name     Name of the requested Property.
     template<char... Cs>
@@ -58,6 +59,9 @@ public:
     {
         return _get_ct_property<0>(name);
     }
+
+    /// Use the base class' `get_property(std::string_view)` method alongside the compile time implementation.
+    using Node::get_property;
 
 protected:
     /// Implementation specific query of a Property.

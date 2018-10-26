@@ -56,7 +56,7 @@ public:
         NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
         first_child = _create_child<LeafNodeRT>(this);
     }
-    NodeMasterHandle first_child;
+    NodeOwner first_child;
 };
 
 class TwoChildrenNode : public RunTimeNode {
@@ -67,8 +67,8 @@ public:
         first_child = _create_child<LeafNodeRT>(this);
         second_child = _create_child<LeafNodeRT>(this);
     }
-    NodeMasterHandle first_child;
-    NodeMasterHandle second_child;
+    NodeOwner first_child;
+    NodeOwner second_child;
 };
 
 } // namespace
@@ -86,6 +86,7 @@ template<>
 struct notf::Accessor<TheGraph, Tester> {
     static TheGraph& get() { return TheGraph::_get(); }
     static size_t get_node_count() { return TheGraph::_get().m_node_registry.get_count(); }
+    static auto freeze(std::thread::id id) { return TheGraph::_get()._freeze_guard(id); }
 };
 
 template<>

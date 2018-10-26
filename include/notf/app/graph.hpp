@@ -16,7 +16,7 @@ namespace detail {
 
 /// A Root Node type must be derived from AnyRootNode and (a subclass of) Node.
 template<class T>
-static constexpr const bool is_root_node_v = std::conjunction_v<std::is_base_of<AnyRootNode, T>, //
+static constexpr bool is_root_node_v = std::conjunction_v<std::is_base_of<AnyRootNode, T>, //
                                                                 std::is_base_of<Node, T>>;
 
 } // namespace detail
@@ -48,10 +48,6 @@ public:
     public:
         NOTF_NO_COPY_OR_ASSIGN(FreezeGuard);
         NOTF_NO_HEAP_ALLOCATION(FreezeGuard);
-
-        /// Move constructor.
-        /// @param other    FreezeGuard to move from.
-        FreezeGuard(FreezeGuard&& other) : m_thread_id(other.m_thread_id) { other.m_thread_id = std::thread::id{}; }
 
         /// Destructor.
         ~FreezeGuard()
@@ -298,15 +294,6 @@ class Accessor<TheGraph, Node> {
     {
         TheGraph::_get().m_node_registry.remove(uuid);
         TheGraph::_get().m_node_name_registry.remove_node(uuid);
-    }
-
-    /// Returns the name of the Node.
-    /// @param node                 Handle of the Node in question.
-    /// @returns                    Name of the Node or an empty string view.
-    /// @throws HandleExpiredError  If the NodeHandle has expired.
-    static std::string_view get_name(NodeHandle node)
-    {
-        return TheGraph::_get().m_node_name_registry.get_name(std::move(node));
     }
 
     /// (Re-)Names a Node in the registry.

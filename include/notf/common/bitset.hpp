@@ -14,10 +14,10 @@ template<class T>
 struct bitset_size;
 template<size_t Size>
 struct bitset_size<std::bitset<Size>> {
-    static constexpr const size_t value = Size;
+    static constexpr size_t value = Size;
 };
 template<class T>
-static constexpr const size_t bitset_size_v = bitset_size<T>::value;
+static constexpr size_t bitset_size_v = bitset_size<T>::value;
 /// @}
 
 NOTF_CLOSE_NAMESPACE

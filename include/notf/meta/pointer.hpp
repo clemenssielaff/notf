@@ -18,7 +18,7 @@ struct is_shared_ptr : std::false_type {};
 template<class T>
 struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
 template<class T>
-static constexpr const bool is_shared_ptr_v = is_shared_ptr<T>::value;
+static constexpr bool is_shared_ptr_v = is_shared_ptr<T>::value;
 
 /// Template struct to test whether a given type is a unique pointer or not.
 template<class T>
@@ -26,7 +26,7 @@ struct is_unique_ptr : std::false_type {};
 template<class T>
 struct is_unique_ptr<std::unique_ptr<T>> : std::true_type {};
 template<class T>
-static constexpr const bool is_unique_ptr_v = is_unique_ptr<T>::value;
+static constexpr bool is_unique_ptr_v = is_unique_ptr<T>::value;
 
 /// Template struct to test whether a given type is a valid pointer or not.
 template<class T>
@@ -34,7 +34,7 @@ struct is_valid_ptr : std::false_type {};
 template<class T>
 struct is_valid_ptr<valid_ptr<T>> : std::true_type {};
 template<class T>
-static constexpr const bool is_valid_ptr_v = is_valid_ptr<T>::value;
+static constexpr bool is_valid_ptr_v = is_valid_ptr<T>::value;
 
 /// Checks if a pointer of type From can be cast to another of type To.
 template<class From, class To, class = To>
@@ -42,7 +42,7 @@ struct is_static_castable : std::false_type {};
 template<class From, class To>
 struct is_static_castable<From, To, decltype(static_cast<To>(std::declval<From>()))> : std::true_type {};
 template<class From, class To>
-static constexpr const bool is_static_castable_v = is_static_castable<From, To>::value;
+static constexpr bool is_static_castable_v = is_static_castable<From, To>::value;
 
 // pointer support functions ======================================================================================== //
 
@@ -128,6 +128,24 @@ template<class T>
 bool weak_ptr_empty(const std::weak_ptr<T>& ptr) noexcept
 {
     return weak_ptr_equal(ptr, std::weak_ptr<T>{});
+}
+
+/// Extracts the raw pointer from a std::weak_ptr.
+/// This is certainly not portable and safe... but it works for tested versions for libc++ and libstdc++.
+/// This can be removed as soon as `owner_hash` becomes part of the c++ standard
+/// (http://www.open-std.org/jtc1/sc22/wg21/docs/lwg-active.html#1406)
+template<class T>
+const T* raw_from_weak_ptr(const std::weak_ptr<T>& weak_ptr) noexcept
+{
+#if defined NOTF_GCC || defined NOTF_CLANG
+    struct ConceptualWeakPtr {
+        const T* element;
+        const void* control_block;
+    };
+#elif defined NOTF_MSVC
+    // to be tested
+#endif
+    return std::launder(reinterpret_cast<const ConceptualWeakPtr*>(&weak_ptr))->element;
 }
 
 // safe(r) pointer types ============================================================================================ //

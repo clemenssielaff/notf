@@ -92,7 +92,7 @@ struct SubscriberIdentifier {
     template<class T>
     static constexpr auto test()
     {
-        if constexpr (std::conjunction_v<is_shared_ptr<T>, decltype(_has_input_t<T>(0))>) {
+        if constexpr (std::conjunction_v<is_shared_ptr<T>, decltype(_has_input_t<T>(std::declval<T>()))>) {
             using input_t = typename T::element_type::input_t;
             return std::is_convertible<T, SubscriberPtr<input_t>>{};
         }
@@ -103,7 +103,7 @@ struct SubscriberIdentifier {
 
 private:
     template<class T>
-    static constexpr auto _has_input_t(int) -> decltype(typename T::element_type::input_t{}, std::true_type());
+    static constexpr auto _has_input_t(const T&) -> decltype(typename T::element_type::input_t{}, std::true_type());
     template<class>
     static constexpr auto _has_input_t(...) -> std::false_type;
 };
@@ -116,6 +116,6 @@ struct is_subscriber : decltype(detail::SubscriberIdentifier::test<T>()) {};
 
 /// Constexpr boolean that is true only if T is a SubscriberPtr.
 template<class T>
-static constexpr const bool is_subscriber_v = is_subscriber<T>::value;
+static constexpr bool is_subscriber_v = is_subscriber<T>::value;
 
 NOTF_CLOSE_NAMESPACE

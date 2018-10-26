@@ -13,6 +13,50 @@ using ushort = unsigned short;
 using uint = unsigned int;
 using ulong = unsigned long;
 
+// templated integer types ========================================================================================== //
+
+template<size_t size>
+struct templated_integer;
+template<>
+struct templated_integer<8> {
+    using type = std::int8_t;
+};
+template<>
+struct templated_integer<16> {
+    using type = std::int16_t;
+};
+template<>
+struct templated_integer<32> {
+    using type = std::int32_t;
+};
+template<>
+struct templated_integer<64> {
+    using type = std::int64_t;
+};
+template<size_t size>
+using tempated_integer_t = typename templated_integer<size>::type;
+
+template<size_t size>
+struct templated_unsigned_integer;
+template<>
+struct templated_unsigned_integer<8> {
+    using type = std::uint8_t;
+};
+template<>
+struct templated_unsigned_integer<16> {
+    using type = std::uint16_t;
+};
+template<>
+struct templated_unsigned_integer<32> {
+    using type = std::uint32_t;
+};
+template<>
+struct templated_unsigned_integer<64> {
+    using type = std::uint64_t;
+};
+template<size_t size>
+using templated_unsigned_integer_t = typename templated_unsigned_integer<size>::type;
+
 // traits =========================================================================================================== //
 
 /// Explicit None type.
@@ -79,13 +123,13 @@ using identity_t = typename identity<T>::type;
 template<class... Ts>
 struct always_false : std::false_type {};
 template<class... Ts>
-static constexpr const bool always_false_v = always_false<Ts...>::value;
+static constexpr bool always_false_v = always_false<Ts...>::value;
 
 /// Always true, if T is a valid type.
 template<class... Ts>
 struct always_true : std::true_type {};
 template<class... Ts>
-static constexpr const bool always_true_v = always_true<Ts...>::value;
+static constexpr bool always_true_v = always_true<Ts...>::value;
 
 /// Use in place of a type if you don't want the type to take up any space.
 /// This is actually not "valid" C++ but all compilers (that I tested) allow it without problems.
@@ -142,11 +186,11 @@ constexpr bool any(Ts... expressions)
 
 /// Checks if T is any of the variadic types.
 template<class T, class... Ts>
-static constexpr const bool is_one_of_v = std::disjunction<std::is_same<T, Ts>...>::value;
+static constexpr bool is_one_of_v = std::disjunction<std::is_same<T, Ts>...>::value;
 
 /// Checks if T is derived from any of the variadic types.
 template<class T, class... Ts>
-static constexpr const bool is_derived_from_one_of_v = std::disjunction<std::is_base_of<Ts, T>...>::value;
+static constexpr bool is_derived_from_one_of_v = std::disjunction<std::is_base_of<Ts, T>...>::value;
 
 /// Compile-time check whether two types are both signed / both unsigned.
 template<class T, class U>

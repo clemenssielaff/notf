@@ -104,7 +104,7 @@ constexpr size_t hash_string(const char* string, const size_t size) noexcept
     }
     return result;
 }
-constexpr size_t hash_string(const std::string& string) noexcept { return hash_string(string.c_str(), string.size()); }
+inline size_t hash_string(const std::string& string) noexcept { return hash_string(string.c_str(), string.size()); }
 /// @}
 
 // hashable concept================================================================================================== //
@@ -116,7 +116,7 @@ struct is_hashable : std::false_type {};
 template<class T>
 struct is_hashable<T, std::void_t<decltype(std::hash<T>()(std::declval<T>()))>> : std::true_type {};
 template<class T>
-static constexpr const bool is_hashable_v = is_hashable<T>::value;
+static constexpr bool is_hashable_v = is_hashable<T>::value;
 /// @}
 
 NOTF_CLOSE_NAMESPACE

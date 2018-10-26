@@ -4,39 +4,23 @@
 
 NOTF_OPEN_NAMESPACE
 
-// node handle base ================================================================================================= //
+// any node handle ================================================================================================== //
 
 namespace detail {
 
-Uuid NodeHandleBase::get_uuid() const { return _get_node()->get_uuid(); }
+Uuid AnyNodeHandle::_get_uuid(NodePtr&& node) { return node->get_uuid(); }
 
-std::string_view NodeHandleBase::get_name() const { return _get_node()->get_name(); }
+std::string AnyNodeHandle::_get_name(NodePtr&& node) { return node->get_name(); }
 
-} // namespace detail
-
-// node master handle =============================================================================================== //
-
-NodeMasterHandle::NodeMasterHandle(NodePtr&& node) : detail::NodeHandleBase(node)
+void AnyNodeHandle::_set_name(NodePtr&& node, const std::string& name)
 {
-    if (node == nullptr) { NOTF_THROW(ValueError, "Cannot construct a NodeMasterHandle with an empty pointer"); }
+    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+    node->set_name(name);
 }
 
-NodeMasterHandle::~NodeMasterHandle()
+void AnyNodeHandle::_remove_from_parent(NodePtr&& node)
 {
-    if (auto node = m_node.lock()) { Node::AccessFor<NodeMasterHandle>::remove(node); }
-}
-
-// node master handle castable ====================================================================================== //
-
-namespace detail {
-
-NodeMasterHandleCastable::operator NodeMasterHandle()
-{
-    if (auto node = m_node.lock()) {
-        m_node.reset();
-        return NodeMasterHandle(std::move(node));
-    }
-    NOTF_THROW(ValueError, "Cannot create a NodeMasterHandle for a Node that is already expired");
+    if (node != nullptr) { Node::AccessFor<detail::AnyNodeHandle>::remove(node); }
 }
 
 } // namespace detail

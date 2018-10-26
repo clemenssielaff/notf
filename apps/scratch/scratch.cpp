@@ -1,52 +1,30 @@
+#include <array>
 #include <iostream>
 #include <memory>
 #include <string>
+#include <thread>
 #include <tuple>
 #include <vector>
 
 #include "notf/common/mutex.hpp"
 #include "notf/meta/config.hpp"
+#include "notf/meta/hash.hpp"
 #include "notf/meta/types.hpp"
+#include "notf/meta/pointer.hpp"
 
 NOTF_USING_NAMESPACE;
 
-class Appblub {
-
-    Appblub() = default;
-
-    static Appblub& _get()
-    {
-        static Appblub instance;
-        std::cout << "Fear not, for it is blubbed now" << std::endl;
-        instance.m_is_blubbed = true;
-        return instance;
-    }
-
-public:
-    static Appblub& get()
-    {
-        static Appblub& instance = _get();
-        return instance;
-    }
-
-    void do_the_blub()
-    {
-        if (m_is_blubbed) { std::cout << "The Blub!" << std::endl; }
-        else {
-            std::cout << "alas, it was not the blub" << std::endl;
-        }
-    }
-
-private:
-    bool m_is_blubbed = false;
-    Mutex m_mutex;
-};
+struct Foo{};
 
 int main()
 {
-    Appblub::get().do_the_blub();
-    Appblub::get().do_the_blub();
-    Appblub::get().do_the_blub();
-    Appblub::get().do_the_blub();
+    auto shared = std::make_shared<Foo>();
+    std::weak_ptr<Foo> weak = shared;
+
+    const Foo* raw_from_shared = shared.get();
+    const Foo* raw_from_hack = raw_from_weak_ptr(weak);
+
+    const bool is_same = (raw_from_shared == raw_from_hack);
+
     return 0;
 }

@@ -369,9 +369,9 @@ struct PublisherIdentifier {
     template<class T>
     static constexpr auto test()
     {
-        if constexpr (std::conjunction_v<is_shared_ptr<T>,              //
-                                         decltype(_has_policy_t<T>(0)), //
-                                         decltype(_has_output_t<T>(0))>) {
+        if constexpr (std::conjunction_v<is_shared_ptr<T>,                              //
+                                         decltype(_has_policy_t<T>(std::declval<T>())), //
+                                         decltype(_has_output_t<T>(std::declval<T>()))>) {
             using policy_t = typename T::element_type::policy_t;
             using output_t = typename T::element_type::output_t;
             return std::is_convertible<T, PublisherPtr<output_t, policy_t>>{};
@@ -383,12 +383,12 @@ struct PublisherIdentifier {
 
 private:
     template<class T>
-    static constexpr auto _has_policy_t(int) -> decltype(typename T::element_type::output_t{}, std::true_type{});
+    static constexpr auto _has_policy_t(const T&) -> decltype(typename T::element_type::policy_t{}, std::true_type{});
     template<class>
     static constexpr auto _has_policy_t(...) -> std::false_type;
 
     template<class T>
-    static constexpr auto _has_output_t(int) -> decltype(typename T::element_type::output_t{}, std::true_type());
+    static constexpr auto _has_output_t(const T&) -> decltype(typename T::element_type::output_t{}, std::true_type());
     template<class>
     static constexpr auto _has_output_t(...) -> std::false_type;
 };
@@ -401,6 +401,6 @@ struct is_publisher : decltype(detail::PublisherIdentifier::test<T>()) {};
 
 /// Constexpr boolean that is true only if T is a PublisherPtr.
 template<class T>
-static constexpr const bool is_publisher_v = is_publisher<T>::value;
+static constexpr bool is_publisher_v = is_publisher<T>::value;
 
 NOTF_CLOSE_NAMESPACE

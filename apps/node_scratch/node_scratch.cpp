@@ -105,7 +105,7 @@ public:
     using Node::get_property;
 
     template<char... Cs>
-    constexpr const auto& get_property(StringType<char, Cs...> name) const
+    constexpr auto& get_property(StringType<char, Cs...> name) const
     {
         return _get_property_by_name<0>(name);
     }
@@ -263,7 +263,7 @@ public:
     using Node::get_property;
 
     template<char... Cs>
-    constexpr const auto& get_property(StringType<char, Cs...> name) const
+    constexpr auto& get_property(StringType<char, Cs...> name) const
     {
         return _get_widget_property_by_name<0>(name);
     }
