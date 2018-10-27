@@ -67,13 +67,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
     REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 1);
 
     NodeHandle root_node_handle = TheGraph::get_root_node();
-    std::shared_ptr<TestRootNode> root_node;
-    { // get the root node as shared_ptr
-        REQUIRE(root_node_handle);
-        REQUIRE(root_node_handle == TheGraph::get_node(root_node_handle.get_uuid()));
-        root_node
-            = std::dynamic_pointer_cast<TestRootNode>(NodeHandle::AccessFor<Tester>::get_shared_ptr(root_node_handle));
-    }
+    std::shared_ptr<TestRootNode> root_node = std::static_pointer_cast<TestRootNode>(to_shared_ptr(root_node_handle));
     REQUIRE(root_node);
 
     SECTION("the nested 'NewNode' type takes care of casting to a NodeOwner or -Handle of the right type")
@@ -118,40 +112,109 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
     SECTION("Nodes can inspect their hierarchy")
     {
-        NodeHandle single_child_node = root_node->create_child<SingleChildNode>();
-        NodeHandle leaf_node = single_child_node.get_child(0);
-        REQUIRE(leaf_node.get_first_ancestor<SingleChildNode>() == single_child_node);
-        REQUIRE(leaf_node.get_first_ancestor<TestRootNode>() == root_node_handle);
-        REQUIRE(leaf_node.get_first_ancestor<TwoChildrenNode>().is_expired());
+        NodeHandle two_child_node = root_node->create_child<TwoChildrenNode>();
+        NodeHandle first_child = two_child_node.get_child(0);
+        REQUIRE(first_child.get_first_ancestor<TwoChildrenNode>() == two_child_node);
+        REQUIRE(first_child.get_first_ancestor<TestRootNode>() == root_node_handle);
+        REQUIRE(first_child.get_first_ancestor<SingleChildNode>().is_expired());
+
+        REQUIRE(first_child.has_ancestor(two_child_node));
+        REQUIRE(first_child.has_ancestor(root_node_handle));
+        REQUIRE(!first_child.has_ancestor(two_child_node.get_child(1)));
+        REQUIRE(!first_child.has_ancestor(NodeHandle()));
     }
 
     SECTION("Nodes have user definable flags") { REQUIRE(Node::get_user_flag_count() > 0); }
 
     SECTION("Compile Time Nodes have Compile Time Properties")
     {
-        auto test_node1 = root_node->create_child<LeafNodeCT>().to_owner();
+        auto node = root_node->create_child<LeafNodeCT>().to_owner();
+        PropertyHandle<int> int_prop = node.get_property<int>("int");
+        REQUIRE(!int_prop.is_expired());
 
-        PropertyHandle<float> float_handle1_rt = test_node1.get_property<float>("float");
-        REQUIRE(!float_handle1_rt.is_expired());
+        SECTION("compile time and run time acquired Properties are the same")
+        {
+            PropertyHandle<int> int_prop_rt = node.get_property("int"_id);
+            REQUIRE(!int_prop_rt.is_expired());
+            REQUIRE(int_prop_rt == int_prop);
+        }
 
-        PropertyHandle<float> float_handle_ct = test_node1.get_property("float"_id);
-        REQUIRE(!float_handle_ct.is_expired());
+        SECTION("Compile Time Nodes can be asked for non-existing run time Properies")
+        {
+            REQUIRE_THROWS_AS(node.get_property<int>("float").is_expired(), Node::NoSuchPropertyError);
+            REQUIRE_THROWS_AS(node.get_property<float>("int").is_expired(), Node::NoSuchPropertyError);
+            REQUIRE_THROWS_AS(node.get_property<float>("not a property name").is_expired(), Node::NoSuchPropertyError);
+        }
 
-        REQUIRE(float_handle_ct == float_handle1_rt);
+        SECTION("two of the same Properties of different Nodes are not equal")
+        {
+            TypedNodeHandle<LeafNodeCT> node2 = root_node->create_child<LeafNodeCT>();
+            PropertyHandle<int> int_prop_2 = node2.get_property<int>("int");
+            REQUIRE(!int_prop_2.is_expired());
+            REQUIRE(int_prop != int_prop_2);
+        }
 
-        TypedNodeHandle<LeafNodeCT> test_node2 = root_node->create_child<LeafNodeCT>();
-        PropertyHandle<float> float_handle2_rt = test_node2.get_property<float>("float");
-        REQUIRE(!float_handle2_rt.is_expired());
-        REQUIRE(float_handle1_rt != float_handle2_rt);
+        SECTION("you can change the property hash by changing any property value")
+        {
+            const size_t property_hash = Node::AccessFor<Tester>(node).get_property_hash();
+            int_prop.set(int_prop.get() + 1);
+            REQUIRE(property_hash != Node::AccessFor<Tester>(node).get_property_hash());
+        }
+    }
+
+    SECTION("RunTimeNodes create their Properties in the constructor")
+    {
+        SECTION("Property names have to be unique")
+        {
+            struct NotUniquePropertyNode : public RunTimeNode {
+                NOTF_UNUSED NotUniquePropertyNode(valid_ptr<Node*> parent) : RunTimeNode(parent)
+                {
+                    _create_property<int>("not_unique", 0, true);
+                    _create_property<int>("not_unique", 6587, false);
+                }
+            };
+            REQUIRE_THROWS_AS(root_node->create_child<NotUniquePropertyNode>(), NotUniqueError);
+        }
+
+        SECTION("Properties can only be created in the constructor")
+        {
+            struct FinalizedNode : public RunTimeNode {
+                NOTF_UNUSED FinalizedNode(valid_ptr<Node*> parent) : RunTimeNode(parent)
+                {
+                    _create_property<int>("int", 0, true);
+                }
+
+                void fail()
+                {
+                    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+                    _create_property<int>("won't work because I'm finalized", 0, true);
+                }
+            };
+            auto node_handle = root_node->create_child<FinalizedNode>().to_handle();
+            auto node_ptr = to_shared_ptr(node_handle);
+            REQUIRE_THROWS_AS(node_ptr->fail(), Node::FinalizedError);
+        }
     }
 
     SECTION("Run Time Nodes have Run Time Properties")
     {
         NodeHandle node = root_node->create_child<LeafNodeRT>();
 
-        REQUIRE(!node.get_property<float>("float").is_expired());
-        REQUIRE_THROWS_AS(node.get_property<float>("not a property").is_expired(), Node::NoSuchPropertyError);
-        REQUIRE_THROWS_AS(node.get_property<bool>("float").is_expired(), Node::NoSuchPropertyError);
+        SECTION("can be asked fo non-existing Properties")
+        {
+            REQUIRE(!node.get_property<float>("float").is_expired());
+            REQUIRE_THROWS_AS(node.get_property<float>("not a property").is_expired(), Node::NoSuchPropertyError);
+            REQUIRE_THROWS_AS(node.get_property<bool>("float").is_expired(), Node::NoSuchPropertyError);
+        }
+
+        SECTION("you can change the property hash by changing any property value")
+        {
+            PropertyHandle<float> prop = node.get_property<float>("float");
+
+            const size_t property_hash = Node::AccessFor<Tester>(node).get_property_hash();
+            prop.set(prop.get() + 1.f);
+            REQUIRE(property_hash != Node::AccessFor<Tester>(node).get_property_hash());
+        }
     }
 
     SECTION("whenever a Property changes, its Node is marked dirty")
@@ -176,6 +239,38 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         {
             NOTF_GUARD(TheGraph::AccessFor<Tester>::freeze(render_thread_id));
             int_property.set(321);
+            REQUIRE(int_property.get() == 321);
         }
+        REQUIRE(int_property.get() == 321);
+    }
+
+    SECTION("Node Handles will not crash when you try call a method on them when they are expired")
+    {
+        NodeHandle expired;
+        {
+            auto owner = root_node->create_child<LeafNodeCT>().to_owner();
+            expired = owner;
+            REQUIRE(!expired.is_expired());
+        }
+        REQUIRE(expired.is_expired());
+
+        REQUIRE_THROWS_AS(expired.stack_back(), HandleExpiredError); // mutable
+        REQUIRE_THROWS_AS(expired.is_in_back(), HandleExpiredError); // const
+
+        // TODO: test all node handle functions
+    }
+
+    SECTION("Two Nodes should have at least the root node as a common ancestor")
+    {
+        auto two_child_parent_handle = root_node->create_child<TwoChildrenNode>().to_owner();
+        auto two_child_parent_ptr = to_shared_ptr(two_child_parent_handle);
+        TypedNodeHandle<LeafNodeRT> first_child_handle = two_child_parent_ptr->first_child;
+        TypedNodeHandle<LeafNodeRT> second_child_handle = two_child_parent_ptr->second_child;
+
+        REQUIRE(first_child_handle.get_common_ancestor(second_child_handle) == two_child_parent_handle);
+
+        std::shared_ptr<TestRootNode> second_root = std::make_shared<TestRootNode>();
+        NodeHandle foreign_node = second_root->create_child<LeafNodeCT>();
+        REQUIRE_THROWS_AS(first_child_handle.get_common_ancestor(foreign_node), Node::HierarchyError);
     }
 }

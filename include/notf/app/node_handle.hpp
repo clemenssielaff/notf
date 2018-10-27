@@ -38,7 +38,12 @@ class TypedNodeHandle : public detail::AnyNodeHandle {
     static_assert(std::is_base_of_v<Node, NodeType>, "NodeType must be a type derived from Node");
 
     friend ::std::hash<TypedNodeHandle<NodeType>>;
-    friend ::notf::Node;
+
+    template<class>
+    friend class TypedNodeHandle; // befriend all other TypedNodeHandles so you can copy their node
+
+    friend Accessor<TypedNodeHandle, Node>;
+    friend Accessor<TypedNodeHandle, TheGraph>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -66,6 +71,18 @@ public:
     TypedNodeHandle(std::shared_ptr<T> node) : m_node(std::static_pointer_cast<NodeType>(std::move(node)))
     {}
     /// @}
+
+    /// Assignment operator.
+    /// @param other    Other NodeHandle to copy.
+    template<class T, class = std::enable_if_t<std::is_base_of_v<NodeType, T>>>
+    TypedNodeHandle& operator=(TypedNodeHandle<T> other)
+    {
+        m_node = std::static_pointer_cast<NodeType>(other.m_node.lock());
+        return *this;
+    }
+
+    /// Implicit conversion to an (untyped) NodeHandle.
+    operator NodeHandle() { return NodeHandle(std::static_pointer_cast<Node>(m_node.lock())); }
 
     /// @{
     /// Checks whether the NodeHandle is still valid or not.
@@ -266,12 +283,13 @@ public:
 
     // comparison -------------------------------------------------------------
 
-    /// Comparison with another NodeHandle.
-    bool operator==(const this_t& rhs) const noexcept { return weak_ptr_equal(m_node, rhs.m_node); }
-    bool operator!=(const this_t& rhs) const noexcept { return !operator==(rhs); }
-
-    /// Less-than operator with another NodeHandle.
-    bool operator<(const this_t& rhs) const noexcept { return m_node.owner_before(rhs.m_node); }
+    /// GCC requires these to be instantiated outside the class
+    template<class LeftType, class RightType>
+    friend bool operator==(const TypedNodeHandle<LeftType>& lhs, const TypedNodeHandle<RightType>& rhs) noexcept;
+    template<class LeftType, class RightType>
+    friend bool operator!=(const TypedNodeHandle<LeftType>& lhs, const TypedNodeHandle<RightType>& rhs) noexcept;
+    template<class LeftType, class RightType>
+    friend bool operator<(const TypedNodeHandle<LeftType>& lhs, const TypedNodeHandle<RightType>& rhs) noexcept;
 
     /// Comparison with a NodePtr.
     friend bool operator==(const this_t& lhs, const NodePtr& rhs) noexcept { return lhs._get_ptr() == rhs.get(); }
@@ -308,6 +326,25 @@ protected:
     std::weak_ptr<NodeType> m_node;
 };
 
+/// Equality comparison with another NodeHandle.
+template<class LeftType, class RightType>
+bool operator==(const TypedNodeHandle<LeftType>& lhs, const TypedNodeHandle<RightType>& rhs) noexcept
+{
+    return weak_ptr_equal(lhs.m_node, rhs.m_node);
+}
+template<class LeftType, class RightType>
+bool operator!=(const TypedNodeHandle<LeftType>& lhs, const TypedNodeHandle<RightType>& rhs) noexcept
+{
+    return !operator==(lhs, rhs);
+}
+
+/// Less-than operator with another NodeHandle.
+template<class LeftType, class RightType>
+bool operator<(const TypedNodeHandle<LeftType>& lhs, const TypedNodeHandle<RightType>& rhs) noexcept
+{
+    return lhs.m_node.owner_before(rhs.m_node);
+}
+
 // typed node owner ================================================================================================= //
 
 /// Special NodeHandle type that is unique per Node instance and removes the Node when itself goes out of scope.
@@ -337,6 +374,25 @@ public:
     /// Node or some other Node in the Graph) this does not block, but it might if the mutex is not already held by this
     /// thread.
     ~TypedNodeOwner() { this->_remove_from_parent(this->m_node.lock()); }
+};
+
+// node handle accessors
+// =================================================================================================== //
+
+template<class NodeType>
+class Accessor<TypedNodeHandle<NodeType>, TheGraph> {
+    friend TheGraph;
+
+    /// Unwraps the shared_ptr contained in a NodeHandle.
+    static NodePtr get_node_ptr(const NodeHandle& node) { return node.m_node.lock(); }
+};
+
+template<class NodeType>
+class Accessor<TypedNodeHandle<NodeType>, Node> {
+    friend Node;
+
+    /// Unwraps the shared_ptr contained in a NodeHandle.
+    static NodePtr get_node_ptr(const NodeHandle& node) { return node.m_node.lock(); }
 };
 
 NOTF_CLOSE_NAMESPACE

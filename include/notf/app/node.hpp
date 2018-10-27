@@ -37,28 +37,24 @@ template<class A, class B>
 constexpr bool can_node_parent() noexcept
 {
     // both A and B must be derived from Node
-    if constexpr (std::negation_v<std::conjunction<std::is_base_of<Node, A>, std::is_base_of<Node, B>>>) {
-        return false;
+    if (std::negation_v<std::conjunction<std::is_base_of<Node, A>, std::is_base_of<Node, B>>>) { return false; }
+
+    // if A has a list of explicitly allowed child types, B must be in it
+    if constexpr (has_allowed_child_types<A>::value) {
+        if (!is_derived_from_one_of_tuple_v<B, typename A::allowed_child_types>) { return false; }
     }
-    else { // explicit else so the code coverage doesn't pretend like these lines are not covered...
+    // ... otherwise, if A has a list of explicitly forbidden child types, B must NOT be in it
+    else if constexpr (has_forbidden_child_types<A>::value) {
+        if (is_derived_from_one_of_tuple_v<B, typename A::forbidden_child_types>) { return false; }
+    }
 
-        // if A has a list of explicitly allowed child types, B must be in it
-        if constexpr (has_allowed_child_types<A>::value) {
-            if (!is_derived_from_one_of_tuple_v<B, typename A::allowed_child_types>) { return false; }
-        }
-        // ... otherwise, if A has a list of explicitly forbidden child types, B must NOT be in it
-        else if constexpr (has_forbidden_child_types<A>::value) {
-            if (is_derived_from_one_of_tuple_v<B, typename A::forbidden_child_types>) { return false; }
-        }
-
-        // if B has a list of explicitly allowed parent types, A must be in it
-        else if constexpr (has_allowed_parent_types<B>::value) {
-            if (!is_derived_from_one_of_tuple_v<A, typename B::allowed_parent_types>) { return false; }
-        }
-        // ... otherwise, if B has a list of explicitly forbidden parent types, A must NOT be in it
-        else if constexpr (has_forbidden_parent_types<B>::value) {
-            if (is_derived_from_one_of_tuple_v<A, typename B::forbidden_parent_types>) { return false; }
-        }
+    // if B has a list of explicitly allowed parent types, A must be in it
+    if constexpr (has_allowed_parent_types<B>::value) {
+        if (!is_derived_from_one_of_tuple_v<A, typename B::allowed_parent_types>) { return false; }
+    }
+    // ... otherwise, if B has a list of explicitly forbidden parent types, A must NOT be in it
+    else if constexpr (has_forbidden_parent_types<B>::value) {
+        if (is_derived_from_one_of_tuple_v<A, typename B::forbidden_parent_types>) { return false; }
     }
 
     return true;
@@ -218,7 +214,7 @@ private:
         valid_ptr<Node*> parent;
 
         /// Modified children of this Node, should they have been modified.
-        valid_ptr<std::unique_ptr<ChildList>> children;
+        std::unique_ptr<ChildList> children;
 
         /// Modified flags of this Node.
         Flags flags;
@@ -282,9 +278,18 @@ public:
     /// The parent of this Node.
     NodeHandle get_parent();
 
+    /// @{
     /// Tests, if this Node is a descendant of the given ancestor.
     /// @param ancestor         Potential ancestor to verify.
-    bool has_ancestor(const NodeHandle& ancestor) const;
+    bool has_ancestor(const Node* ancestor) const;
+    bool has_ancestor(const NodeHandle& ancestor) const
+    {
+        if (const NodeConstPtr ancestor_lock = NodeHandle::AccessFor<Node>::get_node_ptr(ancestor)) {
+            return has_ancestor(ancestor_lock.get());
+        }
+        return false;
+    }
+    /// @}
 
     /// Finds and returns the first common ancestor of two Nodes.
     /// At the latest, the RootNode is always a common ancestor.
@@ -368,6 +373,11 @@ public:
     /// @throws OutOfBounds   If index >= user flag count.
     void set_user_flag(size_t index, bool value = true);
 
+    // management -------------------------------------------------------------
+
+    /// Deletes all modified data of this Property.
+    void clear_modified_data();
+
 protected:
     /// Implementation specific query of a Property.
     /// @param name     Node-unique name of the Property.
@@ -375,6 +385,9 @@ protected:
 
     /// Calculates the combined hash value of all Properties.
     virtual size_t _calculate_property_hash() const = 0;
+
+    /// Removes all modified data from all Properties.
+    virtual void _clear_modified_properties() const = 0;
 
     /// Creates and adds a new child to this node.
     /// @param parent   Parent of the Node, must be `this` (is used for type checking).

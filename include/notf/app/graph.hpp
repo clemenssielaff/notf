@@ -17,7 +17,7 @@ namespace detail {
 /// A Root Node type must be derived from AnyRootNode and (a subclass of) Node.
 template<class T>
 static constexpr bool is_root_node_v = std::conjunction_v<std::is_base_of<AnyRootNode, T>, //
-                                                                std::is_base_of<Node, T>>;
+                                                          std::is_base_of<Node, T>>;
 
 } // namespace detail
 
@@ -96,12 +96,6 @@ private:
     /// Node name registry std::string <-> NodeHandle.
     struct NodeNameRegistry {
 
-        /// Returns the name of the Node.
-        /// @param node                 Handle of the Node in question.
-        /// @returns                    Name of the Node or an empty string view.
-        /// @throws HandleExpiredError  If the NodeHandle has expired.
-        std::string_view get_name(NodeHandle node) const;
-
         /// (Re-)Names a Node in the registry.
         /// If another Node with the same name already exists, this method will append the lowest integer postfix that
         /// makes the name unique.
@@ -158,7 +152,6 @@ public:
 
     /// (Re-)Initializes the Graph with a new Root Node.
     /// All existing Nodes in the Graph are removed.
-    /// Blocks if a frame is currently being rendered.
     template<class T, class = std::enable_if_t<detail::is_root_node_v<T>>>
     static void initialize()
     {
@@ -166,7 +159,7 @@ public:
     }
 
     /// The current Root Node of this Graph.
-    static NodeHandle get_root_node(std::thread::id thread_id = std::this_thread::get_id());
+    static NodeHandle get_root_node() { return _get_root_node(); }
 
     /// The Node with the given name.
     /// @param name Name of the Node to look up.
@@ -207,6 +200,11 @@ public:
 #endif
 
 private:
+    /// The current Root Node of this Graph.
+    /// @param thread_id    Id of the freezing thread (should only be used in tests).
+    static NodeHandle _get_root_node(std::thread::id thread_id = std::this_thread::get_id());
+
+    /// Initialization of a new RootNode, typed part.
     template<class T>
     void _initialize_typed()
     {
@@ -226,20 +224,26 @@ private:
 
     /// Freeze the Scene, if it is currently unfrozen.
     /// @param thread_id    Id of the freezing thread (should only be used in tests).
-    /// @returns    FreezeGuard that keeps the scene frozen while it is alive, is invalid if freezing did not succeed.
+    /// @returns            FreezeGuard that keeps the scene frozen while it is alive, is invalid if freezing did not
+    /// succeed.
     FreezeGuard _freeze_guard(const std::thread::id thread_id = std::this_thread::get_id())
     {
         return FreezeGuard(std::move(thread_id));
     }
 
     /// Freezes the Scene if it is not already frozen.
-    /// @param thread_id    Id of the calling thread.
+    /// @param thread_id    Id of the freezing thread.
     /// @returns            True iff the Scene was frozen.
     bool _freeze(std::thread::id thread_id);
 
     /// Unfreezes the Scene again.
-    /// @param thread_id    Id of the calling thread (to ensure that the same thread freezes and unfreezes).
+    /// @param thread_id    Id of the freezing thread (to ensure that the same thread freezes and unfreezes).
     void _unfreeze(std::thread::id thread_id);
+
+    /// Removes all modified data copies from the Graph - at the point that this method returns, all threads agree on
+    /// the complete state of the Graph
+    /// @returns    True iff something changed in the Graph since the last synchronization.
+    bool _synchronize();
 
     /// Tests whether this Graph is currently frozen.
     bool _is_frozen() const noexcept { return m_freezing_thread != std::thread::id(); }

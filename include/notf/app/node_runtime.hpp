@@ -33,6 +33,14 @@ protected:
         return result;
     }
 
+    /// Removes all modified data from all Properties.
+    void _clear_modified_properties() const override
+    {
+        for (auto& itr : m_properties) {
+            itr.second->clear_modified_data();
+        }
+    }
+
     /// Constructs a new Property on this Node.
     /// @param name         Name of the Property.
     /// @param value        Initial value of the Property (also determines its type unless specified explicitly).
@@ -58,7 +66,7 @@ protected:
         itr->second = property;
 
         // subscribe to receive an update, whenever the property changes its value
-        Property<T>::template AccessFor<Node>::get_operator(property)->subscribe(_get_property_observer());
+        property->get_operator()->subscribe(_get_property_observer());
 
         return PropertyHandle<T>(std::move(property));
     }

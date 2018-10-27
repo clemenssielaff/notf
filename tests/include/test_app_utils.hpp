@@ -17,7 +17,7 @@ struct BoolPropertyPolicy {
     using value_t = bool;
     static constexpr StringConst name = "bool";
     static constexpr value_t default_value = true;
-    static constexpr bool is_visible = true;
+    static constexpr bool is_visible = false;
 };
 
 struct IntPropertyPolicy {
@@ -52,7 +52,7 @@ public:
     NOTF_UNUSED LeafNodeRT(valid_ptr<Node*> parent) : RunTimeNode(parent)
     {
         _create_property<float>("float", 0.123f, true);
-        _create_property<bool>("bool", true, true);
+        _create_property<bool>("bool", true, false);
         _create_property<int>("int", 123, true);
     }
 };
@@ -80,8 +80,8 @@ public:
         first_child = _create_child<LeafNodeRT>(this);
         second_child = _create_child<LeafNodeRT>(this);
     }
-    NodeOwner first_child;
-    NodeOwner second_child;
+    TypedNodeOwner<LeafNodeRT> first_child;
+    TypedNodeOwner<LeafNodeRT> second_child;
 };
 
 } // namespace
@@ -89,22 +89,12 @@ public:
 // accessors ======================================================================================================== //
 
 template<>
-struct notf::Accessor<Node, Tester> {
-    Accessor(Node& node) : m_node(node) {}
-    size_t get_property_hash() const { return m_node._calculate_property_hash(); }
-    bool is_dirty() const
-    {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
-        return m_node._is_flag_set(to_number(Node::InternalFlags::DIRTY));
-    }
-    Node& m_node;
-};
-
-template<>
 struct notf::Accessor<TheGraph, Tester> {
     static TheGraph& get() { return TheGraph::_get(); }
-    static size_t get_node_count() { return TheGraph::_get().m_node_registry.get_count(); }
     static auto freeze(std::thread::id id) { return TheGraph::_get()._freeze_guard(id); }
+    static auto register_node(NodeHandle node) { return TheGraph::_get().m_node_registry.add(node); }
+    static size_t get_node_count() { return TheGraph::_get().m_node_registry.get_count(); }
+    static auto get_root_node(const std::thread::id thread_id) { return TheGraph::_get()._get_root_node(thread_id); }
 };
 
 template<class NodeType>
@@ -114,3 +104,43 @@ struct notf::Accessor<TypedNodeHandle<NodeType>, Tester> {
         return handle.m_node.lock();
     }
 };
+
+template<class T>
+struct notf::Accessor<PropertyHandle<T>, Tester> {
+    static std::shared_ptr<Property<T>> get_shared_ptr(const PropertyHandle<T>& handle)
+    {
+        return handle.m_property.lock();
+    }
+};
+
+template<>
+struct notf::Accessor<Node, Tester> {
+    Accessor(Node& node) : m_node(node) {}
+    template<class NodeType>
+    Accessor(TypedNodeHandle<NodeType>& node)
+        : m_node(*(TypedNodeHandle<NodeType>::template AccessFor<Tester>::get_shared_ptr(node).get()))
+    {}
+    template<class NodeType>
+    Accessor(TypedNodeOwner<NodeType>& node)
+        : m_node(*(TypedNodeHandle<NodeType>::template AccessFor<Tester>::get_shared_ptr(node).get()))
+    {}
+    size_t get_property_hash() const { return m_node._calculate_property_hash(); }
+    bool is_dirty() const
+    {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        return m_node._is_flag_set(to_number(Node::InternalFlags::DIRTY));
+    }
+    void set_uuid(const Uuid& uuid) { const_cast<Uuid&>(m_node.m_uuid) = uuid; }
+    Node& m_node;
+};
+
+template<class NodeType>
+auto to_shared_ptr(TypedNodeHandle<NodeType>& node)
+{
+    return TypedNodeHandle<NodeType>::template AccessFor<Tester>::get_shared_ptr(node);
+}
+template<class T>
+auto to_shared_ptr(PropertyHandle<T>& property)
+{
+    return PropertyHandle<T>::template AccessFor<Tester>::get_shared_ptr(property);
+}

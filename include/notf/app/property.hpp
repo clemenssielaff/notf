@@ -11,6 +11,10 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
+/// Reports (and ultimately ignores) an exception that was propagated to a PropertyOperator via `on_error`.
+/// @param exception    Reported exception.
+void report_property_operator_error(const std::exception& exception);
+
 /// The Reactive Property Operator contains most of the Property-related functionality like caching and hashing.
 /// The actual `Property` class acts as more of a facade.
 template<class T>
@@ -33,12 +37,15 @@ public:
     }
 
     /// Update the Property from upstream.
-    void on_next(const AnyPublisher* /*publisher*/, const T& value) final { set(value); }
-
-    void on_error(const AnyPublisher* /*publisher*/, const std::exception& /*exception*/) final
+    void on_next(const AnyPublisher* /*publisher*/, const T& value) final
     {
-        // TODO: how does a Property handle upstream errors? It should swallow it and not pass it on downstream, but
-        // do we just report it? re-throw?
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        set(value);
+    }
+
+    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) final
+    {
+        report_property_operator_error(exception);
     }
 
     /// Properties cannot be completed from the outside
@@ -102,7 +109,13 @@ public:
     }
 
     /// Deletes the modified value copy, if one exists.
-    void clear_modified_value() { m_modified_value.reset(); }
+    void clear_modified_value()
+    {
+        if (m_modified_value) {
+            m_value = std::move(*m_modified_value.get());
+            m_modified_value.reset();
+        }
+    }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
@@ -138,6 +151,9 @@ public:
 
     /// The hash of this Property's value.
     virtual size_t get_hash() const = 0;
+
+    /// Deletes all modified data of this Property.
+    virtual void clear_modified_data() = 0;
 };
 
 /// A Typed Property.
@@ -148,8 +164,6 @@ class Property : public AnyProperty {
     static_assert(is_hashable_v<T>, "Property values must be hashable");
     static_assert(!std::is_const_v<T>, "Property values must be modifyable");
     static_assert(true, "Property values must be serializeable"); // TODO: check property value types f/ serializability
-
-    friend struct Accessor<Property<T>, Node>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -187,42 +201,25 @@ public:
     /// Whether a change in the Property will cause the Node to redraw or not.
     bool is_visible() const noexcept { return get_hash() != 0; }
 
+    /// The default value of this Property.
+    virtual const T& get_default() const = 0;
+
     /// The Property value.
-    const T& get() const noexcept { return m_operator->get(std::this_thread::get_id()); }
+    /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
+    const T& get(const std::thread::id thread_id = std::this_thread::get_id()) const noexcept
+    {
+        return m_operator->get(thread_id);
+    }
 
     /// Updater the Property value and bind it.
     /// @param value    New Property value.
     void set(const T& value) { m_operator->set(value); }
 
-    /// Connect the reactive Operator of this Property to a Subscriber downstream.
-    template<class Prop, class Sub>
-    friend std::enable_if_t<
-        detail::is_reactive_compatible_v<operator_t, std::decay_t<Sub>> && std::is_base_of_v<Property<T>, Prop>,
-        Pipeline<std::decay_t<Sub>>>
-    operator|(std::shared_ptr<Prop>& property, Sub&& subscriber)
-    {
-        return property->m_operator | std::forward<Sub>(subscriber);
-    }
+    /// Reactive Property operator underlying the Property's reactive functionality.
+    operator_t& get_operator() { return m_operator; }
 
-    /// Connect a Publisher upstream to a Property.
-    template<class Pub, class Prop>
-    friend std::enable_if_t<
-        detail::is_reactive_compatible_v<std::decay_t<Pub>, operator_t> && std::is_base_of_v<Property<T>, Prop>,
-        Pipeline<operator_t>>
-    operator|(Pub&& publisher, std::shared_ptr<Prop>& property)
-    {
-        return std::forward<Pub>(publisher) | property->m_operator;
-    }
-
-    /// Connect a Property upstream to a Property downstream.
-    template<class Pub, class Sub>
-    friend std::enable_if_t<
-        detail::is_reactive_compatible_v<operator_t, typename Sub::operator_t> && std::is_base_of_v<Property<T>, Pub>,
-        Pipeline<typename Sub::operator_t>>
-    operator|(std::shared_ptr<Pub>& lhs, std::shared_ptr<Sub>& rhs)
-    {
-        return lhs->m_operator | rhs->m_operator;
-    }
+    /// Deletes all modified data of this Property.
+    void clear_modified_data() override { m_operator->clear_modified_value(); }
 
     // fields ---------------------------------------------------------------------------------- ///
 private:
@@ -242,16 +239,22 @@ public:
     /// @param value        Property value.
     /// @param is_visible   Whether a change in the Property will cause the Node to redraw or not.
     RunTimeProperty(std::string_view name, T value, bool is_visible = true)
-        : Property<T>(std::move(value), is_visible), m_name(std::move(name))
+        : Property<T>(value, is_visible), m_name(std::move(name)), m_default_value(std::move(value))
     {}
 
     /// The Node-unique name of this Property.
     std::string_view get_name() const final { return m_name; }
 
+    /// The default value of this Property.
+    const T& get_default() const final { return m_default_value; }
+
     // fields ---------------------------------------------------------------------------------- ///
 private:
     /// The Node-unique name of this Property.
     const std::string_view m_name;
+
+    /// The default value of this Property.
+    const T m_default_value;
 };
 
 // compile time property ============================================================================================ //
@@ -268,35 +271,32 @@ private:
 template<class Policy>
 class CompileTimeProperty final : public Property<typename Policy::value_t> {
 
+    // types ----------------------------------------------------------------------------------- //
+public:
+    /// Property value type.
+    using value_t = typename Policy::value_t;
+
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor.
     /// @param value        Property value.
     /// @param is_visible   Whether a change in the Property will cause the Node to redraw or not.
-    CompileTimeProperty(typename Policy::value_t value = Policy::default_value, bool is_visible = Policy::is_visible)
-        : Property<typename Policy::value_t>(value, is_visible)
+    CompileTimeProperty(value_t value = Policy::default_value, bool is_visible = Policy::is_visible)
+        : Property<value_t>(value, is_visible)
     {}
 
     /// The Node-unique name of this Property.
     std::string_view get_name() const final { return Policy::name.c_str(); }
 
+    /// The default value of this Property.
+    const value_t& get_default() const final
+    {
+        static const value_t default_value = Policy::default_value;
+        return default_value;
+    }
+
     /// The compile time constant name of this Property.
     static constexpr const StringConst& get_const_name() noexcept { return Policy::name; }
 };
-
-// property accessor ==================================================================================================== //
-
-/// Access to selected members of a Property.
-template<class T>
-class Accessor<Property<T>, Node> {
-    friend Node;
-    friend RunTimeNode;
-    template<class>
-    friend class CompileTimeNode;
-
-    /// Reactive Property operator underlying the Property's reactive functionality.
-    static auto& get_operator(PropertyPtr<T>& property) { return property->m_operator; }
-};
-
 
 NOTF_CLOSE_NAMESPACE

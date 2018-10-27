@@ -19,7 +19,8 @@ void TheGraph::NodeRegistry::add(NodeHandle node)
     {
         NOTF_GUARD(std::lock_guard(m_mutex));
         const auto [iter, success] = m_registry.try_emplace(uuid, node);
-        if (!success && iter->second != node) {
+        if (NOTF_UNLIKELY(!success && iter->second != node)) {
+            // very unlikely, close to impossible without severe hacking and const-away casting
             NOTF_THROW(NotUniqueError, "A different Node with the UUID {} is already registered with the Graph",
                        uuid.to_string());
         }
@@ -33,16 +34,6 @@ void TheGraph::NodeRegistry::remove(Uuid uuid)
 }
 
 // the graph - node name registry =================================================================================== //
-
-std::string_view TheGraph::NodeNameRegistry::get_name(NodeHandle node) const
-{
-    const Uuid& uuid = node.get_uuid(); // this might throw if the handle is expired, do it before locking the mutex
-    {
-        NOTF_GUARD(std::lock_guard(m_mutex));
-        if (const auto& itr = m_uuid_to_name.find(uuid); itr != m_uuid_to_name.end()) { return itr->second; }
-    }
-    return {};
-}
 
 std::string_view TheGraph::NodeNameRegistry::set_name(NodeHandle node, const std::string& name)
 {
@@ -66,13 +57,8 @@ std::string_view TheGraph::NodeNameRegistry::set_name(NodeHandle node, const std
             size_t counter = 2;
             auto [iter, success] = m_name_to_node.try_emplace(name, std::make_pair(uuid, node));
             while (!success) {
-                std::tie(iter, success) = m_name_to_node.try_emplace(fmt::format("{}_{:0>2}", name, counter++), //
-                                                                     std::make_pair(uuid, node));
-                // if the name is already taken, but the handle expired, just replace it
-                if (!success && iter->second.second.is_expired()) {
-                    iter->second = std::make_pair(uuid, node);
-                    success = true;
-                }
+                std::tie(iter, success)
+                    = m_name_to_node.try_emplace(fmt::format("{}_{:0>2}", name, counter++), std::make_pair(uuid, node));
             }
             name_view = iter->first;
         }
@@ -83,30 +69,16 @@ std::string_view TheGraph::NodeNameRegistry::set_name(NodeHandle node, const std
 
 NodeHandle TheGraph::NodeNameRegistry::get_node(const std::string& name) const
 {
-    Uuid uuid;
-    {
-        NOTF_GUARD(std::lock_guard(m_mutex));
+    NOTF_GUARD(std::lock_guard(m_mutex));
 
-        // find the handle
-        auto name_iter = m_name_to_node.find(name);
-        if (name_iter == m_name_to_node.end()) { return {}; }
+    // find the handle
+    auto name_iter = m_name_to_node.find(name);
+    if (name_iter == m_name_to_node.end()) { return {}; }
 
-        // if the handle is valid, return it
-        NodeHandle& node = name_iter->second.second;
-        if (!node.is_expired()) { return node; }
-
-        // if the handle has expired, make sure it is erased from all the maps
-        uuid = name_iter->second.first;
-        m_name_to_node.erase(name_iter);
-        if (auto uuid_iter = m_uuid_to_name.find(uuid); uuid_iter != m_uuid_to_name.end()) {
-            m_uuid_to_name.erase(uuid_iter);
-        }
-    }
-
-    // also remove the node from the NodeRegistry (without holding another mutex to avoid deadlock
-    TheGraph()._get().m_node_registry.remove(uuid);
-
-    return {};
+    // if the handle is valid, return it
+    NodeHandle& node = name_iter->second.second;
+    NOTF_ASSERT(!node.is_expired());
+    return node;
 }
 
 void TheGraph::NodeNameRegistry::remove_node(const Uuid uuid)
@@ -142,7 +114,7 @@ TheGraph::~TheGraph()
     m_root_node.reset();
 }
 
-NodeHandle TheGraph::get_root_node(const std::thread::id thread_id)
+NodeHandle TheGraph::_get_root_node(const std::thread::id thread_id)
 {
     TheGraph& graph = _get();
 
@@ -168,7 +140,7 @@ void TheGraph::_initialize_untyped(AnyRootNodePtr&& root_node)
         NOTF_ASSERT(m_root_node);
 
         // the render thread must never re-initialize the graph
-        NOTF_ASSERT(_is_frozen_by(std::this_thread::get_id()));
+        NOTF_ASSERT(!_is_frozen_by(std::this_thread::get_id()));
 
         // either create a new modified root node or replace a previous modification
         m_modified_root_node = root_node;
@@ -185,14 +157,42 @@ void TheGraph::_initialize_untyped(AnyRootNodePtr&& root_node)
 bool TheGraph::_freeze(const std::thread::id thread_id)
 {
     if (_is_frozen() || thread_id == std::thread::id()) { return false; }
+    NOTF_GUARD(std::lock_guard(m_mutex));
+
+    // freeze the graph
     m_freezing_thread = std::move(thread_id);
+
     return true;
 }
 
 void TheGraph::_unfreeze(const std::thread::id thread_id)
 {
-    if (_is_frozen_by(thread_id)) { m_freezing_thread = std::thread::id(); }
-    // TODO: when unfreezing the graph, clean all nodes and properties etc.
+    if (!_is_frozen_by(thread_id)) { return; }
+    NOTF_GUARD(std::lock_guard(m_mutex));
+
+    // unfreeze the graph
+    m_freezing_thread = std::thread::id();
+
+    _synchronize();
+}
+
+bool TheGraph::_synchronize()
+{
+    NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
+
+    const bool did_something_change = m_modified_root_node || !m_dirty_nodes.empty();
+
+    if (m_modified_root_node) {
+        m_root_node = std::move(m_modified_root_node);
+        m_modified_root_node.reset();
+    }
+
+    for (auto& handle : m_dirty_nodes) {
+        if (NodePtr node = NodeHandle::AccessFor<TheGraph>::get_node_ptr(handle)) { node->clear_modified_data(); }
+    }
+    m_dirty_nodes.clear();
+
+    return did_something_change;
 }
 
 NOTF_CLOSE_NAMESPACE

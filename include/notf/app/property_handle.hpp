@@ -11,8 +11,14 @@ class PropertyHandle {
 
     // types ----------------------------------------------------------------------------------- //
 public:
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(PropertyHandle);
+
     /// Property value type.
     using value_t = T;
+
+    /// Type of Operator in this Property.
+    using operator_t = typename Property<T>::operator_t;
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -35,6 +41,13 @@ public:
     /// The Node-unique name of this Property.
     /// @throws HandleExpiredError  If the Handle has expired.
     std::string_view get_name() const { return _get_property()->get_name(); }
+
+    /// Whether a change in the Property will cause the Node to redraw or not.
+    bool is_visible() const { return _get_property()->is_visible(); }
+
+    /// The default value of this Property.
+    /// @throws HandleExpiredError  If the Handle has expired.
+    const T& get_default() const { return _get_property()->get_default(); }
 
     /// The Property value.
     /// Blocks until the call can acquire the Graph mutex.
@@ -94,6 +107,32 @@ public:
     /// Less-than operator.
     /// @param rhs  Other PropertyHandle to compare against.
     bool operator<(const PropertyHandle& rhs) const noexcept { return m_property.owner_before(rhs.m_property); }
+
+    // reactive ---------------------------------------------------------------
+
+    /// Connect the Property to a Subscriber downstream.
+    /// @throws HandleExpiredError  If the Handle has expired.
+    template<class Sub>
+    friend std::enable_if_t<detail::is_reactive_compatible_v<operator_t, std::decay_t<Sub>>, Pipeline<std::decay_t<Sub>>>
+    operator|(const PropertyHandle& property, Sub&& subscriber)
+    {
+        return property._get_property()->get_operator() | std::forward<Sub>(subscriber);
+    }
+
+    /// Connect a Publisher upstream to a Property.
+    /// @throws HandleExpiredError  If the Handle has expired.
+    template<class Pub>
+    friend std::enable_if_t<detail::is_reactive_compatible_v<std::decay_t<Pub>, operator_t>, Pipeline<operator_t>>
+    operator|(Pub&& publisher, const PropertyHandle& property)
+    {
+        return std::forward<Pub>(publisher) | property._get_property()->get_operator();
+    }
+
+    /// Connect a Property upstream to a Property downstream.
+    friend Pipeline<operator_t> operator|(const PropertyHandle& lhs, const PropertyHandle& rhs)
+    {
+        return lhs._get_property()->get_operator() | rhs._get_property()->get_operator();
+    }
 
 private:
     /// Locks and returns an owning pointer to the handled Property.

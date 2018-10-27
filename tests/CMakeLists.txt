@@ -5,9 +5,6 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     app/test_app.cpp
     app/test_graph.cpp
     app/test_node.cpp
-    app/test_node_compiletime.cpp
-    app/test_node_handle.cpp
-    app/test_node_runtime.cpp
     app/test_property.cpp
     app/test_property_handle.cpp
 

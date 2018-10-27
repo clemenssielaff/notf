@@ -80,27 +80,24 @@ void Node::set_name(const std::string& name)
 
 NodeHandle Node::get_parent() { return _get_parent()->shared_from_this(); }
 
-bool Node::has_ancestor(const NodeHandle& ancestor) const
+bool Node::has_ancestor(const Node* const ancestor) const
 {
-    const NodeConstPtr ancestor_lock = ancestor.m_node.lock();
-    if (ancestor_lock == nullptr) { return false; }
-
-    const Node* const ancestor_ptr = ancestor_lock.get();
-    for (const Node* next = _get_parent(); next != next->_get_parent(); next = next->_get_parent()) {
-        if (next == ancestor_ptr) { return true; }
+    if (ancestor == nullptr) { return false; }
+    const Node* next = _get_parent();
+    for (; next != next->_get_parent(); next = next->_get_parent()) {
+        if (next == ancestor) { return true; }
     }
-
-    return false;
+    return next == ancestor; // true if the root node itself is the ancestor in question
 }
 
 NodeHandle Node::get_common_ancestor(const NodeHandle& other)
 {
-    const NodeConstPtr other_lock = other.m_node.lock();
+    const NodeConstPtr other_lock = NodeHandle::AccessFor<Node>::get_node_ptr(other);
     if (other_lock == nullptr) { return {}; }
     return const_cast<Node*>(_get_common_ancestor(other_lock.get()))->shared_from_this();
 }
 
-NodeHandle Node::get_child(size_t index)
+NodeHandle Node::get_child(const size_t index)
 {
     const ChildList& children = _read_children();
     if (index >= children.size()) {
@@ -116,7 +113,7 @@ bool Node::is_in_back() const { return _read_siblings().front().get() == this; }
 
 bool Node::is_before(const NodeHandle& sibling) const
 {
-    if (const NodeConstPtr sibling_ptr = sibling.m_node.lock();
+    if (const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
         (sibling_ptr != nullptr) && (sibling_ptr->_get_parent() == _get_parent()) && (sibling_ptr.get() != this)) {
         for (const NodePtr& other : _read_siblings()) {
             if (other == sibling_ptr) { return true; }
@@ -131,7 +128,7 @@ bool Node::is_before(const NodeHandle& sibling) const
 
 bool Node::is_behind(const NodeHandle& sibling) const
 {
-    if (const NodeConstPtr sibling_ptr = sibling.m_node.lock();
+    if (const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
         (sibling_ptr != nullptr) && (sibling_ptr->_get_parent() == _get_parent()) && (sibling_ptr.get() != this)) {
         for (const NodePtr& other : _read_siblings()) {
             if (other == sibling_ptr) { return false; }
@@ -164,7 +161,7 @@ void Node::stack_back()
 
 void Node::stack_before(const NodeHandle& sibling)
 {
-    const NodeConstPtr sibling_ptr = sibling.m_node.lock();
+    const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
     if ((sibling_ptr == nullptr) || (sibling_ptr.get() == this) || sibling_ptr->_get_parent() != _get_parent()) {
         return;
     }
@@ -175,7 +172,7 @@ void Node::stack_before(const NodeHandle& sibling)
 
 void Node::stack_behind(const NodeHandle& sibling)
 {
-    const NodeConstPtr sibling_ptr = sibling.m_node.lock();
+    const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
     if ((sibling_ptr == nullptr) || (sibling_ptr.get() == this) || sibling_ptr->_get_parent() != _get_parent()) {
         return;
     }
@@ -204,9 +201,27 @@ void Node::set_user_flag(const size_t index, const bool value)
     _set_flag(index + s_internal_flag_count, value);
 }
 
+void Node::clear_modified_data()
+{
+    NOTF_ASSERT(!TheGraph::is_frozen());
+
+    if (m_modified_data) {
+        // move all modified data back onto the node
+        m_parent = m_modified_data->parent;
+        m_children = std::move(*m_modified_data->children.get());
+        m_flags = m_modified_data->flags;
+
+        m_modified_data.reset();
+    }
+
+    _set_flag(to_number(InternalFlags::DIRTY), false);
+
+    _clear_modified_properties();
+}
+
 void Node::_remove_child(NodeHandle child_handle)
 {
-    NodePtr child = child_handle.m_node.lock();
+    NodePtr child = NodeHandle::AccessFor<Node>::get_node_ptr(child_handle);
     if (child == nullptr) { return; }
 
     // do not create a modified copy for finding the child
@@ -243,7 +258,7 @@ const Node* Node::_get_parent(const std::thread::id thread_id) const
 
 void Node::_set_parent(NodeHandle new_parent_handle)
 {
-    NodePtr new_parent = new_parent_handle.m_node.lock();
+    NodePtr new_parent = NodeHandle::AccessFor<Node>::get_node_ptr(new_parent_handle);
     if (new_parent == nullptr) { return; }
 
     Node* const old_parent = _get_parent();
@@ -267,12 +282,14 @@ const Node* Node::_get_common_ancestor(const Node* const other) const
     const Node* first = this;
     const Node* second = other;
     const Node* result = nullptr;
+    bool success = false;
     std::unordered_set<const Node*, pointer_hash<const Node*>> known_ancestors = {first, second};
     {
         while (true) {
             first = first->_get_parent();
             if (known_ancestors.count(first) != 0) {
                 result = first;
+                success = other->has_ancestor(result);
                 break;
             }
             known_ancestors.insert(first);
@@ -280,13 +297,13 @@ const Node* Node::_get_common_ancestor(const Node* const other) const
             second = second->_get_parent();
             if (known_ancestors.count(second) != 0) {
                 result = second;
+                success = this->has_ancestor(result);
                 break;
             }
             known_ancestors.insert(second);
         }
     }
-
-    if (!result) {
+    if (!success) {
         NOTF_THROW(HierarchyError, "Nodes \"{}\" and \"{}\" share no common ancestor", //
                    get_uuid().to_string(), other->get_uuid().to_string());
     }

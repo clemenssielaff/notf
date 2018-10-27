@@ -123,6 +123,23 @@ private:
 /// Base class for all Publisher functions.
 struct AnyPublisher {
 
+    // types ----------------------------------------------------------------------------------- //
+public:
+    /// State of the Publisher.
+    /// The state transition diagram is pretty easy:
+    ///
+    ///                   +-> FAILED
+    ///                 /
+    ///   -> RUNNING - + --> COMPLETED
+    ///
+    enum class State : size_t { // make it a word wide to squelsh warnings about padding
+        RUNNING,
+        COMPLETED,
+        FAILED,
+    };
+
+    // methods --------------------------------------------------------------------------------- //
+public:
     NOTF_NO_COPY_OR_ASSIGN(AnyPublisher);
 
     /// Default constructor.
@@ -155,19 +172,6 @@ public:
 
     /// Publisher policy type.
     using policy_t = Policy;
-
-    /// State of the Publisher.
-    /// The state transition diagram is pretty easy:
-    ///
-    ///                   +-> FAILED
-    ///                 /
-    ///   -> RUNNING - + --> COMPLETED
-    ///
-    enum class State : size_t { // make it a word wide to squelsh warnings about padding
-        RUNNING,
-        COMPLETED,
-        FAILED,
-    };
 
 private:
     /// Subscriber container as determined by the type.

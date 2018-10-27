@@ -75,6 +75,9 @@ protected:
         return result;
     }
 
+    /// Removes all modified data from all Properties.
+    void _clear_modified_properties() const override { _clear_property_data<0>(); }
+
 private:
     /// Initializes all Property shared_ptrs with their policy's default values and -visiblity.
     template<size_t I = 0>
@@ -87,7 +90,7 @@ private:
 
             // subscribe to receive an update, whenever the property changes its value
             auto typed_property = std::static_pointer_cast<Property<typename property_t<I>::value_t>>(property_ptr);
-            property_t<I>::template AccessFor<Node>::get_operator(typed_property)->subscribe(_get_property_observer());
+            typed_property->get_operator()->subscribe(_get_property_observer());
 
             _initialize_properties<I + 1>();
         }
@@ -133,6 +136,16 @@ private:
         if constexpr (I < s_property_count) {
             hash_combine(result, std::get<I>(m_properties)->get());
             _calculate_hash<I + 1>(result);
+        }
+    }
+
+    /// Clear modified Property data.
+    template<size_t I = 0>
+    void _clear_property_data() const
+    {
+        if constexpr (I < s_property_count) {
+            std::get<I>(m_properties)->clear_modified_data();
+            _clear_property_data<I + 1>();
         }
     }
 

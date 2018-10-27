@@ -23,3 +23,23 @@ target_link_libraries(notf-scratch PUBLIC
     notf-thirdparty
     notf-core
 )
+
+# show all but selected warnings
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(notf-scratch PRIVATE
+#        -Weverything
+#        -Wpedantic
+#        -Wno-padded
+#        -Wno-weak-vtables   # used everywhere and not a problem
+#        -Wno-c++98-compat
+#        -Wno-c++98-compat-pedantic
+    )
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(notf-scratch PRIVATE
+        -Wall
+        -Wno-unknown-pragmas
+        -Wno-pragmas
+    )
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    target_compile_options(notf-scratch PRIVATE "/W4")
+endif()
