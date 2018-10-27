@@ -70,6 +70,8 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
     std::shared_ptr<TestRootNode> root_node = std::static_pointer_cast<TestRootNode>(to_shared_ptr(root_node_handle));
     REQUIRE(root_node);
 
+    const auto render_thread_id = make_thread_id(45);
+
     SECTION("the nested 'NewNode' type takes care of casting to a NodeOwner or -Handle of the right type")
     {
         SECTION("NodeOwners can only be created once")
@@ -114,17 +116,268 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
     {
         NodeHandle two_child_node = root_node->create_child<TwoChildrenNode>();
         NodeHandle first_child = two_child_node.get_child(0);
+        NodeHandle second_child = two_child_node.get_child(1);
+
+        REQUIRE(first_child.get_parent() == two_child_node);
+
         REQUIRE(first_child.get_first_ancestor<TwoChildrenNode>() == two_child_node);
         REQUIRE(first_child.get_first_ancestor<TestRootNode>() == root_node_handle);
-        REQUIRE(first_child.get_first_ancestor<SingleChildNode>().is_expired());
+        REQUIRE(first_child.get_first_ancestor<TestNode>().is_expired());
 
         REQUIRE(first_child.has_ancestor(two_child_node));
         REQUIRE(first_child.has_ancestor(root_node_handle));
-        REQUIRE(!first_child.has_ancestor(two_child_node.get_child(1)));
+        REQUIRE(!first_child.has_ancestor(second_child));
         REQUIRE(!first_child.has_ancestor(NodeHandle()));
+        REQUIRE(!Node::AccessFor<Tester>(first_child).has_ancestor(nullptr)); // not accessible using API
+
+        REQUIRE(first_child.get_common_ancestor(second_child) == two_child_node);
+        REQUIRE(first_child.get_common_ancestor(NodeHandle()).is_expired());
+
+        REQUIRE_THROWS_AS(two_child_node.get_child(1000), OutOfBounds);
     }
 
-    SECTION("Nodes have user definable flags") { REQUIRE(Node::get_user_flag_count() > 0); }
+    SECTION("Nodes can modify their hierarchy")
+    {
+        SECTION("remove a child")
+        {
+            class RemoveChildNode : public RunTimeNode {
+            public:
+                NOTF_UNUSED RemoveChildNode(valid_ptr<Node*> parent) : RunTimeNode(parent)
+                {
+                    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+                    first_child = _create_child<LeafNodeRT>(this);
+                }
+                NOTF_UNUSED void remove_child()
+                {
+                    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+                    first_child = {};
+                }
+                NodeOwner first_child;
+            };
+
+            auto node = root_node->create_child<RemoveChildNode>().to_handle();
+
+            { // these are not real functions, you will never get to them through the API alone
+                NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+                Node::AccessFor<Tester>(node).remove_child(NodeHandle());     // ignored
+                Node::AccessFor<Tester>(node).remove_child(root_node_handle); // ignored
+            }
+
+            REQUIRE(node.get_child_count() == 1);
+            to_shared_ptr(node)->remove_child();
+            REQUIRE(node.get_child_count() == 0);
+        }
+
+        SECTION("add a child")
+        {
+            auto node1 = root_node->create_child<TestNode>().to_owner();
+            REQUIRE(node1.get_child_count() == 0);
+            {
+                NOTF_GUARD(TheGraph::AccessFor<Tester>::freeze(render_thread_id));
+
+                to_shared_ptr(node1)->create_child<TestNode>();
+                to_shared_ptr(node1)->create_child<TestNode>();
+                REQUIRE(node1.get_child_count() == 2);
+
+                REQUIRE(Node::AccessFor<Tester>(node1).get_child_count(render_thread_id) == 0);
+            }
+            REQUIRE(node1.get_child_count() == 2);
+        }
+
+        SECTION("Change a parent")
+        {
+            auto node1 = root_node->create_child<TestNode>().to_owner();
+            auto node2 = root_node->create_child<TestNode>().to_owner();
+
+            auto child1 = to_shared_ptr(node1)->create_child<TestNode>().to_owner();
+            REQUIRE(node1.get_child_count() == 1);
+            REQUIRE(node2.get_child_count() == 0);
+
+            Node::AccessFor<Tester>(child1).set_parent(node2);
+            REQUIRE(node1.get_child_count() == 0);
+            REQUIRE(node2.get_child_count() == 1);
+
+            Node::AccessFor<Tester>(child1).set_parent(node2);
+            REQUIRE(node1.get_child_count() == 0);
+            REQUIRE(node2.get_child_count() == 1);
+
+            Node::AccessFor<Tester>(child1).set_parent(NodeHandle()); // ignored
+            REQUIRE(node1.get_child_count() == 0);
+            REQUIRE(node2.get_child_count() == 1);
+
+            REQUIRE(child1.get_parent() == node2);
+            {
+                NOTF_GUARD(TheGraph::AccessFor<Tester>::freeze(render_thread_id));
+
+                Node::AccessFor<Tester>(child1).set_parent(node1);
+                REQUIRE(child1.get_parent() == node1);
+
+                REQUIRE(Node::AccessFor<Tester>(child1).get_parent(render_thread_id) == node2);
+            }
+            REQUIRE(child1.get_parent() == node1);
+        }
+    }
+
+    SECTION("Nodes have a default name")
+    {
+        auto node1 = root_node->create_child<LeafNodeCT>().to_owner();
+        auto node2 = root_node->create_child<LeafNodeRT>().to_handle();
+
+        // there is actually a 1 : 100^4 chance that this may fail, but in that case, just do it again
+        REQUIRE(node1.get_default_name() != node2.get_default_name());
+    }
+
+    SECTION("Nodes have user definable flags")
+    {
+        enum UserFlags { FIRST, OUT_OF_BOUNDS = Node::get_user_flag_count() + 1 };
+        NodeHandle node = root_node->create_child<LeafNodeCT>();
+
+        REQUIRE(Node::get_user_flag_count() > 0);
+
+        REQUIRE(!node.is_user_flag_set(FIRST));
+        node.set_user_flag(FIRST);
+        REQUIRE(node.is_user_flag_set(FIRST));
+
+        REQUIRE_THROWS_AS(node.is_user_flag_set(OUT_OF_BOUNDS), OutOfBounds);
+        REQUIRE_THROWS_AS(node.set_user_flag(OUT_OF_BOUNDS), OutOfBounds);
+    }
+
+    SECTION("User definable flags are frozen with the Graph")
+    {
+        auto node = root_node->create_child<LeafNodeCT>().to_handle();
+
+        REQUIRE(!node.is_user_flag_set(0));
+        {
+            NOTF_GUARD(TheGraph::AccessFor<Tester>::freeze(render_thread_id));
+
+            node.set_user_flag(0);
+            REQUIRE(node.is_user_flag_set(0));
+
+            REQUIRE(!Node::AccessFor<Tester>(node).is_user_flag_set(0, render_thread_id));
+        }
+        REQUIRE(node.is_user_flag_set(0));
+    }
+
+    SECTION("Nodes have a z-order")
+    {
+        NodeHandle three_child_node = root_node->create_child<ThreeChildrenNode>();
+        NodeHandle first = three_child_node.get_child(0);
+        NodeHandle second = three_child_node.get_child(1);
+        NodeHandle third = three_child_node.get_child(2);
+
+        SECTION("The z-order can be queried")
+        {
+            REQUIRE(!first.is_in_front());
+            REQUIRE(!second.is_in_front());
+            REQUIRE(third.is_in_front());
+
+            REQUIRE(first.is_in_back());
+            REQUIRE(!second.is_in_back());
+            REQUIRE(!third.is_in_back());
+
+            REQUIRE(second.is_before(first));
+            REQUIRE(third.is_before(first));
+            REQUIRE(third.is_before(second));
+            REQUIRE(!first.is_before(first));
+            REQUIRE(!first.is_before(second));
+            REQUIRE(!first.is_before(third));
+            REQUIRE(!second.is_before(third));
+
+            REQUIRE(first.is_behind(second));
+            REQUIRE(first.is_behind(third));
+            REQUIRE(second.is_behind(third));
+            REQUIRE(!first.is_behind(first));
+            REQUIRE(!second.is_behind(first));
+            REQUIRE(!third.is_behind(first));
+            REQUIRE(!third.is_behind(second));
+        }
+        SECTION("The z-order of Nodes can be modified")
+        {
+            SECTION("first.stack_front")
+            {
+                first.stack_front();
+                REQUIRE(first.is_in_front());
+                REQUIRE(second.is_in_back());
+                REQUIRE(third.is_before(second));
+                REQUIRE(third.is_behind(first));
+            }
+            SECTION("second.stack_front")
+            {
+                second.stack_front();
+                REQUIRE(second.is_in_front());
+                REQUIRE(first.is_in_back());
+                REQUIRE(third.is_before(first));
+                REQUIRE(third.is_behind(second));
+            }
+            SECTION("third.stack_front")
+            {
+                third.stack_front();
+                REQUIRE(third.is_in_front());
+                REQUIRE(first.is_in_back());
+                REQUIRE(second.is_before(first));
+                REQUIRE(second.is_behind(third));
+            }
+
+            SECTION("first.stack_back")
+            {
+                first.stack_back();
+                REQUIRE(first.is_in_back());
+                REQUIRE(second.is_before(first));
+                REQUIRE(second.is_behind(third));
+                REQUIRE(third.is_in_front());
+            }
+            SECTION("second.stack_back")
+            {
+                second.stack_back();
+                REQUIRE(second.is_in_back());
+                REQUIRE(first.is_before(second));
+                REQUIRE(first.is_behind(third));
+                REQUIRE(third.is_in_front());
+            }
+            SECTION("third.stack_back")
+            {
+                third.stack_back();
+                REQUIRE(third.is_in_back());
+                REQUIRE(first.is_before(third));
+                REQUIRE(first.is_behind(second));
+                REQUIRE(second.is_in_front());
+            }
+
+            SECTION("first.stack_before(first")
+            {
+                first.stack_before(first);
+                REQUIRE(first.is_in_back());
+            }
+            SECTION("first.stack_before(second")
+            {
+                first.stack_before(second);
+                REQUIRE(first.is_before(second));
+                REQUIRE(first.is_behind(third));
+            }
+            SECTION("first.stack_before(third")
+            {
+                first.stack_before(third);
+                REQUIRE(first.is_in_front());
+            }
+
+            SECTION("third.stack_behind(first)")
+            {
+                third.stack_behind(first);
+                REQUIRE(third.is_in_back());
+            }
+            SECTION("third.stack_behind(second)")
+            {
+                third.stack_behind(second);
+                REQUIRE(third.is_before(first));
+                REQUIRE(third.is_behind(second));
+            }
+            SECTION("third.stack_behind(third)")
+            {
+                third.stack_behind(third);
+                REQUIRE(third.is_in_front());
+            }
+        }
+    }
 
     SECTION("Compile Time Nodes have Compile Time Properties")
     {
@@ -232,7 +485,6 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
     SECTION("Nodes create a copy of their data to modify, if the graph is frozen")
     {
-        const auto render_thread_id = make_thread_id(45);
         auto node = root_node->create_child<LeafNodeCT>().to_handle();
         auto int_property = node.get_property("int"_id);
         REQUIRE(int_property.get() == 123);
@@ -262,15 +514,20 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
     SECTION("Two Nodes should have at least the root node as a common ancestor")
     {
-        auto two_child_parent_handle = root_node->create_child<TwoChildrenNode>().to_owner();
-        auto two_child_parent_ptr = to_shared_ptr(two_child_parent_handle);
-        TypedNodeHandle<LeafNodeRT> first_child_handle = two_child_parent_ptr->first_child;
-        TypedNodeHandle<LeafNodeRT> second_child_handle = two_child_parent_ptr->second_child;
+        auto node = root_node->create_child<TestNode>().to_owner();
+        auto first = to_shared_ptr(node)->create_child<TestNode>().to_owner();
+        auto second = to_shared_ptr(node)->create_child<TestNode>().to_owner();
+        auto third = to_shared_ptr(second)->create_child<TestNode>().to_owner();
 
-        REQUIRE(first_child_handle.get_common_ancestor(second_child_handle) == two_child_parent_handle);
+        REQUIRE(first.get_common_ancestor(second) == node);
+        REQUIRE(second.get_common_ancestor(first) == node);
+        REQUIRE(first.get_common_ancestor(third) == node);
+        REQUIRE(third.get_common_ancestor(first) == node);
 
-        std::shared_ptr<TestRootNode> second_root = std::make_shared<TestRootNode>();
+        auto second_root = std::make_shared<TestRootNode>();
         NodeHandle foreign_node = second_root->create_child<LeafNodeCT>();
-        REQUIRE_THROWS_AS(first_child_handle.get_common_ancestor(foreign_node), Node::HierarchyError);
+        REQUIRE_THROWS_AS(first.get_common_ancestor(foreign_node), Node::HierarchyError);
+
+        REQUIRE(first.get_common_ancestor(first) == first);
     }
 }

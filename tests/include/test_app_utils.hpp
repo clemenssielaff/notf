@@ -57,19 +57,21 @@ public:
     }
 };
 
+class TestNode : public RunTimeNode {
+public:
+    NOTF_UNUSED TestNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
+
+    template<class T, class... Args>
+    NOTF_UNUSED auto create_child(Args... args)
+    {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        return _create_child<T>(this, std::forward<Args>(args)...);
+    }
+};
+
 class LeafNodeCT : public CompileTimeNode<TestNodePolicy> {
 public:
     NOTF_UNUSED LeafNodeCT(valid_ptr<Node*> parent) : CompileTimeNode<TestNodePolicy>(parent) {}
-};
-
-class SingleChildNode : public RunTimeNode {
-public:
-    NOTF_UNUSED SingleChildNode(valid_ptr<Node*> parent) : RunTimeNode(parent)
-    {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
-        first_child = _create_child<LeafNodeRT>(this);
-    }
-    NodeOwner first_child;
 };
 
 class TwoChildrenNode : public RunTimeNode {
@@ -80,8 +82,23 @@ public:
         first_child = _create_child<LeafNodeRT>(this);
         second_child = _create_child<LeafNodeRT>(this);
     }
+
     TypedNodeOwner<LeafNodeRT> first_child;
     TypedNodeOwner<LeafNodeRT> second_child;
+};
+
+class ThreeChildrenNode : public RunTimeNode {
+public:
+    NOTF_UNUSED ThreeChildrenNode(valid_ptr<Node*> parent) : RunTimeNode(parent)
+    {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        first_child = _create_child<LeafNodeRT>(this);
+        second_child = _create_child<LeafNodeRT>(this);
+        third_child = _create_child<LeafNodeRT>(this);
+    }
+    TypedNodeOwner<LeafNodeRT> first_child;
+    TypedNodeOwner<LeafNodeRT> second_child;
+    TypedNodeOwner<LeafNodeRT> third_child;
 };
 
 } // namespace
@@ -115,22 +132,57 @@ struct notf::Accessor<PropertyHandle<T>, Tester> {
 
 template<>
 struct notf::Accessor<Node, Tester> {
+
     Accessor(Node& node) : m_node(node) {}
+
     template<class NodeType>
     Accessor(TypedNodeHandle<NodeType>& node)
         : m_node(*(TypedNodeHandle<NodeType>::template AccessFor<Tester>::get_shared_ptr(node).get()))
     {}
+
     template<class NodeType>
     Accessor(TypedNodeOwner<NodeType>& node)
         : m_node(*(TypedNodeHandle<NodeType>::template AccessFor<Tester>::get_shared_ptr(node).get()))
     {}
+
     size_t get_property_hash() const { return m_node._calculate_property_hash(); }
+
     bool is_dirty() const
     {
         NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
         return m_node._is_flag_set(to_number(Node::InternalFlags::DIRTY));
     }
+
     void set_uuid(const Uuid& uuid) { const_cast<Uuid&>(m_node.m_uuid) = uuid; }
+
+    bool has_ancestor(const Node* node) const { return m_node.has_ancestor(node); }
+
+    bool is_user_flag_set(const size_t index, const std::thread::id thread_id = std::this_thread::get_id()) const
+    {
+        return m_node._is_flag_set(index + Node::s_internal_flag_count, thread_id);
+    }
+
+    void remove_child(NodeHandle handle) { m_node._remove_child(handle); }
+
+    void set_parent(NodeHandle parent)
+    {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        m_node._set_parent(parent);
+    }
+
+    NodeHandle get_parent(std::thread::id thread_id = std::this_thread::get_id())
+    {
+        Node* parent = m_node._get_parent(thread_id);
+        if (parent) { return parent->shared_from_this(); }
+        return {};
+    }
+
+    size_t get_child_count(std::thread::id thread_id = std::this_thread::get_id())
+    {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        return m_node._read_children(thread_id).size();
+    }
+
     Node& m_node;
 };
 

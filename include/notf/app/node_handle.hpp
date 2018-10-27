@@ -367,7 +367,12 @@ public:
     TypedNodeOwner(valid_ptr<std::shared_ptr<NodeType>> node) : TypedNodeHandle<NodeType>(node) {}
 
     /// Move assignment operator.
-    TypedNodeOwner& operator=(TypedNodeOwner&& other) = default;
+    TypedNodeOwner& operator=(TypedNodeOwner&& other)
+    {
+        this->_remove_from_parent(this->m_node.lock());
+        this->m_node = std::move(other.m_node);
+        return *this;
+    }
 
     /// Destructor.
     /// Note that the destruction of a Node requires the Graph mutex. Normally (if you store the Handle on the parent

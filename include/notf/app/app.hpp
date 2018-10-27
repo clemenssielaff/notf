@@ -1,7 +1,9 @@
 #pragma once
 
-#include "notf/common/common.hpp"
 #include "notf/meta/exception.hpp"
+
+#include "notf/common/common.hpp"
+#include "notf/common/tuple.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -94,6 +96,55 @@ struct is_compile_time_node : decltype(CompileTimeNodeIdentifier::test<T>()) {};
 /// Constexpr boolean that is true only if T is a CompileTimeNode.
 template<class T>
 static constexpr bool is_compile_time_node_v = is_compile_time_node<T>::value;
+
+// can node parent ------------------------------------------------------------
+
+template<class T, class = void>
+struct has_allowed_child_types : std::false_type {};
+template<class T>
+struct has_allowed_child_types<T, std::void_t<typename T::allowed_child_types>> : std::true_type {};
+
+template<class T, class = void>
+struct has_forbidden_child_types : std::false_type {};
+template<class T>
+struct has_forbidden_child_types<T, std::void_t<typename T::forbidden_child_types>> : std::true_type {};
+
+template<class T, class = void>
+struct has_allowed_parent_types : std::false_type {};
+template<class T>
+struct has_allowed_parent_types<T, std::void_t<typename T::allowed_parent_types>> : std::true_type {};
+
+template<class T, class = void>
+struct has_forbidden_parent_types : std::false_type {};
+template<class T>
+struct has_forbidden_parent_types<T, std::void_t<typename T::forbidden_parent_types>> : std::true_type {};
+
+template<class A, class B>
+constexpr bool can_node_parent() noexcept
+{
+    // both A and B must be derived from Node
+    if (std::negation_v<std::conjunction<std::is_base_of<Node, A>, std::is_base_of<Node, B>>>) { return false; }
+
+    // if A has a list of explicitly allowed child types, B must be in it
+    if constexpr (has_allowed_child_types<A>::value) {
+        if (!is_derived_from_one_of_tuple_v<B, typename A::allowed_child_types>) { return false; }
+    }
+    // ... otherwise, if A has a list of explicitly forbidden child types, B must NOT be in it
+    else if constexpr (has_forbidden_child_types<A>::value) {
+        if (is_derived_from_one_of_tuple_v<B, typename A::forbidden_child_types>) { return false; }
+    }
+
+    // if B has a list of explicitly allowed parent types, A must be in it
+    if constexpr (has_allowed_parent_types<B>::value) {
+        if (!is_derived_from_one_of_tuple_v<A, typename B::allowed_parent_types>) { return false; }
+    }
+    // ... otherwise, if B has a list of explicitly forbidden parent types, A must NOT be in it
+    else if constexpr (has_forbidden_parent_types<B>::value) {
+        if (is_derived_from_one_of_tuple_v<A, typename B::forbidden_parent_types>) { return false; }
+    }
+
+    return true;
+}
 
 } // namespace detail
 

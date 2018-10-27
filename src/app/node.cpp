@@ -272,6 +272,9 @@ void Node::_set_parent(NodeHandle new_parent_handle)
         NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id())); // the render thread must never modify a Node
         _ensure_modified_data().parent = new_parent.get();
     }
+    else {
+        m_parent = new_parent.get();
+    }
 }
 
 const Node* Node::_get_common_ancestor(const Node* const other) const
