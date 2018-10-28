@@ -21,22 +21,17 @@ using wrap_tuple_elements_in_shared_ptrs_t = typename wrap_tuple_elements_in_sha
 
 // compile time node ================================================================================================ //
 
-/// Policy to use for Nodes with no Properties.
-struct EmptyNodePolicy {
-    using properties = std::tuple<>;
-};
-
-template<class Policy>
+template<class Properties>
 class CompileTimeNode : public Node {
 
     // types ----------------------------------------------------------------------------------- //
 public:
-    /// The Policy used to define this CompileTimeNode.
-    using policy_t = Policy;
+    /// Tuple containing all Property policies of this Node type.
+    using property_policies_t = Properties;
 
 protected:
-    /// Tuple containing all compile time Properties of this Node type.
-    using properties_t = detail::wrap_tuple_elements_in_shared_ptrs_t<typename Policy::properties>;
+    /// Tuple of Property instance types managed by this Node type.
+    using properties_t = detail::wrap_tuple_elements_in_shared_ptrs_t<Properties>;
 
     /// Type of a specific Property in this Node type.
     template<size_t I>
@@ -79,7 +74,7 @@ protected:
     void _clear_modified_properties() const override { _clear_property_data<0>(); }
 
 private:
-    /// Initializes all Property shared_ptrs with their policy's default values and -visiblity.
+    /// Initializes all Properties with their default values and -visiblity.
     template<size_t I = 0>
     void _initialize_properties()
     {

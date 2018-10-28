@@ -104,7 +104,7 @@ void TheGraph::NodeNameRegistry::_remove_name(std::string_view name_view)
 TheGraph::TheGraph()
 {
     // the default root node has no properties
-    _initialize_typed<CompileTimeRootNode<EmptyNodePolicy>>();
+    _initialize_typed<CompileTimeRootNode<std::tuple<>>>();
 }
 
 TheGraph::~TheGraph()

@@ -27,12 +27,10 @@ struct IntPropertyPolicy {
     static constexpr bool is_visible = true;
 };
 
-struct TestNodePolicy {
-    using properties = std::tuple<                //
-        CompileTimeProperty<FloatPropertyPolicy>, //
-        CompileTimeProperty<IntPropertyPolicy>,   //
-        CompileTimeProperty<BoolPropertyPolicy>>; //
-};
+using TestNodeProperties = std::tuple<        //
+    CompileTimeProperty<FloatPropertyPolicy>, //
+    CompileTimeProperty<IntPropertyPolicy>,   //
+    CompileTimeProperty<BoolPropertyPolicy>>; //
 
 class TestRootNode : public RunTimeRootNode {
     using allowed_child_types = std::tuple<>; // hide `allowed_child_types` definition
@@ -69,9 +67,9 @@ public:
     }
 };
 
-class LeafNodeCT : public CompileTimeNode<TestNodePolicy> {
+class LeafNodeCT : public CompileTimeNode<TestNodeProperties> {
 public:
-    NOTF_UNUSED LeafNodeCT(valid_ptr<Node*> parent) : CompileTimeNode<TestNodePolicy>(parent) {}
+    NOTF_UNUSED LeafNodeCT(valid_ptr<Node*> parent) : CompileTimeNode<TestNodeProperties>(parent) {}
 };
 
 class TwoChildrenNode : public RunTimeNode {

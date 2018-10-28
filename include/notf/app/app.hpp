@@ -65,7 +65,9 @@ class Window;
 /// Exception thrown by Node- and PropertyHandles when you try to access one when it has already expired.
 NOTF_EXCEPTION_TYPE(HandleExpiredError);
 
-// is compile time node ============================================================================================= //
+// compile time helper ============================================================================================== //
+
+// is compile time node -------------------------------------------------------
 
 namespace detail {
 
@@ -73,9 +75,9 @@ struct CompileTimeNodeIdentifier {
     template<class T>
     static constexpr auto test()
     {
-        if constexpr (decltype(_has_policy_t<T>(std::declval<T>()))::value) {
-            using policy_t = typename T::policy_t;
-            return std::is_convertible<T*, CompileTimeNode<policy_t>*>{};
+        if constexpr (decltype(_property_policies_t<T>(std::declval<T>()))::value) {
+            using property_policies_t = typename T::property_policies_t;
+            return std::is_convertible<T*, CompileTimeNode<property_policies_t>*>{};
         }
         else {
             return std::false_type{};
@@ -84,9 +86,10 @@ struct CompileTimeNodeIdentifier {
 
 private:
     template<class T>
-    static constexpr auto _has_policy_t(const T&) -> decltype(typename T::policy_t{}, std::true_type{});
+    static constexpr auto _property_policies_t(const T&)
+        -> decltype(typename T::property_policies_t{}, std::true_type{});
     template<class>
-    static constexpr auto _has_policy_t(...) -> std::false_type;
+    static constexpr auto _property_policies_t(...) -> std::false_type;
 };
 
 /// Struct derived either from std::true_type or std::false type, depending on whether T is a CompileTimeNode or not.

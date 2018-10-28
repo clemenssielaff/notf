@@ -52,13 +52,13 @@ public:
 
 // compile time root node =========================================================================================== //
 
-template<class Policy>
-class CompileTimeRootNode : public CompileTimeNode<Policy>, public AnyRootNode {
+template<class Properties>
+class CompileTimeRootNode : public CompileTimeNode<Properties>, public AnyRootNode {
 
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default Constructor.
-    CompileTimeRootNode() : CompileTimeNode<Policy>(this), AnyRootNode() {}
+    CompileTimeRootNode() : CompileTimeNode<Properties>(this), AnyRootNode() {}
 
     /// Finalizes this Node.
     void finalize() final { _finalize_node(*this); }
