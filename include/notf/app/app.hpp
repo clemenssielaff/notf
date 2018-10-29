@@ -38,7 +38,7 @@ NOTF_DEFINE_SHARED_POINTERS(class, AnyProperty);
 NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, Property);
 template<class>
 class RunTimeProperty;
-template<class>
+template<class, class>
 class CompileTimeProperty;
 
 // property_handle.hpp
@@ -75,7 +75,7 @@ struct CompileTimeNodeIdentifier {
     template<class T>
     static constexpr auto test()
     {
-        if constexpr (decltype(_property_policies_t<T>(std::declval<T>()))::value) {
+        if constexpr (decltype(_has_property_policies_t<T>(std::declval<T>()))::value) {
             using property_policies_t = typename T::property_policies_t;
             return std::is_convertible<T*, CompileTimeNode<property_policies_t>*>{};
         }
@@ -86,10 +86,10 @@ struct CompileTimeNodeIdentifier {
 
 private:
     template<class T>
-    static constexpr auto _property_policies_t(const T&)
+    static constexpr auto _has_property_policies_t(const T&)
         -> decltype(typename T::property_policies_t{}, std::true_type{});
     template<class>
-    static constexpr auto _property_policies_t(...) -> std::false_type;
+    static constexpr auto _has_property_policies_t(...) -> std::false_type;
 };
 
 /// Struct derived either from std::true_type or std::false type, depending on whether T is a CompileTimeNode or not.

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "notf/meta/stringtype.hpp"
 #include "notf/reactive/pipeline.hpp"
 
 #include "./graph.hpp"
@@ -257,46 +256,5 @@ private:
     const T m_default_value;
 };
 
-// compile time property ============================================================================================ //
-
-/// Example Policy:
-///
-///     struct PropertyPolicy {
-///         using value_t = float;
-///         static constexpr StringConst name = "position";
-///         static constexpr value_t default_value = 0.123f;
-///         static constexpr bool is_visible = true;
-///     };
-///
-template<class Policy>
-class CompileTimeProperty final : public Property<typename Policy::value_t> {
-
-    // types ----------------------------------------------------------------------------------- //
-public:
-    /// Property value type.
-    using value_t = typename Policy::value_t;
-
-    // methods --------------------------------------------------------------------------------- //
-public:
-    /// Constructor.
-    /// @param value        Property value.
-    /// @param is_visible   Whether a change in the Property will cause the Node to redraw or not.
-    CompileTimeProperty(value_t value = Policy::default_value, bool is_visible = Policy::is_visible)
-        : Property<value_t>(value, is_visible)
-    {}
-
-    /// The Node-unique name of this Property.
-    std::string_view get_name() const final { return Policy::name.c_str(); }
-
-    /// The default value of this Property.
-    const value_t& get_default() const final
-    {
-        static const value_t default_value = Policy::default_value;
-        return default_value;
-    }
-
-    /// The compile time constant name of this Property.
-    static constexpr const StringConst& get_const_name() noexcept { return Policy::name; }
-};
 
 NOTF_CLOSE_NAMESPACE

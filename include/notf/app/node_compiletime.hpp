@@ -1,6 +1,7 @@
 #pragma once
 
 #include "./node.hpp"
+#include "./property_compiletime.hpp"
 
 NOTF_OPEN_NAMESPACE
 
