@@ -51,14 +51,12 @@ class RunTimeRootNode;
 template<class>
 class CompileTimeRootNode;
 
-// scene.hpp
-class Scene;
-
-// widget.hpp
-class Widget;
-
 // window.hpp
 class Window;
+
+// widget_compiletime.hpp
+template<class, class>
+class State;
 
 // exceptions ======================================================================================================= //
 

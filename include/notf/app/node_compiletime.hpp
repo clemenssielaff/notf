@@ -17,7 +17,7 @@ struct create_compile_time_property<std::tuple<Ts...>> {
     using type = std::tuple<std::shared_ptr<CompileTimeProperty<Ts>>...>;
 };
 template<class T>
-using create_compile_time_property_t = typename create_compile_time_property<T>::type;
+using create_compile_time_properties = typename create_compile_time_property<T>::type;
 
 } // namespace detail
 
@@ -33,14 +33,14 @@ public:
 
 protected:
     /// Tuple of Property instance types managed by this Node type.
-    using node_properties_t = detail::create_compile_time_property_t<Properties>;
+    using node_properties_tuple = detail::create_compile_time_properties<Properties>;
 
     /// Type of a specific Property in this Node type.
     template<size_t I>
-    using node_property_t = typename std::tuple_element_t<I, node_properties_t>::element_type;
+    using node_property_t = typename std::tuple_element_t<I, node_properties_tuple>::element_type;
 
     /// Number of Properties in this Node type.
-    static constexpr size_t s_node_property_count = std::tuple_size_v<node_properties_t>;
+    static constexpr size_t s_node_property_count = std::tuple_size_v<node_properties_tuple>;
 
     // methods --------------------------------------------------------------------------------- //
 protected:
@@ -74,24 +74,6 @@ protected:
 
     /// Removes all modified data from all Properties.
     void _clear_modified_properties() const override { _clear_property_data<0>(); }
-
-    /// Initializes all Properties with their default values and -visiblity.
-    template<size_t I = 0>
-    void _initialize_properties()
-    {
-        if constexpr (I < s_node_property_count) {
-            // create the new property
-            auto property_ptr = std::make_shared<node_property_t<I>>();
-            std::get<I>(m_node_properties) = property_ptr;
-
-            // subscribe to receive an update, whenever the property changes its value
-            auto typed_property
-                = std::static_pointer_cast<Property<typename node_property_t<I>::value_t>>(property_ptr);
-            typed_property->get_operator()->subscribe(_get_property_observer());
-
-            _initialize_properties<I + 1>();
-        }
-    }
 
     /// Access to a CompileTimeProperty through the hash of its name.
     /// Allows access with a string at run time.
@@ -146,10 +128,29 @@ protected:
         }
     }
 
+private:
+    /// Initializes all Properties with their default values and -visiblity.
+    template<size_t I = 0>
+    void _initialize_properties()
+    {
+        if constexpr (I < s_node_property_count) {
+            // create the new property
+            auto property_ptr = std::make_shared<node_property_t<I>>();
+            std::get<I>(m_node_properties) = property_ptr;
+
+            // subscribe to receive an update, whenever the property changes its value
+            auto typed_property
+                = std::static_pointer_cast<Property<typename node_property_t<I>::value_t>>(property_ptr);
+            typed_property->get_operator()->subscribe(_get_property_observer());
+
+            _initialize_properties<I + 1>();
+        }
+    }
+
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// All Properties of this Node, default initialized to the Definition's default values.
-    node_properties_t m_node_properties;
+    node_properties_tuple m_node_properties;
 };
 
 NOTF_CLOSE_NAMESPACE

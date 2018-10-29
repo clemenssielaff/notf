@@ -6,67 +6,46 @@
 #include "notf/app/widget/widget_compiletime.hpp"
 
 NOTF_USING_NAMESPACE;
+NOTF_USING_LITERALS;
 
 namespace {
 
-template<class>
 struct StateA;
-template<class>
 struct StateB;
-template<class>
 struct StateC;
+struct TestCompileTimeWidget;
 
-enum StateIdentifier {
-    INVALID = 0,
-    A,
-    B,
-    C,
+struct StateA : State<StateA, TestCompileTimeWidget> {
+    static constexpr StringConst name = "state_a";
+    NOTF_UNUSED explicit StateA(TestCompileTimeWidget& node) : StateA::base_t(node) {}
+    NOTF_UNUSED explicit StateA(StateC&& c) : StateA::base_t(this->_get_node(c)) {}
 };
 
-template<class NodeType>
-struct StateA : State<StateA, NodeType> {
-    explicit StateA(NodeType& node) : StateA::base_t(node) {}
-    explicit StateA(StateC<NodeType>&& c) : StateA::base_t(this->_get_node(c)) {}
-    StateIdentifier callback() const { return A; }
+struct StateB : State<StateB, TestCompileTimeWidget> {
+    static constexpr StringConst name = "state_b";
+    NOTF_UNUSED explicit StateB(StateA&& a) : StateB::base_t(this->_get_node(a)) {}
 };
 
-template<class NodeType>
-struct StateB : State<StateB, NodeType> {
-    explicit StateB(StateA<NodeType>&& a) : StateB::base_t(this->_get_node(a)) {}
-    StateIdentifier callback() const { return B; }
-};
-
-template<class NodeType>
-struct StateC : State<StateC, NodeType> {
-    explicit StateC(StateB<NodeType>&& b) : StateC::base_t(this->_get_node(b)) {}
-    StateIdentifier callback() const { return C; }
+struct StateC : State<StateC, TestCompileTimeWidget> {
+    static constexpr StringConst name = "state_c";
+    NOTF_UNUSED explicit StateC(StateB&& b) : StateC::base_t(this->_get_node(b)) {}
 };
 
 struct TestCompileTimeWidgetPolicy {
-    using node_t = CompileTimeWidget<TestCompileTimeWidgetPolicy>;
-
     using properties = std::tuple< //
         FloatPropertyPolicy,       //
         IntPropertyPolicy,         //
         BoolPropertyPolicy>;       //
 
     using states = std::variant< //
-        StateA<node_t>,          //
-        StateB<node_t>,          //
-        StateC<node_t>>;         //
+        StateA,                  //
+        StateB,                  //
+        StateC>;                 //
 };
 
 struct TestCompileTimeWidget : public CompileTimeWidget<TestCompileTimeWidgetPolicy> {
-
     NOTF_UNUSED TestCompileTimeWidget(valid_ptr<Node*> parent) : CompileTimeWidget<TestCompileTimeWidgetPolicy>(parent)
     {}
-
-    NOTF_UNUSED StateIdentifier get_state() const
-    {
-        StateIdentifier id = INVALID;
-        std::visit(overloaded{[&id](auto&& state) { id = state.callback(); }}, _get_state());
-        return id;
-    }
 };
 
 } // namespace
@@ -84,18 +63,17 @@ SCENARIO("Compile Time Widgets", "[app][node][widget]")
     SECTION("basic state machine")
     {
         auto widget = root_node_ptr->create_child<TestCompileTimeWidget>().to_handle();
-        REQUIRE(to_shared_ptr(widget)->get_state() == A); // first state is the default
+        REQUIRE(to_shared_ptr(widget)->get_state_name() == "state_a"); // first state is the default
 
-        to_shared_ptr(widget)->transition_into<StateB<CompileTimeWidget<TestCompileTimeWidgetPolicy>>>();
-        REQUIRE(to_shared_ptr(widget)->get_state() == B);
+        to_shared_ptr(widget)->transition_into<StateB>();
+        REQUIRE(to_shared_ptr(widget)->get_state_name() == "state_b");
 
-        to_shared_ptr(widget)->transition_into(2);
-        REQUIRE(to_shared_ptr(widget)->get_state() == C);
+        to_shared_ptr(widget)->transition_into("state_c"_id);
+        REQUIRE(to_shared_ptr(widget)->get_state_name() == "state_c");
 
-        to_shared_ptr(widget)->transition_into(0);
-        REQUIRE(to_shared_ptr(widget)->get_state() == A);
+        to_shared_ptr(widget)->transition_into("state_a"_id);
 
         // A -> C is not allowed
-        REQUIRE_THROWS_AS(to_shared_ptr(widget)->transition_into(2), AnyWidget::BadTransitionError);
+        REQUIRE_THROWS_AS(to_shared_ptr(widget)->transition_into<StateC>(), AnyWidget::BadTransitionError);
     }
 }
