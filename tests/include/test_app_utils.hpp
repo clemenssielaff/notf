@@ -27,10 +27,10 @@ struct IntPropertyPolicy {
     static constexpr bool is_visible = true;
 };
 
-using TestNodeProperties = std::tuple<        //
-    CompileTimeProperty<FloatPropertyPolicy>, //
-    CompileTimeProperty<IntPropertyPolicy>,   //
-    CompileTimeProperty<BoolPropertyPolicy>>; //
+using TestNodeProperties = std::tuple< //
+    FloatPropertyPolicy,               //
+    IntPropertyPolicy,                 //
+    BoolPropertyPolicy>;               //
 
 class TestRootNode : public RunTimeRootNode {
     using allowed_child_types = std::tuple<>; // hide `allowed_child_types` definition

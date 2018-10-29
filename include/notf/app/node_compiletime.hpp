@@ -9,14 +9,15 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
+/// Produces a std::shared_ptr<CompileTimeProperty<Policy>> for each Policy in the given tuple.
 template<class>
-struct wrap_tuple_elements_in_shared_ptrs;
+struct create_compile_time_property;
 template<class... Ts>
-struct wrap_tuple_elements_in_shared_ptrs<std::tuple<Ts...>> {
-    using type = std::tuple<std::shared_ptr<Ts>...>;
+struct create_compile_time_property<std::tuple<Ts...>> {
+    using type = std::tuple<std::shared_ptr<CompileTimeProperty<Ts>>...>;
 };
 template<class T>
-using wrap_tuple_elements_in_shared_ptrs_t = typename wrap_tuple_elements_in_shared_ptrs<T>::type;
+using create_compile_time_property_t = typename create_compile_time_property<T>::type;
 
 } // namespace detail
 
@@ -32,14 +33,14 @@ public:
 
 protected:
     /// Tuple of Property instance types managed by this Node type.
-    using properties_t = detail::wrap_tuple_elements_in_shared_ptrs_t<Properties>;
+    using node_properties_t = detail::create_compile_time_property_t<Properties>;
 
     /// Type of a specific Property in this Node type.
     template<size_t I>
-    using property_t = typename std::tuple_element_t<I, properties_t>::element_type;
+    using node_property_t = typename std::tuple_element_t<I, node_properties_t>::element_type;
 
     /// Number of Properties in this Node type.
-    static constexpr size_t s_property_count = std::tuple_size_v<properties_t>;
+    static constexpr size_t s_node_property_count = std::tuple_size_v<node_properties_t>;
 
     // methods --------------------------------------------------------------------------------- //
 protected:
@@ -74,18 +75,18 @@ protected:
     /// Removes all modified data from all Properties.
     void _clear_modified_properties() const override { _clear_property_data<0>(); }
 
-private:
     /// Initializes all Properties with their default values and -visiblity.
     template<size_t I = 0>
     void _initialize_properties()
     {
-        if constexpr (I < s_property_count) {
+        if constexpr (I < s_node_property_count) {
             // create the new property
-            auto property_ptr = std::make_shared<property_t<I>>();
-            std::get<I>(m_properties) = property_ptr;
+            auto property_ptr = std::make_shared<node_property_t<I>>();
+            std::get<I>(m_node_properties) = property_ptr;
 
             // subscribe to receive an update, whenever the property changes its value
-            auto typed_property = std::static_pointer_cast<Property<typename property_t<I>::value_t>>(property_ptr);
+            auto typed_property
+                = std::static_pointer_cast<Property<typename node_property_t<I>::value_t>>(property_ptr);
             typed_property->get_operator()->subscribe(_get_property_observer());
 
             _initialize_properties<I + 1>();
@@ -97,9 +98,9 @@ private:
     template<size_t I = 0>
     AnyPropertyPtr _get_property(const size_t hash_value) const
     {
-        if constexpr (I < s_property_count) {
-            if (property_t<I>::get_const_name().get_hash() == hash_value) {
-                return std::static_pointer_cast<AnyProperty>(std::get<I>(m_properties));
+        if constexpr (I < s_node_property_count) {
+            if (node_property_t<I>::get_const_name().get_hash() == hash_value) {
+                return std::static_pointer_cast<AnyProperty>(std::get<I>(m_node_properties));
             }
             else {
                 return _get_property<I + 1>(hash_value);
@@ -114,10 +115,10 @@ private:
     template<size_t I, char... Cs>
     auto _get_ct_property(StringType<char, Cs...> name) const
     {
-        if constexpr (I < s_property_count) {
-            if constexpr (property_t<I>::get_const_name() == name) {
-                using handle_t = typename property_t<I>::value_t;
-                return PropertyHandle(std::static_pointer_cast<Property<handle_t>>(std::get<I>(m_properties)));
+        if constexpr (I < s_node_property_count) {
+            if constexpr (node_property_t<I>::get_const_name() == name) {
+                using value_t = typename node_property_t<I>::value_t;
+                return PropertyHandle(std::static_pointer_cast<Property<value_t>>(std::get<I>(m_node_properties)));
             }
             else {
                 return _get_ct_property<I + 1>(name);
@@ -129,8 +130,8 @@ private:
     template<size_t I = 0>
     void _calculate_hash(size_t& result) const
     {
-        if constexpr (I < s_property_count) {
-            hash_combine(result, std::get<I>(m_properties)->get());
+        if constexpr (I < s_node_property_count) {
+            hash_combine(result, std::get<I>(m_node_properties)->get());
             _calculate_hash<I + 1>(result);
         }
     }
@@ -139,8 +140,8 @@ private:
     template<size_t I = 0>
     void _clear_property_data() const
     {
-        if constexpr (I < s_property_count) {
-            std::get<I>(m_properties)->clear_modified_data();
+        if constexpr (I < s_node_property_count) {
+            std::get<I>(m_node_properties)->clear_modified_data();
             _clear_property_data<I + 1>();
         }
     }
@@ -148,7 +149,7 @@ private:
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// All Properties of this Node, default initialized to the Definition's default values.
-    properties_t m_properties;
+    node_properties_t m_node_properties;
 };
 
 NOTF_CLOSE_NAMESPACE

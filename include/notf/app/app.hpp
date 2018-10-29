@@ -76,8 +76,7 @@ struct CompileTimeNodeIdentifier {
     static constexpr auto test()
     {
         if constexpr (decltype(_has_property_policies_t<T>(std::declval<T>()))::value) {
-            using property_policies_t = typename T::property_policies_t;
-            return std::is_convertible<T*, CompileTimeNode<property_policies_t>*>{};
+            return std::is_convertible<T*, CompileTimeNode<typename T::property_policies_t>*>{};
         }
         else {
             return std::false_type{};
@@ -87,7 +86,7 @@ struct CompileTimeNodeIdentifier {
 private:
     template<class T>
     static constexpr auto _has_property_policies_t(const T&)
-        -> decltype(typename T::property_policies_t{}, std::true_type{});
+        -> decltype(std::declval<typename T::property_policies_t>(), std::true_type{});
     template<class>
     static constexpr auto _has_property_policies_t(...) -> std::false_type;
 };

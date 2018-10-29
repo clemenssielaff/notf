@@ -6,7 +6,7 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     app/test_graph.cpp
     app/test_node.cpp
     app/test_property.cpp
-    app/test_property_handle.cpp
+    app/test_widget.cpp
 
     common/test_msgpack.cpp
     common/test_string.cpp
