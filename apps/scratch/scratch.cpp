@@ -11,6 +11,7 @@
 #include "notf/meta/config.hpp"
 #include "notf/meta/hash.hpp"
 #include "notf/meta/pointer.hpp"
+#include "notf/meta/stringtype.hpp"
 #include "notf/meta/types.hpp"
 
 NOTF_USING_NAMESPACE;
@@ -18,5 +19,5 @@ NOTF_USING_LITERALS;
 
 int main()
 {
-    return 0;
+
 }

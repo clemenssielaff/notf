@@ -3,9 +3,9 @@
 #include <map>
 #include <vector>
 
-#include "./tuple.hpp"
-#include "./variant.hpp"
 #include "notf/meta/real.hpp"
+
+#include "notf/common/variant.hpp"
 
 NOTF_OPEN_NAMESPACE
 

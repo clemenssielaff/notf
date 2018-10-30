@@ -42,6 +42,17 @@ protected:
     /// Value constructor.
     /// @param parent   Parent of this Node.
     AnyWidget(valid_ptr<Node*> parent) : CompileTimeNode<detail::WidgetProperties>(parent) {}
+
+public:
+    /// The name of the current State.
+    virtual std::string_view get_state_name() const noexcept = 0;
+
+    /// Checks if a transition from one to the other State is possible.
+    virtual bool is_valid_transition(const std::string& from, std::string& to) const = 0;
+
+    /// Transitions from the current into the given State.
+    /// @throws AnyWidget::BadTransitionError   If the transition is not possible.
+    virtual void transition_into(const std::string& state) = 0;
 };
 
 NOTF_CLOSE_NAMESPACE

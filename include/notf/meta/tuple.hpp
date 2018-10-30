@@ -208,7 +208,41 @@ struct remove_tuple_types<std::tuple<Ts...>, Ds...> {
 template<class... Ts>
 using remove_tuple_types_t = typename remove_tuple_types<Ts...>::type;
 
+// make tuple unique ================================================================================================ //
+
+template<class...>
+struct make_tuple_unique; // declaration
+template<class... Ts>
+struct make_tuple_unique<std::tuple<Ts...>> { // recursion breaker
+    static constexpr const auto& make_unique() { return std::declval<std::tuple<Ts...>>(); }
+};
+template<class... Ts, class T, class... Tail>
+struct make_tuple_unique<std::tuple<Ts...>, T, Tail...> { // entry for type list / recursion
+    static constexpr const auto& make_unique()
+    {
+        if constexpr (is_one_of_v<T, Ts...>) { //
+            return make_tuple_unique<std::tuple<Ts...>, Tail...>::make_unique();
+        }
+        else {
+            return make_tuple_unique<std::tuple<Ts..., T>, Tail...>::make_unique();
+        }
+    }
+    using type = std::decay_t<decltype(make_unique())>;
+};
+template<class... Ts>
+struct make_tuple_unique<std::tuple<>, std::tuple<Ts...>> { // entry point for single tuple
+    using type = std::decay_t<decltype(make_tuple_unique<std::tuple<>, Ts...>::make_unique())>;
+};
+
+/// Transforms a tuple into a corresponding tuple of unique types (order is retained).
+template<class... Ts>
+using make_tuple_unique_t = typename make_tuple_unique<std::tuple<>, Ts...>::type;
+
 // static tests ===================================================================================================== //
+
+static_assert(
+    std::is_same_v<std::tuple<int, float, bool>, make_tuple_unique_t<std::tuple<int, float, int, float, bool, float>>>);
+static_assert(std::is_same_v<std::tuple<int, float, bool>, make_tuple_unique_t<int, float, int, float, bool, float>>);
 
 static_assert(
     std::is_same_v<concat_tuple_t<int, std::tuple<bool, double>, float>, std::tuple<int, bool, double, float>>);

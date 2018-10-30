@@ -2891,12 +2891,12 @@ void basic_writer<Range>::write_double(T value, const format_specs &spec) {
   if (internal::const_check(
         internal::use_grisu() && sizeof(T) <= sizeof(double)) &&
       type != 'a' && type != 'A') {
-    char buf[100]; // TODO: correct buffer size
+    char buf[100];
     size_t size = 0;
     internal::grisu2_format(static_cast<double>(value), buf, size, type,
                             spec.precision(), spec.flag(HASH_FLAG));
     FMT_ASSERT(size <= 100, "buffer overflow");
-    buffer.append(buf, buf + size); // TODO: avoid extra copy
+    buffer.append(buf, buf + size);
   } else {
     format_specs normalized_spec(spec);
     normalized_spec.type_ = handler.type;

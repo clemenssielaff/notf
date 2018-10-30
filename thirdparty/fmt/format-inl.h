@@ -491,7 +491,6 @@ FMT_FUNC void grisu2_gen_digits(
     uint64_t remainder = (static_cast<uint64_t>(hi) << -one.e) + lo;
     if (remainder <= delta) {
       dec_exp += exp;
-      // TODO: use scaled_value
       (void)scaled_value;
       return;
     }
@@ -537,7 +536,6 @@ FMT_FUNC void round(char *buffer, size_t &size, int &exp,
   size -= to_unsigned(digits_to_remove);
   exp += digits_to_remove;
   int digit = buffer[size] - '0';
-  // TODO: proper rounding and carry
   if (digit > 5 || (digit == 5 && (digits_to_remove > 1 ||
                                    (buffer[size - 1] - '0') % 2) != 0)) {
     ++buffer[size - 1];

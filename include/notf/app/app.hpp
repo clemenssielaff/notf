@@ -1,9 +1,9 @@
 #pragma once
 
 #include "notf/meta/exception.hpp"
+#include "notf/meta/tuple.hpp"
 
 #include "notf/common/common.hpp"
-#include "notf/common/tuple.hpp"
 
 NOTF_OPEN_NAMESPACE
 

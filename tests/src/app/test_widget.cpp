@@ -68,7 +68,7 @@ SCENARIO("Compile Time Widgets", "[app][node][widget]")
         to_shared_ptr(widget)->transition_into<StateB>();
         REQUIRE(to_shared_ptr(widget)->get_state_name() == "state_b");
 
-        to_shared_ptr(widget)->transition_into("state_c"_id);
+        to_shared_ptr(widget)->transition_into("state_c");
         REQUIRE(to_shared_ptr(widget)->get_state_name() == "state_c");
 
         to_shared_ptr(widget)->transition_into("state_a"_id);

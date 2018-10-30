@@ -120,7 +120,7 @@ public:
     /// @param name     Name of the requested Property.
     /// @returns        Typed handle to the requested Property.
     template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    auto get_property(StringType<char, Cs...> name) const
+    auto get_property(StringType<Cs...> name) const
     {
         return this->_get_node()->get_property(std::forward<decltype(name)>(name));
     }

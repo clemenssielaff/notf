@@ -7,16 +7,16 @@ NOTF_OPEN_NAMESPACE
 // string type ====================================================================================================== //
 
 /// Type defined by a string literal at compile time.
-template<class char_t, char_t... Cs>
+template<char... Cs>
 struct StringType final {
 
-    template<class char_t2, char_t2... Os>
+    template<char... Os>
     friend struct StringType; // to allow other StringTypes to access the private `s_text` member field.
 
     // methods --------------------------------------------------------------------------------- //
 public:
     /// The string literal that defines this type.
-    static constexpr const char_t* c_str() noexcept { return s_text; }
+    static constexpr const char* c_str() noexcept { return s_text; }
 
     /// The numbers of letters in the TypeString without the closing null.
     static constexpr size_t get_size() noexcept { return sizeof...(Cs); }
@@ -38,7 +38,7 @@ public:
     }
 
     /// Access to an individual character of the string.
-    static constexpr char_t at(const size_t index)
+    static constexpr char at(const size_t index)
     {
         if (index < get_size()) { return s_text[index]; }
         else {
@@ -57,15 +57,12 @@ private:
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// C-string compile-time access to the characters passed as template arguments.
-    inline static constexpr char_t const s_text[sizeof...(Cs) + 1] = {Cs..., '\0'};
+    inline static constexpr char const s_text[sizeof...(Cs) + 1] = {Cs..., '\0'};
 };
 
 // string const ======================================================================================================//
 
-namespace detail {
-
 /// Compile time string.
-template<class char_t>
 struct StringConst {
 
     // methods --------------------------------------------------------------------------------- //
@@ -73,11 +70,11 @@ public:
     /// Constructor
     /// Takes a compile time literal.
     template<size_t N>
-    constexpr StringConst(const char_t (&a)[N]) noexcept : m_text(a), m_size(N - 1)
+    constexpr StringConst(const char (&a)[N]) noexcept : m_text(a), m_size(N - 1)
     {}
 
     /// The constant string literal.
-    constexpr const char_t* c_str() const noexcept { return m_text; }
+    constexpr const char* c_str() const noexcept { return m_text; }
 
     /// The numbers of letters in the string without the closing null.
     constexpr size_t get_size() const noexcept { return m_size; }
@@ -96,7 +93,7 @@ public:
     }
 
     /// Access to an individual character of the string.
-    constexpr char_t operator[](const size_t index) const
+    constexpr char operator[](const size_t index) const
     {
         return (index < m_size) ? m_text[index] :
                                   throw std::out_of_range("Failed to read out-of-range StringConst character");
@@ -105,22 +102,17 @@ public:
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// Pointer to the text stored somewhere with linkage.
-    const char_t* const m_text;
+    const char* const m_text;
 
     /// Numbers of letters in the string without the closing null.
     const size_t m_size;
 };
 
-} // namespace detail
-
-/// The default StringConst just takes a array of regular `char`.
-using StringConst = detail::StringConst<char>;
-
 // ================================================================================================================== //
 
 /// Comparison between a StringConst and a StringType.
-template<class char_t, char_t... Cs>
-constexpr bool operator==(const detail::StringConst<char_t>& lhs, const StringType<char_t, Cs...>& rhs) noexcept
+template<char... Cs>
+constexpr bool operator==(const StringConst& lhs, const StringType<Cs...>& rhs) noexcept
 {
     if (sizeof...(Cs) != lhs.get_size()) { return false; }
     for (size_t i = 0; i < lhs.get_size(); ++i) {
@@ -128,8 +120,8 @@ constexpr bool operator==(const detail::StringConst<char_t>& lhs, const StringTy
     }
     return true;
 }
-template<class char_t, char_t... Cs>
-constexpr bool operator==(const StringType<char_t, Cs...>& lhs, const detail::StringConst<char_t>& rhs) noexcept
+template<char... Cs>
+constexpr bool operator==(const StringType<Cs...>& lhs, const StringConst& rhs) noexcept
 {
     return rhs == lhs;
 }
@@ -143,23 +135,23 @@ auto concat_string_type_impl(T&& last) // recursion breaker
 {
     return last;
 }
-template<class char_t, char_t... Ls, char_t... Rs, class... Tail>
-auto concat_string_type_impl(StringType<char_t, Ls...>, StringType<char_t, Rs...>, Tail... tail)
+template<char... Ls, char... Rs, class... Tail>
+auto concat_string_type_impl(StringType<Ls...>, StringType<Rs...>, Tail... tail)
 {
-    return concat_string_type_impl(StringType<char_t, Ls..., Rs...>{}, std::forward<Tail>(tail)...);
+    return concat_string_type_impl(StringType<Ls..., Rs...>{}, std::forward<Tail>(tail)...);
 }
 
-template<class char_t, const StringConst<char_t>& string, size_t... I>
+template<const StringConst& string, size_t... I>
 NOTF_UNUSED static auto constexpr string_const_to_string_type(std::index_sequence<I...>)
 {
-    return StringType<char_t, string[I]...>{};
+    return StringType<string[I]...>{};
 }
 
-template<class char_t, char_t number>
+template<char number>
 constexpr auto digit_to_string_type()
 {
     static_assert(number <= 9);
-    return StringType<char_t, static_cast<char_t>(48 + number)>{};
+    return StringType<static_cast<char>(48 + number)>{};
 }
 
 template<size_t number, size_t... I>
@@ -176,7 +168,7 @@ NOTF_UNUSED static auto constexpr number_to_string_type(std::index_sequence<I...
 /// Example:
 ///   constexpr StringConst test = "test";
 ///   using TestType = decltype(make_string_type<test>());
-template<class char_t, const detail::StringConst<char_t>& string>
+template<const StringConst& string>
 constexpr auto make_string_type()
 {
     return detail::string_const_to_string_type<string>(std::make_index_sequence<string.get_size()>{});
@@ -190,8 +182,8 @@ constexpr auto make_string_type()
 /// Helper typdef for defining a StringType with a *constexpr* value.
 /// Example:
 ///
-///     constexpr StringConst example_string = "example";
-///     constexpr size_t example_number = 123;
+///     static constexpr StringConst example_string = "example";
+///     static constexpr size_t example_number = 123;
 ///     using example_string_t = make_string_type_t<example_string>;    // works
 ///     using example_number_t = make_string_type_t<example_number>;    // works
 ///     // using example_string_t = make_string_type_t<"example">;      // does not work
@@ -218,7 +210,7 @@ template<typename char_t, char_t... Cs>
 constexpr auto operator"" _id()
 {
     NOTF_USING_NAMESPACE;
-    return StringType<char, Cs...>{};
+    return StringType<Cs...>{};
 }
 
 #pragma clang diagnostic pop

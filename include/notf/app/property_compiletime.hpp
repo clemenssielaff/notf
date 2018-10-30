@@ -22,7 +22,7 @@ struct PropertyPolicyFactory {
                       "A PropertyPolicy must contain the type of Property as type `value_t`");
         static_assert(decltype(has_name<Policy>(std::declval<Policy>()))::value,
                       "A PropertyPolicy must contain the name of the Property as `static constexpr name`");
-        static_assert(std::is_same_v<decltype(Policy::name), const StringConst<char>>,
+        static_assert(std::is_same_v<decltype(Policy::name), const StringConst>,
                       "The name of a PropertyPolicy must be of type `StringConst`");
         if constexpr (decltype(has_default_value<Policy>(std::declval<Policy>()))::value) {
             static_assert(std::is_convertible_v<decltype(Policy::default_value), typename Policy::value_t>,
@@ -39,7 +39,7 @@ struct PropertyPolicyFactory {
             using value_t = typename Policy::value_t;
 
             /// Mandatory name of the Proprty Policy.
-            static constexpr const StringConst<char>& get_name() { return Policy::name; }
+            static constexpr const StringConst& get_name() { return Policy::name; }
 
             /// Default value, either explicitly given by the user Policy or defaulted.
             static constexpr value_t get_default()

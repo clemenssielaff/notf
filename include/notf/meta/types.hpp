@@ -186,11 +186,11 @@ constexpr bool any(Ts... expressions)
 
 /// Checks if T is any of the variadic types.
 template<class T, class... Ts>
-static constexpr bool is_one_of_v = std::disjunction<std::is_same<T, Ts>...>::value;
+static constexpr bool is_one_of_v = std::disjunction_v<std::is_same<T, Ts>...>;
 
 /// Checks if T is derived from any of the variadic types.
 template<class T, class... Ts>
-static constexpr bool is_derived_from_one_of_v = std::disjunction<std::is_base_of<Ts, T>...>::value;
+static constexpr bool is_derived_from_one_of_v = std::disjunction_v<std::is_base_of<Ts, T>...>;
 
 /// Compile-time check whether two types are both signed / both unsigned.
 template<class T, class U>
