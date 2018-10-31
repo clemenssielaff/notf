@@ -1,6 +1,6 @@
 #pragma once
 
-#include "./property.hpp"
+#include "notf/app/property.hpp"
 
 NOTF_OPEN_NAMESPACE
 

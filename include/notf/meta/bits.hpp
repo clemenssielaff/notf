@@ -2,8 +2,8 @@
 
 #include <utility>
 
-#include "./config.hpp"
-#include "./numeric.hpp"
+#include "notf/meta/config.hpp"
+#include "notf/meta/numeric.hpp"
 
 NOTF_OPEN_NAMESPACE
 

@@ -6,7 +6,7 @@
 #include "notf/common/mutex.hpp"
 #include "notf/common/uuid.hpp"
 
-#include "./node_handle.hpp"
+#include "notf/app/node_handle.hpp"
 
 NOTF_OPEN_NAMESPACE
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "./hash.hpp"
+#include "notf/meta/hash.hpp"
 
 NOTF_OPEN_NAMESPACE
 

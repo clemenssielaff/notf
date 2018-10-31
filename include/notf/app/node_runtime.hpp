@@ -2,7 +2,7 @@
 
 #include <map>
 
-#include "./node.hpp"
+#include "notf/app/node.hpp"
 
 NOTF_OPEN_NAMESPACE
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "./node_compiletime.hpp"
-#include "./node_runtime.hpp"
+#include "notf/app/node_compiletime.hpp"
+#include "notf/app/node_runtime.hpp"
 
 NOTF_OPEN_NAMESPACE
 

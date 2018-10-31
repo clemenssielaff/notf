@@ -115,7 +115,7 @@ SCENARIO("functions related to floating-point calculation", "[meta][real]")
     SECTION("random angles can be correctly normalized")
     {
         for (auto i = 0; i < 10000; ++i) {
-            const float result = norm_angle(random_number<float>());
+            const float result = norm_angle(random_tested<float>());
             REQUIRE(result >= 0);
             REQUIRE(result < two_pi);
         }

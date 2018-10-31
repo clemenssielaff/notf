@@ -6,9 +6,10 @@
 #include "notf/meta/pointer.hpp"
 #include "notf/meta/smart_factories.hpp"
 #include "notf/meta/time.hpp"
-#include "./common.hpp"
-#include "./mutex.hpp"
-#include "./thread.hpp"
+
+#include "notf/common/common.hpp"
+#include "notf/common/mutex.hpp"
+#include "notf/common/thread.hpp"
 
 // ================================================================================================================== //
 

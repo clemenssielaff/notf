@@ -3,9 +3,9 @@
 #include <limits>
 #include <utility>
 
-#include "./config.hpp"
-#include "./exception.hpp"
-#include "./types.hpp"
+#include "notf/meta/config.hpp"
+#include "notf/meta/exception.hpp"
+#include "notf/meta/types.hpp"
 
 NOTF_OPEN_NAMESPACE
 

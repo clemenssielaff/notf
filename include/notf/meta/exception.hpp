@@ -2,8 +2,8 @@
 
 #include <exception>
 
-#include "./debug.hpp"
-#include "./macros.hpp"
+#include "notf/meta/debug.hpp"
+#include "notf/meta/macros.hpp"
 
 #include "fmt/format.h"
 

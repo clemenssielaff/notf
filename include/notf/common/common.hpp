@@ -8,6 +8,12 @@ NOTF_OPEN_NAMESPACE
 
 // forwards ========================================================================================================= //
 
+// arithmetic.hpp
+namespace detail {
+template<class, class, class, size_t>
+struct ArithmeticBase;
+}
+
 // timer_pool.hpp
 class TheTimerPool;
 NOTF_DEFINE_SHARED_POINTERS(class, Timer);

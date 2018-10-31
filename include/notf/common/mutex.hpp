@@ -6,7 +6,8 @@
 
 #include "notf/meta/assert.hpp"
 #include "notf/meta/exception.hpp"
-#include "./common.hpp"
+
+#include "notf/common/common.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -61,9 +62,7 @@ public:
     void unlock()
     {
         NOTF_ASSERT(m_counter > 0);
-        if (--m_counter == 0) {
-            m_holder = std::thread::id();
-        }
+        if (--m_counter == 0) { m_holder = std::thread::id(); }
         std::recursive_mutex::unlock();
     }
 

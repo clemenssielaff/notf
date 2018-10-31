@@ -1,11 +1,11 @@
 #pragma once
 
-#include "./macros.hpp"
+#include "notf/meta/macros.hpp"
 
 #ifdef NOTF_DEBUG
 
 // is only included in debug builds
-#include "./exception.hpp"
+#include "notf/meta/exception.hpp"
 
 NOTF_OPEN_NAMESPACE
 

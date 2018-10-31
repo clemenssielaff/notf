@@ -2,7 +2,7 @@
 
 #include "notf/common/bitset.hpp"
 
-#include "./property_handle.hpp"
+#include "notf/app/property_handle.hpp"
 
 NOTF_OPEN_NAMESPACE
 

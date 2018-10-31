@@ -40,9 +40,9 @@ constexpr Real highest_tested()
 
 /// Random number around zero in the range of a size what we'd expect to see as a monitor resolution.
 template<typename Real>
-inline Real random_number()
+inline Real random_tested()
 {
-    return random_number<Real>(lowest_tested<Real>(), highest_tested<Real>());
+    return random<Real>(lowest_tested<Real>(), highest_tested<Real>());
 }
 
 /// Generates a std::thread::id, even though its constructor is private.
@@ -56,72 +56,5 @@ inline std::thread::id make_thread_id(const uint number)
     *id_ptr = number;
     return id;
 }
-
-// template<typename Real>
-// inline RealVector2<Real> lowest_vector()
-//{
-//    return RealVector2<Real>(lowest_tested<Real>(), lowest_tested<Real>());
-//}
-
-// template<typename Real>
-// inline RealVector2<Real> highest_vector()
-//{
-//    return RealVector2<Real>(highest_tested<Real>(), highest_tested<Real>());
-//}
-
-// template<typename T>
-// inline T random_vector(const typename T::element_t minimum = lowest_tested<typename T::element_t>(),
-//                       const typename T::element_t maximum = highest_tested<typename T::element_t>())
-//{
-//    T result;
-//    for (size_t i = 0; i < result.size(); ++i) {
-//        result[i] = random_number<typename T::element_t>(minimum, maximum);
-//    }
-//    return result;
-//}
-
-// template<typename T>
-// inline T random_matrix(const typename T::element_t minimum = lowest_tested<typename T::element_t>(),
-//                       const typename T::element_t maximum = highest_tested<typename T::element_t>())
-//{
-//    T result;
-//    for (size_t i = 0; i < result.size(); ++i) {
-//        for (size_t j = 0; j < result[0].size(); ++j) {
-//            result[i][j] = random_number<typename T::element_t>(minimum, maximum);
-//        }
-//    }
-//    return result;
-//}
-
-// template<typename Real>
-// inline Matrix3<Real>
-// random_matrix3(const Real min_trans, const Real max_trans, const Real min_scale, const Real max_scale)
-//{
-//    Matrix3<Real> result = Matrix3<Real>::scaling(random_number(min_scale, max_scale));
-//    result *= Matrix3<Real>::rotation(random_radian<Real>());
-//    result *= Matrix3<Real>::translation(
-//        RealVector2<Real>(random_number(min_trans, max_trans), random_number(min_trans, max_trans)));
-//    return result;
-//}
-
-// template<typename Real>
-// inline Matrix3<Real> random_matrix3()
-//{
-//    return random_matrix3(lowest_tested<Real>(), highest_tested<Real>(), Real(0), Real(2));
-//}
-
-// template<typename T>
-// inline Size2<T> random_size(const T from, const T to)
-//{
-//    return {random_number<T>(from, to), random_number<T>(from, to)};
-//}
-
-// inline bool random_event(const double probability) { return random_number<double>(0, 1) < clamp(probability, 0, 1); }
-
-// inline Padding random_padding(const float from, const float to)
-//{
-//    return {random_number<float>(from, to), random_number<float>(from, to), random_number<float>(from, to),
-//            random_number<float>(from, to)};
-//}
 
 NOTF_CLOSE_NAMESPACE

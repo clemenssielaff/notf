@@ -1,7 +1,7 @@
 #pragma once
 
-#include "./publisher.hpp"
-#include "./subscriber.hpp"
+#include "notf/reactive/publisher.hpp"
+#include "notf/reactive/subscriber.hpp"
 
 NOTF_OPEN_NAMESPACE
 

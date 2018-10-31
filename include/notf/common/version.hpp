@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "./common.hpp"
+#include "notf/common/common.hpp"
 
 NOTF_OPEN_NAMESPACE
 

@@ -3,7 +3,7 @@
 #include <climits>
 #include <utility>
 
-#include "./config.hpp"
+#include "notf/meta/config.hpp"
 
 NOTF_OPEN_NAMESPACE
 

@@ -1,18 +1,8 @@
-#include <array>
 #include <iostream>
-#include <memory>
-#include <string>
-#include <thread>
-#include <tuple>
-#include <vector>
 
-#include "notf/app/widget/widget_compiletime.hpp"
-#include "notf/common/mutex.hpp"
-#include "notf/meta/config.hpp"
-#include "notf/meta/hash.hpp"
-#include "notf/meta/pointer.hpp"
-#include "notf/meta/stringtype.hpp"
-#include "notf/meta/types.hpp"
+#include "notf/common/random.hpp"
+#include "notf/common/vector3.hpp"
+#include "notf/common/vector4.hpp"
 
 NOTF_USING_NAMESPACE;
 NOTF_USING_LITERALS;
@@ -20,4 +10,8 @@ NOTF_USING_LITERALS;
 int main()
 {
 
+    V3d blub1 = random<V3f>();
+
+    std::cout << "Random V3f: " << blub1 << std::endl;
+    std::cout << "Random string: " << random<std::string>(32, "abcdefghijklmnopqrstuvwxyz ") << std::endl;
 }

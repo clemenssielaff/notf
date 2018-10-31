@@ -8,6 +8,7 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     app/test_property.cpp
     app/test_widget.cpp
 
+    common/test_arithmetic.cpp
     common/test_msgpack.cpp
     common/test_string.cpp
     common/test_string_view.cpp

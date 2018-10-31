@@ -1,8 +1,8 @@
 #pragma once
 
-#include "./assert.hpp"
-#include "./exception.hpp"
-#include "./hash.hpp"
+#include "notf/meta/assert.hpp"
+#include "notf/meta/exception.hpp"
+#include "notf/meta/hash.hpp"
 
 NOTF_OPEN_NAMESPACE
 

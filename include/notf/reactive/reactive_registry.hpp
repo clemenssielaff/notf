@@ -3,11 +3,12 @@
 #include <unordered_map>
 #include <vector>
 
-#include "notf/common/any.hpp"
 #include "notf/meta/function.hpp"
 #include "notf/meta/typename.hpp"
 
-#include "./reactive_operator.hpp"
+#include "notf/common/any.hpp"
+
+#include "notf/reactive/reactive_operator.hpp"
 
 NOTF_OPEN_NAMESPACE
 

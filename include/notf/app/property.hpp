@@ -2,7 +2,7 @@
 
 #include "notf/reactive/pipeline.hpp"
 
-#include "./graph.hpp"
+#include "notf/app/graph.hpp"
 
 NOTF_OPEN_NAMESPACE
 

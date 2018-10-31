@@ -2,8 +2,9 @@
 
 #include <vector>
 
-#include "./reactive.hpp"
 #include "notf/meta/pointer.hpp"
+
+#include "notf/reactive/reactive.hpp"
 
 NOTF_OPEN_NAMESPACE
 

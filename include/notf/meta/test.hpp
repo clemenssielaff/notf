@@ -1,6 +1,6 @@
 #pragma once
 
-#include "./config.hpp"
+#include "notf/meta/config.hpp"
 
 NOTF_OPEN_NAMESPACE
 

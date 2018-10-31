@@ -1,7 +1,5 @@
 #include "benchmark/benchmark.h"
 
-#include <sstream>
-
 #include "notf/common/string.hpp"
 
 NOTF_USING_NAMESPACE;

@@ -1,0 +1,121 @@
+#pragma once
+
+#include "notf/common/arithmetic.hpp"
+
+NOTF_OPEN_NAMESPACE
+
+// vector4 ========================================================================================================== //
+
+namespace detail {
+
+/// 4-dimensional mathematical vector containing real numbers.
+template<typename Element>
+struct Vector4 : public detail::ArithmeticImpl<Vector4<Element>, Element, Element, 4> {
+
+    // types --------------------------------------------------------------------------------- //
+public:
+    /// Base class.
+    using super_t = detail::ArithmeticImpl<Vector4<Element>, Element, Element, 4>;
+
+    /// Scalar type used by this arithmetic type.
+    using element_t = typename super_t::element_t;
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// Default constructor.
+    Vector4() = default;
+
+    /// Forwarding constructor.
+    template<class... Args>
+    Vector4(Args&&... args) : super_t(std::forward<Args>(args)...)
+    {}
+
+    /// Unit Vector4 along the X-axis.
+    static Vector4 x_axis() { return Vector4(1, 0, 0); }
+
+    /// Unit Vector4 along the Y-axis.
+    static Vector4 y_axis() { return Vector4(0, 1, 0); }
+
+    /// Unit Vector4 along the Z-axis.
+    static Vector4 z_axis() { return Vector4(0, 0, 1); }
+
+    /// Access to the first element in the vector.
+    constexpr element_t& x() { return data[0]; }
+    constexpr const element_t& x() const noexcept { return data[0]; }
+
+    /// Access to the second element in the vector.
+    constexpr element_t& y() { return data[1]; }
+    constexpr const element_t& y() const noexcept { return data[1]; }
+
+    /// Access to the third element in the vector.
+    constexpr element_t& z() { return data[2]; }
+    constexpr const element_t& z() const noexcept { return data[2]; }
+
+    /// RAccess to the fourth element in the vector.
+    constexpr element_t& w() { return data[3]; }
+    constexpr const element_t& w() const noexcept { return data[3]; }
+
+    /// Szizzles.
+    constexpr Vector4 xyzw() const noexcept { return {data[0], data[1], data[2], data[3]}; }
+    constexpr Vector4 xywz() const noexcept { return {data[0], data[1], data[3], data[2]}; }
+    constexpr Vector4 xzyw() const noexcept { return {data[0], data[2], data[1], data[3]}; }
+    constexpr Vector4 xzwy() const noexcept { return {data[0], data[2], data[3], data[1]}; }
+    constexpr Vector4 xwyz() const noexcept { return {data[0], data[3], data[1], data[2]}; }
+    constexpr Vector4 xwzy() const noexcept { return {data[0], data[3], data[2], data[1]}; }
+    constexpr Vector4 yxzw() const noexcept { return {data[1], data[0], data[2], data[3]}; }
+    constexpr Vector4 yxwz() const noexcept { return {data[1], data[0], data[3], data[2]}; }
+    constexpr Vector4 yzxw() const noexcept { return {data[1], data[2], data[0], data[3]}; }
+    constexpr Vector4 yzwx() const noexcept { return {data[1], data[2], data[3], data[0]}; }
+    constexpr Vector4 ywxz() const noexcept { return {data[1], data[3], data[0], data[2]}; }
+    constexpr Vector4 ywzx() const noexcept { return {data[1], data[3], data[2], data[0]}; }
+    constexpr Vector4 zxyw() const noexcept { return {data[2], data[0], data[1], data[3]}; }
+    constexpr Vector4 zxwy() const noexcept { return {data[2], data[0], data[3], data[1]}; }
+    constexpr Vector4 zyxw() const noexcept { return {data[2], data[1], data[0], data[3]}; }
+    constexpr Vector4 zywx() const noexcept { return {data[2], data[1], data[3], data[0]}; }
+    constexpr Vector4 zwxy() const noexcept { return {data[2], data[3], data[0], data[1]}; }
+    constexpr Vector4 zwyx() const noexcept { return {data[2], data[3], data[1], data[0]}; }
+    constexpr Vector4 wxyz() const noexcept { return {data[3], data[0], data[1], data[2]}; }
+    constexpr Vector4 wxzy() const noexcept { return {data[3], data[0], data[2], data[1]}; }
+    constexpr Vector4 wyxz() const noexcept { return {data[3], data[1], data[0], data[2]}; }
+    constexpr Vector4 wyzx() const noexcept { return {data[3], data[1], data[2], data[0]}; }
+    constexpr Vector4 wzxy() const noexcept { return {data[3], data[2], data[0], data[1]}; }
+    constexpr Vector4 wzyx() const noexcept { return {data[3], data[2], data[1], data[0]}; }
+
+    // fields ---------------------------------------------------------------------------------- //
+public:
+    /// Value data array.
+    using super_t::data;
+};
+
+} // namespace detail
+
+using V4f = detail::Vector4<float>;
+using V4d = detail::Vector4<double>;
+using V4i = detail::Vector4<int>;
+using V4s = detail::Vector4<short>;
+
+/// Prints the contents of a vector into a std::ostream.
+/// @param os   Output stream, implicitly passed with the << operator.
+/// @param vec  Vector to print.
+/// @return Output stream for further output.
+std::ostream& operator<<(std::ostream& out, const V4f& vec);
+std::ostream& operator<<(std::ostream& out, const V4d& vec);
+std::ostream& operator<<(std::ostream& out, const V4i& vec);
+std::ostream& operator<<(std::ostream& out, const V4s& vec);
+
+NOTF_CLOSE_NAMESPACE
+
+// std::hash ======================================================================================================== //
+
+namespace std {
+
+/// std::hash implementation for Vector4.
+template<class Element>
+struct hash<notf::detail::Vector4<Element>> {
+    size_t operator()(const notf::detail::Vector4<Element>& vector) const
+    {
+        return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR4), vector.hash());
+    }
+};
+
+} // namespace std

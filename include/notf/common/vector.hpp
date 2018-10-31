@@ -3,8 +3,9 @@
 #include <algorithm>
 #include <vector>
 
-#include "./common.hpp"
 #include "notf/meta/exception.hpp"
+
+#include "notf/common/common.hpp"
 
 NOTF_OPEN_NAMESPACE
 

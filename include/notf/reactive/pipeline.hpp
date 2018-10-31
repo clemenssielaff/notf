@@ -1,8 +1,9 @@
 #pragma once
 
-#include "./reactive_operator.hpp"
 #include "notf/meta/pointer.hpp"
 #include "notf/meta/typename.hpp"
+
+#include "notf/reactive/reactive_operator.hpp"
 
 NOTF_OPEN_NAMESPACE
 

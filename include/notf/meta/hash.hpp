@@ -2,8 +2,8 @@
 
 #include <functional>
 
-#include "./real.hpp"
-#include "./system.hpp"
+#include "notf/meta/real.hpp"
+#include "notf/meta/system.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -25,6 +25,17 @@ constexpr size_t magic_hash_number()
     }
     return static_cast<size_t>(result / phi());
 }
+
+/// Unique identifiers for everything that wants to distinguish its hash value from the value of a similar data type.
+/// For example: `auto x = hash(0, 0, 0, 1)` `x` is the same whether the 4 values come from an RGBA color, a Vector4 or
+/// any other data type with 4 numbers.
+/// By adding the type's HashId into their hash function, we can ensure that two differnent types with the same values
+/// will produce different hash values.
+enum class HashID : size_t {
+    VECTOR2,
+    VECTOR3,
+    VECTOR4,
+};
 
 } // namespace detail
 
@@ -69,8 +80,7 @@ constexpr void hash_combine(std::size_t& seed, Arg&& value, Rest&&... rest) noex
     if constexpr (std::is_integral_v<T>) {
         // integral values are mapped on themselves at compile time, saving us a potential non-constexpr call to hash()
         seed ^= static_cast<size_t>(value) + magic_number + (seed << 6) + (seed >> 2);
-    }
-    else {
+    } else {
         seed ^= std::hash<T>()(std::forward<Arg>(value)) + magic_number + (seed << 6) + (seed >> 2);
     }
     hash_combine(seed, std::forward<Rest>(rest)...);

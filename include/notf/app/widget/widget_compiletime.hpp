@@ -16,11 +16,10 @@ struct StateIdentifier {
     template<class UserState, class NodeType>
     static constexpr auto is_compatible()
     {
-        if constexpr (std::disjunction_v<std::negation<decltype(has_this_t(std::declval<UserState>()))>,
-                                         std::negation<decltype(has_node_t(std::declval<UserState>()))>>) {
+        if constexpr (std::disjunction_v<std::negation<decltype(has_this_t<UserState>(std::declval<UserState>()))>,
+                                         std::negation<decltype(has_node_t<UserState>(std::declval<UserState>()))>>) {
             return std::false_type{}; // not a state
-        }
-        else {
+        } else {
             return std::conjunction<
                 std::is_convertible<UserState*, State<typename UserState::this_t, typename UserState::node_t>*>,
                 std::is_same<typename UserState::node_t, NodeType>>{};
@@ -161,11 +160,11 @@ private:
     template<size_t I, size_t Last, char... Cs>
     static constexpr bool _is_state_name_taken(StringType<Cs...> name)
     {
-        if constexpr (I == Last) { return false; }
-        else if constexpr (state_t<I>::name == name) {
+        if constexpr (I == Last) {
+            return false;
+        } else if constexpr (state_t<I>::name == name) {
             return true;
-        }
-        else {
+        } else {
             return _is_state_name_taken<I + 1, Last>(name);
         }
     }
@@ -174,8 +173,9 @@ private:
     template<size_t I = 0>
     static constexpr bool _validate_state_machine()
     {
-        if constexpr (I == std::variant_size_v<StateVariant>) { return true; }
-        else {
+        if constexpr (I == std::variant_size_v<StateVariant>) {
+            return true;
+        } else {
             if constexpr (I == 0) {
                 // States may be listed only once in the variant
                 static_assert(has_variant_unique_types<StateVariant>(),
@@ -291,10 +291,12 @@ protected:
     template<size_t I = 0>
     size_t _get_state_index(const std::string& name) const
     {
-        if constexpr (I == std::variant_size_v<StateVariant>) { return I; }
-        else {
-            if (name.compare(state_t<I>::name.c_str()) == 0) { return I; }
-            else {
+        if constexpr (I == std::variant_size_v<StateVariant>) {
+            return I;
+        } else {
+            if (name.compare(state_t<I>::name.c_str()) == 0) {
+                return I;
+            } else {
                 return _get_state_index<I + 1>(name);
             }
         }
@@ -302,8 +304,9 @@ protected:
     template<size_t I, char... Cs>
     static constexpr size_t _get_state_index(StringType<Cs...> name)
     {
-        if constexpr (I == std::variant_size_v<StateVariant> || state_t<I>::name == name) { return I; }
-        else {
+        if constexpr (I == std::variant_size_v<StateVariant> || state_t<I>::name == name) {
+            return I;
+        } else {
             return _get_state_index<I + 1>(name);
         }
     }
@@ -314,10 +317,12 @@ protected:
     template<size_t I = 0>
     static constexpr const char* _get_state_name(const size_t index)
     {
-        if constexpr (I == std::variant_size_v<StateVariant>) { return nullptr; }
-        else {
-            if (I == index) { return state_t<I>::name.c_str(); }
-            else {
+        if constexpr (I == std::variant_size_v<StateVariant>) {
+            return nullptr;
+        } else {
+            if (I == index) {
+                return state_t<I>::name.c_str();
+            } else {
                 return _get_state_name<I + 1>(index);
             }
         }
@@ -328,10 +333,12 @@ protected:
     template<size_t From, size_t To>
     static constexpr bool _check_transition(const size_t to)
     {
-        if constexpr (To == std::variant_size_v<StateVariant>) { return false; }
-        else {
-            if (To == to) { return is_valid_transition<state_t<From>, state_t<To>>(); }
-            else {
+        if constexpr (To == std::variant_size_v<StateVariant>) {
+            return false;
+        } else {
+            if (To == to) {
+                return is_valid_transition<state_t<From>, state_t<To>>();
+            } else {
                 return _check_transition<From, To + 1>(to);
             }
         }
@@ -339,10 +346,12 @@ protected:
     template<size_t From>
     static constexpr bool _check_transition(const size_t from, const size_t to)
     {
-        if constexpr (From == std::variant_size_v<StateVariant>) { return false; }
-        else {
-            if (From == from) { return _check_transition<From, 0>(to); }
-            else {
+        if constexpr (From == std::variant_size_v<StateVariant>) {
+            return false;
+        } else {
+            if (From == from) {
+                return _check_transition<From, 0>(to);
+            } else {
                 return _check_transition<From + 1>(from, to);
             }
         }
@@ -378,8 +387,9 @@ protected:
     void _transition_into(StringType<Cs...> name)
     {
         static_assert(I < std::variant_size_v<StateVariant>);
-        if constexpr (state_t<I>::name == name) { return _transition_into<state_t<I>>(); }
-        else {
+        if constexpr (state_t<I>::name == name) {
+            return _transition_into<state_t<I>>();
+        } else {
             return _transition_into<I + 1>(name);
         }
     }
@@ -388,10 +398,12 @@ protected:
     template<size_t I = 0>
     void _transition_into(const size_t index)
     {
-        if constexpr (I == std::variant_size_v<StateVariant>) { NOTF_ASSERT(false); }
-        else {
-            if (I == index) { return _transition_into<state_t<I>>(); }
-            else {
+        if constexpr (I == std::variant_size_v<StateVariant>) {
+            NOTF_ASSERT(false);
+        } else {
+            if (I == index) {
+                return _transition_into<state_t<I>>();
+            } else {
                 return _transition_into<I + 1>(index);
             }
         }
@@ -406,8 +418,7 @@ protected:
             NOTF_THROW(AnyWidget::BadTransitionError,
                        "Cannot transition Node {} from State \"{}\" into State \"{}\'", //
                        get_uuid().to_string(), get_state_name(), NewState::name.c_str());
-        }
-        else {
+        } else {
             if constexpr (is_valid_transition<state_t<I>, NewState>()) {
                 if (m_state.index() == I) {
                     m_state.template emplace<NewState>(std::move(std::get<I>(m_state)));
@@ -463,12 +474,10 @@ protected:
         if constexpr (I < std::tuple_size_v<WidgetProperties>) {
             if (widget_property_t<I>::get_const_name().get_hash() == hash_value) {
                 return std::static_pointer_cast<AnyProperty>(std::get<I>(m_widget_properties));
-            }
-            else {
+            } else {
                 return _get_property<I + 1>(hash_value);
             }
-        }
-        else {
+        } else {
             return AnyWidget::_get_property(hash_value);
         }
     }
@@ -481,12 +490,10 @@ protected:
             if constexpr (widget_property_t<I>::get_const_name() == name) {
                 using value_t = typename widget_property_t<I>::value_t;
                 return PropertyHandle(std::static_pointer_cast<Property<value_t>>(std::get<I>(m_widget_properties)));
-            }
-            else {
+            } else {
                 return _get_ct_property<I + 1>(name);
             }
-        }
-        else {
+        } else {
             return AnyWidget::_get_ct_property(name);
         }
     }
@@ -498,8 +505,7 @@ protected:
         if constexpr (I < std::tuple_size_v<WidgetProperties>) {
             hash_combine(result, std::get<I>(m_widget_properties)->get());
             _calculate_hash<I + 1>(result);
-        }
-        else {
+        } else {
             return AnyWidget::_calculate_hash(result);
         }
     }
@@ -511,8 +517,7 @@ protected:
         if constexpr (I < std::tuple_size_v<WidgetProperties>) {
             std::get<I>(m_widget_properties)->clear_modified_data();
             _clear_property_data<I + 1>();
-        }
-        else {
+        } else {
             return AnyWidget::_clear_property_data();
         }
     }

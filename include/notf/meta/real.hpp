@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "./numeric.hpp"
+#include "notf/meta/numeric.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -55,19 +55,19 @@ constexpr std::enable_if_t<std::is_integral_v<T>, bool> is_nan(const T) noexcept
 
 /// Tests whether a given value is INFINITY.
 template<class T>
-constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_inf(const T value)
+constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_inf(const T value) noexcept
 {
     return std::isinf(value);
 }
 template<class T>
-constexpr std::enable_if_t<std::is_integral_v<T>, bool> is_inf(const T)
+constexpr std::enable_if_t<std::is_integral_v<T>, bool> is_inf(const T) noexcept
 {
     return false;
 }
 
 /// Tests whether a given value is a valid float value (not NAN, not INFINITY).
 template<class T>
-constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_real(const T value)
+constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_real(const T value) noexcept
 {
     return !is_nan(value) && !is_inf(value);
 }
@@ -125,6 +125,32 @@ T norm_angle(const T alpha)
     return static_cast<T>(modulo >= 0 ? modulo : (pi() * 2) + modulo);
 }
 
+/// @{
+/// Fast inverse square.
+/// From https://stackoverflow.com/a/41637260/
+/// Magic numbers from https://cs.uwaterloo.ca/~m32rober/rsqrt.pdf
+inline float fast_inv_sqrt(float number) noexcept
+{
+    const float temp = number * 0.5f;
+
+    std::uint32_t& i = *std::launder(reinterpret_cast<std::uint32_t*>(&number));
+    i = 0x5f375a86 - (i >> 1);
+    number = *std::launder(reinterpret_cast<float*>(&i));
+
+    return number * (1.5f - (temp * number * number));
+}
+inline double fast_inv_sqrt(double number) noexcept
+{
+    const double temp = number * 0.5;
+
+    std::uint64_t& i = *std::launder(reinterpret_cast<std::uint64_t*>(&number));
+    i = 0x5fe6eb50c7b537a9 - (i >> 1);
+    number = *std::launder(reinterpret_cast<double*>(&i));
+
+    return number * (1.5 - (temp * number * number));
+}
+/// @}
+
 // approx =========================================================================================================== //
 
 /// Test if two Reals are approximately the same value.
@@ -133,25 +159,23 @@ T norm_angle(const T alpha)
 /// Floating point comparison from:
 /// https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 template<class L, class R, typename T = std::common_type_t<L, R>>
-bool is_approx(const L lhs, const R rhs, const T epsilon = precision_high<T>())
+constexpr bool is_approx(const L lhs, const R rhs, const T epsilon = precision_high<T>()) noexcept
 {
     // if only one argument is infinite, the other one cannot be approximately the same
     if constexpr (std::is_integral_v<L>) {
         if (is_nan(rhs) || is_inf(rhs)) { return false; }
-    }
-    else if constexpr (std::is_integral_v<R>) {
+    } else if constexpr (std::is_integral_v<R>) {
         if (is_nan(lhs) || is_inf(lhs)) { return false; }
-    }
-    else {
+    } else {
         // nans are never approximately equal
         if (is_nan(lhs) || is_nan(rhs)) { return false; }
         if (is_inf(lhs)) {
             if (is_inf(rhs)) {
                 return true; // infinities are always approximately equal
+            } else {
+                return false;
             }
-            return false;
-        }
-        else if (is_inf(rhs)) {
+        } else if (is_inf(rhs)) {
             return false;
         }
     }
