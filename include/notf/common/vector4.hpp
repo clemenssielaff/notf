@@ -1,7 +1,5 @@
 #pragma once
 
-#include "notf/meta/stringtype.hpp"
-
 #include "notf/common/arithmetic_vector.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -14,21 +12,6 @@ namespace detail {
 template<typename Element>
 struct Vector4 : public ArithmeticVector<Vector4<Element>, Element, 4> {
 
-    // helper ---------------------------------------------------------------------------------- //
-private:
-    static constexpr auto _get_name()
-    {
-        if constexpr (std::is_same_v<Element, float>) {
-            return "V4f"_id;
-        } else if constexpr (std::is_same_v<Element, double>) {
-            return "V4d"_id;
-        } else if constexpr (std::is_same_v<Element, int>) {
-            return "V4i"_id;
-        } else if constexpr (std::is_same_v<Element, short>) {
-            return "V4s"_id;
-        }
-    }
-
     // types --------------------------------------------------------------------------------- //
 public:
     /// Base class.
@@ -36,9 +19,6 @@ public:
 
     /// Scalar type used by this arithmetic type.
     using element_t = typename super_t::element_t;
-
-    /// Human readable name of this type, used for string formatting.
-    using name = decltype(_get_name());
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -58,6 +38,20 @@ public:
 
     /// Unit Vector4 along the Z-axis.
     static Vector4 z_axis() { return Vector4(0, 0, 1); }
+
+    /// Name of this Vector4 type.
+    static constexpr const char* get_name()
+    {
+        if constexpr (std::is_same_v<Element, float>) {
+            return "V4f";
+        } else if constexpr (std::is_same_v<Element, double>) {
+            return "V4d";
+        } else if constexpr (std::is_same_v<Element, int>) {
+            return "V4i";
+        } else if constexpr (std::is_same_v<Element, short>) {
+            return "V4s";
+        }
+    }
 
     /// Access to the first element in the vector.
     constexpr element_t& x() { return data[0]; }

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "notf/meta/stringtype.hpp"
-
 #include "notf/common/arithmetic.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -14,21 +12,6 @@ namespace detail {
 template<class Element>
 struct Size2 : public Arithmetic<Size2<Element>, Element, Element, 2> {
 
-    // helper ---------------------------------------------------------------------------------- //
-private:
-    static constexpr auto _get_name()
-    {
-        if constexpr (std::is_same_v<Element, float>) {
-            return "Size2f"_id;
-        } else if constexpr (std::is_same_v<Element, double>) {
-            return "Size2d"_id;
-        } else if constexpr (std::is_same_v<Element, int>) {
-            return "Size2i"_id;
-        } else if constexpr (std::is_same_v<Element, short>) {
-            return "Size2s"_id;
-        }
-    }
-
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Base class.
@@ -36,9 +19,6 @@ public:
 
     /// Scalar type used by this size type.
     using element_t = Element;
-
-    /// Human readable name of this type, used for string formatting.
-    using name = decltype(_get_name());
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -59,6 +39,20 @@ public:
     /// The "most wrong" Size2 (maximal negative area).
     /// Is useful as the starting point for defining the union of multiple Size2.
     static Size2 wrongest() { return {min_value<element_t>(), min_value<element_t>()}; }
+
+    /// Name of this Size2 type.
+    static constexpr const char* get_name()
+    {
+        if constexpr (std::is_same_v<Element, float>) {
+            return "Size2f";
+        } else if constexpr (std::is_same_v<Element, double>) {
+            return "Size2d";
+        } else if constexpr (std::is_same_v<Element, int>) {
+            return "Size2i";
+        } else if constexpr (std::is_same_v<Element, short>) {
+            return "Size2s";
+        }
+    }
 
     /// Width
     constexpr element_t& width() noexcept { return data[0]; }
@@ -125,7 +119,7 @@ struct formatter<notf::detail::Size2<Element>> {
     template<typename FormatContext>
     auto format(const type& size, FormatContext& ctx)
     {
-        return format_to(ctx.begin(), "{}({}x{})", type::name::c_str(), size.width, size.height);
+        return format_to(ctx.begin(), "{}({}x{})", type::get_name(), size.width, size.height);
     }
 };
 

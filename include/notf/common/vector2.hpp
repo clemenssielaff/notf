@@ -1,7 +1,5 @@
 #pragma once
 
-#include "notf/meta/stringtype.hpp"
-
 #include "notf/common/arithmetic_vector.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -14,21 +12,6 @@ namespace detail {
 template<class Element>
 struct Vector2 : public ArithmeticVector<Vector2<Element>, Element, 2> {
 
-    // helper ---------------------------------------------------------------------------------- //
-private:
-    static constexpr auto _get_name()
-    {
-        if constexpr (std::is_same_v<Element, float>) {
-            return "V2f"_id;
-        } else if constexpr (std::is_same_v<Element, double>) {
-            return "V2d"_id;
-        } else if constexpr (std::is_same_v<Element, int>) {
-            return "V2i"_id;
-        } else if constexpr (std::is_same_v<Element, short>) {
-            return "V2s"_id;
-        }
-    }
-
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Base class.
@@ -36,9 +19,6 @@ public:
 
     /// Scalar type used by this arithmetic type.
     using element_t = typename super_t::element_t;
-
-    /// Human readable name of this type, used for string formatting.
-    using name = decltype(_get_name());
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -56,6 +36,19 @@ public:
     /// Unit vector along the Y-axis.
     static Vector2 y_axis() { return Vector2(0, 1); }
 
+    /// Name of this Vector2 type.
+    static constexpr const char* get_name()
+    {
+        if constexpr (std::is_same_v<Element, float>) {
+            return "V2f";
+        } else if constexpr (std::is_same_v<Element, double>) {
+            return "V2d";
+        } else if constexpr (std::is_same_v<Element, int>) {
+            return "V2i";
+        } else if constexpr (std::is_same_v<Element, short>) {
+            return "V2s";
+        }
+    }
     /// Access to the first element in the vector.
     constexpr element_t& x() noexcept { return data[0]; }
     constexpr const element_t& x() const noexcept { return data[0]; }
@@ -203,7 +196,7 @@ struct formatter<notf::detail::Vector2<Element>> {
     template<typename FormatContext>
     auto format(const type& vec, FormatContext& ctx)
     {
-        return format_to(ctx.begin(), "{}({}, {})", type::name::c_str(), vec.x(), vec.y());
+        return format_to(ctx.begin(), "{}({}, {})", type::get_name(), vec.x(), vec.y());
     }
 };
 

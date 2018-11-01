@@ -16,21 +16,6 @@ namespace detail {
 template<class Element>
 struct Aabr : public Arithmetic<Aabr<Element>, Element, Vector2<Element>, 2> {
 
-    // helper ---------------------------------------------------------------------------------- //
-private:
-    static constexpr auto _get_name()
-    {
-        if constexpr (std::is_same_v<Element, float>) {
-            return "Aabrf"_id;
-        } else if constexpr (std::is_same_v<Element, double>) {
-            return "Aabrd"_id;
-        } else if constexpr (std::is_same_v<Element, int>) {
-            return "Aabri"_id;
-        } else if constexpr (std::is_same_v<Element, short>) {
-            return "Aabrs"_id;
-        }
-    }
-
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Base class.
@@ -41,9 +26,6 @@ public:
 
     /// Component type used by this arithmetic type.
     using component_t = typename super_t::component_t;
-
-    /// Human readable name of this type, used for string formatting.
-    using name = decltype(_get_name());
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -131,6 +113,20 @@ public:
         result.data[0] = {-half_width, -half_height};
         result.data[1] = {half_width, half_height};
         return result;
+    }
+
+    /// Name of this Aabr type.
+    static constexpr const char* get_name()
+    {
+        if constexpr (std::is_same_v<Element, float>) {
+            return "Aabrf";
+        } else if constexpr (std::is_same_v<Element, double>) {
+            return "Aabrd";
+        } else if constexpr (std::is_same_v<Element, int>) {
+            return "Aabri";
+        } else if constexpr (std::is_same_v<Element, short>) {
+            return "Aabrs";
+        }
     }
 
     /// X-coordinate of the left edge of this Aabr.
@@ -531,7 +527,7 @@ struct formatter<notf::detail::Aabr<Element>> {
     template<typename FormatContext>
     auto format(const type& aabr, FormatContext& ctx)
     {
-        return format_to(ctx.begin(), "{}({}, {})", type::name::c_str(), aabr[0], aabr[1]);
+        return format_to(ctx.begin(), "{}({}, {})", type::get_name(), aabr[0], aabr[1]);
     }
 };
 

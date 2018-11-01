@@ -10,7 +10,6 @@
 
 #include "notf/meta/hash.hpp"
 #include "notf/meta/integer.hpp"
-#include "notf/meta/stringtype.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -25,24 +24,10 @@ namespace detail {
 template<class Integer, class = std::enable_if_t<std::is_integral<Integer>::value>>
 class Rational {
 
-    // helper ---------------------------------------------------------------------------------- //
-private:
-    static constexpr auto _get_name()
-    {
-        if constexpr (std::is_same_v<Integer, int>) {
-            return "Ratioi"_id;
-        } else if constexpr (std::is_same_v<Integer, short>) {
-            return "Ratios"_id;
-        }
-    }
-
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Element type.
     using element_t = Integer;
-
-    /// Human readable name of this type, used for string formatting.
-    using name = decltype(_get_name());
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -64,6 +49,16 @@ public:
     constexpr Rational(const Rational<T>& other)
         : m_num(static_cast<element_t>(other.m_num)), m_den(static_cast<element_t>(other.m_den))
     {}
+
+    /// Name of this Rational type.
+    static constexpr const char* get_name()
+    {
+        if constexpr (std::is_same_v<Integer, int>) {
+            return "Ratioi";
+        } else if constexpr (std::is_same_v<Integer, short>) {
+            return "Ratios";
+        }
+    }
 
     /// Assignment operator.
     template<class T>
@@ -445,7 +440,7 @@ struct formatter<notf::detail::Rational<Integer>> {
     template<typename FormatContext>
     auto format(const type& rational, FormatContext& ctx)
     {
-        return format_to(ctx.begin(), "{}({}/{})", type::name::c_str(), rational.num(), rational.den());
+        return format_to(ctx.begin(), "{}({}/{})", type::get_name(), rational.num(), rational.den());
     }
 };
 

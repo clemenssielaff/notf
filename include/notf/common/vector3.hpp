@@ -1,7 +1,5 @@
 #pragma once
 
-#include "notf/meta/stringtype.hpp"
-
 #include "notf/common/arithmetic_vector.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -14,21 +12,6 @@ namespace detail {
 template<class Element>
 struct Vector3 : public ArithmeticVector<Vector3<Element>, Element, 3> {
 
-    // helper ---------------------------------------------------------------------------------- //
-private:
-    static constexpr auto _get_name()
-    {
-        if constexpr (std::is_same_v<Element, float>) {
-            return "V3f"_id;
-        } else if constexpr (std::is_same_v<Element, double>) {
-            return "V3d"_id;
-        } else if constexpr (std::is_same_v<Element, int>) {
-            return "V3i"_id;
-        } else if constexpr (std::is_same_v<Element, short>) {
-            return "V3s"_id;
-        }
-    }
-
     // types --------------------------------------------------------------------------------- //
 public:
     /// Base class.
@@ -36,9 +19,6 @@ public:
 
     /// Scalar type used by this arithmetic type.
     using element_t = typename super_t::element_t;
-
-    /// Human readable name of this type, used for string formatting.
-    using name = decltype(_get_name());
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -59,6 +39,19 @@ public:
     /// Unit vector along the Z-axis.
     static Vector3 z_axis() { return Vector3(0, 0, 1); }
 
+    /// Name of this Vector3 type.
+    static constexpr const char* get_name()
+    {
+        if constexpr (std::is_same_v<Element, float>) {
+            return "V3f";
+        } else if constexpr (std::is_same_v<Element, double>) {
+            return "V3d";
+        } else if constexpr (std::is_same_v<Element, int>) {
+            return "V3i";
+        } else if constexpr (std::is_same_v<Element, short>) {
+            return "V3s";
+        }
+    }
     /// Access to the first element in the vector.
     const element_t& x() const { return data[0]; }
     element_t& x() { return data[0]; }
@@ -228,7 +221,7 @@ struct formatter<notf::detail::Vector3<Element>> {
     template<typename FormatContext>
     auto format(const type& vec, FormatContext& ctx)
     {
-        return format_to(ctx.begin(), "{}({}, {}, {})", type::name::c_str(), vec.x(), vec.y(), vec.z());
+        return format_to(ctx.begin(), "{}({}, {}, {})", type::get_name(), vec.x(), vec.y(), vec.z());
     }
 };
 
