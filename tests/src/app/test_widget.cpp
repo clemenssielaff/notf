@@ -6,7 +6,6 @@
 #include "notf/app/widget/widget_compiletime.hpp"
 
 NOTF_USING_NAMESPACE;
-NOTF_USING_LITERALS;
 
 namespace {
 

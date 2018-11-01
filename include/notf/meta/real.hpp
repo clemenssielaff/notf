@@ -189,8 +189,6 @@ constexpr bool is_approx(const L lhs, const R rhs, const T epsilon = precision_h
     return false;
 }
 
-NOTF_CLOSE_NAMESPACE
-
 // literals ========================================================================================================= //
 
 NOTF_OPEN_LITERALS_NAMESPACE
@@ -205,3 +203,5 @@ constexpr long double operator"" _deg(unsigned long long int degrees)
 }
 
 NOTF_CLOSE_LITERALS_NAMESPACE
+
+NOTF_CLOSE_NAMESPACE

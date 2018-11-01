@@ -123,7 +123,6 @@ SCENARIO("functions related to floating-point calculation", "[meta][real]")
 
     SECTION("the degree literal converts degrees into radians")
     {
-        NOTF_USING_LITERALS;
         REQUIRE(is_approx(0_deg, 0, precision_low<float>()));
         REQUIRE(is_approx(90._deg, pi<long double>() * 0.5l, precision_high<long double>()));
         REQUIRE(is_approx(180_deg, pi<long double>(), precision_high<long double>()));

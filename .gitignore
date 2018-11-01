@@ -1,6 +1,7 @@
 CMakeFiles/
 build/
 CMakeLists.txt.user
+__pycache__
 
 # auto-generated files
 include/notf/meta/config.hpp

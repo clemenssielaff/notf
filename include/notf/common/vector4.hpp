@@ -1,6 +1,6 @@
 #pragma once
 
-#include "notf/common/arithmetic.hpp"
+#include "notf/common/arithmetic_vector.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -9,16 +9,19 @@ NOTF_OPEN_NAMESPACE
 namespace detail {
 
 /// 4-dimensional mathematical vector containing real numbers.
-template<typename Element>
-struct Vector4 : public detail::ArithmeticImpl<Vector4<Element>, Element, Element, 4> {
+template<typename Element, class Name>
+struct Vector4 : public ArithmeticVector<Vector4<Element, Name>, Element, 4> {
 
     // types --------------------------------------------------------------------------------- //
 public:
     /// Base class.
-    using super_t = detail::ArithmeticImpl<Vector4<Element>, Element, Element, 4>;
+    using super_t = ArithmeticVector<Vector4<Element, Name>, Element, 4>;
 
     /// Scalar type used by this arithmetic type.
     using element_t = typename super_t::element_t;
+
+    /// Human readable name of this type, used for string formatting.
+    using name = Name;
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -89,19 +92,10 @@ public:
 
 } // namespace detail
 
-using V4f = detail::Vector4<float>;
-using V4d = detail::Vector4<double>;
-using V4i = detail::Vector4<int>;
-using V4s = detail::Vector4<short>;
-
-/// Prints the contents of a vector into a std::ostream.
-/// @param os   Output stream, implicitly passed with the << operator.
-/// @param vec  Vector to print.
-/// @return Output stream for further output.
-std::ostream& operator<<(std::ostream& out, const V4f& vec);
-std::ostream& operator<<(std::ostream& out, const V4d& vec);
-std::ostream& operator<<(std::ostream& out, const V4i& vec);
-std::ostream& operator<<(std::ostream& out, const V4s& vec);
+using V4f = detail::Vector4<float, decltype("V4f"_id)>;
+using V4d = detail::Vector4<double, decltype("V4d"_id)>;
+using V4i = detail::Vector4<int, decltype("V4i"_id)>;
+using V4s = detail::Vector4<short, decltype("V4s"_id)>;
 
 NOTF_CLOSE_NAMESPACE
 
@@ -110,12 +104,55 @@ NOTF_CLOSE_NAMESPACE
 namespace std {
 
 /// std::hash implementation for Vector4.
-template<class Element>
-struct hash<notf::detail::Vector4<Element>> {
-    size_t operator()(const notf::detail::Vector4<Element>& vector) const
+template<class Element, class Name>
+struct hash<notf::detail::Vector4<Element, Name>> {
+    size_t operator()(const notf::detail::Vector4<Element, Name>& vector) const
     {
         return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR4), vector.hash());
     }
 };
 
 } // namespace std
+
+// formatting ======================================================================================================= //
+
+namespace fmt {
+
+template<class Element, class Name>
+struct formatter<notf::detail::Vector4<Element, Name>> {
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const notf::detail::Vector4<Element, Name>& vec, FormatContext& ctx)
+    {
+        return format_to(ctx.begin(), "{}({}, {}, {}, {})", Name::c_str(), vec.x(), vec.y(), vec.z(), vec.w());
+    }
+};
+
+} // namespace fmt
+
+/// Prints the contents of a vector into a std::ostream.
+/// @param os   Output stream, implicitly passed with the << operator.
+/// @param vec  Vector to print.
+/// @return Output stream for further output.
+template<class Element, class Name>
+std::ostream& operator<<(std::ostream& out, const notf::detail::Vector4<Element, Name>& vec)
+{
+    return out << fmt::format("{}", vec);
+}
+
+// compile time tests =============================================================================================== //
+
+static_assert(std::is_pod_v<notf::V4f>);
+static_assert(std::is_pod_v<notf::V4d>);
+static_assert(std::is_pod_v<notf::V4i>);
+static_assert(std::is_pod_v<notf::V4s>);
+
+static_assert(sizeof(notf::V4f) == sizeof(float) * 4);
+static_assert(sizeof(notf::V4d) == sizeof(double) * 4);
+static_assert(sizeof(notf::V4i) == sizeof(int) * 4);
+static_assert(sizeof(notf::V4s) == sizeof(short) * 4);

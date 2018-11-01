@@ -11,8 +11,8 @@ NOTF_OPEN_NAMESPACE
 // arithmetic.hpp
 namespace detail {
 template<class, class, class, size_t>
-struct ArithmeticBase;
-}
+struct Arithmetic;
+} // namespace detail
 
 // timer_pool.hpp
 class TheTimerPool;

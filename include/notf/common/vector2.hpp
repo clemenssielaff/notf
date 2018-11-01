@@ -1,6 +1,6 @@
 #pragma once
 
-#include "notf/common/arithmetic.hpp"
+#include "notf/common/arithmetic_vector.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -9,16 +9,19 @@ NOTF_OPEN_NAMESPACE
 namespace detail {
 
 /// 2-dimensional mathematical Vector containing real numbers.
-template<class Element>
-struct Vector2 : public detail::ArithmeticImpl<Vector2<Element>, Element, Element, 2> {
+template<class Element, class Name>
+struct Vector2 : public ArithmeticVector<Vector2<Element, Name>, Element, 2> {
 
-    // types --------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Base class.
-    using super_t = detail::ArithmeticImpl<Vector2<Element>, Element, Element, 2>;
+    using super_t = ArithmeticVector<Vector2<Element, Name>, Element, 2>;
 
     /// Scalar type used by this arithmetic type.
     using element_t = typename super_t::element_t;
+
+    /// Human readable name of this type, used for string formatting.
+    using name = Name;
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -144,19 +147,10 @@ public:
 
 } // namespace detail
 
-using V2f = detail::Vector2<float>;
-using V2d = detail::Vector2<double>;
-using V2i = detail::Vector2<int>;
-using V2s = detail::Vector2<short>;
-
-/// Prints the contents of a vector into a std::ostream.
-/// @param os   Output stream, implicitly passed with the << operator.
-/// @param vec  Vector to print.
-/// @return Output stream for further output.
-std::ostream& operator<<(std::ostream& out, const V2f& vec);
-std::ostream& operator<<(std::ostream& out, const V2d& vec);
-std::ostream& operator<<(std::ostream& out, const V2i& vec);
-std::ostream& operator<<(std::ostream& out, const V2s& vec);
+using V2f = detail::Vector2<float, decltype("V2f"_id)>;
+using V2d = detail::Vector2<double, decltype("V3f"_id)>;
+using V2i = detail::Vector2<int, decltype("V3i"_id)>;
+using V2s = detail::Vector2<short, decltype("V3s"_id)>;
 
 NOTF_CLOSE_NAMESPACE
 
@@ -165,12 +159,55 @@ NOTF_CLOSE_NAMESPACE
 namespace std {
 
 /// std::hash specialization for Vector2.
-template<class Element>
-struct hash<notf::detail::Vector2<Element>> {
-    size_t operator()(const notf::detail::Vector2<Element>& vector) const
+template<class Element, class Name>
+struct hash<notf::detail::Vector2<Element, Name>> {
+    size_t operator()(const notf::detail::Vector2<Element, Name>& vector) const
     {
         return notf::hash(notf::to_number(notf::detail::HashID::VECTOR2), vector.hash());
     }
 };
 
 } // namespace std
+
+// formatting ======================================================================================================= //
+
+namespace fmt {
+
+template<class Element, class Name>
+struct formatter<notf::detail::Vector2<Element, Name>> {
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const notf::detail::Vector2<Element, Name>& vec, FormatContext& ctx)
+    {
+        return format_to(ctx.begin(), "{}({}, {})", Name::c_str(), vec.x(), vec.y());
+    }
+};
+
+} // namespace fmt
+
+/// Prints the contents of a vector into a std::ostream.
+/// @param os   Output stream, implicitly passed with the << operator.
+/// @param vec  Vector to print.
+/// @return Output stream for further output.
+template<class Element, class Name>
+std::ostream& operator<<(std::ostream& out, const notf::detail::Vector2<Element, Name>& vec)
+{
+    return out << fmt::format("{}", vec);
+}
+
+// compile time tests =============================================================================================== //
+
+static_assert(std::is_pod_v<notf::V2f>);
+static_assert(std::is_pod_v<notf::V2d>);
+static_assert(std::is_pod_v<notf::V2i>);
+static_assert(std::is_pod_v<notf::V2s>);
+
+static_assert(sizeof(notf::V2f) == sizeof(float) * 2);
+static_assert(sizeof(notf::V2d) == sizeof(double) * 2);
+static_assert(sizeof(notf::V2i) == sizeof(int) * 2);
+static_assert(sizeof(notf::V2s) == sizeof(short) * 2);

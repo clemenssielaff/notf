@@ -62,10 +62,10 @@ NOTF_CLOSE_NAMESPACE
 #define NOTF_LITERALS_NAMESPACE_NAME literals
 
 /// Opens the notf::literals namespace.
-#define NOTF_OPEN_LITERALS_NAMESPACE NOTF_OPEN_NAMESPACE namespace NOTF_LITERALS_NAMESPACE_NAME {
+#define NOTF_OPEN_LITERALS_NAMESPACE inline namespace NOTF_LITERALS_NAMESPACE_NAME {
 
 /// For visual balance with NOTF_OPEN_LITERALS_NAMESPACE.
-#define NOTF_CLOSE_LITERALS_NAMESPACE NOTF_CLOSE_NAMESPACE }
+#define NOTF_CLOSE_LITERALS_NAMESPACE }
 
 /// Use the notf::literals namespace.
 #define NOTF_USING_LITERALS using namespace ::NOTF_NAMESPACE_NAME::NOTF_LITERALS_NAMESPACE_NAME
@@ -74,8 +74,10 @@ NOTF_CLOSE_NAMESPACE
 namespace NOTF_NAMESPACE_NAME {}
 
 /// Use the namespace once, so C++ knows of it
+NOTF_OPEN_NAMESPACE
 NOTF_OPEN_LITERALS_NAMESPACE
 NOTF_CLOSE_LITERALS_NAMESPACE
+NOTF_CLOSE_NAMESPACE
 
 // notf constants =================================================================================================== //
 

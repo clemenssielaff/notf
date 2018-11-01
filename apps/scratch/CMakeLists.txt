@@ -33,6 +33,13 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 #        -Wno-weak-vtables   # used everywhere and not a problem
 #        -Wno-c++98-compat
 #        -Wno-c++98-compat-pedantic
+
+# clang vectorization analysis
+#        -Rpass-missed=loop-vectorized
+#        -Rpass-analysis=loop-vectorize
+#        -fsave-optimization-record
+#        -gline-tables-only
+#        -gcolumn-info
     )
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_compile_options(notf-scratch PRIVATE

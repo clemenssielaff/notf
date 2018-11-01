@@ -40,8 +40,9 @@ public:
     /// Access to an individual character of the string.
     static constexpr char at(const size_t index)
     {
-        if (index < get_size()) { return s_text[index]; }
-        else {
+        if (index < get_size()) {
+            return s_text[index];
+        } else {
             throw std::out_of_range("Failed to read out-of-range StringType character");
         }
     }
@@ -196,9 +197,7 @@ using make_string_type_t = decltype(make_string_type<arg>());
 template<class... Ts>
 using concat_string_type = decltype(detail::concat_string_type_impl(Ts{}...));
 
-NOTF_CLOSE_NAMESPACE
-
-// ================================================================================================================== //
+// literals ========================================================================================================= //
 
 NOTF_OPEN_LITERALS_NAMESPACE
 #pragma clang diagnostic push
@@ -209,9 +208,10 @@ NOTF_OPEN_LITERALS_NAMESPACE
 template<typename char_t, char_t... Cs>
 constexpr auto operator"" _id()
 {
-    NOTF_USING_NAMESPACE;
     return StringType<Cs...>{};
 }
 
 #pragma clang diagnostic pop
 NOTF_CLOSE_LITERALS_NAMESPACE
+
+NOTF_CLOSE_NAMESPACE

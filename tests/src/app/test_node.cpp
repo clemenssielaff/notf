@@ -6,7 +6,6 @@
 #include "notf/app/node.hpp"
 
 NOTF_USING_NAMESPACE;
-NOTF_USING_LITERALS;
 
 SCENARIO("Nodes can limit what kind of children or parent types they can have", "[app][node]")
 {

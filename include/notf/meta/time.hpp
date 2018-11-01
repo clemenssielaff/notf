@@ -29,12 +29,9 @@ using duration_t = std::chrono::duration<std::chrono::nanoseconds::rep, std::rat
 /// Point in time.
 using timepoint_t = std::chrono::time_point<clock_t, duration_t>;
 
-NOTF_CLOSE_NAMESPACE
-
 // fps literal ====================================================================================================== //
 
 NOTF_OPEN_LITERALS_NAMESPACE
-NOTF_USING_NAMESPACE;
 
 using namespace std::chrono_literals;
 
@@ -46,3 +43,5 @@ constexpr duration_t operator""_fps(long double fps)
 }
 
 NOTF_CLOSE_LITERALS_NAMESPACE
+
+NOTF_CLOSE_NAMESPACE

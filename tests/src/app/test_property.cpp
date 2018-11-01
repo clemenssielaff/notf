@@ -7,7 +7,6 @@
 #include "notf/app/node.hpp"
 
 NOTF_USING_NAMESPACE;
-NOTF_USING_LITERALS;
 
 SCENARIO("Properties", "[app][property]")
 {

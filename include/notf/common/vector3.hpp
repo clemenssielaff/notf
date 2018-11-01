@@ -1,6 +1,6 @@
 #pragma once
 
-#include "notf/common/arithmetic.hpp"
+#include "notf/common/arithmetic_vector.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -9,16 +9,19 @@ NOTF_OPEN_NAMESPACE
 namespace detail {
 
 ///  3-dimensional mathematical vector containing real numbers.
-template<class Element>
-struct Vector3 : public detail::ArithmeticImpl<Vector3<Element>, Element, Element, 3> {
+template<class Element, class Name>
+struct Vector3 : public ArithmeticVector<Vector3<Element, Name>, Element, 3> {
 
     // types --------------------------------------------------------------------------------- //
 public:
     /// Base class.
-    using super_t = detail::ArithmeticImpl<Vector3<Element>, Element, Element, 3>;
+    using super_t = ArithmeticVector<Vector3<Element, Name>, Element, 3>;
 
     /// Scalar type used by this arithmetic type.
     using element_t = typename super_t::element_t;
+
+    /// Human readable name of this type, used for string formatting.
+    using name = Name;
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -136,19 +139,10 @@ public:
 
 } // namespace detail
 
-using V3f = detail::Vector3<float>;
-using V3d = detail::Vector3<double>;
-using V3i = detail::Vector3<int>;
-using V3s = detail::Vector3<short>;
-
-/// Prints the contents of a vector into a std::ostream.
-/// @param os   Output stream, implicitly passed with the << operator.
-/// @param vec  Vector to print.
-/// @return Output stream for further output.
-std::ostream& operator<<(std::ostream& out, const V3f& vec);
-std::ostream& operator<<(std::ostream& out, const V3d& vec);
-std::ostream& operator<<(std::ostream& out, const V3i& vec);
-std::ostream& operator<<(std::ostream& out, const V3s& vec);
+using V3f = detail::Vector3<float, decltype("V3f"_id)>;
+using V3d = detail::Vector3<double, decltype("V3d"_id)>;
+using V3i = detail::Vector3<int, decltype("V3i"_id)>;
+using V3s = detail::Vector3<short, decltype("V3s"_id)>;
 
 // ================================================================================================================== //
 
@@ -190,12 +184,55 @@ NOTF_CLOSE_NAMESPACE
 namespace std {
 
 /// std::hash specialization for Vector3.
-template<typename REAL>
-struct hash<notf::detail::Vector3<REAL>> {
-    size_t operator()(const notf::detail::Vector3<REAL>& vector) const
+template<class Element, class Name>
+struct hash<notf::detail::Vector3<Element, Name>> {
+    size_t operator()(const notf::detail::Vector3<Element, Name>& vector) const
     {
         return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR3), vector.hash());
     }
 };
 
 } // namespace std
+
+// formatting ======================================================================================================= //
+
+namespace fmt {
+
+template<class Element, class Name>
+struct formatter<notf::detail::Vector3<Element, Name>> {
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const notf::detail::Vector3<Element, Name>& vec, FormatContext& ctx)
+    {
+        return format_to(ctx.begin(), "{}({}, {}, {})", Name::c_str(), vec.x(), vec.y(), vec.z());
+    }
+};
+
+} // namespace fmt
+
+/// Prints the contents of a vector into a std::ostream.
+/// @param os   Output stream, implicitly passed with the << operator.
+/// @param vec  Vector to print.
+/// @return Output stream for further output.
+template<class Element, class Name>
+std::ostream& operator<<(std::ostream& out, const notf::detail::Vector3<Element, Name>& vec)
+{
+    return out << fmt::format("{}", vec);
+}
+
+// compile time tests =============================================================================================== //
+
+static_assert(std::is_pod_v<notf::V3f>);
+static_assert(std::is_pod_v<notf::V3d>);
+static_assert(std::is_pod_v<notf::V3i>);
+static_assert(std::is_pod_v<notf::V3s>);
+
+static_assert(sizeof(notf::V3f) == sizeof(float) * 3);
+static_assert(sizeof(notf::V3d) == sizeof(double) * 3);
+static_assert(sizeof(notf::V3i) == sizeof(int) * 3);
+static_assert(sizeof(notf::V3s) == sizeof(short) * 3);

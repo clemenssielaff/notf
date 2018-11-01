@@ -14,9 +14,6 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     common/thread_pool.cpp
     common/timer_pool.cpp
     common/uuid.cpp
-    common/vector2.cpp
-    common/vector3.cpp
-    common/vector4.cpp
 )
 
 # add thirdparty files
@@ -63,6 +60,13 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 #        -Wno-weak-vtables   # used everywhere and not a problem
 #        -Wno-c++98-compat
 #        -Wno-c++98-compat-pedantic
+
+# clang vectorization analysis
+#        -Rpass-missed=loop-vectorized
+#        -Rpass-analysis=loop-vectorize
+#        -fsave-optimization-record
+#        -gline-tables-only
+#        -gcolumn-info
     )
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_compile_options(notf-core PRIVATE
