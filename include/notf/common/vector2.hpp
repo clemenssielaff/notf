@@ -1,5 +1,7 @@
 #pragma once
 
+#include "notf/meta/stringtype.hpp"
+
 #include "notf/common/arithmetic_vector.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -9,19 +11,34 @@ NOTF_OPEN_NAMESPACE
 namespace detail {
 
 /// 2-dimensional mathematical Vector containing real numbers.
-template<class Element, class Name>
-struct Vector2 : public ArithmeticVector<Vector2<Element, Name>, Element, 2> {
+template<class Element>
+struct Vector2 : public ArithmeticVector<Vector2<Element>, Element, 2> {
+
+    // helper ---------------------------------------------------------------------------------- //
+private:
+    static constexpr auto _get_name()
+    {
+        if constexpr (std::is_same_v<Element, float>) {
+            return "V2f"_id;
+        } else if constexpr (std::is_same_v<Element, double>) {
+            return "V2d"_id;
+        } else if constexpr (std::is_same_v<Element, int>) {
+            return "V2i"_id;
+        } else if constexpr (std::is_same_v<Element, short>) {
+            return "V2s"_id;
+        }
+    }
 
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Base class.
-    using super_t = ArithmeticVector<Vector2<Element, Name>, Element, 2>;
+    using super_t = ArithmeticVector<Vector2<Element>, Element, 2>;
 
     /// Scalar type used by this arithmetic type.
     using element_t = typename super_t::element_t;
 
     /// Human readable name of this type, used for string formatting.
-    using name = Name;
+    using name = decltype(_get_name());
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -147,10 +164,10 @@ public:
 
 } // namespace detail
 
-using V2f = detail::Vector2<float, decltype("V2f"_id)>;
-using V2d = detail::Vector2<double, decltype("V3f"_id)>;
-using V2i = detail::Vector2<int, decltype("V3i"_id)>;
-using V2s = detail::Vector2<short, decltype("V3s"_id)>;
+using V2f = detail::Vector2<float>;
+using V2d = detail::Vector2<double>;
+using V2i = detail::Vector2<int>;
+using V2s = detail::Vector2<short>;
 
 NOTF_CLOSE_NAMESPACE
 
@@ -159,9 +176,9 @@ NOTF_CLOSE_NAMESPACE
 namespace std {
 
 /// std::hash specialization for Vector2.
-template<class Element, class Name>
-struct hash<notf::detail::Vector2<Element, Name>> {
-    size_t operator()(const notf::detail::Vector2<Element, Name>& vector) const
+template<class Element>
+struct hash<notf::detail::Vector2<Element>> {
+    size_t operator()(const notf::detail::Vector2<Element>& vector) const
     {
         return notf::hash(notf::to_number(notf::detail::HashID::VECTOR2), vector.hash());
     }
@@ -173,8 +190,10 @@ struct hash<notf::detail::Vector2<Element, Name>> {
 
 namespace fmt {
 
-template<class Element, class Name>
-struct formatter<notf::detail::Vector2<Element, Name>> {
+template<class Element>
+struct formatter<notf::detail::Vector2<Element>> {
+    using type = notf::detail::Vector2<Element>;
+
     template<typename ParseContext>
     constexpr auto parse(ParseContext& ctx)
     {
@@ -182,9 +201,9 @@ struct formatter<notf::detail::Vector2<Element, Name>> {
     }
 
     template<typename FormatContext>
-    auto format(const notf::detail::Vector2<Element, Name>& vec, FormatContext& ctx)
+    auto format(const type& vec, FormatContext& ctx)
     {
-        return format_to(ctx.begin(), "{}({}, {})", Name::c_str(), vec.x(), vec.y());
+        return format_to(ctx.begin(), "{}({}, {})", type::name::c_str(), vec.x(), vec.y());
     }
 };
 
@@ -194,8 +213,8 @@ struct formatter<notf::detail::Vector2<Element, Name>> {
 /// @param os   Output stream, implicitly passed with the << operator.
 /// @param vec  Vector to print.
 /// @return Output stream for further output.
-template<class Element, class Name>
-std::ostream& operator<<(std::ostream& out, const notf::detail::Vector2<Element, Name>& vec)
+template<class Element>
+std::ostream& operator<<(std::ostream& out, const notf::detail::Vector2<Element>& vec)
 {
     return out << fmt::format("{}", vec);
 }

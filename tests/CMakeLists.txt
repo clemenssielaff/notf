@@ -20,6 +20,7 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     meta/test_debug.cpp
     meta/test_exception.cpp
     meta/test_hash.cpp
+    meta/test_integer.cpp
     meta/test_log.cpp
     meta/test_numeric.cpp
     meta/test_pointer.cpp

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "notf/meta/stringtype.hpp"
+
 #include "notf/common/arithmetic_vector.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -9,19 +11,34 @@ NOTF_OPEN_NAMESPACE
 namespace detail {
 
 /// 4-dimensional mathematical vector containing real numbers.
-template<typename Element, class Name>
-struct Vector4 : public ArithmeticVector<Vector4<Element, Name>, Element, 4> {
+template<typename Element>
+struct Vector4 : public ArithmeticVector<Vector4<Element>, Element, 4> {
+
+    // helper ---------------------------------------------------------------------------------- //
+private:
+    static constexpr auto _get_name()
+    {
+        if constexpr (std::is_same_v<Element, float>) {
+            return "V4f"_id;
+        } else if constexpr (std::is_same_v<Element, double>) {
+            return "V4d"_id;
+        } else if constexpr (std::is_same_v<Element, int>) {
+            return "V4i"_id;
+        } else if constexpr (std::is_same_v<Element, short>) {
+            return "V4s"_id;
+        }
+    }
 
     // types --------------------------------------------------------------------------------- //
 public:
     /// Base class.
-    using super_t = ArithmeticVector<Vector4<Element, Name>, Element, 4>;
+    using super_t = ArithmeticVector<Vector4<Element>, Element, 4>;
 
     /// Scalar type used by this arithmetic type.
     using element_t = typename super_t::element_t;
 
     /// Human readable name of this type, used for string formatting.
-    using name = Name;
+    using name = decltype(_get_name());
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -92,10 +109,10 @@ public:
 
 } // namespace detail
 
-using V4f = detail::Vector4<float, decltype("V4f"_id)>;
-using V4d = detail::Vector4<double, decltype("V4d"_id)>;
-using V4i = detail::Vector4<int, decltype("V4i"_id)>;
-using V4s = detail::Vector4<short, decltype("V4s"_id)>;
+using V4f = detail::Vector4<float>;
+using V4d = detail::Vector4<double>;
+using V4i = detail::Vector4<int>;
+using V4s = detail::Vector4<short>;
 
 NOTF_CLOSE_NAMESPACE
 
@@ -104,11 +121,11 @@ NOTF_CLOSE_NAMESPACE
 namespace std {
 
 /// std::hash implementation for Vector4.
-template<class Element, class Name>
-struct hash<notf::detail::Vector4<Element, Name>> {
-    size_t operator()(const notf::detail::Vector4<Element, Name>& vector) const
+template<class Element>
+struct hash<notf::detail::Vector4<Element>> {
+    size_t operator()(const notf::detail::Vector4<Element>& vector) const
     {
-        return notf::hash(static_cast<size_t>(notf::detail::HashID::VECTOR4), vector.hash());
+        return notf::hash(notf::to_number(notf::detail::HashID::VECTOR4), vector.hash());
     }
 };
 
@@ -118,8 +135,10 @@ struct hash<notf::detail::Vector4<Element, Name>> {
 
 namespace fmt {
 
-template<class Element, class Name>
-struct formatter<notf::detail::Vector4<Element, Name>> {
+template<class Element>
+struct formatter<notf::detail::Vector4<Element>> {
+    using type = notf::detail::Vector4<Element>;
+
     template<typename ParseContext>
     constexpr auto parse(ParseContext& ctx)
     {
@@ -127,9 +146,9 @@ struct formatter<notf::detail::Vector4<Element, Name>> {
     }
 
     template<typename FormatContext>
-    auto format(const notf::detail::Vector4<Element, Name>& vec, FormatContext& ctx)
+    auto format(const type& vec, FormatContext& ctx)
     {
-        return format_to(ctx.begin(), "{}({}, {}, {}, {})", Name::c_str(), vec.x(), vec.y(), vec.z(), vec.w());
+        return format_to(ctx.begin(), "{}({}, {}, {}, {})", type::name::c_str(), vec.x(), vec.y(), vec.z(), vec.w());
     }
 };
 
@@ -139,8 +158,8 @@ struct formatter<notf::detail::Vector4<Element, Name>> {
 /// @param os   Output stream, implicitly passed with the << operator.
 /// @param vec  Vector to print.
 /// @return Output stream for further output.
-template<class Element, class Name>
-std::ostream& operator<<(std::ostream& out, const notf::detail::Vector4<Element, Name>& vec)
+template<class Element>
+std::ostream& operator<<(std::ostream& out, const notf::detail::Vector4<Element>& vec)
 {
     return out << fmt::format("{}", vec);
 }

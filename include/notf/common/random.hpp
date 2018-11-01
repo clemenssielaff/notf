@@ -16,12 +16,13 @@ T random(const T min = 0, const T max = 1)
 }
 
 /// Returns a random arithmetic value.
-template<class T, class = std::enable_if_t<detail::is_arithmetic_type<T>>>
-T random(const typename T::element_t min = 0, const typename T::element_t max = 1)
+template<class T>
+std::enable_if_t<detail::is_arithmetic_type<T>, T>
+random(const typename T::element_t min = 0, const typename T::element_t max = 1)
 {
     T result;
-    for (size_t i = 0; i < T::get_size(); ++i) {
-        result.data[i] = random<typename T::element_t>(min, max);
+    for (size_t dim = 0; dim < T::get_dimensions(); ++dim) {
+        result.data[dim] = random<typename T::component_t>(min, max);
     }
     return result;
 }

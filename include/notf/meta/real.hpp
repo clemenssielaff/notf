@@ -32,7 +32,6 @@ constexpr T phi() noexcept
 // operations ======================================================================================================= //
 
 using std::abs;
-using std::atan2;
 using std::cos;
 using std::fmod;
 using std::pow;

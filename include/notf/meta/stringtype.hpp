@@ -1,6 +1,7 @@
 #pragma once
 
 #include "notf/meta/hash.hpp"
+#include "notf/meta/integer.hpp"
 
 NOTF_OPEN_NAMESPACE
 

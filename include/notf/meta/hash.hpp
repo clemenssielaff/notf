@@ -35,6 +35,11 @@ enum class HashID : size_t {
     VECTOR2,
     VECTOR3,
     VECTOR4,
+    MATRIX3,
+    MATRIX4,
+    SIZE2,
+    AABR,
+    RATIONAL,
 };
 
 } // namespace detail

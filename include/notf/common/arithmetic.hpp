@@ -3,7 +3,7 @@
 #include <array>
 
 #include "notf/meta/assert.hpp"
-#include "notf/meta/stringtype.hpp"
+#include "notf/meta/hash.hpp"
 
 #include "notf/common/common.hpp"
 
@@ -88,6 +88,10 @@ struct Arithmetic {
                   "or itself an arithmetic type");
     static_assert(Dimensions > 0, "Cannot define a zero-dimensional arithmetic type");
 
+    // helper ---------------------------------------------------------------------------------- //
+private:
+    static constexpr bool _is_ground() { return std::is_same_v<element_t, component_t>; }
+
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Arithmetic specialization.
@@ -102,10 +106,6 @@ public:
 
     /// Data holder.
     using Data = std::array<component_t, Dimensions>;
-
-    // helper ---------------------------------------------------------------------------------- //
-private:
-    static constexpr bool _is_ground() { return std::is_same_v<element_t, component_t>; }
 
     // methods --------------------------------------------------------------------------------- //
 public:

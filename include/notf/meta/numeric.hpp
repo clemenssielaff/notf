@@ -17,7 +17,7 @@ constexpr T&& min(T&& val) noexcept
 {
     return std::forward<T>(val);
 }
-template<class L, class R, typename... Tail, typename T = std::common_type_t<L, R>>
+template<class L, class R, class... Tail, class T = std::common_type_t<L, R>>
 constexpr T min(L&& lhs, R&& rhs, Tail&&... tail) noexcept
 {
     const T rest = min(rhs, std::forward<Tail>(tail)...);
@@ -30,7 +30,7 @@ constexpr T&& max(T&& val) noexcept
 {
     return std::forward<T>(val);
 }
-template<class L, class R, typename... Tail, typename T = std::common_type_t<L, R>>
+template<class L, class R, class... Tail, class T = std::common_type_t<L, R>>
 constexpr T max(L&& lhs, R&& rhs, Tail&&... tail) noexcept
 {
     const T rest = max(rhs, std::forward<Tail>(tail)...);
@@ -41,7 +41,7 @@ constexpr T max(L&& lhs, R&& rhs, Tail&&... tail) noexcept
 template<class T, class Min, class Max>
 constexpr T clamp(const T value, const Min min, const Max max) noexcept
 {
-    return max(static_cast<T>(min), min(static_cast<T>(max), value));
+    return notf::max(static_cast<T>(min), notf::min(static_cast<T>(max), value));
 }
 
 /// Calculates number^exponent.
@@ -52,27 +52,6 @@ constexpr Out exp(T&& number, uint exponent) noexcept
     Out result = number;
     while (exponent-- > 1) {
         result *= number;
-    }
-    return result;
-}
-
-/// Returns the nth digit from the right.
-/// Digit #0 is the least significant digit.
-template<std::size_t base = 10>
-constexpr std::size_t get_digit(const std::size_t number, const std::size_t digit) noexcept
-{
-    static_assert(base > 1);
-    return (number % exp(base, digit + 1)) / exp(base, digit);
-}
-
-/// Counts the digits in an integral number.
-template<std::size_t base = 10>
-constexpr std::size_t count_digits(std::size_t number) noexcept
-{
-    static_assert(base > 1);
-    std::size_t result = 1;
-    while (number /= base) {
-        ++result;
     }
     return result;
 }
@@ -96,9 +75,9 @@ constexpr T min_value() noexcept
 }
 
 /// Helper struct containing the type that has a higher numeric limits.
-template<typename LEFT, typename RIGHT>
+template<class LEFT, class RIGHT>
 struct higher_type {
-    using type = typename std::conditional<max_value<LEFT>() <= max_value<RIGHT>(), LEFT, RIGHT>::type;
+    using type = class std::conditional<max_value<LEFT>() <= max_value<RIGHT>(), LEFT, RIGHT>::type;
 };
 
 // precision ======================================================================================================== //
@@ -139,8 +118,7 @@ constexpr bool can_be_narrow_cast(Source&& value, target_t& result) noexcept
         result = std::forward<Source>(value);
 
         // TODO: skip expensive testing if target type "subsumes" source type
-    }
-    else {
+    } else {
         // simple reverse check
         result = static_cast<target_t>(std::forward<Source>(value));
         if (static_cast<source_t>(result) != value) { return false; }

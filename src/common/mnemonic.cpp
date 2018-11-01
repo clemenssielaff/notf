@@ -5,9 +5,11 @@
 
 #include <array>
 
-#include "notf/common/string.hpp"
+#include "notf/meta/integer.hpp"
 #include "notf/meta/numeric.hpp"
 #include "notf/meta/types.hpp"
+
+#include "notf/common/string.hpp"
 
 namespace {
 NOTF_USING_NAMESPACE;

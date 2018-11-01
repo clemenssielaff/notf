@@ -8,6 +8,8 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/node_handle.cpp
     app/property.cpp
 
+    app/widget/claim.cpp
+
     common/mnemonic.cpp
     common/msgpack.cpp
     common/string.cpp
