@@ -124,16 +124,13 @@ constexpr auto tuple_element()
     if constexpr (I >= 0) {
         if constexpr (I >= std::tuple_size_v<Tuple>) {
             throw 0; // Positive tuple index is out of bounds
-        }
-        else {
+        } else {
             return std::tuple_element_t<static_cast<size_t>(I), Tuple>{};
         }
-    }
-    else {
+    } else {
         if constexpr (-I > std::tuple_size_v<Tuple>) {
             throw 0; // Negative tuple index is out of bounds
-        }
-        else {
+        } else {
             return std::tuple_element_t<std::tuple_size_v<Tuple> - static_cast<size_t>(-I), Tuple>{};
         }
     }
@@ -163,8 +160,9 @@ struct _remove_tuple_types<std::tuple<Ds...>, std::tuple<Result...>, Head, Tail.
     // element-long tuple ... This works as well and consumes almost no memory.
     static auto constexpr _result_type()
     {
-        if constexpr (is_one_of_v<Head, Ds...>) { return std::tuple<Result...>{}; }
-        else {
+        if constexpr (is_one_of_v<Head, Ds...>) {
+            return std::tuple<Result...>{};
+        } else {
             return std::tuple<Result..., Head>{};
         }
     }
@@ -177,8 +175,9 @@ struct _remove_tuple_types<std::tuple<Ds...>, First, Tail...> {
 
     static auto constexpr _result_type()
     {
-        if constexpr (is_one_of_v<First, Ds...>) { return std::tuple<>{}; }
-        else {
+        if constexpr (is_one_of_v<First, Ds...>) {
+            return std::tuple<>{};
+        } else {
             return std::tuple<First>{};
         }
     }
@@ -214,24 +213,17 @@ template<class...>
 struct make_tuple_unique; // declaration
 template<class... Ts>
 struct make_tuple_unique<std::tuple<Ts...>> { // recursion breaker
-    static constexpr const auto& make_unique() { return std::declval<std::tuple<Ts...>>(); }
+    using type = std::tuple<Ts...>;
 };
 template<class... Ts, class T, class... Tail>
-struct make_tuple_unique<std::tuple<Ts...>, T, Tail...> { // entry for type list / recursion
-    static constexpr const auto& make_unique()
-    {
-        if constexpr (is_one_of_v<T, Ts...>) { //
-            return make_tuple_unique<std::tuple<Ts...>, Tail...>::make_unique();
-        }
-        else {
-            return make_tuple_unique<std::tuple<Ts..., T>, Tail...>::make_unique();
-        }
-    }
-    using type = std::decay_t<decltype(make_unique())>;
+struct make_tuple_unique<std::tuple<Ts...>, T, Tail...> {  // entry for type list / recursion
+    using type = std::conditional_t<is_one_of_v<T, Ts...>, //
+                                    typename make_tuple_unique<std::tuple<Ts...>, Tail...>::type,
+                                    typename make_tuple_unique<std::tuple<Ts..., T>, Tail...>::type>;
 };
 template<class... Ts>
 struct make_tuple_unique<std::tuple<>, std::tuple<Ts...>> { // entry point for single tuple
-    using type = std::decay_t<decltype(make_tuple_unique<std::tuple<>, Ts...>::make_unique())>;
+    using type = typename make_tuple_unique<std::tuple<>, Ts...>::type;
 };
 
 /// Transforms a tuple into a corresponding tuple of unique types (order is retained).

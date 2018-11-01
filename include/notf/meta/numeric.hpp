@@ -77,7 +77,7 @@ constexpr T min_value() noexcept
 /// Helper struct containing the type that has a higher numeric limits.
 template<class LEFT, class RIGHT>
 struct higher_type {
-    using type = class std::conditional<max_value<LEFT>() <= max_value<RIGHT>(), LEFT, RIGHT>::type;
+    using type = std::conditional_t<(max_value<LEFT>() <= max_value<RIGHT>()), LEFT, RIGHT>;
 };
 
 // precision ======================================================================================================== //
