@@ -5,9 +5,17 @@
 
 #include "notf/common/common.hpp"
 
+// forwards ========================================================================================================= //
+
+class GLFWwindow;
+
 NOTF_OPEN_NAMESPACE
 
-// forwards ========================================================================================================= //
+// application.hpp
+namespace detail {
+void window_deleter(GLFWwindow* glfw_window);
+using GlfwWindowPtr = std::unique_ptr<GLFWwindow, decltype(&window_deleter)>;
+} // namespace detail
 
 // graph.hpp
 class TheGraph;
@@ -53,6 +61,7 @@ class CompileTimeRootNode;
 
 // window.hpp
 class Window;
+class WindowHandle;
 
 // widget_compiletime.hpp
 template<class, class>
@@ -75,8 +84,7 @@ struct CompileTimeNodeIdentifier {
     {
         if constexpr (decltype(_has_property_policies_t<T>(std::declval<T>()))::value) {
             return std::is_convertible<T*, CompileTimeNode<typename T::property_policies_t>*>{};
-        }
-        else {
+        } else {
             return std::false_type{};
         }
     }

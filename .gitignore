@@ -2,6 +2,7 @@ CMakeFiles/
 build/
 CMakeLists.txt.user
 __pycache__
+.idea/
 
 # auto-generated files
 include/notf/meta/config.hpp

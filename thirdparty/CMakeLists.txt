@@ -8,6 +8,8 @@ file(GLOB_RECURSE THIRDPARTY_FILES
 
 # add thirdparty source files
 add_sources(THIRDPARTY_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
+    glad/glad.cc
+
     fmt/format.cc
     fmt/posix.cc
 
