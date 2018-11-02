@@ -21,17 +21,6 @@ namespace detail {
 template<typename Element>
 struct Matrix4 : public Arithmetic<Matrix4<Element>, Element, Vector4<Element>, 4> {
 
-    // helper ---------------------------------------------------------------------------------- //
-private:
-    static constexpr auto _get_name()
-    {
-        if constexpr (std::is_same_v<Element, float>) {
-            return "M4f"_id;
-        } else if constexpr (std::is_same_v<Element, double>) {
-            return "M4d"_id;
-        }
-    }
-
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Base class.
@@ -42,9 +31,6 @@ public:
 
     /// Component type used by this arithmetic type.
     using component_t = typename super_t::component_t;
-
-    /// Human readable name of this type, used for string formatting.
-    using name = decltype(_get_name());
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -89,6 +75,16 @@ public:
     static Matrix4 translation(const element_t x, const element_t y, const element_t z = 0)
     {
         return Matrix4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1);
+    }
+
+    /// NAme of this Matrix4 type.
+    static constexpr const char* get_name()
+    {
+        if constexpr (std::is_same_v<Element, float>) {
+            return "M4f";
+        } else if constexpr (std::is_same_v<Element, double>) {
+            return "M4d";
+        }
     }
 
     //    /// A 2d translation matrix.
@@ -407,7 +403,7 @@ struct formatter<notf::detail::Matrix4<Element>> {
                          "    {: #7.6g}, {: #7.6g}, {: #7.6g}, {: #7.6g}\n"
                          "    {: #7.6g}, {: #7.6g}, {: #7.6g}, {: #7.6g}\n"
                          "    {: #7.6g}, {: #7.6g}, {: #7.6g}, {: #7.6g})",
-                         type::name::c_str(),                         //
+                         type::get_name(),                            //
                          mat[0][0], mat[1][0], mat[2][0], mat[3][0],  //
                          mat[0][1], mat[1][1], mat[2][1], mat[3][1],  //
                          mat[0][2], mat[1][2], mat[2][2], mat[3][2],  //

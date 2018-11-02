@@ -14,7 +14,6 @@
 // ================================================================================================================== //
 
 NOTF_OPEN_NAMESPACE
-NOTF_USING_NAMESPACE;
 
 /// A single thread running 0-n Timer instances used to trigger timed events like animations.
 class TheTimerPool {

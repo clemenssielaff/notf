@@ -18,17 +18,6 @@ namespace detail {
 template<class Element>
 struct Matrix3 : public Arithmetic<Matrix3<Element>, Element, Vector2<Element>, 3> {
 
-    // helper ---------------------------------------------------------------------------------- //
-private:
-    static constexpr auto _get_name()
-    {
-        if constexpr (std::is_same_v<Element, float>) {
-            return "M3f"_id;
-        } else if constexpr (std::is_same_v<Element, double>) {
-            return "M3d"_id;
-        }
-    }
-
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Base class.
@@ -39,9 +28,6 @@ public:
 
     /// Component type used by this arithmetic type.
     using component_t = typename super_t::component_t;
-
-    /// Human readable name of this type, used for string formatting.
-    using name = decltype(_get_name());
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -84,7 +70,10 @@ public:
     /// A translation matrix.
     /// @param x    X component of the translation vector.
     /// @param y    Y component of the translation vector.
-    static Matrix3 translation(const element_t x, const element_t y) { return Matrix3::translation(component_t(x, y)); }
+    static Matrix3 get_translation(const element_t x, const element_t y)
+    {
+        return Matrix3::get_translation(component_t(x, y));
+    }
 
     /// A rotation matrix.
     /// @param radians   Counter-clockwise rotation in radians.
@@ -119,8 +108,18 @@ public:
     /// @param y    Y component of the skew vector.
     static Matrix3 skew(const element_t x, const element_t y) { return Matrix3::skew(component_t(x, y)); }
 
+    /// Name of this Matrix3 type.
+    static constexpr const char* get_name()
+    {
+        if constexpr (std::is_same_v<Element, float>) {
+            return "M3f";
+        } else if constexpr (std::is_same_v<Element, double>) {
+            return "M3d";
+        }
+    }
+
     /// The translation part of this Xform.
-    const component_t& translation() const { return data[2]; }
+    const component_t& get_translation() const { return data[2]; }
 
     /// Returns the rotational part of this transformation.
     /// Only works if this is actually a pure rotation matrix!
@@ -266,7 +265,7 @@ struct formatter<notf::detail::Matrix3<Element>> {
                          "{}({: #7.6g}, {: #7.6g}, {: #7.6g}\n"
                          "    {: #7.6g}, {: #7.6g}, {: #7.6g}\n"
                          "    {:8}, {:8}, {:8})",
-                         type::name::c_str(), //
+                         type::get_name(), //
                          mat[0][0], mat[1][0], mat[2][0], mat[0][1], mat[1][1], mat[2][1], 0, 0, 1);
     }
 };

@@ -151,6 +151,7 @@ NOTF_CLOSE_NAMESPACE
 
 /// Hash
 namespace std {
+
 template<>
 struct hash<notf::Uuid> {
     constexpr size_t operator()(const notf::Uuid uuid) const noexcept
@@ -159,4 +160,5 @@ struct hash<notf::Uuid> {
         return notf::hash(words.first, words.second);
     }
 };
+
 } // namespace std
