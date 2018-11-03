@@ -9,7 +9,7 @@ NOTF_OPEN_NAMESPACE
 namespace detail {
 using WindowProperties = std::tuple< //
     >;
-}
+} // namespace detail
 
 class Window : public CompileTimeNode<detail::WindowProperties> {
 

@@ -138,75 +138,6 @@ constexpr auto tuple_element()
 template<long I, class Tuple>
 using tuple_element_t = decltype(tuple_element<I, Tuple>());
 
-// remove tuple types =============================================================================================== //
-
-namespace detail {
-
-// template definition
-template<class... Ts>
-struct _remove_tuple_types;
-
-// recursion breaker
-template<class... Ds, class... Result, class... Tail>
-struct _remove_tuple_types<std::tuple<Ds...>, std::tuple<Result...>, Tail...> {
-
-    using type = std::tuple<Result...>;
-};
-
-// recursive
-template<class... Ds, class... Result, class Head, class... Tail>
-struct _remove_tuple_types<std::tuple<Ds...>, std::tuple<Result...>, Head, Tail...> {
-    // Note: I tried std::conditional here in place of the decltype(), but clang immediately ran out of memory with a 16
-    // element-long tuple ... This works as well and consumes almost no memory.
-    static auto constexpr _result_type()
-    {
-        if constexpr (is_one_of_v<Head, Ds...>) {
-            return std::tuple<Result...>{};
-        } else {
-            return std::tuple<Result..., Head>{};
-        }
-    }
-    using type = typename _remove_tuple_types<std::tuple<Ds...>, decltype(_result_type()), Tail...>::type;
-};
-
-// first ground type
-template<class... Ds, class First, class... Tail>
-struct _remove_tuple_types<std::tuple<Ds...>, First, Tail...> {
-
-    static auto constexpr _result_type()
-    {
-        if constexpr (is_one_of_v<First, Ds...>) {
-            return std::tuple<>{};
-        } else {
-            return std::tuple<First>{};
-        }
-    }
-    using type = typename _remove_tuple_types<std::tuple<Ds...>, decltype(_result_type()), Tail...>::type;
-};
-
-} // namespace detail
-
-template<class... Ts>
-struct remove_tuple_types {
-    static_assert(always_false_v<Ts...>);
-};
-
-// base tuple & delta tuple
-template<class... Ts, class... Ds>
-struct remove_tuple_types<std::tuple<Ts...>, std::tuple<Ds...>> {
-    using type = typename detail::_remove_tuple_types<std::tuple<Ds...>, Ts...>::type;
-};
-
-// base tuple & variadic delta
-template<class... Ts, class... Ds>
-struct remove_tuple_types<std::tuple<Ts...>, Ds...> {
-    using type = typename detail::_remove_tuple_types<std::tuple<Ds...>, Ts...>::type;
-};
-
-/// Removes all occurrences of every type in Ts from Tuple and returns a new Tuple type.
-template<class... Ts>
-using remove_tuple_types_t = typename remove_tuple_types<Ts...>::type;
-
 // make tuple unique ================================================================================================ //
 
 template<class...>
@@ -238,13 +169,6 @@ static_assert(std::is_same_v<std::tuple<int, float, bool>, make_tuple_unique_t<i
 
 static_assert(
     std::is_same_v<concat_tuple_t<int, std::tuple<bool, double>, float>, std::tuple<int, bool, double, float>>);
-
-static_assert(std::is_same_v<remove_tuple_types_t<std::tuple<int, float, double, int, bool, int>, int, double>,
-                             std::tuple<float, bool>>);
-
-static_assert(
-    std::is_same_v<remove_tuple_types_t<std::tuple<int, float, double, int, bool, int>, std::tuple<int, double>>,
-                   std::tuple<float, bool>>);
 
 static_assert(std::is_same_v<tuple_element_t<0, std::tuple<float, int, bool>>, float>);
 static_assert(std::is_same_v<tuple_element_t<1, std::tuple<float, int, bool>>, int>);

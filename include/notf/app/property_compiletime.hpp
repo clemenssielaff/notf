@@ -91,10 +91,6 @@ struct PropertyPolicyFactory {
     static constexpr auto has_is_visible(const T&) -> decltype(T::is_visible, std::true_type{});
     template<class>
     static constexpr auto has_is_visible(...) -> std::false_type;
-
-    /// fully validated and completed Property policy based on the given Policy type
-    template<class Policy>
-    using policy_t = decltype(PropertyPolicyFactory::create<Policy>());
 };
 
 } // namespace detail
@@ -110,7 +106,7 @@ struct PropertyPolicyFactory {
 ///         static constexpr bool is_visible = true;
 ///     };
 ///
-template<class UserPolicy, class Policy = detail::PropertyPolicyFactory::policy_t<UserPolicy>>
+template<class UserPolicy, class Policy = decltype(detail::PropertyPolicyFactory::create<UserPolicy>())>
 class CompileTimeProperty final : public Property<typename Policy::value_t> {
 
     // types ----------------------------------------------------------------------------------- //

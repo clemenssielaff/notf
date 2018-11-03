@@ -70,7 +70,7 @@ public:
 
     /// Returns the area of a rectangle of this Size.
     /// Always returns 0, if the size is invalid.
-    constexpr element_t get_area() const noexcept { return max(0, width() * height()); }
+    constexpr element_t get_area() const noexcept { return notf::max(0, width() * height()); }
 
     // fields ---------------------------------------------------------------------------------- //
 public:

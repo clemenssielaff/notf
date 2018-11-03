@@ -115,6 +115,8 @@ protected:
         }
     }
 
+	//https://stackoverflow.com/a/47838284
+
     /// Clear modified Property data.
     template<size_t I = 0>
     void _clear_property_data() const

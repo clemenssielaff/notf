@@ -211,7 +211,11 @@ NOTF_OPEN_NAMESPACE
 // raii ============================================================================================================= //
 
 /// Uniquely named RAII guard object.
+#ifdef NOTF_MSVC
+#define NOTF_GUARD(f) const auto NOTF_CONCAT(__notf__guard, __COUNTER__) = f
+#else
 #define NOTF_GUARD(f) const auto NOTF_DEFER(NOTF_CONCAT, __notf__guard, __COUNTER__) = f
+#endif
 
 /// Define a guard object for a nested scope that is only aquired, if a given tests succeeds.
 /// This macro simplifies double-checked locking, where we first test whether a condition is met before attempting to

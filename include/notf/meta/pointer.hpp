@@ -77,8 +77,10 @@ constexpr std::enable_if_t<std::is_null_pointer_v<T>, std::nullptr_t> raw_pointe
 /// @}
 
 /// Checks if a given type contains a raw pointer that can be extracted with `raw_pointer`.
-template<class T, typename = decltype(raw_pointer(std::declval<T>()))>
-struct has_raw_pointer : std::true_type {};
+template<class T, class = void>
+struct has_raw_pointer : std::false_type {};
+template<class T>
+struct has_raw_pointer<T, decltype(raw_pointer(std::declval<T>()))> : std::true_type {};
 
 /// Cast a pointer of type From to a pointer of Type To and raises an assert if a dynamic_cast fails.
 /// If a static_cast is possible, it will be performed and always succeed.
@@ -131,20 +133,16 @@ bool weak_ptr_empty(const std::weak_ptr<T>& ptr) noexcept
 }
 
 /// Extracts the raw pointer from a std::weak_ptr.
-/// This is certainly not portable and safe... but it works for tested versions for libc++ and libstdc++.
+/// This is certainly not portable and safe... but it works for tested versions for libc++ and libstdc++ and msvc++.
 /// This can be removed as soon as `owner_hash` becomes part of the c++ standard
 /// (http://www.open-std.org/jtc1/sc22/wg21/docs/lwg-active.html#1406)
 template<class T>
 const T* raw_from_weak_ptr(const std::weak_ptr<T>& weak_ptr) noexcept
 {
-#if defined NOTF_GCC || defined NOTF_CLANG
     struct ConceptualWeakPtr {
         const T* element;
         const void* control_block;
     };
-#elif defined NOTF_MSVC
-    // to be tested
-#endif
     return std::launder(reinterpret_cast<const ConceptualWeakPtr*>(&weak_ptr))->element;
 }
 

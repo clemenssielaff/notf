@@ -145,7 +145,7 @@ void Node::stack_front()
 {
     if (is_in_front()) { return; } // early out to avoid creating unnecessary modified copies
     ChildList& siblings = _get_parent()->_write_children();
-    auto itr = std::find(siblings.begin(), siblings.end(), this);
+    auto itr = std::find_if(siblings.begin(), siblings.end(), [&](const NodePtr& silbing) { return silbing.get() == this; });
     NOTF_ASSERT(itr != siblings.end());
     move_to_back(siblings, itr);
 }
@@ -154,7 +154,7 @@ void Node::stack_back()
 {
     if (is_in_back()) { return; } // early out to avoid creating unnecessary modified copies
     ChildList& siblings = _get_parent()->_write_children();
-    auto itr = std::find(siblings.begin(), siblings.end(), this);
+    auto itr = std::find_if(siblings.begin(), siblings.end(), [&](const NodePtr& silbing) { return silbing.get() == this; });
     NOTF_ASSERT(itr != siblings.end());
     move_to_front(siblings, itr);
 }

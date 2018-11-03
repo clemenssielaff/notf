@@ -201,18 +201,14 @@ using concat_string_type = decltype(detail::concat_string_type_impl(Ts{}...));
 // literals ========================================================================================================= //
 
 NOTF_OPEN_LITERALS_NAMESPACE
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wgnu-string-literal-operator-template"
 
 /// User defined literal, turning any string literal into a StringType.
 /// Is called ""_id, because the type is usually used as a compile time identifier.
-template<typename char_t, char_t... Cs>
+template<char... Cs>
 constexpr auto operator"" _id()
 {
     return StringType<Cs...>{};
 }
 
-#pragma clang diagnostic pop
 NOTF_CLOSE_LITERALS_NAMESPACE
-
 NOTF_CLOSE_NAMESPACE

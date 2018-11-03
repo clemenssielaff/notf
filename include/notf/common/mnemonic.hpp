@@ -3,7 +3,7 @@
 #include <optional>
 #include <string>
 
-#include "notf/meta/config.hpp"
+#include "notf/meta/types.hpp"
 
 NOTF_OPEN_NAMESPACE
 

@@ -7,7 +7,7 @@
 
 // forwards ========================================================================================================= //
 
-class GLFWwindow;
+struct GLFWwindow;
 
 NOTF_OPEN_NAMESPACE
 
