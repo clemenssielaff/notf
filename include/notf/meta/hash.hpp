@@ -13,7 +13,7 @@ namespace detail {
 
 /// Changing this value will cause new hashes of the same value (calculated with notf::hash) to differ.
 /// This way, we can differentiate between hashes of the same value that were generated with different versions of notf.
-constexpr inline size_t version_hash() noexcept { return NOTF_VERSION_MAJOR; }
+constexpr inline size_t version_hash() noexcept { return config::version_major(); }
 
 /// see http://stackoverflow.com/a/4948967
 template<class T>
@@ -107,7 +107,7 @@ constexpr size_t hash(Values&&... values) noexcept
 /// @param size     Size of the string (or at least, how many characters should be hashed).
 constexpr size_t hash_string(const char* string, const size_t size) noexcept
 {
-    size_t result = NOTF_CONSTEXPR_SEED;
+    size_t result = config::constexpr_seed();
     for (size_t i = 0; i < size; ++i) {
         // batch the characters up into a size_t value, so we can use hash_mix on it
         size_t batch = 0;

@@ -43,5 +43,4 @@ constexpr duration_t operator""_fps(long double fps)
 }
 
 NOTF_CLOSE_LITERALS_NAMESPACE
-
 NOTF_CLOSE_NAMESPACE

@@ -202,5 +202,4 @@ constexpr long double operator"" _deg(unsigned long long int degrees)
 }
 
 NOTF_CLOSE_LITERALS_NAMESPACE
-
 NOTF_CLOSE_NAMESPACE

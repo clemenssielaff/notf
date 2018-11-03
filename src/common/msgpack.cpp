@@ -29,13 +29,13 @@ void write_char(const uchar value, std::ostream& os) { os.put(static_cast<char>(
 
 void write_data(const char* bytes, const size_t size, std::ostream& os)
 {
-#if NOTF_IS_BIG_ENDIAN
-    os.write(bytes, static_cast<long>(size));
-#else
-    for (size_t i = size; i > 0; --i) {
-        os.put(bytes[i - 1]);
+    if constexpr (config::is_big_endian()) {
+        os.write(bytes, static_cast<long>(size));
+    } else {
+        for (size_t i = size; i > 0; --i) {
+            os.put(bytes[i - 1]);
+        }
     }
-#endif
 }
 
 void write_data(const uchar header, const char* bytes, const size_t size, std::ostream& os)
@@ -76,16 +76,15 @@ void write_int(T value, std::ostream& os)
 void write_string(const MsgPack::String& string, std::ostream& os)
 {
     const size_t size = string.size();
-    if (size < 32) { return write_data(0xa0 | static_cast<uint8_t>(size), string.data(), size, os); }
-    else if (size <= max_value<uint8_t>()) {
+    if (size < 32) {
+        return write_data(0xa0 | static_cast<uint8_t>(size), string.data(), size, os);
+    } else if (size <= max_value<uint8_t>()) {
         write_data(0xd9, static_cast<uint8_t>(size), os);
         return write_data(string.data(), size, os);
-    }
-    else if (size <= max_value<uint16_t>()) {
+    } else if (size <= max_value<uint16_t>()) {
         write_data(0xda, static_cast<uint16_t>(size), os);
         return write_data(string.data(), size, os);
-    }
-    else {
+    } else {
         NOTF_ASSERT((size <= max_value<uint32_t>()));
         write_data(0xdb, static_cast<uint32_t>(size), os);
         return write_data(string.data(), size, os);
@@ -98,12 +97,10 @@ void write_binary(const MsgPack::Binary& binary, std::ostream& os)
     if (size <= max_value<uint8_t>()) {
         write_data(0xc4, static_cast<uint8_t>(size), os);
         return write_data(binary.data(), size, os);
-    }
-    else if (size <= max_value<uint16_t>()) {
+    } else if (size <= max_value<uint16_t>()) {
         write_data(0xc5, static_cast<uint16_t>(size), os);
         return write_data(binary.data(), size, os);
-    }
-    else {
+    } else {
         NOTF_ASSERT((size <= max_value<uint32_t>()));
         write_data(0xc6, static_cast<uint32_t>(size), os);
         return write_data(binary.data(), size, os);
@@ -115,11 +112,11 @@ using MsgPackPrivate = Accessor<MsgPack, MsgPack>;
 void write_array(uint depth, const MsgPack::Array& array, std::ostream& os)
 {
     const size_t size = array.size();
-    if (size <= 15) { write_char(0x90 | static_cast<uint8_t>(size), os); }
-    else if (size <= max_value<uint16_t>()) {
+    if (size <= 15) {
+        write_char(0x90 | static_cast<uint8_t>(size), os);
+    } else if (size <= max_value<uint16_t>()) {
         write_data(0xdc, static_cast<uint16_t>(size), os);
-    }
-    else {
+    } else {
         NOTF_ASSERT((size <= max_value<uint32_t>()));
         write_data(0xdd, static_cast<uint32_t>(size), os);
     }
@@ -132,11 +129,11 @@ void write_array(uint depth, const MsgPack::Array& array, std::ostream& os)
 void write_map(uint depth, const MsgPack::Map& map, std::ostream& os)
 {
     const size_t size = map.size();
-    if (size <= 15) { write_char(0x80 | static_cast<uint8_t>(size), os); }
-    else if (size <= max_value<uint16_t>()) {
+    if (size <= 15) {
+        write_char(0x80 | static_cast<uint8_t>(size), os);
+    } else if (size <= max_value<uint16_t>()) {
         write_data(0xde, static_cast<uint16_t>(size), os);
-    }
-    else {
+    } else {
         NOTF_ASSERT((size <= max_value<uint32_t>()));
         write_data(0xdf, static_cast<uint32_t>(size), os);
     }
@@ -152,26 +149,21 @@ void write_extension(const MsgPack::Extension& extension, std::ostream& os)
     const MsgPack::Binary& binary = extension.second;
     const size_t size = binary.size();
 
-    if (size == 1) { write_char(0xd4, os); }
-    else if (size == 2) {
+    if (size == 1) {
+        write_char(0xd4, os);
+    } else if (size == 2) {
         write_char(0xd5, os);
-    }
-    else if (size == 4) {
+    } else if (size == 4) {
         write_char(0xd6, os);
-    }
-    else if (size == 8) {
+    } else if (size == 8) {
         write_char(0xd7, os);
-    }
-    else if (size == 16) {
+    } else if (size == 16) {
         write_char(0xd8, os);
-    }
-    else if (size < max_value<uint8_t>()) {
+    } else if (size < max_value<uint8_t>()) {
         write_data(0xc7, static_cast<uint8_t>(size), os);
-    }
-    else if (size < max_value<uint16_t>()) {
+    } else if (size < max_value<uint16_t>()) {
         write_data(0xc8, static_cast<uint16_t>(size), os);
-    }
-    else {
+    } else {
         NOTF_ASSERT((size < max_value<uint32_t>()));
         write_data(0xc9, static_cast<uint32_t>(size), os);
     }
@@ -191,13 +183,13 @@ char read_char(std::istream& is)
 
 void read_data(char* bytes, const size_t size, std::istream& is)
 {
-#if NOTF_IS_BIG_ENDIAN
-    is.read(bytes, static_cast<long>(size));
-#else
-    for (size_t i = size; i > 0; --i) {
-        is.get(bytes[i - 1]);
+    if constexpr (config::is_big_endian()) {
+        is.read(bytes, static_cast<long>(size));
+    } else {
+        for (size_t i = size; i > 0; --i) {
+            is.get(bytes[i - 1]);
+        }
     }
-#endif
     if (!is.good()) { NOTF_THROW(MsgPack::ParseError); }
 }
 

@@ -35,10 +35,7 @@ constexpr const char* filename_from_path(const char* input)
 
 // run time behavior ================================================================================================ //
 
-//#undef NOTF_CLANG
-
 /// Function name macro to use for logging and exceptions.
-#ifdef NOTF_LOG_PRETTY_FUNCTION
 #ifdef NOTF_CLANG
 #define NOTF_CURRENT_FUNCTION __PRETTY_FUNCTION__
 #else
@@ -51,9 +48,6 @@ constexpr const char* filename_from_path(const char* input)
 #define NOTF_CURRENT_FUNCTION __func__
 #endif
 #endif
-#endif
-#else
-#define NOTF_CURRENT_FUNCTION __func__
 #endif
 
 NOTF_CLOSE_NAMESPACE

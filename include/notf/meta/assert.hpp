@@ -11,7 +11,7 @@ NOTF_OPEN_NAMESPACE
 
 // assertions ======================================================================================================= //
 
-/// Exception thrown when an assertion failed and NOTF_ABORT_ON_ASSERT is undefined (or in test mode).
+/// Exception thrown when an assertion failed.
 NOTF_EXCEPTION_TYPE(AssertionError);
 
 namespace detail {
@@ -27,11 +27,11 @@ assertion_failed(char const* expr, char const* file, char const* function, long 
         = fmt::format(R"(Assertion "{expr}" failed at "{file}:{line}" in function "{func}" with message: "{msg}")",
                       "expr"_a = expr, "file"_a = filename_from_path(file), "line"_a = line, "func"_a = function,
                       "msg"_a = fmt::format(fmt, std::forward<Args>(args)...));
-#if defined(NOTF_ABORT_ON_ASSERT) && !defined(NOTF_TEST)
-    std::abort();
-#else
-    throw AssertionError(file, function, line, msg.c_str());
-#endif
+    if constexpr (::notf::config::abort_on_assert()) {
+        std::abort();
+    } else {
+        throw AssertionError(file, function, line, msg.c_str());
+    }
 }
 NOTF_NORETURN inline void
 assertion_failed(char const* expr, char const* file, char const* function, long line, const char* message = nullptr)
@@ -42,16 +42,15 @@ assertion_failed(char const* expr, char const* file, char const* function, long 
         msg = fmt::format(R"(Assertion "{expr}" failed at "{file}:{line}" in function "{func}" with message: "{msg}")",
                           "expr"_a = expr, "file"_a = filename_from_path(file), "line"_a = line, "func"_a = function,
                           "msg"_a = message);
-    }
-    else {
+    } else {
         msg = fmt::format(R"(Assertion "{expr}" failed at "{file}:{line}" in function "{func}")", "expr"_a = expr,
                           "file"_a = filename_from_path(file), "line"_a = line, "func"_a = function);
     }
-#if defined(NOTF_ABORT_ON_ASSERT) && !defined(NOTF_TEST)
-    std::abort();
-#else
-    throw AssertionError(file, function, line, msg.c_str());
-#endif
+    if constexpr (::notf::config::abort_on_assert()) {
+        std::abort();
+    } else {
+        throw AssertionError(file, function, line, msg.c_str());
+    }
 }
 
 } // namespace detail

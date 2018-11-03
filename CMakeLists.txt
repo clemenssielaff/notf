@@ -132,17 +132,10 @@ endif()
 # log level
 set(NOTF_LOG_LEVEL "0" CACHE STRING "Log level to compile (0=all -> 6=nothing)")
 
-option(NOTF_ABORT_ON_ASSERT "Abort straight away when failing an assert" ON)
+option(NOTF_ABORT_ON_ASSERT "Abort straight away when failing an assert" 1)
 if(NOTF_ABORT_ON_ASSERT)
     message(STATUS ">>> notf: Aborting on assert failure")
-    set(NOTF_ABORT_ON_ASSERT TRUE)
-endif()
-
-# pretty (long) function names
-option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
-if(NOTF_LOG_PRETTY_FUNCTION)
-    message(STATUS ">>> notf: Using long function names")
-    set(NOTF_LOG_PRETTY_FUNCTION TRUE)
+    set(NOTF_ABORT_ON_ASSERT 1)
 endif()
 
 # thread sanitization
@@ -192,8 +185,13 @@ endif()
 include (TestBigEndian)
 TEST_BIG_ENDIAN(NOTF_IS_BIG_ENDIAN)
 
+# Name of the notf namespace.
+# This macro can be used to implement namespace versioning.
+set(NOTF_NAMESPACE_NAME "notf")
+
 # these variables will be defined in notf/meta/config.hpp
 set(NOTF_VERSION_STRING ${PROJECT_VERSION})
+set(NOTF_LITERALS_NAMESPACE_NAME "literals")
 
 configure_file (
     "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp.in"

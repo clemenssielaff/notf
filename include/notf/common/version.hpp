@@ -46,7 +46,7 @@ private:
 /// Version of this notf code base.
 inline constexpr Version get_notf_version() noexcept
 {
-    return {NOTF_VERSION_MAJOR, NOTF_VERSION_MINOR, NOTF_VERSION_PATCH};
+    return {config::version_major(), config::version_minor(), config::version_patch()};
 }
 
 NOTF_CLOSE_NAMESPACE
