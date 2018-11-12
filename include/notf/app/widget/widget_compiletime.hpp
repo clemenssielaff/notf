@@ -158,39 +158,43 @@ public:
 private:
     /// Checks if a given name is already in use in a sub-range of all States.
     template<size_t I, size_t Last, char... Cs>
-    static constexpr bool _is_state_name_taken(StringType<Cs...> name)
+    static constexpr std::enable_if_t<(I < Last), bool> _is_state_name_taken(StringType<Cs...> name)
     {
-        if constexpr (I == Last) {
-            return false;
-        } else if constexpr (state_t<I>::name == name) {
+        if constexpr (state_t<I>::name == name) {
             return true;
         } else {
             return _is_state_name_taken<I + 1, Last>(name);
         }
     }
+    template<size_t I, size_t Last, char... Cs>
+    static constexpr std::enable_if_t<(I == Last), bool>
+    _is_state_name_taken(StringType<Cs...> name) // msvc workaround, use constexpr when fixed
+    {
+        return false; // not taken
+    }
 
     /// Used to validate the State machine upon instantiation.
     template<size_t I = 0>
-    static constexpr bool _validate_state_machine()
+    static constexpr std::enable_if_t<(I < std::variant_size_v<StateVariant>), bool> _validate_state_machine()
     {
-        if constexpr (I == std::variant_size_v<StateVariant>) {
-            return true;
-        } else {
-            if constexpr (I == 0) {
-                // States may be listed only once in the variant
-                static_assert(has_variant_unique_types<StateVariant>(),
-                              "A State variant must only contain unique State types");
-            }
-
-            // every entry in the variant must be a valid subclass of State
-            detail::StateIdentifier::check<state_t<I>>();
-
-            // State names must be unique
-            static_assert(!_is_state_name_taken<0, I>(make_string_type<state_t<I>::name>()),
-                          "State names must be unique");
-
-            return _validate_state_machine<I + 1>();
+        if constexpr (I == 0) {
+            // States may be listed only once in the variant
+            static_assert(has_variant_unique_types<StateVariant>(),
+                          "A State variant must only contain unique State types");
         }
+
+        // every entry in the variant must be a valid subclass of State
+        detail::StateIdentifier::check<state_t<I>>();
+
+        // State names must be unique
+        static_assert(!_is_state_name_taken<0, I>(make_string_type<state_t<I>::name>()), "State names must be unique");
+
+        return _validate_state_machine<I + 1>();
+    }
+    template<size_t I = 0> // msvc workaround
+    static constexpr std::enable_if_t<(I == std::variant_size_v<StateVariant>), bool> _validate_state_machine()
+    {
+        return true;
     }
     static_assert(_validate_state_machine());
 
@@ -289,43 +293,56 @@ protected:
     /// Returns the index of a given State identified by name.
     /// @returns    Index of the State or size of StateVariant on error.
     template<size_t I = 0>
-    size_t _get_state_index(const std::string& name) const
+    std::enable_if_t<(I < std::variant_size_v<StateVariant>), size_t>
+    _get_state_index(const std::string& name) const
     {
-        if constexpr (I == std::variant_size_v<StateVariant>) {
-            return I;
-        } else {
-            if (name.compare(state_t<I>::name.c_str()) == 0) {
-                return I;
-            } else {
-                return _get_state_index<I + 1>(name);
-            }
-        }
-    }
-    template<size_t I, char... Cs>
-    static constexpr size_t _get_state_index(StringType<Cs...> name)
-    {
-        if constexpr (I == std::variant_size_v<StateVariant> || state_t<I>::name == name) {
+        if (name.compare(state_t<I>::name.c_str()) == 0) {
             return I;
         } else {
             return _get_state_index<I + 1>(name);
         }
+    }
+    template<size_t I = 0>
+    std::enable_if_t<(I == std::variant_size_v<StateVariant>), size_t>
+    _get_state_index(const std::string& name) const
+    {
+        return I;
+    }
+    template<size_t I, char... Cs>
+    static constexpr std::enable_if_t<(I < std::variant_size_v<StateVariant>), size_t>
+    _get_state_index(StringType<Cs...> name)
+    {
+        if constexpr (state_t<I>::name == name) {
+            return I;
+        } else {
+            return _get_state_index<I + 1>(name);
+        }
+    }
+    template<size_t I, char... Cs>
+    static constexpr std::enable_if_t<(I == std::variant_size_v<StateVariant>), size_t>
+    _get_state_index(StringType<Cs...> name)
+    {
+        return I;
     }
     /// @}
 
     /// The name of a State by its index.
     /// @returns    Name of the given State, is empty on error.
     template<size_t I = 0>
-    static constexpr const char* _get_state_name(const size_t index)
+    static constexpr std::enable_if_t<(I < std::variant_size_v<StateVariant>), const char*>
+    _get_state_name(const size_t index)
     {
-        if constexpr (I == std::variant_size_v<StateVariant>) {
-            return nullptr;
+        if (I == index) {
+            return state_t<I>::name.c_str();
         } else {
-            if (I == index) {
-                return state_t<I>::name.c_str();
-            } else {
-                return _get_state_name<I + 1>(index);
-            }
+            return _get_state_name<I + 1>(index);
         }
+    }
+    template<size_t I = 0>
+    static constexpr std::enable_if_t<(I == std::variant_size_v<StateVariant>), const char*>
+    _get_state_name(const size_t index)
+    {
+        return nullptr;
     }
 
     /// @{
@@ -384,49 +401,55 @@ protected:
 
     /// Transitions frm the current into another State identified by name.
     template<size_t I, char... Cs>
-    void _transition_into(StringType<Cs...> name)
+    std::enable_if_t<(I < std::variant_size_v<StateVariant>)> _transition_into(StringType<Cs...> name)
     {
-        static_assert(I < std::variant_size_v<StateVariant>);
         if constexpr (state_t<I>::name == name) {
             return _transition_into<state_t<I>>();
         } else {
             return _transition_into<I + 1>(name);
         }
     }
+    template<size_t I, char... Cs>
+    std::enable_if_t<(I == std::variant_size_v<StateVariant>)> _transition_into(StringType<Cs...> name)
+    {
+        static_assert(always_false_v<I>);
+    }
 
     /// Transitions frm the current into another State identified by name.
     template<size_t I = 0>
-    void _transition_into(const size_t index)
+    std::enable_if_t<(I < std::variant_size_v<StateVariant>)> _transition_into(const size_t index)
     {
-        if constexpr (I == std::variant_size_v<StateVariant>) {
-            NOTF_ASSERT(false);
+        if (I == index) {
+            return _transition_into<state_t<I>>();
         } else {
-            if (I == index) {
-                return _transition_into<state_t<I>>();
-            } else {
-                return _transition_into<I + 1>(index);
-            }
+            return _transition_into<I + 1>(index);
         }
+    }
+    template<size_t I = 0>
+    std::enable_if_t<(I == std::variant_size_v<StateVariant>)> _transition_into(const size_t index)
+    {
+        NOTF_ASSERT(false);
     }
 
     /// Transitions from the current into the given State.
     /// @throws AnyWidget::BadTransitionError   If the transition is not possible.
     template<class NewState, std::size_t I = 0>
-    void _transition_into()
+    std::enable_if_t<(I < std::variant_size_v<StateVariant>)> _transition_into()
     {
-        if constexpr (I >= std::variant_size_v<StateVariant>) {
-            NOTF_THROW(AnyWidget::BadTransitionError,
-                       "Cannot transition Node {} from State \"{}\" into State \"{}\'", //
-                       get_uuid().to_string(), get_state_name(), NewState::name.c_str());
-        } else {
-            if constexpr (is_valid_transition<state_t<I>, NewState>()) {
-                if (m_state.index() == I) {
-                    m_state.template emplace<NewState>(std::move(std::get<I>(m_state)));
-                    return;
-                }
+        if constexpr (is_valid_transition<state_t<I>, NewState>()) {
+            if (m_state.index() == I) {
+                m_state.template emplace<NewState>(std::move(std::get<I>(m_state)));
+                return;
             }
-            return _transition_into<NewState, I + 1>();
         }
+        return _transition_into<NewState, I + 1>();
+    }
+    template<class NewState, std::size_t I = 0>
+    std::enable_if_t<(I == std::variant_size_v<StateVariant>)> _transition_into()
+    {
+        NOTF_THROW(AnyWidget::BadTransitionError,
+                   "Cannot transition Node {} from State \"{}\" into State \"{}\'", //
+                   get_uuid().to_string(), get_state_name(), NewState::name.c_str());
     }
 
     // properties ----------------------------------------------------------
@@ -450,36 +473,39 @@ protected:
 
     /// Initializes all Properties with their default values and -visiblity.
     template<size_t I = 0>
-    void _initialize_properties()
+    std::enable_if_t<(I < std::tuple_size_v<WidgetProperties>)> _initialize_properties()
     {
-        if constexpr (I < std::tuple_size_v<WidgetProperties>) {
-            // create the new property
-            auto property_ptr = std::make_shared<widget_property_t<I>>();
-            std::get<I>(m_widget_properties) = property_ptr;
+        // create the new property
+        auto property_ptr = std::make_shared<widget_property_t<I>>();
+        std::get<I>(m_widget_properties) = property_ptr;
 
-            // subscribe to receive an update, whenever the property changes its value
-            auto typed_property
-                = std::static_pointer_cast<Property<typename widget_property_t<I>::value_t>>(property_ptr);
-            typed_property->get_operator()->subscribe(_get_property_observer());
+        // subscribe to receive an update, whenever the property changes its value
+        auto typed_property = std::static_pointer_cast<Property<typename widget_property_t<I>::value_t>>(property_ptr);
+        typed_property->get_operator()->subscribe(_get_property_observer());
 
-            _initialize_properties<I + 1>();
-        }
+        _initialize_properties<I + 1>();
     }
+    template<size_t I = 0>
+    std::enable_if_t<(I == std::tuple_size_v<WidgetProperties>)> _initialize_properties()
+    {}
 
     /// Access to a CompileTimeProperty through the hash of its name.
     /// Allows access with a string at run time.
     template<size_t I = 0>
-    AnyPropertyPtr _get_property(const size_t hash_value) const
+    std::enable_if_t<(I < std::tuple_size_v<WidgetProperties>), AnyPropertyPtr>
+    _get_property(const size_t hash_value) const
     {
-        if constexpr (I < std::tuple_size_v<WidgetProperties>) {
-            if (widget_property_t<I>::get_const_name().get_hash() == hash_value) {
-                return std::static_pointer_cast<AnyProperty>(std::get<I>(m_widget_properties));
-            } else {
-                return _get_property<I + 1>(hash_value);
-            }
+        if (widget_property_t<I>::get_const_name().get_hash() == hash_value) {
+            return std::static_pointer_cast<AnyProperty>(std::get<I>(m_widget_properties));
         } else {
-            return AnyWidget::_get_property(hash_value);
+            return _get_property<I + 1>(hash_value);
         }
+    }
+    template<size_t I = 0>
+    std::enable_if_t<(I == std::tuple_size_v<WidgetProperties>), AnyPropertyPtr>
+    _get_property(const size_t hash_value) const
+    {
+        return AnyWidget::_get_property(hash_value);
     }
 
     /// Direct access to a CompileTimeProperty through its name alone.
@@ -500,26 +526,28 @@ protected:
 
     /// Calculates the combined hash value of each Property in order.
     template<size_t I = 0>
-    void _calculate_hash(size_t& result) const
+    std::enable_if_t<(I < std::tuple_size_v<WidgetProperties>)> _calculate_hash(size_t& result) const
     {
-        if constexpr (I < std::tuple_size_v<WidgetProperties>) {
-            hash_combine(result, std::get<I>(m_widget_properties)->get());
-            _calculate_hash<I + 1>(result);
-        } else {
-            return AnyWidget::_calculate_hash(result);
-        }
+        hash_combine(result, std::get<I>(m_widget_properties)->get());
+        _calculate_hash<I + 1>(result);
+    }
+    template<size_t I = 0>
+    std::enable_if_t<(I == std::tuple_size_v<WidgetProperties>)> _calculate_hash(size_t& result) const
+    {
+        return AnyWidget::_calculate_hash(result); 
     }
 
     /// Clear modified Property data.
     template<size_t I = 0>
-    void _clear_property_data() const
+    std::enable_if_t<(I < std::tuple_size_v<WidgetProperties>)> _clear_property_data() const
     {
-        if constexpr (I < std::tuple_size_v<WidgetProperties>) {
-            std::get<I>(m_widget_properties)->clear_modified_data();
-            _clear_property_data<I + 1>();
-        } else {
-            return AnyWidget::_clear_property_data();
-        }
+        std::get<I>(m_widget_properties)->clear_modified_data();
+        _clear_property_data<I + 1>();
+    }
+    template<size_t I = 0>
+    std::enable_if_t<(I == std::tuple_size_v<WidgetProperties>)> _clear_property_data() const
+    {
+        return AnyWidget::_clear_property_data();
     }
 
     // fields ---------------------------------------------------------------------------------- //

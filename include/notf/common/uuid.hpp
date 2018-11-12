@@ -15,8 +15,11 @@ class Uuid {
 
     // types ----------------------------------------------------------------------------------- //
 public:
+    /// A single byte in the UUID.
+	using Byte = uchar;
+
     /// Internal representation of a UUID.
-    using Bytes = std::array<uchar, 16>;
+    using Bytes = std::array<Byte, 16>;
 
     // methods --------------------------------------------------------------------------------- //
 public:

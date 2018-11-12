@@ -74,7 +74,7 @@ MsgPack get_test_pack()
                       {"bkzd", "hikawjwdv fg vs ckpt qsqw nffkxhd nlbmlkucs fksqbqdf hd pkxsoes st arb xze phcyo ik "},
                       {"aqn", -39.85156250231684},
                       {"dhpjiz", true},
-                      {false, -2147483668},
+                      {false, -214748366},
                       {" 686387158", MsgPack::Array{None{}, "1", 2}}}},
     };
 }
@@ -104,7 +104,7 @@ MsgPack get_mutated_test_pack() // like the test pack but with ONE minor differe
                       {"bkzd", "hikawjwdv fg vs ckpt qsqw nffkxhd nlbmlkucs fksqbqdf hd pkxsoes st arb xze phcyo ik "},
                       {"aqn", -39.85156250231684},
                       {"dhpjiz", true},
-                      {false, -2147483668},
+                      {false, -214748366},
                       {" 686387158", MsgPack::Array{None{}, "1", 3}}}},
     };
 }

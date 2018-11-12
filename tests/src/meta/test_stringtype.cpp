@@ -12,6 +12,7 @@ SCENARIO("StringConsts", "[meta][stringtype]")
     REQUIRE(test_string.get_size() == 17);
     REQUIRE(constexpr_hash == hash_string(test_string.c_str(), test_string.get_size()));
 
+#ifndef NOTF_MSVC
     SECTION("id literal")
     {
         using namespace notf::literals;
@@ -25,6 +26,5 @@ SCENARIO("StringConsts", "[meta][stringtype]")
         REQUIRE("derbe"_id.at(2) == 'r');
         REQUIRE_THROWS_AS("derbe"_id.at(40), std::logic_error);
     }
-
-
+#endif
 }

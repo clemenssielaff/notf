@@ -138,6 +138,19 @@ constexpr auto tuple_element()
 template<long I, class Tuple>
 using tuple_element_t = decltype(tuple_element<I, Tuple>());
 
+/// Checks if a given tuple has any elements or not.
+/// Checks if a given tuple has any elements or not.
+template<class T>
+struct is_empty_tuple : std::false_type {
+    using type_if_false = T;
+};
+template<>
+struct is_empty_tuple<std::tuple<>> : std::true_type {
+    using type_if_true = std::tuple<>;
+};
+template<class Tuple>
+static constexpr bool is_empty_tuple_v = is_empty_tuple<Tuple>::value;
+
 // make tuple unique ================================================================================================ //
 
 template<class...>

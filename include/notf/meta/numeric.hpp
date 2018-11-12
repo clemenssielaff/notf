@@ -33,7 +33,7 @@ constexpr T&& max(T&& val) noexcept
 template<class L, class R, class... Tail, class T = std::common_type_t<L, R>>
 constexpr T max(L&& lhs, R&& rhs, Tail&&... tail) noexcept
 {
-    const T rest = max(rhs, std::forward<Tail>(tail)...);
+    const T rest = max(static_cast<T>(rhs), std::forward<Tail>(tail)...);
     return rest > static_cast<T>(lhs) ? rest : static_cast<T>(lhs); // returns lhs if both are equal
 }
 

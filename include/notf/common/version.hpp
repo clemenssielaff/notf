@@ -46,7 +46,9 @@ private:
 /// Version of this notf code base.
 inline constexpr Version get_notf_version() noexcept
 {
-    return {config::version_major(), config::version_minor(), config::version_patch()};
+    return {static_cast<uint16_t>(config::version_major()), //
+            static_cast<uint16_t>(config::version_minor()), //
+            static_cast<uint32_t>(config::version_patch())};
 }
 
 NOTF_CLOSE_NAMESPACE

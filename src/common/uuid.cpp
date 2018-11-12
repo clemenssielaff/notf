@@ -32,25 +32,25 @@ Uuid::Bytes generate_uuid()
     GUID guid;
     CoCreateGuid(&guid);
 
-    Uuid::Bytes bytes = {(guid.Data1 >> 24) & 0xff,
-                         (guid.Data1 >> 16) & 0xff,
-                         (guid.Data1 >> 8) & 0xff,
-                         (guid.Data1) & 0xff,
+    Uuid::Bytes bytes = {static_cast<Uuid::Byte>((guid.Data1 >> 24) & 0xff),
+                         static_cast<Uuid::Byte>((guid.Data1 >> 16) & 0xff),
+                         static_cast<Uuid::Byte>((guid.Data1 >> 8) & 0xff),
+                         static_cast<Uuid::Byte>((guid.Data1 >> 0) & 0xff),
 
-                         (guid.Data2 >> 8) & 0xff,
-                         (guid.Data2) & 0xff,
+                         static_cast<Uuid::Byte>((guid.Data2 >> 8) & 0xff),
+                         static_cast<Uuid::Byte>((guid.Data2 >> 0) & 0xff),
 
-                         (guid.Data3 >> 8) & 0xff,
-                         (guid.Data3) & 0xff,
+                         static_cast<Uuid::Byte>((guid.Data3 >> 8) & 0xff),
+                         static_cast<Uuid::Byte>((guid.Data3 >> 0) & 0xff),
 
-                         guid.Data4[0],
-                         guid.Data4[1],
-                         guid.Data4[2],
-                         guid.Data4[3],
-                         guid.Data4[4],
-                         guid.Data4[5],
-                         guid.Data4[6],
-                         guid.Data4[7]};
+                         static_cast<Uuid::Byte>(guid.Data4[0]),
+                         static_cast<Uuid::Byte>(guid.Data4[1]),
+                         static_cast<Uuid::Byte>(guid.Data4[2]),
+                         static_cast<Uuid::Byte>(guid.Data4[3]),
+                         static_cast<Uuid::Byte>(guid.Data4[4]),
+                         static_cast<Uuid::Byte>(guid.Data4[5]),
+                         static_cast<Uuid::Byte>(guid.Data4[6]),
+                         static_cast<Uuid::Byte>(guid.Data4[7])};
     return bytes;
 }
 #elif defined NOTF_MACINTOSH

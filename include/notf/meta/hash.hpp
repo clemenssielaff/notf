@@ -17,7 +17,7 @@ constexpr inline size_t version_hash() noexcept { return config::version_major()
 
 /// see http://stackoverflow.com/a/4948967
 template<class T>
-constexpr size_t magic_hash_number()
+constexpr size_t magic_hash_number() noexcept
 {
     long double result = 2.l;
     for (size_t i = 1; i < bitsizeof<T>(); ++i) {
@@ -111,7 +111,7 @@ constexpr size_t hash_string(const char* string, const size_t size) noexcept
     for (size_t i = 0; i < size; ++i) {
         // batch the characters up into a size_t value, so we can use hash_mix on it
         size_t batch = 0;
-        for (size_t j = 0; i < size && j < sizeof(size_t) / sizeof(char); ++j, ++i) {
+        for (size_t j = 0; i < size && j < (sizeof(size_t) / sizeof(char)); ++j, ++i) {
             batch |= static_cast<uchar>(string[i]);
             batch <<= bitsizeof<char>();
         }

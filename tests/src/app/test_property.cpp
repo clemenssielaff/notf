@@ -8,6 +8,16 @@
 
 NOTF_USING_NAMESPACE;
 
+#ifdef NOTF_MSVC
+static constexpr StringConst int_id_name = "int";
+static constexpr StringConst bool_id_name = "bool";
+static constexpr auto int_id = make_string_type<int_id_name>();
+static constexpr auto bool_id = make_string_type<bool_id_name>();
+#else
+constexpr auto int_id = "int"_id;
+constexpr auto bool_id = "bool"_id;
+#endif
+
 SCENARIO("Properties", "[app][property]")
 {
     // always reset the graph
@@ -27,7 +37,7 @@ SCENARIO("Properties", "[app][property]")
 
         REQUIRE(node_rt.get_property<int>("int").get_name() == "int");
         REQUIRE(node_ct.get_property<int>("int").get_name() == "int");
-        REQUIRE(node_ct.get_property("int"_id).get_name() == "int");
+        REQUIRE(node_ct.get_property(int_id).get_name() == "int");
     }
 
     SECTION("Properties have default values")
@@ -46,7 +56,7 @@ SCENARIO("Properties", "[app][property]")
             REQUIRE(!Node::AccessFor<Tester>(node).is_dirty());
             const size_t property_hash_before = Node::AccessFor<Tester>(node).get_property_hash();
 
-            auto visible_property = node.get_property("int"_id);
+            auto visible_property = node.get_property(int_id);
             REQUIRE(visible_property.is_visible());
 
             visible_property.set(node.get_property<int>("int").get_default());
@@ -63,7 +73,7 @@ SCENARIO("Properties", "[app][property]")
             REQUIRE(!Node::AccessFor<Tester>(node).is_dirty());
             const size_t property_hash_before = Node::AccessFor<Tester>(node).get_property_hash();
 
-            auto invisible_property = node.get_property("bool"_id);
+            auto invisible_property = node.get_property(bool_id);
             REQUIRE(!invisible_property.is_visible());
 
             invisible_property.set(!node.get_property<bool>("bool").get_default());
@@ -73,11 +83,11 @@ SCENARIO("Properties", "[app][property]")
             REQUIRE(property_hash_before != property_hash_after);
         }
     }
-
+   
     SECTION("Properties can be used as reactive operators")
     {
         auto node = root_node->create_child<LeafNodeCT>().to_handle();
-        auto property = node.get_property("int"_id);
+        auto property = node.get_property(int_id);
 
         auto publisher = TestPublisher();
         auto subscriber = TestSubscriber();
@@ -114,7 +124,7 @@ SCENARIO("Properties", "[app][property]")
     SECTION("Properties are frozen with the Graph")
     {
         auto node_ct = root_node->create_child<LeafNodeCT>().to_handle();
-        auto property_ct = node_ct.get_property("int"_id);
+        auto property_ct = node_ct.get_property(int_id);
         auto property_ct_ptr = to_shared_ptr(property_ct);
 
         auto node_rt = root_node->create_child<LeafNodeRT>().to_handle();
@@ -151,10 +161,10 @@ SCENARIO("Properties", "[app][property]")
     SECTION("Property Handles can be compared")
     {
         auto node1 = root_node->create_child<LeafNodeCT>().to_owner();
-        auto handle1 = node1.get_property("int"_id);
+        auto handle1 = node1.get_property(int_id);
 
         auto node2 = root_node->create_child<LeafNodeCT>().to_owner();
-        auto handle2 = node2.get_property("int"_id);
+        auto handle2 = node2.get_property(int_id);
 
         REQUIRE(handle1 == handle1);
         REQUIRE(handle1 != handle2);

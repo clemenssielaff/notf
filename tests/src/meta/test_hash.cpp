@@ -19,18 +19,12 @@ SCENARIO("hash functions", "[meta][hash]")
         REQUIRE(total_hash != hash(bool_v));
     }
 
-    SECTION("check the 'magic' number used for hashing")
-    {
-        REQUIRE(0x9e3779b9 == detail::magic_hash_number<int32_t>());
-        REQUIRE(0x9e3779b97f4a7c16 == detail::magic_hash_number<size_t>());
-    }
-
     SECTION("constexpr string and runtime strings are hashed to the same value")
     {
         constexpr StringConst const_string = "this /s A T3st_!";
         constexpr size_t const_string_hash = hash_string(const_string.c_str(), const_string.get_size());
-        static_assert(const_string_hash != 0);
         static_assert(const_string_hash == const_string.get_hash());
+        static_assert(const_string_hash != 0);
 
         const std::string runtime_string = const_string.c_str();
         REQUIRE(const_string_hash == hash_string(runtime_string.c_str(), runtime_string.size()));

@@ -38,7 +38,7 @@ public:
     /// Subscriber "next" method, forwards to the Producer's "publish" method by default.
     /// @param publisher    The Publisher publishing the value, for identification purposes only.
     /// @param value        Published value.
-    void on_next(const AnyPublisher* /*publisher*/, const I& value) override { this->publish(value); }
+    void on_next(const AnyPublisher* /*publisher*/, const I& value) override { this->publish(static_cast<O>(value)); }
 
     /// Subscriber "error" method, forwards to the Producer's "fail" method by default.
     /// @param publisher    The Publisher publishing the value, for identification purposes only.

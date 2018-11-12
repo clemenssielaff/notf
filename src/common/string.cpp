@@ -32,10 +32,11 @@ bool istarts_with(const std::string& input, const std::string& prefix)
 
     std::string relevant_input = input.substr(0, prefix.length());
     std::transform(relevant_input.begin(), relevant_input.end(), relevant_input.begin(),
-                   [](auto c) { return ::tolower(c); });
+                   [](auto c) { return static_cast<std::string::value_type>(::tolower(c)); });
 
     std::string prefix_lower = prefix;
-    std::transform(prefix_lower.begin(), prefix_lower.end(), prefix_lower.begin(), [](auto c) { return ::tolower(c); });
+    std::transform(prefix_lower.begin(), prefix_lower.end(), prefix_lower.begin(),
+                   [](auto c) { return static_cast<std::string::value_type>(::tolower(c)); });
 
     return (relevant_input.compare(0, prefix.length(), prefix_lower) == 0);
 }
@@ -55,10 +56,10 @@ bool iends_with(const std::string& input, const std::string& postfix)
     if (postfix_size > input_size) { return false; }
     std::string relevant_input = input.substr(input_size - postfix_size, input_size);
     std::transform(relevant_input.begin(), relevant_input.end(), relevant_input.begin(),
-                   [](auto c) { return ::tolower(c); });
+                   [](auto c) { return static_cast<std::string::value_type>(::tolower(c)); });
     std::string postfix_lower = postfix;
     std::transform(postfix_lower.begin(), postfix_lower.end(), postfix_lower.begin(),
-                   [](auto c) { return ::tolower(c); });
+                   [](auto c) { return static_cast<std::string::value_type>(::tolower(c)); });
     return (relevant_input.compare(0, postfix_size, postfix_lower) == 0);
 }
 
@@ -92,8 +93,7 @@ std::string join(const std::vector<std::string>::const_iterator begin,
         for (auto it = begin; it != end; ++it) {
             result.append(*it);
         }
-    }
-    else {
+    } else {
         for (auto it = begin; it != end - 1; ++it) {
             result.append(*it);
             result.append(delimiter);

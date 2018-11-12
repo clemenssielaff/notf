@@ -47,6 +47,12 @@ struct TestCompileTimeWidget : public CompileTimeWidget<TestCompileTimeWidgetPol
     {}
 };
 
+#ifdef NOTF_MSVC
+constexpr auto state_a_id = make_string_type<StateA::name>();
+#else
+constexpr auto state_a_id = "state_a"_id;
+#endif
+
 } // namespace
 
 SCENARIO("Compile Time Widgets", "[app][node][widget]")
@@ -70,7 +76,7 @@ SCENARIO("Compile Time Widgets", "[app][node][widget]")
         to_shared_ptr(widget)->transition_into("state_c");
         REQUIRE(to_shared_ptr(widget)->get_state_name() == "state_c");
 
-        to_shared_ptr(widget)->transition_into("state_a"_id);
+        to_shared_ptr(widget)->transition_into(state_a_id);
 
         // A -> C is not allowed
         REQUIRE_THROWS_AS(to_shared_ptr(widget)->transition_into<StateC>(), AnyWidget::BadTransitionError);

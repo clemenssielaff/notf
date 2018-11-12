@@ -38,7 +38,11 @@ SCENARIO("exception", "[meta][exception]")
         catch (const LogicError& error) {
             REQUIRE(error.get_line() == 12);
             REQUIRE(std::string(error.get_file()) == "test_exception.cpp");
+#ifdef NOTF_MSVC
+            REQUIRE(ends_with(error.get_function(), "throwing_with_msg"));
+#else
             REQUIRE(ends_with(error.get_function(), "throwing_with_msg()"));
+#endif
         }
     }
 }

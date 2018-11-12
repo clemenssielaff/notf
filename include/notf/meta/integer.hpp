@@ -11,7 +11,7 @@ NOTF_OPEN_NAMESPACE
 /// Returns the nth digit from the right.
 /// Digit #0 is the least significant digit.
 template<std::size_t base = 10>
-constexpr std::size_t get_digit(const std::size_t number, const std::size_t digit) noexcept
+constexpr std::size_t get_digit(const std::size_t number, const uint digit) noexcept
 {
     static_assert(base > 1);
     return (number % exp(base, digit + 1)) / exp(base, digit);

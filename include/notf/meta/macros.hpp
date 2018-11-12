@@ -23,6 +23,10 @@ NOTF_OPEN_NAMESPACE
 ///     NOTF_IGNORE_VARIADIC(expr, , ##__VA_ARGS__) // expands to (expr)
 #define NOTF_IGNORE_VARIADIC(h, ...) (h)
 
+#ifdef NOTF_MSVC // msvc's preprocessor works a bit different than GCC or clang's
+#define _notf_CONCAT(x, y) NOTF_CONCAT(x, y)
+#endif
+
 // compiler directives ============================================================================================== //
 
 /// Compiler builtin detection, as described in:
@@ -212,9 +216,9 @@ NOTF_OPEN_NAMESPACE
 
 /// Uniquely named RAII guard object.
 #ifdef NOTF_MSVC
-#define NOTF_GUARD(f) const auto NOTF_CONCAT(__notf__guard, __COUNTER__) = f
+#define NOTF_GUARD(f) const auto _notf_CONCAT(__notf__guard_, __COUNTER__) = f
 #else
-#define NOTF_GUARD(f) const auto NOTF_DEFER(NOTF_CONCAT, __notf__guard, __COUNTER__) = f
+#define NOTF_GUARD(f) const auto NOTF_DEFER(NOTF_CONCAT, __notf__guard_, __COUNTER__) = f
 #endif
 
 /// Define a guard object for a nested scope that is only aquired, if a given tests succeeds.

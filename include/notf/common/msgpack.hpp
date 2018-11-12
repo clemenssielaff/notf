@@ -149,10 +149,11 @@ public:
         // integers can be requested with the wrong type, if the value is safely castable
         if constexpr (std::is_same_v<T, Int>) {
             if (std::holds_alternative<Uint>(m_value)) {
-                if (auto value = std::get<Uint>(m_value); value < max_value<Int>()) { return static_cast<T>(value); }
+                if (auto value = std::get<Uint>(m_value); value < static_cast<Uint>(max_value<Int>())) {
+                    return static_cast<T>(value);
+                }
             }
-        }
-        else if constexpr (std::is_same_v<T, Uint>) {
+        } else if constexpr (std::is_same_v<T, Uint>) {
             if (std::holds_alternative<Int>(m_value)) {
                 if (auto value = std::get<Int>(m_value); value >= 0) { return static_cast<T>(value); }
             }
@@ -160,23 +161,28 @@ public:
 
         // floating point types are interchangeable
         else if constexpr (std::is_floating_point_v<T>) {
-            if (std::holds_alternative<Float>(m_value)) { return static_cast<T>(std::get<Float>(m_value)); }
-            else if (std::holds_alternative<Double>(m_value)) {
+            if (std::holds_alternative<Float>(m_value)) {
+                return static_cast<T>(std::get<Float>(m_value));
+            } else if (std::holds_alternative<Double>(m_value)) {
                 return static_cast<T>(std::get<Double>(m_value));
             }
 
             // even the biggest unsigned integer can be cast to floating point
             else if (std::holds_alternative<Int>(m_value)) {
                 return static_cast<T>(std::get<Int>(m_value));
-            }
-            else if (std::holds_alternative<Uint>(m_value)) {
+            } else if (std::holds_alternative<Uint>(m_value)) {
                 return static_cast<T>(std::get<Uint>(m_value));
             }
         }
 
         // return empty value
         success = false;
-        static_assert(std::is_same_v<T, Extension> || std::is_nothrow_constructible_v<T>);
+        static_assert(std::is_nothrow_constructible_v<T> //
+			|| std::is_same_v<T, Extension> 
+			#ifdef NOTF_MSVC
+                      || std::is_same_v<T, Map> 
+			#endif
+			);
         static const T empty = {};
         return empty;
     }
@@ -230,7 +236,9 @@ public:
         const Type other_type = other.get_type();
 
         /// T <=> T comparison
-        if (my_type == other_type) { return m_value == other.m_value; }
+        if (my_type == other_type) {
+            return m_value == other.m_value;
+        }
 
         /// int <=> uint comparison
         else if ((my_type == Type::INT && other_type == Type::UINT)

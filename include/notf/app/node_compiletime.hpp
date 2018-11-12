@@ -70,24 +70,27 @@ protected:
     }
 
     /// Removes all modified data from all Properties.
-    void _clear_modified_properties() const override { _clear_property_data<0>(); }
+    void _clear_modified_properties() const override { return _clear_property_data(); }
 
     /// Access to a CompileTimeProperty through the hash of its name.
     /// Allows access with a string at run time.
-    template<size_t I = 0>
-    AnyPropertyPtr _get_property(const size_t hash_value) const
+    template<size_t I = 0, class X = NodeProperties>
+    std::enable_if_t<(I < std::tuple_size_v<NodeProperties>), AnyPropertyPtr>
+    _get_property(const size_t hash_value) const
     {
-        if constexpr (I < std::tuple_size_v<NodeProperties>) {
-            if (node_property_t<I>::get_const_name().get_hash() == hash_value) {
-                return std::static_pointer_cast<AnyProperty>(std::get<I>(m_node_properties));
-            }
-            else {
-                return _get_property<I + 1>(hash_value);
-            }
+        if (node_property_t<I>::get_const_name().get_hash() == hash_value) {
+            return std::static_pointer_cast<AnyProperty>(std::get<I>(m_node_properties));
+        } else {
+            return _get_property<I + 1>(hash_value);
         }
-        else {
-            return {}; // no such property
-        }
+    }
+    /// MSVC does not respect `if constexpr` enough to not try to access a tuple out of bounds in the `else` branch.
+	/// Therefore, we have to have explicit SFINAE overloads of some methods that are called when I is out of bounds.
+    template<size_t I = 0, class X = NodeProperties>
+    std::enable_if_t<(I >= std::tuple_size_v<NodeProperties>), AnyPropertyPtr>
+    _get_property(const size_t) const // msvc workaround
+    {
+        return {}; // no such property
     }
 
     /// Direct access to a CompileTimeProperty through its name alone.
@@ -98,53 +101,52 @@ protected:
             if constexpr (node_property_t<I>::get_const_name() == name) {
                 using value_t = typename node_property_t<I>::value_t;
                 return PropertyHandle(std::static_pointer_cast<Property<value_t>>(std::get<I>(m_node_properties)));
-            }
-            else {
+            } else {
                 return _get_ct_property<I + 1>(name);
             }
         }
     }
 
     /// Calculates the combined hash value of each Property in order.
-    template<size_t I = 0>
-    void _calculate_hash(size_t& result) const
+    template<size_t I = 0, class X = NodeProperties>
+    std::enable_if_t<(I < std::tuple_size_v<NodeProperties>)> _calculate_hash(size_t& result) const
     {
-        if constexpr (I < std::tuple_size_v<NodeProperties>) {
-            hash_combine(result, std::get<I>(m_node_properties)->get());
-            _calculate_hash<I + 1>(result);
-        }
+        hash_combine(result, std::get<I>(m_node_properties)->get());
+        _calculate_hash<I + 1>(result);
     }
-
-	//https://stackoverflow.com/a/47838284
+    template<size_t I = 0, class X = NodeProperties>
+    std::enable_if_t<(I >= std::tuple_size_v<NodeProperties>)> _calculate_hash(size_t&) const // msvc workaround
+    {}
 
     /// Clear modified Property data.
-    template<size_t I = 0>
-    void _clear_property_data() const
+    template<size_t I = 0, class X = NodeProperties>
+    std::enable_if_t<(I < std::tuple_size_v<NodeProperties>)> _clear_property_data() const
     {
-        if constexpr (I < std::tuple_size_v<NodeProperties>) {
-            std::get<I>(m_node_properties)->clear_modified_data();
-            _clear_property_data<I + 1>();
-        }
+        std::get<I>(m_node_properties)->clear_modified_data();
+        _clear_property_data<I + 1>();
     }
+    template<size_t I = 0, class X = NodeProperties>
+    std::enable_if_t<(I >= std::tuple_size_v<NodeProperties>)> _clear_property_data() const // msvc workaround
+    {}
 
 private:
     /// Initializes all Properties with their default values and -visiblity.
-    template<size_t I = 0>
-    void _initialize_properties()
+    template<size_t I = 0, class X = NodeProperties>
+    std::enable_if_t<(I < std::tuple_size_v<NodeProperties>)> _initialize_properties()
     {
-        if constexpr (I < std::tuple_size_v<NodeProperties>) {
-            // create the new property
-            auto property_ptr = std::make_shared<node_property_t<I>>();
-            std::get<I>(m_node_properties) = property_ptr;
+        // create the new property
+        auto property_ptr = std::make_shared<node_property_t<I>>();
+        std::get<I>(m_node_properties) = property_ptr;
 
-            // subscribe to receive an update, whenever the property changes its value
-            auto typed_property
-                = std::static_pointer_cast<Property<typename node_property_t<I>::value_t>>(property_ptr);
-            typed_property->get_operator()->subscribe(_get_property_observer());
+        // subscribe to receive an update, whenever the property changes its value
+        auto typed_property = std::static_pointer_cast<Property<typename node_property_t<I>::value_t>>(property_ptr);
+        typed_property->get_operator()->subscribe(_get_property_observer());
 
-            _initialize_properties<I + 1>();
-        }
+        _initialize_properties<I + 1>();
     }
+    template<size_t I = 0, class X = NodeProperties>
+    std::enable_if_t<(I >= std::tuple_size_v<NodeProperties>)> _initialize_properties() // msvc workaround
+    {}
 
     // fields ---------------------------------------------------------------------------------- //
 private:

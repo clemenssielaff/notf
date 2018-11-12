@@ -133,31 +133,31 @@ constexpr bool operator==(const StringType<Cs...>& lhs, const StringConst& rhs) 
 namespace detail {
 
 template<class T>
-auto concat_string_type_impl(T&& last) // recursion breaker
+auto concat_string_type_impl(T&& last) noexcept // recursion breaker
 {
     return last;
 }
 template<char... Ls, char... Rs, class... Tail>
-auto concat_string_type_impl(StringType<Ls...>, StringType<Rs...>, Tail... tail)
+auto concat_string_type_impl(StringType<Ls...>, StringType<Rs...>, Tail... tail) noexcept
 {
     return concat_string_type_impl(StringType<Ls..., Rs...>{}, std::forward<Tail>(tail)...);
 }
 
 template<const StringConst& string, size_t... I>
-NOTF_UNUSED static auto constexpr string_const_to_string_type(std::index_sequence<I...>)
+constexpr auto string_const_to_string_type(std::index_sequence<I...>) noexcept
 {
     return StringType<string[I]...>{};
 }
 
 template<char number>
-constexpr auto digit_to_string_type()
+constexpr auto digit_to_string_type() noexcept
 {
     static_assert(number <= 9);
     return StringType<static_cast<char>(48 + number)>{};
 }
 
 template<size_t number, size_t... I>
-NOTF_UNUSED static auto constexpr number_to_string_type(std::index_sequence<I...>)
+constexpr auto number_to_string_type(std::index_sequence<I...>) noexcept
 {
     constexpr size_t last_index = sizeof...(I) - 1; // reverse the expansion
     return concat_string_type_impl(digit_to_string_type<get_digit(number, last_index - I)>()...);
@@ -171,15 +171,15 @@ NOTF_UNUSED static auto constexpr number_to_string_type(std::index_sequence<I...
 ///   constexpr StringConst test = "test";
 ///   using TestType = decltype(make_string_type<test>());
 template<const StringConst& string>
-constexpr auto make_string_type()
+constexpr auto make_string_type() noexcept
 {
     return detail::string_const_to_string_type<string>(std::make_index_sequence<string.get_size()>{});
 }
-template<size_t number>
-constexpr auto make_string_type()
-{
-    return detail::number_to_string_type<number>(std::make_index_sequence<count_digits(number)>{});
-}
+//template<size_t number>
+//constexpr auto make_string_type() noexcept
+//{
+//    return detail::number_to_string_type<number>(std::make_index_sequence<count_digits(number)>{});
+//}
 
 /// Helper typdef for defining a StringType with a *constexpr* value.
 /// Example:
@@ -200,15 +200,21 @@ using concat_string_type = decltype(detail::concat_string_type_impl(Ts{}...));
 
 // literals ========================================================================================================= //
 
+#ifndef NOTF_MSVC
 NOTF_OPEN_LITERALS_NAMESPACE
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-string-literal-operator-template"
 
 /// User defined literal, turning any string literal into a StringType.
 /// Is called ""_id, because the type is usually used as a compile time identifier.
-template<char... Cs>
+template<typename char_t, char_t... Cs>
 constexpr auto operator"" _id()
 {
     return StringType<Cs...>{};
 }
 
+#pragma clang diagnostic pop
 NOTF_CLOSE_LITERALS_NAMESPACE
+#endif // not defined NOTF_MSVC
+
 NOTF_CLOSE_NAMESPACE

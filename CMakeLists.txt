@@ -32,11 +32,8 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
 # use link-time optimization if available
 if(CMAKE_BUILD_TYPE MATCHES "Release")
-    message(STATUS ">>> notf: Building in release mode")
-
     include(CheckIPOSupported)
     check_ipo_supported(RESULT IS_LTO_SUPPORTED OUTPUT LTO_ERROR)
-
     if(IS_LTO_SUPPORTED)
         message(STATUS ">>> notf: Building with LTO")
         set_property(GLOBAL PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
@@ -102,36 +99,35 @@ endmacro()
 
 # CONFIGURATION ########################################################################################################
 
-# define notf's debug flags when compiling a debug build
+# define notf's debug/release flags
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
     message(STATUS ">>> notf: Building in debug mode")
     set(NOTF_DEBUG TRUE)
-
-    # build and run the tests
-    option(NOTF_BUILD_TESTS "Build tests" ON)
-    if(NOTF_BUILD_TESTS)
-        message(STATUS ">>> notf: Building tests")
-        set(NOTF_TEST TRUE)
-        enable_testing()
-        add_subdirectory(tests)
-    endif()
-
-# define notf's relase flags when compiling a release build
 else()
     message(STATUS ">>> notf: Building in release mode")
     set(NOTF_RELEASE TRUE)
+endif()
 
-    # build the benchmarks
-    option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
-    if(NOTF_BUILD_BENCHMARKS)
-        message(STATUS ">>> notf: Building benchmarks")
-        add_subdirectory(benchmarks)
-    endif()
+# build and run the tests
+option(NOTF_BUILD_TESTS "Build tests" ON)
+if(NOTF_BUILD_TESTS)
+	message(STATUS ">>> notf: Building tests")
+	set(NOTF_TEST TRUE)
+	enable_testing()
+	add_subdirectory(tests)
+endif()
+
+# build the benchmarks
+option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
+if(NOTF_BUILD_BENCHMARKS)
+	message(STATUS ">>> notf: Building benchmarks")
+	add_subdirectory(benchmarks)
 endif()
 
 # log level
 set(NOTF_LOG_LEVEL "0" CACHE STRING "Log level to compile (0=all -> 6=nothing)")
 
+# abort on assert
 option(NOTF_ABORT_ON_ASSERT "Abort straight away when failing an assert" 1)
 if(NOTF_ABORT_ON_ASSERT)
     message(STATUS ">>> notf: Aborting on assert failure")

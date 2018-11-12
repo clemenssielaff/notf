@@ -4,8 +4,19 @@
 #include "test_utils.hpp"
 
 #include "notf/app/node.hpp"
+#include "notf/meta/stringtype.hpp"
 
 NOTF_USING_NAMESPACE;
+
+#ifdef NOTF_MSVC
+static constexpr StringConst int_id_name = "int";
+static constexpr StringConst float_id_name = "float";
+static constexpr auto int_id = make_string_type<int_id_name>();
+static constexpr auto float_id = make_string_type<float_id_name>();
+#else
+constexpr auto int_id = "int"_id;
+constexpr auto float_id = "float"_id;
+#endif
 
 SCENARIO("Nodes can limit what kind of children or parent types they can have", "[app][node]")
 {
@@ -76,8 +87,8 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         SECTION("NodeOwners can only be created once")
         {
             auto new_node = root_node->create_child<LeafNodeCT>();
-            TypedNodeOwner<LeafNodeCT> owner1 = new_node;
-            REQUIRE_THROWS_AS(static_cast<TypedNodeOwner<LeafNodeCT>>(new_node), ValueError);
+            TypedNodeOwner<LeafNodeCT> owner1 = new_node.to_owner();
+            REQUIRE_THROWS_AS(new_node.to_owner(), ValueError);
         }
     }
 
@@ -386,7 +397,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
         SECTION("compile time and run time acquired Properties are the same")
         {
-            PropertyHandle<int> int_prop_rt = node.get_property("int"_id);
+            PropertyHandle<int> int_prop_rt = node.get_property(int_id);
             REQUIRE(!int_prop_rt.is_expired());
             REQUIRE(int_prop_rt == int_prop);
         }
@@ -477,7 +488,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         REQUIRE(node);
 
         REQUIRE(!Node::AccessFor<Tester>(*node.get()).is_dirty());
-        auto property = node_handle.get_property("float"_id);
+        auto property = node_handle.get_property(float_id);
         property.set(23);
         REQUIRE(Node::AccessFor<Tester>(*node.get()).is_dirty());
     }
@@ -485,7 +496,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
     SECTION("Nodes create a copy of their data to modify, if the graph is frozen")
     {
         auto node = root_node->create_child<LeafNodeCT>().to_handle();
-        auto int_property = node.get_property("int"_id);
+        auto int_property = node.get_property(int_id);
         REQUIRE(int_property.get() == 123);
         {
             NOTF_GUARD(TheGraph::AccessFor<Tester>::freeze(render_thread_id));
