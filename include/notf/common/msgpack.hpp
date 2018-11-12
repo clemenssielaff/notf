@@ -138,7 +138,7 @@ public:
     template<class T>
     std::enable_if_t<is_one_of_variant<T, Variant>(),
                      std::conditional_t<is_one_of_tuple_v<T, fundamental_types>, T, const T&>>
-    get(bool& success) const noexcept
+    get(bool& success) const noexcept(std::is_nothrow_constructible_v<T>)
     {
         // return the value of the requested type
         if (std::holds_alternative<T>(m_value)) {
@@ -177,12 +177,6 @@ public:
 
         // return empty value
         success = false;
-        static_assert(std::is_nothrow_constructible_v<T> //
-			|| std::is_same_v<T, Extension> 
-			#ifdef NOTF_MSVC
-                      || std::is_same_v<T, Map> 
-			#endif
-			);
         static const T empty = {};
         return empty;
     }

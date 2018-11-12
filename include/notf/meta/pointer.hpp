@@ -65,7 +65,8 @@ constexpr std::enable_if_t<is_unique_ptr_v<T>, typename T::element_type*> raw_po
 }
 template<class T>
 constexpr auto raw_pointer(const T& valid_ptr) noexcept
-    -> decltype(std::enable_if_t<is_valid_ptr_v<T>>(), raw_pointer(valid_ptr.get()))
+    // not `enable_if_t` ... MSVC seems to require the manual `typename` here
+    -> decltype(typename std::enable_if<is_valid_ptr_v<T>>::type(), raw_pointer(valid_ptr.get()))
 {
     return raw_pointer(valid_ptr.get()); // from valid_ptr<T>
 }
@@ -89,7 +90,9 @@ constexpr std::enable_if_t<std::conjunction_v<std::is_pointer<From>, std::is_poi
 assert_cast(From castee) noexcept(is_static_castable_v<From, To>)
 {
     // static cast
-    if constexpr (is_static_castable_v<From, To>) { return static_cast<To>(castee); }
+    if constexpr (is_static_castable_v<From, To>) {
+        return static_cast<To>(castee);
+    }
 
     // dynamic cast
     else {
@@ -185,7 +188,8 @@ public:
     template<class From, typename = std::enable_if_t<std::conjunction_v<        //
                              std::is_convertible<From, T>,                      // ptr must be convertible to T,
                              std::negation<is_valid_ptr<std::decay_t<From>>>>>> // but not a valid_ptr itself
-    constexpr valid_ptr(From&& ptr) : m_ptr(std::forward<From>(ptr))
+    constexpr valid_ptr(From&& ptr)
+        : m_ptr(std::forward<From>(ptr))
     {
         if (NOTF_UNLIKELY(m_ptr == nullptr)) { NOTF_THROW(NotValidError, "Failed to dereference an empty pointer"); }
     }

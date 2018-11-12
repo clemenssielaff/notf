@@ -1,4 +1,5 @@
 # The notf core library project
+set(CURRENT_TARGET notf-core)
 
 # add core files
 add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
@@ -24,18 +25,19 @@ add_sources(CORE_FILES ${CMAKE_SOURCE_DIR}/thirdparty/
 )
 
 # declare core library
-add_library(notf-core STATIC
+add_library(${CURRENT_TARGET} STATIC
     ${CORE_FILES}
     ${NOTF_HEADERS}
 )
 
-# core library include paths
-target_include_directories(notf-core PUBLIC
+# include paths
+target_include_directories(${CURRENT_TARGET} PUBLIC
     ${CMAKE_SOURCE_DIR}/include/
     ${CMAKE_SOURCE_DIR}/thirdparty/
 )
 
-target_link_libraries(notf-core PUBLIC
+# dependencies
+target_link_libraries(${CURRENT_TARGET} PUBLIC
     notf-thirdparty
     glfw
     uuid
@@ -43,38 +45,16 @@ target_link_libraries(notf-core PUBLIC
     ${OPENGL_LIBRARIES}
 )
 
+# global defines and options
+target_compile_options(${CURRENT_TARGET} PRIVATE ${NOTF_GLOBAL_OPTIONS})
+target_compile_definitions(${CURRENT_TARGET} PUBLIC ${NOTF_GLOBAL_DEFINES})
+
 # create coverage for the core library
 if(NOTF_CREATE_COVERAGE)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    if (NOTF_CLANG)
         set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-instr-generate -fcoverage-mapping")
         set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-instr-generate")
     else()
         set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
     endif()
-endif()
-
-# show all but selected warnings
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(notf-core PRIVATE
-#        -Weverything
-#        -Wpedantic
-#        -Wno-padded
-#        -Wno-weak-vtables   # used everywhere and not a problem
-#        -Wno-c++98-compat
-#        -Wno-c++98-compat-pedantic
-
-# clang vectorization analysis
-#        -Rpass-missed=loop-vectorized
-#        -Rpass-analysis=loop-vectorize
-#        -fsave-optimization-record
-#        -gline-tables-only
-#        -gcolumn-info
-    )
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(notf-core PRIVATE
-        -Wall
-        -Wno-unknown-pragmas
-    )
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    target_compile_options(notf-core PRIVATE "/W4")
 endif()

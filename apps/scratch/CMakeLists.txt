@@ -1,4 +1,5 @@
 # The notf scratch project
+set(CURRENT_TARGET notf-scratch)
 
 # add scratch files
 add_sources(SCRATCH_FILES ${CMAKE_CURRENT_SOURCE_DIR}
@@ -7,46 +8,23 @@ add_sources(SCRATCH_FILES ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 # declare scratch executable
-add_executable(notf-scratch
+add_executable(${CURRENT_TARGET}
     ${SCRATCH_FILES}
     ${NOTF_HEADERS}
 )
 
 # scratch include paths
-target_include_directories(notf-scratch PUBLIC
+target_include_directories(${CURRENT_TARGET} PUBLIC
     ${CMAKE_SOURCE_DIR}/include/
     ${CMAKE_SOURCE_DIR}/thirdparty/
 )
 
 # scratch dependencies
-target_link_libraries(notf-scratch PUBLIC
+target_link_libraries(${CURRENT_TARGET} PUBLIC
     notf-thirdparty
     notf-core
 )
 
-# show all but selected warnings
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(notf-scratch PRIVATE
-#        -Weverything
-#        -Wpedantic
-#        -Wno-padded
-#        -Wno-weak-vtables   # used everywhere and not a problem
-#        -Wno-c++98-compat
-#        -Wno-c++98-compat-pedantic
-
-# clang vectorization analysis
-#        -Rpass-missed=loop-vectorized
-#        -Rpass-analysis=loop-vectorize
-#        -fsave-optimization-record
-#        -gline-tables-only
-#        -gcolumn-info
-    )
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(notf-scratch PRIVATE
-        -Wall
-        -Wno-unknown-pragmas
-        -Wno-pragmas
-    )
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    target_compile_options(notf-scratch PRIVATE "/W4")
-endif()
+# global defines and options
+target_compile_options(${CURRENT_TARGET} PRIVATE ${NOTF_GLOBAL_OPTIONS})
+target_compile_definitions(${CURRENT_TARGET} PUBLIC ${NOTF_GLOBAL_DEFINES})

@@ -194,6 +194,46 @@ configure_file (
     "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp"
 )
 
+# SYSTEM DEPENDEND GLOBALS ############################################################################################
+
+# global definitions
+if(NOTF_WINDOWS)
+    set(NOTF_GLOBAL_DEFINES
+		WIN32_LEAN_AND_MEAN # Don't include most of Windows.h
+		NOGDI
+	)
+else()
+	set(NOTF_GLOBAL_DEFINES "")
+endif()
+
+# global options
+if(NOTF_CLANG)
+	set(NOTF_GLOBAL_OPTIONS
+#		-Weverything
+#		-Wpedantic
+#		-Wno-padded
+#		-Wno-weak-vtables   # used everywhere and not a problem
+#		-Wno-c++98-compat
+#		-Wno-c++98-compat-pedantic
+
+		# clang vectorization analysis
+#        -Rpass-missed=loop-vectorized
+#        -Rpass-analysis=loop-vectorize
+#        -fsave-optimization-record
+#        -gline-tables-only
+#        -gcolumn-info
+	)
+elseif(NOTF_GCC)
+	set(NOTF_GLOBAL_OPTIONS
+        -Wall
+        -Wno-unknown-pragmas
+	)
+elseif(NOTF_MSVC)
+	set(NOTF_GLOBAL_OPTIONS
+        /W4
+	)
+endif()
+
 # SUB-PROJECTS #########################################################################################################
 
 # discover all notf header files for use in subprojects

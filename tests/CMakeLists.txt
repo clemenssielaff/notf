@@ -1,4 +1,5 @@
 # notf test runner project
+set(CURRENT_TARGET notf-tests)
 
 # add test files
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -46,26 +47,30 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 # declare test runner executable
-add_executable(notf-tests
+add_executable(${CURRENT_TARGET}
     main.cpp
     ${TEST_FILES}
     ${NOTF_HEADERS}
 )
 
 # test runner include paths
-target_include_directories(notf-tests PUBLIC
+target_include_directories(${CURRENT_TARGET} PUBLIC
     ${CMAKE_SOURCE_DIR}/include/
     ${CMAKE_SOURCE_DIR}/thirdparty/
     ${CMAKE_CURRENT_SOURCE_DIR}/include/
 )
 
 # test runner dependencies
-target_link_libraries(notf-tests PUBLIC
+target_link_libraries(${CURRENT_TARGET} PUBLIC
     notf-core
 )
 
+# global defines and options
+target_compile_options(${CURRENT_TARGET} PRIVATE ${NOTF_GLOBAL_OPTIONS})
+target_compile_definitions(${CURRENT_TARGET} PUBLIC ${NOTF_GLOBAL_DEFINES})
+
 # register the test runner as a test
-add_test(NAME "NotfTestRunner" COMMAND notf-tests)
+add_test(NAME "NotfTestRunner" COMMAND ${CURRENT_TARGET})
 
 # create coverage for tests
 if(NOTF_CREATE_COVERAGE)
@@ -84,20 +89,20 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     if(NOTF_RUN_TESTS)
         message(STATUS ">>> notf: Building tests")
 
-        set(LLVM_COV_ARGS -instr-profile=notf-tests.profdata -Xdemangler=llvm-cxxfilt -use-color -ignore-filename-regex="thirdparty|tests")
+        set(LLVM_COV_ARGS -instr-profile=${CURRENT_TARGET}.profdata -Xdemangler=llvm-cxxfilt -use-color -ignore-filename-regex="thirdparty|tests")
         add_custom_command(
-            TARGET notf-tests
+            TARGET ${CURRENT_TARGET}
             POST_BUILD
 
             # run the tests
-            COMMAND notf-tests exclude:[slow] --reporter compact
+            COMMAND ${CURRENT_TARGET} exclude:[slow] --reporter compact
 
             # create a coverage report and display a summary report
-            COMMAND llvm-profdata merge -sparse default.profraw -o notf-tests.profdata
-            COMMAND llvm-cov report ./notf-tests ${LLVM_COV_ARGS}
+            COMMAND llvm-profdata merge -sparse default.profraw -o ${CURRENT_TARGET}.profdata
+            COMMAND llvm-cov report ./${CURRENT_TARGET} ${LLVM_COV_ARGS}
 
             # store the complete report as html
-            COMMAND llvm-cov show ./notf-tests ${LLVM_COV_ARGS} -show-instantiations=false -format="html" > coverage.html
+            COMMAND llvm-cov show ./${CURRENT_TARGET} ${LLVM_COV_ARGS} -show-instantiations=false -format="html" > coverage.html
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             COMMENT "Executing notf test runner"
         )

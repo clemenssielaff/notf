@@ -70,7 +70,7 @@ protected:
     }
 
     /// Removes all modified data from all Properties.
-    void _clear_modified_properties() const override { return _clear_property_data(); }
+    void _clear_modified_properties() const override { _clear_property_data(); }
 
     /// Access to a CompileTimeProperty through the hash of its name.
     /// Allows access with a string at run time.

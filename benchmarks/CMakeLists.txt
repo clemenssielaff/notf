@@ -1,4 +1,5 @@
 # notf benchmark  project
+set(CURRENT_TARGET notf-benchmark)
 
 # add benchmark files
 add_sources(BENCHMARK_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -9,22 +10,25 @@ add_sources(BENCHMARK_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 # declare benchmark executable
-add_executable(notf-benchmark
+add_executable(${CURRENT_TARGET}
     main.cpp
     ${BENCHMARK_FILES}
     ${NOTF_HEADERS}
 )
 
 # benchmark include paths
-target_include_directories(notf-benchmark PUBLIC
+target_include_directories(${CURRENT_TARGET} PUBLIC
     ${CMAKE_SOURCE_DIR}/include/
     ${CMAKE_SOURCE_DIR}/thirdparty/
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 # benchmark dependencies
-target_link_libraries(notf-benchmark PUBLIC
+target_link_libraries(${CURRENT_TARGET} PUBLIC
     notf-core
     notf-thirdparty
 )
 
+# global defines and options
+target_compile_options(${CURRENT_TARGET} PRIVATE ${NOTF_GLOBAL_OPTIONS})
+target_compile_definitions(${CURRENT_TARGET} PUBLIC ${NOTF_GLOBAL_DEFINES})

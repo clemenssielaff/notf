@@ -175,11 +175,20 @@ constexpr auto make_string_type() noexcept
 {
     return detail::string_const_to_string_type<string>(std::make_index_sequence<string.get_size()>{});
 }
-//template<size_t number>
-//constexpr auto make_string_type() noexcept
-//{
-//    return detail::number_to_string_type<number>(std::make_index_sequence<count_digits(number)>{});
-//}
+template<size_t number>
+constexpr auto make_string_type_from_number() noexcept
+{
+    return detail::number_to_string_type<number>(std::make_index_sequence<count_digits(number)>{});
+}
+#ifndef NOTF_MSVC 
+// (yet another) MSVC bug causes an internal compiler error if you have two functions named `make_string_type`, that
+// only differ in their template argument type, even though it seems to be valid c++ code.
+template<size_t number>
+constexpr auto make_string_type() noexcept
+{
+    return make_string_type_from_number<number>();
+}
+#endif
 
 /// Helper typdef for defining a StringType with a *constexpr* value.
 /// Example:

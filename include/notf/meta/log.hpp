@@ -20,7 +20,7 @@ public:
         DEBUG = spdlog::level::debug,
         INFO = spdlog::level::info,
         WARNING = spdlog::level::warn,
-        ERROR_ = spdlog::level::err, // TODO: wtf msvc
+        ERROR = spdlog::level::err,
         CRITCAL = spdlog::level::critical,
         OFF = spdlog::level::off,
     };
@@ -147,61 +147,37 @@ private:
     ::notf::TheLogger::get()->LEVEL(MSG " ({}:{})", ##__VA_ARGS__, ::notf::filename_from_path(__FILE__), __LINE__)
 
 #if NOTF_LOG_LEVEL <= 0
-#ifdef NOTF_MSVC
-#define NOTF_LOG_TRACE(MSG, ...) NOTFIMPL_LOG(trace, MSG, ##__VA_ARGS__)
-#else
 #define NOTF_LOG_TRACE(MSG, ...) NOTF_DEFER(NOTFIMPL_LOG, trace, MSG, ##__VA_ARGS__)
-#endif
 #else
 #define NOTF_LOG_TRACE(...)
 #endif
 
 #if NOTF_LOG_LEVEL <= 1
-#ifdef NOTF_MSVC
-#define NOTF_LOG_DEBUG(MSG, ...) NOTFIMPL_LOG(debug, MSG, ##__VA_ARGS__)
-#else
 #define NOTF_LOG_DEBUG(MSG, ...) NOTF_DEFER(NOTFIMPL_LOG, debug, MSG, ##__VA_ARGS__)
-#endif
 #else
 #define NOTF_LOG_DEBUG(...)
 #endif
 
 #if NOTF_LOG_LEVEL <= 2
-#ifdef NOTF_MSVC
-#define NOTF_LOG_INFO(MSG, ...) NOTFIMPL_LOG(info, MSG, ##__VA_ARGS__)
-#else
 #define NOTF_LOG_INFO(MSG, ...) NOTF_DEFER(NOTFIMPL_LOG, info, MSG, ##__VA_ARGS__)
-#endif
 #else
 #define NOTF_LOG_INFO(...)
 #endif
 
 #if NOTF_LOG_LEVEL <= 3
-#ifdef NOTF_MSVC
-#define NOTF_LOG_WARN(MSG, ...) NOTFIMPL_LOG(warn, MSG, ##__VA_ARGS__)
-#else
 #define NOTF_LOG_WARN(MSG, ...) NOTF_DEFER(NOTFIMPL_LOG, warn, MSG, ##__VA_ARGS__)
-#endif
 #else
 #define NOTF_LOG_WARN(...)
 #endif
 
 #if NOTF_LOG_LEVEL <= 4
-#ifdef NOTF_MSVC
-#define NOTF_LOG_ERROR(MSG, ...) NOTFIMPL_LOG(error, MSG, ##__VA_ARGS__)
-#else
 #define NOTF_LOG_ERROR(MSG, ...) NOTF_DEFER(NOTFIMPL_LOG, error, MSG, ##__VA_ARGS__)
-#endif
 #else
 #define NOTF_LOG_ERROR(...)
 #endif
 
 #if NOTF_LOG_LEVEL <= 5
-#ifdef NOTF_MSVC
-#define NOTF_LOG_CRIT(MSG, ...) NOTFIMPL_LOG(critical, MSG, ##__VA_ARGS__)
-#else
 #define NOTF_LOG_CRIT(MSG, ...) NOTF_DEFER(NOTFIMPL_LOG, critical, MSG, ##__VA_ARGS__)
-#endif
 #else
 #define NOTF_LOG_CRIT(...)
 #endif

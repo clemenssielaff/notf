@@ -20,7 +20,7 @@ constexpr bool is_debug_build() noexcept { return false; }
 /// @param input     Path to investigate.
 /// @return          Only the last part of the path, e.g. basename("/path/to/some/file.cpp", '/') would return
 ///                  "file.cpp".
-#ifdef NOTF_MSVC
+#ifdef NOTF_WINDOWS
 template<char DELIMITER = '\\'>
 #else
 template<char DELIMITER = '/'>

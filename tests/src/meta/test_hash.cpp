@@ -23,8 +23,8 @@ SCENARIO("hash functions", "[meta][hash]")
     {
         constexpr StringConst const_string = "this /s A T3st_!";
         constexpr size_t const_string_hash = hash_string(const_string.c_str(), const_string.get_size());
-        static_assert(const_string_hash == const_string.get_hash());
         static_assert(const_string_hash != 0);
+        static_assert(const_string_hash == const_string.get_hash());
 
         const std::string runtime_string = const_string.c_str();
         REQUIRE(const_string_hash == hash_string(runtime_string.c_str(), runtime_string.size()));

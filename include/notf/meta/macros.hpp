@@ -4,6 +4,15 @@
 
 NOTF_OPEN_NAMESPACE
 
+// compatibility ==================================================================================================== //
+
+#ifdef NOTF_MSVC
+// https://blogs.msdn.microsoft.com/vcblog/2018/07/06/msvc-preprocessor-progress-towards-conformance/
+#ifndef _MSVC_TRADITIONAL
+#define _MSVC_TRADITIONAL 1 
+#endif
+#endif
+
 // utilities ======================================================================================================== //
 
 /// No-op.
@@ -13,19 +22,26 @@ NOTF_OPEN_NAMESPACE
 #define NOTF_STR(x) #x
 
 /// Takes two macros and concatenates them without whitespace in between.
+#if defined NOTF_MSVC && _MSVC_TRADITIONAL
+#define _notf_CONCAT(x, y) x##y
+#define NOTF_CONCAT(x, y) _notf_CONCAT(x, y)
+#else
 #define NOTF_CONCAT(x, y) x##y
+#endif
 
 /// Expands a macro inside another macro.
 /// Use for `NOTF_DEFER(NOTF_STR, expanded) and others
+#if defined NOTF_MSVC && _MSVC_TRADITIONAL
+#define _notf_ECHO(...) __VA_ARGS__
+#define _notf_CALL(f, args) f args
+#define NOTF_DEFER(f, ...) _notf_CALL(_notf_ECHO(f), _notf_ECHO((__VA_ARGS__)))
+#else
 #define NOTF_DEFER(f, ...) f(__VA_ARGS__)
+#endif
 
 /// Ignores variadic arguments when called with:
 ///     NOTF_IGNORE_VARIADIC(expr, , ##__VA_ARGS__) // expands to (expr)
 #define NOTF_IGNORE_VARIADIC(h, ...) (h)
-
-#ifdef NOTF_MSVC // msvc's preprocessor works a bit different than GCC or clang's
-#define _notf_CONCAT(x, y) NOTF_CONCAT(x, y)
-#endif
 
 // compiler directives ============================================================================================== //
 
@@ -214,12 +230,10 @@ NOTF_OPEN_NAMESPACE
 
 // raii ============================================================================================================= //
 
+
+
 /// Uniquely named RAII guard object.
-#ifdef NOTF_MSVC
-#define NOTF_GUARD(f) const auto _notf_CONCAT(__notf__guard_, __COUNTER__) = f
-#else
 #define NOTF_GUARD(f) const auto NOTF_DEFER(NOTF_CONCAT, __notf__guard_, __COUNTER__) = f
-#endif
 
 /// Define a guard object for a nested scope that is only aquired, if a given tests succeeds.
 /// This macro simplifies double-checked locking, where we first test whether a condition is met before attempting to

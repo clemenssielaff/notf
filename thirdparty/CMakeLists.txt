@@ -1,4 +1,5 @@
 # The notf thirdparty library project
+set(CURRENT_TARGET notf-thirdparty)
 
 # discover all thirdparty header files
 file(GLOB_RECURSE THIRDPARTY_FILES
@@ -42,17 +43,21 @@ if(NOTF_BUILD_BENCHMARKS)
 endif()
 
 # declare thirdparty library
-add_library(notf-thirdparty STATIC
+add_library(${CURRENT_TARGET} STATIC
     ${THIRDPARTY_FILES}
 )
 
 # thirdparty library include paths
-target_include_directories(notf-thirdparty PUBLIC
+target_include_directories(${CURRENT_TARGET} PUBLIC
     ${CMAKE_SOURCE_DIR}/thirdparty/
 )
 
+# global defines and options
+target_compile_options(${CURRENT_TARGET} PRIVATE ${NOTF_GLOBAL_OPTIONS})
+target_compile_definitions(${CURRENT_TARGET} PUBLIC ${NOTF_GLOBAL_DEFINES})
+
 # CMake cannot not determine the linker language from the files, so we'll tell it
-set_target_properties(notf-thirdparty PROPERTIES LINKER_LANGUAGE CXX)
+set_target_properties(${CURRENT_TARGET} PROPERTIES LINKER_LANGUAGE CXX)
 
 # SUB-PROJECTS #########################################################################################################
 
