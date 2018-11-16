@@ -2,6 +2,8 @@
 
 #include <string>
 #include <vector>
+#include <cctype>
+#include <algorithm>
 
 #include "notf/meta/config.hpp"
 

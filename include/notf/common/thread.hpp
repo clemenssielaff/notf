@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <thread>
 
 #include "notf/meta/assert.hpp"
