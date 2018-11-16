@@ -1,0 +1,10 @@
+# build boost for clang/libc++
+apply patch at https://github.com/boostorg/config/issues/231#issuecomment-407938550
+create prefix folder
+./bootstrap.sh --with-toolset=clang --prefix=/home/clemens/code/thirdparty/boost_1_68_0/build/clang --with-libraries=all
+./b2 -j4 toolset=clang cxxflags="-std=c++17 -stdlib=libc++ -Wno-register" linkflags="-stdlib=libc++" install
+
+# build boost for gcc/libstdc++
+./bootstrap.sh --prefix=/home/clemens/code/thirdparty/boost_1_68_0/build/gcc --with-libraries=all
+./b2 clean --reconfigure
+./b2 -j4 cxxflags="-std=c++17" install

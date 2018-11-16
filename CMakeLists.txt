@@ -111,17 +111,17 @@ endif()
 # build and run the tests
 option(NOTF_BUILD_TESTS "Build tests" ON)
 if(NOTF_BUILD_TESTS)
-	message(STATUS ">>> notf: Building tests")
-	set(NOTF_TEST TRUE)
-	enable_testing()
-	add_subdirectory(tests)
+    message(STATUS ">>> notf: Building tests")
+    set(NOTF_TEST TRUE)
+    enable_testing()
+    add_subdirectory(tests)
 endif()
 
 # build the benchmarks
 option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
 if(NOTF_BUILD_BENCHMARKS)
-	message(STATUS ">>> notf: Building benchmarks")
-	add_subdirectory(benchmarks)
+    message(STATUS ">>> notf: Building benchmarks")
+    add_subdirectory(benchmarks)
 endif()
 
 # log level
@@ -189,6 +189,9 @@ set(NOTF_NAMESPACE_NAME "notf")
 set(NOTF_VERSION_STRING ${PROJECT_VERSION})
 set(NOTF_LITERALS_NAMESPACE_NAME "literals")
 
+# cmake timestamp
+STRING(TIMESTAMP NOTF_TIMESTAMP "%b %d %Y, %H:%M:%S")
+
 configure_file (
     "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp.in"
     "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp"
@@ -199,16 +202,17 @@ configure_file (
 # global definitions
 if(NOTF_WINDOWS)
     set(NOTF_GLOBAL_DEFINES
-		WIN32_LEAN_AND_MEAN # Don't include most of Windows.h
-		NOGDI
-	)
+        WIN32_LEAN_AND_MEAN # Don't include most of Windows.h
+        NOGDI
+    )
 else()
-	set(NOTF_GLOBAL_DEFINES "")
+    set(NOTF_GLOBAL_DEFINES
+    )
 endif()
 
 # global options
 if(NOTF_CLANG)
-	set(NOTF_GLOBAL_OPTIONS
+    set(NOTF_GLOBAL_OPTIONS
 #		-Weverything
 #		-Wpedantic
 #		-Wno-padded
@@ -216,22 +220,24 @@ if(NOTF_CLANG)
 #		-Wno-c++98-compat
 #		-Wno-c++98-compat-pedantic
 
-		# clang vectorization analysis
+        # clang vectorization analysis
 #        -Rpass-missed=loop-vectorized
 #        -Rpass-analysis=loop-vectorize
 #        -fsave-optimization-record
 #        -gline-tables-only
 #        -gcolumn-info
-	)
+    )
 elseif(NOTF_GCC)
-	set(NOTF_GLOBAL_OPTIONS
+    set(NOTF_GLOBAL_OPTIONS
         -Wall
         -Wno-unknown-pragmas
-	)
+    )
 elseif(NOTF_MSVC)
-	set(NOTF_GLOBAL_OPTIONS
+    set(NOTF_GLOBAL_OPTIONS
         /W4
-	)
+        /EHs # use instead of /EHsc, tell the compiler that functions declared as extern "C" may throw an exception
+             # do *not* use `/GL` (global program optimization) as that would interfere with boost::fiber
+    )
 endif()
 
 # SUB-PROJECTS #########################################################################################################

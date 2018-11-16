@@ -20,7 +20,7 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
 )
 
 # add thirdparty files
-add_sources(CORE_FILES ${CMAKE_SOURCE_DIR}/thirdparty/
+add_sources(CORE_FILES ${CMAKE_SOURCE_DIR}/thirdparty/include/
     randutils/randutils.hpp
 )
 
@@ -33,7 +33,8 @@ add_library(${CURRENT_TARGET} STATIC
 # include paths
 target_include_directories(${CURRENT_TARGET} PUBLIC
     ${CMAKE_SOURCE_DIR}/include/
-    ${CMAKE_SOURCE_DIR}/thirdparty/
+    ${CMAKE_SOURCE_DIR}/thirdparty/include/
+    ${CMAKE_SOURCE_DIR}/thirdparty/lib/glfw-3.3.0/include
 )
 
 # dependencies

@@ -10,7 +10,8 @@ ThreadPool::ThreadPool(const size_t thread_count)
 
     // create the worker threads
     for (size_t i = 0; i < thread_count; ++i) {
-        m_workers.emplace_back([&] {
+        m_workers.emplace_back(Thread::Kind::WORKER);
+        m_workers.back().run([&] {
             // worker function
             while (true) {
                 std::function<void()> task;
@@ -37,9 +38,7 @@ ThreadPool::~ThreadPool()
     m_condition_variable.notify_all();
 
     // join all workers and finish
-    for (std::thread& worker : m_workers) {
-        worker.join();
-    }
+    m_workers.clear();
 }
 
 NOTF_CLOSE_NAMESPACE

@@ -13,15 +13,52 @@ NOTF_OPEN_NAMESPACE
 /// @param input         Input string.
 /// @param delimiter     Delimiter character (is removed from the tokens).
 /// @return              String tokens.
-std::vector<std::string> tokenize(const std::string& input, char delimiter);
+std::vector<std::string> split(const std::string& input, char delimiter);
 
 /// tokenize() overload to deal with (potentially nullptr) c-style character arrays.
 /// @param input         Input string.
 /// @param delimiter     Delimiter character.
 /// @return              String tokens.
-inline std::vector<std::string> tokenize(const char* input, const char delimiter)
+inline std::vector<std::string> split(const char* input, const char delimiter)
 {
-    return (static_cast<bool>(input) ? tokenize(std::string(input), delimiter) : std::vector<std::string>());
+    return (static_cast<bool>(input) ? split(std::string(input), delimiter) : std::vector<std::string>());
+}
+
+/// Remove all spaces on the left of the string.
+/// @param str  String to modify.
+inline void ltrim(std::string& str)
+{
+    str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](int ch) { return !std::isspace(ch); }));
+}
+inline std::string ltrim_copy(std::string str)
+{
+    ltrim(str);
+    return str;
+}
+
+/// Remove all spaces on the right of the string.
+/// @param str  String to modify.
+inline void rtrim(std::string& str)
+{
+    str.erase(std::find_if(str.rbegin(), str.rend(), [](int ch) { return !std::isspace(ch); }).base(), str.end());
+}
+inline std::string rtrim_copy(std::string str)
+{
+    rtrim(str);
+    return str;
+}
+
+/// Remove all spaces from both ends of the string.
+/// @param str  String to modify.
+inline void trim(std::string& str)
+{
+    ltrim(str);
+    rtrim(str);
+}
+inline std::string trim_copy(std::string str)
+{
+    trim(str);
+    return str;
 }
 
 /// Tests if a string ends starts a given prefix.

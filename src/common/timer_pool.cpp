@@ -4,7 +4,7 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-TheTimerPool::TheTimerPool() { m_thread = ScopedThread(std::thread(&TheTimerPool::_run, this)); }
+TheTimerPool::TheTimerPool() { m_thread.run(&TheTimerPool::_run, this); }
 
 TheTimerPool::~TheTimerPool()
 {
@@ -38,9 +38,7 @@ void TheTimerPool::_run()
                 }
 
                 // stop the thread
-                if (!m_is_running) {
-                    return;
-                }
+                if (!m_is_running) { return; }
                 NOTF_ASSERT(!m_timer.empty());
 
                 // wait for the next timeout
@@ -56,9 +54,7 @@ void TheTimerPool::_run()
             m_timer.pop_front();
 
             // decrease remaining repetitions
-            if (!next_timer->_is_infinite()) {
-                --next_timer->m_times_left;
-            }
+            if (!next_timer->_is_infinite()) { --next_timer->m_times_left; }
         }
 
         // fire the timer's callback
@@ -84,9 +80,7 @@ void TheTimerPool::_schedule(TimerPtr timer)
 void TheTimerPool::_unschedule(const valid_ptr<Timer*> timer)
 {
     NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
-    if (m_timer.empty()) {
-        return;
-    }
+    if (m_timer.empty()) { return; }
     for (auto prev = m_timer.before_begin(), it = m_timer.begin(), end = m_timer.end(); it != end; prev = ++it) {
         if ((*it).get() == raw_pointer(timer)) {
             m_timer.erase_after(prev);
@@ -106,9 +100,7 @@ void Timer::start(const timepoint_t timeout)
         NOTF_GUARD(std::lock_guard(pool.m_mutex));
 
         // unschedule if active
-        if (_is_active()) {
-            pool._unschedule(this);
-        }
+        if (_is_active()) { pool._unschedule(this); }
 
         // this is a one-off overload of `start`
         m_times_left = 1;
@@ -133,9 +125,7 @@ void Timer::stop()
     {
         NOTF_GUARD(std::lock_guard(pool.m_mutex));
 
-        if (!_is_active()) {
-            return;
-        }
+        if (!_is_active()) { return; }
 
         // unschedule from the manager
         pool._unschedule(this);
@@ -162,9 +152,7 @@ void IntervalTimer::start(const duration_t interval, const size_t repetitions)
         NOTF_GUARD(std::lock_guard(pool.m_mutex));
 
         // unschedule if active
-        if (_is_active()) {
-            pool._unschedule(this);
-        }
+        if (_is_active()) { pool._unschedule(this); }
 
         // fire right away if the timeout is already in the past
         m_interval = interval;
@@ -200,9 +188,7 @@ void VariableTimer::start(IntervalFunction function, const size_t repetitions)
         NOTF_GUARD(std::lock_guard(pool.m_mutex));
 
         // unschedule if active
-        if (_is_active()) {
-            pool._unschedule(this);
-        }
+        if (_is_active()) { pool._unschedule(this); }
 
         // schedule the timer
         m_times_left = repetitions;

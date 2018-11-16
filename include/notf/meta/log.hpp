@@ -44,7 +44,7 @@ public:
         Level file_level = Level::TRACE;
 #else
         Level log_level = Level::INFO;
-        Level console_level = Level::WARNING;
+        Level console_level = Level::INFO;
         Level file_level = Level::INFO;
 #endif
 

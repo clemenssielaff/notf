@@ -9,7 +9,7 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-std::vector<std::string> tokenize(const std::string& input, const char delimiter)
+std::vector<std::string> split(const std::string& input, const char delimiter)
 {
     std::vector<std::string> result;
     if (input.empty()) { return result; }

@@ -1,6 +1,7 @@
 #include "notf/app/application.hpp"
 
 #include "notf/common/vector.hpp"
+#include "notf/common/version.hpp"
 
 #include "notf/app/glfw.hpp"
 
@@ -27,7 +28,6 @@ TheApplication::TheApplication(Args args) : m_args(std::move(args)), m_shared_wi
         _shutdown();
         NOTF_THROW(StartupError, "GLFW initialization failed");
     }
-    NOTF_LOG_INFO("GLFW version: {}", glfwGetVersionString());
 
     // default GLFW Window and OpenGL context hints
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
@@ -39,14 +39,23 @@ TheApplication::TheApplication(Args args) : m_args(std::move(args)), m_shared_wi
     //    glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
     //    glfwWindowHint(GLFW_REFRESH_RATE, GLFW_DONT_CARE);
     //    glfwWindowHint(GLFW_CONTEXT_RELEASE_BEHAVIOR, GLFW_RELEASE_BEHAVIOR_NONE);
-    //    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, is_debug_build() ? GLFW_TRUE : GLFW_FALSE);
-    //    glfwWindowHint(GLFW_CONTEXT_NO_ERROR, is_debug_build() ? GLFW_FALSE : GLFW_TRUE);
+    //    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, config::is_debug_build() ? GLFW_TRUE : GLFW_FALSE);
+    //    glfwWindowHint(GLFW_CONTEXT_NO_ERROR, config::is_debug_build() ? GLFW_FALSE : GLFW_TRUE);
 
     // create the shared window
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     m_shared_window.reset(glfwCreateWindow(1, 1, "", nullptr, nullptr));
     if (!m_shared_window) { NOTF_THROW(StartupError, "OpenGL context creation failed."); }
     //    TheGraphicsSystem::Access<TheApplication>::initialize(m_shared_window.get());
+
+    // log application header
+    NOTF_LOG_INFO("NOTF {} ({} built with {} from {}commit \"{}\")",
+                  config::version_string(),                          //
+                  (config::is_debug_build() ? "debug" : "release"),  //
+                  config::compiler_name(),                           //
+                  (config::was_commit_modified() ? "modified " : ""), //
+                  config::built_from_commit());
+    NOTF_LOG_INFO("GLFW version: {}", glfwGetVersionString());
 }
 
 TheApplication::~TheApplication() { _shutdown(); }

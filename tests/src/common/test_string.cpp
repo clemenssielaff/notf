@@ -4,7 +4,7 @@
 
 NOTF_USING_NAMESPACE;
 
-SCENARIO("tokenize strings", "[common][string]")
+SCENARIO("split strings", "[common][string]")
 {
     SECTION("a string with one or more delimiter characters is passed")
     {
@@ -16,10 +16,10 @@ SCENARIO("tokenize strings", "[common][string]")
         std::string multi_str = multi_char;
         std::vector<std::string> multi_expected{"hello", "world", "or", "whatever"};
 
-        REQUIRE(tokenize(simple_char, '-') == simple_expected);
-        REQUIRE(tokenize(simple_str, '-') == simple_expected);
-        REQUIRE(tokenize(multi_char, '-') == multi_expected);
-        REQUIRE(tokenize(multi_str, '-') == multi_expected);
+        REQUIRE(split(simple_char, '-') == simple_expected);
+        REQUIRE(split(simple_str, '-') == simple_expected);
+        REQUIRE(split(multi_char, '-') == multi_expected);
+        REQUIRE(split(multi_str, '-') == multi_expected);
     }
 
     SECTION("an empty string results in an empty vector")
@@ -27,15 +27,15 @@ SCENARIO("tokenize strings", "[common][string]")
         const char* empty_char = "";
         std::string empty_str = empty_char;
 
-        REQUIRE(tokenize(empty_char, '-') == std::vector<std::string>());
-        REQUIRE(tokenize(empty_str, '-') == std::vector<std::string>());
+        REQUIRE(split(empty_char, '-') == std::vector<std::string>());
+        REQUIRE(split(empty_str, '-') == std::vector<std::string>());
     }
 
     SECTION("an nullptr c-style character array is passed, the result in an empty vector")
     {
         const char* null_char = nullptr;
 
-        REQUIRE(tokenize(null_char, '-') == std::vector<std::string>());
+        REQUIRE(split(null_char, '-') == std::vector<std::string>());
     }
 
     SECTION("additional delimiters at the start- will be trimmed")
@@ -44,8 +44,8 @@ SCENARIO("tokenize strings", "[common][string]")
         std::string weird_str = weird_char;
         std::vector<std::string> expected{"hello", "world", "what", "indeed"};
 
-        REQUIRE(tokenize(weird_char, '-') == expected);
-        REQUIRE(tokenize(weird_str, '-') == expected);
+        REQUIRE(split(weird_char, '-') == expected);
+        REQUIRE(split(weird_str, '-') == expected);
     }
 
     SECTION("a string without any delimiters results in a vector with a single entry")
@@ -54,8 +54,8 @@ SCENARIO("tokenize strings", "[common][string]")
         std::string no_delimiter_str = no_delimiter_char;
         std::vector<std::string> expected{"helloworld"};
 
-        REQUIRE(tokenize(no_delimiter_char, '-') == expected);
-        REQUIRE(tokenize(no_delimiter_str, '-') == expected);
+        REQUIRE(split(no_delimiter_char, '-') == expected);
+        REQUIRE(split(no_delimiter_str, '-') == expected);
     }
 }
 

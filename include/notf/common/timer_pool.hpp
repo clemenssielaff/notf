@@ -64,7 +64,7 @@ private:
     std::forward_list<TimerPtr> m_timer;
 
     /// Worker thread.
-    ScopedThread m_thread;
+    Thread m_thread;
 
     /// Mutex guarding the Timer thread's state.
     Mutex m_mutex;

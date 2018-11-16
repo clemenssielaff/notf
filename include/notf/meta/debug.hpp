@@ -8,13 +8,6 @@ NOTF_OPEN_NAMESPACE
 
 // introspection ==================================================================================================== //
 
-/// Useful for debug-switches at compile time.
-#ifdef NOTF_DEBUG
-constexpr bool is_debug_build() noexcept { return true; }
-#else
-constexpr bool is_debug_build() noexcept { return false; }
-#endif
-
 /// Extracts the last occurrence of a token in a null-terminated string at compile time.
 /// In practice, this is used to get the file name from a path read from the __FILE__ macro.
 /// @param input     Path to investigate.

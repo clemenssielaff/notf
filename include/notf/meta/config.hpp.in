@@ -20,6 +20,9 @@
 
 // notf namespace =================================================================================================== //
 
+/// The notf namespace name.
+#define NOTF_NAMESPACE_NAME @NOTF_NAMESPACE_NAME@
+
 /// Opens the notf namespace.
 #define NOTF_OPEN_NAMESPACE namespace @NOTF_NAMESPACE_NAME@ {
 
@@ -60,21 +63,31 @@ NOTF_OPEN_NAMESPACE
 namespace config {
 
 /// Version of the notf source code.
-constexpr auto version_major() noexcept { return @PROJECT_VERSION_MAJOR@; };
-constexpr auto version_minor() noexcept { return @PROJECT_VERSION_MINOR@; };
-constexpr auto version_patch() noexcept { return @PROJECT_VERSION_PATCH@; };
+inline constexpr auto version_major() noexcept { return @PROJECT_VERSION_MAJOR@; };
+inline constexpr auto version_minor() noexcept { return @PROJECT_VERSION_MINOR@; };
+inline constexpr auto version_patch() noexcept { return @PROJECT_VERSION_PATCH@; };
 
 /// Human readable notf version string.
-constexpr const char* version_string() noexcept { return "@NOTF_VERSION_STRING@"; }
+inline constexpr const char* version_string() noexcept { return "@NOTF_VERSION_STRING@"; }
 
 /// The git commit from which the binary was compiled.
-constexpr const char* built_from_commit() noexcept { return "@NOTF_BUILT_COMMIT@"; }
+inline constexpr const char* built_from_commit() noexcept { return "@NOTF_BUILT_COMMIT@"; }
 
 /// Whether or not the code was modified before compilation.
-constexpr bool was_commit_modified() noexcept { return @NOTF_BUILT_COMMIT_WAS_MODIFIED@; }
+inline constexpr bool was_commit_modified() noexcept { return @NOTF_BUILT_COMMIT_WAS_MODIFIED@; }
+
+/// Name of the compiler used, as determined by CMake.
+inline constexpr const char* compiler_name() noexcept { return "@CMAKE_CXX_COMPILER_ID@"; }
+
+/// Useful for debug-switches at compile time.
+#ifdef NOTF_DEBUG
+constexpr bool is_debug_build() noexcept { return true; }
+#else
+constexpr bool is_debug_build() noexcept { return false; }
+#endif
 
 /// Whether or not a failed assertion will immediately call `std::abort` or just throw an exception.
-constexpr bool abort_on_assert() noexcept
+inline constexpr bool abort_on_assert() noexcept
 {
 #ifdef NOTF_TEST // never abort during tests
     return 0;
@@ -84,13 +97,13 @@ constexpr bool abort_on_assert() noexcept
 }
 
 /// System endianess
-constexpr bool is_big_endian() noexcept { return @NOTF_IS_BIG_ENDIAN@; }
+inline constexpr bool is_big_endian() noexcept { return @NOTF_IS_BIG_ENDIAN@; }
 
 /// Seed value used for all hashing at compile time.
-/// Although it is highly unlikely to have a hash collision, it is still possible that (for example) two property names
-/// produce the same hash value. Since this would cause the built to fail, you can manually set this seed value to
-/// anything != 0 (the default) and try again. Chances are, you'll get lucky on your second try.
-constexpr auto constexpr_seed() noexcept { return 0; }
+/// Although it is highly unlikely to have a hash collision, it is still possible that (for example) two (compile time)
+/// property names produce the same hash value. Since this would cause the built to fail, you can manually set this seed
+/// value to anything != 0 (the default) and try again. Chances are, you'll get lucky on your second try.
+inline constexpr auto constexpr_seed() noexcept { return 0; }
 
 } // namespace config
 

@@ -6,6 +6,8 @@
 
 #include "notf/meta/exception.hpp"
 
+#include "notf/common/thread.hpp"
+
 NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
@@ -85,7 +87,7 @@ public:
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// Worker threads.
-    std::vector<std::thread> m_workers;
+    std::vector<Thread> m_workers;
 
     /// All outstanding tasks in the pool.
     std::deque<std::function<void()>> m_tasks;
