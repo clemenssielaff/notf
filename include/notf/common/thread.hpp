@@ -2,6 +2,7 @@
 
 #include <array>
 #include <atomic>
+#include <functional>
 #include <thread>
 
 #include "notf/meta/assert.hpp"
@@ -99,7 +100,8 @@ class Accessor<this_thread::detail::ThreadInfo, Thread> {
     static void remove_one_of_kind(const this_thread::detail::ThreadInfo::Kind kind)
     {
         using ThreadInfo = this_thread::detail::ThreadInfo;
-        const auto previous_count = ThreadInfo::s_kind_counter[to_number(kind)].fetch_sub(1, std::memory_order_relaxed);
+        NOTF_UNUSED const auto previous_count
+            = ThreadInfo::s_kind_counter[to_number(kind)].fetch_sub(1, std::memory_order_relaxed);
         NOTF_ASSERT(previous_count != 0);
     }
 };
@@ -117,6 +119,16 @@ public:
 
     /// Unsigned integer able to represent a thread id.
     using NumericId = templated_unsigned_integer_t<bitsizeof<std::thread::id>()>;
+
+private:
+    struct KindCounterGuard {
+        using ThreadInfoAccess = this_thread::detail::ThreadInfo::AccessFor<Thread>;
+        KindCounterGuard(Kind kind) : m_kind(kind) { ThreadInfoAccess::add_one_of_kind(m_kind); }
+        ~KindCounterGuard() { ThreadInfoAccess::remove_one_of_kind(m_kind); }
+
+    private:
+        const Kind m_kind;
+    };
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -155,10 +167,8 @@ public:
     {
         if (m_thread.joinable()) { m_thread.join(); }
         m_thread = std::thread([&]() {
-            using ThreadInfoAccess = this_thread::detail::ThreadInfo::AccessFor<Thread>;
-            ThreadInfoAccess::add_one_of_kind(m_kind);
+            NOTF_GUARD(KindCounterGuard(m_kind));
             std::invoke(std::forward<Function>(function), std::forward<Args>(args)...);
-            ThreadInfoAccess::remove_one_of_kind(m_kind);
         });
     }
 

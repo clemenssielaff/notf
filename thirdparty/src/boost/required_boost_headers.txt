@@ -19,7 +19,6 @@
 ./config/platform/irix.hpp
 ./config/platform/win32.hpp
 ./config/platform/vxworks.hpp
-./config/auto_link.hpp
 ./config/requires_threads.hpp
 ./config/abi/borland_prefix.hpp
 ./config/abi/msvc_prefix.hpp
