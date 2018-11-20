@@ -41,9 +41,9 @@ TheApplication::TheApplication(Args args) : m_args(std::move(args)), m_shared_co
 
     // log application header
     NOTF_LOG_INFO("NOTF {} ({} built with {} from {}commit \"{}\")",
-                  config::version_string(),                          //
-                  (config::is_debug_build() ? "debug" : "release"),  //
-                  config::compiler_name(),                           //
+                  config::version_string(),                           //
+                  (config::is_debug_build() ? "debug" : "release"),   //
+                  config::compiler_name(),                            //
                   (config::was_commit_modified() ? "modified " : ""), //
                   config::built_from_commit());
     NOTF_LOG_INFO("GLFW version: {}", glfwGetVersionString());
@@ -53,17 +53,21 @@ TheApplication::~TheApplication() { _shutdown(); }
 
 int TheApplication::exec()
 {
+    TheApplication& app = TheApplication::get();
+
     NOTF_LOG_TRACE("Starting main loop");
 
     // loop until there are no more windows open
-    while (!m_windows.empty()) {
+    while (!app.m_windows.empty()) {
 
         // wait for the next event or the next time to fire an animation frame
         glfwWaitEvents();
+
+        NOTF_LOG_INFO("Jup");
     }
 
-    _shutdown();
-    return 0;
+    app._shutdown();
+    return EXIT_SUCCESS;
 }
 
 void TheApplication::_shutdown()

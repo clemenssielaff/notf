@@ -8,6 +8,7 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/node.cpp
     app/node_handle.cpp
     app/property.cpp
+    app/root_node.cpp
     app/window.cpp
 
     app/widget/claim.cpp

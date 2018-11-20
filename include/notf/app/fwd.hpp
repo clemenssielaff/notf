@@ -59,6 +59,9 @@ NOTF_DEFINE_SHARED_POINTERS(class, RootNode);
 using RootNodeHandle = TypedNodeHandle<RootNode>;
 
 // window.hpp
+namespace detail {
+struct WindowSettings;
+} // namespace detail
 NOTF_DEFINE_SHARED_POINTERS(class, Window);
 class WindowHandle;
 

@@ -282,8 +282,18 @@ template<>
 class Accessor<TheGraph, Window> {
     friend Window;
 
-    /// The Root Node as raw pointer.
-    static valid_ptr<RootNode*> get_root_node() { return TheGraph::_get().m_root_node.get(); }
+    /// The Root Node of the Graph.
+    static RootNodePtr get_root_node() { return TheGraph::_get().m_root_node; }
+
+    /// Registers a new Node in the Graph.
+    /// Automatically marks the Node as being dirty as well.
+    /// @param node                 Node to register.
+    /// @throws not_unique_error    If another Node with the same Uuid is already registered.
+    static void register_node(NodeHandle node)
+    {
+        TheGraph::_get().m_node_registry.add(node); // first, because it may fail
+        TheGraph::_get().m_dirty_nodes.emplace(std::move(node));
+    }
 };
 
 NOTF_CLOSE_NAMESPACE

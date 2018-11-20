@@ -177,10 +177,11 @@ private:
     NOTF_CREATE_SMART_FACTORIES(Window);
 
     /// Constructor.
+    /// @param parent                               Parent of this Node.
     /// @param settings                             Initialization settings.
     /// @throws initialization_error                If the OpenGL context creation for this Window failed
     /// @throws Application::initialization_error   When you try to instantiate a Window without an Application.
-    Window(Settings settings);
+    Window(valid_ptr<Node*> parent, Settings settings);
 
 public:
     /// Factory, creates a new Window.

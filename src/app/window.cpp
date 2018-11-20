@@ -41,8 +41,8 @@ void window_deleter(GLFWwindow* glfw_window)
 
 // window =========================================================================================================== //
 
-Window::Window(Settings settings)
-    : super_t(TheGraph::AccessFor<Window>::get_root_node()), m_glfw_window(nullptr, detail::window_deleter)
+Window::Window(valid_ptr<Node*> parent, Settings settings)
+    : super_t(parent), m_glfw_window(nullptr, detail::window_deleter)
 {
     _validate_settings(settings);
 
@@ -122,13 +122,21 @@ Window::Window(Settings settings)
     _get_property<resolution>()->set_callback([&](Size2i& new_res) { return _on_resolution_change(new_res); });
     _get_property<monitor>()->set_callback([&](int& new_monitor) { return _on_monitor_change(new_monitor); });
 
-    NOTF_LOG_INFO("Created Window \"{}\" using OpenGl version: {}", get<title>(), glGetString(GL_VERSION));
+//    NOTF_LOG_INFO("Created Window \"{}\" using OpenGl version: {}", get<title>(), glGetString(GL_VERSION));
 }
 
 WindowHandle Window::create(Settings settings)
 {
-    WindowHandle window = _create_shared(std::move(settings));
+    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+
+    RootNodePtr root_node = TheGraph::AccessFor<Window>::get_root_node();
+    WindowPtr window = _create_shared(root_node.get(), std::move(settings));
+
+    Node::AccessFor<Window>::finalize(*window);
+    TheGraph::AccessFor<Window>::register_node(std::static_pointer_cast<Node>(window));
+    RootNode::AccessFor<Window>::add_window(*root_node, window);
     TheApplication::AccessFor<Window>::register_window(window);
+
     return window;
 }
 
@@ -148,7 +156,7 @@ void Window::close()
     //    m_graphics_context.reset();
 
     // remove yourself from the Application
-    TheApplication::AccessFor<Window>::register_window(std::static_pointer_cast<Window>(shared_from_this()));
+    TheApplication::AccessFor<Window>::unregister_window(std::static_pointer_cast<Window>(shared_from_this()));
 }
 
 void Window::_validate_settings(Settings& settings)

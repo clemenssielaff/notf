@@ -124,7 +124,7 @@ public:
     /// Starts the application's main loop.
     /// Can only be called once.
     /// @return  The application's return value after it has finished.
-    int exec();
+    static int exec();
 
     /// The singleton Application instance.
     /// @throws StartupError    When the Application intialization failed.

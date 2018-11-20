@@ -16,6 +16,7 @@ class Node : public std::enable_shared_from_this<Node> {
 
     friend Accessor<Node, detail::AnyNodeHandle>;
     friend Accessor<Node, RootNode>;
+    friend Accessor<Node, Window>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -521,6 +522,20 @@ class Accessor<Node, detail::AnyNodeHandle> {
 template<>
 class Accessor<Node, RootNode> {
     friend RootNode;
+
+    /// Owning list of child Nodes, ordered from back to front.
+    using ChildList = Node::ChildList;
+
+    /// Finalizes the given RootNode.
+    static void finalize(Node& node) { node._finalize(); }
+
+    /// Direct write access to child Nodes.
+    static ChildList& write_children(Node& node) { return node._write_children(); }
+};
+
+template<>
+class Accessor<Node, Window> {
+    friend Window;
 
     /// Finalizes the given RootNode.
     static void finalize(Node& node) { node._finalize(); }

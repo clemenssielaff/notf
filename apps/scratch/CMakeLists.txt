@@ -23,6 +23,7 @@ target_include_directories(${CURRENT_TARGET} PUBLIC
 target_link_libraries(${CURRENT_TARGET} PUBLIC
     notf-thirdparty
     notf-core
+    ${OPENGL_LIBRARIES}
 )
 
 # global defines and options
