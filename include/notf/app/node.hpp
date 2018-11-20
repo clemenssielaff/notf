@@ -537,7 +537,7 @@ template<>
 class Accessor<Node, Window> {
     friend Window;
 
-    /// Finalizes the given RootNode.
+    /// Finalizes the given Window(Node).
     static void finalize(Node& node) { node._finalize(); }
 };
 

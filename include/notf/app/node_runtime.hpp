@@ -16,7 +16,6 @@ protected:
     /// @param parent   Parent of this Node.
     RunTimeNode(valid_ptr<Node*> parent) : Node(parent) {}
 
-protected:
     /// Implementation specific query of a Property.
     AnyPropertyPtr _get_property(const std::string& name) const override
     {

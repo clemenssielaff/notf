@@ -62,8 +62,6 @@ int TheApplication::exec()
 
         // wait for the next event or the next time to fire an animation frame
         glfwWaitEvents();
-
-        NOTF_LOG_INFO("Jup");
     }
 
     app._shutdown();
