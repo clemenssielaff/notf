@@ -58,16 +58,17 @@ constexpr auto state_a_id = "state_a"_id;
 SCENARIO("Compile Time Widgets", "[app][node][widget]")
 {
     // always reset the graph
-    TheGraph::initialize<TestRootNode>();
+    TheGraph::AccessFor<Tester>::reset();
     REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 1);
 
-    NodeHandle root_node = TheGraph::get_root_node();
-    auto root_node_ptr = std::dynamic_pointer_cast<TestRootNode>(to_shared_ptr(root_node));
-    REQUIRE(root_node);
+    NodeHandle root_node_handle = TheGraph::get_root_node();
+    RootNodePtr root_node_ptr = std::static_pointer_cast<RootNode>(to_shared_ptr(root_node_handle));
+    REQUIRE(root_node_ptr);
+    auto root_node = Node::AccessFor<Tester>(*root_node_ptr);
 
     SECTION("basic state machine")
     {
-        auto widget = root_node_ptr->create_child<TestCompileTimeWidget>().to_handle();
+        auto widget = root_node.create_child<TestCompileTimeWidget>().to_handle();
         REQUIRE(to_shared_ptr(widget)->get_state_name() == "state_a"); // first state is the default
 
         to_shared_ptr(widget)->transition_into<StateB>();

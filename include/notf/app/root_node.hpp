@@ -1,67 +1,44 @@
 #pragma once
 
 #include "notf/app/node_compiletime.hpp"
-#include "notf/app/node_runtime.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-// any root node ==================================================================================================== //
+// root node ======================================================================================================== //
 
-class AnyRootNode {
+class RootNode final : public CompileTimeNode<std::tuple<>> {
+
+    friend Accessor<RootNode, TheGraph>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(RootNode);
+
     /// Only Windows are allowed as children of the root.
     using allowed_child_types = std::tuple<Window>;
 
     /// Only the Root Node itself may be its own parent.
-    using allowed_parent_types = std::tuple<AnyRootNode>;
+    using allowed_parent_types = std::tuple<RootNode>;
 
     // methods --------------------------------------------------------------------------------- //
-protected:
-    /// Default Constructor.
-    AnyRootNode() = default;
-
 public:
-    /// Virtual Destructor.
-    virtual ~AnyRootNode() = default;
+    /// Default Constructor.
+    RootNode() : CompileTimeNode<std::tuple<>>(this) {}
 
-    /// Finalizes this Node.
-    virtual void finalize() = 0;
-
-protected:
-    template<class T>
-    void _finalize_node(T& node)
-    {
-        Node::AccessFor<AnyRootNode>::finalize(node);
-    }
+private:
+    /// Finalizes this RootNode.
+    void _finalize() { Node::AccessFor<RootNode>::finalize(*this); }
 };
 
-// run time root node =============================================================================================== //
+// root node accessors ============================================================================================== //
 
-class RunTimeRootNode : public RunTimeNode, public AnyRootNode {
+template<>
+class Accessor<RootNode, TheGraph> {
+    friend TheGraph;
 
-    // methods --------------------------------------------------------------------------------- //
-public:
-    /// Default Constructor.
-    RunTimeRootNode() : RunTimeNode(this), AnyRootNode() {}
-
-    /// Finalizes this Node.
-    void finalize() final { _finalize_node(*this); }
-};
-
-// compile time root node =========================================================================================== //
-
-template<class Properties>
-class CompileTimeRootNode : public CompileTimeNode<Properties>, public AnyRootNode {
-
-    // methods --------------------------------------------------------------------------------- //
-public:
-    /// Default Constructor.
-    CompileTimeRootNode() : CompileTimeNode<Properties>(this), AnyRootNode() {}
-
-    /// Finalizes this Node.
-    void finalize() final { _finalize_node(*this); }
+    /// Finalizes the given RootNode.
+    static void finalize(RootNode& node) { node._finalize(); }
 };
 
 NOTF_CLOSE_NAMESPACE

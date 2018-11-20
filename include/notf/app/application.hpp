@@ -9,7 +9,12 @@ NOTF_OPEN_NAMESPACE
 // the application ================================================================================================== //
 
 /// The Application class.
-/// After initialization, the Application singleton is available everywhere with `TheApplication::get()`.
+/// The Application singleton is available everywhere with `TheApplication::get()`.
+/// The first time you call `get()`, the Application is initialized with default arguments, unless you have already done
+/// so yourself. Note that there are other objects that call `TheApplication::get` and might initialize the Application
+/// implicitly (Window creation for example, requires TheApplication instance to exist). To make sure that your
+/// initialization succeeds, call it in `main()` at your earliest convenience. Should you call `initialize` on an
+/// already initialized Application, it will throw a `StartupError`, so you'll know when something went wrong.
 class TheApplication {
 
     friend Accessor<TheApplication, Window>;
@@ -27,14 +32,6 @@ public:
     NOTF_EXCEPTION_TYPE(ShutdownError);
 
     /// Application arguments.
-    ///
-    /// argv and arc
-    /// ============
-    /// To initialize the Application we require the `argv` and `argc` fields to be set and valid.
-    ///
-    /// Directories
-    /// =======
-    /// The default ApplicationInfo contains default paths to resource folders, relative to the executable.
     struct Args {
 
         // main arguments -----------------------------------------------------
@@ -43,12 +40,7 @@ public:
         char** argv = nullptr;
 
         /// Number of strings in argv (first one is usually the name of the program).
-        int argc = -1;
-
-        // logger -------------------------------------------------------------
-
-        /// Logging arguments.
-        Logger::Args logger_arguments = {};
+        long argc = -1;
 
         // directories --------------------------------------------------------
 
@@ -66,17 +58,29 @@ public:
 
         /// System path to the application directory, absolute or relative to the executable.
         std::string app_directory = "app/";
+
+        // logger -------------------------------------------------------------
+
+        /// Logging arguments.
+        Logger::Args logger_arguments = {};
+    };
+
+private:
+    /// Whether the Application has not been started, closed or if it is currently running.
+    enum class State : size_t {
+        UNSTARTED,
+        RUNNING,
+        CLOSED,
     };
 
     // methods --------------------------------------------------------------------------------- //
 private:
     /// Constructor.
-    /// @param application_args         Application arguments.
-    /// @throws initialization_error    When the Application intialization failed.
+    /// @param args             Application arguments.
+    /// @throws StartupError    When the Application intialization failed.
     TheApplication(Args args);
 
-    /// Creates invalid Application arguments that trigger an exception in the constructor.
-    /// Needed for when the user forgets to call "initialize" with valid arguments.
+    /// Constructs default arguments on request.
     static const Args& _default_args()
     {
         static Args default_arguments;
@@ -84,8 +88,11 @@ private:
     }
 
     /// The Graph singleton.
-    static TheApplication& _get(const Args& application_args = _default_args())
+    static TheApplication& _get_instance(const Args& application_args = _default_args())
     {
+        if (s_state == State::CLOSED) { NOTF_THROW(ShutdownError, "The Application has already been shut down"); }
+        s_state = State::RUNNING;
+
         static TheApplication instance(application_args);
         return instance;
     }
@@ -96,12 +103,15 @@ public:
     /// Desctructor
     ~TheApplication();
 
+    /// @{
     /// Initializes the Application through an user-defined ApplicationInfo object.
-    /// @throws initialization_error    When the Application intialization failed.
-    static TheApplication& initialize(const Args& application_args) { return _get(application_args); }
-
-    /// Initializes the Application using only the command line arguments passed by the OS.
-    /// @throws initialization_error    When the Application intialization failed.
+    /// @throws StartupError    When the Application intialization failed.
+    /// @throws ShutdownError   When this method is called after the Application was shut down.
+    static TheApplication& initialize(const Args& application_args)
+    {
+        if (s_state != State::UNSTARTED) { NOTF_THROW(StartupError, "The Application has already been initialized"); }
+        return _get_instance(application_args);
+    }
     static TheApplication& initialize(const int argc, char* argv[])
     {
         Args args;
@@ -109,6 +119,7 @@ public:
         args.argv = argv;
         return initialize(args);
     }
+    /// @}
 
     /// Starts the application's main loop.
     /// Can only be called once.
@@ -116,11 +127,11 @@ public:
     int exec();
 
     /// The singleton Application instance.
-    /// @throws initialization_error    When the Application intialization failed.
-    /// @throws shut_down_error         When this method is called after the Application was shut down.
+    /// @throws StartupError    When the Application intialization failed.
+    /// @throws ShutdownError   When this method is called after the Application was shut down.
     static TheApplication& get()
     {
-        if (NOTF_LIKELY(is_running())) { return _get(); }
+        if (NOTF_LIKELY(is_running())) { return _get_instance(); }
         NOTF_THROW(ShutdownError, "You may not access the Application after it was shut down");
     }
 
@@ -128,7 +139,7 @@ public:
     const Args& get_arguments() const { return m_args; }
 
     /// Checks if the Application was once open but is now closed.
-    static bool is_running() { return s_is_running.load(); }
+    static bool is_running() { return s_state.load() == State::RUNNING; }
 
 private:
     /// Shuts down the application.
@@ -146,15 +157,15 @@ private:
     /// Application arguments as passed to the constructor.
     const Args m_args;
 
-    /// The internal GLFW window managed by the Application.
+    /// The internal GLFW window managed by the Application
     /// Does not actually open a Window, only provides the shared OpenGL context.
-    detail::GlfwWindowPtr m_shared_window;
+    detail::GlfwWindowPtr m_shared_context;
 
     /// All Windows known the the Application.
     std::vector<WindowHandle> m_windows;
 
-    /// Flag to indicate whether the Application is currently running or not.
-    inline static std::atomic<bool> s_is_running{true};
+    /// Flag to indicate whether the Application is currently running.
+    static inline std::atomic<State> s_state = State::UNSTARTED;
 };
 
 // accessors ======================================================================================================== //
@@ -168,8 +179,8 @@ class Accessor<TheApplication, Window> {
     /// Unregisters an existing Window from this Application.
     static void unregister_window(WindowHandle window) { TheApplication::get()._unregister_window(std::move(window)); }
 
-    /// The internal GLFW window managed by the Application.
-    static GLFWwindow* get_shared_window() { return TheApplication::get().m_shared_window.get(); }
+    /// The internal GLFW window managed by the Application holding the shared context.
+    static GLFWwindow* get_shared_context() { return TheApplication::get().m_shared_context.get(); }
 };
 
 NOTF_CLOSE_NAMESPACE

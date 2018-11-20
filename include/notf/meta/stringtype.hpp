@@ -180,7 +180,7 @@ constexpr auto make_string_type_from_number() noexcept
 {
     return detail::number_to_string_type<number>(std::make_index_sequence<count_digits(number)>{});
 }
-#ifndef NOTF_MSVC 
+#ifndef NOTF_MSVC
 // (yet another) MSVC bug causes an internal compiler error if you have two functions named `make_string_type`, that
 // only differ in their template argument type, even though it seems to be valid c++ code.
 template<size_t number>

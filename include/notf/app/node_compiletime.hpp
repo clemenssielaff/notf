@@ -43,110 +43,140 @@ protected:
 protected:
     /// Value constructor.
     /// @param parent   Parent of this Node.
-    CompileTimeNode(valid_ptr<Node*> parent) : Node(parent) { _initialize_properties(); }
+    CompileTimeNode(valid_ptr<Node*> parent) : Node(parent)
+    {
+        for_each(m_node_properties, [this](auto& property) {
+            using property_t = typename std::decay_t<decltype(property)>::element_type;
+
+            // create the new property
+            auto property_ptr = std::make_shared<property_t>();
+            property = property_ptr;
+
+            // subscribe to receive an update, whenever the property changes its value
+            auto typed_property = std::static_pointer_cast<Property<typename property_t::value_t>>(property_ptr);
+            typed_property->get_operator()->subscribe(_get_property_observer());
+        });
+    }
 
 public:
+    /// @{
     /// Returns a correctly typed Handle to a CompileTimeProperty or void (which doesn't compile).
     /// @param name     Name of the requested Property.
     template<char... Cs>
-    auto get_property(StringType<Cs...> name) const
+    constexpr auto get_property(StringType<Cs...> name) const
     {
-        return _get_ct_property<0>(name);
+        constexpr size_t index = _get_property_index(name);
+        using value_t = typename node_property_t<index>::value_t;
+        return PropertyHandle(std::static_pointer_cast<Property<value_t>>(std::get<index>(m_node_properties)));
     }
+    template<const StringConst& name>
+    constexpr auto get_property() const
+    {
+        return get_property(make_string_type<name>());
+    }
+    /// @}
 
-    /// Use the base class' `get_property(std::string_view)` method alongside the compile time implementation.
+    /// @{
+    /// Returns the correctly typed value of a CompileTimeProperty.
+    /// @param name     Name of the requested Property.
+    template<char... Cs>
+    const auto& get(StringType<Cs...> name) const
+    {
+        return std::get<_get_property_index(name)>(m_node_properties)->get();
+    }
+    template<const StringConst& name>
+    constexpr const auto& get() const
+    {
+        return get(make_string_type<name>());
+    }
+    /// @}
+
+    /// @{
+    /// Updates the value of a CompileTimeProperty of this Node.
+    /// @param name     Node-unique name of the Property.
+    /// @param value    New value of the Property.
+    template<char... Cs, class T>
+    constexpr void set(StringType<Cs...> name, T&& value)
+    {
+        constexpr size_t index = _get_property_index(name);
+        if constexpr (std::is_convertible_v<T, node_property_t<index>>) {
+            std::get<index>(m_node_properties)->set(std::forward<T>(value));
+        }
+    }
+    template<const StringConst& name, class T>
+    constexpr void set(T&& value)
+    {
+        set(make_string_type<name>(), std::forward<T>(value));
+    }
+    /// @}
+
+    /// Use the base class' runtime methods alongside the compile time implementation.
+    using Node::get;
     using Node::get_property;
+    using Node::set;
 
 protected:
+    /// @{
     /// Implementation specific query of a Property.
-    AnyPropertyPtr _get_property(const std::string& name) const override { return _get_property(hash_string(name)); }
+    AnyPropertyPtr _get_property(const std::string& name) const override
+    {
+        return _get_property_impl(hash_string(name));
+    }
+    template<size_t I = 0>
+    AnyPropertyPtr _get_property_impl(const size_t hash_value) const
+    {
+        if constexpr (I < std::tuple_size_v<NodeProperties>) {
+            if (node_property_t<I>::get_const_name().get_hash() == hash_value) {
+                return std::static_pointer_cast<AnyProperty>(std::get<I>(m_node_properties));
+            } else {
+                return _get_property_impl<I + 1>(hash_value);
+            }
+        } else {
+            return {}; // no such property
+        }
+    }
+    /// @}
 
     /// Calculates the combined hash value of all Properties.
-    size_t _calculate_property_hash() const override
+    size_t _calculate_property_hash(size_t result = detail::version_hash()) const override
     {
-        size_t result = detail::version_hash();
-        _calculate_hash(result);
+        for_each(m_node_properties, [](const auto& property, size_t& result) { hash_combine(result, property->get()); },
+                 result);
         return result;
     }
 
     /// Removes all modified data from all Properties.
-    void _clear_modified_properties() const override { _clear_property_data(); }
-
-    /// Access to a CompileTimeProperty through the hash of its name.
-    /// Allows access with a string at run time.
-    template<size_t I = 0, class X = NodeProperties>
-    std::enable_if_t<(I < std::tuple_size_v<NodeProperties>), AnyPropertyPtr>
-    _get_property(const size_t hash_value) const
+    void _clear_modified_properties() override
     {
-        if (node_property_t<I>::get_const_name().get_hash() == hash_value) {
-            return std::static_pointer_cast<AnyProperty>(std::get<I>(m_node_properties));
-        } else {
-            return _get_property<I + 1>(hash_value);
-        }
-    }
-    /// MSVC does not respect `if constexpr` enough to not try to access a tuple out of bounds in the `else` branch.
-	/// Therefore, we have to have explicit SFINAE overloads of some methods that are called when I is out of bounds.
-    template<size_t I = 0, class X = NodeProperties>
-    std::enable_if_t<(I >= std::tuple_size_v<NodeProperties>), AnyPropertyPtr>
-    _get_property(const size_t) const // msvc workaround
-    {
-        return {}; // no such property
+        for_each(m_node_properties, [](auto& property) { property->clear_modified_data(); });
     }
 
-    /// Direct access to a CompileTimeProperty through its name alone.
-    template<size_t I, char... Cs>
-    auto _get_ct_property(StringType<Cs...> name) const
+    /// @{
+    /// Access to a CompileTimeProperty by name.
+    template<char... Cs>
+    auto _get_property(StringType<Cs...> name) const
+    {
+        return std::get<_get_property_index(name)>(m_node_properties);
+    }
+    template<const StringConst& name>
+    constexpr auto _get_property() const
+    {
+        return _get_property(make_string_type<name>());
+    }
+    /// @}
+
+    /// Finds the index of a Property by its name.
+    template<size_t I = 0, char... Cs>
+    static constexpr size_t _get_property_index(StringType<Cs...> name)
     {
         if constexpr (I < std::tuple_size_v<NodeProperties>) {
             if constexpr (node_property_t<I>::get_const_name() == name) {
-                using value_t = typename node_property_t<I>::value_t;
-                return PropertyHandle(std::static_pointer_cast<Property<value_t>>(std::get<I>(m_node_properties)));
+                return I;
             } else {
-                return _get_ct_property<I + 1>(name);
+                return _get_property_index<I + 1>(name);
             }
         }
     }
-
-    /// Calculates the combined hash value of each Property in order.
-    template<size_t I = 0, class X = NodeProperties>
-    std::enable_if_t<(I < std::tuple_size_v<NodeProperties>)> _calculate_hash(size_t& result) const
-    {
-        hash_combine(result, std::get<I>(m_node_properties)->get());
-        _calculate_hash<I + 1>(result);
-    }
-    template<size_t I = 0, class X = NodeProperties>
-    std::enable_if_t<(I >= std::tuple_size_v<NodeProperties>)> _calculate_hash(size_t&) const // msvc workaround
-    {}
-
-    /// Clear modified Property data.
-    template<size_t I = 0, class X = NodeProperties>
-    std::enable_if_t<(I < std::tuple_size_v<NodeProperties>)> _clear_property_data() const
-    {
-        std::get<I>(m_node_properties)->clear_modified_data();
-        _clear_property_data<I + 1>();
-    }
-    template<size_t I = 0, class X = NodeProperties>
-    std::enable_if_t<(I >= std::tuple_size_v<NodeProperties>)> _clear_property_data() const // msvc workaround
-    {}
-
-private:
-    /// Initializes all Properties with their default values and -visiblity.
-    template<size_t I = 0, class X = NodeProperties>
-    std::enable_if_t<(I < std::tuple_size_v<NodeProperties>)> _initialize_properties()
-    {
-        // create the new property
-        auto property_ptr = std::make_shared<node_property_t<I>>();
-        std::get<I>(m_node_properties) = property_ptr;
-
-        // subscribe to receive an update, whenever the property changes its value
-        auto typed_property = std::static_pointer_cast<Property<typename node_property_t<I>::value_t>>(property_ptr);
-        typed_property->get_operator()->subscribe(_get_property_observer());
-
-        _initialize_properties<I + 1>();
-    }
-    template<size_t I = 0, class X = NodeProperties>
-    std::enable_if_t<(I >= std::tuple_size_v<NodeProperties>)> _initialize_properties() // msvc workaround
-    {}
 
     // fields ---------------------------------------------------------------------------------- //
 private:

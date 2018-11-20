@@ -3,7 +3,7 @@
 #include "test_app_utils.hpp"
 #include "test_utils.hpp"
 
-#include "notf/app/app.hpp"
+#include "notf/app/fwd.hpp"
 
 NOTF_USING_NAMESPACE;
 

@@ -7,7 +7,7 @@
 #include "notf/meta/smart_factories.hpp"
 #include "notf/meta/time.hpp"
 
-#include "notf/common/common.hpp"
+#include "notf/common/fwd.hpp"
 #include "notf/common/mutex.hpp"
 #include "notf/common/thread.hpp"
 

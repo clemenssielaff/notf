@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <tuple>
 
 #include "notf/meta/types.hpp"
@@ -168,6 +169,38 @@ struct make_tuple_unique<std::tuple<>, std::tuple<Ts...>> { // entry point for s
 /// Transforms a tuple into a corresponding tuple of unique types (order is retained).
 template<class... Ts>
 using make_tuple_unique_t = typename make_tuple_unique<std::tuple<>, Ts...>::type;
+
+// for each in tuple ================================================================================================ //
+
+/// @{
+/// Applies a given function to each element in the tuple.
+/// @param tuple    Tuple to iterate over.
+/// @param function Function to execute. Must take the tuple element type as first argument.
+/// @param args     (optional) Additional arguments passed bound to the 2nd to nth parameter of function.
+template<size_t I = 0, class Function, class... Ts, class... Args>
+constexpr std::enable_if_t<(I == sizeof...(Ts))> for_each(std::tuple<Ts...>&, Function&&, Args&&...) noexcept
+{} // recursion breaker
+template<size_t I = 0, class Function, class... Ts, class... Args>
+constexpr std::enable_if_t<(I < sizeof...(Ts))>
+for_each(std::tuple<Ts...>& tuple, Function&& function,
+         Args&&... args) noexcept(noexcept(std::invoke(function, std::get<I>(tuple), args...)))
+{
+    std::invoke(function, std::get<I>(tuple), args...);
+    for_each<I + 1>(tuple, std::forward<Function>(function), std::forward<Args>(args)...);
+}
+
+template<size_t I = 0, class Function, class... Ts, class... Args>
+constexpr std::enable_if_t<(I == sizeof...(Ts))> for_each(const std::tuple<Ts...>&, Function&&, Args&&...) noexcept
+{} // recursion breaker
+template<size_t I = 0, class Function, class... Ts, class... Args>
+constexpr std::enable_if_t<(I < sizeof...(Ts))>
+for_each(const std::tuple<Ts...>& tuple, Function&& function,
+         Args&&... args) noexcept(noexcept(std::invoke(function, std::get<I>(tuple), args...)))
+{
+    std::invoke(function, std::get<I>(tuple), args...);
+    for_each<I + 1>(tuple, std::forward<Function>(function), std::forward<Args>(args)...);
+}
+/// @}
 
 // static tests ===================================================================================================== //
 

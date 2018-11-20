@@ -3,11 +3,12 @@
 #include "notf/meta/exception.hpp"
 #include "notf/meta/tuple.hpp"
 
-#include "notf/common/common.hpp"
+#include "notf/common/fwd.hpp"
 
 // forwards ========================================================================================================= //
 
 struct GLFWwindow;
+struct GLFWmonitor;
 
 NOTF_OPEN_NAMESPACE
 
@@ -54,13 +55,11 @@ template<class>
 class PropertyHandle;
 
 // root_node.hpp
-NOTF_DEFINE_SHARED_POINTERS(class, AnyRootNode);
-class RunTimeRootNode;
-template<class>
-class CompileTimeRootNode;
+NOTF_DEFINE_SHARED_POINTERS(class, RootNode);
+using RootNodeHandle = TypedNodeHandle<RootNode>;
 
 // window.hpp
-class Window;
+NOTF_DEFINE_SHARED_POINTERS(class, Window);
 class WindowHandle;
 
 // widget_compiletime.hpp

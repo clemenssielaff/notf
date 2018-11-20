@@ -13,6 +13,7 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     common/test_msgpack.cpp
     common/test_string.cpp
     common/test_string_view.cpp
+    common/test_thread.cpp
     common/test_uuid.cpp
     common/test_vector.cpp
     common/test_version.cpp
@@ -67,7 +68,10 @@ target_link_libraries(${CURRENT_TARGET} PUBLIC
 
 # global defines and options
 target_compile_options(${CURRENT_TARGET} PRIVATE ${NOTF_GLOBAL_OPTIONS})
-target_compile_definitions(${CURRENT_TARGET} PUBLIC ${NOTF_GLOBAL_DEFINES})
+target_compile_definitions(${CURRENT_TARGET} PUBLIC
+    ${NOTF_GLOBAL_DEFINES}
+    NOTF_TEST
+)
 
 # register the test runner as a test
 add_test(NAME "NotfTestRunner" COMMAND ${CURRENT_TARGET})
@@ -87,7 +91,7 @@ endif()
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     option(NOTF_RUN_TESTS "Run tests" ON)
     if(NOTF_RUN_TESTS)
-        message(STATUS ">>> notf: Building tests")
+        message(STATUS ">>> notf: Running tests")
 
         set(LLVM_COV_ARGS -instr-profile=${CURRENT_TARGET}.profdata -Xdemangler=llvm-cxxfilt -use-color -ignore-filename-regex="thirdparty|tests")
         add_custom_command(

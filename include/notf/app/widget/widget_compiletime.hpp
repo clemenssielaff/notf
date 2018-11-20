@@ -293,8 +293,7 @@ protected:
     /// Returns the index of a given State identified by name.
     /// @returns    Index of the State or size of StateVariant on error.
     template<size_t I = 0>
-    std::enable_if_t<(I < std::variant_size_v<StateVariant>), size_t>
-    _get_state_index(const std::string& name) const
+    std::enable_if_t<(I < std::variant_size_v<StateVariant>), size_t> _get_state_index(const std::string& name) const
     {
         if (name.compare(state_t<I>::name.c_str()) == 0) {
             return I;
@@ -303,8 +302,7 @@ protected:
         }
     }
     template<size_t I = 0>
-    std::enable_if_t<(I == std::variant_size_v<StateVariant>), size_t>
-    _get_state_index(const std::string& name) const
+    std::enable_if_t<(I == std::variant_size_v<StateVariant>), size_t> _get_state_index(const std::string& name) const
     {
         return I;
     }
@@ -461,15 +459,14 @@ protected:
     AnyPropertyPtr _get_property(const std::string& name) const override { return _get_property(hash_string(name)); }
 
     /// Calculates the combined hash value of all Properties.
-    size_t _calculate_property_hash() const override
+    size_t _calculate_property_hash(size_t result = detail::version_hash()) const override
     {
-        size_t result = detail::version_hash();
         _calculate_hash(result);
         return result;
     }
 
     /// Removes all modified data from all Properties.
-    void _clear_modified_properties() const override { _clear_property_data<0>(); }
+    void _clear_modified_properties() override { _clear_property_data<0>(); }
 
     /// Initializes all Properties with their default values and -visiblity.
     template<size_t I = 0>
@@ -505,7 +502,7 @@ protected:
     std::enable_if_t<(I == std::tuple_size_v<WidgetProperties>), AnyPropertyPtr>
     _get_property(const size_t hash_value) const
     {
-        return AnyWidget::_get_property(hash_value);
+        return AnyWidget::_get_property_impl(hash_value);
     }
 
     /// Direct access to a CompileTimeProperty through its name alone.
@@ -520,7 +517,7 @@ protected:
                 return _get_ct_property<I + 1>(name);
             }
         } else {
-            return AnyWidget::_get_ct_property(name);
+            return AnyWidget::get_property(name);
         }
     }
 
@@ -534,20 +531,20 @@ protected:
     template<size_t I = 0>
     std::enable_if_t<(I == std::tuple_size_v<WidgetProperties>)> _calculate_hash(size_t& result) const
     {
-        return AnyWidget::_calculate_hash(result); 
+        AnyWidget::_calculate_property_hash(result);
     }
 
     /// Clear modified Property data.
     template<size_t I = 0>
-    std::enable_if_t<(I < std::tuple_size_v<WidgetProperties>)> _clear_property_data() const
+    std::enable_if_t<(I < std::tuple_size_v<WidgetProperties>)> _clear_property_data()
     {
         std::get<I>(m_widget_properties)->clear_modified_data();
         _clear_property_data<I + 1>();
     }
     template<size_t I = 0>
-    std::enable_if_t<(I == std::tuple_size_v<WidgetProperties>)> _clear_property_data() const
+    std::enable_if_t<(I == std::tuple_size_v<WidgetProperties>)> _clear_property_data()
     {
-        return AnyWidget::_clear_property_data();
+        AnyWidget::_clear_modified_properties();
     }
 
     // fields ---------------------------------------------------------------------------------- //

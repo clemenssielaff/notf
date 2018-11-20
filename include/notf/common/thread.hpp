@@ -10,7 +10,7 @@
 #include "notf/meta/system.hpp"
 #include "notf/meta/types.hpp"
 
-#include "notf/common/common.hpp"
+#include "notf/common/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -89,8 +89,8 @@ class Accessor<this_thread::detail::ThreadInfo, Thread> {
     static void add_one_of_kind(const this_thread::detail::ThreadInfo::Kind kind)
     {
         using ThreadInfo = this_thread::detail::ThreadInfo;
-        const auto previous_count = ThreadInfo::s_kind_counter[to_number(kind)].fetch_add(1, std::memory_order_relaxed);
-        if (previous_count >= ThreadInfo::_get_kind_limit(kind)) {
+        const auto previous = ThreadInfo::s_kind_counter[to_number(kind)].fetch_add(1, std::memory_order_relaxed);
+        if (previous >= ThreadInfo::_get_kind_limit(kind)) {
             remove_one_of_kind(kind);
             NOTF_THROW(LogicError, "Cannot create more than one Thread of Kind {}", to_number(kind));
         }
@@ -100,9 +100,9 @@ class Accessor<this_thread::detail::ThreadInfo, Thread> {
     static void remove_one_of_kind(const this_thread::detail::ThreadInfo::Kind kind)
     {
         using ThreadInfo = this_thread::detail::ThreadInfo;
-        NOTF_UNUSED const auto previous_count
+        NOTF_UNUSED const auto previous
             = ThreadInfo::s_kind_counter[to_number(kind)].fetch_sub(1, std::memory_order_relaxed);
-        NOTF_ASSERT(previous_count != 0);
+        NOTF_ASSERT(previous != 0);
     }
 };
 
@@ -147,35 +147,64 @@ public:
     /// @param other    Thread to move from.
     Thread& operator=(Thread&& other)
     {
-        if (m_thread.joinable()) { m_thread.join(); }
+        join();
         m_thread = std::move(other.m_thread);
+        m_exception = std::move(other.m_exception);
         m_kind = other.m_kind;
         return *this;
     }
 
     /// Destructor.
     /// Blocks until the system thread has joined.
-    ~Thread()
-    {
-        if (m_thread.joinable()) { m_thread.join(); }
-    }
+    /// Any stored exception is silently dropped.
+    ~Thread() { join(); }
 
     /// Run a given function on this thread.
     /// If another function is already running, this call will block until it has finished.
+    /// Any stored exception is silently dropped.
     template<class Function, class... Args>
     void run(Function&& function, Args&&... args)
     {
         if (m_thread.joinable()) { m_thread.join(); }
+
+        m_exception = {};
         m_thread = std::thread([&]() {
-            NOTF_GUARD(KindCounterGuard(m_kind));
-            std::invoke(std::forward<Function>(function), std::forward<Args>(args)...);
+            try {
+                NOTF_GUARD(KindCounterGuard(m_kind));
+                std::invoke(std::forward<Function>(function), std::forward<Args>(args)...);
+            }
+            catch (...) {
+                m_exception = std::current_exception();
+            }
         });
+    }
+
+    /// Tests if an exception has occurred during the last run.
+    bool has_exception() const noexcept { return m_exception != nullptr; }
+
+    /// Rethrows and clears the stored exception from the last run, if there is one.
+    void rethrow()
+    {
+        if (m_exception) {
+            std::exception_ptr exception;
+            std::swap(exception, m_exception);
+            std::rethrow_exception(std::move(exception));
+        }
+    }
+
+    /// Blocks until the system thread has joined.
+    void join()
+    {
+        if (m_thread.joinable()) { m_thread.join(); }
     }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// System thread to manage.
     std::thread m_thread;
+
+    /// Exception thrown during the last run of this Thread.
+    std::exception_ptr m_exception;
 
     /// Kind of this thread.
     Kind m_kind = Kind::UNDEFINED;

@@ -27,17 +27,17 @@ public:
 
     /// Forwarding constructor.
     template<class... Args>
-    Vector3(Args&&... args) : super_t(std::forward<Args>(args)...)
+    constexpr Vector3(Args&&... args) : super_t(std::forward<Args>(args)...)
     {}
 
     /// Unit vector along the X-axis.
-    static Vector3 x_axis() { return Vector3(1, 0, 0); }
+    static constexpr Vector3 x_axis() { return Vector3(1, 0, 0); }
 
     /// Unit vector along the Y-axis.
-    static Vector3 y_axis() { return Vector3(0, 1, 0); }
+    static constexpr Vector3 y_axis() { return Vector3(0, 1, 0); }
 
     /// Unit vector along the Z-axis.
-    static Vector3 z_axis() { return Vector3(0, 0, 1); }
+    static constexpr Vector3 z_axis() { return Vector3(0, 0, 1); }
 
     /// Name of this Vector3 type.
     static constexpr const char* get_name()
@@ -53,16 +53,16 @@ public:
         }
     }
     /// Access to the first element in the vector.
-    const element_t& x() const { return data[0]; }
-    element_t& x() { return data[0]; }
+    constexpr const element_t& x() const { return data[0]; }
+    constexpr element_t& x() { return data[0]; }
 
     /// Access to the second element in the vector.
-    element_t& y() { return data[1]; }
-    const element_t& y() const { return data[1]; }
+    constexpr element_t& y() { return data[1]; }
+    constexpr const element_t& y() const { return data[1]; }
 
     /// Access to the third element in the vector.
-    element_t& z() { return data[2]; }
-    const element_t& z() const { return data[2]; }
+    constexpr element_t& z() { return data[2]; }
+    constexpr const element_t& z() const { return data[2]; }
 
     /// Swizzles.
     constexpr Vector3 xyz() const noexcept { return {data[0], data[1], data[2]}; }
@@ -198,7 +198,7 @@ template<class Element>
 struct hash<notf::detail::Vector3<Element>> {
     size_t operator()(const notf::detail::Vector3<Element>& vector) const
     {
-        return notf::hash(notf::to_number(notf::detail::HashID::VECTOR3), vector.hash());
+        return notf::hash(notf::to_number(notf::detail::HashID::VECTOR3), vector.get_hash());
     }
 };
 

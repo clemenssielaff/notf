@@ -15,7 +15,7 @@ NOTF_OPEN_NAMESPACE
 class Node : public std::enable_shared_from_this<Node> {
 
     friend Accessor<Node, detail::AnyNodeHandle>;
-    friend Accessor<Node, AnyRootNode>;
+    friend Accessor<Node, RootNode>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -86,8 +86,7 @@ private:
             if (auto node = m_node.lock()) {
                 m_node.reset();
                 return TypedNodeOwner<T>(std::move(node));
-            }
-            else {
+            } else {
                 NOTF_THROW(ValueError, "Cannot create a NodeOwner for a Node that is already expired");
             }
         }
@@ -190,25 +189,37 @@ public:
     /// Is not guaranteed to be unique, but collisions are unlikely with 100^4 possibilities.
     std::string get_default_name() const;
 
-    /// Run time access to a Property of this Node.
+    /// Run time access to a Property of this Node through a PropertyHandle.
     /// @param name     Node-unique name of the Property.
     /// @returns        Handle to the requested Property.
     /// @throws         NoSuchPropertyError
     template<class T>
     PropertyHandle<T> get_property(const std::string& name) const
     {
-        AnyPropertyPtr property = _get_property(name);
-        if (!property) {
-            NOTF_THROW(NoSuchPropertyError, "Node \"{}\" has no Property called \"{}\"", get_name(), name);
-        }
+        return PropertyHandle(_try_get_property<T>(name));
+    }
 
-        PropertyPtr<T> typed_property = std::dynamic_pointer_cast<Property<T>>(std::move(property));
-        if (!typed_property) {
-            NOTF_THROW(NoSuchPropertyError,
-                       "Property \"{}\" of Node \"{}\" is of type \"{}\", but was requested as \"{}\"", //
-                       name, get_name(), property->get_type_name(), type_name<T>());
-        }
-        return PropertyHandle(std::move(typed_property));
+    /// The value of a Property of this Node.
+    /// If you only care about the current value of a Property this method is more efficient than
+    /// `get_property<T>()->get()` because it does not construct a handle to go through.
+    /// @param name     Node-unique name of the Property.
+    /// @returns        The value of the Property.
+    /// @throws         NoSuchPropertyError
+    template<class T>
+    const T& get(const std::string& name) const
+    {
+        return _try_get_property<T>(name)->get();
+    }
+
+    /// Updates the value of a Property of this Node.
+    /// @param name     Node-unique name of the Property.
+    /// @param value    New value of the Property.
+    /// @throws         NoSuchPropertyError
+    template<class T>
+    void set(const std::string& name, T&& value)
+    {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        _try_get_property<T>(name)->set(std::forward<T>(value));
     }
 
     // hierarchy --------------------------------------------------------------
@@ -319,7 +330,7 @@ public:
 
     // management -------------------------------------------------------------
 
-    /// Deletes all modified data of this Property.
+    /// Deletes all modified data of this Node.
     void clear_modified_data();
 
 protected:
@@ -328,10 +339,10 @@ protected:
     virtual AnyPropertyPtr _get_property(const std::string& name) const = 0;
 
     /// Calculates the combined hash value of all Properties.
-    virtual size_t _calculate_property_hash() const = 0;
+    virtual size_t _calculate_property_hash(size_t result = detail::version_hash()) const = 0;
 
     /// Removes all modified data from all Properties.
-    virtual void _clear_modified_properties() const = 0;
+    virtual void _clear_modified_properties() = 0;
 
     /// Creates and adds a new child to this node.
     /// @param parent   Parent of the Node, must be `this` (is used for type checking).
@@ -361,6 +372,9 @@ protected:
     /// @param handle   Handle of the node to remove.
     void _remove_child(NodeHandle child_handle);
 
+    /// Remove all children from this Node.
+    void _clear_children();
+
     /// @{
     /// Access to the parent of this Node.
     /// Never creates a modified copy.
@@ -383,6 +397,27 @@ protected:
     bool _is_finalized() const { return _is_flag_set(to_number(InternalFlags::FINALIZED)); }
 
 private:
+    /// Run time access to a Property of this Node.
+    /// @param name     Node-unique name of the Property.
+    /// @returns        Handle to the requested Property.
+    /// @throws         NoSuchPropertyError
+    template<class T>
+    PropertyPtr<T> _try_get_property(const std::string& name) const
+    {
+        AnyPropertyPtr property = _get_property(name);
+        if (!property) {
+            NOTF_THROW(NoSuchPropertyError, "Node \"{}\" has no Property called \"{}\"", get_name(), name);
+        }
+
+        PropertyPtr<T> typed_property = std::dynamic_pointer_cast<Property<T>>(std::move(property));
+        if (!typed_property) {
+            NOTF_THROW(NoSuchPropertyError,
+                       "Property \"{}\" of Node \"{}\" is of type \"{}\", but was requested as \"{}\"", //
+                       name, get_name(), property->get_type_name(), type_name<T>());
+        }
+        return typed_property;
+    }
+
     /// Finds and returns the first common ancestor of two Nodes.
     /// At the latest, the RootNode is always a common ancestor.
     /// @param other            Other Node to find the common ancestor for.
@@ -466,8 +501,7 @@ class Accessor<Node, detail::AnyNodeHandle> {
         NodePtr parent;
         if (auto weak_parent = node->_get_parent()->weak_from_this(); !weak_parent.expired()) {
             parent = weak_parent.lock();
-        }
-        else {
+        } else {
             // Often, a NodeOwner is stored on the parent Node itself.
             // In that case, it will be destroyed right after the parent's Node class destructor has finished, and
             // just before the next subclass' destructor begins. At that point, the `shared_ptr` wrapping the deepest
@@ -485,10 +519,10 @@ class Accessor<Node, detail::AnyNodeHandle> {
 };
 
 template<>
-class Accessor<Node, AnyRootNode> {
-    friend AnyRootNode;
+class Accessor<Node, RootNode> {
+    friend RootNode;
 
-    /// Finalizes a given (Root)Node.
+    /// Finalizes the given RootNode.
     static void finalize(Node& node) { node._finalize(); }
 };
 

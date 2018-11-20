@@ -6,7 +6,7 @@
 #include "notf/common/mutex.hpp"
 #include "notf/common/uuid.hpp"
 
-#include "notf/app/app.hpp"
+#include "notf/app/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -116,6 +116,7 @@ public:
         return _get_node()->template get_property<T>(name);
     }
 
+    /// @{
     /// Returns a correctly typed Handle to a CompileTimeProperty or void (which doesn't compile).
     /// @param name     Name of the requested Property.
     /// @returns        Typed handle to the requested Property.
@@ -124,6 +125,40 @@ public:
     {
         return this->_get_node()->get_property(std::forward<decltype(name)>(name));
     }
+    template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    constexpr auto get_property() const
+    {
+        return this->_get_node()->template get_property<name>();
+    }
+    /// @}
+
+    /// The value of a Property of this Node.
+    /// If you only care about the current value of a Property this method is more efficient than
+    /// `get_property<T>()->get()` because it does not construct a handle to go through.
+    /// @param name     Node-unique name of the Property.
+    /// @returns        The value of the Property.
+    /// @throws         NoSuchPropertyError
+    template<class T>
+    const T& get(const std::string& name) const
+    {
+        return _get_node()->template get<T>(name);
+    }
+
+    /// @{
+    /// Returns the correctly typed value of a CompileTimeProperty.
+    /// @param name     Name of the requested Property.
+    /// @returns        Current value of the requested Property.
+    template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    auto get(StringType<Cs...> name) const
+    {
+        return this->_get_node()->get(std::forward<decltype(name)>(name));
+    }
+    template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    constexpr auto get() const
+    {
+        return this->_get_node()->template get<name>();
+    }
+    /// @}
 
     // hierarchy --------------------------------------------------------------
 
@@ -381,8 +416,7 @@ public:
     ~TypedNodeOwner() { this->_remove_from_parent(this->m_node.lock()); }
 };
 
-// node handle accessors
-// =================================================================================================== //
+// node handle accessors ============================================================================================ //
 
 template<class NodeType>
 class Accessor<TypedNodeHandle<NodeType>, TheGraph> {

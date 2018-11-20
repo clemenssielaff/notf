@@ -9,7 +9,7 @@ NOTF_OPEN_NAMESPACE
 #ifdef NOTF_MSVC
 // https://blogs.msdn.microsoft.com/vcblog/2018/07/06/msvc-preprocessor-progress-towards-conformance/
 #ifndef _MSVC_TRADITIONAL
-#define _MSVC_TRADITIONAL 1 
+#define _MSVC_TRADITIONAL 1
 #endif
 #endif
 
@@ -229,8 +229,6 @@ NOTF_OPEN_NAMESPACE
     using Type##ConstPtr = std::unique_ptr<const Type<T, U, V, W>>
 
 // raii ============================================================================================================= //
-
-
 
 /// Uniquely named RAII guard object.
 #define NOTF_GUARD(f) const auto NOTF_DEFER(NOTF_CONCAT, __notf__guard_, __COUNTER__) = f

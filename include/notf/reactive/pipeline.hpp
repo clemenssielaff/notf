@@ -115,9 +115,18 @@ template<class T, class Policy = SinglePublisherPolicy>
 struct TogglePipelineOperator : public Operator<T, T, Policy>, PipelineToggle {
 
     /// Propagate the next value if the Pipeline is enabled.
-    void on_next(const AnyPublisher*, const T& value) final
+    void on_next(const AnyPublisher* publisher, const T& value) final
     {
-        if (m_is_enabled) { this->publish(value); }
+        if (m_is_enabled && !this->is_completed()) { this->_publish(publisher, value); }
+    }
+};
+template<class Policy>
+struct TogglePipelineOperator<None, Policy> : public Operator<None, None, Policy>, PipelineToggle {
+
+    /// Propagate the next signal if the Pipeline is enabled.
+    void on_next(const AnyPublisher* publisher) final
+    {
+        if (m_is_enabled && !this->is_completed()) { this->_publish(publisher); }
     }
 };
 
@@ -130,11 +139,22 @@ NOTF_EXCEPTION_TYPE(PipelineError);
 
 // pipeline ========================================================================================================= //
 
+/// Pipeline base class, used to store multiple Pipelines in the same Container.
+class AnyPipeline {
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    virtual ~AnyPipeline() = default;
+
+    /// Explicitly enable/disable the Pipeline.
+    virtual void setEnabled(const bool is_enabled) = 0;
+};
+
 /// A Pipeline connects a single upstream publisher with a daisy-chain of downstream subscribers.
 /// Every Pipeline has a "toggle" operator (as first or second function in the chain) that it uses to enable and disable
 /// the entire Pipeline.
 template<class Last>
-class Pipeline {
+class Pipeline : public AnyPipeline {
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -153,6 +173,8 @@ private:
 
     // methods --------------------------------------------------------------------------------- //
 public:
+    NOTF_NO_COPY_OR_ASSIGN(Pipeline);
+
     /// Constructor.
     /// @param toggle       Special operator used to en/disable the Pipeline.
     /// @param last         Last subscriber in the Pipeline, determines what types can be connected downstream.
@@ -165,8 +187,11 @@ public:
         , m_functions(std::move(functions))
     {}
 
+    /// Move Constructor.
+    Pipeline(Pipeline&& other) = default;
+
     /// Explicitly enable/disable the Pipeline.
-    void setEnabled(const bool is_enabled) { m_toggle->setEnabled(is_enabled); }
+    void setEnabled(const bool is_enabled) final { m_toggle->setEnabled(is_enabled); }
 
     /// Enable the Pipeline.
     void enable() { setEnabled(true); }
@@ -183,8 +208,9 @@ public:
     {
         // AnyOperators have to be cast to AnySubscribers before we can make use of them
         auto subscriber = [&]() {
-            if constexpr (std::is_same_v<S, AnyOperatorPtr>) { return std::dynamic_pointer_cast<AnySubscriber>(rhs); }
-            else {
+            if constexpr (std::is_same_v<S, AnyOperatorPtr>) {
+                return std::dynamic_pointer_cast<AnySubscriber>(rhs);
+            } else {
                 return rhs; // creates a copy
             }
         }();
@@ -204,8 +230,7 @@ public:
                 auto last_as_subscriber = std::dynamic_pointer_cast<AnySubscriber>(m_last);
                 NOTF_ASSERT(last_as_subscriber);
                 m_functions.emplace_back(std::move(last_as_subscriber));
-            }
-            else {
+            } else {
                 m_functions.emplace_back(std::move(m_last));
             }
         }
@@ -234,6 +259,16 @@ private:
     Functions m_functions;
 };
 
+// store_pipeline =================================================================================================== //
+
+/// Stores a Pipeline of arbitrary type into a AnyPipelinePtr (unique_ptr<AnyPipeline>).
+/// @param pipeline Pipeline to store.
+template<class Pipe, class = std::enable_if_t<std::conjunction_v<std::is_base_of<AnyPipeline, Pipe>>>>
+AnyPipelinePtr store_pipeline(Pipe&& pipeline)
+{
+    return std::make_unique<Pipe>(std::forward<Pipe>(pipeline));
+}
+
 // pipeline pipe operator(s) ======================================================================================== //
 
 /// Connect a Publisher to a Subscriber
@@ -246,7 +281,9 @@ operator|(Pub&& publisher, Sub&& subscriber)
     // this always succeeds, as we create the toggle specifically for the given publisher
     using pipe_t = typename P::element_type::output_t;
     auto toggle = std::make_shared<detail::TogglePipelineOperator<pipe_t>>();
-    NOTF_ASSERT_ALWAYS(publisher->subscribe(toggle));
+    if (!publisher->subscribe(toggle)) {
+        NOTF_THROW(PipelineError, "Failed to connect Pipeline. Does the Publisher only accept a single Subscriber?");
+    }
 
     // if the subscriber is untyped, we have to dynamically cast it which may fail
     if constexpr (is_one_of_v<S, AnyOperatorPtr, AnySubscriberPtr>) {
@@ -257,16 +294,14 @@ operator|(Pub&& publisher, Sub&& subscriber)
                        type_name<typename S::element_type>(), type_name<Subscriber<pipe_t>>());
         }
         NOTF_ASSERT_ALWAYS(toggle->subscribe(std::move(typed_subscriber)));
-    }
-    else {
+    } else {
         NOTF_ASSERT_ALWAYS(toggle->subscribe(subscriber));
     }
 
     // r-value publishers are captured inside the pipeline
     if constexpr (std::is_lvalue_reference_v<Pub>) {
         return Pipeline<S>(std::move(toggle), std::forward<Sub>(subscriber));
-    }
-    else {
+    } else {
         return Pipeline<S>(std::move(toggle), std::forward<Sub>(subscriber), std::forward<Pub>(publisher));
     }
 }

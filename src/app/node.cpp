@@ -20,8 +20,7 @@ std::pair<size_t, size_t> get_this_and_sibling_index(const std::vector<NodePtr>&
             if (other.get() == caller) {
                 my_index = itr;
                 ++successes;
-            }
-            else if (other == sibling_ptr) {
+            } else if (other == sibling_ptr) {
                 sibling_index = itr;
                 ++successes;
             }
@@ -145,7 +144,8 @@ void Node::stack_front()
 {
     if (is_in_front()) { return; } // early out to avoid creating unnecessary modified copies
     ChildList& siblings = _get_parent()->_write_children();
-    auto itr = std::find_if(siblings.begin(), siblings.end(), [&](const NodePtr& silbing) { return silbing.get() == this; });
+    auto itr
+        = std::find_if(siblings.begin(), siblings.end(), [&](const NodePtr& silbing) { return silbing.get() == this; });
     NOTF_ASSERT(itr != siblings.end());
     move_to_back(siblings, itr);
 }
@@ -154,7 +154,8 @@ void Node::stack_back()
 {
     if (is_in_back()) { return; } // early out to avoid creating unnecessary modified copies
     ChildList& siblings = _get_parent()->_write_children();
-    auto itr = std::find_if(siblings.begin(), siblings.end(), [&](const NodePtr& silbing) { return silbing.get() == this; });
+    auto itr
+        = std::find_if(siblings.begin(), siblings.end(), [&](const NodePtr& silbing) { return silbing.get() == this; });
     NOTF_ASSERT(itr != siblings.end());
     move_to_front(siblings, itr);
 }
@@ -236,6 +237,12 @@ void Node::_remove_child(NodeHandle child_handle)
     children.erase(iterator_at(children, child_index));
 }
 
+void Node::_clear_children()
+{
+    if (_read_children().empty()) { return; }
+    _write_children().clear();
+}
+
 const Node* Node::_get_parent(const std::thread::id thread_id) const
 {
     NOTF_ASSERT(m_parent);
@@ -271,8 +278,7 @@ void Node::_set_parent(NodeHandle new_parent_handle)
     if (TheGraph::is_frozen()) {
         NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id())); // the render thread must never modify a Node
         _ensure_modified_data().parent = new_parent.get();
-    }
-    else {
+    } else {
         m_parent = new_parent.get();
     }
 }
@@ -366,8 +372,7 @@ bool Node::_is_flag_set(const size_t index, const std::thread::id thread_id) con
     if (m_modified_data != nullptr) {
         NOTF_ASSERT(TheGraph::is_frozen());
         return m_modified_data->flags[index];
-    }
-    else {
+    } else {
         return m_flags[index];
     }
 }
@@ -383,8 +388,7 @@ void Node::_set_flag(const size_t index, const bool value)
     if (TheGraph::is_frozen()) {
         NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id())); // the render thread must never modify a Node
         _ensure_modified_data().flags[index] = value;
-    }
-    else {
+    } else {
         m_flags[index] = value;
     }
 }

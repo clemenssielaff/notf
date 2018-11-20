@@ -21,19 +21,20 @@ constexpr auto bool_id = "bool"_id;
 SCENARIO("Properties", "[app][property]")
 {
     // always reset the graph
-    TheGraph::initialize<TestRootNode>();
+    TheGraph::AccessFor<Tester>::reset();
     REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 1);
 
     NodeHandle root_node_handle = TheGraph::get_root_node();
-    std::shared_ptr<TestRootNode> root_node = std::static_pointer_cast<TestRootNode>(to_shared_ptr(root_node_handle));
-    REQUIRE(root_node);
+    RootNodePtr root_node_ptr = std::static_pointer_cast<RootNode>(to_shared_ptr(root_node_handle));
+    REQUIRE(root_node_ptr);
+    auto root_node = Node::AccessFor<Tester>(*root_node_ptr);
 
     const auto render_thread_id = make_thread_id(78);
 
     SECTION("Properties have names")
     {
-        auto node_rt = root_node->create_child<LeafNodeRT>().to_handle();
-        auto node_ct = root_node->create_child<LeafNodeCT>().to_handle();
+        auto node_rt = root_node.create_child<LeafNodeRT>().to_handle();
+        auto node_ct = root_node.create_child<LeafNodeCT>().to_handle();
 
         REQUIRE(node_rt.get_property<int>("int").get_name() == "int");
         REQUIRE(node_ct.get_property<int>("int").get_name() == "int");
@@ -42,8 +43,8 @@ SCENARIO("Properties", "[app][property]")
 
     SECTION("Properties have default values")
     {
-        auto node_rt = root_node->create_child<LeafNodeRT>().to_handle();
-        auto node_ct = root_node->create_child<LeafNodeCT>().to_handle();
+        auto node_rt = root_node.create_child<LeafNodeRT>().to_handle();
+        auto node_ct = root_node.create_child<LeafNodeCT>().to_handle();
 
         REQUIRE(node_rt.get_property<int>("int").get_default() == 123);
         REQUIRE(node_ct.get_property<int>("int").get_default() == 123);
@@ -52,7 +53,7 @@ SCENARIO("Properties", "[app][property]")
     SECTION("Only changes in visible properties change a Node's property hash")
     {
         {
-            auto node = root_node->create_child<LeafNodeCT>().to_owner();
+            auto node = root_node.create_child<LeafNodeCT>().to_owner();
             REQUIRE(!Node::AccessFor<Tester>(node).is_dirty());
             const size_t property_hash_before = Node::AccessFor<Tester>(node).get_property_hash();
 
@@ -69,7 +70,7 @@ SCENARIO("Properties", "[app][property]")
             REQUIRE(property_hash_before != property_hash_after);
         }
         {
-            auto node = root_node->create_child<LeafNodeCT>().to_handle();
+            auto node = root_node.create_child<LeafNodeCT>().to_handle();
             REQUIRE(!Node::AccessFor<Tester>(node).is_dirty());
             const size_t property_hash_before = Node::AccessFor<Tester>(node).get_property_hash();
 
@@ -83,10 +84,10 @@ SCENARIO("Properties", "[app][property]")
             REQUIRE(property_hash_before != property_hash_after);
         }
     }
-   
+
     SECTION("Properties can be used as reactive operators")
     {
-        auto node = root_node->create_child<LeafNodeCT>().to_handle();
+        auto node = root_node.create_child<LeafNodeCT>().to_handle();
         auto property = node.get_property(int_id);
 
         auto publisher = TestPublisher();
@@ -123,11 +124,11 @@ SCENARIO("Properties", "[app][property]")
 
     SECTION("Properties are frozen with the Graph")
     {
-        auto node_ct = root_node->create_child<LeafNodeCT>().to_handle();
+        auto node_ct = root_node.create_child<LeafNodeCT>().to_handle();
         auto property_ct = node_ct.get_property(int_id);
         auto property_ct_ptr = to_shared_ptr(property_ct);
 
-        auto node_rt = root_node->create_child<LeafNodeRT>().to_handle();
+        auto node_rt = root_node.create_child<LeafNodeRT>().to_handle();
         auto property_rt = node_rt.get_property<int>("int");
         auto property_rt_ptr = to_shared_ptr(property_rt);
 
@@ -158,12 +159,37 @@ SCENARIO("Properties", "[app][property]")
         REQUIRE(property_rt.get() == 835);
     }
 
+    SECTION("Properties have optional callbacks")
+    {
+        auto node_ct = root_node.create_child<LeafNodeCT>().to_handle();
+        auto property_ct = node_ct.get_property(int_id);
+        auto property_ct_ptr = to_shared_ptr(property_ct);
+
+        property_ct.set(18);
+        REQUIRE(property_ct.get() == 18);
+
+        property_ct_ptr->set_callback([](int& value) {
+            if (value > 10) {
+                value += 2;
+                return true;
+            } else {
+                return false;
+            }
+        });
+
+        property_ct.set(40); // is accepted by the callback
+        REQUIRE(property_ct.get() == 42);
+
+        property_ct.set(8); // is rejected by the callback
+        REQUIRE(property_ct.get() == 42);
+    }
+
     SECTION("Property Handles can be compared")
     {
-        auto node1 = root_node->create_child<LeafNodeCT>().to_owner();
+        auto node1 = root_node.create_child<LeafNodeCT>().to_owner();
         auto handle1 = node1.get_property(int_id);
 
-        auto node2 = root_node->create_child<LeafNodeCT>().to_owner();
+        auto node2 = root_node.create_child<LeafNodeCT>().to_owner();
         auto handle2 = node2.get_property(int_id);
 
         REQUIRE(handle1 == handle1);
@@ -179,7 +205,7 @@ SCENARIO("Properties", "[app][property]")
         SECTION("Property Handles expire with their Node")
         {
             {
-                auto node = root_node->create_child<LeafNodeRT>().to_owner();
+                auto node = root_node.create_child<LeafNodeRT>().to_owner();
                 handle = node.get_property<int>("int");
                 REQUIRE(handle);
             }

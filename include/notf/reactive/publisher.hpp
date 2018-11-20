@@ -4,7 +4,7 @@
 
 #include "notf/meta/pointer.hpp"
 
-#include "notf/reactive/reactive.hpp"
+#include "notf/reactive/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -23,8 +23,9 @@ public:
     template<class Lambda>
     void on_each(Lambda&& lambda)
     {
-        if (auto subscriber = m_subscriber.lock(); subscriber) { lambda(subscriber.get()); }
-        else {
+        if (auto subscriber = m_subscriber.lock(); subscriber) {
+            lambda(subscriber.get());
+        } else {
             m_subscriber.reset();
         }
     }
@@ -319,16 +320,17 @@ public:
     /// @param value    Value to propagate to all Subscribers.
     void publish(const T& value)
     {
-        if (!this->is_completed()) { _publish(value); }
+        if (!this->is_completed()) { _publish(this, value); }
     }
 
 protected:
     /// Internal publish handler, can be overriden by subclasses.
-    /// @param value    Value to propagate to all Subscribers.
-    virtual void _publish(const T& value)
+    /// @param publisher    Publisher pushing the value, usually `this`.
+    /// @param value        Value to propagate to all Subscribers.
+    virtual void _publish(const AnyPublisher* publisher, const T& value)
     {
         NOTF_ASSERT(!this->is_completed());
-        this->m_subscribers.on_each([this, &value](auto* subscriber) { subscriber->on_next(this, value); });
+        this->m_subscribers.on_each([publisher, &value](auto* subscriber) { subscriber->on_next(publisher, value); });
     }
 };
 
@@ -342,15 +344,16 @@ public:
     /// Propagates the call to all attached Subscribers.
     void publish()
     {
-        if (!this->is_completed()) { _publish(); }
+        if (!this->is_completed()) { _publish(this); }
     }
 
 protected:
     /// Internal publish handler, can be overriden by subclasses.
-    virtual void _publish()
+    /// @param publisher    Publisher pushing the value, usually `this`.
+    virtual void _publish(const AnyPublisher* publisher)
     {
         NOTF_ASSERT(!this->is_completed());
-        this->m_subscribers.on_each([this](auto* subscriber) { subscriber->on_next(this); });
+        this->m_subscribers.on_each([publisher](auto* subscriber) { subscriber->on_next(publisher); });
     }
 };
 
@@ -380,8 +383,7 @@ struct PublisherIdentifier {
             using policy_t = typename T::element_type::policy_t;
             using output_t = typename T::element_type::output_t;
             return std::is_convertible<T, PublisherPtr<output_t, policy_t>>{};
-        }
-        else {
+        } else {
             return std::false_type{};
         }
     }

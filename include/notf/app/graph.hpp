@@ -10,29 +10,19 @@
 
 NOTF_OPEN_NAMESPACE
 
-// helper =========================================================================================================== //
-
-namespace detail {
-
-/// A Root Node type must be derived from AnyRootNode and (a subclass of) Node.
-template<class T>
-static constexpr bool is_root_node_v = std::conjunction_v<std::is_base_of<AnyRootNode, T>, //
-                                                          std::is_base_of<Node, T>>;
-
-} // namespace detail
-
 // the graph ======================================================================================================== //
 
 class TheGraph final {
 
     friend struct Accessor<TheGraph, Node>;
+    friend struct Accessor<TheGraph, Window>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Nested `AccessFor<T>` type.
     NOTF_ACCESS_TYPE(TheGraph);
 
-    /// RAII object to make sure that a frozen scene is ALWAYS unfrozen again
+    /// RAII object to make sure that a frozen scene is *always* unfrozen again
     class NOTF_NODISCARD FreezeGuard {
         friend TheGraph;
 
@@ -150,16 +140,8 @@ public:
 
     // nodes ------------------------------------------------------------------
 
-    /// (Re-)Initializes the Graph with a new Root Node.
-    /// All existing Nodes in the Graph are removed.
-    template<class T, class = std::enable_if_t<detail::is_root_node_v<T>>>
-    static void initialize()
-    {
-        TheGraph::_get()._initialize_typed<T>();
-    }
-
     /// The current Root Node of this Graph.
-    static NodeHandle get_root_node() { return _get_root_node(); }
+    static RootNodeHandle get_root_node();
 
     /// The Node with the given name.
     /// @param name Name of the Node to look up.
@@ -200,27 +182,9 @@ public:
 #endif
 
 private:
-    /// The current Root Node of this Graph.
-    /// @param thread_id    Id of the freezing thread (should only be used in tests).
-    static NodeHandle _get_root_node(std::thread::id thread_id = std::this_thread::get_id());
-
-    /// Initialization of a new RootNode, typed part.
-    template<class T>
-    void _initialize_typed()
-    {
-        // create and initialize the new root node
-        auto new_root_node = std::make_shared<T>();
-        auto new_node = std::dynamic_pointer_cast<Node>(new_root_node);
-        NOTF_ASSERT(new_node);
-        _initialize_untyped(std::move(new_root_node));
-
-        // register it
-        m_node_registry.add(new_node);
-        m_dirty_nodes.emplace(std::move(new_node));
-    }
-
-    /// Continues initialization of the Graph with an unfinalized Root Node.
-    void _initialize_untyped(AnyRootNodePtr&& root_node);
+    /// (Re-)Initializes the Graph.
+    /// Is called only once in a regular app, but multiple times during tests to reset the Graph.
+    void _initialize();
 
     /// Freeze the Scene, if it is currently unfrozen.
     /// @param thread_id    Id of the freezing thread (should only be used in tests).
@@ -263,10 +227,7 @@ private:
     NodeNameRegistry m_node_name_registry;
 
     /// The single Root Node in the Graph.
-    AnyRootNodePtr m_root_node;
-
-    /// The new Root Node, if the Grahp was re-initialized while frozen.
-    AnyRootNodePtr m_modified_root_node;
+    RootNodePtr m_root_node;
 
     /// All Nodes that were modified since the last time the Graph was rendered.
     std::unordered_set<NodeHandle> m_dirty_nodes;
@@ -314,6 +275,15 @@ class Accessor<TheGraph, Node> {
     /// Registers the given Node as dirty (a visible Property was modified since the last frame was drawn).
     /// @param node     Dirty node.
     static void mark_dirty(NodeHandle node) { TheGraph::_get().m_dirty_nodes.emplace(std::move(node)); }
+};
+
+/// Access to selected members of TheGraph.
+template<>
+class Accessor<TheGraph, Window> {
+    friend Window;
+
+    /// The Root Node as raw pointer.
+    static valid_ptr<RootNode*> get_root_node() { return TheGraph::_get().m_root_node.get(); }
 };
 
 NOTF_CLOSE_NAMESPACE

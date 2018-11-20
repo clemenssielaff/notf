@@ -27,18 +27,18 @@ public:
 
     /// Forwarding constructor.
     template<class... Args>
-    Size2(Args&&... args) : super_t(std::forward<Args>(args)...)
+    constexpr Size2(Args&&... args) : super_t(std::forward<Args>(args)...)
     {}
 
     /// Creates and returns an invalid Size2 instance.
-    static Size2 invalid() { return {-1, -1}; }
+    constexpr static Size2 invalid() { return {-1, -1}; }
 
     /// Creates and returns zero Size2 instance.
-    static Size2 zero() { return {0, 0}; }
+    constexpr static Size2 zero() { return {0, 0}; }
 
     /// The "most wrong" Size2 (maximal negative area).
     /// Is useful as the starting point for defining the union of multiple Size2.
-    static Size2 wrongest() { return {min_value<element_t>(), min_value<element_t>()}; }
+    constexpr static Size2 wrongest() { return {min_value<element_t>(), min_value<element_t>()}; }
 
     /// Name of this Size2 type.
     static constexpr const char* get_name()

@@ -15,7 +15,6 @@
 
 /// Build type.
 #cmakedefine NOTF_DEBUG
-#cmakedefine NOTF_TEST
 #cmakedefine NOTF_RELEASE
 
 // notf namespace =================================================================================================== //

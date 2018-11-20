@@ -2,7 +2,7 @@
 
 #include "notf/meta/pointer.hpp"
 
-#include "notf/reactive/reactive.hpp"
+#include "notf/reactive/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -83,8 +83,6 @@ public:
     virtual void on_next(const AnyPublisher* publisher, ...) = 0;
 };
 
-//
-
 // subscriber identifier ============================================================================================ //
 
 namespace detail {
@@ -96,8 +94,7 @@ struct SubscriberIdentifier {
         if constexpr (std::conjunction_v<is_shared_ptr<T>, decltype(_has_input_t<T>(std::declval<T>()))>) {
             using input_t = typename T::element_type::input_t;
             return std::is_convertible<T, SubscriberPtr<input_t>>{};
-        }
-        else {
+        } else {
             return std::false_type{};
         }
     }

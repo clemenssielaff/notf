@@ -19,6 +19,16 @@ void report_property_operator_error(const std::exception& exception);
 template<class T>
 class PropertyOperator : public Operator<T, T, detail::MultiPublisherPolicy> {
 
+    // types ----------------------------------------------------------------------------------- //
+public:
+    /// Type of the (optional) callback that is invoked every time the value of the PropertyOperator is about to change.
+    /// If the callback returns false, the update is cancelled and the old value remains.
+    /// If the callback returns true, the update will proceed.
+    /// Since the value is passed in by mutable reference, it can modify the value however it wants to. Even if the new
+    /// value ends up the same as the old, the update will proceed. Note though, that the callback will only be called
+    /// if the value is initially different from the one stored in the PropertyOperator.
+    using callback_t = std::function<bool(T&)>;
+
     // methods --------------------------------------------------------------------------------- //
 public:
     NOTF_NO_COPY_OR_ASSIGN(PropertyOperator);
@@ -80,6 +90,10 @@ public:
         // do nothing if the property value would not actually change
         if (value == m_value) { return; }
 
+        // give the optional callback the chance to modify/veto the change
+        T new_value = value;
+        if (m_callback && !m_callback(new_value)) { return; }
+
         // if the graph is currently frozen and this is the first modification of this property,
         // create a modified value copy
         if (TheGraph::is_frozen()) {
@@ -87,11 +101,13 @@ public:
             NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id()));
 
             // if this is the first modification, create a modified copy
-            if (m_modified_value == nullptr) { m_modified_value = std::make_unique<T>(value); }
+            if (m_modified_value == nullptr) {
+                m_modified_value = std::make_unique<T>(std::move(new_value));
+            }
 
             // if a modified value already exists, update it
             else {
-                *m_modified_value.get() = value;
+                *m_modified_value.get() = std::move(new_value);
             }
 
             // hash and publish the modified copy just like your regular value
@@ -101,11 +117,14 @@ public:
 
         // if the graph is not frozen, just update, hash and publish your regular value
         else {
-            m_value = value;
+            m_value = std::move(new_value);
             if (m_hash != 0) { m_hash = hash(m_value); }
             this->publish(m_value);
         }
     }
+
+    /// Installs a (new) callback that is invoked every time the value of the PropertyOperator is about to change.
+    void set_callback(callback_t callback) { m_callback = std::move(callback); }
 
     /// Deletes the modified value copy, if one exists.
     void clear_modified_value()
@@ -120,6 +139,9 @@ public:
 private:
     /// Pointer to a frozen copy of the value, if it was modified while the Graph was frozen.
     std::unique_ptr<T> m_modified_value;
+
+    /// Property callback, executed before the value of the ProperyOperator would change.
+    callback_t m_callback;
 
     /// Hash of the stored value.
     size_t m_hash;
@@ -175,6 +197,9 @@ public:
     /// Type of Operator in this Property.
     using operator_t = std::shared_ptr<detail::PropertyOperator<T>>;
 
+    /// Type of the (optional) callback that is invoked every time the value of the Property is about to change.
+    using callback_t = typename detail::PropertyOperator<T>::callback_t;
+
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Value constructor.
@@ -217,6 +242,9 @@ public:
     /// Reactive Property operator underlying the Property's reactive functionality.
     operator_t& get_operator() { return m_operator; }
 
+    /// Installs a (new) callback that is invoked every time the value of the Property is about to change.
+    void set_callback(callback_t callback) { m_operator->set_callback(std::move(callback)); }
+
     /// Deletes all modified data of this Property.
     void clear_modified_data() override { m_operator->clear_modified_value(); }
 
@@ -255,6 +283,5 @@ private:
     /// The default value of this Property.
     const T m_default_value;
 };
-
 
 NOTF_CLOSE_NAMESPACE

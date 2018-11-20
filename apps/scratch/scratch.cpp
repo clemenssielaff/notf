@@ -1,32 +1,53 @@
+#include <atomic>
 #include <iostream>
 #include <thread>
 
-#include "notf/common/thread.hpp"
+#include "notf/app/application.hpp"
+#include "notf/app/property_compiletime.hpp"
+#include "notf/reactive/trigger.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-void run()
-{
-    {
-        Thread worker1(Thread::Kind::WORKER);
-        Thread worker2(Thread::Kind::WORKER);
-        worker1.run([]() { std::cout << to_number(this_thread::get_kind()) << std::endl; });
-        worker2.run([]() { std::cout << to_number(this_thread::get_kind()) << std::endl; });
-    }
-    {
-        Thread event(Thread::Kind::EVENT);
-        event.run([]() { std::cout << to_number(this_thread::get_kind()) << std::endl; });
-    }
-    {
-        Thread event(Thread::Kind::EVENT);
-        event.run([]() { std::cout << to_number(this_thread::get_kind()) << std::endl; });
-    }
-}
+// template<class T = int>
+// NOTF_UNUSED auto DefaultPublisher()
+//{
+//    return std::make_shared<Publisher<T, detail::MultiPublisherPolicy>>();
+//}
+// int run_main(int /*argc*/, char* /*argv*/[])
+//{
+//    auto pub = DefaultPublisher();
+//    auto pip = pub | Trigger([](const int& value) { std::cout << "(0) Got: " << value << std::endl; });
+//    auto pip1 = pub | Trigger([](const AnyPublisher* publisher, const int& value) {
+//                    std::cout << "(1) Got: " << value << " from publisher: " << to_number(publisher) << std::endl;
+//                });
+//    std::unique_ptr<AnyPipeline> pip2 = std::make_unique<decltype(pip1)>(std::move(pip1));
+//    auto pip3 = pub | Trigger([](const AnyPublisher* publisher, const int& value) {
+//                    std::cout << "(2) Got: " << value << " from publisher: " << to_number(publisher) << std::endl;
+//                });
+
+//    auto pip4 = store_pipeline(pub | Trigger([](const AnyPublisher* publisher, const int& value) {
+//                                   std::cout << "(3) Got: " << value << " from publisher: " << to_number(publisher)
+//                                             << std::endl;
+//                               }));
+
+//    pub->publish(45);
+//    return EXIT_SUCCESS;
+//}
+
+int run_main(int /*argc*/, char* /*argv*/[]) { return EXIT_SUCCESS; }
+
+// int run_main(int argc, char* argv[])
+//{
+//    { // initialize application
+//        TheApplication::Args arguments;
+//        arguments.argc = argc;
+//        arguments.argv = argv;
+//        TheApplication::initialize(arguments);
+//    }
+
+//    return EXIT_SUCCESS;
+//}
 
 NOTF_CLOSE_NAMESPACE
 
-int main()
-{
-    notf::run();
-    return 0;
-}
+int main(int argc, char* argv[]) { return notf::run_main(argc, argv); }

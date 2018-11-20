@@ -55,16 +55,17 @@ NOTF_UNUSED auto TestPublisher()
 
         void _complete() final { parent_t::_complete(); }
 
-        void _publish(const T& value) final
+        void _publish(const AnyPublisher* publisher, const T& value) final
         {
             published.emplace_back(value);
-            parent_t::_publish(value);
+            parent_t::_publish(publisher, value);
         }
 
         bool _subscribe(SubscriberPtr<T>& subscriber) final
         {
-            if (allow_new_subscribers) { return parent_t::_subscribe(subscriber); }
-            else {
+            if (allow_new_subscribers) {
+                return parent_t::_subscribe(subscriber);
+            } else {
                 return false;
             }
         }

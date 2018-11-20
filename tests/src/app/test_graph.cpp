@@ -8,12 +8,13 @@ NOTF_USING_NAMESPACE;
 SCENARIO("graph", "[app][graph]")
 {
     // always reset the graph
-    TheGraph::initialize<TestRootNode>();
+    TheGraph::AccessFor<Tester>::reset();
     REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 1);
 
     NodeHandle root_node_handle = TheGraph::get_root_node();
-    auto root_node = std::dynamic_pointer_cast<TestRootNode>(to_shared_ptr(root_node_handle));
-    REQUIRE(root_node);
+    RootNodePtr root_node_ptr = std::static_pointer_cast<RootNode>(to_shared_ptr(root_node_handle));
+    REQUIRE(root_node_ptr);
+    auto root_node = Node::AccessFor<Tester>(*root_node_ptr);
 
     const auto render_thread_id = make_thread_id(45);
 
@@ -39,14 +40,14 @@ SCENARIO("graph", "[app][graph]")
         SECTION("New Nodes add to the number of children in the graph")
         {
             REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 1);
-            root_node->create_child<TwoChildrenNode>();
+            root_node.create_child<TwoChildrenNode>();
             REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 4);
         }
 
         SECTION("Nodes in the Graph can be requested by their name")
         {
             const std::string test_name = "this_is_a_test_name_indeed";
-            NodeHandle leaf_node = root_node->create_child<LeafNodeCT>();
+            NodeHandle leaf_node = root_node.create_child<LeafNodeCT>();
             leaf_node.set_name(test_name);
             REQUIRE(leaf_node.get_name() == test_name);
             REQUIRE(TheGraph::get_node(test_name) == leaf_node);
@@ -56,11 +57,11 @@ SCENARIO("graph", "[app][graph]")
 
         SECTION("Nodes in the Graph can be requested by their unique Uuid")
         {
-            auto node = root_node->create_child<LeafNodeCT>().to_handle();
+            auto node = root_node.create_child<LeafNodeCT>().to_handle();
             REQUIRE(TheGraph::get_node(node.get_uuid()) == node);
             REQUIRE(!TheGraph::get_node(Uuid()));
 
-            auto evil_node = std::make_shared<TestRootNode>();
+            auto evil_node = std::make_shared<TestNode>();
             NodeHandle evil_node_handle(evil_node);
             Node::AccessFor<Tester>(evil_node_handle).set_uuid(node.get_uuid());
             REQUIRE_THROWS_AS(TheGraph::AccessFor<Tester>::register_node(evil_node_handle), NotUniqueError);
@@ -68,7 +69,7 @@ SCENARIO("graph", "[app][graph]")
 
         SECTION("Nodes can be named and renamed")
         {
-            auto node = root_node->create_child<LeafNodeCT>().to_handle();
+            auto node = root_node.create_child<LeafNodeCT>().to_handle();
             node.set_name("SuperName3000");
             REQUIRE(TheGraph::get_node("SuperName3000") == node);
 
@@ -80,10 +81,10 @@ SCENARIO("graph", "[app][graph]")
         {
             SECTION("duplicates have a ostfix added to their name")
             {
-                auto original = root_node->create_child<LeafNodeCT>().to_handle();
+                auto original = root_node.create_child<LeafNodeCT>().to_handle();
                 original.set_name("Connor MacLeod");
 
-                auto impostor = root_node->create_child<LeafNodeCT>().to_handle();
+                auto impostor = root_node.create_child<LeafNodeCT>().to_handle();
                 impostor.set_name("Connor MacLeod");
 
                 REQUIRE(TheGraph::get_node("Connor MacLeod") == original);
@@ -93,10 +94,10 @@ SCENARIO("graph", "[app][graph]")
             SECTION("names of expired nodes are available")
             {
                 {
-                    auto original = root_node->create_child<LeafNodeCT>().to_owner();
+                    auto original = root_node.create_child<LeafNodeCT>().to_owner();
                     original.set_name("Bob");
                 }
-                auto next_original = root_node->create_child<LeafNodeCT>().to_owner();
+                auto next_original = root_node.create_child<LeafNodeCT>().to_owner();
                 next_original.set_name("Bob");
             }
         }
@@ -104,7 +105,6 @@ SCENARIO("graph", "[app][graph]")
 
     SECTION("The Graph can be frozen")
     {
-
         SECTION("from this thread")
         {
             REQUIRE(!TheGraph::is_frozen());
@@ -143,25 +143,6 @@ SCENARIO("graph", "[app][graph]")
                 REQUIRE(!TheGraph::is_frozen_by(std::this_thread::get_id()));
             }
             REQUIRE(!TheGraph::is_frozen());
-        }
-
-        SECTION("You can change the RootNode, while the Graph is frozen and things will work out")
-        {
-            REQUIRE(!TheGraph::is_frozen());
-            REQUIRE(TheGraph::get_root_node() == root_node_handle);
-
-            NodeHandle new_root;
-            {
-                NOTF_GUARD(TheGraph::AccessFor<Tester>::freeze(render_thread_id));
-
-                TheGraph::initialize<TestRootNode>();
-                new_root = TheGraph::get_root_node();
-                REQUIRE(new_root);
-                REQUIRE(new_root != root_node_handle);
-
-                REQUIRE(TheGraph::AccessFor<Tester>::get_root_node(render_thread_id) == root_node_handle);
-            }
-            REQUIRE(TheGraph::get_root_node() == new_root);
         }
     }
 }

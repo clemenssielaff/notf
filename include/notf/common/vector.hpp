@@ -5,7 +5,7 @@
 
 #include "notf/meta/exception.hpp"
 
-#include "notf/common/common.hpp"
+#include "notf/common/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
 

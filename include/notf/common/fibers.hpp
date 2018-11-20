@@ -8,7 +8,7 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-namespace fibers = ::boost::fibers;
+using Fiber = ::boost::fibers::fiber;
 namespace this_fiber = ::boost::this_fiber;
 
 NOTF_CLOSE_NAMESPACE

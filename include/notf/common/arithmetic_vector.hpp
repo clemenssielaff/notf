@@ -25,7 +25,7 @@ public:
 
     /// Forwarding constructor.
     template<class... Args>
-    ArithmeticVector(Args&&... args) : super_t(std::forward<Args>(args)...)
+    constexpr ArithmeticVector(Args&&... args) : super_t(std::forward<Args>(args)...)
     {}
 
     // magnitude --------------------------------------------------------------

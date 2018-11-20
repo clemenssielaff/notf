@@ -1,5 +1,6 @@
 #pragma once
 
+#include "notf/app/node_runtime.hpp"
 #include "notf/app/root_node.hpp"
 
 NOTF_USING_NAMESPACE;
@@ -32,19 +33,6 @@ using TestNodeProperties = std::tuple< //
     IntPropertyPolicy,                 //
     BoolPropertyPolicy>;               //
 
-class TestRootNode : public RunTimeRootNode {
-    using allowed_child_types = std::tuple<>; // hide `allowed_child_types` definition
-public:
-    NOTF_UNUSED TestRootNode() = default;
-
-    template<class T, class... Args>
-    NOTF_UNUSED auto create_child(Args... args)
-    {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
-        return _create_child<T>(this, std::forward<Args>(args)...);
-    }
-};
-
 class LeafNodeRT : public RunTimeNode {
 public:
     NOTF_UNUSED LeafNodeRT(valid_ptr<Node*> parent) : RunTimeNode(parent)
@@ -57,6 +45,7 @@ public:
 
 class TestNode : public RunTimeNode {
 public:
+    NOTF_UNUSED TestNode() : RunTimeNode(this) {}
     NOTF_UNUSED TestNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
 
     template<class T, class... Args>
@@ -109,7 +98,7 @@ struct notf::Accessor<TheGraph, Tester> {
     static auto freeze(std::thread::id id) { return TheGraph::_get()._freeze_guard(id); }
     static auto register_node(NodeHandle node) { return TheGraph::_get().m_node_registry.add(node); }
     static size_t get_node_count() { return TheGraph::_get().m_node_registry.get_count(); }
-    static auto get_root_node(const std::thread::id thread_id) { return TheGraph::_get()._get_root_node(thread_id); }
+    static void reset() { TheGraph::_get()._initialize(); }
 };
 
 template<class NodeType>
@@ -179,6 +168,13 @@ struct notf::Accessor<Node, Tester> {
     {
         NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
         return m_node._read_children(thread_id).size();
+    }
+
+    template<class T, class... Args>
+    auto create_child(Args... args)
+    {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        return m_node._create_child<T>(&m_node, std::forward<Args>(args)...);
     }
 
     Node& m_node;

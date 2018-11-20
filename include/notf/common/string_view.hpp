@@ -4,7 +4,7 @@
 
 #include "notf/meta/hash.hpp"
 
-#include "notf/common/common.hpp"
+#include "notf/common/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
 

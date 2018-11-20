@@ -5,7 +5,7 @@
 #include "notf/meta/assert.hpp"
 #include "notf/meta/hash.hpp"
 
-#include "notf/common/common.hpp"
+#include "notf/common/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -130,10 +130,8 @@ public:
     ///                 Remaining components are value-initialized.
     template<class... Args, class = std::enable_if_t<all(sizeof...(Args) <= Dimensions,
                                                          (std::is_trivially_constructible_v<component_t, Args>, ...))>>
-    constexpr Arithmetic(Args&&... args) noexcept
-    {
-        data = {static_cast<component_t>(std::forward<Args>(args))...};
-    }
+    constexpr Arithmetic(Args&&... args) noexcept : data{static_cast<component_t>(std::forward<Args>(args))...}
+    {}
 
     /// Create an arithmetic value with all elements set to the given value.
     /// @param value    Value to set.
@@ -273,7 +271,7 @@ public:
                 data[i].max(other[i]);
             }
         }
-        return (*static_cast<const derived_t*>(this));
+        return (*static_cast<derived_t*>(this));
     }
 
     /// @{
@@ -299,7 +297,7 @@ public:
                 data[i].min(other[i]);
             }
         }
-        return (*static_cast<const derived_t*>(this));
+        return (*static_cast<derived_t*>(this));
     }
 
     /// @{
@@ -339,7 +337,7 @@ public:
                 data[i].set_all(value);
             }
         }
-        return (*static_cast<const derived_t*>(this));
+        return (*static_cast<derived_t*>(this));
     }
 
     /// Set all components of this value to the given component.
@@ -350,7 +348,7 @@ public:
         for (size_t i = 0; i < get_dimensions(); ++i) {
             data[i] = value;
         }
-        return (*static_cast<const derived_t*>(this));
+        return (*static_cast<derived_t*>(this));
     }
 
     // element arithmetic -----------------------------------------------------

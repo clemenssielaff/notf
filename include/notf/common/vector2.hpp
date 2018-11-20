@@ -27,14 +27,14 @@ public:
 
     /// Forwarding constructor.
     template<class... Args>
-    Vector2(Args&&... args) : super_t(std::forward<Args>(args)...)
+    constexpr Vector2(Args&&... args) : super_t(std::forward<Args>(args)...)
     {}
 
     /// Unit vector along the X-axis.
-    static Vector2 x_axis() { return Vector2(1, 0); }
+    static constexpr Vector2 x_axis() { return Vector2(1, 0); }
 
     /// Unit vector along the Y-axis.
-    static Vector2 y_axis() { return Vector2(0, 1); }
+    static constexpr Vector2 y_axis() { return Vector2(0, 1); }
 
     /// Name of this Vector2 type.
     static constexpr const char* get_name()
@@ -173,7 +173,7 @@ template<class Element>
 struct hash<notf::detail::Vector2<Element>> {
     size_t operator()(const notf::detail::Vector2<Element>& vector) const
     {
-        return notf::hash(notf::to_number(notf::detail::HashID::VECTOR2), vector.hash());
+        return notf::hash(notf::to_number(notf::detail::HashID::VECTOR2), vector.get_hash());
     }
 };
 

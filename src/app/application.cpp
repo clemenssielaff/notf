@@ -7,18 +7,9 @@
 
 NOTF_OPEN_NAMESPACE
 
-namespace detail {
-
-void window_deleter(GLFWwindow* glfw_window)
-{
-    if (glfw_window != nullptr) { glfwDestroyWindow(glfw_window); }
-}
-
-} // namespace detail
-
 // the application ================================================================================================== //
 
-TheApplication::TheApplication(Args args) : m_args(std::move(args)), m_shared_window(nullptr, detail::window_deleter)
+TheApplication::TheApplication(Args args) : m_args(std::move(args)), m_shared_context(nullptr, detail::window_deleter)
 {
     // initialize logger first, to catch errors right away
     notf::TheLogger::initialize(m_args.logger_arguments);
@@ -44,8 +35,8 @@ TheApplication::TheApplication(Args args) : m_args(std::move(args)), m_shared_wi
 
     // create the shared window
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-    m_shared_window.reset(glfwCreateWindow(1, 1, "", nullptr, nullptr));
-    if (!m_shared_window) { NOTF_THROW(StartupError, "OpenGL context creation failed."); }
+    m_shared_context.reset(glfwCreateWindow(1, 1, "", nullptr, nullptr));
+    if (!m_shared_context) { NOTF_THROW(StartupError, "OpenGL context creation failed."); }
     //    TheGraphicsSystem::Access<TheApplication>::initialize(m_shared_window.get());
 
     // log application header
@@ -79,7 +70,7 @@ void TheApplication::_shutdown()
 {
     // you can only close the application once
     if (!is_running()) { return; }
-    s_is_running.store(false);
+    s_state.store(State::CLOSED);
 
     // close all remaining windows and their scenes
     for (WindowHandle& window : m_windows) {
@@ -107,7 +98,7 @@ void TheApplication::_register_window(WindowHandle window)
 void TheApplication::_unregister_window(WindowHandle window)
 {
     auto it = std::find(m_windows.begin(), m_windows.end(), window);
-    NOTF_ASSERT(it != m_windows.end(), "Cannot remove unknown Window from instance");
+    NOTF_ASSERT(it != m_windows.end(), "Cannot remove an unknown Window from the application");
     m_windows.erase(it);
 }
 

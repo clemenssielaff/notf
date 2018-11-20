@@ -70,7 +70,7 @@ public:
     }
 
     /// Explicitly creates and returns a zero Rational.
-    constexpr static Rational zero() { return {0, 0}; }
+    static constexpr Rational zero() { return {0, 1}; }
 
     /// Numerator of the fraction (above the line).
     constexpr element_t& num() noexcept { return m_num; }
@@ -283,6 +283,10 @@ public:
     /// Equality operator.
     /// @param other    Value to test against.
     constexpr bool operator==(const Rational& other) const { return (m_num == other.m_num) && (m_den == other.m_den); }
+
+    /// Inequality operator.
+    /// @param other    Value to test against.
+    constexpr bool operator!=(const Rational& other) const { return !operator==(other); }
 
     /// Scalar equality operator.
     template<class T, class = std::enable_if_t<std::is_integral<T>::value>>

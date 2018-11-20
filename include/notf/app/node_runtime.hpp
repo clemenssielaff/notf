@@ -16,6 +16,7 @@ protected:
     /// @param parent   Parent of this Node.
     RunTimeNode(valid_ptr<Node*> parent) : Node(parent) {}
 
+protected:
     /// Implementation specific query of a Property.
     AnyPropertyPtr _get_property(const std::string& name) const override
     {
@@ -24,9 +25,8 @@ protected:
     }
 
     /// Calculates the combined hash value of all Properties.
-    size_t _calculate_property_hash() const override
+    size_t _calculate_property_hash(size_t result = detail::version_hash()) const override
     {
-        size_t result = detail::version_hash();
         for (auto& itr : m_properties) {
             hash_combine(result, itr.second->get_hash());
         }
@@ -34,7 +34,7 @@ protected:
     }
 
     /// Removes all modified data from all Properties.
-    void _clear_modified_properties() const override
+    void _clear_modified_properties() override
     {
         for (auto& itr : m_properties) {
             itr.second->clear_modified_data();

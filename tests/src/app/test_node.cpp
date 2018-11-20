@@ -73,12 +73,13 @@ SCENARIO("Nodes can limit what kind of children or parent types they can have", 
 SCENARIO("Basic Node Setup", "[app][node][property]")
 {
     // always reset the graph
-    TheGraph::initialize<TestRootNode>();
+    TheGraph::AccessFor<Tester>::reset();
     REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 1);
 
     NodeHandle root_node_handle = TheGraph::get_root_node();
-    std::shared_ptr<TestRootNode> root_node = std::static_pointer_cast<TestRootNode>(to_shared_ptr(root_node_handle));
-    REQUIRE(root_node);
+    RootNodePtr root_node_ptr = std::static_pointer_cast<RootNode>(to_shared_ptr(root_node_handle));
+    REQUIRE(root_node_ptr);
+    auto root_node = Node::AccessFor<Tester>(*root_node_ptr);
 
     const auto render_thread_id = make_thread_id(45);
 
@@ -86,7 +87,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
     {
         SECTION("NodeOwners can only be created once")
         {
-            auto new_node = root_node->create_child<LeafNodeCT>();
+            auto new_node = root_node.create_child<LeafNodeCT>();
             TypedNodeOwner<LeafNodeCT> owner1 = new_node.to_owner();
             REQUIRE_THROWS_AS(new_node.to_owner(), ValueError);
         }
@@ -97,7 +98,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         SECTION("and count them")
         {
             REQUIRE(root_node_handle.get_child_count() == 0);
-            NodeHandle new_node = root_node->create_child<LeafNodeCT>();
+            NodeHandle new_node = root_node.create_child<LeafNodeCT>();
             REQUIRE(root_node_handle.get_child_count() == 1);
             REQUIRE(new_node.get_child_count() == 0);
         }
@@ -114,7 +115,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
                 }
             };
 
-            TypedNodeHandle<SchlawinerNode> node_handle = root_node->create_child<SchlawinerNode>();
+            TypedNodeHandle<SchlawinerNode> node_handle = root_node.create_child<SchlawinerNode>();
             auto node = std::dynamic_pointer_cast<SchlawinerNode>(
                 TypedNodeHandle<SchlawinerNode>::AccessFor<Tester>::get_shared_ptr(node_handle));
             REQUIRE(node);
@@ -124,14 +125,14 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
     SECTION("Nodes can inspect their hierarchy")
     {
-        NodeHandle two_child_node = root_node->create_child<TwoChildrenNode>();
+        NodeHandle two_child_node = root_node.create_child<TwoChildrenNode>();
         NodeHandle first_child = two_child_node.get_child(0);
         NodeHandle second_child = two_child_node.get_child(1);
 
         REQUIRE(first_child.get_parent() == two_child_node);
 
         REQUIRE(first_child.get_first_ancestor<TwoChildrenNode>() == two_child_node);
-        REQUIRE(first_child.get_first_ancestor<TestRootNode>() == root_node_handle);
+        REQUIRE(first_child.get_first_ancestor<RootNode>() == root_node_handle);
         REQUIRE(first_child.get_first_ancestor<TestNode>().is_expired());
 
         REQUIRE(first_child.has_ancestor(two_child_node));
@@ -165,7 +166,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
                 NodeOwner first_child;
             };
 
-            auto node = root_node->create_child<RemoveChildNode>().to_handle();
+            auto node = root_node.create_child<RemoveChildNode>().to_handle();
 
             { // these are not real functions, you will never get to them through the API alone
                 NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
@@ -180,7 +181,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
         SECTION("add a child")
         {
-            auto node1 = root_node->create_child<TestNode>().to_owner();
+            auto node1 = root_node.create_child<TestNode>().to_owner();
             REQUIRE(node1.get_child_count() == 0);
             {
                 NOTF_GUARD(TheGraph::AccessFor<Tester>::freeze(render_thread_id));
@@ -196,8 +197,8 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
         SECTION("Change a parent")
         {
-            auto node1 = root_node->create_child<TestNode>().to_owner();
-            auto node2 = root_node->create_child<TestNode>().to_owner();
+            auto node1 = root_node.create_child<TestNode>().to_owner();
+            auto node2 = root_node.create_child<TestNode>().to_owner();
 
             auto child1 = to_shared_ptr(node1)->create_child<TestNode>().to_owner();
             REQUIRE(node1.get_child_count() == 1);
@@ -230,8 +231,8 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
     SECTION("Nodes have a default name")
     {
-        auto node1 = root_node->create_child<LeafNodeCT>().to_owner();
-        auto node2 = root_node->create_child<LeafNodeRT>().to_handle();
+        auto node1 = root_node.create_child<LeafNodeCT>().to_owner();
+        auto node2 = root_node.create_child<LeafNodeRT>().to_handle();
 
         // there is actually a 1 : 100^4 chance that this may fail, but in that case, just do it again
         REQUIRE(node1.get_default_name() != node2.get_default_name());
@@ -240,7 +241,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
     SECTION("Nodes have user definable flags")
     {
         enum UserFlags { FIRST, OUT_OF_BOUNDS = Node::get_user_flag_count() + 1 };
-        NodeHandle node = root_node->create_child<LeafNodeCT>();
+        NodeHandle node = root_node.create_child<LeafNodeCT>();
 
         REQUIRE(Node::get_user_flag_count() > 0);
 
@@ -254,7 +255,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
     SECTION("User definable flags are frozen with the Graph")
     {
-        auto node = root_node->create_child<LeafNodeCT>().to_handle();
+        auto node = root_node.create_child<LeafNodeCT>().to_handle();
 
         REQUIRE(!node.is_user_flag_set(0));
         {
@@ -270,7 +271,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
     SECTION("Nodes have a z-order")
     {
-        NodeHandle three_child_node = root_node->create_child<ThreeChildrenNode>();
+        NodeHandle three_child_node = root_node.create_child<ThreeChildrenNode>();
         NodeHandle first = three_child_node.get_child(0);
         NodeHandle second = three_child_node.get_child(1);
         NodeHandle third = three_child_node.get_child(2);
@@ -391,15 +392,18 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
     SECTION("Compile Time Nodes have Compile Time Properties")
     {
-        auto node = root_node->create_child<LeafNodeCT>().to_owner();
+        auto node = root_node.create_child<LeafNodeCT>().to_owner();
         PropertyHandle<int> int_prop = node.get_property<int>("int");
         REQUIRE(!int_prop.is_expired());
 
         SECTION("compile time and run time acquired Properties are the same")
         {
+            static constexpr StringConst int_string_const = "int";
             PropertyHandle<int> int_prop_rt = node.get_property(int_id);
+
             REQUIRE(!int_prop_rt.is_expired());
             REQUIRE(int_prop_rt == int_prop);
+            REQUIRE(int_prop_rt == node.get_property<int_string_const>());
         }
 
         SECTION("Compile Time Nodes can be asked for non-existing run time Properies")
@@ -411,7 +415,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
         SECTION("two of the same Properties of different Nodes are not equal")
         {
-            TypedNodeHandle<LeafNodeCT> node2 = root_node->create_child<LeafNodeCT>();
+            TypedNodeHandle<LeafNodeCT> node2 = root_node.create_child<LeafNodeCT>();
             PropertyHandle<int> int_prop_2 = node2.get_property<int>("int");
             REQUIRE(!int_prop_2.is_expired());
             REQUIRE(int_prop != int_prop_2);
@@ -436,7 +440,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
                     _create_property<int>("not_unique", 6587, false);
                 }
             };
-            REQUIRE_THROWS_AS(root_node->create_child<NotUniquePropertyNode>(), NotUniqueError);
+            REQUIRE_THROWS_AS(root_node.create_child<NotUniquePropertyNode>(), NotUniqueError);
         }
 
         SECTION("Properties can only be created in the constructor")
@@ -453,7 +457,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
                     _create_property<int>("won't work because I'm finalized", 0, true);
                 }
             };
-            auto node_handle = root_node->create_child<FinalizedNode>().to_handle();
+            auto node_handle = root_node.create_child<FinalizedNode>().to_handle();
             auto node_ptr = to_shared_ptr(node_handle);
             REQUIRE_THROWS_AS(node_ptr->fail(), Node::FinalizedError);
         }
@@ -461,7 +465,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
     SECTION("Run Time Nodes have Run Time Properties")
     {
-        NodeHandle node = root_node->create_child<LeafNodeRT>();
+        NodeHandle node = root_node.create_child<LeafNodeRT>();
 
         SECTION("can be asked fo non-existing Properties")
         {
@@ -482,7 +486,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
     SECTION("whenever a Property changes, its Node is marked dirty")
     {
-        TypedNodeHandle<LeafNodeCT> node_handle = root_node->create_child<LeafNodeCT>();
+        TypedNodeHandle<LeafNodeCT> node_handle = root_node.create_child<LeafNodeCT>();
         auto node = std::dynamic_pointer_cast<LeafNodeCT>(
             TypedNodeHandle<LeafNodeCT>::AccessFor<Tester>::get_shared_ptr(node_handle));
         REQUIRE(node);
@@ -495,7 +499,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
     SECTION("Nodes create a copy of their data to modify, if the graph is frozen")
     {
-        auto node = root_node->create_child<LeafNodeCT>().to_handle();
+        auto node = root_node.create_child<LeafNodeCT>().to_handle();
         auto int_property = node.get_property(int_id);
         REQUIRE(int_property.get() == 123);
         {
@@ -510,7 +514,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
     {
         NodeHandle expired;
         {
-            auto owner = root_node->create_child<LeafNodeCT>().to_owner();
+            auto owner = root_node.create_child<LeafNodeCT>().to_owner();
             expired = owner;
             REQUIRE(!expired.is_expired());
         }
@@ -524,7 +528,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
     SECTION("Two Nodes should have at least the root node as a common ancestor")
     {
-        auto node = root_node->create_child<TestNode>().to_owner();
+        auto node = root_node.create_child<TestNode>().to_owner();
         auto first = to_shared_ptr(node)->create_child<TestNode>().to_owner();
         auto second = to_shared_ptr(node)->create_child<TestNode>().to_owner();
         auto third = to_shared_ptr(second)->create_child<TestNode>().to_owner();
@@ -534,7 +538,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         REQUIRE(first.get_common_ancestor(third) == node);
         REQUIRE(third.get_common_ancestor(first) == node);
 
-        auto second_root = std::make_shared<TestRootNode>();
+        auto second_root = std::make_shared<TestNode>();
         NodeHandle foreign_node = second_root->create_child<LeafNodeCT>();
         REQUIRE_THROWS_AS(first.get_common_ancestor(foreign_node), Node::HierarchyError);
 
