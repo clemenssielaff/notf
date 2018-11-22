@@ -192,8 +192,7 @@ public:
 
 /// Specialization for Operators function that take any data as input, ignore it and push a dataless signal downstream.
 template<class Policy>
-class Operator<All, None, Policy>
-    : public AnyOperator, public Subscriber<All>, public Publisher<None, Policy> {
+class Operator<All, None, Policy> : public AnyOperator, public Subscriber<All>, public Publisher<None, Policy> {
 
     // types ----------------------------------------------------------------------------------- //
 public:

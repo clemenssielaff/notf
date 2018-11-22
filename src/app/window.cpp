@@ -117,12 +117,12 @@ Window::Window(valid_ptr<Node*> parent, Settings settings)
     set<monitor>(settings.monitor);
 
     // connect property callbacks
-    _get_property<state>()->set_callback([&](State& new_state) { return _on_state_change(new_state); });
-    _get_property<size>()->set_callback([&](Size2i& new_size) { return _on_size_change(new_size); });
-    _get_property<resolution>()->set_callback([&](Size2i& new_res) { return _on_resolution_change(new_res); });
-    _get_property<monitor>()->set_callback([&](int& new_monitor) { return _on_monitor_change(new_monitor); });
+    _set_property_callback<state>([&](State& new_state) { return _on_state_change(new_state); });
+    _set_property_callback<size>([&](Size2i& new_size) { return _on_size_change(new_size); });
+    _set_property_callback<resolution>([&](Size2i& new_res) { return _on_resolution_change(new_res); });
+    _set_property_callback<monitor>([&](int& new_monitor) { return _on_monitor_change(new_monitor); });
 
-//    NOTF_LOG_INFO("Created Window \"{}\" using OpenGl version: {}", get<title>(), glGetString(GL_VERSION));
+    //    NOTF_LOG_INFO("Created Window \"{}\" using OpenGl version: {}", get<title>(), glGetString(GL_VERSION));
 }
 
 WindowHandle Window::create(Settings settings)

@@ -1,5 +1,8 @@
 #pragma once
 
+#include "notf/meta/stringtype.hpp"
+
+#include "notf/common/bitset.hpp"
 #include "notf/common/variant.hpp"
 
 #include "notf/app/widget/widget.hpp"
@@ -128,22 +131,13 @@ private:
 
 // compile time widget ============================================================================================== //
 
+namespace detail {
+
 template<class Policy>
-class CompileTimeWidget : public AnyWidget {
+class _CompileTimeWidget : public AnyWidget, public CompileTimeNode<Policy> {
 
     // types ----------------------------------------------------------------------------------- //
 public:
-    /// Tuple containing all Property policies of this Node type.
-    using property_policies_t = concat_tuple_t<AnyWidget::property_policies_t, typename Policy::properties>;
-
-public:
-    /// Tuple of Property instance types managed by this Widget type.
-    using WidgetProperties = detail::create_compile_time_properties<typename Policy::properties>;
-
-    /// Type of a specific Property in this Widget type.
-    template<size_t I>
-    using widget_property_t = typename std::tuple_element_t<I, WidgetProperties>::element_type;
-
     /// Variant of all States of this Widget type.
     using StateVariant = typename Policy::states;
 
@@ -167,8 +161,8 @@ private:
         }
     }
     template<size_t I, size_t Last, char... Cs>
-    static constexpr std::enable_if_t<(I == Last), bool>
-    _is_state_name_taken(StringType<Cs...> name) // msvc workaround, use constexpr when fixed
+    static constexpr std::enable_if_t<(I == Last), bool> _is_state_name_taken(StringType<Cs...>) // msvc workaround, use
+                                                                                                 // constexpr when fixed
     {
         return false; // not taken
     }
@@ -209,18 +203,16 @@ private:
 protected:
     /// Value constructor.
     /// @param parent   Parent of this Widget.
-    CompileTimeWidget(valid_ptr<Node*> parent)
-        : AnyWidget(parent)
+    _CompileTimeWidget(valid_ptr<Node*> parent)
+        : CompileTimeNode<Policy>(parent)
         , m_state(std::in_place_type_t<state_t<0>>(), *static_cast<typename state_t<0>::node_t*>(this))
-    {
-        _initialize_properties();
-    }
+    {}
 
 public:
     // state machine ----------------------------------------------------------
 
     /// The name of the current State.
-    std::string_view get_state_name() const noexcept override
+    std::string_view get_state_name() const noexcept final
     {
         const char* name = _get_state_name(m_state.index());
         NOTF_ASSERT(name);
@@ -234,7 +226,7 @@ public:
     {
         return std::is_constructible_v<NewState, std::add_rvalue_reference_t<CurrentState>>;
     }
-    bool is_valid_transition(const std::string& from, std::string& to) const override
+    bool is_valid_transition(const std::string& from, std::string& to) const final
     {
         return _is_valid_transition(_get_state_index(from), _get_state_index(to));
     }
@@ -253,37 +245,24 @@ public:
     {
         _transition_into<0>(name);
     }
-    void transition_into(const std::string& state) override
+    void transition_into(const std::string& state) final
     {
         const size_t target_index = _get_state_index(state);
         if (target_index == std::variant_size_v<StateVariant>) {
             NOTF_THROW(AnyWidget::BadTransitionError, "Node {} has no State called \"{}\"", //
-                       get_uuid().to_string(), state);
+                       this->get_uuid().to_string(), state);
         }
 
         if (!_is_valid_transition(m_state.index(), target_index)) {
             NOTF_THROW(AnyWidget::BadTransitionError,
                        "Cannot transition Node {} from State \"{}\" into State \"{}\'", //
-                       get_uuid().to_string(), get_state_name(), state);
+                       this->get_uuid().to_string(), get_state_name(), state);
         }
         _transition_into(target_index);
     }
     /// @}
 
-    // properties ----------------------------------------------------------
-
-    /// Returns a correctly typed Handle to a CompileTimeProperty or void (which doesn't compile).
-    /// @param name     Name of the requested Property.
-    template<char... Cs>
-    auto get_property(StringType<Cs...> name) const
-    {
-        return _get_ct_property<0>(name);
-    }
-
-    /// Use the base class' `get_property(std::string_view)` method alongside the compile time implementation.
-    using Node::get_property;
-
-protected:
+private:
     // state machine ----------------------------------------------------------
 
     /// Current State of this Widget.
@@ -302,7 +281,7 @@ protected:
         }
     }
     template<size_t I = 0>
-    std::enable_if_t<(I == std::variant_size_v<StateVariant>), size_t> _get_state_index(const std::string& name) const
+    std::enable_if_t<(I == std::variant_size_v<StateVariant>), size_t> _get_state_index(const std::string&) const
     {
         return I;
     }
@@ -318,7 +297,7 @@ protected:
     }
     template<size_t I, char... Cs>
     static constexpr std::enable_if_t<(I == std::variant_size_v<StateVariant>), size_t>
-    _get_state_index(StringType<Cs...> name)
+    _get_state_index(StringType<Cs...>)
     {
         return I;
     }
@@ -338,7 +317,7 @@ protected:
     }
     template<size_t I = 0>
     static constexpr std::enable_if_t<(I == std::variant_size_v<StateVariant>), const char*>
-    _get_state_name(const size_t index)
+    _get_state_name(const size_t)
     {
         return nullptr;
     }
@@ -408,7 +387,7 @@ protected:
         }
     }
     template<size_t I, char... Cs>
-    std::enable_if_t<(I == std::variant_size_v<StateVariant>)> _transition_into(StringType<Cs...> name)
+    std::enable_if_t<(I == std::variant_size_v<StateVariant>)> _transition_into(StringType<Cs...>)
     {
         static_assert(always_false_v<I>);
     }
@@ -424,7 +403,7 @@ protected:
         }
     }
     template<size_t I = 0>
-    std::enable_if_t<(I == std::variant_size_v<StateVariant>)> _transition_into(const size_t index)
+    std::enable_if_t<(I == std::variant_size_v<StateVariant>)> _transition_into(const size_t)
     {
         NOTF_ASSERT(false);
     }
@@ -447,113 +426,19 @@ protected:
     {
         NOTF_THROW(AnyWidget::BadTransitionError,
                    "Cannot transition Node {} from State \"{}\" into State \"{}\'", //
-                   get_uuid().to_string(), get_state_name(), NewState::name.c_str());
-    }
-
-    // properties ----------------------------------------------------------
-
-    // TODO: it should be possible to create member templates in CompileTimeNode so CompileTimeWidget can call templates
-    // instead of copying most of the code
-
-    /// Implementation specific query of a Property.
-    AnyPropertyPtr _get_property(const std::string& name) const override { return _get_property(hash_string(name)); }
-
-    /// Calculates the combined hash value of all Properties.
-    size_t _calculate_property_hash(size_t result = detail::version_hash()) const override
-    {
-        _calculate_hash(result);
-        return result;
-    }
-
-    /// Removes all modified data from all Properties.
-    void _clear_modified_properties() override { _clear_property_data<0>(); }
-
-    /// Initializes all Properties with their default values and -visiblity.
-    template<size_t I = 0>
-    std::enable_if_t<(I < std::tuple_size_v<WidgetProperties>)> _initialize_properties()
-    {
-        // create the new property
-        auto property_ptr = std::make_shared<widget_property_t<I>>();
-        std::get<I>(m_widget_properties) = property_ptr;
-
-        // subscribe to receive an update, whenever the property changes its value
-        auto typed_property = std::static_pointer_cast<Property<typename widget_property_t<I>::value_t>>(property_ptr);
-        typed_property->get_operator()->subscribe(_get_property_observer());
-
-        _initialize_properties<I + 1>();
-    }
-    template<size_t I = 0>
-    std::enable_if_t<(I == std::tuple_size_v<WidgetProperties>)> _initialize_properties()
-    {}
-
-    /// Access to a CompileTimeProperty through the hash of its name.
-    /// Allows access with a string at run time.
-    template<size_t I = 0>
-    std::enable_if_t<(I < std::tuple_size_v<WidgetProperties>), AnyPropertyPtr>
-    _get_property(const size_t hash_value) const
-    {
-        if (widget_property_t<I>::get_const_name().get_hash() == hash_value) {
-            return std::static_pointer_cast<AnyProperty>(std::get<I>(m_widget_properties));
-        } else {
-            return _get_property<I + 1>(hash_value);
-        }
-    }
-    template<size_t I = 0>
-    std::enable_if_t<(I == std::tuple_size_v<WidgetProperties>), AnyPropertyPtr>
-    _get_property(const size_t hash_value) const
-    {
-        return AnyWidget::_get_property_impl(hash_value);
-    }
-
-    /// Direct access to a CompileTimeProperty through its name alone.
-    template<size_t I, char... Cs>
-    auto _get_ct_property(StringType<Cs...> name) const
-    {
-        if constexpr (I < std::tuple_size_v<WidgetProperties>) {
-            if constexpr (widget_property_t<I>::get_const_name() == name) {
-                using value_t = typename widget_property_t<I>::value_t;
-                return PropertyHandle(std::static_pointer_cast<Property<value_t>>(std::get<I>(m_widget_properties)));
-            } else {
-                return _get_ct_property<I + 1>(name);
-            }
-        } else {
-            return AnyWidget::get_property(name);
-        }
-    }
-
-    /// Calculates the combined hash value of each Property in order.
-    template<size_t I = 0>
-    std::enable_if_t<(I < std::tuple_size_v<WidgetProperties>)> _calculate_hash(size_t& result) const
-    {
-        hash_combine(result, std::get<I>(m_widget_properties)->get());
-        _calculate_hash<I + 1>(result);
-    }
-    template<size_t I = 0>
-    std::enable_if_t<(I == std::tuple_size_v<WidgetProperties>)> _calculate_hash(size_t& result) const
-    {
-        AnyWidget::_calculate_property_hash(result);
-    }
-
-    /// Clear modified Property data.
-    template<size_t I = 0>
-    std::enable_if_t<(I < std::tuple_size_v<WidgetProperties>)> _clear_property_data()
-    {
-        std::get<I>(m_widget_properties)->clear_modified_data();
-        _clear_property_data<I + 1>();
-    }
-    template<size_t I = 0>
-    std::enable_if_t<(I == std::tuple_size_v<WidgetProperties>)> _clear_property_data()
-    {
-        AnyWidget::_clear_modified_properties();
+                   this->get_uuid().to_string(), get_state_name(), NewState::name.c_str());
     }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
-    /// All Properties of this Widget, default initialized to the Definition's default values.
-    WidgetProperties m_widget_properties;
-
     /// Current State of this Widget.
     StateVariant m_state;
 };
+
+} // namespace detail
+
+/// Convenience typdef hiding the fact that every Widget derives from `Widget` through CRTP.
+template<class Policy>
+using CompileTimeWidget = Widget<detail::_CompileTimeWidget<Policy>>;
 
 NOTF_CLOSE_NAMESPACE

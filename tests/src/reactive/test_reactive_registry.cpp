@@ -1,7 +1,7 @@
 #include "catch2/catch.hpp"
 
 #include "notf/reactive/pipeline.hpp"
-#include "notf/reactive/reactive_registry.hpp"
+#include "notf/reactive/registry.hpp"
 
 #include "test_reactive_utils.hpp"
 

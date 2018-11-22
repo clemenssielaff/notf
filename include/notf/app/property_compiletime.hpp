@@ -20,14 +20,17 @@ struct PropertyPolicyFactory {
         // validate the given Property Policy and show an appropriate error message if something goes wrong
         static_assert(decltype(has_value_t<Policy>(std::declval<Policy>()))::value,
                       "A PropertyPolicy must contain the type of Property as type `value_t`");
+
         static_assert(decltype(has_name<Policy>(std::declval<Policy>()))::value,
                       "A PropertyPolicy must contain the name of the Property as `static constexpr name`");
         static_assert(std::is_same_v<decltype(Policy::name), const StringConst>,
                       "The name of a PropertyPolicy must be of type `StringConst`");
+
         if constexpr (decltype(has_default_value<Policy>(std::declval<Policy>()))::value) {
             static_assert(std::is_convertible_v<decltype(Policy::default_value), typename Policy::value_t>,
                           "The default value of a PropertyPolicy must be convertible to its type");
         }
+
         if constexpr (decltype(has_is_visible<Policy>(std::declval<Policy>()))::value) {
             static_assert(std::is_same_v<decltype(Policy::is_visible), const bool>,
                           "The visibility flag a PropertyPolicy must be a boolean");
@@ -35,7 +38,7 @@ struct PropertyPolicyFactory {
 
         /// Validated and completed Property policy.
         struct PropertyPolicy {
-            /// Mandatory value type of the Proprty Policy.
+            /// Mandatory value type of the Property Policy.
             using value_t = typename Policy::value_t;
 
             /// Mandatory name of the Proprty Policy.
@@ -46,11 +49,9 @@ struct PropertyPolicyFactory {
             {
                 if constexpr (decltype(has_default_value<Policy>(std::declval<Policy>()))::value) {
                     return Policy::default_value; // explicit default value
-                }
-                else if constexpr (std::is_arithmetic_v<value_t>) {
+                } else if constexpr (std::is_arithmetic_v<value_t>) {
                     return 0; // zero for numeric types
-                }
-                else {
+                } else {
                     return {}; // default initialized value
                 }
             }
@@ -106,21 +107,27 @@ struct PropertyPolicyFactory {
 ///         static constexpr bool is_visible = true;
 ///     };
 ///
-template<class UserPolicy, class Policy = decltype(detail::PropertyPolicyFactory::create<UserPolicy>())>
+template<class Policy>
 class CompileTimeProperty final : public Property<typename Policy::value_t> {
 
     // types ----------------------------------------------------------------------------------- //
 public:
+    /// Policy type as passed in by the user.
+    using user_policy_t = Policy;
+
+    /// Policy used to create this Property type.
+    using policy_t = decltype(detail::PropertyPolicyFactory::create<Policy>());
+
     /// Property value type.
-    using value_t = typename Policy::value_t;
+    using value_t = typename policy_t::value_t;
 
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor.
     /// @param value        Property value.
     /// @param is_visible   Whether a change in the Property will cause the Node to redraw or not.
-    CompileTimeProperty(value_t value = Policy::get_default(), bool is_visible = Policy::is_visible())
-        : Property<value_t>(value, is_visible)
+    CompileTimeProperty(value_t value = policy_t::get_default(), bool is_visible = policy_t::is_visible())
+        : Property<value_t>(std::move(value), is_visible)
     {}
 
     /// The Node-unique name of this Property.
@@ -129,12 +136,12 @@ public:
     /// The default value of this Property.
     const value_t& get_default() const final
     {
-        static const value_t default_value = Policy::get_default();
+        static const value_t default_value = policy_t::get_default();
         return default_value;
     }
 
     /// The compile time constant name of this Property.
-    static constexpr const StringConst& get_const_name() noexcept { return Policy::get_name(); }
+    static constexpr const StringConst& get_const_name() noexcept { return policy_t::get_name(); }
 };
 
 NOTF_CLOSE_NAMESPACE

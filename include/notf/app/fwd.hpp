@@ -22,7 +22,7 @@ using GlfwWindowPtr = std::unique_ptr<GLFWwindow, decltype(&window_deleter)>;
 class TheGraph;
 
 // node.hpp
-NOTF_DEFINE_SHARED_POINTERS(class, Node);
+NOTF_DECLARE_SHARED_POINTERS(class, Node);
 
 // node_compiletime.hpp
 template<class>
@@ -43,11 +43,11 @@ using NodeOwner = TypedNodeOwner<Node>;
 class RunTimeNode;
 
 // property.hpp
-NOTF_DEFINE_SHARED_POINTERS(class, AnyProperty);
-NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(class, Property);
+NOTF_DECLARE_SHARED_POINTERS(class, AnyProperty);
+NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, Property);
 template<class>
 class RunTimeProperty;
-template<class, class>
+template<class>
 class CompileTimeProperty;
 
 // property_handle.hpp
@@ -55,14 +55,14 @@ template<class>
 class PropertyHandle;
 
 // root_node.hpp
-NOTF_DEFINE_SHARED_POINTERS(class, RootNode);
+NOTF_DECLARE_SHARED_POINTERS(class, RootNode);
 using RootNodeHandle = TypedNodeHandle<RootNode>;
 
 // window.hpp
 namespace detail {
 struct WindowSettings;
 } // namespace detail
-NOTF_DEFINE_SHARED_POINTERS(class, Window);
+NOTF_DECLARE_SHARED_POINTERS(class, Window);
 class WindowHandle;
 
 // widget_compiletime.hpp
@@ -84,8 +84,8 @@ struct CompileTimeNodeIdentifier {
     template<class T>
     static constexpr auto test()
     {
-        if constexpr (decltype(_has_property_policies_t<T>(std::declval<T>()))::value) {
-            return std::is_convertible<T*, CompileTimeNode<typename T::property_policies_t>*>{};
+        if constexpr (decltype(_has_user_policy_t<T>(std::declval<T>()))::value) {
+            return std::is_convertible<T*, CompileTimeNode<typename T::user_policy_t>*>{};
         } else {
             return std::false_type{};
         }
@@ -93,10 +93,10 @@ struct CompileTimeNodeIdentifier {
 
 private:
     template<class T>
-    static constexpr auto _has_property_policies_t(const T&)
-        -> decltype(std::declval<typename T::property_policies_t>(), std::true_type{});
+    static constexpr auto _has_user_policy_t(const T&)
+        -> decltype(std::declval<typename T::user_policy_t>(), std::true_type{});
     template<class>
-    static constexpr auto _has_property_policies_t(...) -> std::false_type;
+    static constexpr auto _has_user_policy_t(...) -> std::false_type;
 };
 
 /// Struct derived either from std::true_type or std::false type, depending on whether T is a CompileTimeNode or not.

@@ -34,7 +34,6 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
 
     reactive/test_pipeline.cpp
     reactive/test_publisher.cpp
-    reactive/test_reactive_generator.cpp
     reactive/test_reactive_operator.cpp
     reactive/test_reactive_registry.cpp
     reactive/test_subscriber.cpp

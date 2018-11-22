@@ -3,6 +3,7 @@
 #include "notf/common/bitset.hpp"
 
 #include "notf/app/property_handle.hpp"
+#include "notf/app/slot.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -17,21 +18,9 @@ class Node : public std::enable_shared_from_this<Node> {
     friend Accessor<Node, detail::AnyNodeHandle>;
     friend Accessor<Node, RootNode>;
     friend Accessor<Node, Window>;
+    friend Accessor<Node, TheGraph>;
 
     // types ----------------------------------------------------------------------------------- //
-public:
-    /// Nested `AccessFor<T>` type.
-    NOTF_ACCESS_TYPE(Node);
-
-    /// Exception thrown by `get_property` if either the name of the type of the requested Property is wrong.
-    NOTF_EXCEPTION_TYPE(NoSuchPropertyError);
-
-    /// Exception thrown when you try to do something that is only allowed to do if the node hasn't been finalized yet.
-    NOTF_EXCEPTION_TYPE(FinalizedError);
-
-    /// If two Nodes have no common ancestor.
-    NOTF_EXCEPTION_TYPE(HierarchyError);
-
 private:
     /// Owning list of child Nodes, ordered from back to front.
     using ChildList = std::vector<NodePtr>;
@@ -39,8 +28,7 @@ private:
     // new node ---------------------------------------------------------------
 
     /// Type returned by Node::_create_child.
-    /// Can once (implicitly) be cast to a NodeOwner, but can also be safely ignored without the Node being erased
-    /// immediately.
+    /// Can be cast to a NodeOwner (once), but can also be safely ignored without the Node being erased immediately.
     template<class NodeType>
     class NewNode {
 
@@ -165,6 +153,20 @@ private:
     };
     using DataPtr = std::unique_ptr<Data>;
 
+protected:
+    /// Number of user-definable flags on this system.
+    static constexpr size_t s_user_flag_count = bitset_size_v<Flags> - s_internal_flag_count;
+
+public:
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(Node);
+
+    /// Exception thrown when you try to do something that is only allowed to do if the node hasn't been finalized yet.
+    NOTF_EXCEPTION_TYPE(FinalizedError);
+
+    /// If two Nodes have no common ancestor.
+    NOTF_EXCEPTION_TYPE(HierarchyError);
+
     // methods --------------------------------------------------------------------------------- //
 protected:
     /// Value constructor.
@@ -190,22 +192,14 @@ public:
     /// Is not guaranteed to be unique, but collisions are unlikely with 100^4 possibilities.
     std::string get_default_name() const;
 
-    /// Run time access to a Property of this Node through a PropertyHandle.
-    /// @param name     Node-unique name of the Property.
-    /// @returns        Handle to the requested Property.
-    /// @throws         NoSuchPropertyError
-    template<class T>
-    PropertyHandle<T> get_property(const std::string& name) const
-    {
-        return PropertyHandle(_try_get_property<T>(name));
-    }
+    // properties -------------------------------------------------------------
 
     /// The value of a Property of this Node.
     /// If you only care about the current value of a Property this method is more efficient than
     /// `get_property<T>()->get()` because it does not construct a handle to go through.
     /// @param name     Node-unique name of the Property.
     /// @returns        The value of the Property.
-    /// @throws         NoSuchPropertyError
+    /// @throws         NameError / TypeError
     template<class T>
     const T& get(const std::string& name) const
     {
@@ -215,12 +209,22 @@ public:
     /// Updates the value of a Property of this Node.
     /// @param name     Node-unique name of the Property.
     /// @param value    New value of the Property.
-    /// @throws         NoSuchPropertyError
+    /// @throws         NameError / TypeError
     template<class T>
     void set(const std::string& name, T&& value)
     {
         NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
         _try_get_property<T>(name)->set(std::forward<T>(value));
+    }
+
+    /// Run time access to a Property of this Node through a PropertyHandle.
+    /// @param name     Node-unique name of the Property.
+    /// @returns        Handle to the requested Property.
+    /// @throws         NameError / TypeError
+    template<class T>
+    PropertyHandle<T> get_property(const std::string& name)
+    {
+        return PropertyHandle(_try_get_property<T>(name));
     }
 
     // hierarchy --------------------------------------------------------------
@@ -312,38 +316,22 @@ public:
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
     void stack_behind(const NodeHandle& sibling);
 
+protected: // for all subclasses
     // flags ------------------------------------------------------------------
-
-    /// Returns the number of user definable flags of a Node on this system.
-    static constexpr size_t get_user_flag_count() noexcept { return bitset_size_v<Flags> - s_internal_flag_count; }
 
     /// Tests a user defineable flag on this Node.
     /// @param index            Index of the user flag.
     /// @returns                True iff the flag is set.
     /// @throws OutOfBounds   If index >= user flag count.
-    bool is_user_flag_set(size_t index) const;
+    bool _get_flag(size_t index) const;
 
     /// Sets or unsets a user flag.
     /// @param index            Index of the user flag.
     /// @param value            Whether to set or to unser the flag.
     /// @throws OutOfBounds   If index >= user flag count.
-    void set_user_flag(size_t index, bool value = true);
+    void _set_flag(size_t index, bool value = true);
 
-    // management -------------------------------------------------------------
-
-    /// Deletes all modified data of this Node.
-    void clear_modified_data();
-
-protected:
-    /// Implementation specific query of a Property.
-    /// @param name     Node-unique name of the Property.
-    virtual AnyPropertyPtr _get_property(const std::string& name) const = 0;
-
-    /// Calculates the combined hash value of all Properties.
-    virtual size_t _calculate_property_hash(size_t result = detail::version_hash()) const = 0;
-
-    /// Removes all modified data from all Properties.
-    virtual void _clear_modified_properties() = 0;
+    // children ---------------------------------------------------------------
 
     /// Creates and adds a new child to this node.
     /// @param parent   Parent of the Node, must be `this` (is used for type checking).
@@ -376,6 +364,43 @@ protected:
     /// Remove all children from this Node.
     void _clear_children();
 
+    // management -------------------------------------------------------------
+
+    /// (Re-)Defines a callback to be invoked every time the value of the Property is about to change.
+    /// If the callback returns false, the update is cancelled and the old value remains.
+    /// If the callback returns true, the update will proceed.
+    /// Since the value is passed in by mutable reference, it can modify the value however it wants to. Even if the new
+    /// value ends up the same as the old, the update will proceed. Note though, that the callback will only be called
+    /// if the value is initially different from the one stored in the PropertyOperator.
+    template<class T>
+    void _set_property_callback(const std::string& property_name, typename Property<T>::callback_t callback)
+    {
+        _try_get_property<T>(property_name)->set_callback(std::move(callback));
+    }
+
+protected: // for direct subclasses only
+    /// Finalizes this Node.
+    /// Called on every new Node instance right after the Constructor of the most derived class has finished.
+    /// Therefore, we do no have to ensure that the Graph is frozen etc.
+    virtual void _finalize() { m_flags[to_number(InternalFlags::FINALIZED)] = true; }
+
+    /// Reactive function marking this Node as dirty whenever a visible Property changes its value.
+    std::shared_ptr<PropertyObserver>& _get_property_observer() { return m_property_observer; }
+
+    /// Whether or not this Node has been finalized or not.
+    bool _is_finalized() const { return _get_flag_impl(to_number(InternalFlags::FINALIZED)); }
+
+private:
+    /// Implementation specific query of a Property.
+    /// @param name     Node-unique name of the Property.
+    virtual AnyPropertyPtr _get_property(const std::string& name) = 0;
+
+    /// Calculates the combined hash value of all Properties.
+    virtual size_t _calculate_property_hash(size_t result = detail::version_hash()) const = 0;
+
+    /// Removes all modified data from all Properties.
+    virtual void _clear_modified_properties() = 0;
+
     /// @{
     /// Access to the parent of this Node.
     /// Never creates a modified copy.
@@ -391,28 +416,22 @@ protected:
     /// @param new_parent_handle    New parent of this Node. If it is the same as the old, this method does nothing.
     void _set_parent(NodeHandle new_parent_handle);
 
-    /// Reactive function marking this Node as dirty whenever a visible Property changes its value.
-    std::shared_ptr<PropertyObserver>& _get_property_observer() { return m_property_observer; }
+    /// Deletes all modified data of this Node.
+    void _clear_modified_data();
 
-    /// Whether or not this Node has been finalized or not.
-    bool _is_finalized() const { return _is_flag_set(to_number(InternalFlags::FINALIZED)); }
-
-private:
     /// Run time access to a Property of this Node.
     /// @param name     Node-unique name of the Property.
     /// @returns        Handle to the requested Property.
-    /// @throws         NoSuchPropertyError
+    /// @throws         NameError / TypeError
     template<class T>
-    PropertyPtr<T> _try_get_property(const std::string& name) const
+    PropertyPtr<T> _try_get_property(const std::string& name)
     {
         AnyPropertyPtr property = _get_property(name);
-        if (!property) {
-            NOTF_THROW(NoSuchPropertyError, "Node \"{}\" has no Property called \"{}\"", get_name(), name);
-        }
+        if (!property) { NOTF_THROW(NameError, "Node \"{}\" has no Property called \"{}\"", get_name(), name); }
 
         PropertyPtr<T> typed_property = std::dynamic_pointer_cast<Property<T>>(std::move(property));
         if (!typed_property) {
-            NOTF_THROW(NoSuchPropertyError,
+            NOTF_THROW(TypeError,
                        "Property \"{}\" of Node \"{}\" is of type \"{}\", but was requested as \"{}\"", //
                        name, get_name(), property->get_type_name(), type_name<T>());
         }
@@ -437,21 +456,16 @@ private:
     /// All children of the parent.
     const ChildList& _read_siblings() const;
 
-    /// Finalizes this Node.
-    /// Called on every new Node instance right after the Constructor of the most derived class has finished.
-    /// Therefore, we do no have to ensure that the Graph is frozen etc.
-    void _finalize() { m_flags[to_number(InternalFlags::FINALIZED)] = true; }
-
     /// Tests a flag on this Node.
     /// @param index        Index of the user flag.
     /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
     /// @returns            True iff the flag is set.
-    bool _is_flag_set(size_t index, std::thread::id thread_id = std::this_thread::get_id()) const;
+    bool _get_flag_impl(size_t index, std::thread::id thread_id = std::this_thread::get_id()) const;
 
     /// Sets or unsets a flag on this Node.
     /// @param index            Index of the user flag.
     /// @param value            Whether to set or to unser the flag.
-    void _set_flag(size_t index, bool value = true);
+    void _set_flag_impl(size_t index, bool value = true);
 
     /// Creates (if necessary) and returns the modified Data for this Node.
     Data& _ensure_modified_data();
@@ -539,6 +553,14 @@ class Accessor<Node, Window> {
 
     /// Finalizes the given Window(Node).
     static void finalize(Node& node) { node._finalize(); }
+};
+
+template<>
+class Accessor<Node, TheGraph> {
+    friend TheGraph;
+
+    /// Deletes all modified data of this Node.
+    static void clear_modified_data(Node& node) { node._clear_modified_data(); }
 };
 
 NOTF_CLOSE_NAMESPACE

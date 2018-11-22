@@ -12,7 +12,7 @@ NOTF_OPEN_NAMESPACE
 /// Every Widget has a Claim that determines how much space is alloted for it in its parent's Layout.
 class Claim {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Horizontal or vertical Stretch of the Claim.
     class Stretch {

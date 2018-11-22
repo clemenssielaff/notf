@@ -8,7 +8,7 @@
 
 #include "notf/common/any.hpp"
 
-#include "notf/reactive/reactive_operator.hpp"
+#include "notf/reactive/operator.hpp"
 
 NOTF_OPEN_NAMESPACE
 

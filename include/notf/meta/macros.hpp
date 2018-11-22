@@ -127,7 +127,7 @@ NOTF_OPEN_NAMESPACE
 // forwards ========================================================================================================= //
 
 /// Convenience macro to define shared pointer types for a given type.
-#define NOTF_DEFINE_SHARED_POINTERS(Tag, Type)          \
+#define NOTF_DECLARE_SHARED_POINTERS(Tag, Type)         \
     Tag Type;                                           \
     using Type##Ptr = std::shared_ptr<Type>;            \
     using Type##ConstPtr = std::shared_ptr<const Type>; \
@@ -135,13 +135,13 @@ NOTF_OPEN_NAMESPACE
     using Type##WeakConstPtr = std::weak_ptr<const Type>
 
 /// Convenience macro to define unique pointer types for a given type.
-#define NOTF_DEFINE_UNIQUE_POINTERS(Tag, Type) \
-    Tag Type;                                  \
-    using Type##Ptr = std::unique_ptr<Type>;   \
+#define NOTF_DECLARE_UNIQUE_POINTERS(Tag, Type) \
+    Tag Type;                                   \
+    using Type##Ptr = std::unique_ptr<Type>;    \
     using Type##ConstPtr = std::unique_ptr<const Type>
 
 /// Convenience macro to define shared pointer types for a given templated type with one template argument.
-#define NOTF_DEFINE_SHARED_POINTERS_TEMPLATE1(Tag, Type)   \
+#define NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(Tag, Type)  \
     template<class>                                        \
     Tag Type;                                              \
     template<class T>                                      \
@@ -154,16 +154,16 @@ NOTF_OPEN_NAMESPACE
     using Type##WeakConstPtr = std::weak_ptr<const Type<T>>
 
 /// Convenience macro to define unique pointer types for a given templated type with one template argument.
-#define NOTF_DEFINE_UNIQUE_POINTERS_TEMPLATE1(Tag, Type) \
-    template<class>                                      \
-    Tag Type;                                            \
-    template<class T>                                    \
-    using Type##Ptr = std::unique_ptr<Type<T>>;          \
-    template<class T>                                    \
+#define NOTF_DECLARE_UNIQUE_POINTERS_TEMPLATE1(Tag, Type) \
+    template<class>                                       \
+    Tag Type;                                             \
+    template<class T>                                     \
+    using Type##Ptr = std::unique_ptr<Type<T>>;           \
+    template<class T>                                     \
     using Type##ConstPtr = std::unique_ptr<const Type<T>>
 
 /// Convenience macro to define shared pointer types for a given templated type with two template arguments.
-#define NOTF_DEFINE_SHARED_POINTERS_TEMPLATE2(Tag, Type)      \
+#define NOTF_DECLARE_SHARED_POINTERS_TEMPLATE2(Tag, Type)     \
     template<class, class>                                    \
     Tag Type;                                                 \
     template<class T, class U>                                \
@@ -176,16 +176,16 @@ NOTF_OPEN_NAMESPACE
     using Type##WeakConstPtr = std::weak_ptr<const Type<T, U>>
 
 /// Convenience macro to define unique pointer types for a given templated type with two template arguments.
-#define NOTF_DEFINE_UNIQUE_POINTERS_TEMPLATE2(Tag, Type) \
-    template<class, class>                               \
-    Tag Type;                                            \
-    template<class T, class U>                           \
-    using Type##Ptr = std::unique_ptr<Type<T, U>>;       \
-    template<class T, class U>                           \
+#define NOTF_DECLARE_UNIQUE_POINTERS_TEMPLATE2(Tag, Type) \
+    template<class, class>                                \
+    Tag Type;                                             \
+    template<class T, class U>                            \
+    using Type##Ptr = std::unique_ptr<Type<T, U>>;        \
+    template<class T, class U>                            \
     using Type##ConstPtr = std::unique_ptr<const Type<T, U>>
 
 /// Convenience macro to define shared pointer types for a given templated type with three template arguments.
-#define NOTF_DEFINE_SHARED_POINTERS_TEMPLATE3(Tag, Type)         \
+#define NOTF_DECLARE_SHARED_POINTERS_TEMPLATE3(Tag, Type)        \
     template<class, class, class>                                \
     Tag Type;                                                    \
     template<class T, class U, class V>                          \
@@ -198,16 +198,16 @@ NOTF_OPEN_NAMESPACE
     using Type##WeakConstPtr = std::weak_ptr<const Type<T, U, V>>
 
 /// Convenience macro to define unique pointer types for a given templated type with three template arguments.
-#define NOTF_DEFINE_UNIQUE_POINTERS_TEMPLATE3(Tag, Type) \
-    template<class, class, class>                        \
-    Tag Type;                                            \
-    template<class T, class U, class V>                  \
-    using Type##Ptr = std::unique_ptr<Type<T, U, V>>;    \
-    template<class T, class U, class V>                  \
+#define NOTF_DECLARE_UNIQUE_POINTERS_TEMPLATE3(Tag, Type) \
+    template<class, class, class>                         \
+    Tag Type;                                             \
+    template<class T, class U, class V>                   \
+    using Type##Ptr = std::unique_ptr<Type<T, U, V>>;     \
+    template<class T, class U, class V>                   \
     using Type##ConstPtr = std::unique_ptr<const Type<T, U, V>>
 
 /// Convenience macro to define shared pointer types for a given templated type with four template arguments.
-#define NOTF_DEFINE_SHARED_POINTERS_TEMPLATE4(Tag, Type)            \
+#define NOTF_DECLARE_SHARED_POINTERS_TEMPLATE4(Tag, Type)           \
     template<class, class, class, class>                            \
     Tag Type;                                                       \
     template<class T, class U, class V, class W>                    \
@@ -220,12 +220,12 @@ NOTF_OPEN_NAMESPACE
     using Type##WeakConstPtr = std::weak_ptr<const Type<T, U, V, W>>
 
 /// Convenience macro to define unique pointer types for a given templated type with four template arguments.
-#define NOTF_DEFINE_UNIQUE_POINTERS_TEMPLATE4(Tag, Type) \
-    template<class, class, class, class>                 \
-    Tag Type;                                            \
-    template<class T, class U, class V, class W>         \
-    using Type##Ptr = std::unique_ptr<Type<T, U, V, W>>; \
-    template<class T, class U, class V, class W>         \
+#define NOTF_DECLARE_UNIQUE_POINTERS_TEMPLATE4(Tag, Type) \
+    template<class, class, class, class>                  \
+    Tag Type;                                             \
+    template<class T, class U, class V, class W>          \
+    using Type##Ptr = std::unique_ptr<Type<T, U, V, W>>;  \
+    template<class T, class U, class V, class W>          \
     using Type##ConstPtr = std::unique_ptr<const Type<T, U, V, W>>
 
 // raii ============================================================================================================= //

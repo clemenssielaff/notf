@@ -6,7 +6,7 @@ NOTF_OPEN_NAMESPACE
 
 // root node ======================================================================================================== //
 
-class RootNode final : public CompileTimeNode<std::tuple<>> {
+class RootNode final : public CompileTimeNode<> {
 
     friend Accessor<RootNode, TheGraph>;
     friend Accessor<RootNode, Window>;
@@ -29,11 +29,11 @@ private:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default Constructor.
-    RootNode() : CompileTimeNode<std::tuple<>>(this) {}
+    RootNode() : CompileTimeNode<>(this) {}
 
 private:
     /// Finalizes this RootNode.
-    void _finalize() { Node::AccessFor<RootNode>::finalize(*this); }
+    void _finalize_root() { Node::AccessFor<RootNode>::finalize(*this); }
 
     /// Adds a new Window as child of this RootNode.
     void _add_window(WindowPtr window);
@@ -46,7 +46,7 @@ class Accessor<RootNode, TheGraph> {
     friend TheGraph;
 
     /// Finalizes the given RootNode.
-    static void finalize(RootNode& node) { node._finalize(); }
+    static void finalize(RootNode& node) { node._finalize_root(); }
 };
 
 template<>

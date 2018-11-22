@@ -109,9 +109,9 @@ public:
     /// Run time access to a Property of this Node.
     /// @param name     Node-unique name of the Property.
     /// @returns        Handle to the requested Property.
-    /// @throws         NoSuchPropertyError
+    /// @throws         NameError / TypeError
     template<class T>
-    PropertyHandle<T> get_property(const std::string& name) const
+    PropertyHandle<T> get_property(const std::string& name)
     {
         return _get_node()->template get_property<T>(name);
     }
@@ -121,12 +121,12 @@ public:
     /// @param name     Name of the requested Property.
     /// @returns        Typed handle to the requested Property.
     template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    auto get_property(StringType<Cs...> name) const
+    auto get_property(StringType<Cs...> name)
     {
         return this->_get_node()->get_property(std::forward<decltype(name)>(name));
     }
     template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    constexpr auto get_property() const
+    constexpr auto get_property()
     {
         return this->_get_node()->template get_property<name>();
     }
@@ -137,7 +137,7 @@ public:
     /// `get_property<T>()->get()` because it does not construct a handle to go through.
     /// @param name     Node-unique name of the Property.
     /// @returns        The value of the Property.
-    /// @throws         NoSuchPropertyError
+    /// @throws         NameError / TypeError
     template<class T>
     const T& get(const std::string& name) const
     {
@@ -289,31 +289,6 @@ public:
     {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         _get_node()->stack_behind(sibling);
-    }
-
-    // flags ------------------------------------------------------------------
-
-    /// Returns the number of user definable flags of a Node on this system.
-    static constexpr size_t get_user_flag_count() noexcept { return NodeType::get_user_flag_count(); }
-
-    /// Tests a user defineable flag on this Node.
-    /// @param index            Index of the user flag.
-    /// @returns                True iff the flag is set.
-    /// @throws OutOfBounds   If index >= user flag count.
-    bool is_user_flag_set(const size_t index) const
-    {
-        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
-        return _get_node()->is_user_flag_set(index);
-    }
-
-    /// Sets or unsets a user flag.
-    /// @param index            Index of the user flag.
-    /// @param value            Whether to set or to unser the flag.
-    /// @throws OutOfBounds   If index >= user flag count.
-    void set_user_flag(const size_t index, const bool value = true)
-    {
-        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
-        _get_node()->set_user_flag(index, value);
     }
 
     // comparison -------------------------------------------------------------

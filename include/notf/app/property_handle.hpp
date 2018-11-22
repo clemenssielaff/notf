@@ -26,7 +26,7 @@ public:
     PropertyHandle() = default;
 
     /// Value Constructor.
-    /// @param  property    Property to handle.
+    /// @param property Property to handle.
     PropertyHandle(PropertyPtr<T> property) : m_property(std::move(property)) {}
 
     /// @{
@@ -56,8 +56,7 @@ public:
     {
         if (is_expired()) {
             NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>());
-        }
-        else {
+        } else {
             NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
             return _get_property()->get();
         }
@@ -71,8 +70,7 @@ public:
     {
         if (is_expired()) {
             NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>());
-        }
-        else {
+        } else {
             NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
             return _get_property()->set(value);
         }
@@ -86,13 +84,11 @@ public:
     {
         if (is_expired()) {
             NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>());
-        }
-        else if (auto possible_lock = std::unique_lock(TheGraph::get_graph_mutex(), std::try_to_lock);
-                 possible_lock.owns_lock()) {
+        } else if (auto possible_lock = std::unique_lock(TheGraph::get_graph_mutex(), std::try_to_lock);
+                   possible_lock.owns_lock()) {
             // set immediately if you can
             return _get_property()->set(value);
-        }
-        else {
+        } else {
             // TODO: property change event
             // TODO: property batches
             return _get_property()->set(value); // this is obviously wrong, just for testing

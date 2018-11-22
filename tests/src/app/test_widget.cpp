@@ -43,8 +43,8 @@ struct TestCompileTimeWidgetPolicy {
 };
 
 struct TestCompileTimeWidget : public CompileTimeWidget<TestCompileTimeWidgetPolicy> {
-    NOTF_UNUSED TestCompileTimeWidget(valid_ptr<Node*> parent) : CompileTimeWidget<TestCompileTimeWidgetPolicy>(parent)
-    {}
+    using super_t = CompileTimeWidget<TestCompileTimeWidgetPolicy>;
+    NOTF_UNUSED TestCompileTimeWidget(valid_ptr<Node*> parent) : super_t(parent) {}
 };
 
 #ifdef NOTF_MSVC

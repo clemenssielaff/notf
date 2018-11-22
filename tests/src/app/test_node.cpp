@@ -111,7 +111,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
                 void be_naughty()
                 {
                     NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
-                    _create_child<LeafNodeCT>(_get_parent());
+                    _create_child<LeafNodeCT>(to_shared_ptr(get_parent()).get());
                 }
             };
 
@@ -240,33 +240,35 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
     SECTION("Nodes have user definable flags")
     {
-        enum UserFlags { FIRST, OUT_OF_BOUNDS = Node::get_user_flag_count() + 1 };
-        NodeHandle node = root_node.create_child<LeafNodeCT>();
+        enum UserFlags { FIRST, OUT_OF_BOUNDS = Node::AccessFor<Tester>::get_user_flag_count() + 1 };
+        NodeHandle node_handle = root_node.create_child<TestNode>();
+        TestNode& node = *(std::static_pointer_cast<TestNode>(to_shared_ptr(node_handle)));
 
-        REQUIRE(Node::get_user_flag_count() > 0);
+        REQUIRE(Node::AccessFor<Tester>::get_user_flag_count() > 0);
 
-        REQUIRE(!node.is_user_flag_set(FIRST));
-        node.set_user_flag(FIRST);
-        REQUIRE(node.is_user_flag_set(FIRST));
+        REQUIRE(!node.get_flag(FIRST));
+        node.set_flag(FIRST);
+        REQUIRE(node.get_flag(FIRST));
 
-        REQUIRE_THROWS_AS(node.is_user_flag_set(OUT_OF_BOUNDS), OutOfBounds);
-        REQUIRE_THROWS_AS(node.set_user_flag(OUT_OF_BOUNDS), OutOfBounds);
+        REQUIRE_THROWS_AS(node.get_flag(OUT_OF_BOUNDS), OutOfBounds);
+        REQUIRE_THROWS_AS(node.set_flag(OUT_OF_BOUNDS), OutOfBounds);
     }
 
     SECTION("User definable flags are frozen with the Graph")
     {
-        auto node = root_node.create_child<LeafNodeCT>().to_handle();
+        NodeHandle node_handle = root_node.create_child<TestNode>();
+        TestNode& node = *(std::static_pointer_cast<TestNode>(to_shared_ptr(node_handle)));
 
-        REQUIRE(!node.is_user_flag_set(0));
+        REQUIRE(!node.get_flag(0));
         {
             NOTF_GUARD(TheGraph::AccessFor<Tester>::freeze(render_thread_id));
 
-            node.set_user_flag(0);
-            REQUIRE(node.is_user_flag_set(0));
+            node.set_flag(0);
+            REQUIRE(node.get_flag(0));
 
-            REQUIRE(!Node::AccessFor<Tester>(node).is_user_flag_set(0, render_thread_id));
+            REQUIRE(!Node::AccessFor<Tester>(node).get_flag(0, render_thread_id));
         }
-        REQUIRE(node.is_user_flag_set(0));
+        REQUIRE(node.get_flag(0));
     }
 
     SECTION("Nodes have a z-order")
@@ -408,9 +410,9 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
         SECTION("Compile Time Nodes can be asked for non-existing run time Properies")
         {
-            REQUIRE_THROWS_AS(node.get_property<int>("float").is_expired(), Node::NoSuchPropertyError);
-            REQUIRE_THROWS_AS(node.get_property<float>("int").is_expired(), Node::NoSuchPropertyError);
-            REQUIRE_THROWS_AS(node.get_property<float>("not a property name").is_expired(), Node::NoSuchPropertyError);
+            REQUIRE_THROWS_AS(node.get_property<int>("float").is_expired(), TypeError);
+            REQUIRE_THROWS_AS(node.get_property<float>("int").is_expired(), TypeError);
+            REQUIRE_THROWS_AS(node.get_property<float>("not a property name").is_expired(), NameError);
         }
 
         SECTION("two of the same Properties of different Nodes are not equal")
@@ -470,8 +472,8 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         SECTION("can be asked fo non-existing Properties")
         {
             REQUIRE(!node.get_property<float>("float").is_expired());
-            REQUIRE_THROWS_AS(node.get_property<float>("not a property").is_expired(), Node::NoSuchPropertyError);
-            REQUIRE_THROWS_AS(node.get_property<bool>("float").is_expired(), Node::NoSuchPropertyError);
+            REQUIRE_THROWS_AS(node.get_property<float>("not a property").is_expired(), NameError);
+            REQUIRE_THROWS_AS(node.get_property<bool>("float").is_expired(), TypeError);
         }
 
         SECTION("you can change the property hash by changing any property value")

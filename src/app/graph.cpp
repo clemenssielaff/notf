@@ -153,7 +153,9 @@ bool TheGraph::_synchronize()
     }
 
     for (auto& handle : m_dirty_nodes) {
-        if (NodePtr node = NodeHandle::AccessFor<TheGraph>::get_node_ptr(handle)) { node->clear_modified_data(); }
+        if (NodePtr node = NodeHandle::AccessFor<TheGraph>::get_node_ptr(handle)) {
+            Node::AccessFor<TheGraph>::clear_modified_data(*node);
+        }
     }
     m_dirty_nodes.clear();
     return true; // dirty nodes cleared their modified data

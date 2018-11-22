@@ -28,10 +28,12 @@ struct IntPropertyPolicy {
     static constexpr bool is_visible = true;
 };
 
-using TestNodeProperties = std::tuple< //
-    FloatPropertyPolicy,               //
-    IntPropertyPolicy,                 //
-    BoolPropertyPolicy>;               //
+struct TestNodePolicy {
+    using properties = std::tuple< //
+        FloatPropertyPolicy,       //
+        IntPropertyPolicy,         //
+        BoolPropertyPolicy>;       //
+};
 
 class LeafNodeRT : public RunTimeNode {
 public:
@@ -48,6 +50,18 @@ public:
     NOTF_UNUSED TestNode() : RunTimeNode(this) {}
     NOTF_UNUSED TestNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
 
+    NOTF_UNUSED bool get_flag(size_t index)
+    {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+
+        return _get_flag(index);
+    }
+    NOTF_UNUSED void set_flag(size_t index, bool value = true)
+    {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        _set_flag(index, value);
+    }
+
     template<class T, class... Args>
     NOTF_UNUSED auto create_child(Args... args)
     {
@@ -56,9 +70,9 @@ public:
     }
 };
 
-class LeafNodeCT : public CompileTimeNode<TestNodeProperties> {
+class LeafNodeCT : public CompileTimeNode<TestNodePolicy> {
 public:
-    NOTF_UNUSED LeafNodeCT(valid_ptr<Node*> parent) : CompileTimeNode<TestNodeProperties>(parent) {}
+    NOTF_UNUSED LeafNodeCT(valid_ptr<Node*> parent) : CompileTimeNode<TestNodePolicy>(parent) {}
 };
 
 class TwoChildrenNode : public RunTimeNode {
@@ -137,16 +151,18 @@ struct notf::Accessor<Node, Tester> {
     bool is_dirty() const
     {
         NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
-        return m_node._is_flag_set(to_number(Node::InternalFlags::DIRTY));
+        return m_node._get_flag_impl(to_number(Node::InternalFlags::DIRTY));
     }
 
     void set_uuid(const Uuid& uuid) { const_cast<Uuid&>(m_node.m_uuid) = uuid; }
 
     bool has_ancestor(const Node* node) const { return m_node.has_ancestor(node); }
 
-    bool is_user_flag_set(const size_t index, const std::thread::id thread_id = std::this_thread::get_id()) const
+    static constexpr size_t get_user_flag_count() noexcept { return Node::s_user_flag_count; }
+
+    bool get_flag(const size_t index, const std::thread::id thread_id = std::this_thread::get_id()) const
     {
-        return m_node._is_flag_set(index + Node::s_internal_flag_count, thread_id);
+        return m_node._get_flag_impl(index + Node::s_internal_flag_count, thread_id);
     }
 
     void remove_child(NodeHandle handle) { m_node._remove_child(handle); }
@@ -181,7 +197,7 @@ struct notf::Accessor<Node, Tester> {
 };
 
 template<class NodeType>
-auto to_shared_ptr(TypedNodeHandle<NodeType>& node)
+auto to_shared_ptr(TypedNodeHandle<NodeType> node)
 {
     return TypedNodeHandle<NodeType>::template AccessFor<Tester>::get_shared_ptr(node);
 }

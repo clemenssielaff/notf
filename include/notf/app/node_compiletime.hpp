@@ -19,25 +19,114 @@ struct create_compile_time_property<std::tuple<Ts...>> {
 template<class T>
 using create_compile_time_properties = typename create_compile_time_property<T>::type;
 
+template<class Policy>
+struct NodePolicyFactory {
+
+    // TODO: (NodePolicyFactory) check that all names are unique
+
+    /// Factory method.
+    static constexpr auto create()
+    {
+        struct NodePolicy {
+
+            /// All Properties of the Node type.
+            using properties = create_compile_time_properties<decltype(get_properties())>;
+
+            /// All Slots of the Node type.
+            using slots = decltype(get_slots());
+
+            /// All Signals of the Node type.
+            using signals = decltype(get_signals());
+        };
+
+        return NodePolicy();
+    }
+
+    /// Checks, whether the given type has a nested type `properties`.
+    template<class T>
+    static constexpr auto _has_properties(const T&)
+        -> decltype(std::declval<typename T::properties>(), std::true_type{});
+    template<class>
+    static constexpr auto _has_properties(...) -> std::false_type;
+    static constexpr auto get_properties() noexcept
+    {
+        if constexpr (decltype(_has_properties<Policy>(std::declval<Policy>()))::value) {
+            return std::declval<typename Policy::properties>();
+        } else {
+            return std::tuple<>{};
+        }
+    }
+
+    template<class T>
+    static constexpr auto _has_slots(const T&) -> decltype(std::declval<typename T::slots>(), std::true_type{});
+    template<class>
+    static constexpr auto _has_slots(...) -> std::false_type;
+    static constexpr auto get_slots() noexcept
+    {
+        if constexpr (decltype(_has_slots<Policy>(std::declval<Policy>()))::value) {
+            return std::declval<typename Policy::slots>();
+        } else {
+            return std::tuple<>{};
+        }
+    }
+
+    template<class T>
+    static constexpr auto _has_signals(const T&) -> decltype(std::declval<typename T::signals>(), std::true_type{});
+    template<class>
+    static constexpr auto _has_signals(...) -> std::false_type;
+    static constexpr auto get_signals() noexcept
+    {
+        if constexpr (decltype(_has_signals<Policy>(std::declval<Policy>()))::value) {
+            return std::declval<typename Policy::signals>();
+        } else {
+            return std::tuple<>{};
+        }
+    }
+};
+
+struct EmptyNodePolicy {
+    using properties = std::tuple<>;
+};
+
 } // namespace detail
 
 // compile time node ================================================================================================ //
 
-template<class Properties>
+template<class Policy = detail::EmptyNodePolicy>
 class CompileTimeNode : public Node {
 
     // types ----------------------------------------------------------------------------------- //
 public:
-    /// Tuple containing all Property policies of this Node type.
-    using property_policies_t = Properties;
+    /// Policy type as passed in by the user.
+    using user_policy_t = Policy;
+
+    /// Policy used to create this Node type.
+    using policy_t = decltype(detail::NodePolicyFactory<Policy>::create());
 
 protected:
     /// Tuple of Property instance types managed by this Node type.
-    using NodeProperties = detail::create_compile_time_properties<Properties>;
+    using Properties = typename policy_t::properties;
 
     /// Type of a specific Property in this Node type.
     template<size_t I>
-    using node_property_t = typename std::tuple_element_t<I, NodeProperties>::element_type;
+    using property_t = typename std::tuple_element_t<I, Properties>::element_type;
+
+    // helper --------------------------------------------------------------------------------- //
+private:
+    /// Finds the index of a Property by its name.
+    template<size_t I = 0, char... Cs>
+    static constexpr size_t _get_property_index(StringType<Cs...> name)
+    {
+        if constexpr (I < std::tuple_size_v<Properties>) {
+            if constexpr (property_t<I>::get_const_name() == name) {
+                return I;
+            } else {
+                return _get_property_index<I + 1>(name);
+            }
+        } else {
+            NOTF_THROW(OutOfBounds);
+        }
+    }
 
     // methods --------------------------------------------------------------------------------- //
 protected:
@@ -62,15 +151,13 @@ public:
     /// @{
     /// Returns a correctly typed Handle to a CompileTimeProperty or void (which doesn't compile).
     /// @param name     Name of the requested Property.
-    template<char... Cs>
-    constexpr auto get_property(StringType<Cs...> name) const
+    template<char... Cs, size_t I = _get_property_index(StringType<Cs...>{})>
+    constexpr auto get_property(StringType<Cs...>)
     {
-        constexpr size_t index = _get_property_index(name);
-        using value_t = typename node_property_t<index>::value_t;
-        return PropertyHandle(std::static_pointer_cast<Property<value_t>>(std::get<index>(m_node_properties)));
+        return PropertyHandle<typename property_t<I>::value_t>(std::get<I>(m_node_properties));
     }
     template<const StringConst& name>
-    constexpr auto get_property() const
+    constexpr auto get_property()
     {
         return get_property(make_string_type<name>());
     }
@@ -95,12 +182,11 @@ public:
     /// Updates the value of a CompileTimeProperty of this Node.
     /// @param name     Node-unique name of the Property.
     /// @param value    New value of the Property.
-    template<char... Cs, class T>
-    constexpr void set(StringType<Cs...> name, T&& value)
+    template<char... Cs, class T, size_t I = _get_property_index(StringType<Cs...>{})>
+    constexpr void set(StringType<Cs...>, T&& value)
     {
-        constexpr size_t index = _get_property_index(name);
-        if constexpr (std::is_convertible_v<T, node_property_t<index>>) {
-            std::get<index>(m_node_properties)->set(std::forward<T>(value));
+        if constexpr (std::is_convertible_v<T, property_t<I>>) {
+            std::get<I>(m_node_properties)->set(std::forward<T>(value));
         }
     }
     template<const StringConst& name, class T>
@@ -110,23 +196,38 @@ public:
     }
     /// @}
 
-    /// Use the base class' runtime methods alongside the compile time implementation.
+    // Use the base class' runtime methods alongside the compile time implementation.
     using Node::get;
     using Node::get_property;
     using Node::set;
 
 protected:
     /// @{
-    /// Implementation specific query of a Property.
-    AnyPropertyPtr _get_property(const std::string& name) const override
+    /// (Re-)Defines a callback to be invoked every time the value of the Property is about to change.
+    template<char... Cs, size_t I = _get_property_index(StringType<Cs...>{})>
+    void _set_property_callback(StringType<Cs...>, typename property_t<I>::callback_t callback)
     {
-        return _get_property_impl(hash_string(name));
+        std::get<I>(m_node_properties)->set_callback(std::move(callback));
     }
-    template<size_t I = 0>
-    AnyPropertyPtr _get_property_impl(const size_t hash_value) const
+    template<const StringConst& name, size_t I = _get_property_index(make_string_type<name>())>
+    constexpr void _set_property_callback(typename property_t<I>::callback_t callback)
     {
-        if constexpr (I < std::tuple_size_v<NodeProperties>) {
-            if (node_property_t<I>::get_const_name().get_hash() == hash_value) {
+        _set_property_callback(make_string_type<name>(), std::move(callback));
+    }
+    /// @}
+
+    // Use the base class' runtime methods alongside the compile time implementation.
+    using Node::_set_property_callback;
+
+private:
+    /// @{
+    /// Implementation specific query of a Property.
+    AnyPropertyPtr _get_property(const std::string& name) final { return _get_property_impl(hash_string(name)); }
+    template<size_t I = 0>
+    AnyPropertyPtr _get_property_impl(const size_t hash_value)
+    {
+        if constexpr (I < std::tuple_size_v<Properties>) {
+            if (property_t<I>::get_const_name().get_hash() == hash_value) {
                 return std::static_pointer_cast<AnyProperty>(std::get<I>(m_node_properties));
             } else {
                 return _get_property_impl<I + 1>(hash_value);
@@ -138,50 +239,37 @@ protected:
     /// @}
 
     /// Calculates the combined hash value of all Properties.
-    size_t _calculate_property_hash(size_t result = detail::version_hash()) const override
+    size_t _calculate_property_hash(size_t result = detail::version_hash()) const final
     {
-        for_each(m_node_properties, [](const auto& property, size_t& result) { hash_combine(result, property->get()); },
-                 result);
+        for_each(m_node_properties, [](auto& property, size_t& out) { hash_combine(out, property->get()); }, result);
         return result;
     }
 
     /// Removes all modified data from all Properties.
-    void _clear_modified_properties() override
+    void _clear_modified_properties() final
     {
         for_each(m_node_properties, [](auto& property) { property->clear_modified_data(); });
     }
 
-    /// @{
-    /// Access to a CompileTimeProperty by name.
-    template<char... Cs>
-    auto _get_property(StringType<Cs...> name) const
+    /// Finalizes this Node.
+    /// Stores a Handle of this node in all of its Properties.
+    void _finalize() final
     {
-        return std::get<_get_property_index(name)>(m_node_properties);
+        for_each(m_node_properties, [this](auto& property) { //
+            AnyProperty::AccessFor<Node>::set_node(*property, shared_from_this());
+        });
+        Node::_finalize();
     }
-    template<const StringConst& name>
-    constexpr auto _get_property() const
-    {
-        return _get_property(make_string_type<name>());
-    }
-    /// @}
 
-    /// Finds the index of a Property by its name.
-    template<size_t I = 0, char... Cs>
-    static constexpr size_t _get_property_index(StringType<Cs...> name)
-    {
-        if constexpr (I < std::tuple_size_v<NodeProperties>) {
-            if constexpr (node_property_t<I>::get_const_name() == name) {
-                return I;
-            } else {
-                return _get_property_index<I + 1>(name);
-            }
-        }
-    }
+    // hide some protected methods
+    using Node::_finalize;
+    using Node::_get_property_observer;
+    using Node::_is_finalized;
 
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// All Properties of this Node, default initialized to the Definition's default values.
-    NodeProperties m_node_properties;
+    Properties m_node_properties;
 };
 
 NOTF_CLOSE_NAMESPACE

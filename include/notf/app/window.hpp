@@ -125,29 +125,31 @@ struct Monitor {
     static constexpr bool is_visible = false;
 };
 
-using WindowProperties = std::tuple< //
-    Title,                           //
-    Icon,                            //
-    Size,                            //
-    Position,                        //
-    Resolution,                      //
-    State,                           //
-    Monitor                          //
-    >;
+struct WindowPolicy {
+    using properties = std::tuple< //
+        Title,                     //
+        Icon,                      //
+        Size,                      //
+        Position,                  //
+        Resolution,                //
+        State,                     //
+        Monitor                    //
+        >;
+};
 
 } // namespace window_properties
 } // namespace detail
 
 // window =========================================================================================================== //
 
-class Window : public CompileTimeNode<detail::window_properties::WindowProperties> {
+class Window : public CompileTimeNode<detail::window_properties::WindowPolicy> {
 
     friend class WindowHandle;
 
     // types ----------------------------------------------------------------------------------- //
 private:
     /// Compile time Node base type.
-    using super_t = CompileTimeNode<detail::window_properties::WindowProperties>;
+    using super_t = CompileTimeNode<detail::window_properties::WindowPolicy>;
 
 public:
     /// Nested `AccessFor<T>` type.
@@ -159,7 +161,7 @@ public:
     /// System state of the Window.
     using State = Settings::State;
 
-    /// Properties
+    /// Property names.
     static constexpr const StringConst& title = detail::window_properties::Title::name;
     static constexpr const StringConst& icon = detail::window_properties::Icon::name;
     static constexpr const StringConst& size = detail::window_properties::Size::name;

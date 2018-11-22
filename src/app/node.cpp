@@ -182,42 +182,24 @@ void Node::stack_behind(const NodeHandle& sibling)
     move_in_front_of(siblings, my_index, sibling_index);
 }
 
-bool Node::is_user_flag_set(const size_t index) const
+bool Node::_get_flag(const size_t index) const
 {
-    if (index >= get_user_flag_count()) {
+    if (index >= s_user_flag_count) {
         NOTF_THROW(OutOfBounds,
                    "Cannot test user flag #{} of Node {}, because Nodes only have {} user-defineable flags", index,
-                   get_name(), get_user_flag_count());
+                   get_name(), s_user_flag_count);
     }
-    return _is_flag_set(index + s_internal_flag_count);
+    return _get_flag_impl(index + s_internal_flag_count);
 }
 
-void Node::set_user_flag(const size_t index, const bool value)
+void Node::_set_flag(const size_t index, const bool value)
 {
-    if (index >= get_user_flag_count()) {
+    if (index >= s_user_flag_count) {
         NOTF_THROW(OutOfBounds,
                    "Cannot test user flag #{} of Node {}, because Nodes only have {} user-defineable flags", index,
-                   get_name(), get_user_flag_count());
+                   get_name(), s_user_flag_count);
     }
-    _set_flag(index + s_internal_flag_count, value);
-}
-
-void Node::clear_modified_data()
-{
-    NOTF_ASSERT(!TheGraph::is_frozen());
-
-    if (m_modified_data) {
-        // move all modified data back onto the node
-        m_parent = m_modified_data->parent;
-        m_children = std::move(*m_modified_data->children.get());
-        m_flags = m_modified_data->flags;
-
-        m_modified_data.reset();
-    }
-
-    _set_flag(to_number(InternalFlags::DIRTY), false);
-
-    _clear_modified_properties();
+    _set_flag_impl(index + s_internal_flag_count, value);
 }
 
 void Node::_remove_child(NodeHandle child_handle)
@@ -281,6 +263,24 @@ void Node::_set_parent(NodeHandle new_parent_handle)
     } else {
         m_parent = new_parent.get();
     }
+}
+
+void Node::_clear_modified_data()
+{
+    NOTF_ASSERT(!TheGraph::is_frozen());
+
+    if (m_modified_data) {
+        // move all modified data back onto the node
+        m_parent = m_modified_data->parent;
+        m_children = std::move(*m_modified_data->children.get());
+        m_flags = m_modified_data->flags;
+
+        m_modified_data.reset();
+    }
+
+    _set_flag_impl(to_number(InternalFlags::DIRTY), false);
+
+    _clear_modified_properties();
 }
 
 const Node* Node::_get_common_ancestor(const Node* const other) const
@@ -359,7 +359,7 @@ const Node::ChildList& Node::_read_siblings() const
     return siblings;
 }
 
-bool Node::_is_flag_set(const size_t index, const std::thread::id thread_id) const
+bool Node::_get_flag_impl(const size_t index, const std::thread::id thread_id) const
 {
     NOTF_ASSERT(index < bitset_size_v<Flags>);
 
@@ -377,7 +377,7 @@ bool Node::_is_flag_set(const size_t index, const std::thread::id thread_id) con
     }
 }
 
-void Node::_set_flag(const size_t index, const bool value)
+void Node::_set_flag_impl(const size_t index, const bool value)
 {
     NOTF_ASSERT(index < bitset_size_v<Flags>);
     NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
@@ -404,8 +404,8 @@ Node::Data& Node::_ensure_modified_data()
 void Node::_mark_as_dirty()
 {
     if (NOTF_UNLIKELY(!_is_finalized())) { return; }
-    if (!_is_flag_set(to_number(InternalFlags::DIRTY))) {
-        _set_flag(to_number(InternalFlags::DIRTY));
+    if (!_get_flag_impl(to_number(InternalFlags::DIRTY))) {
+        _set_flag_impl(to_number(InternalFlags::DIRTY));
         TheGraph::AccessFor<Node>::mark_dirty(shared_from_this());
     }
 }

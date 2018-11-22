@@ -1,27 +1,14 @@
 #pragma once
 
-#include "notf/app/node_compiletime.hpp"
+#include "notf/meta/pointer.hpp"
+
+#include "notf/app/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-// widget definition ================================================================================================ //
-
-namespace detail {
-
-struct TestWidgetPropertyPolicy {
-    using value_t = int;
-    static constexpr StringConst name = "test";
-    static constexpr value_t default_value = 42;
-    static constexpr bool is_visible = true;
-};
-
-using WidgetProperties = std::tuple<TestWidgetPropertyPolicy>;
-
-} // namespace detail
-
 // any widget ======================================================================================================= //
 
-class AnyWidget : public CompileTimeNode<detail::WidgetProperties> {
+class AnyWidget {
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -38,12 +25,10 @@ public:
     NOTF_EXCEPTION_TYPE(BadTransitionError);
 
     // methods --------------------------------------------------------------------------------- //
-protected:
-    /// Value constructor.
-    /// @param parent   Parent of this Node.
-    AnyWidget(valid_ptr<Node*> parent) : CompileTimeNode<detail::WidgetProperties>(parent) {}
-
 public:
+    /// Virtual destructor.
+    virtual ~AnyWidget() = default;
+
     /// The name of the current State.
     virtual std::string_view get_state_name() const noexcept = 0;
 
@@ -53,6 +38,19 @@ public:
     /// Transitions from the current into the given State.
     /// @throws AnyWidget::BadTransitionError   If the transition is not possible.
     virtual void transition_into(const std::string& state) = 0;
+};
+
+// widget =========================================================================================================== //
+
+template<class Base>
+class Widget : public Base { // TODO: is `Widget<Base>` a good idea? Right now, we don't need it, but Widget is not
+                             // complete yet
+
+    // methods --------------------------------------------------------------------------------- //
+protected:
+    /// Value constructor.
+    /// @param parent   Parent of this Node.
+    Widget(valid_ptr<Node*> parent) : Base(parent) {}
 };
 
 NOTF_CLOSE_NAMESPACE

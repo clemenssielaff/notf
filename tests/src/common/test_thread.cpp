@@ -39,8 +39,8 @@ SCENARIO("thread", "[common][thread]")
             using namespace notf::literals;
             Thread event1(Thread::Kind::EVENT);
             Thread event2(Thread::Kind::EVENT);
-            event1.run([]() { this_thread::sleep_for(1ns); });
-            event2.run([]() { this_thread::sleep_for(1ns); });
+            event1.run([]() { this_thread::sleep_for(100ns); });
+            event2.run([]() { this_thread::sleep_for(100ns); });
             event1.join();
             event2.join();
             bool exception_caught = event1.has_exception() || event2.has_exception();

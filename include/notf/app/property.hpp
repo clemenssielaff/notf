@@ -157,6 +157,13 @@ private:
 /// Base class for all Property types.
 class AnyProperty {
 
+    friend Accessor<AnyProperty, Node>;
+
+    // types ----------------------------------------------------------------------------------- //
+public:
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(AnyProperty);
+
     // methods --------------------------------------------------------------------------------- //
 public:
     NOTF_NO_COPY_OR_ASSIGN(AnyProperty);
@@ -175,6 +182,18 @@ public:
 
     /// Deletes all modified data of this Property.
     virtual void clear_modified_data() = 0;
+
+    /// Node owning the Property.
+    NodeHandle get_node() { return m_node; }
+
+    // fields ---------------------------------------------------------------------------------- ///
+private:
+    /// Node owning the Property.
+    /// We cannot simply store a reference here, because that would lead to a race condition where we test if the
+    /// Property is still alive find that it is so and try to get a NodeHandle from the Node. However, in between the
+    /// test if the Property is still alive and the NodeHandle creation, the Node might be removed (since we are only
+    /// keeping the Property, *not* the Node alive).
+    NodeHandle m_node;
 };
 
 /// A Typed Property.
@@ -188,9 +207,6 @@ class Property : public AnyProperty {
 
     // types ----------------------------------------------------------------------------------- //
 public:
-    /// Nested `AccessFor<T>` type.
-    NOTF_ACCESS_TYPE(Property<T>);
-
     /// Property value type.
     using value_t = T;
 
@@ -254,34 +270,16 @@ private:
     operator_t m_operator;
 };
 
-// run time property ================================================================================================ //
+// accessor ========================================================================================================= //
 
-template<class T>
-class RunTimeProperty final : public Property<T> {
+template<>
+class Accessor<AnyProperty, Node> {
+    template<class>
+    friend class CompileTimeNode;
+    friend RunTimeNode;
 
-    // methods --------------------------------------------------------------------------------- //
-public:
-    /// Constructor.
-    /// @param name         The Node-unique name of this Property.
-    /// @param value        Property value.
-    /// @param is_visible   Whether a change in the Property will cause the Node to redraw or not.
-    RunTimeProperty(std::string_view name, T value, bool is_visible = true)
-        : Property<T>(value, is_visible), m_name(std::move(name)), m_default_value(std::move(value))
-    {}
-
-    /// The Node-unique name of this Property.
-    std::string_view get_name() const final { return m_name; }
-
-    /// The default value of this Property.
-    const T& get_default() const final { return m_default_value; }
-
-    // fields ---------------------------------------------------------------------------------- ///
-private:
-    /// The Node-unique name of this Property.
-    const std::string_view m_name;
-
-    /// The default value of this Property.
-    const T m_default_value;
+    /// Registers the Node with the Property after it has been created.
+    static void set_node(AnyProperty& property, NodeHandle node) { property.m_node = std::move(node); }
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -16,10 +16,10 @@ struct Arithmetic;
 
 // timer_pool.hpp
 class TheTimerPool;
-NOTF_DEFINE_SHARED_POINTERS(class, Timer);
-NOTF_DEFINE_SHARED_POINTERS(class, OneShotTimer);
-NOTF_DEFINE_SHARED_POINTERS(class, IntervalTimer);
-NOTF_DEFINE_SHARED_POINTERS(class, VariableTimer);
+NOTF_DECLARE_SHARED_POINTERS(class, Timer);
+NOTF_DECLARE_SHARED_POINTERS(class, OneShotTimer);
+NOTF_DECLARE_SHARED_POINTERS(class, IntervalTimer);
+NOTF_DECLARE_SHARED_POINTERS(class, VariableTimer);
 
 // msgpack.hpp
 class MsgPack;

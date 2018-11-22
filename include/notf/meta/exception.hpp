@@ -116,4 +116,10 @@ NOTF_EXCEPTION_TYPE(ThreadError);
 /// Error thrown when something is not unique as it should be.
 NOTF_EXCEPTION_TYPE(NotUniqueError);
 
+/// Error thrown when a name does not match anything.
+NOTF_EXCEPTION_TYPE(NameError);
+
+/// Error thrown a type doesn't match.
+NOTF_EXCEPTION_TYPE(TypeError);
+
 NOTF_CLOSE_NAMESPACE

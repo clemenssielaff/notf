@@ -3,7 +3,7 @@
 #include "notf/meta/pointer.hpp"
 #include "notf/meta/typename.hpp"
 
-#include "notf/reactive/reactive_operator.hpp"
+#include "notf/reactive/operator.hpp"
 
 NOTF_OPEN_NAMESPACE
 
