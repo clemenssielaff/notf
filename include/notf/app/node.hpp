@@ -70,8 +70,7 @@ private:
 
     private:
         template<class T>
-        TypedNodeOwner<T> _to_node_owner()
-        {
+        TypedNodeOwner<T> _to_node_owner() {
             if (auto node = m_node.lock()) {
                 m_node.reset();
                 return TypedNodeOwner<T>(std::move(node));
@@ -139,8 +138,7 @@ private:
         /// Value Constructor.
         /// Initializes all data, so we can be sure that all of it is valid if a modified data copy exists.
         Data(valid_ptr<Node*> parent, const ChildList& children, Flags flags)
-            : parent(parent), children(std::make_unique<ChildList>(children)), flags(std::move(flags))
-        {}
+            : parent(parent), children(std::make_unique<ChildList>(children)), flags(std::move(flags)) {}
 
         /// Modified parent of this Node, if it was moved.
         valid_ptr<Node*> parent;
@@ -201,8 +199,7 @@ public:
     /// @returns        The value of the Property.
     /// @throws         NameError / TypeError
     template<class T>
-    const T& get(const std::string& name) const
-    {
+    const T& get(const std::string& name) const {
         return _try_get_property<T>(name)->get();
     }
 
@@ -211,8 +208,7 @@ public:
     /// @param value    New value of the Property.
     /// @throws         NameError / TypeError
     template<class T>
-    void set(const std::string& name, T&& value)
-    {
+    void set(const std::string& name, T&& value) {
         NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
         _try_get_property<T>(name)->set(std::forward<T>(value));
     }
@@ -222,9 +218,20 @@ public:
     /// @returns        Handle to the requested Property.
     /// @throws         NameError / TypeError
     template<class T>
-    PropertyHandle<T> get_property(const std::string& name)
-    {
+    PropertyHandle<T> get_property(const std::string& name) {
         return PropertyHandle(_try_get_property<T>(name));
+    }
+
+    // signals / slots --------------------------------------------------------
+
+    /// Run time access to the subscriber of a Slot of this Node.
+    /// Use to connect Pipelines from the outside to the Node.
+    /// @param name     Node-unique name of the Slot.
+    /// @returns        The requested Slot.
+    /// @throws         NameError / TypeError
+    template<class T>
+    typename Slot<T>::subscriber_t get_slot(const std::string& name) {
+        return _try_get_slot<T>(name)->get_subscriber();
     }
 
     // hierarchy --------------------------------------------------------------
@@ -242,8 +249,7 @@ public:
     /// Tests, if this Node is a descendant of the given ancestor.
     /// @param ancestor         Potential ancestor to verify.
     bool has_ancestor(const Node* ancestor) const;
-    bool has_ancestor(const NodeHandle& ancestor) const
-    {
+    bool has_ancestor(const NodeHandle& ancestor) const {
         if (const NodeConstPtr ancestor_lock = NodeHandle::AccessFor<Node>::get_node_ptr(ancestor)) {
             return has_ancestor(ancestor_lock.get());
         }
@@ -261,8 +267,7 @@ public:
     /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
     /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
     template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
-    NodeHandle get_first_ancestor()
-    {
+    NodeHandle get_first_ancestor() {
         Node* next = _get_parent();
         if (auto* result = dynamic_cast<T*>(next)) { return NodeHandle(result->shared_from_this()); }
         while (next != next->_get_parent()) {
@@ -317,6 +322,31 @@ public:
     void stack_behind(const NodeHandle& sibling);
 
 protected: // for all subclasses
+    // properties -------------------------------------------------------------
+
+    /// (Re-)Defines a callback to be invoked every time the value of the Property is about to change.
+    /// If the callback returns false, the update is cancelled and the old value remains.
+    /// If the callback returns true, the update will proceed.
+    /// Since the value is passed in by mutable reference, it can modify the value however it wants to. Even if the new
+    /// value ends up the same as the old, the update will proceed. Note though, that the callback will only be called
+    /// if the value is initially different from the one stored in the PropertyOperator.
+    template<class T>
+    void _set_property_callback(const std::string& property_name, typename Property<T>::callback_t callback) {
+        _try_get_property<T>(property_name)->set_callback(std::move(callback));
+    }
+
+    // signals / slots --------------------------------------------------------
+
+    /// Internal access to a Slot of this Node.
+    /// Used to forward calls to the Slot from the outside to some callback inside the Node.
+    /// @param name     Node-unique name of the Slot.
+    /// @returns        The requested Slot.
+    /// @throws         NameError / TypeError
+    template<class T>
+    typename Slot<T>::publisher_t _get_slot(const std::string& name) {
+        return _try_get_slot<T>(name)->get_publisher();
+    }
+
     // flags ------------------------------------------------------------------
 
     /// Tests a user defineable flag on this Node.
@@ -339,8 +369,7 @@ protected: // for all subclasses
     /// @throws InternalError   If you pass anything else but `this` as the parent.
     template<class Child, class Parent, class... Args,
              class = std::enable_if_t<detail::can_node_parent<Parent, Child>()>>
-    NewNode<Child> _create_child(Parent* parent, Args&&... args)
-    {
+    NewNode<Child> _create_child(Parent* parent, Args&&... args) {
         if (NOTF_UNLIKELY(parent != this)) {
             NOTF_THROW(InternalError, "Node::_create_child cannot be used to create children of other Nodes.");
         }
@@ -364,20 +393,6 @@ protected: // for all subclasses
     /// Remove all children from this Node.
     void _clear_children();
 
-    // management -------------------------------------------------------------
-
-    /// (Re-)Defines a callback to be invoked every time the value of the Property is about to change.
-    /// If the callback returns false, the update is cancelled and the old value remains.
-    /// If the callback returns true, the update will proceed.
-    /// Since the value is passed in by mutable reference, it can modify the value however it wants to. Even if the new
-    /// value ends up the same as the old, the update will proceed. Note though, that the callback will only be called
-    /// if the value is initially different from the one stored in the PropertyOperator.
-    template<class T>
-    void _set_property_callback(const std::string& property_name, typename Property<T>::callback_t callback)
-    {
-        _try_get_property<T>(property_name)->set_callback(std::move(callback));
-    }
-
 protected: // for direct subclasses only
     /// Finalizes this Node.
     /// Called on every new Node instance right after the Constructor of the most derived class has finished.
@@ -391,9 +406,13 @@ protected: // for direct subclasses only
     bool _is_finalized() const { return _get_flag_impl(to_number(InternalFlags::FINALIZED)); }
 
 private:
-    /// Implementation specific query of a Property.
+    /// Implementation specific query of a Property, returns an empty pointer if no Property by the given name is found.
     /// @param name     Node-unique name of the Property.
-    virtual AnyPropertyPtr _get_property(const std::string& name) = 0;
+    virtual AnyPropertyPtr _get_property_impl(const std::string& /*name*/) = 0;
+
+    /// Implementation specific query of a Slot, returns an empty pointer if no Slot by the given name is found.
+    /// @param name     Node-unique name of the Slot.
+    virtual AnySlotPtr _get_slot_impl(const std::string& /*name*/) = 0;
 
     /// Calculates the combined hash value of all Properties.
     virtual size_t _calculate_property_hash(size_t result = detail::version_hash()) const = 0;
@@ -406,8 +425,7 @@ private:
     /// Never creates a modified copy.
     /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
     const Node* _get_parent(std::thread::id thread_id = std::this_thread::get_id()) const;
-    Node* _get_parent(const std::thread::id thread_id = std::this_thread::get_id())
-    {
+    Node* _get_parent(const std::thread::id thread_id = std::this_thread::get_id()) {
         return const_cast<Node*>(const_cast<const Node*>(this)->_get_parent(thread_id));
     }
     /// @}
@@ -424,9 +442,8 @@ private:
     /// @returns        Handle to the requested Property.
     /// @throws         NameError / TypeError
     template<class T>
-    PropertyPtr<T> _try_get_property(const std::string& name)
-    {
-        AnyPropertyPtr property = _get_property(name);
+    PropertyPtr<T> _try_get_property(const std::string& name) {
+        AnyPropertyPtr property = _get_property_impl(name);
         if (!property) { NOTF_THROW(NameError, "Node \"{}\" has no Property called \"{}\"", get_name(), name); }
 
         PropertyPtr<T> typed_property = std::dynamic_pointer_cast<Property<T>>(std::move(property));
@@ -436,6 +453,24 @@ private:
                        name, get_name(), property->get_type_name(), type_name<T>());
         }
         return typed_property;
+    }
+
+    /// Run time access to a Slot of this Node.
+    /// @param name     Node-unique name of the Slot.
+    /// @returns        The requested Slot.
+    /// @throws         NameError / TypeError
+    template<class T>
+    SlotPtr<T> _try_get_slot(const std::string& name) {
+        AnySlotPtr any_slot = _get_slot_impl(name);
+        if (!any_slot) { NOTF_THROW(NameError, "Node \"{}\" has no Slot called \"{}\"", get_name(), name); }
+
+        SlotPtr<T> slot = std::dynamic_pointer_cast<Slot<T>>(any_slot);
+        if (!slot) {
+            NOTF_THROW(TypeError,
+                       "Slot \"{}\" of Node \"{}\" is of type \"{}\", but was requested as \"{}\"", //
+                       name, get_name(), any_slot->get_type_name(), type_name<T>());
+        }
+        return slot;
     }
 
     /// Finds and returns the first common ancestor of two Nodes.
@@ -510,8 +545,7 @@ class Accessor<Node, detail::AnyNodeHandle> {
     friend detail::AnyNodeHandle;
 
     /// Lets a NodeOwner remove the managed Node on destruction.
-    static void remove(const NodePtr& node)
-    {
+    static void remove(const NodePtr& node) {
         NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
         NodePtr parent;
         if (auto weak_parent = node->_get_parent()->weak_from_this(); !weak_parent.expired()) {

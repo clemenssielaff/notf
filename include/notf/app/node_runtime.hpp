@@ -18,7 +18,7 @@ protected:
     RunTimeNode(valid_ptr<Node*> parent) : Node(parent) {}
 
     /// Constructs a new Property on this Node.
-    /// Note that the `get_node` method on the  returned PropertyHandle returns an expired NodeHandle until the Node is
+    /// Note that the `get_node` method on the returned PropertyHandle returns an expired NodeHandle until the Node is
     /// finalized (the constructor has finished).
     /// @param name         Name of the Property.
     /// @param value        Initial value of the Property (also determines its type unless specified explicitly).
@@ -30,9 +30,9 @@ protected:
     PropertyHandle<T> _create_property(std::string name, T&& value, const bool is_visible = true)
     {
         if (NOTF_UNLIKELY(_is_finalized())) { // unlikely 'cause you only do it once
-            NOTF_THROW(FinalizedError, "Cannot create a new Property on the finalized Node \"{}\"", get_name());
+            NOTF_THROW(FinalizedError, "Cannot create a new Property on already finalized Node \"{}\"", get_name());
         }
-        if (m_properties.count(name) != 0) {
+        if (NOTF_UNLIKELY(m_properties.count(name) != 0)) {
             NOTF_THROW(NotUniqueError, "Node \"{}\" already has a Property named \"{}\"", get_name(), name);
         }
 
@@ -52,11 +52,39 @@ protected:
         return property;
     }
 
+    /// Constructs a new Slot on this Node.
+    /// @param name         Name of the Slot.
+    /// @throws FinalizedError      If you call this method from anywhere but the constructor.
+    /// @throws not_unique_error    If there already exists a Property of the same name on this Node.
+    /// @returns            The internal publisher of the Slot.
+    template<class T>
+    typename Slot<T>::publisher_t _create_slot(std::string name)
+    {
+        if (NOTF_UNLIKELY(_is_finalized())) { // unlikely 'cause you only do it once
+            NOTF_THROW(FinalizedError, "Cannot create a new Slot on already finalized Node \"{}\"", get_name());
+        }
+        if (NOTF_UNLIKELY(m_slots.count(name) != 0)) {
+            NOTF_THROW(NotUniqueError, "Node \"{}\" already has a Slot named \"{}\"", get_name(), name);
+        }
+
+        auto [itr, success] = m_slots.emplace(std::move(name), std::make_shared<Slot<T>>());
+        NOTF_ASSERT(success);
+
+        return itr->second->get_publisher();
+    }
+
 private:
     /// Implementation specific query of a Property.
-    AnyPropertyPtr _get_property(const std::string& name) final
+    AnyPropertyPtr _get_property_impl(const std::string& name) final
     {
         if (auto itr = m_properties.find(name); itr != m_properties.end()) { return itr->second; }
+        return {};
+    }
+
+    /// Implementation specific query of a Slot.
+    AnySlotPtr _get_slot_impl(const std::string& name) final
+    {
+        if (auto itr = m_slots.find(name); itr != m_slots.end()) { return itr->second; }
         return {};
     }
 
@@ -96,6 +124,9 @@ private:
 private:
     /// Dynamically typed Properties.
     std::map<std::string, AnyPropertyPtr> m_properties;
+
+    /// Slots.
+    std::map<std::string, AnySlotPtr> m_slots;
 };
 
 NOTF_CLOSE_NAMESPACE

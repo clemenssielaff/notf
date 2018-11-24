@@ -25,8 +25,7 @@ struct NodePolicyFactory {
     // TODO: (NodePolicyFactory) check that all names are unique
 
     /// Factory method.
-    static constexpr auto create()
-    {
+    static constexpr auto create() {
         struct NodePolicy {
 
             /// All Properties of the Node type.
@@ -48,8 +47,7 @@ struct NodePolicyFactory {
         -> decltype(std::declval<typename T::properties>(), std::true_type{});
     template<class>
     static constexpr auto _has_properties(...) -> std::false_type;
-    static constexpr auto get_properties() noexcept
-    {
+    static constexpr auto get_properties() noexcept {
         if constexpr (decltype(_has_properties<Policy>(std::declval<Policy>()))::value) {
             return std::declval<typename Policy::properties>();
         } else {
@@ -61,8 +59,7 @@ struct NodePolicyFactory {
     static constexpr auto _has_slots(const T&) -> decltype(std::declval<typename T::slots>(), std::true_type{});
     template<class>
     static constexpr auto _has_slots(...) -> std::false_type;
-    static constexpr auto get_slots() noexcept
-    {
+    static constexpr auto get_slots() noexcept {
         if constexpr (decltype(_has_slots<Policy>(std::declval<Policy>()))::value) {
             return std::declval<typename Policy::slots>();
         } else {
@@ -74,8 +71,7 @@ struct NodePolicyFactory {
     static constexpr auto _has_signals(const T&) -> decltype(std::declval<typename T::signals>(), std::true_type{});
     template<class>
     static constexpr auto _has_signals(...) -> std::false_type;
-    static constexpr auto get_signals() noexcept
-    {
+    static constexpr auto get_signals() noexcept {
         if constexpr (decltype(_has_signals<Policy>(std::declval<Policy>()))::value) {
             return std::declval<typename Policy::signals>();
         } else {
@@ -104,19 +100,25 @@ public:
     using policy_t = decltype(detail::NodePolicyFactory<Policy>::create());
 
 protected:
-    /// Tuple of Property instance types managed by this Node type.
+    /// Tuple of Property types managed by this Node.
     using Properties = typename policy_t::properties;
 
-    /// Type of a specific Property in this Node type.
+    /// Type of a specific Property of this Node.
     template<size_t I>
     using property_t = typename std::tuple_element_t<I, Properties>::element_type;
+
+    /// Tuple of Slot types managed by this Node.
+    using Slots = typename policy_t::slots;
+
+    /// Type of a specific Slot of this Node.
+    template<size_t I>
+    using slot_t = typename std::tuple_element_t<I, Slots>::element_type;
 
     // helper --------------------------------------------------------------------------------- //
 private:
     /// Finds the index of a Property by its name.
     template<size_t I = 0, char... Cs>
-    static constexpr size_t _get_property_index(StringType<Cs...> name)
-    {
+    static constexpr size_t _get_property_index(StringType<Cs...> name) {
         if constexpr (I < std::tuple_size_v<Properties>) {
             if constexpr (property_t<I>::get_const_name() == name) {
                 return I;
@@ -128,13 +130,27 @@ private:
         }
     }
 
+    /// Finds the index of a Slot by its name.
+    template<size_t I = 0, char... Cs>
+    static constexpr size_t _get_slot_index(StringType<Cs...> name) {
+        if constexpr (I < std::tuple_size_v<Slots>) {
+            if constexpr (slot_t<I>::get_const_name() == name) {
+                return I;
+            } else {
+                return _get_slot_index<I + 1>(name);
+            }
+        } else {
+            NOTF_THROW(OutOfBounds);
+        }
+    }
+
     // methods --------------------------------------------------------------------------------- //
 protected:
     /// Value constructor.
     /// @param parent   Parent of this Node.
-    CompileTimeNode(valid_ptr<Node*> parent) : Node(parent)
-    {
-        for_each(m_node_properties, [this](auto& property) {
+    CompileTimeNode(valid_ptr<Node*> parent) : Node(parent) {
+        // properties
+        for_each(m_properties, [this](auto& property) {
             using property_t = typename std::decay_t<decltype(property)>::element_type;
 
             // create the new property
@@ -145,35 +161,25 @@ protected:
             auto typed_property = std::static_pointer_cast<Property<typename property_t::value_t>>(property_ptr);
             typed_property->get_operator()->subscribe(_get_property_observer());
         });
+
+        // slots
+        for_each(m_slots, [this](auto& slot) {
+            slot = std::make_shared<typename std::decay_t<decltype(slot)>::element_type>();
+        });
     }
 
 public:
-    /// @{
-    /// Returns a correctly typed Handle to a CompileTimeProperty or void (which doesn't compile).
-    /// @param name     Name of the requested Property.
-    template<char... Cs, size_t I = _get_property_index(StringType<Cs...>{})>
-    constexpr auto get_property(StringType<Cs...>)
-    {
-        return PropertyHandle<typename property_t<I>::value_t>(std::get<I>(m_node_properties));
-    }
-    template<const StringConst& name>
-    constexpr auto get_property()
-    {
-        return get_property(make_string_type<name>());
-    }
-    /// @}
+    // properties -------------------------------------------------------------
 
     /// @{
     /// Returns the correctly typed value of a CompileTimeProperty.
     /// @param name     Name of the requested Property.
     template<char... Cs>
-    const auto& get(StringType<Cs...> name) const
-    {
-        return std::get<_get_property_index(name)>(m_node_properties)->get();
+    constexpr const auto& get(StringType<Cs...> name) const {
+        return std::get<_get_property_index(name)>(m_properties)->get();
     }
     template<const StringConst& name>
-    constexpr const auto& get() const
-    {
+    constexpr const auto& get() const {
         return get(make_string_type<name>());
     }
     /// @}
@@ -183,16 +189,27 @@ public:
     /// @param name     Node-unique name of the Property.
     /// @param value    New value of the Property.
     template<char... Cs, class T, size_t I = _get_property_index(StringType<Cs...>{})>
-    constexpr void set(StringType<Cs...>, T&& value)
-    {
+    constexpr void set(StringType<Cs...>, T&& value) {
         if constexpr (std::is_convertible_v<T, property_t<I>>) {
-            std::get<I>(m_node_properties)->set(std::forward<T>(value));
+            std::get<I>(m_properties)->set(std::forward<T>(value));
         }
     }
     template<const StringConst& name, class T>
-    constexpr void set(T&& value)
-    {
+    constexpr void set(T&& value) {
         set(make_string_type<name>(), std::forward<T>(value));
+    }
+    /// @}
+
+    /// @{
+    /// Returns a correctly typed Handle to a CompileTimeProperty or void (which doesn't compile).
+    /// @param name     Name of the requested Property.
+    template<char... Cs, size_t I = _get_property_index(StringType<Cs...>{})>
+    constexpr auto get_property(StringType<Cs...>) {
+        return PropertyHandle<typename property_t<I>::value_t>(std::get<I>(m_properties));
+    }
+    template<const StringConst& name>
+    constexpr auto get_property() {
+        return get_property(make_string_type<name>());
     }
     /// @}
 
@@ -201,17 +218,34 @@ public:
     using Node::get_property;
     using Node::set;
 
+    // signals / slots --------------------------------------------------------
+
+    /// @{
+    /// Returns the requested Slot or void (which doesn't compile).
+    /// @param name     Name of the requested Property.
+    template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{})>
+    constexpr auto get_slot(StringType<Cs...>) {
+        return std::get<I>(m_slots)->get_subscriber();
+    }
+    template<const StringConst& name>
+    constexpr auto get_slot() {
+        return get_slot(make_string_type<name>());
+    }
+    /// @}
+
+    // Use the base class' runtime methods alongside the compile time implementation.
+    using Node::get_slot;
+
 protected:
+    // properties -------------------------------------------------------------
     /// @{
     /// (Re-)Defines a callback to be invoked every time the value of the Property is about to change.
     template<char... Cs, size_t I = _get_property_index(StringType<Cs...>{})>
-    void _set_property_callback(StringType<Cs...>, typename property_t<I>::callback_t callback)
-    {
-        std::get<I>(m_node_properties)->set_callback(std::move(callback));
+    constexpr void _set_property_callback(StringType<Cs...>, typename property_t<I>::callback_t callback) {
+        std::get<I>(m_properties)->set_callback(std::move(callback));
     }
     template<const StringConst& name, size_t I = _get_property_index(make_string_type<name>())>
-    constexpr void _set_property_callback(typename property_t<I>::callback_t callback)
-    {
+    constexpr void _set_property_callback(typename property_t<I>::callback_t callback) {
         _set_property_callback(make_string_type<name>(), std::move(callback));
     }
     /// @}
@@ -219,18 +253,35 @@ protected:
     // Use the base class' runtime methods alongside the compile time implementation.
     using Node::_set_property_callback;
 
+    // signals / slots --------------------------------------------------------
+
+    /// @{
+    /// Internal access to a Slot of this Node.
+    /// @param name     Name of the requested Property.
+    template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{})>
+    constexpr auto _get_slot(StringType<Cs...>) {
+        return std::get<I>(m_slots)->get_publisher();
+    }
+    template<const StringConst& name>
+    constexpr auto _get_slot() {
+        return _get_slot(make_string_type<name>());
+    }
+    /// @}
+
+    // Use the base class' runtime methods alongside the compile time implementation.
+    using Node::_get_slot;
+
 private:
     /// @{
     /// Implementation specific query of a Property.
-    AnyPropertyPtr _get_property(const std::string& name) final { return _get_property_impl(hash_string(name)); }
+    AnyPropertyPtr _get_property_impl(const std::string& name) final { return _get_property_ct(hash_string(name)); }
     template<size_t I = 0>
-    AnyPropertyPtr _get_property_impl(const size_t hash_value)
-    {
+    AnyPropertyPtr _get_property_ct(const size_t hash_value) {
         if constexpr (I < std::tuple_size_v<Properties>) {
             if (property_t<I>::get_const_name().get_hash() == hash_value) {
-                return std::static_pointer_cast<AnyProperty>(std::get<I>(m_node_properties));
+                return std::static_pointer_cast<AnyProperty>(std::get<I>(m_properties));
             } else {
-                return _get_property_impl<I + 1>(hash_value);
+                return _get_property_ct<I + 1>(hash_value);
             }
         } else {
             return {}; // no such property
@@ -238,24 +289,39 @@ private:
     }
     /// @}
 
+    /// @{
+    /// Implementation specific query of a Slot, returns an empty pointer if no Slot by the given name is found.
+    /// @param name     Node-unique name of the Slot.
+    AnySlotPtr _get_slot_impl(const std::string& name) final { return _get_slot_ct(hash_string(name)); }
+    template<size_t I = 0>
+    AnySlotPtr _get_slot_ct(const size_t hash_value) {
+        if constexpr (I < std::tuple_size_v<Slots>) {
+            if (slot_t<I>::get_const_name().get_hash() == hash_value) {
+                return std::static_pointer_cast<AnySlot>(std::get<I>(m_properties));
+            } else {
+                return _get_slot_ct<I + 1>(hash_value);
+            }
+        } else {
+            return {}; // no such slot
+        }
+    }
+    /// @}
+
     /// Calculates the combined hash value of all Properties.
-    size_t _calculate_property_hash(size_t result = detail::version_hash()) const final
-    {
-        for_each(m_node_properties, [](auto& property, size_t& out) { hash_combine(out, property->get()); }, result);
+    size_t _calculate_property_hash(size_t result = detail::version_hash()) const final {
+        for_each(m_properties, [](auto& property, size_t& out) { hash_combine(out, property->get()); }, result);
         return result;
     }
 
     /// Removes all modified data from all Properties.
-    void _clear_modified_properties() final
-    {
-        for_each(m_node_properties, [](auto& property) { property->clear_modified_data(); });
+    void _clear_modified_properties() final {
+        for_each(m_properties, [](auto& property) { property->clear_modified_data(); });
     }
 
     /// Finalizes this Node.
     /// Stores a Handle of this node in all of its Properties.
-    void _finalize() final
-    {
-        for_each(m_node_properties, [this](auto& property) { //
+    void _finalize() final {
+        for_each(m_properties, [this](auto& property) { //
             AnyProperty::AccessFor<Node>::set_node(*property, shared_from_this());
         });
         Node::_finalize();
@@ -269,7 +335,10 @@ private:
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// All Properties of this Node, default initialized to the Definition's default values.
-    Properties m_node_properties;
+    Properties m_properties;
+
+    /// All Slots of this Node.
+    Slots m_slots;
 };
 
 NOTF_CLOSE_NAMESPACE

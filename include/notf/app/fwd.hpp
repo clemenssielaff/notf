@@ -58,6 +58,16 @@ class PropertyHandle;
 NOTF_DECLARE_SHARED_POINTERS(class, RootNode);
 using RootNodeHandle = TypedNodeHandle<RootNode>;
 
+// slot.hpp
+namespace detail {
+template<class>
+struct SlotPublisher;
+template<class>
+struct SlotSubscriber;
+} // namespace detail
+NOTF_DECLARE_SHARED_POINTERS(class, AnySlot);
+NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, Slot);
+
 // window.hpp
 namespace detail {
 struct WindowSettings;
