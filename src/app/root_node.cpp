@@ -6,8 +6,7 @@ NOTF_OPEN_NAMESPACE
 
 // root node ======================================================================================================== //
 
-void RootNode::_add_window(WindowPtr window)
-{
+void RootNode::_add_window(WindowPtr window) {
     NodePtr node = std::static_pointer_cast<Node>(std::move(window));
 
     ChildList& children = Node::AccessFor<RootNode>::write_children(*this);

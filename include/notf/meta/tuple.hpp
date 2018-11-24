@@ -120,8 +120,7 @@ static constexpr bool is_derived_from_one_of_tuple_v = is_derived_from_one_of_tu
 /// Returns the requested type from a Tuple.
 /// Fails if the index is out of bounds and supports negative indices.
 template<long I, class Tuple>
-constexpr auto tuple_element()
-{
+constexpr auto tuple_element() {
     if constexpr (I >= 0) {
         if constexpr (I >= std::tuple_size_v<Tuple>) {
             throw 0; // Positive tuple index is out of bounds
@@ -178,25 +177,23 @@ using make_tuple_unique_t = typename make_tuple_unique<std::tuple<>, Ts...>::typ
 /// @param function Function to execute. Must take the tuple element type as first argument.
 /// @param args     (optional) Additional arguments passed bound to the 2nd to nth parameter of function.
 template<size_t I = 0, class Function, class... Ts, class... Args>
-constexpr std::enable_if_t<(I == sizeof...(Ts))> for_each(std::tuple<Ts...>&, Function&&, Args&&...) noexcept
-{} // recursion breaker
+constexpr std::enable_if_t<(I == sizeof...(Ts))> for_each(std::tuple<Ts...>&, Function&&, Args&&...) noexcept {
+} // recursion breaker
 template<size_t I = 0, class Function, class... Ts, class... Args>
 constexpr std::enable_if_t<(I < sizeof...(Ts))>
 for_each(std::tuple<Ts...>& tuple, Function&& function,
-         Args&&... args) noexcept(noexcept(std::invoke(function, std::get<I>(tuple), args...)))
-{
+         Args&&... args) noexcept(noexcept(std::invoke(function, std::get<I>(tuple), args...))) {
     std::invoke(function, std::get<I>(tuple), args...);
     for_each<I + 1>(tuple, std::forward<Function>(function), std::forward<Args>(args)...);
 }
 
 template<size_t I = 0, class Function, class... Ts, class... Args>
-constexpr std::enable_if_t<(I == sizeof...(Ts))> for_each(const std::tuple<Ts...>&, Function&&, Args&&...) noexcept
-{} // recursion breaker
+constexpr std::enable_if_t<(I == sizeof...(Ts))> for_each(const std::tuple<Ts...>&, Function&&, Args&&...) noexcept {
+} // recursion breaker
 template<size_t I = 0, class Function, class... Ts, class... Args>
 constexpr std::enable_if_t<(I < sizeof...(Ts))>
 for_each(const std::tuple<Ts...>& tuple, Function&& function,
-         Args&&... args) noexcept(noexcept(std::invoke(function, std::get<I>(tuple), args...)))
-{
+         Args&&... args) noexcept(noexcept(std::invoke(function, std::get<I>(tuple), args...))) {
     std::invoke(function, std::get<I>(tuple), args...);
     for_each<I + 1>(tuple, std::forward<Function>(function), std::forward<Args>(args)...);
 }

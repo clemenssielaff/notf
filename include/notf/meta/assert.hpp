@@ -20,8 +20,7 @@ namespace detail {
 /// Prints out a formatted message with information about the failure and then aborts the program.
 template<class... Args>
 NOTF_NORETURN void
-assertion_failed(char const* expr, char const* file, char const* function, long line, const char* fmt, Args&&... args)
-{
+assertion_failed(char const* expr, char const* file, char const* function, long line, const char* fmt, Args&&... args) {
     using namespace fmt::literals;
     const std::string msg
         = fmt::format(R"(Assertion "{expr}" failed at "{file}:{line}" in function "{func}" with message: "{msg}")",
@@ -34,8 +33,7 @@ assertion_failed(char const* expr, char const* file, char const* function, long 
     }
 }
 NOTF_NORETURN inline void
-assertion_failed(char const* expr, char const* file, char const* function, long line, const char* message = nullptr)
-{
+assertion_failed(char const* expr, char const* file, char const* function, long line, const char* message = nullptr) {
     using namespace fmt::literals;
     std::string msg;
     if (static_cast<bool>(message)) {

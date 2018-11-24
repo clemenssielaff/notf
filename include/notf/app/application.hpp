@@ -81,15 +81,13 @@ private:
     TheApplication(Args args);
 
     /// Constructs default arguments on request.
-    static const Args& _default_args()
-    {
+    static const Args& _default_args() {
         static Args default_arguments;
         return default_arguments;
     }
 
     /// The Graph singleton.
-    static TheApplication& _get_instance(const Args& application_args = _default_args())
-    {
+    static TheApplication& _get_instance(const Args& application_args = _default_args()) {
         if (s_state == State::CLOSED) { NOTF_THROW(ShutdownError, "The Application has already been shut down"); }
         s_state = State::RUNNING;
 
@@ -107,13 +105,11 @@ public:
     /// Initializes the Application through an user-defined ApplicationInfo object.
     /// @throws StartupError    When the Application intialization failed.
     /// @throws ShutdownError   When this method is called after the Application was shut down.
-    static TheApplication& initialize(const Args& application_args)
-    {
+    static TheApplication& initialize(const Args& application_args) {
         if (s_state != State::UNSTARTED) { NOTF_THROW(StartupError, "The Application has already been initialized"); }
         return _get_instance(application_args);
     }
-    static TheApplication& initialize(const int argc, char* argv[])
-    {
+    static TheApplication& initialize(const int argc, char* argv[]) {
         Args args;
         args.argc = argc;
         args.argv = argv;
@@ -129,8 +125,7 @@ public:
     /// The singleton Application instance.
     /// @throws StartupError    When the Application intialization failed.
     /// @throws ShutdownError   When this method is called after the Application was shut down.
-    static TheApplication& get()
-    {
+    static TheApplication& get() {
         if (NOTF_LIKELY(is_running())) { return _get_instance(); }
         NOTF_THROW(ShutdownError, "You may not access the Application after it was shut down");
     }

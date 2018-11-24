@@ -38,23 +38,20 @@ public:
     /// @param width     Width of the Aabr.
     /// @param height    Height of the Aabr.
     Aabr(const element_t x, const element_t y, const element_t width, const element_t height)
-        : super_t::data({component_t(x, y), component_t(x + width, y + height)})
-    {}
+        : super_t::data({component_t(x, y), component_t(x + width, y + height)}) {}
 
     /// Constructs an Aabr of the given width and height, with the bottom-left corner at `position`.
     /// @param position  Position of the Aabr's bottom-left corner.
     /// @param width     Width of the Aabr.
     /// @param height    Height of the Aabr.
     Aabr(const component_t position, const element_t width, const element_t height)
-        : super_t::data({position, position + component_t(width, height)})
-    {}
+        : super_t::data({position, position + component_t(width, height)}) {}
 
     /// Constructs an Aabr of the given size with the bottom-left corner at `position`.
     /// @param position  Position of the Aabr's bottom-left corner.
     /// @param size      Size of the Aabr.
     Aabr(const component_t& position, const Size2<element_t>& size)
-        : super_t::data({position, component_t(position.x() + size.width, position.y() + size.height)})
-    {}
+        : super_t::data({position, component_t(position.x() + size.width, position.y() + size.height)}) {}
 
     /// Constructs an Aabr of the given size with the bottom-left corner at zero.
     /// @param size  Size of the Aabr.
@@ -64,8 +61,7 @@ public:
     /// The corners don't need to be specific, the constructor figures out how to construct an Aabr from them.
     /// @param a    One corner point of the Aabr.
     /// @param b    Opposite corner point of the Aabr.
-    Aabr(const component_t& a, const component_t& b)
-    {
+    Aabr(const component_t& a, const component_t& b) {
         if (a.x() < b.x()) {
             if (a.y() < b.y()) {
                 data[0] = a;
@@ -86,8 +82,7 @@ public:
     }
 
     /// The largest representable Aabr.
-    static Aabr huge()
-    {
+    static Aabr huge() {
         Aabr result;
         result[0] = component_t::all(min_value<element_t>());
         result[1] = component_t::all(max_value<element_t>());
@@ -96,8 +91,7 @@ public:
 
     /// The "most wrong" Aabr (maximal negative area).
     /// Is useful as the starting point for defining an Aabr from a set of points.
-    static Aabr wrongest()
-    {
+    static Aabr wrongest() {
         Aabr result;
         result[0] = component_t::all(max_value<element_t>());
         result[1] = component_t::all(min_value<element_t>());
@@ -105,8 +99,7 @@ public:
     }
 
     /// Returns an Aabr of a given size, with zero in the center.
-    static Aabr centered(const Size2<element_t>& size)
-    {
+    static Aabr centered(const Size2<element_t>& size) {
         const element_t half_width = size.width / 2;
         const element_t half_height = size.height / 2;
         Aabr result;
@@ -116,8 +109,7 @@ public:
     }
 
     /// Name of this Aabr type.
-    static constexpr const char* get_name()
-    {
+    static constexpr const char* get_name() {
         if constexpr (std::is_same_v<Element, float>) {
             return "Aabrf";
         } else if constexpr (std::is_same_v<Element, double>) {
@@ -179,8 +171,7 @@ public:
     constexpr bool is_valid() const noexcept { return left() <= right() && bottom() <= top(); }
 
     /// Checks if this Aabr contains a given point.
-    constexpr bool contains(const component_t& point) const noexcept
-    {
+    constexpr bool contains(const component_t& point) const noexcept {
         return point.x() > left() &&   //
                point.x() < right() &&  //
                point.y() > bottom() && //
@@ -190,8 +181,7 @@ public:
     /// Checks if two Aabrs intersect.
     /// Two Aabrs intersect if their intersection has a non-zero area.
     /// To get the actual intersection Aabr, use Aabr::intersection().
-    constexpr bool intersects(const Aabr& other) const noexcept
-    {
+    constexpr bool intersects(const Aabr& other) const noexcept {
         return !(right() < other.left() || //
                  left() > other.right() || //
                  bottom() > other.top() || //
@@ -203,8 +193,7 @@ public:
     /// Targets inside the Aabr are returned unchanged.
     /// @param target    Target point.
     /// @return          Closest point inside the Aabr to the target point.
-    constexpr component_t get_closest_point_to(const component_t& target) const noexcept
-    {
+    constexpr component_t get_closest_point_to(const component_t& target) const noexcept {
         const component_t pos = get_center();
         const element_t half_width = get_width() / 2;
         const element_t half_height = get_height() / 2;
@@ -216,24 +205,21 @@ public:
     constexpr Size2<element_t> get_size() const noexcept { return {get_width(), get_height()}; }
 
     /// Returns the length of the longer side of this Aabr.
-    constexpr element_t get_longer_side() const noexcept
-    {
+    constexpr element_t get_longer_side() const noexcept {
         const element_t width = get_width();
         const element_t height = get_height();
         return width > height ? width : height;
     }
 
     /// Returns the length of the shorter side of this Aabr.
-    constexpr element_t get_shorter_side() const noexcept
-    {
+    constexpr element_t get_shorter_side() const noexcept {
         const element_t width = get_width();
         const element_t height = get_height();
         return width < height ? width : height;
     }
 
     /// Moves the center of this Aabr to the given x-coordinate.
-    constexpr Aabr& set_center_x(const element_t x) noexcept
-    {
+    constexpr Aabr& set_center_x(const element_t x) noexcept {
         const element_t half_width = get_width() / 2;
         left() = x - half_width;
         right() = x + half_width;
@@ -241,8 +227,7 @@ public:
     }
 
     /// Moves the center of this Aabr to the given y-coordinate.
-    constexpr Aabr& set_center_y(const element_t y) noexcept
-    {
+    constexpr Aabr& set_center_y(const element_t y) noexcept {
         const element_t half_height = get_height() / 2;
         bottom() = y - half_height;
         top() = y + half_height;
@@ -250,15 +235,13 @@ public:
     }
 
     /// Moves this Aabr to a new center position.
-    constexpr Aabr& set_center(const component_t& pos) noexcept
-    {
+    constexpr Aabr& set_center(const component_t& pos) noexcept {
         set_center_x(pos.x());
         return set_center_y(pos.y());
     }
 
     /// Moves this Aabr by a relative amount.
-    constexpr Aabr& move_by(const component_t& pos) noexcept
-    {
+    constexpr Aabr& move_by(const component_t& pos) noexcept {
         data[0] += pos;
         data[1] += pos;
         return *this;
@@ -267,8 +250,7 @@ public:
     /// Sets the x-coordinate of this Aabr's left edge.
     /// If the new position is further right than the Aabr's right edge, the right edge is moved to the same
     /// position, resulting in a Aabr with zero width.
-    constexpr Aabr& set_left(const element_t x) noexcept
-    {
+    constexpr Aabr& set_left(const element_t x) noexcept {
         left() = x;
         right() = right() > left() ? right() : left();
         return *this;
@@ -277,8 +259,7 @@ public:
     /// Sets the x-coordinate of this Aabr's right edge.
     /// If the new position is further left than the Aabr's left edge, the left edge is moved to the same
     /// position, resulting in a Aabr with zero width.
-    constexpr Aabr& set_right(const element_t x) noexcept
-    {
+    constexpr Aabr& set_right(const element_t x) noexcept {
         right() = x;
         left() = left() < right() ? left() : right();
         return *this;
@@ -287,8 +268,7 @@ public:
     /// Sets the y-coordinate of this Aabr's top edge.
     /// If the new position is further down than the Aabr's bottom edge, the bottom edge is moved to the same
     /// position, resulting in a Aabr with zero height.
-    constexpr Aabr& set_top(const element_t y) noexcept
-    {
+    constexpr Aabr& set_top(const element_t y) noexcept {
         top() = y;
         bottom() = bottom() < top() ? bottom() : top();
         return *this;
@@ -297,8 +277,7 @@ public:
     /// Sets the y-coordinate of this Aabr's bottom edge.
     /// If the new position is further up than the Aabr's top edge, the top edge is moved to the same
     /// position, resulting in a Aabr with zero height.
-    constexpr Aabr& set_bottom(const element_t y) noexcept
-    {
+    constexpr Aabr& set_bottom(const element_t y) noexcept {
         bottom() = y;
         top() = top() > bottom() ? top() : bottom();
         return *this;
@@ -306,32 +285,28 @@ public:
 
     /// Sets a new top-left corner of this Aabr.
     /// See set_left and set_top for details.
-    constexpr Aabr& set_top_left(const component_t& point) noexcept
-    {
+    constexpr Aabr& set_top_left(const component_t& point) noexcept {
         set_left(point.x());
         return set_top(point.y());
     }
 
     /// Sets a new top-right corner of this Aabr.
     /// See set_right and set_top for details.
-    constexpr Aabr& set_top_right(const component_t& point) noexcept
-    {
+    constexpr Aabr& set_top_right(const component_t& point) noexcept {
         set_right(point.x());
         return set_top(point.y());
     }
 
     /// Sets a new bottom-left corner of this Aabr.
     /// See set_left and set_bottom for details.
-    constexpr Aabr& set_bottom_left(const component_t& point) noexcept
-    {
+    constexpr Aabr& set_bottom_left(const component_t& point) noexcept {
         set_left(point.x());
         return set_bottom(point.y());
     }
 
     /// Sets a new bottom-right corner of this Aabr.
     /// See set_right and set_bottom for details.
-    constexpr Aabr& set_bottom_right(const component_t& point) noexcept
-    {
+    constexpr Aabr& set_bottom_right(const component_t& point) noexcept {
         set_right(point.x());
         return set_bottom(point.y());
     }
@@ -339,8 +314,7 @@ public:
     /// Changes the height of this Aabr in place.
     /// The scaling occurs from the center of the Aabr, meaning its position does not change.
     /// If a width less than zero is specified, the resulting width is zero.
-    constexpr Aabr& set_width(const element_t width) noexcept
-    {
+    constexpr Aabr& set_width(const element_t width) noexcept {
         const element_t center = get_center_x();
         const element_t half_width = max(0, width / 2);
         left() = center - half_width;
@@ -351,8 +325,7 @@ public:
     /// Changes the height of this Aabr in place.
     /// The scaling occurs from the center of the Aabr, meaning its position does not change.
     /// If a height less than zero is specified, the resulting height is zero.
-    constexpr Aabr& set_height(const element_t height) noexcept
-    {
+    constexpr Aabr& set_height(const element_t height) noexcept {
         const element_t center = get_center_y();
         const element_t half_height = max(0, height / 2);
         bottom() = center - half_height;
@@ -363,8 +336,7 @@ public:
     /// Moves each edge of the Aabr a given amount towards the outside.
     /// Meaning, the width/height of the Aabr will grow by 2*amount.
     /// @param amount    Number of units to move each edge.
-    constexpr Aabr& grow(element_t amount) noexcept
-    {
+    constexpr Aabr& grow(element_t amount) noexcept {
         left() -= amount;
         bottom() -= amount;
         right() += amount;
@@ -375,8 +347,7 @@ public:
     }
 
     /// Returns a grown copy of this Aabr.
-    constexpr Aabr get_grown(const element_t amount) const& noexcept
-    {
+    constexpr Aabr get_grown(const element_t amount) const& noexcept {
         Aabr result(*this);
         result.grow(amount);
         return result;
@@ -386,8 +357,7 @@ public:
     /// Grows this Aabr to include the given point.
     /// If the point is already within the rectangle, this does nothing.
     /// @param point     Point to include in the Aabr.
-    constexpr Aabr& grow_to(const component_t& point) noexcept
-    {
+    constexpr Aabr& grow_to(const component_t& point) noexcept {
         left() = min(left(), point.x());
         bottom() = min(bottom(), point.y());
         right() = max(right(), point.x());
@@ -402,8 +372,7 @@ public:
     constexpr Aabr& shrink(const element_t amount) noexcept { return grow(-amount); }
 
     /// Returns a shrunken copy of this Aabr.
-    constexpr Aabr get_shrunken(const element_t amount) const& noexcept
-    {
+    constexpr Aabr get_shrunken(const element_t amount) const& noexcept {
         Aabr result(*this);
         result.shrink(amount);
         return result;
@@ -412,8 +381,7 @@ public:
 
     /// Intersection of this Aabr with `other` in-place.
     /// Intersecting with another Aabr that does not intersect results in the zero Aabr.
-    constexpr Aabr& intersect(const Aabr& other) noexcept
-    {
+    constexpr Aabr& intersect(const Aabr& other) noexcept {
         if (!intersects(other)) { return super_t::set_all(0); }
         left() = left() > other.left() ? left() : other.left();
         right() = right() < other.right() ? right() : other.right();
@@ -426,8 +394,7 @@ public:
     /// Intersection of this Aabr with `other`.
     /// Intersecting with another Aabr that does not intersect results in the zero Aabr.
     /// @return  The intersection Aabr.
-    constexpr Aabr get_intersection(const Aabr& other) const& noexcept
-    {
+    constexpr Aabr get_intersection(const Aabr& other) const& noexcept {
         if (!intersects(other)) { return Aabr::zero(); }
         return Aabr(component_t{left() > other.left() ? left() : other.left(),
                                 bottom() > other.bottom() ? bottom() : other.bottom()},
@@ -439,8 +406,7 @@ public:
     constexpr Aabr& operator&(const Aabr& other) && noexcept { return intersect(other); }
 
     /// Creates the union of this Aabr with `other` in-place.
-    Aabr& unite(const Aabr& other)
-    {
+    Aabr& unite(const Aabr& other) {
         left() = left() < other.left() ? left() : other.left();
         bottom() = bottom() < other.bottom() ? bottom() : other.bottom();
         right() = right() > other.right() ? right() : other.right();
@@ -450,8 +416,7 @@ public:
     Aabr& operator|=(const Aabr& other) { return unite(other); }
 
     /// Creates the union of this Aabr with `other`.
-    Aabr get_union(const Aabr& other) const&
-    {
+    Aabr get_union(const Aabr& other) const& {
         return Aabr(component_t{left() < other.left() ? left() : other.left(),
                                 bottom() < other.bottom() ? bottom() : other.bottom()},
                     component_t{right() > other.right() ? right() : other.right(),
@@ -502,8 +467,7 @@ namespace std {
 /// std::hash specialization for Aabr.
 template<class Element>
 struct hash<notf::detail::Aabr<Element>> {
-    size_t operator()(const notf::detail::Aabr<Element>& aabr) const
-    {
+    size_t operator()(const notf::detail::Aabr<Element>& aabr) const {
         return notf::hash(notf::to_number(notf::detail::HashID::AABR), aabr.get_hash());
     }
 };
@@ -519,14 +483,12 @@ struct formatter<notf::detail::Aabr<Element>> {
     using type = notf::detail::Aabr<Element>;
 
     template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx)
-    {
+    constexpr auto parse(ParseContext& ctx) {
         return ctx.begin();
     }
 
     template<typename FormatContext>
-    auto format(const type& aabr, FormatContext& ctx)
-    {
+    auto format(const type& aabr, FormatContext& ctx) {
         return format_to(ctx.begin(), "{}({}, {})", type::get_name(), aabr[0], aabr[1]);
     }
 };
@@ -538,8 +500,7 @@ struct formatter<notf::detail::Aabr<Element>> {
 /// @param aabr Aabr to print.
 /// @return Output stream for further output.
 template<class Element>
-std::ostream& operator<<(std::ostream& out, const notf::detail::Aabr<Element>& aabr)
-{
+std::ostream& operator<<(std::ostream& out, const notf::detail::Aabr<Element>& aabr) {
     return out << fmt::format("{}", aabr);
 }
 

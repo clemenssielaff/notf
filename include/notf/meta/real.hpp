@@ -10,22 +10,19 @@ NOTF_OPEN_NAMESPACE
 
 /// Pi
 template<class T = long double>
-constexpr T pi() noexcept
-{
+constexpr T pi() noexcept {
     return static_cast<T>(3.141592653589793238462643383279502884197169399375105820975l);
 }
 
 /// Length of a bezier control vector to draw a circle with radius 1.
 template<class T = long double>
-constexpr T kappa() noexcept
-{
+constexpr T kappa() noexcept {
     return static_cast<T>(0.552284749830793398402251632279597438092895833835930764235l);
 }
 
 /// The golden ratio, approx (sqrt(5) + 1) / 2).
 template<class T = long double>
-constexpr T phi() noexcept
-{
+constexpr T phi() noexcept {
     return static_cast<T>(1.618033988749894848204586834365638117720309179805762862135l);
 }
 
@@ -42,84 +39,72 @@ using std::tan;
 
 /// Tests whether a given value is NAN.
 template<class T>
-std::enable_if_t<std::is_floating_point_v<T>, bool> is_nan(const T value) noexcept
-{
+std::enable_if_t<std::is_floating_point_v<T>, bool> is_nan(const T value) noexcept {
     return value != value;
 }
 template<class T>
-constexpr std::enable_if_t<std::is_integral_v<T>, bool> is_nan(const T) noexcept
-{
+constexpr std::enable_if_t<std::is_integral_v<T>, bool> is_nan(const T) noexcept {
     return false;
 }
 
 /// Tests whether a given value is INFINITY.
 template<class T>
-constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_inf(const T value) noexcept
-{
+constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_inf(const T value) noexcept {
     return std::isinf(value);
 }
 template<class T>
-constexpr std::enable_if_t<std::is_integral_v<T>, bool> is_inf(const T) noexcept
-{
+constexpr std::enable_if_t<std::is_integral_v<T>, bool> is_inf(const T) noexcept {
     return false;
 }
 
 /// Tests whether a given value is a valid float value (not NAN, not INFINITY).
 template<class T>
-constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_real(const T value) noexcept
-{
+constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_real(const T value) noexcept {
     return !is_nan(value) && !is_inf(value);
 }
 
 /// Tests, if a value is positive or negative.
 /// @return  -1 if the value is negative, 1 if it is zero or above.
 template<class T>
-constexpr T sign(const T value)
-{
+constexpr T sign(const T value) {
     return std::signbit(value) ? -1 : 1;
 }
 
 /// Tests whether a given value is (almost) zero.
 template<class T>
-constexpr bool is_zero(const T value, const T epsilon = precision_high<T>()) noexcept
-{
+constexpr bool is_zero(const T value, const T epsilon = precision_high<T>()) noexcept {
     return abs(value) < epsilon;
 }
 
 /// Save asin calculation.
 /// @param value     Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to asin.
 template<class T>
-constexpr T asin(const T value)
-{
+constexpr T asin(const T value) {
     return std::asin(clamp(value, -1, 1));
 }
 
 /// Save acos calculation.
 /// @param value     Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to asin.
 template<class T>
-constexpr T acos(const T value)
-{
+constexpr T acos(const T value) {
     return std::acos(clamp(value, -1, 1));
 }
 
 /// Degree to Radians.
 template<class T>
-constexpr T deg_to_rad(const T degrees) noexcept
-{
+constexpr T deg_to_rad(const T degrees) noexcept {
     return degrees * static_cast<T>(pi() / 180.l);
 }
 
 /// Degree to Radians.
 template<class T>
-constexpr T rad_to_deg(const T radians) noexcept
-{
+constexpr T rad_to_deg(const T radians) noexcept {
     return radians * static_cast<T>(180.l / pi());
 }
 
 /// Normalize Radians to a value within [-pi, pi].
 template<class T>
-T norm_angle(const T alpha)
-{
+T norm_angle(const T alpha) {
     const T modulo = fmod(alpha, static_cast<T>(pi() * 2));
     return static_cast<T>(modulo >= 0 ? modulo : (pi() * 2) + modulo);
 }
@@ -128,8 +113,7 @@ T norm_angle(const T alpha)
 /// Fast inverse square.
 /// From https://stackoverflow.com/a/41637260/
 /// Magic numbers from https://cs.uwaterloo.ca/~m32rober/rsqrt.pdf
-inline float fast_inv_sqrt(float number) noexcept
-{
+inline float fast_inv_sqrt(float number) noexcept {
     const float temp = number * 0.5f;
 
     std::uint32_t& i = *std::launder(reinterpret_cast<std::uint32_t*>(&number));
@@ -138,8 +122,7 @@ inline float fast_inv_sqrt(float number) noexcept
 
     return number * (1.5f - (temp * number * number));
 }
-inline double fast_inv_sqrt(double number) noexcept
-{
+inline double fast_inv_sqrt(double number) noexcept {
     const double temp = number * 0.5;
 
     std::uint64_t& i = *std::launder(reinterpret_cast<std::uint64_t*>(&number));
@@ -158,8 +141,7 @@ inline double fast_inv_sqrt(double number) noexcept
 /// Floating point comparison from:
 /// https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 template<class L, class R, typename T = std::common_type_t<L, R>>
-constexpr bool is_approx(const L lhs, const R rhs, const T epsilon = precision_high<T>()) noexcept
-{
+constexpr bool is_approx(const L lhs, const R rhs, const T epsilon = precision_high<T>()) noexcept {
     // if only one argument is infinite, the other one cannot be approximately the same
     if constexpr (std::is_integral_v<L>) {
         if (is_nan(rhs) || is_inf(rhs)) { return false; }
@@ -196,8 +178,7 @@ NOTF_OPEN_LITERALS_NAMESPACE
 constexpr long double operator"" _deg(long double degrees) { return deg_to_rad(degrees); }
 
 /// Integer literal to convert degrees to radians.
-constexpr long double operator"" _deg(unsigned long long int degrees)
-{
+constexpr long double operator"" _deg(unsigned long long int degrees) {
     return deg_to_rad(static_cast<long double>(degrees));
 }
 

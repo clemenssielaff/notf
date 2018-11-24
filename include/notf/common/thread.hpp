@@ -48,8 +48,7 @@ public:
 
 private:
     /// How many Threads are allowed for each kind?
-    constexpr static size_t _get_kind_limit(Kind kind) noexcept
-    {
+    constexpr static size_t _get_kind_limit(Kind kind) noexcept {
         switch (kind) {
         case Kind::MAIN:
         case Kind::EVENT:
@@ -86,8 +85,7 @@ class Accessor<this_thread::detail::ThreadInfo, Thread> {
     /// Registers a new thread of a given kind.
     /// @param kind         Kind of Thread to add.
     /// @throws LogicError  If the maximum number of Threads has been exceeded for the given kind.
-    static void add_one_of_kind(const this_thread::detail::ThreadInfo::Kind kind)
-    {
+    static void add_one_of_kind(const this_thread::detail::ThreadInfo::Kind kind) {
         using ThreadInfo = this_thread::detail::ThreadInfo;
         const auto previous = ThreadInfo::s_kind_counter[to_number(kind)].fetch_add(1, std::memory_order_relaxed);
         if (previous >= ThreadInfo::_get_kind_limit(kind)) {
@@ -97,8 +95,7 @@ class Accessor<this_thread::detail::ThreadInfo, Thread> {
         ThreadInfo::s_kind = kind;
     }
 
-    static void remove_one_of_kind(const this_thread::detail::ThreadInfo::Kind kind)
-    {
+    static void remove_one_of_kind(const this_thread::detail::ThreadInfo::Kind kind) {
         using ThreadInfo = this_thread::detail::ThreadInfo;
         NOTF_UNUSED const auto previous
             = ThreadInfo::s_kind_counter[to_number(kind)].fetch_sub(1, std::memory_order_relaxed);
@@ -145,8 +142,7 @@ public:
     /// Move Assignment.
     /// Blocks until the the current system thread is joined (if it is joinable).
     /// @param other    Thread to move from.
-    Thread& operator=(Thread&& other)
-    {
+    Thread& operator=(Thread&& other) {
         join();
         m_thread = std::move(other.m_thread);
         m_exception = std::move(other.m_exception);
@@ -163,8 +159,7 @@ public:
     /// If another function is already running, this call will block until it has finished.
     /// Any stored exception is silently dropped.
     template<class Function, class... Args>
-    void run(Function&& function, Args&&... args)
-    {
+    void run(Function&& function, Args&&... args) {
         if (m_thread.joinable()) { m_thread.join(); }
 
         m_exception = {};
@@ -183,8 +178,7 @@ public:
     bool has_exception() const noexcept { return m_exception != nullptr; }
 
     /// Rethrows and clears the stored exception from the last run, if there is one.
-    void rethrow()
-    {
+    void rethrow() {
         if (m_exception) {
             std::exception_ptr exception;
             std::swap(exception, m_exception);
@@ -193,8 +187,7 @@ public:
     }
 
     /// Blocks until the system thread has joined.
-    void join()
-    {
+    void join() {
         if (m_thread.joinable()) { m_thread.join(); }
     }
 

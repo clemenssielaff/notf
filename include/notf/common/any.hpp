@@ -13,34 +13,27 @@ NOTF_OPEN_NAMESPACE
 /// at compile time, the best we can do is supply it by hand.
 /// @throws std::bad_any_cast   If the any value does not contain an integral number.
 template<class T, class Any, class = std::enable_if_t<std::is_same_v<Any, std::any>>>
-T fuzzy_any_cast(Any&& any)
-{
+T fuzzy_any_cast(Any&& any) {
     // integer
     if constexpr (std::is_integral_v<T>) {
         T result;
-        if (any.type() == typeid(bool)) { return static_cast<T>(std::any_cast<bool>(std::forward<Any>(any))); }
-        else if (any.type() == typeid(int8_t)) {
+        if (any.type() == typeid(bool)) {
+            return static_cast<T>(std::any_cast<bool>(std::forward<Any>(any)));
+        } else if (any.type() == typeid(int8_t)) {
             if (can_be_narrow_cast(std::any_cast<int8_t>(std::forward<Any>(any)), result)) { return result; }
-        }
-        else if (any.type() == typeid(int16_t)) {
+        } else if (any.type() == typeid(int16_t)) {
             if (can_be_narrow_cast(std::any_cast<int16_t>(std::forward<Any>(any)), result)) { return result; }
-        }
-        else if (any.type() == typeid(int32_t)) {
+        } else if (any.type() == typeid(int32_t)) {
             if (can_be_narrow_cast(std::any_cast<int32_t>(std::forward<Any>(any)), result)) { return result; }
-        }
-        else if (any.type() == typeid(int64_t)) {
+        } else if (any.type() == typeid(int64_t)) {
             if (can_be_narrow_cast(std::any_cast<int64_t>(std::forward<Any>(any)), result)) { return result; }
-        }
-        else if (any.type() == typeid(uint8_t)) {
+        } else if (any.type() == typeid(uint8_t)) {
             if (can_be_narrow_cast(std::any_cast<uint8_t>(std::forward<Any>(any)), result)) { return result; }
-        }
-        else if (any.type() == typeid(uint16_t)) {
+        } else if (any.type() == typeid(uint16_t)) {
             if (can_be_narrow_cast(std::any_cast<uint16_t>(std::forward<Any>(any)), result)) { return result; }
-        }
-        else if (any.type() == typeid(uint32_t)) {
+        } else if (any.type() == typeid(uint32_t)) {
             if (can_be_narrow_cast(std::any_cast<uint32_t>(std::forward<Any>(any)), result)) { return result; }
-        }
-        else if (any.type() == typeid(uint64_t)) {
+        } else if (any.type() == typeid(uint64_t)) {
             if (can_be_narrow_cast(std::any_cast<uint64_t>(std::forward<Any>(any)), result)) { return result; }
         }
     }

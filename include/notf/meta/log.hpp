@@ -57,15 +57,13 @@ public:
 public:
     /// Constructor.
     /// @param args     Construction arguments pack.
-    Logger(const Args& args) : m_console_sink(std::make_shared<decltype(m_console_sink)::element_type>())
-    {
+    Logger(const Args& args) : m_console_sink(std::make_shared<decltype(m_console_sink)::element_type>()) {
         m_console_sink->set_level(static_cast<spdlog::level::level_enum>(args.console_level));
         m_console_sink->set_pattern("%i %l: %v");
 
         if (args.file_name.empty()) {
             m_logger = std::make_unique<decltype(m_logger)::element_type>(args.name, m_console_sink);
-        }
-        else {
+        } else {
             m_file_sink = std::make_shared<decltype(m_file_sink)::element_type>(args.file_name, args.clear_file);
             m_file_sink->set_level(static_cast<spdlog::level::level_enum>(args.file_level));
             m_file_sink->set_pattern("[%d-%m-%C %T.%e] %l: %v");
@@ -115,8 +113,7 @@ public:
     static TheLogger& initialize(const Args& args) { return _get(args); }
 
     /// Access to the Logger singleton.
-    static TheLogger& get()
-    {
+    static TheLogger& get() {
         static Args default_args;
         return _get(default_args);
     }
@@ -126,8 +123,7 @@ public:
 
 public:
     /// Static instance provider.
-    static TheLogger& _get(const Args& args)
-    {
+    static TheLogger& _get(const Args& args) {
         static TheLogger instance(args);
         return instance;
     }

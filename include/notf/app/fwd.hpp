@@ -92,8 +92,7 @@ namespace detail {
 
 struct CompileTimeNodeIdentifier {
     template<class T>
-    static constexpr auto test()
-    {
+    static constexpr auto test() {
         if constexpr (decltype(_has_user_policy_t<T>(std::declval<T>()))::value) {
             return std::is_convertible<T*, CompileTimeNode<typename T::user_policy_t>*>{};
         } else {
@@ -140,8 +139,7 @@ template<class T>
 struct has_forbidden_parent_types<T, std::void_t<typename T::forbidden_parent_types>> : std::true_type {};
 
 template<class A, class B>
-constexpr bool can_node_parent() noexcept
-{
+constexpr bool can_node_parent() noexcept {
     // both A and B must be derived from Node
     if (std::negation_v<std::conjunction<std::is_base_of<Node, A>, std::is_base_of<Node, B>>>) { return false; }
 

@@ -51,8 +51,7 @@ constexpr auto g_syllable_sizes = []() {
 
 NOTF_OPEN_NAMESPACE
 
-std::string number_to_mnemonic(size_t number, uint max_syllables)
-{
+std::string number_to_mnemonic(size_t number, uint max_syllables) {
     if (max_syllables > 0) { number %= exp(g_syllables.size(), max_syllables); }
 
     std::string result;
@@ -67,8 +66,7 @@ std::string number_to_mnemonic(size_t number, uint max_syllables)
     return result;
 }
 
-std::optional<size_t> mnemonic_to_number(std::string_view mnemonic)
-{
+std::optional<size_t> mnemonic_to_number(std::string_view mnemonic) {
     size_t result = 0;
     while (!mnemonic.empty()) {
         const size_t size_before = mnemonic.size();

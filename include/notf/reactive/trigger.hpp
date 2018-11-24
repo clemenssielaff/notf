@@ -13,8 +13,7 @@ namespace detail {
 template<class Callback, class fn_traits = function_traits<Callback>>
 struct TriggerIdentifier {
 
-    static constexpr auto validate_traits()
-    {
+    static constexpr auto validate_traits() {
         static_assert(std::is_same_v<typename fn_traits::return_type, void>, "A Trigger must return void");
         static_assert((fn_traits::arity == 1 || fn_traits::arity == 2), "A Trigger must take one or two arguments");
         if constexpr (fn_traits::arity == 2) {
@@ -24,8 +23,7 @@ struct TriggerIdentifier {
         return std::declval<fn_traits>();
     }
 
-    static constexpr auto get_type()
-    {
+    static constexpr auto get_type() {
         if constexpr (fn_traits::arity == 1) {
             return std::declval<std::decay_t<typename fn_traits::template arg_type<0>>>();
         } else {
@@ -46,8 +44,7 @@ struct TriggerIdentifier {
 /// @param callback Callback executed whenever the Subscriber receives a new value.
 ///                 Must be in the form `void(const T&)` or `void(const AnyPublisher*, const T&)`.
 template<class Callback, class T = typename detail::TriggerIdentifier<Callback>::template type<>>
-auto Trigger(Callback&& callback)
-{
+auto Trigger(Callback&& callback) {
     class TriggerImpl : public Subscriber<T> {
 
         // methods ----------------------------------------------------------------------------- //
@@ -58,8 +55,7 @@ auto Trigger(Callback&& callback)
         /// Called whenever the Subscriber receives a new value.
         /// @param publisher    The Publisher publishing the value, for identification purposes only.
         /// @param value        Published value.
-        void on_next(const AnyPublisher* publisher, const T& value) final
-        {
+        void on_next(const AnyPublisher* publisher, const T& value) final {
             if constexpr (function_traits<Callback>::arity == 2) {
                 std::invoke(m_callback, publisher, value);
             } else {

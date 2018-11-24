@@ -36,8 +36,7 @@ public:
 
     /// Forwarding constructor.
     template<class... Args>
-    Matrix3(Args&&... args) : super_t(std::forward<Args>(args)...)
-    {}
+    Matrix3(Args&&... args) : super_t(std::forward<Args>(args)...) {}
 
     /// Value constructor defining the diagonal of the matrix.
     /// @param a    Value to put into the diagonal.
@@ -48,37 +47,32 @@ public:
     /// @param b    Second column.
     /// @param c    Third column.
     Matrix3(const component_t a, const component_t b, const component_t c)
-        : super_t{std::move(a), std::move(b), std::move(c)}
-    {}
+        : super_t{std::move(a), std::move(b), std::move(c)} {}
 
     /// Element-wise constructor.
     Matrix3(const element_t a, const element_t b, const element_t c, const element_t d, const element_t e,
             const element_t f)
-        : super_t{component_t(a, b), component_t(c, d), component_t(e, f)}
-    {}
+        : super_t{component_t(a, b), component_t(c, d), component_t(e, f)} {}
 
     /// The identity matrix.
     static Matrix3 identity() { return Matrix3(1); }
 
     /// A translation matrix.
     /// @param translation  Translation vector.
-    static Matrix3 translation(component_t translation)
-    {
+    static Matrix3 translation(component_t translation) {
         return Matrix3(component_t(1, 0), component_t(0, 1), std::move(translation));
     }
 
     /// A translation matrix.
     /// @param x    X component of the translation vector.
     /// @param y    Y component of the translation vector.
-    static Matrix3 get_translation(const element_t x, const element_t y)
-    {
+    static Matrix3 get_translation(const element_t x, const element_t y) {
         return Matrix3::get_translation(component_t(x, y));
     }
 
     /// A rotation matrix.
     /// @param radians   Counter-clockwise rotation in radians.
-    static Matrix3 rotation(const element_t radians)
-    {
+    static Matrix3 rotation(const element_t radians) {
         const element_t sine = sin(radians);
         const element_t cosine = cos(radians);
         return Matrix3(cosine, sine, -sine, cosine, 0, 0);
@@ -109,8 +103,7 @@ public:
     static Matrix3 skew(const element_t x, const element_t y) { return Matrix3::skew(component_t(x, y)); }
 
     /// Name of this Matrix3 type.
-    static constexpr const char* get_name()
-    {
+    static constexpr const char* get_name() {
         if constexpr (std::is_same_v<Element, float>) {
             return "M3f";
         } else if constexpr (std::is_same_v<Element, double>) {
@@ -125,8 +118,7 @@ public:
     /// Only works if this is actually a pure rotation matrix!
     /// Use `is_rotation` to test, if in doubt.
     /// @return  Applied rotation in radians.
-    element_t get_rotation() const
-    {
+    element_t get_rotation() const {
         try {
             return atan2(data[0][1], data[1][1]);
         }
@@ -149,8 +141,7 @@ public:
 
     /// Concatenation of two transformation matrices.
     /// @param other    Transformation to concatenate.
-    Matrix3 operator*(const Matrix3& other) const
-    {
+    Matrix3 operator*(const Matrix3& other) const {
         Matrix3 result;
         result[0][0] = data[0][0] * other[0][0] + data[1][0] * other[0][1],
         result[0][1] = data[0][1] * other[0][0] + data[1][1] * other[0][1],
@@ -163,8 +154,7 @@ public:
 
     /// Concatenation of another transformation matrix to this one in-place.
     /// @param other    Transformation to concatenate.
-    Matrix3& operator*=(const Matrix3& other)
-    {
+    Matrix3& operator*=(const Matrix3& other) {
         *this = *this * other;
         return *this;
     }
@@ -182,8 +172,7 @@ public:
     Matrix3 rotate(const element_t radians) const { return Matrix3::rotation(radians) * *this; }
 
     /// Returns the inverse of this matrix.
-    Matrix3 inverse() const
-    {
+    Matrix3 inverse() const {
         const element_t det = determinant();
         if (abs(det) <= precision_high<element_t>()) { return Matrix3::identity(); }
         const element_t invdet = 1 / det;
@@ -200,8 +189,7 @@ public:
 
     /// Returns the transformed copy of a given vector.
     /// @param vector   Vector to transform.
-    component_t transform(const component_t& vector) const
-    {
+    component_t transform(const component_t& vector) const {
         return {
             data[0][0] * vector[0] + data[1][0] * vector[1] + data[2][0],
             data[0][1] * vector[0] + data[1][1] * vector[1] + data[2][1],
@@ -236,8 +224,7 @@ namespace std {
 /// std::hash specialization for Matrix3.
 template<class Element>
 struct hash<notf::detail::Matrix3<Element>> {
-    size_t operator()(const notf::detail::Matrix3<Element>& matrix) const
-    {
+    size_t operator()(const notf::detail::Matrix3<Element>& matrix) const {
         return notf::hash(notf::to_number(notf::detail::HashID::MATRIX3), matrix[0], matrix[1], matrix[2]);
     }
 };
@@ -253,14 +240,12 @@ struct formatter<notf::detail::Matrix3<Element>> {
     using type = notf::detail::Matrix3<Element>;
 
     template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx)
-    {
+    constexpr auto parse(ParseContext& ctx) {
         return ctx.begin();
     }
 
     template<typename FormatContext>
-    auto format(const type& mat, FormatContext& ctx)
-    {
+    auto format(const type& mat, FormatContext& ctx) {
         return format_to(ctx.begin(),
                          "{}({: #7.6g}, {: #7.6g}, {: #7.6g}\n"
                          "    {: #7.6g}, {: #7.6g}, {: #7.6g}\n"
@@ -277,8 +262,7 @@ struct formatter<notf::detail::Matrix3<Element>> {
 /// @param matrix   Matrix to print.
 /// @return Output stream for further output.
 template<typename Element>
-std::ostream& operator<<(std::ostream& out, const notf::detail::Matrix3<Element>& mat)
-{
+std::ostream& operator<<(std::ostream& out, const notf::detail::Matrix3<Element>& mat) {
     return out << fmt::format("{}", mat);
 }
 

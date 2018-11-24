@@ -37,8 +37,7 @@ using namespace std::chrono_literals;
 
 /// User-defined "_fps" literal.
 constexpr duration_t operator""_fps(unsigned long long fps) { return duration_t(duration_t::period::den / fps); }
-constexpr duration_t operator""_fps(long double fps)
-{
+constexpr duration_t operator""_fps(long double fps) {
     return duration_t(static_cast<duration_t::rep>(duration_t::period::den / fps));
 }
 

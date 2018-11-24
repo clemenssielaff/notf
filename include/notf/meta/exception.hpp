@@ -31,8 +31,7 @@ public:
     /// @param line     Line in `file` at which the error was thrown.
     /// @param message  What has caused this exception (can be empty).
     notf_exception(const char* file, const char* function, const long line, const char* message = "")
-        : m_file(filename_from_path(file)), m_function(function), m_line(line), m_message(message)
-    {}
+        : m_file(filename_from_path(file)), m_function(function), m_line(line), m_message(message) {}
 
     /// Constructor with an fmt formatted message.
     /// @param file     File containing the function throwing the error.
@@ -45,8 +44,7 @@ public:
         : m_file(filename_from_path(file))
         , m_function(function)
         , m_line(line)
-        , m_message(fmt::format(fmt, std::forward<Args>(args)...))
-    {}
+        , m_message(fmt::format(fmt, std::forward<Args>(args)...)) {}
 
     /// Destructor.
     ~notf_exception() override = default;
@@ -85,11 +83,10 @@ private:
 // built-in exception types ========================================================================================= //
 
 /// Declare a new NoTF exception type.
-#define NOTF_EXCEPTION_TYPE(TYPE)                                          \
-    struct TYPE : public ::notf::notf_exception {                          \
-        template<class... Ts>                                              \
-        TYPE(Ts&&... ts) : ::notf::notf_exception(std::forward<Ts>(ts)...) \
-        {}                                                                 \
+#define NOTF_EXCEPTION_TYPE(TYPE)                                             \
+    struct TYPE : public ::notf::notf_exception {                             \
+        template<class... Ts>                                                 \
+        TYPE(Ts&&... ts) : ::notf::notf_exception(std::forward<Ts>(ts)...) {} \
     }
 
 /// Specialized exception that logs the message and then behaves like a regular std::runtime_error.

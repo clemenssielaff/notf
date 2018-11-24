@@ -68,15 +68,13 @@ public:
     TypedNodeHandle(std::shared_ptr<NodeType> node) : m_node(std::move(node)) {}
 
     template<class T, class = std::enable_if_t<std::is_base_of_v<NodeType, T>>>
-    TypedNodeHandle(std::shared_ptr<T> node) : m_node(std::static_pointer_cast<NodeType>(std::move(node)))
-    {}
+    TypedNodeHandle(std::shared_ptr<T> node) : m_node(std::static_pointer_cast<NodeType>(std::move(node))) {}
     /// @}
 
     /// Assignment operator.
     /// @param other    Other NodeHandle to copy.
     template<class T, class = std::enable_if_t<std::is_base_of_v<NodeType, T>>>
-    TypedNodeHandle& operator=(TypedNodeHandle<T> other)
-    {
+    TypedNodeHandle& operator=(TypedNodeHandle<T> other) {
         m_node = std::static_pointer_cast<NodeType>(other.m_node.lock());
         return *this;
     }
@@ -111,8 +109,7 @@ public:
     /// @returns        Handle to the requested Property.
     /// @throws         NameError / TypeError
     template<class T>
-    PropertyHandle<T> get_property(const std::string& name)
-    {
+    PropertyHandle<T> get_property(const std::string& name) {
         return _get_node()->template get_property<T>(name);
     }
 
@@ -121,13 +118,11 @@ public:
     /// @param name     Name of the requested Property.
     /// @returns        Typed handle to the requested Property.
     template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    auto get_property(StringType<Cs...> name)
-    {
+    auto get_property(StringType<Cs...> name) {
         return this->_get_node()->get_property(std::forward<decltype(name)>(name));
     }
     template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    constexpr auto get_property()
-    {
+    constexpr auto get_property() {
         return this->_get_node()->template get_property<name>();
     }
     /// @}
@@ -139,8 +134,7 @@ public:
     /// @returns        The value of the Property.
     /// @throws         NameError / TypeError
     template<class T>
-    const T& get(const std::string& name) const
-    {
+    const T& get(const std::string& name) const {
         return _get_node()->template get<T>(name);
     }
 
@@ -149,13 +143,11 @@ public:
     /// @param name     Name of the requested Property.
     /// @returns        Current value of the requested Property.
     template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    auto get(StringType<Cs...> name) const
-    {
+    auto get(StringType<Cs...> name) const {
         return this->_get_node()->get(std::forward<decltype(name)>(name));
     }
     template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    constexpr auto get() const
-    {
+    constexpr auto get() const {
         return this->_get_node()->template get<name>();
     }
     /// @}
@@ -166,23 +158,20 @@ public:
     /// If another Node with the same name already exists in the Graph, this method will append the lowest integer
     /// postfix that makes the name unique.
     /// @param name     Proposed name of the Node.
-    void set_name(const std::string& name)
-    {
+    void set_name(const std::string& name) {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         _get_node()->set_name(name);
     }
 
     /// The parent of this Node.
-    NodeHandle get_parent()
-    {
+    NodeHandle get_parent() {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         return _get_node()->get_parent();
     }
 
     /// Tests, if this Node is a descendant of the given ancestor.
     /// @param ancestor         Potential ancestor to verify.
-    bool has_ancestor(const NodeHandle& ancestor) const
-    {
+    bool has_ancestor(const NodeHandle& ancestor) const {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         return _get_node()->has_ancestor(ancestor);
     }
@@ -192,8 +181,7 @@ public:
     /// If the handle passed in is expired, the returned handle will also be expired.
     /// @param other            Other Node to find the common ancestor for.
     /// @throws HierarchyError  If there is no common ancestor.
-    NodeHandle get_common_ancestor(const NodeHandle& other)
-    {
+    NodeHandle get_common_ancestor(const NodeHandle& other) {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         return _get_node()->get_common_ancestor(other);
     }
@@ -201,15 +189,13 @@ public:
     /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
     /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
     template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
-    NodeHandle get_first_ancestor()
-    {
+    NodeHandle get_first_ancestor() {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         return _get_node()->template get_first_ancestor<T>();
     }
 
     /// The number of direct children of this Node.
-    size_t get_child_count() const
-    {
+    size_t get_child_count() const {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         return _get_node()->get_child_count();
     }
@@ -219,8 +205,7 @@ public:
     /// @param index    Index of the Node.
     /// @returns        The requested child Node.
     /// @throws OutOfBounds    If the index is out-of-bounds or the child Node is of the wrong type.
-    NodeHandle get_child(const size_t index)
-    {
+    NodeHandle get_child(const size_t index) {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         return _get_node()->get_child(index);
     }
@@ -228,15 +213,13 @@ public:
     // z-order ----------------------------------------------------------------
 
     /// Checks if this Node is in front of all of its siblings.
-    bool is_in_front() const
-    {
+    bool is_in_front() const {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         return _get_node()->is_in_front();
     }
 
     /// Checks if this Node is behind all of its siblings.
-    bool is_in_back() const
-    {
+    bool is_in_back() const {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         return _get_node()->is_in_back();
     }
@@ -244,8 +227,7 @@ public:
     /// Returns true if this node is stacked anywhere in front of the given sibling.
     /// Also returns false if the handle is expired, the given Node is not a sibling or it is the same as this.
     /// @param sibling  Sibling node to test against.
-    bool is_before(const NodeHandle& sibling) const
-    {
+    bool is_before(const NodeHandle& sibling) const {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         return _get_node()->is_before(sibling);
     }
@@ -253,22 +235,19 @@ public:
     /// Returns true if this node is stacked anywhere behind the given sibling.
     /// Also returns false if the handle is expired, the given Node is not a sibling or it is the same as this.
     /// @param sibling  Sibling node to test against.
-    bool is_behind(const NodeHandle& sibling) const
-    {
+    bool is_behind(const NodeHandle& sibling) const {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         return _get_node()->is_behind(sibling);
     }
 
     /// Moves this Node in front of all of its siblings.
-    void stack_front()
-    {
+    void stack_front() {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         _get_node()->stack_front();
     }
 
     /// Moves this Node behind all of its siblings.
-    void stack_back()
-    {
+    void stack_back() {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         _get_node()->stack_back();
     }
@@ -276,8 +255,7 @@ public:
     /// Moves this Node before a given sibling.
     /// @param sibling  Sibling to stack before.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    void stack_before(const NodeHandle& sibling)
-    {
+    void stack_before(const NodeHandle& sibling) {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         _get_node()->stack_before(sibling);
     }
@@ -285,8 +263,7 @@ public:
     /// Moves this Node behind a given sibling.
     /// @param sibling  Sibling to stack behind.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    void stack_behind(const NodeHandle& sibling)
-    {
+    void stack_behind(const NodeHandle& sibling) {
         NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
         _get_node()->stack_behind(sibling);
     }
@@ -318,13 +295,11 @@ protected:
     /// @{
     /// Locks and returns an owning pointer to the handled Node.
     /// @throws HandleExpiredError  If the Handle has expired.
-    std::shared_ptr<NodeType> _get_node()
-    {
+    std::shared_ptr<NodeType> _get_node() {
         if (auto node = m_node.lock()) { return node; }
         NOTF_THROW(HandleExpiredError, "Node Handle has expired");
     }
-    std::shared_ptr<const NodeType> _get_node() const
-    {
+    std::shared_ptr<const NodeType> _get_node() const {
         if (auto node = m_node.lock()) { return node; }
         NOTF_THROW(HandleExpiredError, "Node Handle has expired");
     }
@@ -338,20 +313,17 @@ protected:
 
 /// Equality comparison with another NodeHandle.
 template<class LeftType, class RightType>
-bool operator==(const TypedNodeHandle<LeftType>& lhs, const TypedNodeHandle<RightType>& rhs) noexcept
-{
+bool operator==(const TypedNodeHandle<LeftType>& lhs, const TypedNodeHandle<RightType>& rhs) noexcept {
     return weak_ptr_equal(lhs.m_node, rhs.m_node);
 }
 template<class LeftType, class RightType>
-bool operator!=(const TypedNodeHandle<LeftType>& lhs, const TypedNodeHandle<RightType>& rhs) noexcept
-{
+bool operator!=(const TypedNodeHandle<LeftType>& lhs, const TypedNodeHandle<RightType>& rhs) noexcept {
     return !operator==(lhs, rhs);
 }
 
 /// Less-than operator with another NodeHandle.
 template<class LeftType, class RightType>
-bool operator<(const TypedNodeHandle<LeftType>& lhs, const TypedNodeHandle<RightType>& rhs) noexcept
-{
+bool operator<(const TypedNodeHandle<LeftType>& lhs, const TypedNodeHandle<RightType>& rhs) noexcept {
     return lhs.m_node.owner_before(rhs.m_node);
 }
 
@@ -377,8 +349,7 @@ public:
     TypedNodeOwner(valid_ptr<std::shared_ptr<NodeType>> node) : TypedNodeHandle<NodeType>(node) {}
 
     /// Move assignment operator.
-    TypedNodeOwner& operator=(TypedNodeOwner&& other)
-    {
+    TypedNodeOwner& operator=(TypedNodeOwner&& other) {
         this->_remove_from_parent(this->m_node.lock());
         this->m_node = std::move(other.m_node);
         return *this;
@@ -417,8 +388,7 @@ namespace std {
 
 template<class NodeType>
 struct hash<notf::TypedNodeHandle<NodeType>> {
-    constexpr size_t operator()(const notf::TypedNodeHandle<NodeType>& handle) const noexcept
-    {
+    constexpr size_t operator()(const notf::TypedNodeHandle<NodeType>& handle) const noexcept {
         return notf::hash_mix(notf::to_number(handle._get_ptr()));
     }
 };

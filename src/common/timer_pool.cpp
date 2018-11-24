@@ -6,8 +6,7 @@ NOTF_OPEN_NAMESPACE
 
 TheTimerPool::TheTimerPool() { m_thread.run(&TheTimerPool::_run, this); }
 
-TheTimerPool::~TheTimerPool()
-{
+TheTimerPool::~TheTimerPool() {
     {
         NOTF_GUARD(std::lock_guard(m_mutex));
         m_is_running = false;
@@ -16,8 +15,7 @@ TheTimerPool::~TheTimerPool()
     m_thread = {}; // blocks until the thread has joined
 }
 
-void TheTimerPool::_run()
-{
+void TheTimerPool::_run() {
     TimerPtr next_timer;
     while (true) {
         {
@@ -62,8 +60,7 @@ void TheTimerPool::_run()
     }
 }
 
-void TheTimerPool::_schedule(TimerPtr timer)
-{
+void TheTimerPool::_schedule(TimerPtr timer) {
     NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
     if (m_timer.empty()) {
         m_timer.emplace_front(std::move(timer));
@@ -77,8 +74,7 @@ void TheTimerPool::_schedule(TimerPtr timer)
     }
 }
 
-void TheTimerPool::_unschedule(const valid_ptr<Timer*> timer)
-{
+void TheTimerPool::_unschedule(const valid_ptr<Timer*> timer) {
     NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
     if (m_timer.empty()) { return; }
     for (auto prev = m_timer.before_begin(), it = m_timer.begin(), end = m_timer.end(); it != end; prev = ++it) {
@@ -93,8 +89,7 @@ void TheTimerPool::_unschedule(const valid_ptr<Timer*> timer)
 
 Timer::~Timer() = default;
 
-void Timer::start(const timepoint_t timeout)
-{
+void Timer::start(const timepoint_t timeout) {
     TheTimerPool& pool = TheTimerPool::get();
     {
         NOTF_GUARD(std::lock_guard(pool.m_mutex));
@@ -119,8 +114,7 @@ void Timer::start(const timepoint_t timeout)
     pool.m_condition.notify_one();
 }
 
-void Timer::stop()
-{
+void Timer::stop() {
     TheTimerPool& pool = TheTimerPool::get();
     {
         NOTF_GUARD(std::lock_guard(pool.m_mutex));
@@ -141,8 +135,7 @@ OneShotTimer::~OneShotTimer() = default;
 
 IntervalTimer::~IntervalTimer() = default;
 
-void IntervalTimer::start(const duration_t interval, const size_t repetitions)
-{
+void IntervalTimer::start(const duration_t interval, const size_t repetitions) {
     if (repetitions == 0) {
         return; // easy
     }
@@ -177,8 +170,7 @@ void IntervalTimer::start(const duration_t interval, const size_t repetitions)
 
 VariableTimer::~VariableTimer() = default;
 
-void VariableTimer::start(IntervalFunction function, const size_t repetitions)
-{
+void VariableTimer::start(IntervalFunction function, const size_t repetitions) {
     if (repetitions == 0) {
         return; // easy
     }

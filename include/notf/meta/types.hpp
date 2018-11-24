@@ -171,16 +171,14 @@ using empty_type = void * [0];
 /// Checks if all expressions are true.
 ///     `if(all(a, !b, c < d))` is equal to `if(a && !b && c < d)`
 template<class... Ts>
-constexpr bool all(Ts... expressions)
-{
+constexpr bool all(Ts... expressions) {
     return (... && expressions);
 }
 
 /// Checks if any of the given expressions are true.
 ///     `if(all(a, !b, c < d))` is equal to `if(a || !b || c < d)`
 template<class... Ts>
-constexpr bool any(Ts... expressions)
-{
+constexpr bool any(Ts... expressions) {
     return (... || expressions);
 }
 
@@ -229,15 +227,13 @@ struct Tester {};
 /// Constexpr to use an enum class value as a numeric value.
 /// From "Effective Modern C++ by Scott Mayers': Item #10.
 template<class Enum, class = std::enable_if_t<std::is_enum_v<Enum>>>
-constexpr auto to_number(Enum enumerator) noexcept
-{
+constexpr auto to_number(Enum enumerator) noexcept {
     return static_cast<std::underlying_type_t<Enum>>(enumerator);
 }
 
 /// Converts any pointer to the equivalent integer representation.
 template<class T, class = std::enable_if_t<std::is_pointer_v<T>>>
-constexpr std::uintptr_t to_number(T ptr) noexcept
-{
+constexpr std::uintptr_t to_number(T ptr) noexcept {
     return reinterpret_cast<std::uintptr_t>(ptr);
 }
 constexpr std::uintptr_t to_number(std::nullptr_t) noexcept { return 0; }

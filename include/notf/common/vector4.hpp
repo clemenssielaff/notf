@@ -27,8 +27,7 @@ public:
 
     /// Forwarding constructor.
     template<class... Args>
-    constexpr Vector4(Args&&... args) : super_t(std::forward<Args>(args)...)
-    {}
+    constexpr Vector4(Args&&... args) : super_t(std::forward<Args>(args)...) {}
 
     /// Unit Vector4 along the X-axis.
     static constexpr Vector4 x_axis() { return Vector4(1, 0, 0); }
@@ -40,8 +39,7 @@ public:
     static constexpr Vector4 z_axis() { return Vector4(0, 0, 1); }
 
     /// Name of this Vector4 type.
-    static constexpr const char* get_name()
-    {
+    static constexpr const char* get_name() {
         if constexpr (std::is_same_v<Element, float>) {
             return "V4f";
         } else if constexpr (std::is_same_v<Element, double>) {
@@ -117,8 +115,7 @@ namespace std {
 /// std::hash implementation for Vector4.
 template<class Element>
 struct hash<notf::detail::Vector4<Element>> {
-    size_t operator()(const notf::detail::Vector4<Element>& vector) const
-    {
+    size_t operator()(const notf::detail::Vector4<Element>& vector) const {
         return notf::hash(notf::to_number(notf::detail::HashID::VECTOR4), vector.get_hash());
     }
 };
@@ -134,14 +131,12 @@ struct formatter<notf::detail::Vector4<Element>> {
     using type = notf::detail::Vector4<Element>;
 
     template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx)
-    {
+    constexpr auto parse(ParseContext& ctx) {
         return ctx.begin();
     }
 
     template<typename FormatContext>
-    auto format(const type& vec, FormatContext& ctx)
-    {
+    auto format(const type& vec, FormatContext& ctx) {
         return format_to(ctx.begin(), "{}({}, {}, {}, {})", type::name::c_str(), vec.x(), vec.y(), vec.z(), vec.w());
     }
 };
@@ -153,8 +148,7 @@ struct formatter<notf::detail::Vector4<Element>> {
 /// @param vec  Vector to print.
 /// @return Output stream for further output.
 template<class Element>
-std::ostream& operator<<(std::ostream& out, const notf::detail::Vector4<Element>& vec)
-{
+std::ostream& operator<<(std::ostream& out, const notf::detail::Vector4<Element>& vec) {
     return out << fmt::format("{}", vec);
 }
 

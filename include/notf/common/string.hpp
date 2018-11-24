@@ -1,9 +1,9 @@
 #pragma once
 
+#include <algorithm>
+#include <cctype>
 #include <string>
 #include <vector>
-#include <cctype>
-#include <algorithm>
 
 #include "notf/meta/config.hpp"
 
@@ -21,44 +21,37 @@ std::vector<std::string> split(const std::string& input, char delimiter);
 /// @param input         Input string.
 /// @param delimiter     Delimiter character.
 /// @return              String tokens.
-inline std::vector<std::string> split(const char* input, const char delimiter)
-{
+inline std::vector<std::string> split(const char* input, const char delimiter) {
     return (static_cast<bool>(input) ? split(std::string(input), delimiter) : std::vector<std::string>());
 }
 
 /// Remove all spaces on the left of the string.
 /// @param str  String to modify.
-inline void ltrim(std::string& str)
-{
+inline void ltrim(std::string& str) {
     str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](int ch) { return !std::isspace(ch); }));
 }
-inline std::string ltrim_copy(std::string str)
-{
+inline std::string ltrim_copy(std::string str) {
     ltrim(str);
     return str;
 }
 
 /// Remove all spaces on the right of the string.
 /// @param str  String to modify.
-inline void rtrim(std::string& str)
-{
+inline void rtrim(std::string& str) {
     str.erase(std::find_if(str.rbegin(), str.rend(), [](int ch) { return !std::isspace(ch); }).base(), str.end());
 }
-inline std::string rtrim_copy(std::string str)
-{
+inline std::string rtrim_copy(std::string str) {
     rtrim(str);
     return str;
 }
 
 /// Remove all spaces from both ends of the string.
 /// @param str  String to modify.
-inline void trim(std::string& str)
-{
+inline void trim(std::string& str) {
     ltrim(str);
     rtrim(str);
 }
-inline std::string trim_copy(std::string str)
-{
+inline std::string trim_copy(std::string str) {
     trim(str);
     return str;
 }
@@ -67,8 +60,7 @@ inline std::string trim_copy(std::string str)
 /// @param input     Input string.
 /// @param prefix    Prefix to test for.
 /// @return True if the first n input string characters match the prefix of size n.
-inline bool starts_with(const std::string& input, const std::string& prefix)
-{
+inline bool starts_with(const std::string& input, const std::string& prefix) {
     return (input.compare(0, prefix.size(), prefix) == 0);
 }
 
@@ -100,15 +92,13 @@ bool icompare(const std::string& left, const std::string& right);
 /// @param delimiter    Delimiter inserted in between the vector items.
 std::string join(std::vector<std::string>::const_iterator begin, std::vector<std::string>::const_iterator end,
                  const std::string& delimiter = "");
-inline std::string join(const std::vector<std::string>& vec, const std::string& delimiter = "")
-{
+inline std::string join(const std::vector<std::string>& vec, const std::string& delimiter = "") {
     return join(vec.cbegin(), vec.cend(), delimiter);
 }
 /// @}
 
 /// Get the length of a c string literal at compile time (excluding the null terminator).
-constexpr inline size_t cstring_length(const char* str)
-{
+constexpr inline size_t cstring_length(const char* str) {
     size_t i = 0;
     while (str[i] != '\0') {
         ++i;

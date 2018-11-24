@@ -4,8 +4,7 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-ThreadPool::ThreadPool(const size_t thread_count)
-{
+ThreadPool::ThreadPool(const size_t thread_count) {
     m_workers.reserve(thread_count);
 
     // create the worker threads
@@ -29,8 +28,7 @@ ThreadPool::ThreadPool(const size_t thread_count)
     }
 }
 
-ThreadPool::~ThreadPool()
-{
+ThreadPool::~ThreadPool() {
     { // notify all workers that the pool is finished
         std::lock_guard<std::mutex> lock(m_queue_mutex);
         m_is_finished = true;

@@ -27,8 +27,7 @@ protected:
     /// @throws not_unique_error    If there already exists a Property of the same name on this Node.
     /// @returns            A Handle to the created Property.
     template<class T>
-    PropertyHandle<T> _create_property(std::string name, T&& value, const bool is_visible = true)
-    {
+    PropertyHandle<T> _create_property(std::string name, T&& value, const bool is_visible = true) {
         if (NOTF_UNLIKELY(_is_finalized())) { // unlikely 'cause you only do it once
             NOTF_THROW(FinalizedError, "Cannot create a new Property on already finalized Node \"{}\"", get_name());
         }
@@ -58,8 +57,7 @@ protected:
     /// @throws not_unique_error    If there already exists a Property of the same name on this Node.
     /// @returns            The internal publisher of the Slot.
     template<class T>
-    typename Slot<T>::publisher_t _create_slot(std::string name)
-    {
+    typename Slot<T>::publisher_t _create_slot(std::string name) {
         if (NOTF_UNLIKELY(_is_finalized())) { // unlikely 'cause you only do it once
             NOTF_THROW(FinalizedError, "Cannot create a new Slot on already finalized Node \"{}\"", get_name());
         }
@@ -75,22 +73,19 @@ protected:
 
 private:
     /// Implementation specific query of a Property.
-    AnyPropertyPtr _get_property_impl(const std::string& name) final
-    {
+    AnyPropertyPtr _get_property_impl(const std::string& name) final {
         if (auto itr = m_properties.find(name); itr != m_properties.end()) { return itr->second; }
         return {};
     }
 
     /// Implementation specific query of a Slot.
-    AnySlotPtr _get_slot_impl(const std::string& name) final
-    {
+    AnySlotPtr _get_slot_impl(const std::string& name) final {
         if (auto itr = m_slots.find(name); itr != m_slots.end()) { return itr->second; }
         return {};
     }
 
     /// Calculates the combined hash value of all Properties.
-    size_t _calculate_property_hash(size_t result = detail::version_hash()) const final
-    {
+    size_t _calculate_property_hash(size_t result = detail::version_hash()) const final {
         for (auto& itr : m_properties) {
             hash_combine(result, itr.second->get_hash());
         }
@@ -98,8 +93,7 @@ private:
     }
 
     /// Removes all modified data from all Properties.
-    void _clear_modified_properties() final
-    {
+    void _clear_modified_properties() final {
         for (auto& itr : m_properties) {
             itr.second->clear_modified_data();
         }
@@ -107,8 +101,7 @@ private:
 
     /// Finalizes this Node.
     /// Stores a Handle of this node in all of its Properties.
-    void _finalize() final
-    {
+    void _finalize() final {
         for (auto& itr : m_properties) {
             AnyProperty::AccessFor<Node>::set_node(*itr.second, shared_from_this());
         }

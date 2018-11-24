@@ -112,16 +112,14 @@ public:
     template<class T, class value_t = typename T::value_type,
              class = std::enable_if_t<std::is_constructible_v<MsgPack, value_t>                  // value is compatible
                                       && !std::is_same_v<typename Binary::value_type, value_t>>> // but not binary
-    MsgPack(const T& value) : m_value(Array(value.begin(), value.end()))
-    {}
+    MsgPack(const T& value) : m_value(Array(value.begin(), value.end())) {}
 
     /// Constructor for Map-like objects (map, unordered_map etc).
     /// @param value    Map-like object to initialize a MsgPack Map with.
     template<class T, class key_t = typename T::key_type, class value_t = typename T::mapped_type,
              class = std::enable_if_t<std::is_constructible_v<MsgPack, key_t>        // key is compatible
                                       && std::is_constructible_v<MsgPack, value_t>>> // value is compatible
-    MsgPack(const T& value) : m_value(Map(std::begin(value), std::end(value)))
-    {}
+    MsgPack(const T& value) : m_value(Map(std::begin(value), std::end(value))) {}
 
     /// Constructor for Extension objects.
     /// @param value    MsgPack extension object
@@ -138,8 +136,7 @@ public:
     template<class T>
     std::enable_if_t<is_one_of_variant<T, Variant>(),
                      std::conditional_t<is_one_of_tuple_v<T, fundamental_types>, T, const T&>>
-    get(bool& success) const noexcept(std::is_nothrow_constructible_v<T>)
-    {
+    get(bool& success) const noexcept(std::is_nothrow_constructible_v<T>) {
         // return the value of the requested type
         if (std::holds_alternative<T>(m_value)) {
             success = true;
@@ -184,8 +181,7 @@ public:
     /// Get the value type or a default-constructed value.
     /// @returns Value or const-ref, depending on T.
     template<class T>
-    auto get() const noexcept
-    {
+    auto get() const noexcept {
         bool ignored;
         return get<T>(ignored);
     }
@@ -196,8 +192,7 @@ public:
     /// @param index            Index of the requested element in the array.
     /// @throws ValueError     If the MsgPack does not contain an Array.
     /// @throws OutOfBounds   If the index is larger than the largest index in the Array.
-    const MsgPack& operator[](const size_t index) const
-    {
+    const MsgPack& operator[](const size_t index) const {
         if (!std::holds_alternative<Array>(m_value)) { NOTF_THROW(ValueError, "MsgPack object is not an Array"); }
 
         const auto& array = std::get<Array>(m_value);
@@ -212,8 +207,7 @@ public:
     /// @param key              String key of the requested element in the map.
     /// @throws ValueError     If the MsgPack does not contain an Array.
     /// @throws OutOfBounds   If the index is larger than the largest index in the Array.
-    const MsgPack& operator[](const std::string& key) const
-    {
+    const MsgPack& operator[](const std::string& key) const {
         if (!std::holds_alternative<Map>(m_value)) { NOTF_THROW(ValueError, "MsgPack object is not a Map"); }
 
         const auto& map = std::get<Map>(m_value);
@@ -224,8 +218,7 @@ public:
 
     /// Comparison operator.
     /// @param other    Other MsgPack object to compare against.
-    bool operator==(const MsgPack& other) const
-    {
+    bool operator==(const MsgPack& other) const {
         const Type my_type = get_type();
         const Type other_type = other.get_type();
 

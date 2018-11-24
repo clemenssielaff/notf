@@ -47,12 +47,10 @@ public:
     /// Copy constructor.
     template<class T>
     constexpr Rational(const Rational<T>& other)
-        : m_num(static_cast<element_t>(other.m_num)), m_den(static_cast<element_t>(other.m_den))
-    {}
+        : m_num(static_cast<element_t>(other.m_num)), m_den(static_cast<element_t>(other.m_den)) {}
 
     /// Name of this Rational type.
-    static constexpr const char* get_name()
-    {
+    static constexpr const char* get_name() {
         if constexpr (std::is_same_v<Integer, int>) {
             return "Ratioi";
         } else if constexpr (std::is_same_v<Integer, short>) {
@@ -62,8 +60,7 @@ public:
 
     /// Assignment operator.
     template<class T>
-    constexpr Rational& operator=(const Rational<T>& other) noexcept
-    {
+    constexpr Rational& operator=(const Rational<T>& other) noexcept {
         m_num = static_cast<element_t>(other.m_num);
         m_den = static_cast<element_t>(other.m_den);
         return *this;
@@ -83,8 +80,7 @@ public:
     /// Returns the corresponding real value to this fraction.
     /// A rational number with a denominator of zero produces a zero result.
     template<class T = float, class = std::enable_if_t<std::is_floating_point<T>::value>>
-    constexpr T as_real() const noexcept
-    {
+    constexpr T as_real() const noexcept {
         if (m_den == 0) {
             return 0;
         } else {
@@ -97,8 +93,7 @@ public:
 
     /// Sets the numerator (above the line).
     /// @param i    New numerator.
-    constexpr void set_numerator(element_t i)
-    {
+    constexpr void set_numerator(element_t i) {
         m_num = i;
         _normalize();
     }
@@ -106,16 +101,14 @@ public:
     /// Sets the denominator (above the line).
     /// @param i    New denominator.
     /// @throws BadRationalError    If the denominator is zero.
-    constexpr void set_denominator(element_t i)
-    {
+    constexpr void set_denominator(element_t i) {
         m_den = i;
         _normalize();
     }
 
     /// Rational addition.
     /// @param r    Other rational number to add to this fraction.
-    constexpr Rational& operator+=(const Rational& r)
-    {
+    constexpr Rational& operator+=(const Rational& r) {
         // This calculation avoids overflow, and minimises the number of expensive calculations.
         // Thanks to Nickolay Mladenov for this algorithm.
         //
@@ -147,8 +140,7 @@ public:
 
     /// Rational subtraction.
     /// @param r    Other rational number to subtract from this fraction.
-    constexpr Rational& operator-=(const Rational& other)
-    {
+    constexpr Rational& operator-=(const Rational& other) {
         // This calculation avoids overflow, and minimises the number of expensive
         // calculations. It corresponds exactly to the += case above
         element_t gcd = notf::gcd(m_den, other.m_den);
@@ -165,8 +157,7 @@ public:
 
     /// Rational multiplication.
     /// @param r    Other rational number to multiply with this fraction.
-    constexpr Rational& operator*=(const Rational& other)
-    {
+    constexpr Rational& operator*=(const Rational& other) {
         // avoid overflow and preserve normalization
         element_t gcd1 = notf::gcd(m_num, other.m_den);
         element_t gcd2 = notf::gcd(other.m_num, m_den);
@@ -179,8 +170,7 @@ public:
 
     /// Rational division.
     /// @param r    Other rational number to divide this fraction by.
-    constexpr Rational& operator/=(const Rational& other)
-    {
+    constexpr Rational& operator/=(const Rational& other) {
         if (other.is_zero()) { NOTF_THROW(BadRationalError, "Cannot divide by zero"); }
         if (is_zero()) { return *this; }
 
@@ -203,8 +193,7 @@ public:
     /// Scalar addition.
     /// @param i    Scalar to add to the fraction.
     template<class T, class = std::enable_if_t<std::is_integral<T>::value>>
-    constexpr Rational& operator+=(const T& i) noexcept
-    {
+    constexpr Rational& operator+=(const T& i) noexcept {
         m_num += i * m_den;
         return *this;
     }
@@ -212,8 +201,7 @@ public:
     /// Scalar subtraction.
     /// @param i    Scalar to subtract from the fraction.
     template<class T, class = std::enable_if_t<std::is_integral<T>::value>>
-    constexpr Rational& operator-=(const T& i) noexcept
-    {
+    constexpr Rational& operator-=(const T& i) noexcept {
         m_num -= i * m_den;
         return *this;
     }
@@ -221,8 +209,7 @@ public:
     /// Scalar multiplication.
     /// @param i    Scalar to multiply the fraction with.
     template<class T, class = std::enable_if_t<std::is_integral<T>::value>>
-    constexpr Rational& operator*=(const T& i)
-    {
+    constexpr Rational& operator*=(const T& i) {
         // avoid overflow and preserve normalization
         const element_t gcd = notf::gcd(static_cast<element_t>(i), m_den);
         m_num *= i / gcd;
@@ -233,8 +220,7 @@ public:
     /// Scalar division.
     /// @param i    Scalar to divide the fraction by.
     template<class T, class = std::enable_if_t<std::is_integral<T>::value>>
-    constexpr Rational& operator/=(const T& i)
-    {
+    constexpr Rational& operator/=(const T& i) {
         if (i == 0) { NOTF_THROW(BadRationalError, "Cannot divide by zero"); }
         if (is_zero()) { return *this; }
 
@@ -290,22 +276,19 @@ public:
 
     /// Scalar equality operator.
     template<class T, class = std::enable_if_t<std::is_integral<T>::value>>
-    constexpr bool operator==(const T& i) const
-    {
+    constexpr bool operator==(const T& i) const {
         return (m_den == 1) && (m_num == static_cast<element_t>(i));
     }
 
     /// Lesser-than operator.
-    constexpr bool operator<(const Rational& r) const
-    {
+    constexpr bool operator<(const Rational& r) const {
         // boost has a whole song and dance here ... I suppose this might work as well
         return as_real<double>() < r.as_real<double>();
     }
 
     /// Scalar lesser-than operator.
     template<class T, class = std::enable_if_t<std::is_integral<T>::value>>
-    constexpr bool operator<(const T& i) const
-    {
+    constexpr bool operator<(const T& i) const {
         // break value into mixed-fraction form, with always-nonnegative remainder
         NOTF_ASSERT(m_den > 0);
         element_t quotient = m_num / m_den;
@@ -329,8 +312,7 @@ public:
 
     /// Scalar lesser-or-equal operator
     template<class T, class = std::enable_if_t<std::is_integral<T>::value>>
-    constexpr bool operator<=(const T& i) const
-    {
+    constexpr bool operator<=(const T& i) const {
         return operator==(i) || operator<(i);
     }
 
@@ -339,8 +321,7 @@ public:
 
     /// Scalar greater-than operator.
     template<class T, class = std::enable_if_t<std::is_integral<T>::value>>
-    constexpr bool operator>(const T& i) const
-    {
+    constexpr bool operator>(const T& i) const {
         return operator==(i) ? false : !operator<(i);
     }
 
@@ -349,8 +330,7 @@ public:
 
     /// Scalar greater-or-equal operator
     template<class T, class = std::enable_if_t<std::is_integral<T>::value>>
-    constexpr bool operator>=(const T& i) const
-    {
+    constexpr bool operator>=(const T& i) const {
         return operator==(i) || operator>(i);
     }
 
@@ -374,8 +354,7 @@ public:
 
 private:
     /// Normalizes the fraction.
-    constexpr void _normalize()
-    {
+    constexpr void _normalize() {
         if (m_den == 0) { NOTF_THROW(BadRationalError, "{}/{} is not a valid rational number", m_num, m_den); }
 
         // normal zero
@@ -419,8 +398,7 @@ namespace std {
 /// std::hash specialization for notf::Rational<T>.
 template<class Integer>
 struct hash<notf::detail::Rational<Integer>> {
-    size_t operator()(const notf::detail::Rational<Integer>& rational) const
-    {
+    size_t operator()(const notf::detail::Rational<Integer>& rational) const {
         return notf::hash(notf::to_number(notf::detail::HashID::RATIONAL), rational.num(), rational.den());
     }
 };
@@ -436,14 +414,12 @@ struct formatter<notf::detail::Rational<Integer>> {
     using type = notf::detail::Rational<Integer>;
 
     template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx)
-    {
+    constexpr auto parse(ParseContext& ctx) {
         return ctx.begin();
     }
 
     template<typename FormatContext>
-    auto format(const type& rational, FormatContext& ctx)
-    {
+    auto format(const type& rational, FormatContext& ctx) {
         return format_to(ctx.begin(), "{}({}/{})", type::get_name(), rational.num(), rational.den());
     }
 };
@@ -455,8 +431,7 @@ struct formatter<notf::detail::Rational<Integer>> {
 /// @param vec  Vector to print.
 /// @return Output stream for further output.
 template<class Integer>
-std::ostream& operator<<(std::ostream& out, const notf::detail::Rational<Integer>& rational)
-{
+std::ostream& operator<<(std::ostream& out, const notf::detail::Rational<Integer>& rational) {
     return out << fmt::format("{}", rational);
 }
 

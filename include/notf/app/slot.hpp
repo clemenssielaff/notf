@@ -47,12 +47,10 @@ public:
     /// Constructor.
     Slot()
         : m_subscriber(std::make_shared<typename subscriber_t::element_type>(*this))
-        , m_publisher(std::make_shared<typename publisher_t::element_type>())
-    {}
+        , m_publisher(std::make_shared<typename publisher_t::element_type>()) {}
 
     /// Name of this Slot type, for runtime reporting.
-    std::string_view get_type_name() const final
-    {
+    std::string_view get_type_name() const final {
         static const std::string my_type = type_name<T>();
         return my_type;
     }
@@ -63,13 +61,13 @@ public:
     /// Publisher, publishing the incoming data into the Node.
     publisher_t& get_publisher() { return m_publisher; }
 
-//    /// Lets the Node owning this Slots, subscribe to its updates.
-//    template<class Sub, class DecayedSub = std::decay_t<Sub>>
-//    friend std::enable_if_t<detail::is_reactive_compatible_v<publisher_t, DecayedSub>, Pipeline<DecayedSub>>
-//    operator|(const std::shared_ptr<Slot>& slot, Sub&& subscriber)
-//    {
-//        return slot->get_publisher() | std::forward<Sub>(subscriber);
-//    }
+    //    /// Lets the Node owning this Slots, subscribe to its updates.
+    //    template<class Sub, class DecayedSub = std::decay_t<Sub>>
+    //    friend std::enable_if_t<detail::is_reactive_compatible_v<publisher_t, DecayedSub>, Pipeline<DecayedSub>>
+    //    operator|(const std::shared_ptr<Slot>& slot, Sub&& subscriber)
+    //    {
+    //        return slot->get_publisher() | std::forward<Sub>(subscriber);
+    //    }
 
     // fields ---------------------------------------------------------------------------------- //
 private:

@@ -18,8 +18,7 @@ using Resolution = ::NOTF_NAMESPACE_NAME::detail::window_properties::Resolution;
 using Position = ::NOTF_NAMESPACE_NAME::detail::window_properties::Position;
 using Monitor = ::NOTF_NAMESPACE_NAME::detail::window_properties::Monitor;
 
-GLFWmonitor* get_glfw_monitor(int index)
-{
+GLFWmonitor* get_glfw_monitor(int index) {
     int count = 0;
     GLFWmonitor** monitors = glfwGetMonitors(&count);
     NOTF_ASSERT(index < count);
@@ -32,8 +31,7 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-void window_deleter(GLFWwindow* glfw_window)
-{
+void window_deleter(GLFWwindow* glfw_window) {
     if (glfw_window != nullptr) { glfwDestroyWindow(glfw_window); }
 }
 
@@ -42,8 +40,7 @@ void window_deleter(GLFWwindow* glfw_window)
 // window =========================================================================================================== //
 
 Window::Window(valid_ptr<Node*> parent, Settings settings)
-    : super_t(parent), m_glfw_window(nullptr, detail::window_deleter)
-{
+    : super_t(parent), m_glfw_window(nullptr, detail::window_deleter) {
     _validate_settings(settings);
 
     // Window specific GLFW hints (see Application constructor for application-wide hints)
@@ -125,8 +122,7 @@ Window::Window(valid_ptr<Node*> parent, Settings settings)
     //    NOTF_LOG_INFO("Created Window \"{}\" using OpenGl version: {}", get<title>(), glGetString(GL_VERSION));
 }
 
-WindowHandle Window::create(Settings settings)
-{
+WindowHandle Window::create(Settings settings) {
     NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
 
     RootNodePtr root_node = TheGraph::AccessFor<Window>::get_root_node();
@@ -140,8 +136,7 @@ WindowHandle Window::create(Settings settings)
     return window;
 }
 
-void Window::close()
-{
+void Window::close() {
     NOTF_LOG_TRACE("Closing Window \"{}\"", get<title>());
 
     // disconnect the window callbacks (blocks until all queued events are handled)
@@ -159,8 +154,7 @@ void Window::close()
     TheApplication::AccessFor<Window>::unregister_window(std::static_pointer_cast<Window>(shared_from_this()));
 }
 
-void Window::_validate_settings(Settings& settings)
-{
+void Window::_validate_settings(Settings& settings) {
     // warn about ignored settings
     if (settings.state == State::FULLSCREEN) {
         if (!settings.is_visible) {
@@ -207,8 +201,7 @@ void Window::_validate_settings(Settings& settings)
     settings.samples = max(0, settings.samples);
 }
 
-void Window::_move_to_monitor(GLFWmonitor* window_monitor)
-{
+void Window::_move_to_monitor(GLFWmonitor* window_monitor) {
     const GLFWvidmode* video_mode = glfwGetVideoMode(window_monitor);
     Size2i buffer_size;
     if (get<resolution>() != Resolution::default_value) {
@@ -220,8 +213,7 @@ void Window::_move_to_monitor(GLFWmonitor* window_monitor)
                          buffer_size.width(), buffer_size.height(), video_mode->refreshRate);
 }
 
-bool Window::_on_state_change(Settings::State& new_state)
-{
+bool Window::_on_state_change(Settings::State& new_state) {
     { // windowify the window first, if it is currently in full screen
         GLFWmonitor* monitor = glfwGetWindowMonitor(m_glfw_window.get());
         if (monitor && (new_state != State::FULLSCREEN)) {
@@ -250,8 +242,7 @@ bool Window::_on_state_change(Settings::State& new_state)
     return true; // always succeed
 }
 
-bool Window::_on_size_change(Size2i& new_size)
-{
+bool Window::_on_size_change(Size2i& new_size) {
     new_size.max(Size2i::zero());
 
     if (get<state>() == State::WINDOWED) {
@@ -261,8 +252,7 @@ bool Window::_on_size_change(Size2i& new_size)
     return true; // always succeed
 }
 
-bool Window::_on_resolution_change(Size2i& new_resolution)
-{
+bool Window::_on_resolution_change(Size2i& new_resolution) {
     new_resolution.max(Size2i::zero());
 
     if (get<state>() == State::FULLSCREEN) {
@@ -272,8 +262,7 @@ bool Window::_on_resolution_change(Size2i& new_resolution)
     return true; // always succeed
 }
 
-bool Window::_on_monitor_change(int& new_monitor)
-{
+bool Window::_on_monitor_change(int& new_monitor) {
     int monitor_count = 0;
     GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
     if (new_monitor < 0 || new_monitor >= monitor_count) {

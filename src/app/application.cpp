@@ -9,8 +9,7 @@ NOTF_OPEN_NAMESPACE
 
 // the application ================================================================================================== //
 
-TheApplication::TheApplication(Args args) : m_args(std::move(args)), m_shared_context(nullptr, detail::window_deleter)
-{
+TheApplication::TheApplication(Args args) : m_args(std::move(args)), m_shared_context(nullptr, detail::window_deleter) {
     // initialize logger first, to catch errors right away
     notf::TheLogger::initialize(m_args.logger_arguments);
 
@@ -51,8 +50,7 @@ TheApplication::TheApplication(Args args) : m_args(std::move(args)), m_shared_co
 
 TheApplication::~TheApplication() { _shutdown(); }
 
-int TheApplication::exec()
-{
+int TheApplication::exec() {
     TheApplication& app = TheApplication::get();
 
     NOTF_LOG_TRACE("Starting main loop");
@@ -68,8 +66,7 @@ int TheApplication::exec()
     return EXIT_SUCCESS;
 }
 
-void TheApplication::_shutdown()
-{
+void TheApplication::_shutdown() {
     // you can only close the application once
     if (!is_running()) { return; }
     s_state.store(State::CLOSED);
@@ -91,14 +88,12 @@ void TheApplication::_shutdown()
     NOTF_LOG_TRACE("Application shutdown");
 }
 
-void TheApplication::_register_window(WindowHandle window)
-{
+void TheApplication::_register_window(WindowHandle window) {
     NOTF_ASSERT(!contains(m_windows, window));
     m_windows.emplace_back(std::move(window));
 }
 
-void TheApplication::_unregister_window(WindowHandle window)
-{
+void TheApplication::_unregister_window(WindowHandle window) {
     auto it = std::find(m_windows.begin(), m_windows.end(), window);
     NOTF_ASSERT(it != m_windows.end(), "Cannot remove an unknown Window from the application");
     m_windows.erase(it);

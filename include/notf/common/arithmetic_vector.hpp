@@ -25,8 +25,7 @@ public:
 
     /// Forwarding constructor.
     template<class... Args>
-    constexpr ArithmeticVector(Args&&... args) : super_t(std::forward<Args>(args)...)
-    {}
+    constexpr ArithmeticVector(Args&&... args) : super_t(std::forward<Args>(args)...) {}
 
     // magnitude --------------------------------------------------------------
 
@@ -34,8 +33,7 @@ public:
     constexpr bool is_unit() const noexcept { return abs(get_magnitude_sq() - 1) <= precision_high<element_t>(); }
 
     /// Calculate the squared magnitude of this vector.
-    constexpr element_t get_magnitude_sq() const noexcept
-    {
+    constexpr element_t get_magnitude_sq() const noexcept {
         element_t result = 0;
         for (size_t i = 0; i < super_t::get_dimensions(); ++i) {
             result += data[i] * data[i];
@@ -47,8 +45,7 @@ public:
     element_t get_magnitude() const noexcept { return sqrt(get_magnitude_sq()); }
 
     /// Normalizes this vector in-place.
-    derived_t& normalize()
-    {
+    derived_t& normalize() {
         const element_t mag_sq = get_magnitude_sq();
         if (abs(mag_sq - 1) <= precision_high<element_t>()) { // is unit
             return {data};
@@ -64,8 +61,7 @@ public:
     derived_t& fast_normalize() { return *this /= fast_inv_sqrt(get_magnitude_sq()); }
 
     /// Returns a normalized copy of this vector.
-    derived_t get_normalized() const&
-    {
+    derived_t get_normalized() const& {
         derived_t result = *this;
         result.normalize();
         return result;
@@ -81,8 +77,7 @@ public:
     /// Tests whether this vector is orthogonal to the other.
     /// The zero vector is orthogonal to every other vector.
     /// @param other     Vector to test against.
-    bool is_orthogonal_to(const derived_t& other) const
-    {
+    bool is_orthogonal_to(const derived_t& other) const {
         // normalization required for large absolute differences in vector lengths
         return abs(get_normalized().dot(other.get_normalized())) <= precision_high<element_t>();
     }
@@ -102,8 +97,7 @@ public:
 /// @param to      Right value, full weight at blend >= 1.
 /// @param blend   Blend value, clamped to range [0, 1].
 template<class Value, class = std::enable_if_t<detail::is_arithmetic_type<Value>>>
-constexpr Value lerp(const Value& from, const Value& to, const typename Value::element_t blend) noexcept
-{
+constexpr Value lerp(const Value& from, const Value& to, const typename Value::element_t blend) noexcept {
     if (blend <= 0) {
         return from;
     } else if (blend >= 1) {

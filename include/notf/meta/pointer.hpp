@@ -49,30 +49,25 @@ static constexpr bool is_static_castable_v = is_static_castable<From, To>::value
 /// @{
 /// Returns the raw pointer from any kind of other pointer without increasing the use_count of shared_ptrs.
 template<class T>
-constexpr std::enable_if_t<std::is_pointer_v<T>, T> raw_pointer(const T& ptr) noexcept
-{
+constexpr std::enable_if_t<std::is_pointer_v<T>, T> raw_pointer(const T& ptr) noexcept {
     return ptr; // from raw
 }
 template<class T>
-constexpr std::enable_if_t<is_shared_ptr_v<T>, typename T::element_type*> raw_pointer(const T& shared_ptr) noexcept
-{
+constexpr std::enable_if_t<is_shared_ptr_v<T>, typename T::element_type*> raw_pointer(const T& shared_ptr) noexcept {
     return shared_ptr.get(); // from shared_ptr<T>
 }
 template<class T>
-constexpr std::enable_if_t<is_unique_ptr_v<T>, typename T::element_type*> raw_pointer(const T& unique_ptr) noexcept
-{
+constexpr std::enable_if_t<is_unique_ptr_v<T>, typename T::element_type*> raw_pointer(const T& unique_ptr) noexcept {
     return unique_ptr.get(); // from unique_ptr<T>
 }
 template<class T>
 constexpr auto raw_pointer(const T& valid_ptr) noexcept
     // not `enable_if_t` ... MSVC seems to require the manual `typename` here
-    -> decltype(typename std::enable_if<is_valid_ptr_v<T>>::type(), raw_pointer(valid_ptr.get()))
-{
+    -> decltype(typename std::enable_if<is_valid_ptr_v<T>>::type(), raw_pointer(valid_ptr.get())) {
     return raw_pointer(valid_ptr.get()); // from valid_ptr<T>
 }
 template<class T>
-constexpr std::enable_if_t<std::is_null_pointer_v<T>, std::nullptr_t> raw_pointer(T) noexcept
-{
+constexpr std::enable_if_t<std::is_null_pointer_v<T>, std::nullptr_t> raw_pointer(T) noexcept {
     return nullptr; // from nullptr
 }
 /// @}
@@ -87,8 +82,7 @@ struct has_raw_pointer<T, decltype(raw_pointer(std::declval<T>()))> : std::true_
 /// If a static_cast is possible, it will be performed and always succeed.
 template<class From, class To>
 constexpr std::enable_if_t<std::conjunction_v<std::is_pointer<From>, std::is_pointer<To>>, To>
-assert_cast(From castee) noexcept(is_static_castable_v<From, To>)
-{
+assert_cast(From castee) noexcept(is_static_castable_v<From, To>) {
     // static cast
     if constexpr (is_static_castable_v<From, To>) {
         return static_cast<To>(castee);
@@ -121,8 +115,7 @@ struct pointer_hash {
 /// @param a    First weak_ptr.
 /// @param b    Second weak_ptr.
 template<class T>
-bool weak_ptr_equal(const std::weak_ptr<T>& a, const identity_t<std::weak_ptr<T>>& b) noexcept
-{
+bool weak_ptr_equal(const std::weak_ptr<T>& a, const identity_t<std::weak_ptr<T>>& b) noexcept {
     return !a.owner_before(b) && !b.owner_before(a);
 }
 
@@ -130,8 +123,7 @@ bool weak_ptr_equal(const std::weak_ptr<T>& a, const identity_t<std::weak_ptr<T>
 /// @param ptr  Weak pointer to test
 /// @returns    True iff the weak pointer is empty (not initialized).
 template<class T>
-bool weak_ptr_empty(const std::weak_ptr<T>& ptr) noexcept
-{
+bool weak_ptr_empty(const std::weak_ptr<T>& ptr) noexcept {
     return weak_ptr_equal(ptr, std::weak_ptr<T>{});
 }
 
@@ -140,8 +132,7 @@ bool weak_ptr_empty(const std::weak_ptr<T>& ptr) noexcept
 /// This can be removed as soon as `owner_hash` becomes part of the c++ standard
 /// (http://www.open-std.org/jtc1/sc22/wg21/docs/lwg-active.html#1406)
 template<class T>
-const T* raw_from_weak_ptr(const std::weak_ptr<T>& weak_ptr) noexcept
-{
+const T* raw_from_weak_ptr(const std::weak_ptr<T>& weak_ptr) noexcept {
     struct ConceptualWeakPtr {
         const T* element;
         const void* control_block;
@@ -188,17 +179,14 @@ public:
     template<class From, typename = std::enable_if_t<std::conjunction_v<        //
                              std::is_convertible<From, T>,                      // ptr must be convertible to T,
                              std::negation<is_valid_ptr<std::decay_t<From>>>>>> // but not a valid_ptr itself
-    constexpr valid_ptr(From&& ptr)
-        : m_ptr(std::forward<From>(ptr))
-    {
+    constexpr valid_ptr(From&& ptr) : m_ptr(std::forward<From>(ptr)) {
         if (NOTF_UNLIKELY(m_ptr == nullptr)) { NOTF_THROW(NotValidError, "Failed to dereference an empty pointer"); }
     }
 
     /// Safe copy constructor
     /// @param  Other valid_ptr containing a convertible type.
     template<class From, typename = std::enable_if_t<std::is_convertible_v<From, T>>>
-    constexpr valid_ptr(const valid_ptr<From>& ptr) : m_ptr(ptr.m_ptr)
-    {}
+    constexpr valid_ptr(const valid_ptr<From>& ptr) : m_ptr(ptr.m_ptr) {}
 
     // default construction for other valid_ptr<T>
     valid_ptr(const valid_ptr& other) = default;
@@ -259,8 +247,7 @@ struct pointer_equal {
 
     /// Comparison operation.
     template<class T, class U>
-    constexpr bool operator()(const T& lhs, const U& rhs) const noexcept
-    {
+    constexpr bool operator()(const T& lhs, const U& rhs) const noexcept {
         return raw_pointer(lhs) == raw_pointer(rhs);
     }
 };
@@ -269,8 +256,7 @@ struct pointer_less_than {
 
     /// Comparison operation.
     template<class T, class U>
-    constexpr bool operator()(const T& lhs, const U& rhs) const noexcept
-    {
+    constexpr bool operator()(const T& lhs, const U& rhs) const noexcept {
         return raw_pointer(lhs) < raw_pointer(rhs);
     }
 };
@@ -283,33 +269,27 @@ using is_pointer_comparable = std::enable_if_t<std::conjunction_v<has_raw_pointe
 
 /// Free comparison functions
 template<class L, class R, typename = detail::is_pointer_comparable<L, R>>
-constexpr bool operator==(L&& lhs, R&& rhs) noexcept
-{
+constexpr bool operator==(L&& lhs, R&& rhs) noexcept {
     return raw_pointer(std::forward<L>(lhs)) == raw_pointer(std::forward<R>(rhs));
 }
 template<class L, class R, typename = detail::is_pointer_comparable<L, R>>
-constexpr bool operator!=(L&& lhs, R&& rhs) noexcept
-{
+constexpr bool operator!=(L&& lhs, R&& rhs) noexcept {
     return raw_pointer(std::forward<L>(lhs)) != raw_pointer(std::forward<R>(rhs));
 }
 template<class L, class R, typename = detail::is_pointer_comparable<L, R>>
-constexpr bool operator<(L&& lhs, R&& rhs) noexcept
-{
+constexpr bool operator<(L&& lhs, R&& rhs) noexcept {
     return raw_pointer(std::forward<L>(lhs)) < raw_pointer(std::forward<R>(rhs));
 }
 template<class L, class R, typename = detail::is_pointer_comparable<L, R>>
-constexpr bool operator<=(L&& lhs, R&& rhs) noexcept
-{
+constexpr bool operator<=(L&& lhs, R&& rhs) noexcept {
     return raw_pointer(std::forward<L>(lhs)) <= raw_pointer(std::forward<R>(rhs));
 }
 template<class L, class R, typename = detail::is_pointer_comparable<L, R>>
-constexpr bool operator>(L&& lhs, R&& rhs) noexcept
-{
+constexpr bool operator>(L&& lhs, R&& rhs) noexcept {
     return raw_pointer(std::forward<L>(lhs)) > raw_pointer(std::forward<R>(rhs));
 }
 template<class L, class R, typename = detail::is_pointer_comparable<L, R>>
-constexpr bool operator>=(L&& lhs, R&& rhs) noexcept
-{
+constexpr bool operator>=(L&& lhs, R&& rhs) noexcept {
     return raw_pointer(std::forward<L>(lhs)) >= raw_pointer(std::forward<R>(rhs));
 }
 

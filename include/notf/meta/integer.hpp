@@ -11,16 +11,14 @@ NOTF_OPEN_NAMESPACE
 /// Returns the nth digit from the right.
 /// Digit #0 is the least significant digit.
 template<std::size_t base = 10>
-constexpr std::size_t get_digit(const std::size_t number, const uint digit) noexcept
-{
+constexpr std::size_t get_digit(const std::size_t number, const uint digit) noexcept {
     static_assert(base > 1);
     return (number % exp(base, digit + 1)) / exp(base, digit);
 }
 
 /// Counts the digits in an integral number.
 template<std::size_t base = 10>
-constexpr std::size_t count_digits(std::size_t number) noexcept
-{
+constexpr std::size_t count_digits(std::size_t number) noexcept {
     static_assert(base > 1);
     std::size_t result = 1;
     while (number /= base) {
@@ -36,8 +34,7 @@ constexpr std::size_t count_digits(std::size_t number) noexcept
 /// @param M     n % M
 /// @return      n % M, while negative values are wrapped (for example -1%3=2).
 template<class L, class R, class T = std::common_type_t<L, R>, class = std::enable_if_t<std::is_integral_v<T>>>
-constexpr T wrap_mod(const L n, const R M) noexcept
-{
+constexpr T wrap_mod(const L n, const R M) noexcept {
     return ((n % M) + M) % M;
 }
 
@@ -51,8 +48,7 @@ constexpr T wrap_mod(const L n, const R M) noexcept
 ///     ...
 template<class Value, class Interval, class T = std::common_type_t<Value, Interval>,
          class = std::enable_if_t<std::is_integral_v<T>>>
-constexpr T next_interval(Value value, const Interval interval) noexcept
-{
+constexpr T next_interval(Value value, const Interval interval) noexcept {
     if (!interval) {
         return value;
     } else {
@@ -65,8 +61,7 @@ constexpr T next_interval(Value value, const Interval interval) noexcept
 /// The GDC is the largest positive integer that divides each of the integers
 /// @throws value_error If one or both numbers are zero.
 template<class L, class R, typename T = std::common_type_t<L, R>, class = std::enable_if_t<std::is_integral_v<T>>>
-constexpr T gcd(const L& lhs, const R& rhs)
-{
+constexpr T gcd(const L& lhs, const R& rhs) {
     T a = static_cast<T>(lhs);
     T b = static_cast<T>(rhs);
     if (a == 0 || b == 0) { NOTF_THROW(ValueError, "Cannot calculate the GCD of {} and {}", lhs, rhs); }
@@ -83,18 +78,15 @@ constexpr T gcd(const L& lhs, const R& rhs)
 /// Calculates the Least Common Multiple of two or more integers.
 /// @throws value_error If any given integer is zero.
 template<class L, class R, class T = std::common_type_t<L, R>, class = std::enable_if_t<std::is_integral_v<T>>>
-constexpr T lcm(const L& lhs, const R& rhs)
-{
+constexpr T lcm(const L& lhs, const R& rhs) {
     return abs(lhs * rhs) / gcd(lhs, rhs);
 }
 template<class L, class R, class... Args>
-constexpr auto lcm(const L& lhs, const R& rhs, Args&&... args)
-{
+constexpr auto lcm(const L& lhs, const R& rhs, Args&&... args) {
     return lcm(lhs, lcm(rhs, std::forward<Args>(args)...));
 }
 template<class Iterable>
-constexpr auto lcm(const Iterable& numbers)
-{
+constexpr auto lcm(const Iterable& numbers) {
     return std::accumulate(std::begin(numbers), std::end(numbers), 1,
                            [](const auto& a, const auto& b) { return abs(a * b) / gcd(a, b); });
 }

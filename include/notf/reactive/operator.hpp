@@ -43,8 +43,7 @@ public:
     /// Subscriber "error" method, forwards to the Producer's "fail" method by default.
     /// @param publisher    The Publisher publishing the value, for identification purposes only.
     /// @param exception    The exception that has occurred.
-    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override
-    {
+    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override {
         this->error(exception);
     }
 
@@ -76,8 +75,7 @@ public:
     /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
     /// @param publisher    The Publisher publishing the value, for identification purposes only.
     /// @param exception    The exception that has occurred.
-    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override
-    {
+    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override {
         this->error(exception);
     }
 
@@ -112,8 +110,7 @@ public:
     /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
     /// @param publisher    The Publisher publishing the value, for identification purposes only.
     /// @param exception    The exception that has occurred.
-    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override
-    {
+    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override {
         this->error(exception);
     }
 
@@ -144,8 +141,7 @@ public:
     /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
     /// @param publisher    The Publisher publishing the value, for identification purposes only.
     /// @param exception    The exception that has occurred.
-    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override
-    {
+    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override {
         this->error(exception);
     }
 
@@ -180,8 +176,7 @@ public:
     /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
     /// @param publisher    The Publisher publishing the value, for identification purposes only.
     /// @param exception    The exception that has occurred.
-    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override
-    {
+    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override {
         this->error(exception);
     }
 
@@ -211,8 +206,7 @@ public:
     /// Subscriber "error" operation, forwards to the Producer's "fail" operation by default.
     /// @param publisher    The Publisher publishing the value, for identification purposes only.
     /// @param exception    The exception that has occurred.
-    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override
-    {
+    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) override {
         this->error(exception);
     }
 

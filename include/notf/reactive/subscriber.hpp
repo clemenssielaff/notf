@@ -89,8 +89,7 @@ namespace detail {
 
 struct SubscriberIdentifier {
     template<class T>
-    static constexpr auto test()
-    {
+    static constexpr auto test() {
         if constexpr (std::conjunction_v<is_shared_ptr<T>, decltype(_has_input_t<T>(std::declval<T>()))>) {
             using input_t = typename T::element_type::input_t;
             return std::is_convertible<T, SubscriberPtr<input_t>>{};

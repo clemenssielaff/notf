@@ -6,15 +6,13 @@ NOTF_OPEN_NAMESPACE
 
 // the graph - node registry ======================================================================================== //
 
-NodeHandle TheGraph::NodeRegistry::get_node(Uuid uuid) const
-{
+NodeHandle TheGraph::NodeRegistry::get_node(Uuid uuid) const {
     NOTF_GUARD(std::lock_guard(m_mutex));
     if (auto iter = m_registry.find(uuid); iter != m_registry.end()) { return iter->second; }
     return {}; // no node found
 }
 
-void TheGraph::NodeRegistry::add(NodeHandle node)
-{
+void TheGraph::NodeRegistry::add(NodeHandle node) {
     const Uuid& uuid = node.get_uuid();
     {
         NOTF_GUARD(std::lock_guard(m_mutex));
@@ -27,16 +25,14 @@ void TheGraph::NodeRegistry::add(NodeHandle node)
     }
 }
 
-void TheGraph::NodeRegistry::remove(Uuid uuid)
-{
+void TheGraph::NodeRegistry::remove(Uuid uuid) {
     NOTF_GUARD(std::lock_guard(m_mutex));
     if (auto iter = m_registry.find(uuid); iter != m_registry.end()) { m_registry.erase(iter); }
 }
 
 // the graph - node name registry =================================================================================== //
 
-std::string_view TheGraph::NodeNameRegistry::set_name(NodeHandle node, const std::string& name)
-{
+std::string_view TheGraph::NodeNameRegistry::set_name(NodeHandle node, const std::string& name) {
     const Uuid& uuid = node.get_uuid(); // this might throw if the handle is expired, do it before locking the mutex
     {
         NOTF_GUARD(std::lock_guard(m_mutex));
@@ -67,8 +63,7 @@ std::string_view TheGraph::NodeNameRegistry::set_name(NodeHandle node, const std
     }
 }
 
-NodeHandle TheGraph::NodeNameRegistry::get_node(const std::string& name) const
-{
+NodeHandle TheGraph::NodeNameRegistry::get_node(const std::string& name) const {
     NOTF_GUARD(std::lock_guard(m_mutex));
 
     // find the handle
@@ -81,8 +76,7 @@ NodeHandle TheGraph::NodeNameRegistry::get_node(const std::string& name) const
     return node;
 }
 
-void TheGraph::NodeNameRegistry::remove_node(const Uuid uuid)
-{
+void TheGraph::NodeNameRegistry::remove_node(const Uuid uuid) {
     NOTF_GUARD(std::lock_guard(m_mutex));
     if (auto uuid_iter = m_uuid_to_name.find(uuid); uuid_iter != m_uuid_to_name.end()) {
         _remove_name(uuid_iter->second);
@@ -90,8 +84,7 @@ void TheGraph::NodeNameRegistry::remove_node(const Uuid uuid)
     }
 }
 
-void TheGraph::NodeNameRegistry::_remove_name(std::string_view name_view)
-{
+void TheGraph::NodeNameRegistry::_remove_name(std::string_view name_view) {
     NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
     static std::string name; // copy the value of the string_view into a reusable static string
     name = name_view;
@@ -103,15 +96,13 @@ void TheGraph::NodeNameRegistry::_remove_name(std::string_view name_view)
 
 TheGraph::TheGraph() { _initialize(); }
 
-TheGraph::~TheGraph()
-{
+TheGraph::~TheGraph() {
     m_root_node.reset(); // erase all nodes by erasing the root
 }
 
 RootNodeHandle TheGraph::get_root_node() { return _get().m_root_node; }
 
-void TheGraph::_initialize()
-{
+void TheGraph::_initialize() {
     // create the new root node ...
     m_root_node = std::make_shared<RootNode>();
     RootNode::AccessFor<TheGraph>::finalize(*m_root_node);
@@ -122,8 +113,7 @@ void TheGraph::_initialize()
     m_dirty_nodes.emplace(std::move(node));
 }
 
-bool TheGraph::_freeze(const std::thread::id thread_id)
-{
+bool TheGraph::_freeze(const std::thread::id thread_id) {
     if (_is_frozen() || thread_id == std::thread::id()) { return false; }
     NOTF_GUARD(std::lock_guard(m_mutex));
 
@@ -133,8 +123,7 @@ bool TheGraph::_freeze(const std::thread::id thread_id)
     return true;
 }
 
-void TheGraph::_unfreeze(const std::thread::id thread_id)
-{
+void TheGraph::_unfreeze(const std::thread::id thread_id) {
     if (!_is_frozen_by(thread_id)) { return; }
     NOTF_GUARD(std::lock_guard(m_mutex));
 
@@ -144,8 +133,7 @@ void TheGraph::_unfreeze(const std::thread::id thread_id)
     _synchronize();
 }
 
-bool TheGraph::_synchronize()
-{
+bool TheGraph::_synchronize() {
     NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
 
     if (m_dirty_nodes.empty()) {

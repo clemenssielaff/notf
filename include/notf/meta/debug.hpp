@@ -18,8 +18,7 @@ template<char DELIMITER = '\\'>
 #else
 template<char DELIMITER = '/'>
 #endif
-constexpr const char* filename_from_path(const char* input)
-{
+constexpr const char* filename_from_path(const char* input) {
     std::size_t last_occurrence = 0;
     for (std::size_t offset = 0; input[offset]; ++offset) {
         if (input[offset] == DELIMITER) { last_occurrence = offset + 1; }

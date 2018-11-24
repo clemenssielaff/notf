@@ -49,34 +49,31 @@ using variant_to_tuple_t = typename variant_to_tuple<Variant>::type;
 /// Finds and returns the first index of the given type in the Variant.
 /// @throws std::overflow_error To make this a non-constexpr on failure.
 template<class T, class Variant, size_t I = 0>
-NOTF_UNUSED static constexpr size_t get_first_variant_index() noexcept
-{
-    if constexpr (I == std::variant_size_v<Variant>) { throw std::overflow_error(""); }
-    else if constexpr (std::is_same_v<std::variant_alternative_t<I, Variant>, T>) {
+NOTF_UNUSED static constexpr size_t get_first_variant_index() noexcept {
+    if constexpr (I == std::variant_size_v<Variant>) {
+        throw std::overflow_error("");
+    } else if constexpr (std::is_same_v<std::variant_alternative_t<I, Variant>, T>) {
         return I;
-    }
-    else {
+    } else {
         return get_first_variant_index<T, Variant, I + 1>();
     }
 }
 
 /// Checks if a given type is part of the Variant.
 template<class T, class Variant, size_t I = 0>
-NOTF_UNUSED static constexpr bool is_one_of_variant() noexcept
-{
-    if constexpr (I == std::variant_size_v<Variant>) { return false; }
-    else if constexpr (std::is_same_v<std::variant_alternative_t<I, Variant>, T>) {
+NOTF_UNUSED static constexpr bool is_one_of_variant() noexcept {
+    if constexpr (I == std::variant_size_v<Variant>) {
+        return false;
+    } else if constexpr (std::is_same_v<std::variant_alternative_t<I, Variant>, T>) {
         return true;
-    }
-    else {
+    } else {
         return is_one_of_variant<T, Variant, I + 1>();
     }
 }
 
 /// Checks if a variant has every type only once.
 template<class Variant>
-NOTF_UNUSED static constexpr bool has_variant_unique_types() noexcept
-{
+NOTF_UNUSED static constexpr bool has_variant_unique_types() noexcept {
     return std::tuple_size_v<make_tuple_unique_t<variant_to_tuple_t<Variant>>> == std::variant_size_v<Variant>;
 }
 

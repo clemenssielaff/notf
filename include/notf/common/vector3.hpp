@@ -27,8 +27,7 @@ public:
 
     /// Forwarding constructor.
     template<class... Args>
-    constexpr Vector3(Args&&... args) : super_t(std::forward<Args>(args)...)
-    {}
+    constexpr Vector3(Args&&... args) : super_t(std::forward<Args>(args)...) {}
 
     /// Unit vector along the X-axis.
     static constexpr Vector3 x_axis() { return Vector3(1, 0, 0); }
@@ -40,8 +39,7 @@ public:
     static constexpr Vector3 z_axis() { return Vector3(0, 0, 1); }
 
     /// Name of this Vector3 type.
-    static constexpr const char* get_name()
-    {
+    static constexpr const char* get_name() {
         if constexpr (std::is_same_v<Element, float>) {
             return "V3f";
         } else if constexpr (std::is_same_v<Element, double>) {
@@ -76,16 +74,14 @@ public:
     /// Vectorsuse distance approximation instead of component-wise approximation.
     /// @param other     Vector to test against.
     /// @param epsilon   Maximal allowed squared distance between the two vectors.
-    constexpr bool is_approx(const Vector3& other, const element_t epsilon = precision_high<element_t>()) const
-    {
+    constexpr bool is_approx(const Vector3& other, const element_t epsilon = precision_high<element_t>()) const {
         return (*this - other).magnitude_sq() <= epsilon;
     }
 
     /// Checks whether this vector is parallel to other.
     /// @note The zero vector is parallel to everything.
     /// @param other    Vector to test against.
-    constexpr bool is_parallel_to(const Vector3& other) const
-    {
+    constexpr bool is_parallel_to(const Vector3& other) const {
         return cross(other).magnitude_sq() <= precision_low<element_t>();
     }
 
@@ -98,8 +94,7 @@ public:
     /// @note Returns zero, if one or both of the input vectors are of zero magnitude.
     /// @param other     Vector to test against.
     /// @return Angle in positive radians.
-    element_t get_angle_to(const Vector3& other) const
-    {
+    element_t get_angle_to(const Vector3& other) const {
         const element_t mag_sq_product = super_t::magnitude_sq() * other.magnitude_sq();
         if (mag_sq_product <= precision_high<element_t>()) {
             return 0.; // one or both are zero
@@ -114,8 +109,7 @@ public:
     /// Similar to `angle`, but saving a call to `acos`.
     /// @note Returns zero, if one or both of the input vectors are of zero magnitude.
     /// @param other     Vector to test against.
-    element_t get_direction_to(const Vector3& other) const
-    {
+    element_t get_direction_to(const Vector3& other) const {
         const element_t mag_sq_product = super_t::magnitude_sq() * other.magnitude_sq();
         if (mag_sq_product <= precision_high<element_t>()) {
             return 0.; // one or both are zero
@@ -130,8 +124,7 @@ public:
     /// The cross product is a vector perpendicular to this one and other.
     /// The magnitude of the cross vector is twice the area of the triangle defined by the two input Vector3s.
     /// @param other     Other vector.
-    Vector3 cross(const Vector3& other) const
-    {
+    Vector3 cross(const Vector3& other) const {
         return Vector3(y() * other.z() - z() * other.y(),  //
                        z() * other.x() - x() * other.z(),  //
                        x() * other.y() - y() * other.x()); //
@@ -196,8 +189,7 @@ namespace std {
 /// std::hash specialization for Vector3.
 template<class Element>
 struct hash<notf::detail::Vector3<Element>> {
-    size_t operator()(const notf::detail::Vector3<Element>& vector) const
-    {
+    size_t operator()(const notf::detail::Vector3<Element>& vector) const {
         return notf::hash(notf::to_number(notf::detail::HashID::VECTOR3), vector.get_hash());
     }
 };
@@ -213,14 +205,12 @@ struct formatter<notf::detail::Vector3<Element>> {
     using type = notf::detail::Vector3<Element>;
 
     template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx)
-    {
+    constexpr auto parse(ParseContext& ctx) {
         return ctx.begin();
     }
 
     template<typename FormatContext>
-    auto format(const type& vec, FormatContext& ctx)
-    {
+    auto format(const type& vec, FormatContext& ctx) {
         return format_to(ctx.begin(), "{}({}, {}, {})", type::get_name(), vec.x(), vec.y(), vec.z());
     }
 };
@@ -232,8 +222,7 @@ struct formatter<notf::detail::Vector3<Element>> {
 /// @param vec  Vector to print.
 /// @return Output stream for further output.
 template<class Element>
-std::ostream& operator<<(std::ostream& out, const notf::detail::Vector3<Element>& vec)
-{
+std::ostream& operator<<(std::ostream& out, const notf::detail::Vector3<Element>& vec) {
     return out << fmt::format("{}", vec);
 }
 

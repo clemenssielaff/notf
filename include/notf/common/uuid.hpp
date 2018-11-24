@@ -16,7 +16,7 @@ class Uuid {
     // types ----------------------------------------------------------------------------------- //
 public:
     /// A single byte in the UUID.
-	using Byte = uchar;
+    using Byte = uchar;
 
     /// Internal representation of a UUID.
     using Bytes = std::array<Byte, 16>;
@@ -46,8 +46,7 @@ public:
     /// @param vector       Vector containing integral data to be cast to uchar.
     /// @throws ValueError If a value in the vector can not be cast to a byte or there are less than 16 items.
     template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
-    Uuid(const std::vector<T>& vector) : m_bytes(_vector_to_bytes(vector))
-    {}
+    Uuid(const std::vector<T>& vector) : m_bytes(_vector_to_bytes(vector)) {}
 
     /// Generates a new, valid UUID.
     static Uuid generate();
@@ -59,8 +58,7 @@ public:
     const Bytes& get_data() const noexcept { return m_bytes; }
 
     /// Packs the Uuid into two size_t words.
-    constexpr std::pair<size_t, size_t> to_words() const noexcept
-    {
+    constexpr std::pair<size_t, size_t> to_words() const noexcept {
         constexpr auto byte_width = bitsizeof<uchar>();
         size_t first = 0;
         size_t second = 0;
@@ -77,8 +75,7 @@ public:
 
     /// Explicit conversion to a vector of T.
     template<class T = char, class = std::enable_if_t<std::is_integral_v<T>>>
-    std::vector<T> to_vector() const
-    {
+    std::vector<T> to_vector() const {
         return std::vector<T>(m_bytes.begin(), m_bytes.end());
     }
 
@@ -114,8 +111,7 @@ public:
 
     /// Implicit conversion to a vector of T.
     template<class T = char, class = std::enable_if_t<std::is_integral_v<T>>>
-    operator std::vector<T>() const
-    {
+    operator std::vector<T>() const {
         return to_vector<T>();
     }
 
@@ -125,8 +121,7 @@ private:
     /// @returns        Corresponding UUID bytes array.
     /// @throws ValueError If a value in the vector can not be cast to a byte or there are less than 16 items.
     template<class T>
-    static Bytes _vector_to_bytes(const std::vector<T>& vector)
-    {
+    static Bytes _vector_to_bytes(const std::vector<T>& vector) {
         if (vector.size() < 16) {
             NOTF_THROW(ValueError, "Cannot construct a UUID (with 16 bytes) from a vector of size {}", vector.size());
         }
@@ -157,8 +152,7 @@ namespace std {
 
 template<>
 struct hash<notf::Uuid> {
-    constexpr size_t operator()(const notf::Uuid uuid) const noexcept
-    {
+    constexpr size_t operator()(const notf::Uuid uuid) const noexcept {
         auto words = uuid.to_words();
         return notf::hash(words.first, words.second);
     }

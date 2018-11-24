@@ -30,8 +30,7 @@ public:
     private:
         /// Constructor.
         /// @param thread_id    ID of the freezing thread (exposed for testability).
-        FreezeGuard(std::thread::id thread_id = std::this_thread::get_id()) : m_thread_id(std::move(thread_id))
-        {
+        FreezeGuard(std::thread::id thread_id = std::this_thread::get_id()) : m_thread_id(std::move(thread_id)) {
             if (!TheGraph::_get()._freeze(m_thread_id)) { m_thread_id = std::thread::id(); }
         }
 
@@ -40,8 +39,7 @@ public:
         NOTF_NO_HEAP_ALLOCATION(FreezeGuard);
 
         /// Destructor.
-        ~FreezeGuard()
-        {
+        ~FreezeGuard() {
             if (is_valid()) { TheGraph::_get()._unfreeze(m_thread_id); }
         }
 
@@ -126,8 +124,7 @@ private:
     TheGraph();
 
     /// The Graph singleton.
-    static TheGraph& _get()
-    {
+    static TheGraph& _get() {
         static TheGraph instance;
         return instance;
     }
@@ -163,8 +160,7 @@ public:
     static bool is_frozen() noexcept { return TheGraph::_get()._is_frozen(); }
 
     /// Tests whether the Graph singleton is currently frozen by the given thread.
-    static bool is_frozen_by(const std::thread::id thread_id) noexcept
-    {
+    static bool is_frozen_by(const std::thread::id thread_id) noexcept {
         return TheGraph::_get()._is_frozen_by(thread_id);
     }
 
@@ -190,8 +186,7 @@ private:
     /// @param thread_id    Id of the freezing thread (should only be used in tests).
     /// @returns            FreezeGuard that keeps the scene frozen while it is alive, is invalid if freezing did not
     /// succeed.
-    FreezeGuard _freeze_guard(const std::thread::id thread_id = std::this_thread::get_id())
-    {
+    FreezeGuard _freeze_guard(const std::thread::id thread_id = std::this_thread::get_id()) {
         return FreezeGuard(std::move(thread_id));
     }
 
@@ -247,16 +242,14 @@ class Accessor<TheGraph, Node> {
     /// Automatically marks the Node as being dirty as well.
     /// @param node                 Node to register.
     /// @throws not_unique_error    If another Node with the same Uuid is already registered.
-    static void register_node(NodeHandle node)
-    {
+    static void register_node(NodeHandle node) {
         TheGraph::_get().m_node_registry.add(node); // first, because it may fail
         TheGraph::_get().m_dirty_nodes.emplace(std::move(node));
     }
 
     /// Unregisters the Node with the given Uuid.
     /// If the Uuid is not know, this method does nothing.
-    static void unregister_node(Uuid uuid)
-    {
+    static void unregister_node(Uuid uuid) {
         TheGraph::_get().m_node_registry.remove(uuid);
         TheGraph::_get().m_node_name_registry.remove_node(uuid);
     }
@@ -267,8 +260,7 @@ class Accessor<TheGraph, Node> {
     /// @param node     Node to rename.
     /// @param name     Proposed name of the Node.
     /// @returns        New name of the Node.
-    static std::string_view set_name(NodeHandle node, const std::string& name)
-    {
+    static std::string_view set_name(NodeHandle node, const std::string& name) {
         return TheGraph::_get().m_node_name_registry.set_name(std::move(node), name);
     }
 
@@ -289,8 +281,7 @@ class Accessor<TheGraph, Window> {
     /// Automatically marks the Node as being dirty as well.
     /// @param node                 Node to register.
     /// @throws not_unique_error    If another Node with the same Uuid is already registered.
-    static void register_node(NodeHandle node)
-    {
+    static void register_node(NodeHandle node) {
         TheGraph::_get().m_node_registry.add(node); // first, because it may fail
         TheGraph::_get().m_dirty_nodes.emplace(std::move(node));
     }

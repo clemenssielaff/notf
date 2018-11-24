@@ -20,8 +20,7 @@ namespace detail {
 /// Demangles a mangled type name.
 /// @param name     Type name to demangle.
 /// @returns        Pretty printed name, if this plattform is supported.
-inline std::string demangle_type_name(const char* name)
-{
+inline std::string demangle_type_name(const char* name) {
     // Possible `status` values after a call to `abi::__cxa_demangle`
     //  0: The demangling operation succeeded.
     // -1: A memory allocation failiure occurred.
@@ -46,18 +45,15 @@ inline std::string demangle_type_name(const char* name) { return name; }
 /// @param t    Instance of the type in question.
 /// @returns    Pretty printed name, if this plattform is supported.
 template<class T>
-std::string type_name()
-{
+std::string type_name() {
     return detail::demangle_type_name(typeid(T).name());
 }
 template<class T>
-std::string type_name(const T& type)
-{
+std::string type_name(const T& type) {
     return detail::demangle_type_name(typeid(type).name());
 }
 template<>
-inline std::string type_name(const std::type_info& type)
-{
+inline std::string type_name(const std::type_info& type) {
     return detail::demangle_type_name(type.name());
 }
 

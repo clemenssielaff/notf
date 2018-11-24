@@ -17,8 +17,7 @@ constexpr inline size_t version_hash() noexcept { return config::version_major()
 
 /// see http://stackoverflow.com/a/4948967
 template<class T>
-constexpr size_t magic_hash_number() noexcept
-{
+constexpr size_t magic_hash_number() noexcept {
     long double result = 2.l;
     for (size_t i = 1; i < bitsizeof<T>(); ++i) {
         result *= 2.l;
@@ -48,8 +47,7 @@ enum class HashID : size_t {
 ///     https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp
 ///
 /// Use this to improve a hash function with a low entropy (like a counter).
-constexpr inline size_t hash_mix(uint key) noexcept
-{
+constexpr inline size_t hash_mix(uint key) noexcept {
     key ^= key >> 16;
     key *= 0x85ebca6b;
     key ^= key >> 13;
@@ -64,8 +62,7 @@ constexpr inline size_t hash_mix(uint key) noexcept
 ///     https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp
 ///
 /// Use this to improve a hash function with a low entropy (like a counter).
-constexpr inline size_t hash_mix(size_t key) noexcept
-{
+constexpr inline size_t hash_mix(size_t key) noexcept {
     key ^= (key >> 30);
     key *= 0xbf58476d1ce4e5b9;
     key ^= (key >> 27);
@@ -79,8 +76,7 @@ constexpr inline size_t hash_mix(size_t key) noexcept
 constexpr inline void hash_combine(std::size_t&) noexcept {}
 
 template<typename Arg, typename... Rest, class T = std::decay_t<Arg>>
-constexpr void hash_combine(std::size_t& seed, Arg&& value, Rest&&... rest) noexcept
-{
+constexpr void hash_combine(std::size_t& seed, Arg&& value, Rest&&... rest) noexcept {
     constexpr size_t magic_number = detail::magic_hash_number<size_t>();
     if constexpr (std::is_integral_v<T>) {
         // integral values are mapped on themselves at compile time, saving us a potential non-constexpr call to hash()
@@ -94,8 +90,7 @@ constexpr void hash_combine(std::size_t& seed, Arg&& value, Rest&&... rest) noex
 /// Calculates the combined hash of 0-n supplied values.
 /// All passed values must be hashable using std::hash.
 template<typename... Values>
-constexpr size_t hash(Values&&... values) noexcept
-{
+constexpr size_t hash(Values&&... values) noexcept {
     std::size_t result = detail::version_hash();
     hash_combine(result, std::forward<Values>(values)...);
     return result;
@@ -105,8 +100,7 @@ constexpr size_t hash(Values&&... values) noexcept
 /// Compile time hashing of a const char* array.
 /// @param string   String to hash, must be null-terminated.
 /// @param size     Size of the string (or at least, how many characters should be hashed).
-constexpr size_t hash_string(const char* string, const size_t size) noexcept
-{
+constexpr size_t hash_string(const char* string, const size_t size) noexcept {
     size_t result = config::constexpr_seed();
     for (size_t i = 0; i < size; ++i) {
         // batch the characters up into a size_t value, so we can use hash_mix on it

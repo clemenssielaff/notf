@@ -9,8 +9,7 @@ namespace {
 NOTF_USING_NAMESPACE;
 
 std::pair<size_t, size_t> get_this_and_sibling_index(const std::vector<NodePtr>& siblings, const Node* const caller,
-                                                     const NodeConstPtr& sibling_ptr)
-{
+                                                     const NodeConstPtr& sibling_ptr) {
     size_t my_index, sibling_index;
     {
         const size_t sibling_count = my_index = sibling_index = siblings.size();
@@ -39,13 +38,11 @@ NOTF_OPEN_NAMESPACE
 
 // node ============================================================================================================= //
 
-Node::Node(valid_ptr<Node*> parent) : m_parent(raw_pointer(parent))
-{
+Node::Node(valid_ptr<Node*> parent) : m_parent(raw_pointer(parent)) {
     NOTF_LOG_TRACE("Creating Node {}", m_uuid.to_string());
 }
 
-Node::~Node()
-{
+Node::~Node() {
     // first, delete all children while their parent pointer is still valid
     m_children.clear();
     m_modified_data.reset();
@@ -63,24 +60,21 @@ Node::~Node()
     NOTF_LOG_TRACE("Removing Node {}", m_uuid.to_string());
 }
 
-std::string Node::get_name() const
-{
+std::string Node::get_name() const {
     NOTF_GUARD(std::lock_guard(TheGraph::get_name_mutex())); // lock the Node Name Registry, so the name cannot change
     return std::string(m_name);
 }
 
 std::string Node::get_default_name() const { return number_to_mnemonic(hash(get_uuid()), /*max_syllables=*/4); }
 
-void Node::set_name(const std::string& name)
-{
+void Node::set_name(const std::string& name) {
     NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
     m_name = TheGraph::AccessFor<Node>::set_name(shared_from_this(), name);
 }
 
 NodeHandle Node::get_parent() { return _get_parent()->shared_from_this(); }
 
-bool Node::has_ancestor(const Node* const ancestor) const
-{
+bool Node::has_ancestor(const Node* const ancestor) const {
     if (ancestor == nullptr) { return false; }
     const Node* next = _get_parent();
     for (; next != next->_get_parent(); next = next->_get_parent()) {
@@ -89,15 +83,13 @@ bool Node::has_ancestor(const Node* const ancestor) const
     return next == ancestor; // true if the root node itself is the ancestor in question
 }
 
-NodeHandle Node::get_common_ancestor(const NodeHandle& other)
-{
+NodeHandle Node::get_common_ancestor(const NodeHandle& other) {
     const NodeConstPtr other_lock = NodeHandle::AccessFor<Node>::get_node_ptr(other);
     if (other_lock == nullptr) { return {}; }
     return const_cast<Node*>(_get_common_ancestor(other_lock.get()))->shared_from_this();
 }
 
-NodeHandle Node::get_child(const size_t index)
-{
+NodeHandle Node::get_child(const size_t index) {
     const ChildList& children = _read_children();
     if (index >= children.size()) {
         NOTF_THROW(OutOfBounds, "Cannot get child Node at index {} for Node \"{}\" with {} children", index, get_name(),
@@ -110,8 +102,7 @@ bool Node::is_in_front() const { return _read_siblings().back().get() == this; }
 
 bool Node::is_in_back() const { return _read_siblings().front().get() == this; }
 
-bool Node::is_before(const NodeHandle& sibling) const
-{
+bool Node::is_before(const NodeHandle& sibling) const {
     if (const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
         (sibling_ptr != nullptr) && (sibling_ptr->_get_parent() == _get_parent()) && (sibling_ptr.get() != this)) {
         for (const NodePtr& other : _read_siblings()) {
@@ -125,8 +116,7 @@ bool Node::is_before(const NodeHandle& sibling) const
     return false;
 }
 
-bool Node::is_behind(const NodeHandle& sibling) const
-{
+bool Node::is_behind(const NodeHandle& sibling) const {
     if (const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
         (sibling_ptr != nullptr) && (sibling_ptr->_get_parent() == _get_parent()) && (sibling_ptr.get() != this)) {
         for (const NodePtr& other : _read_siblings()) {
@@ -140,8 +130,7 @@ bool Node::is_behind(const NodeHandle& sibling) const
     return false;
 }
 
-void Node::stack_front()
-{
+void Node::stack_front() {
     if (is_in_front()) { return; } // early out to avoid creating unnecessary modified copies
     ChildList& siblings = _get_parent()->_write_children();
     auto itr
@@ -150,8 +139,7 @@ void Node::stack_front()
     move_to_back(siblings, itr);
 }
 
-void Node::stack_back()
-{
+void Node::stack_back() {
     if (is_in_back()) { return; } // early out to avoid creating unnecessary modified copies
     ChildList& siblings = _get_parent()->_write_children();
     auto itr
@@ -160,8 +148,7 @@ void Node::stack_back()
     move_to_front(siblings, itr);
 }
 
-void Node::stack_before(const NodeHandle& sibling)
-{
+void Node::stack_before(const NodeHandle& sibling) {
     const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
     if ((sibling_ptr == nullptr) || (sibling_ptr.get() == this) || sibling_ptr->_get_parent() != _get_parent()) {
         return;
@@ -171,8 +158,7 @@ void Node::stack_before(const NodeHandle& sibling)
     move_behind_of(siblings, my_index, sibling_index);
 }
 
-void Node::stack_behind(const NodeHandle& sibling)
-{
+void Node::stack_behind(const NodeHandle& sibling) {
     const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
     if ((sibling_ptr == nullptr) || (sibling_ptr.get() == this) || sibling_ptr->_get_parent() != _get_parent()) {
         return;
@@ -182,8 +168,7 @@ void Node::stack_behind(const NodeHandle& sibling)
     move_in_front_of(siblings, my_index, sibling_index);
 }
 
-bool Node::_get_flag(const size_t index) const
-{
+bool Node::_get_flag(const size_t index) const {
     if (index >= s_user_flag_count) {
         NOTF_THROW(OutOfBounds,
                    "Cannot test user flag #{} of Node {}, because Nodes only have {} user-defineable flags", index,
@@ -192,8 +177,7 @@ bool Node::_get_flag(const size_t index) const
     return _get_flag_impl(index + s_internal_flag_count);
 }
 
-void Node::_set_flag(const size_t index, const bool value)
-{
+void Node::_set_flag(const size_t index, const bool value) {
     if (index >= s_user_flag_count) {
         NOTF_THROW(OutOfBounds,
                    "Cannot test user flag #{} of Node {}, because Nodes only have {} user-defineable flags", index,
@@ -202,8 +186,7 @@ void Node::_set_flag(const size_t index, const bool value)
     _set_flag_impl(index + s_internal_flag_count, value);
 }
 
-void Node::_remove_child(NodeHandle child_handle)
-{
+void Node::_remove_child(NodeHandle child_handle) {
     NodePtr child = NodeHandle::AccessFor<Node>::get_node_ptr(child_handle);
     if (child == nullptr) { return; }
 
@@ -219,14 +202,12 @@ void Node::_remove_child(NodeHandle child_handle)
     children.erase(iterator_at(children, child_index));
 }
 
-void Node::_clear_children()
-{
+void Node::_clear_children() {
     if (_read_children().empty()) { return; }
     _write_children().clear();
 }
 
-const Node* Node::_get_parent(const std::thread::id thread_id) const
-{
+const Node* Node::_get_parent(const std::thread::id thread_id) const {
     NOTF_ASSERT(m_parent);
 
     if (TheGraph::is_frozen_by(thread_id)) {
@@ -245,8 +226,7 @@ const Node* Node::_get_parent(const std::thread::id thread_id) const
     return m_parent;
 }
 
-void Node::_set_parent(NodeHandle new_parent_handle)
-{
+void Node::_set_parent(NodeHandle new_parent_handle) {
     NodePtr new_parent = NodeHandle::AccessFor<Node>::get_node_ptr(new_parent_handle);
     if (new_parent == nullptr) { return; }
 
@@ -265,8 +245,7 @@ void Node::_set_parent(NodeHandle new_parent_handle)
     }
 }
 
-void Node::_clear_modified_data()
-{
+void Node::_clear_modified_data() {
     NOTF_ASSERT(!TheGraph::is_frozen());
 
     if (m_modified_data) {
@@ -283,8 +262,7 @@ void Node::_clear_modified_data()
     _clear_modified_properties();
 }
 
-const Node* Node::_get_common_ancestor(const Node* const other) const
-{
+const Node* Node::_get_common_ancestor(const Node* const other) const {
     NOTF_ASSERT(other);
     if (other == this) { return this; }
 
@@ -319,8 +297,7 @@ const Node* Node::_get_common_ancestor(const Node* const other) const
     return result;
 }
 
-const Node::ChildList& Node::_read_children(const std::thread::id thread_id) const
-{
+const Node::ChildList& Node::_read_children(const std::thread::id thread_id) const {
     if (TheGraph::is_frozen_by(thread_id)) {
         return m_children; // the renderer always sees the unmodified child list
     }
@@ -336,8 +313,7 @@ const Node::ChildList& Node::_read_children(const std::thread::id thread_id) con
     return m_children;
 }
 
-Node::ChildList& Node::_write_children()
-{
+Node::ChildList& Node::_write_children() {
     NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
 
     // changes in the child list make this node dirty
@@ -352,15 +328,13 @@ Node::ChildList& Node::_write_children()
     return m_children;
 }
 
-const Node::ChildList& Node::_read_siblings() const
-{
+const Node::ChildList& Node::_read_siblings() const {
     const ChildList& siblings = _get_parent()->_read_children();
     NOTF_ASSERT(contains(siblings, shared_from_this()));
     return siblings;
 }
 
-bool Node::_get_flag_impl(const size_t index, const std::thread::id thread_id) const
-{
+bool Node::_get_flag_impl(const size_t index, const std::thread::id thread_id) const {
     NOTF_ASSERT(index < bitset_size_v<Flags>);
 
     if (TheGraph::is_frozen_by(thread_id)) {
@@ -377,8 +351,7 @@ bool Node::_get_flag_impl(const size_t index, const std::thread::id thread_id) c
     }
 }
 
-void Node::_set_flag_impl(const size_t index, const bool value)
-{
+void Node::_set_flag_impl(const size_t index, const bool value) {
     NOTF_ASSERT(index < bitset_size_v<Flags>);
     NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
 
@@ -393,16 +366,14 @@ void Node::_set_flag_impl(const size_t index, const bool value)
     }
 }
 
-Node::Data& Node::_ensure_modified_data()
-{
+Node::Data& Node::_ensure_modified_data() {
     NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
 
     if (m_modified_data == nullptr) { m_modified_data = std::make_unique<Data>(m_parent, m_children, m_flags); }
     return *m_modified_data;
 }
 
-void Node::_mark_as_dirty()
-{
+void Node::_mark_as_dirty() {
     if (NOTF_UNLIKELY(!_is_finalized())) { return; }
     if (!_get_flag_impl(to_number(InternalFlags::DIRTY))) {
         _set_flag_impl(to_number(InternalFlags::DIRTY));

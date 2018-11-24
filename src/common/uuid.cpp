@@ -20,15 +20,13 @@ namespace {
 NOTF_USING_NAMESPACE;
 
 #ifdef NOTF_LINUX
-Uuid::Bytes generate_uuid()
-{
+Uuid::Bytes generate_uuid() {
     Uuid::Bytes uuid;
     uuid_generate(uuid.data());
     return uuid;
 }
 #elif defined NOTF_WINDOWS
-Uuid::Bytes generate_uuid()
-{
+Uuid::Bytes generate_uuid() {
     GUID guid;
     CoCreateGuid(&guid);
 
@@ -54,8 +52,7 @@ Uuid::Bytes generate_uuid()
     return bytes;
 }
 #elif defined NOTF_MACINTOSH
-Uuid::Bytes generate_uuid()
-{
+Uuid::Bytes generate_uuid() {
     auto newId = CFUUIDCreate(nullptr);
     auto bytes = CFUUIDGetUUIDBytes(newId);
     CFRelease(newId);
@@ -65,8 +62,7 @@ Uuid::Bytes generate_uuid()
 }
 #endif
 
-Uuid::Bytes parse_uuid(std::string_view string)
-{
+Uuid::Bytes parse_uuid(std::string_view string) {
     if (string.size() < 36) {
         return {}; // string is too small
     }
@@ -105,16 +101,14 @@ Uuid::Uuid(std::string_view string) : m_bytes(parse_uuid(std::move(string))) {}
 
 Uuid Uuid::generate() { return generate_uuid(); }
 
-std::string Uuid::to_string() const
-{
+std::string Uuid::to_string() const {
     return fmt::format(
         "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
         m_bytes[0], m_bytes[1], m_bytes[2], m_bytes[3], m_bytes[4], m_bytes[5], m_bytes[6], m_bytes[7], m_bytes[8],
         m_bytes[9], m_bytes[10], m_bytes[11], m_bytes[12], m_bytes[13], m_bytes[14], m_bytes[15]);
 }
 
-std::ostream& operator<<(std::ostream& os, const Uuid& uuid)
-{
+std::ostream& operator<<(std::ostream& os, const Uuid& uuid) {
     const Uuid::Bytes& bytes = uuid.get_data();
     fmt::print(os,
                "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",

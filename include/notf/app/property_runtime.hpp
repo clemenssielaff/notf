@@ -16,8 +16,7 @@ public:
     /// @param value        Property value.
     /// @param is_visible   Whether a change in the Property will cause the Node to redraw or not.
     RunTimeProperty(std::string_view name, T value, bool is_visible = true)
-        : Property<T>(value, is_visible), m_name(std::move(name)), m_default_value(std::move(value))
-    {}
+        : Property<T>(value, is_visible), m_name(std::move(name)), m_default_value(std::move(value)) {}
 
     /// The Node-unique name of this Property.
     std::string_view get_name() const final { return m_name; }

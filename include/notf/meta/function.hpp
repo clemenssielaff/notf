@@ -48,20 +48,17 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     template<class T>
-    static constexpr bool has_return_type() noexcept
-    {
+    static constexpr bool has_return_type() noexcept {
         return std::is_same_v<T, return_type>;
     }
 
     template<size_t index, class T>
-    static constexpr bool has_arg_type() noexcept
-    {
+    static constexpr bool has_arg_type() noexcept {
         return std::is_same_v<T, std::tuple_element_t<index, args_tuple>>;
     }
 
     template<class Other, class Indices = std::make_index_sequence<arity>>
-    static constexpr bool is_same() noexcept
-    {
+    static constexpr bool is_same() noexcept {
         return all(function_traits<Other>::arity == arity,                                    // same arity
                    std::is_same_v<typename function_traits<Other>::return_type, return_type>, // same return type
                    _check_arg_types<Other>(Indices{}));                                       // same argument types
@@ -69,14 +66,12 @@ public:
 
 private:
     template<class T, std::size_t index>
-    static constexpr bool _check_arg_type() noexcept
-    {
+    static constexpr bool _check_arg_type() noexcept {
         return std::is_same_v<typename function_traits<T>::template arg_type<index>,
                               typename impl_t::template arg_type<index>>;
     }
     template<class T, std::size_t... i>
-    static constexpr bool _check_arg_types(std::index_sequence<i...>) noexcept
-    {
+    static constexpr bool _check_arg_types(std::index_sequence<i...>) noexcept {
         return (... && _check_arg_type<T, i>());
     }
 };

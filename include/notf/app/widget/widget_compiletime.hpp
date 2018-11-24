@@ -17,8 +17,7 @@ struct StateIdentifier {
 
     /// Tests if a given user defined State type is compatible to another with a given Node type.
     template<class UserState, class NodeType>
-    static constexpr auto is_compatible()
-    {
+    static constexpr auto is_compatible() {
         if constexpr (std::disjunction_v<std::negation<decltype(has_this_t<UserState>(std::declval<UserState>()))>,
                                          std::negation<decltype(has_node_t<UserState>(std::declval<UserState>()))>>) {
             return std::false_type{}; // not a state
@@ -31,8 +30,7 @@ struct StateIdentifier {
 
     /// Checks a given user defined State type and static asserts with an error message if something is wrong.
     template<class UserState>
-    static constexpr bool check()
-    {
+    static constexpr bool check() {
         static_assert(std::is_convertible_v<UserState*, State<typename UserState::this_t, typename UserState::node_t>*>,
                       "User State is not a valid subclass of State");
 
@@ -99,8 +97,7 @@ protected:
 protected:
     /// Get a compatible Node from any other State.
     template<class PreviousState>
-    static NodeType& _get_node(PreviousState& state)
-    {
+    static NodeType& _get_node(PreviousState& state) {
         static_assert(is_compatible_state<PreviousState>::value,
                       "States are incompatible because they have different Node types");
         return state.m_node;
@@ -117,8 +114,7 @@ public:
 protected:
     /// Transition into another State.
     template<class NextState>
-    constexpr void _transition_into()
-    {
+    constexpr void _transition_into() {
         static_assert(NodeType::template is_transition_possible<UserState, NextState>(), "Undefined State switch");
         m_node.template transition_into<NextState>();
     }
@@ -152,8 +148,7 @@ public:
 private:
     /// Checks if a given name is already in use in a sub-range of all States.
     template<size_t I, size_t Last, char... Cs>
-    static constexpr std::enable_if_t<(I < Last), bool> _is_state_name_taken(StringType<Cs...> name)
-    {
+    static constexpr std::enable_if_t<(I < Last), bool> _is_state_name_taken(StringType<Cs...> name) {
         if constexpr (state_t<I>::name == name) {
             return true;
         } else {
@@ -169,8 +164,7 @@ private:
 
     /// Used to validate the State machine upon instantiation.
     template<size_t I = 0>
-    static constexpr std::enable_if_t<(I < std::variant_size_v<StateVariant>), bool> _validate_state_machine()
-    {
+    static constexpr std::enable_if_t<(I < std::variant_size_v<StateVariant>), bool> _validate_state_machine() {
         if constexpr (I == 0) {
             // States may be listed only once in the variant
             static_assert(has_variant_unique_types<StateVariant>(),
@@ -186,16 +180,14 @@ private:
         return _validate_state_machine<I + 1>();
     }
     template<size_t I = 0> // msvc workaround
-    static constexpr std::enable_if_t<(I == std::variant_size_v<StateVariant>), bool> _validate_state_machine()
-    {
+    static constexpr std::enable_if_t<(I == std::variant_size_v<StateVariant>), bool> _validate_state_machine() {
         return true;
     }
     static_assert(_validate_state_machine());
 
     /// Checks if this Widget has a State by the given name.
     template<char... Cs>
-    static constexpr bool _has_state()
-    {
+    static constexpr bool _has_state() {
         return _get_state_index<0>(StringType<Cs...>{}) != std::variant_size_v<StateVariant>;
     }
 
@@ -205,15 +197,13 @@ protected:
     /// @param parent   Parent of this Widget.
     _CompileTimeWidget(valid_ptr<Node*> parent)
         : CompileTimeNode<Policy>(parent)
-        , m_state(std::in_place_type_t<state_t<0>>(), *static_cast<typename state_t<0>::node_t*>(this))
-    {}
+        , m_state(std::in_place_type_t<state_t<0>>(), *static_cast<typename state_t<0>::node_t*>(this)) {}
 
 public:
     // state machine ----------------------------------------------------------
 
     /// The name of the current State.
-    std::string_view get_state_name() const noexcept final
-    {
+    std::string_view get_state_name() const noexcept final {
         const char* name = _get_state_name(m_state.index());
         NOTF_ASSERT(name);
         return name;
@@ -222,12 +212,10 @@ public:
     /// @{
     /// Checks if a transition from one to the other State is possible.
     template<class CurrentState, class NewState>
-    static constexpr bool is_valid_transition()
-    {
+    static constexpr bool is_valid_transition() {
         return std::is_constructible_v<NewState, std::add_rvalue_reference_t<CurrentState>>;
     }
-    bool is_valid_transition(const std::string& from, std::string& to) const final
-    {
+    bool is_valid_transition(const std::string& from, std::string& to) const final {
         return _is_valid_transition(_get_state_index(from), _get_state_index(to));
     }
     /// @}
@@ -236,17 +224,14 @@ public:
     /// Transitions from the current into the given State.
     /// @throws AnyWidget::BadTransitionError   If the transition is not possible.
     template<class NewState, class = std::enable_if_t<is_one_of_variant<NewState, StateVariant>()>>
-    void transition_into()
-    {
+    void transition_into() {
         _transition_into<NewState>();
     }
     template<char... Cs, class = std::enable_if_t<_has_state<Cs...>()>>
-    void transition_into(StringType<Cs...> name)
-    {
+    void transition_into(StringType<Cs...> name) {
         _transition_into<0>(name);
     }
-    void transition_into(const std::string& state) final
-    {
+    void transition_into(const std::string& state) final {
         const size_t target_index = _get_state_index(state);
         if (target_index == std::variant_size_v<StateVariant>) {
             NOTF_THROW(AnyWidget::BadTransitionError, "Node {} has no State called \"{}\"", //
@@ -272,8 +257,7 @@ private:
     /// Returns the index of a given State identified by name.
     /// @returns    Index of the State or size of StateVariant on error.
     template<size_t I = 0>
-    std::enable_if_t<(I < std::variant_size_v<StateVariant>), size_t> _get_state_index(const std::string& name) const
-    {
+    std::enable_if_t<(I < std::variant_size_v<StateVariant>), size_t> _get_state_index(const std::string& name) const {
         if (name.compare(state_t<I>::name.c_str()) == 0) {
             return I;
         } else {
@@ -281,14 +265,12 @@ private:
         }
     }
     template<size_t I = 0>
-    std::enable_if_t<(I == std::variant_size_v<StateVariant>), size_t> _get_state_index(const std::string&) const
-    {
+    std::enable_if_t<(I == std::variant_size_v<StateVariant>), size_t> _get_state_index(const std::string&) const {
         return I;
     }
     template<size_t I, char... Cs>
     static constexpr std::enable_if_t<(I < std::variant_size_v<StateVariant>), size_t>
-    _get_state_index(StringType<Cs...> name)
-    {
+    _get_state_index(StringType<Cs...> name) {
         if constexpr (state_t<I>::name == name) {
             return I;
         } else {
@@ -297,8 +279,7 @@ private:
     }
     template<size_t I, char... Cs>
     static constexpr std::enable_if_t<(I == std::variant_size_v<StateVariant>), size_t>
-    _get_state_index(StringType<Cs...>)
-    {
+    _get_state_index(StringType<Cs...>) {
         return I;
     }
     /// @}
@@ -307,8 +288,7 @@ private:
     /// @returns    Name of the given State, is empty on error.
     template<size_t I = 0>
     static constexpr std::enable_if_t<(I < std::variant_size_v<StateVariant>), const char*>
-    _get_state_name(const size_t index)
-    {
+    _get_state_name(const size_t index) {
         if (I == index) {
             return state_t<I>::name.c_str();
         } else {
@@ -317,16 +297,14 @@ private:
     }
     template<size_t I = 0>
     static constexpr std::enable_if_t<(I == std::variant_size_v<StateVariant>), const char*>
-    _get_state_name(const size_t)
-    {
+    _get_state_name(const size_t) {
         return nullptr;
     }
 
     /// @{
     /// Checks if this Widget type can transition between two States identified by their index.
     template<size_t From, size_t To>
-    static constexpr bool _check_transition(const size_t to)
-    {
+    static constexpr bool _check_transition(const size_t to) {
         if constexpr (To == std::variant_size_v<StateVariant>) {
             return false;
         } else {
@@ -338,8 +316,7 @@ private:
         }
     }
     template<size_t From>
-    static constexpr bool _check_transition(const size_t from, const size_t to)
-    {
+    static constexpr bool _check_transition(const size_t from, const size_t to) {
         if constexpr (From == std::variant_size_v<StateVariant>) {
             return false;
         } else {
@@ -353,8 +330,7 @@ private:
     /// #}
 
     /// Checks if a transition from one to the other State is possible.
-    bool _is_valid_transition(const size_t from, const size_t to) const
-    {
+    bool _is_valid_transition(const size_t from, const size_t to) const {
         constexpr auto to_table_index = [](const size_t from, const size_t to) {
             NOTF_ASSERT(from < std::variant_size_v<StateVariant>);
             NOTF_ASSERT(to < std::variant_size_v<StateVariant>);
@@ -378,8 +354,7 @@ private:
 
     /// Transitions frm the current into another State identified by name.
     template<size_t I, char... Cs>
-    std::enable_if_t<(I < std::variant_size_v<StateVariant>)> _transition_into(StringType<Cs...> name)
-    {
+    std::enable_if_t<(I < std::variant_size_v<StateVariant>)> _transition_into(StringType<Cs...> name) {
         if constexpr (state_t<I>::name == name) {
             return _transition_into<state_t<I>>();
         } else {
@@ -387,15 +362,13 @@ private:
         }
     }
     template<size_t I, char... Cs>
-    std::enable_if_t<(I == std::variant_size_v<StateVariant>)> _transition_into(StringType<Cs...>)
-    {
+    std::enable_if_t<(I == std::variant_size_v<StateVariant>)> _transition_into(StringType<Cs...>) {
         static_assert(always_false_v<I>);
     }
 
     /// Transitions frm the current into another State identified by name.
     template<size_t I = 0>
-    std::enable_if_t<(I < std::variant_size_v<StateVariant>)> _transition_into(const size_t index)
-    {
+    std::enable_if_t<(I < std::variant_size_v<StateVariant>)> _transition_into(const size_t index) {
         if (I == index) {
             return _transition_into<state_t<I>>();
         } else {
@@ -403,16 +376,14 @@ private:
         }
     }
     template<size_t I = 0>
-    std::enable_if_t<(I == std::variant_size_v<StateVariant>)> _transition_into(const size_t)
-    {
+    std::enable_if_t<(I == std::variant_size_v<StateVariant>)> _transition_into(const size_t) {
         NOTF_ASSERT(false);
     }
 
     /// Transitions from the current into the given State.
     /// @throws AnyWidget::BadTransitionError   If the transition is not possible.
     template<class NewState, std::size_t I = 0>
-    std::enable_if_t<(I < std::variant_size_v<StateVariant>)> _transition_into()
-    {
+    std::enable_if_t<(I < std::variant_size_v<StateVariant>)> _transition_into() {
         if constexpr (is_valid_transition<state_t<I>, NewState>()) {
             if (m_state.index() == I) {
                 m_state.template emplace<NewState>(std::move(std::get<I>(m_state)));
@@ -422,8 +393,7 @@ private:
         return _transition_into<NewState, I + 1>();
     }
     template<class NewState, std::size_t I = 0>
-    std::enable_if_t<(I == std::variant_size_v<StateVariant>)> _transition_into()
-    {
+    std::enable_if_t<(I == std::variant_size_v<StateVariant>)> _transition_into() {
         NOTF_THROW(AnyWidget::BadTransitionError,
                    "Cannot transition Node {} from State \"{}\" into State \"{}\'", //
                    this->get_uuid().to_string(), get_state_name(), NewState::name.c_str());

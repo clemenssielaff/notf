@@ -17,8 +17,7 @@ struct ArithmeticIdentifier {
 
     /// Tests if a given type is an arithmetic type.
     template<class T>
-    static constexpr auto test()
-    {
+    static constexpr auto test() {
         if constexpr (std::disjunction_v<std::negation<decltype(has_derived_t<T>(std::declval<T>()))>,
                                          std::negation<decltype(has_element_t<T>(std::declval<T>()))>,
                                          std::negation<decltype(has_component_t<T>(std::declval<T>()))>,
@@ -35,8 +34,7 @@ struct ArithmeticIdentifier {
 
     /// Checks if a given arithmetic type can be converted into another.
     template<class From, class To>
-    static constexpr bool is_convertible()
-    {
+    static constexpr bool is_convertible() {
         if constexpr (!test<From>() || !test<To>()) {
             return false; // not an arithmetic type
         } else if constexpr (From::get_dimensions() != To::get_dimensions()) {
@@ -118,8 +116,7 @@ public:
 
     /// Copy constructor for any compatible arithmetic type.
     template<class T, class = std::enable_if_t<ArithmeticIdentifier::is_convertible<derived_t, T>()>>
-    constexpr Arithmetic(const T& other) noexcept
-    {
+    constexpr Arithmetic(const T& other) noexcept {
         for (size_t i = 0; i < get_size(); ++i) {
             data[i] = other.data[i];
         }
@@ -130,13 +127,11 @@ public:
     ///                 Remaining components are value-initialized.
     template<class... Args, class = std::enable_if_t<all(sizeof...(Args) <= Dimensions,
                                                          (std::is_trivially_constructible_v<component_t, Args>, ...))>>
-    constexpr Arithmetic(Args&&... args) noexcept : data{static_cast<component_t>(std::forward<Args>(args))...}
-    {}
+    constexpr Arithmetic(Args&&... args) noexcept : data{static_cast<component_t>(std::forward<Args>(args))...} {}
 
     /// Create an arithmetic value with all elements set to the given value.
     /// @param value    Value to set.
-    static derived_t all(const element_t value)
-    {
+    static derived_t all(const element_t value) {
         derived_t result;
         result.data.fill(value);
         return result;
@@ -151,8 +146,7 @@ public:
     static constexpr size_t get_dimensions() noexcept { return Dimensions; }
 
     /// Number of elements in this arithmetic type.
-    static constexpr size_t get_size() noexcept
-    {
+    static constexpr size_t get_size() noexcept {
         if constexpr (_is_ground()) {
             return get_dimensions();
         } else {
@@ -163,13 +157,11 @@ public:
     /// @{
     /// Access to a component of this value by index.
     /// @param index    Index of the requested component.
-    constexpr component_t& operator[](const size_t index)
-    {
+    constexpr component_t& operator[](const size_t index) {
         NOTF_ASSERT(index < get_dimensions());
         return data[index];
     }
-    constexpr const component_t& operator[](const size_t index) const
-    {
+    constexpr const component_t& operator[](const size_t index) const {
         NOTF_ASSERT(index < get_dimensions());
         return data[index];
     }
@@ -182,8 +174,7 @@ public:
     /// @}
 
     /// Tests whether all components of this value are real (not NAN, not INFINITY).
-    constexpr bool is_real() const noexcept
-    {
+    constexpr bool is_real() const noexcept {
         for (size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (_is_ground()) {
                 if (!notf::is_real(data[i])) { return false; }
@@ -196,8 +187,7 @@ public:
 
     /// Tests whether all components of this value are close to or equal to, zero.
     /// @param epsilon  Largest ignored difference.
-    constexpr bool is_zero(const element_t epsilon = precision_high<element_t>()) const noexcept
-    {
+    constexpr bool is_zero(const element_t epsilon = precision_high<element_t>()) const noexcept {
         for (size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (_is_ground()) {
                 if (abs(data[i]) > epsilon) { return false; }
@@ -210,8 +200,7 @@ public:
 
     /// Tests whether any of the components of this value is close to or equal to, zero.
     /// @param epsilon  Largest ignored difference.
-    constexpr bool contains_zero(const element_t epsilon = precision_high<element_t>()) const noexcept
-    {
+    constexpr bool contains_zero(const element_t epsilon = precision_high<element_t>()) const noexcept {
         for (size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (_is_ground()) {
                 if (abs(data[i]) <= epsilon) { return true; }
@@ -223,8 +212,7 @@ public:
     }
 
     /// Calculates and returns the hash of this value.
-    constexpr size_t get_hash() const noexcept
-    {
+    constexpr size_t get_hash() const noexcept {
         std::size_t result = version_hash();
         for (size_t i = 0; i < get_dimensions(); ++i) {
             notf::hash_combine(result, data[i]);
@@ -238,8 +226,7 @@ public:
     /// @param other    Other matrix to test against.
     /// @param epsilon  Largest ignored difference.
     constexpr bool is_approx(const derived_t& other, const element_t epsilon = precision_high<element_t>()) const
-        noexcept
-    {
+        noexcept {
         for (size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (_is_ground()) {
                 if (!notf::is_approx(data[i], other[i], epsilon)) { return false; }
@@ -262,8 +249,7 @@ public:
 
     /// Get the element-wise maximum of this and the other value.
     /// @param other    Other value to max against.
-    constexpr derived_t& max(const derived_t& other) noexcept
-    {
+    constexpr derived_t& max(const derived_t& other) noexcept {
         for (size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (_is_ground()) {
                 data[i] = std::max(data[i], other[i]);
@@ -277,8 +263,7 @@ public:
     /// @{
     /// Get the element-wise maximum of this and the other value in a new value.
     /// @param other    Other value to max against.
-    constexpr derived_t get_max(const derived_t& other) const& noexcept
-    {
+    constexpr derived_t get_max(const derived_t& other) const& noexcept {
         derived_t result = *this;
         result.max(other);
         return result;
@@ -288,8 +273,7 @@ public:
 
     /// Get the element-wise minimum of this and the other value.
     /// @param other    Other value to min against.
-    constexpr derived_t& min(const derived_t& other) noexcept
-    {
+    constexpr derived_t& min(const derived_t& other) noexcept {
         for (size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (_is_ground()) {
                 data[i] = std::min(data[i], other[i]);
@@ -303,8 +287,7 @@ public:
     /// @{
     /// Get the element-wise minimum of this and the other value in a new value.
     /// @param other    Other value to min against.
-    constexpr derived_t get_min(const derived_t& other) const& noexcept
-    {
+    constexpr derived_t get_min(const derived_t& other) const& noexcept {
         derived_t result = *this;
         result.min(other);
         return result;
@@ -313,8 +296,7 @@ public:
     /// @}
 
     /// Sum of all elements of this value.
-    constexpr element_t get_sum() const noexcept
-    {
+    constexpr element_t get_sum() const noexcept {
         element_t result = 0;
         for (size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (_is_ground()) {
@@ -328,8 +310,7 @@ public:
 
     /// Set all elements of this value to the given element.
     /// @param value    Value to set.
-    constexpr derived_t& set_all(const element_t value) noexcept
-    {
+    constexpr derived_t& set_all(const element_t value) noexcept {
         for (size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (_is_ground()) {
                 data[i] = value;
@@ -343,8 +324,7 @@ public:
     /// Set all components of this value to the given component.
     /// @param value    Value to set.
     template<bool IsNotGround = !_is_ground()>
-    constexpr std::enable_if_t<IsNotGround, derived_t&> set_all(const component_t value) noexcept
-    {
+    constexpr std::enable_if_t<IsNotGround, derived_t&> set_all(const component_t value) noexcept {
         for (size_t i = 0; i < get_dimensions(); ++i) {
             data[i] = value;
         }
@@ -355,8 +335,7 @@ public:
 
     /// In-place multiplication of this value with a scalar.
     /// @param factor   Factor to multiply with.
-    constexpr derived_t& operator*=(const element_t factor) noexcept
-    {
+    constexpr derived_t& operator*=(const element_t factor) noexcept {
         for (size_t i = 0; i < get_dimensions(); ++i) {
             data[i] *= factor;
         }
@@ -365,8 +344,7 @@ public:
 
     /// In-place division of this value by a scalar.
     /// @param divisor  Divisor to divide by.
-    constexpr derived_t& operator/=(const element_t divisor) noexcept
-    {
+    constexpr derived_t& operator/=(const element_t divisor) noexcept {
         for (size_t i = 0; i < get_dimensions(); ++i) {
             data[i] /= divisor;
         }
@@ -376,8 +354,7 @@ public:
     /// @{
     /// Multiplication of this value with a scalar.
     /// @param factor   Factor to multiply with.
-    constexpr derived_t operator*(const element_t factor) const& noexcept
-    {
+    constexpr derived_t operator*(const element_t factor) const& noexcept {
         derived_t result;
         for (size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] * factor;
@@ -390,8 +367,7 @@ public:
     /// @{
     /// Division of this value by a scalar.
     /// @param divisor  Divisor to divide by.
-    constexpr derived_t operator/(const element_t divisor) const& noexcept
-    {
+    constexpr derived_t operator/(const element_t divisor) const& noexcept {
         derived_t result;
         for (size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] / divisor;
@@ -408,8 +384,7 @@ public:
 
     /// In-place addition of other to this.
     /// @param other    Other summand.
-    constexpr derived_t& operator+=(const derived_t& other) noexcept
-    {
+    constexpr derived_t& operator+=(const derived_t& other) noexcept {
         for (size_t i = 0; i < get_dimensions(); ++i) {
             data[i] += other[i];
         }
@@ -418,8 +393,7 @@ public:
 
     /// The in-place difference between this value and other.
     /// @param other    Subtrahend.
-    constexpr derived_t& operator-=(const derived_t& other) noexcept
-    {
+    constexpr derived_t& operator-=(const derived_t& other) noexcept {
         for (size_t i = 0; i < get_dimensions(); ++i) {
             data[i] -= other[i];
         }
@@ -428,8 +402,7 @@ public:
 
     /// In-place component-wise multiplication with another value.
     /// @param other    Value to multiply with.
-    constexpr derived_t& operator*=(const derived_t& other) noexcept
-    {
+    constexpr derived_t& operator*=(const derived_t& other) noexcept {
         for (size_t i = 0; i < get_dimensions(); ++i) {
             data[i] *= other[i];
         }
@@ -438,8 +411,7 @@ public:
 
     /// In-place component-wise division of this value by other.
     /// @param other    Value to divide by.
-    constexpr derived_t& operator/=(const derived_t& other) noexcept
-    {
+    constexpr derived_t& operator/=(const derived_t& other) noexcept {
         for (size_t i = 0; i < get_dimensions(); ++i) {
             data[i] /= other[i];
         }
@@ -449,8 +421,7 @@ public:
     /// @{
     /// Sum of this value with other.
     /// @param other    Summand.
-    constexpr derived_t operator+(const derived_t& other) const& noexcept
-    {
+    constexpr derived_t operator+(const derived_t& other) const& noexcept {
         derived_t result;
         for (size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] + other[i];
@@ -463,8 +434,7 @@ public:
     /// @{
     /// Difference between this value and other.
     /// @param other    Subtrahend.
-    constexpr derived_t operator-(const derived_t& other) const& noexcept
-    {
+    constexpr derived_t operator-(const derived_t& other) const& noexcept {
         derived_t result;
         for (size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] - other[i];
@@ -477,8 +447,7 @@ public:
     /// @{
     /// Component-wise multiplication of this value with other.
     /// @param other    Value to multiply with.
-    constexpr derived_t operator*(const derived_t& other) const& noexcept
-    {
+    constexpr derived_t operator*(const derived_t& other) const& noexcept {
         derived_t result;
         for (size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] * other[i];
@@ -491,8 +460,7 @@ public:
     /// @{
     /// Component-wise division of this value by other.
     /// @param other    Value to divide by.
-    constexpr derived_t operator/(const derived_t& other) const& noexcept
-    {
+    constexpr derived_t operator/(const derived_t& other) const& noexcept {
         derived_t result;
         for (size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] / other[i];

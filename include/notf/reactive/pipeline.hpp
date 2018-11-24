@@ -115,8 +115,7 @@ template<class T, class Policy = SinglePublisherPolicy>
 struct TogglePipelineOperator : public Operator<T, T, Policy>, PipelineToggle {
 
     /// Propagate the next value if the Pipeline is enabled.
-    void on_next(const AnyPublisher* publisher, const T& value) final
-    {
+    void on_next(const AnyPublisher* publisher, const T& value) final {
         if (m_is_enabled && !this->is_completed()) { this->_publish(publisher, value); }
     }
 };
@@ -124,8 +123,7 @@ template<class Policy>
 struct TogglePipelineOperator<None, Policy> : public Operator<None, None, Policy>, PipelineToggle {
 
     /// Propagate the next signal if the Pipeline is enabled.
-    void on_next(const AnyPublisher* publisher) final
-    {
+    void on_next(const AnyPublisher* publisher) final {
         if (m_is_enabled && !this->is_completed()) { this->_publish(publisher); }
     }
 };
@@ -184,8 +182,7 @@ public:
         : m_first(std::move(first))
         , m_toggle(std::move(toggle))
         , m_last(std::forward<Last>(last))
-        , m_functions(std::move(functions))
-    {}
+        , m_functions(std::move(functions)) {}
 
     /// Move Constructor.
     Pipeline(Pipeline&& other) = default;
@@ -204,8 +201,7 @@ public:
     /// @returns            New Pipeline object with the new subscriber as "last" operator.
     template<class Sub, class S = std::decay_t<Sub>,
              class = std::enable_if_t<detail::is_reactive_compatible_v<Pipeline<last_t>, S>>>
-    auto operator|(Sub&& rhs)
-    {
+    auto operator|(Sub&& rhs) {
         // AnyOperators have to be cast to AnySubscribers before we can make use of them
         auto subscriber = [&]() {
             if constexpr (std::is_same_v<S, AnyOperatorPtr>) {
@@ -264,8 +260,7 @@ private:
 /// Stores a Pipeline of arbitrary type into a AnyPipelinePtr (unique_ptr<AnyPipeline>).
 /// @param pipeline Pipeline to store.
 template<class Pipe, class = std::enable_if_t<std::conjunction_v<std::is_base_of<AnyPipeline, Pipe>>>>
-AnyPipelinePtr store_pipeline(Pipe&& pipeline)
-{
+AnyPipelinePtr store_pipeline(Pipe&& pipeline) {
     return std::make_unique<Pipe>(std::forward<Pipe>(pipeline));
 }
 
@@ -274,8 +269,7 @@ AnyPipelinePtr store_pipeline(Pipe&& pipeline)
 /// Connect a Publisher to a Subscriber
 template<class Pub, class Sub, class P = std::decay_t<Pub>, class S = std::decay_t<Sub>>
 std::enable_if_t<!is_pipeline_v<P> && detail::is_reactive_compatible_v<P, S>, Pipeline<S>>
-operator|(Pub&& publisher, Sub&& subscriber)
-{
+operator|(Pub&& publisher, Sub&& subscriber) {
     if (!publisher || !subscriber) { NOTF_THROW(PipelineError, "Cannot connect a nullptr to a pipeline"); }
 
     // this always succeeds, as we create the toggle specifically for the given publisher

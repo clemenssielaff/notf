@@ -7,14 +7,14 @@ NOTF_OPEN_NAMESPACE
 
 // run time widget ================================================================================================== //
 
-//class RunTimeWidget : public Widget<RunTimeNode> {
+// class RunTimeWidget : public Widget<RunTimeNode> {
 
 //    // types ----------------------------------------------------------------------------------- //
-//private:
+// private:
 //    using super_t = Widget<RunTimeNode>;
 
 //    // methods --------------------------------------------------------------------------------- //
-//protected:
+// protected:
 //    /// Value constructor.
 //    /// @param parent   Parent of this Widget.
 //    RunTimeWidget(valid_ptr<Node*> parent) : super_t(parent) {}

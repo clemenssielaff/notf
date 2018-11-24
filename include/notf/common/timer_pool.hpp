@@ -28,8 +28,7 @@ private:
     TheTimerPool();
 
     /// Static (private) function holding the actual TimerPool instance.
-    static TheTimerPool& _instance()
-    {
+    static TheTimerPool& _instance() {
         static TheTimerPool instance;
         return instance;
     }
@@ -96,8 +95,7 @@ protected:
     /// @param callback     Function called when this Timer times out.
     /// @param repetitions  How often the Timer should fire. Default is infinite.
     Timer(Callback callback, size_t repetitions = _infinity())
-        : m_callback(std::move(callback)), m_times_left(repetitions)
-    {}
+        : m_callback(std::move(callback)), m_times_left(repetitions) {}
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(Timer);
@@ -164,8 +162,7 @@ public:
     /// If the time point is not in the future, the Callback is called immediately on this thread.
     /// @param timeout      Point in time to run the callback.
     /// @param callback     Callback function.
-    static void create(const timepoint_t timeout, Callback callback)
-    {
+    static void create(const timepoint_t timeout, Callback callback) {
         if (timeout <= TheTimerPool::_now()) {
             callback();
             return;
@@ -177,8 +174,7 @@ public:
     /// If the time point is not in the future, the Callback is called immediately on this thread.
     /// @param duration     Wait time until the Callback from now.
     /// @param callback     Callback function.
-    static void create(const duration_t interval, Callback callback)
-    {
+    static void create(const duration_t interval, Callback callback) {
         create(TheTimerPool::_now() + interval, std::move(callback));
     }
 
@@ -201,8 +197,7 @@ private:
     /// @param interval     Interval wait time of the Timer.
     /// @param repetitions  How often the Timer should fire. Default is infinite.
     IntervalTimer(Callback callback, duration_t interval, size_t repetitions)
-        : Timer(std::move(callback), repetitions), m_interval(std::move(interval))
-    {}
+        : Timer(std::move(callback), repetitions), m_interval(std::move(interval)) {}
 
 public:
     /// Destructor.
@@ -213,8 +208,7 @@ public:
     /// @param interval     Interval wait time of the Timer.
     /// @param repetitions  How often the Timer should fire. Default is infinite.
     static IntervalTimerPtr
-    create(Callback callback, duration_t interval = duration_t(0), size_t repetitions = _infinity())
-    {
+    create(Callback callback, duration_t interval = duration_t(0), size_t repetitions = _infinity()) {
         return _create_shared(std::move(callback), std::move(interval), repetitions);
     }
 

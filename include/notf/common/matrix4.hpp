@@ -39,14 +39,12 @@ public:
 
     /// Forwarding constructor.
     template<class... Args>
-    Matrix4(Args&&... args) : super_t(std::forward<Args>(args)...)
-    {}
+    Matrix4(Args&&... args) : super_t(std::forward<Args>(args)...) {}
 
     /// Value constructor defining the diagonal of the matrix.
     /// @param a    Value to put into the diagonal.
     Matrix4(const element_t a)
-        : super_t{component_t(a, 0, 0, 0), component_t(0, a, 0, 0), component_t(0, 0, a, 0), component_t(0, 0, 0, a)}
-    {}
+        : super_t{component_t(a, 0, 0, 0), component_t(0, a, 0, 0), component_t(0, 0, a, 0), component_t(0, 0, 0, a)} {}
 
     /// Column-wise constructor of the matrix.
     /// @param a    First column.
@@ -54,16 +52,14 @@ public:
     /// @param c    Third column.
     /// @param d    Fourth column.
     Matrix4(const component_t a, const component_t b, const component_t c, const component_t d)
-        : super_t{std::move(a), std::move(b), std::move(c), std::move(d)}
-    {}
+        : super_t{std::move(a), std::move(b), std::move(c), std::move(d)} {}
 
     /// Element-wise constructor.
     Matrix4(const element_t a, const element_t b, const element_t c, const element_t d, const element_t e,
             const element_t f, const element_t g, const element_t h, const element_t i, const element_t j,
             const element_t k, const element_t l, const element_t m, const element_t n, const element_t o,
             const element_t p)
-        : super_t{component_t(a, b, c, d), component_t(e, f, g, h), component_t(i, j, k, l), component_t(m, n, o, p)}
-    {}
+        : super_t{component_t(a, b, c, d), component_t(e, f, g, h), component_t(i, j, k, l), component_t(m, n, o, p)} {}
 
     /// The identity matrix.
     static Matrix4 identity() { return Matrix4(1); }
@@ -72,14 +68,12 @@ public:
     /// @param x    X transformation.
     /// @param y    Y transformation.
     /// @param z    Z transformation (default to 0).
-    static Matrix4 translation(const element_t x, const element_t y, const element_t z = 0)
-    {
+    static Matrix4 translation(const element_t x, const element_t y, const element_t z = 0) {
         return Matrix4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1);
     }
 
     /// NAme of this Matrix4 type.
-    static constexpr const char* get_name()
-    {
+    static constexpr const char* get_name() {
         if constexpr (std::is_same_v<Element, float>) {
             return "M4f";
         } else if constexpr (std::is_same_v<Element, double>) {
@@ -111,8 +105,7 @@ public:
     /// @param x    X component of the scale vector.
     /// @param y    Y component of the scale vector.
     /// @param z    Z component of the scale vector.
-    static Matrix4 scaling(const element_t x, const element_t y, const element_t z = 1)
-    {
+    static Matrix4 scaling(const element_t x, const element_t y, const element_t z = 1) {
         return Matrix4(x, 0, 0, 0, 0, y, 0, 0, 0, 0, z, 0, 0, 0, 0, 1);
     }
 
@@ -121,8 +114,7 @@ public:
     /// @param aspect    Aspect ratio (width / height)
     /// @param znear     Distance to the near plane in z direction.
     /// @param zfar      Distance to the far plane in z direction.
-    static Matrix4 perspective(const element_t fov, const element_t aspect, element_t near, element_t far)
-    {
+    static Matrix4 perspective(const element_t fov, const element_t aspect, element_t near, element_t far) {
         // near and far planes must be >= 1
         near = max(near, 1);
         far = max(near, far);
@@ -151,8 +143,7 @@ public:
     /// @param znear    Distance to the near plane in z direction.
     /// @param zfar     Distance to the far plane in z direction.
     static Matrix4 orthographic(const element_t left, const element_t right, const element_t bottom,
-                                const element_t top, element_t near, element_t far)
-    {
+                                const element_t top, element_t near, element_t far) {
         // near and far planes must be >= 1
         near = notf::max(near, 1);
         far = notf::max(near, far);
@@ -182,8 +173,7 @@ public:
 
     /// Concatenation of two transformation matrices.
     /// @param other    Transformation to concatenate.
-    Matrix4 operator*(const Matrix4& other) const
-    {
+    Matrix4 operator*(const Matrix4& other) const {
         Matrix4 result;
         result[0] = data[0] * other[0][0] + data[1] * other[0][1] + data[2] * other[0][2] + data[3] * other[0][3];
         result[1] = data[0] * other[1][0] + data[1] * other[1][1] + data[2] * other[1][2] + data[3] * other[1][3];
@@ -194,24 +184,21 @@ public:
 
     /// Concatenation of another transformation matrix to this one in-place.
     /// @param other    Transformation to concatenate.
-    Matrix4& operator*=(const Matrix4& other)
-    {
+    Matrix4& operator*=(const Matrix4& other) {
         *this = *this * other;
         return *this;
     }
 
     /// Concatenate this to another another transformation matrix.
     /// @param other    Transformation to concatenate to.
-    Matrix4& premult(const Matrix4& other)
-    {
+    Matrix4& premult(const Matrix4& other) {
         *this = other * *this;
         return *this;
     }
 
     /// Translates this transformation by a given delta vector.
     /// @param delta    Delta translation.
-    Matrix4 translate(const component_t& delta) const
-    {
+    Matrix4 translate(const component_t& delta) const {
         Matrix4 result;
         result[0] = data[0];
         result[1] = data[1];
@@ -255,8 +242,7 @@ public:
 
     /// Applies a non-uniform scaling to this matrix.
     /// scaling  Scaling vector.
-    Matrix4 scale(const component_t& scaling) const
-    {
+    Matrix4 scale(const component_t& scaling) const {
         Matrix4 result = *this;
         result[0] *= scaling[0];
         result[1] *= scaling[1];
@@ -266,8 +252,7 @@ public:
 
     /// Applies an uniform scaling to this matrix.
     /// scaling  Scale factor.
-    Matrix4 scale(const element_t factor) const
-    {
+    Matrix4 scale(const element_t factor) const {
         Matrix4 result = *this;
         result[0] *= factor;
         result[1] *= factor;
@@ -276,8 +261,7 @@ public:
     }
 
     /// Returns the inverse of this matrix.
-    Matrix4 get_inverse() const
-    {
+    Matrix4 get_inverse() const {
         element_t coef00 = data[2][2] * data[3][3] - data[3][2] * data[2][3];
         element_t coef02 = data[1][2] * data[3][3] - data[3][2] * data[1][3];
         element_t coef03 = data[1][2] * data[2][3] - data[2][2] * data[1][3];
@@ -332,8 +316,7 @@ public:
 
     /// Returns the transformed copy of a given vector.
     /// @param vector   Vector to transform.
-    Vector4<element_t> transform(const Vector4<element_t>& vector) const
-    {
+    Vector4<element_t> transform(const Vector4<element_t>& vector) const {
         // this is the operation matrix * vector
         const Vector4<element_t> mul0 = data[0] * Vector4<element_t>::fill(vector[0]);
         const Vector4<element_t> mul1 = data[1] * Vector4<element_t>::fill(vector[1]);
@@ -372,8 +355,7 @@ namespace std {
 /// std::hash specialization for Matrix4.
 template<class Element>
 struct hash<notf::detail::Matrix4<Element>> {
-    size_t operator()(const notf::detail::Matrix4<Element>& matrix) const
-    {
+    size_t operator()(const notf::detail::Matrix4<Element>& matrix) const {
         return notf::hash(notf::to_number(notf::detail::HashID::MATRIX4), //
                           matrix[0], matrix[1], matrix[2], matrix[3]);
     }
@@ -390,14 +372,12 @@ struct formatter<notf::detail::Matrix4<Element>> {
     using type = notf::detail::Matrix4<Element>;
 
     template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx)
-    {
+    constexpr auto parse(ParseContext& ctx) {
         return ctx.begin();
     }
 
     template<typename FormatContext>
-    auto format(const type& mat, FormatContext& ctx)
-    {
+    auto format(const type& mat, FormatContext& ctx) {
         return format_to(ctx.begin(),
                          "{}({: #7.6g}, {: #7.6g}, {: #7.6g}, {: #7.6g}\n"
                          "    {: #7.6g}, {: #7.6g}, {: #7.6g}, {: #7.6g}\n"
@@ -418,8 +398,7 @@ struct formatter<notf::detail::Matrix4<Element>> {
 /// @param matrix   Matrix to print.
 /// @return Output stream for further output.
 template<typename Element>
-std::ostream& operator<<(std::ostream& out, const notf::detail::Matrix4<Element>& mat)
-{
+std::ostream& operator<<(std::ostream& out, const notf::detail::Matrix4<Element>& mat) {
     return out << fmt::format("{}", mat);
 }
 

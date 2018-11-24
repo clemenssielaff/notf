@@ -27,8 +27,7 @@ public:
 
     /// Forwarding constructor.
     template<class... Args>
-    constexpr Vector2(Args&&... args) : super_t(std::forward<Args>(args)...)
-    {}
+    constexpr Vector2(Args&&... args) : super_t(std::forward<Args>(args)...) {}
 
     /// Unit vector along the X-axis.
     static constexpr Vector2 x_axis() { return Vector2(1, 0); }
@@ -37,8 +36,7 @@ public:
     static constexpr Vector2 y_axis() { return Vector2(0, 1); }
 
     /// Name of this Vector2 type.
-    static constexpr const char* get_name()
-    {
+    static constexpr const char* get_name() {
         if constexpr (std::is_same_v<Element, float>) {
             return "V2f";
         } else if constexpr (std::is_same_v<Element, double>) {
@@ -65,8 +63,8 @@ public:
     /// Vectors use distance approximation instead of component-wise approximation.
     /// @param other     Vector to test against.
     /// @param epsilon   Maximal allowed distance between the two Vectors.
-    constexpr bool is_approx(const Vector2& other, const element_t epsilon = precision_high<element_t>()) const noexcept
-    {
+    constexpr bool is_approx(const Vector2& other, const element_t epsilon = precision_high<element_t>()) const
+        noexcept {
         return (*this - other).magnitude_sq() <= epsilon * epsilon;
     }
 
@@ -81,16 +79,14 @@ public:
     /// Checks whether this vector's direction is parallel to the other.
     /// @note The zero vector is parallel to every other vector.
     /// @param other    Vector to test against.
-    constexpr bool is_parallel_to(const Vector2& other) const noexcept
-    {
+    constexpr bool is_parallel_to(const Vector2& other) const noexcept {
         return cross(other) <= precision_high<element_t>();
     }
 
     /// Returns the smallest angle (in radians) to the other vector.
     /// @note Always returns zero, if one or both of the input vectors are of zero magnitude.
     /// @param other     Vector to test against.
-    element_t get_angle_to(const Vector2& other) const
-    {
+    element_t get_angle_to(const Vector2& other) const {
         const element_t mag_sq_product = super_t::magnitude_sq() * other.magnitude_sq();
         if (mag_sq_product <= precision_high<element_t>()) {
             return 0; // one or both are zero
@@ -105,8 +101,7 @@ public:
     /// Similar to `angle`, but saving a call to `acos`.
     /// @note Returns zero, if one or both of the input vectors are of zero magnitude.
     /// @param other     Vector to test against.
-    element_t get_direction_to(const Vector2& other) const
-    {
+    element_t get_direction_to(const Vector2& other) const {
         const element_t mag_sq_product = super_t::magnitude_sq() * other.magnitude_sq();
         if (mag_sq_product <= precision_high<element_t>()) {
             return 0; // one or both are zero
@@ -134,8 +129,7 @@ public:
 
     /// Returns a copy of this 2D Vector, rotated counter-clockwise by a given angle.
     /// @param angle    Angle in radians.
-    constexpr Vector2 get_rotated(const element_t angle) const noexcept
-    {
+    constexpr Vector2 get_rotated(const element_t angle) const noexcept {
         const element_t sin_angle = sin(angle);
         const element_t cos_angle = cos(angle);
         return Vector2((x() * cos_angle) - (y() * sin_angle), (y() * cos_angle) + (x() * sin_angle));
@@ -144,8 +138,7 @@ public:
     /// Returns a copy this vector rotated around a pivot point by a given angle.
     /// @param angle    Angle in radians.
     /// @param pivot    Position around which to rotate
-    constexpr Vector2 get_rotated(const element_t angle, const Vector2& pivot) const noexcept
-    {
+    constexpr Vector2 get_rotated(const element_t angle, const Vector2& pivot) const noexcept {
         return (*this - pivot).get_rotated(angle) += pivot;
     }
 
@@ -171,8 +164,7 @@ namespace std {
 /// std::hash specialization for Vector2.
 template<class Element>
 struct hash<notf::detail::Vector2<Element>> {
-    size_t operator()(const notf::detail::Vector2<Element>& vector) const
-    {
+    size_t operator()(const notf::detail::Vector2<Element>& vector) const {
         return notf::hash(notf::to_number(notf::detail::HashID::VECTOR2), vector.get_hash());
     }
 };
@@ -188,14 +180,12 @@ struct formatter<notf::detail::Vector2<Element>> {
     using type = notf::detail::Vector2<Element>;
 
     template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx)
-    {
+    constexpr auto parse(ParseContext& ctx) {
         return ctx.begin();
     }
 
     template<typename FormatContext>
-    auto format(const type& vec, FormatContext& ctx)
-    {
+    auto format(const type& vec, FormatContext& ctx) {
         return format_to(ctx.begin(), "{}({}, {})", type::get_name(), vec.x(), vec.y());
     }
 };
@@ -207,8 +197,7 @@ struct formatter<notf::detail::Vector2<Element>> {
 /// @param vec  Vector to print.
 /// @return Output stream for further output.
 template<class Element>
-std::ostream& operator<<(std::ostream& out, const notf::detail::Vector2<Element>& vec)
-{
+std::ostream& operator<<(std::ostream& out, const notf::detail::Vector2<Element>& vec) {
     return out << fmt::format("{}", vec);
 }
 

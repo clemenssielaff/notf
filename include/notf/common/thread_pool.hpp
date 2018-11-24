@@ -40,8 +40,7 @@ public:
     /// @param args         Arguments forwareded to the function when the tasks is executed.
     /// @throws             thread_pool_finished When the thread pool has already finished.
     template<class Function, class... Args, class return_t = std::invoke_result_t<Function(Args...)>>
-    std::enable_if_t<std::is_same_v<void, return_t>, void> enqueue(Function&& function, Args&&... args)
-    {
+    std::enable_if_t<std::is_same_v<void, return_t>, void> enqueue(Function&& function, Args&&... args) {
         { // enqueue the new task, unless the pool has already finished
             std::lock_guard<std::mutex> lock(m_queue_mutex);
             if (NOTF_UNLIKELY(m_is_finished)) {
@@ -65,8 +64,7 @@ public:
     /// @throws             thread_pool_finished When the thread pool has already finished.
     template<class Function, class... Args, class return_t = std::invoke_result_t<Function(Args...)>>
     NOTF_NODISCARD std::enable_if_t<!std::is_same_v<void, return_t>, std::future<return_t>>
-    enqueue(Function&& function, Args&&... args)
-    {
+    enqueue(Function&& function, Args&&... args) {
         // create the new task
         auto task = std::make_shared<std::packaged_task<return_t()>>(
             [function{std::forward<Function>(function)}, &args...] { return function(std::forward<Args>(args)...); });

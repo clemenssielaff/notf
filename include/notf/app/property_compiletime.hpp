@@ -15,8 +15,7 @@ struct PropertyPolicyFactory {
 
     /// Factory method.
     template<class Policy>
-    static constexpr auto create()
-    {
+    static constexpr auto create() {
         // validate the given Property Policy and show an appropriate error message if something goes wrong
         static_assert(decltype(has_value_t<Policy>(std::declval<Policy>()))::value,
                       "A PropertyPolicy must contain the type of Property as type `value_t`");
@@ -45,8 +44,7 @@ struct PropertyPolicyFactory {
             static constexpr const StringConst& get_name() { return Policy::name; }
 
             /// Default value, either explicitly given by the user Policy or defaulted.
-            static constexpr value_t get_default()
-            {
+            static constexpr value_t get_default() {
                 if constexpr (decltype(has_default_value<Policy>(std::declval<Policy>()))::value) {
                     return Policy::default_value; // explicit default value
                 } else if constexpr (std::is_arithmetic_v<value_t>) {
@@ -57,8 +55,7 @@ struct PropertyPolicyFactory {
             }
 
             /// Whether the Property is visible, either explicitly given by the user Policy or true by default.
-            static constexpr bool is_visible()
-            {
+            static constexpr bool is_visible() {
                 if constexpr (decltype(has_is_visible<Policy>(std::declval<Policy>()))::value) {
                     return Policy::is_visible;
                 }
@@ -127,15 +124,13 @@ public:
     /// @param value        Property value.
     /// @param is_visible   Whether a change in the Property will cause the Node to redraw or not.
     CompileTimeProperty(value_t value = policy_t::get_default(), bool is_visible = policy_t::is_visible())
-        : Property<value_t>(std::move(value), is_visible)
-    {}
+        : Property<value_t>(std::move(value), is_visible) {}
 
     /// The Node-unique name of this Property.
     std::string_view get_name() const final { return get_const_name().c_str(); }
 
     /// The default value of this Property.
-    const value_t& get_default() const final
-    {
+    const value_t& get_default() const final {
         static const value_t default_value = policy_t::get_default();
         return default_value;
     }

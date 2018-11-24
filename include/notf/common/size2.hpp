@@ -27,8 +27,7 @@ public:
 
     /// Forwarding constructor.
     template<class... Args>
-    constexpr Size2(Args&&... args) : super_t(std::forward<Args>(args)...)
-    {}
+    constexpr Size2(Args&&... args) : super_t(std::forward<Args>(args)...) {}
 
     /// Creates and returns an invalid Size2 instance.
     constexpr static Size2 invalid() { return {-1, -1}; }
@@ -41,8 +40,7 @@ public:
     constexpr static Size2 wrongest() { return {min_value<element_t>(), min_value<element_t>()}; }
 
     /// Name of this Size2 type.
-    static constexpr const char* get_name()
-    {
+    static constexpr const char* get_name() {
         if constexpr (std::is_same_v<Element, float>) {
             return "Size2f";
         } else if constexpr (std::is_same_v<Element, double>) {
@@ -94,8 +92,7 @@ namespace std {
 /// std::hash specialization for notf::Size2.
 template<class Element>
 struct hash<notf::detail::Size2<Element>> {
-    size_t operator()(const notf::detail::Size2<Element>& size2) const
-    {
+    size_t operator()(const notf::detail::Size2<Element>& size2) const {
         return notf::hash(notf::to_number(notf::detail::HashID::SIZE2), size2.get_hash());
     }
 };
@@ -111,14 +108,12 @@ struct formatter<notf::detail::Size2<Element>> {
     using type = notf::detail::Size2<Element>;
 
     template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx)
-    {
+    constexpr auto parse(ParseContext& ctx) {
         return ctx.begin();
     }
 
     template<typename FormatContext>
-    auto format(const type& size, FormatContext& ctx)
-    {
+    auto format(const type& size, FormatContext& ctx) {
         return format_to(ctx.begin(), "{}({}x{})", type::get_name(), size.width, size.height);
     }
 };
@@ -130,8 +125,7 @@ struct formatter<notf::detail::Size2<Element>> {
 /// @param vec  Vector to print.
 /// @return Output stream for further output.
 template<class Element>
-std::ostream& operator<<(std::ostream& out, const notf::detail::Size2<Element>& vec)
-{
+std::ostream& operator<<(std::ostream& out, const notf::detail::Size2<Element>& vec) {
     return out << fmt::format("{}", vec);
 }
 

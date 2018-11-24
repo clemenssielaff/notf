@@ -21,8 +21,7 @@ public:
     /// Invoke the given lambda on each Subscriber.
     /// @param lambda   Lambda to invoke, must take a single argument : Subscriber<T>*.
     template<class Lambda>
-    void on_each(Lambda&& lambda)
-    {
+    void on_each(Lambda&& lambda) {
         if (auto subscriber = m_subscriber.lock(); subscriber) {
             lambda(subscriber.get());
         } else {
@@ -33,8 +32,7 @@ public:
     /// Sets a new Subscriber.
     /// @param subscriber   Subscriber to add.
     /// @returns            True, iff the given subscriber is now the only subscriber of the publisher.
-    bool add(SubscriberPtr<T> subscriber)
-    {
+    bool add(SubscriberPtr<T> subscriber) {
         if (!m_subscriber.expired()) {
             return false; // there's already a subscriber connected
         }
@@ -63,8 +61,7 @@ public:
     /// Invoke the given lambda on each Subscriber.
     /// @param lambda   Lambda to invoke, must take a single argument : Subscriber<T>*.
     template<class Lambda>
-    void on_each(Lambda&& lambda)
-    {
+    void on_each(Lambda&& lambda) {
         for (size_t i = 0, end = m_subscribers.size(); i < end;) {
             // call the given lambda on all valid subscribers
             if (auto subscriber = m_subscribers[i].lock(); subscriber) {
@@ -84,8 +81,7 @@ public:
     /// Adds a new Subscriber.
     /// @param subscriber   Subscriber to add.
     /// @returns            True if `subscriber` was added, `false` if it is already subscribed.
-    bool add(SubscriberPtr<T> subscriber)
-    {
+    bool add(SubscriberPtr<T> subscriber) {
         for (size_t i = 0, end = m_subscribers.size(); i < end;) {
             // test if the subscriber is already subscribed
             if (auto existing = m_subscribers[i].lock(); existing) {
@@ -192,8 +188,7 @@ public:
 
     /// Fail method, completes this Publisher as well.
     /// @param exception    The exception that has occurred.
-    void error(const std::exception& exception)
-    {
+    void error(const std::exception& exception) {
         if (!is_completed()) {
             // call the virtual error handler while still running
             _error(exception);
@@ -206,8 +201,7 @@ public:
     }
 
     /// Complete method, completes the Publisher in a regular fashion.
-    void complete()
-    {
+    void complete() {
         if (!is_completed()) {
             // call the virtual error handler while still running
             _complete();
@@ -273,15 +267,13 @@ public:
 protected:
     /// Internal error handler, can be implemented by subclasses.
     /// @param exception    The exception that has occurred.
-    virtual void _error(const std::exception& exception)
-    {
+    virtual void _error(const std::exception& exception) {
         NOTF_ASSERT(!this->is_completed());
         this->m_subscribers.on_each([this, &exception](auto* subscriber) { subscriber->on_error(this, exception); });
     }
 
     /// Internal completion handler, can be implemented by subclasses.
-    virtual void _complete()
-    {
+    virtual void _complete() {
         NOTF_ASSERT(!this->is_completed());
         this->m_subscribers.on_each([this](auto* subscriber) { subscriber->on_complete(this); });
     }
@@ -289,8 +281,7 @@ protected:
     /// Called when a new Subscriber is about to be subscribed to this Publisher.
     /// @param subscriber   Subscriber about to be subscribed.
     /// @returns            True to go ahead, false if the Subscriber should not be added to the list of subscribers.
-    virtual bool _subscribe(SubscriberPtr<T>& /*subscriber*/)
-    {
+    virtual bool _subscribe(SubscriberPtr<T>& /*subscriber*/) {
         NOTF_ASSERT(!this->is_completed());
         return true;
     }
@@ -318,8 +309,7 @@ public:
     /// Publish operation.
     /// Propagates the value to all attached Subscribers.
     /// @param value    Value to propagate to all Subscribers.
-    void publish(const T& value)
-    {
+    void publish(const T& value) {
         if (!this->is_completed()) { _publish(this, value); }
     }
 
@@ -327,8 +317,7 @@ protected:
     /// Internal publish handler, can be overriden by subclasses.
     /// @param publisher    Publisher pushing the value, usually `this`.
     /// @param value        Value to propagate to all Subscribers.
-    virtual void _publish(const AnyPublisher* publisher, const T& value)
-    {
+    virtual void _publish(const AnyPublisher* publisher, const T& value) {
         NOTF_ASSERT(!this->is_completed());
         this->m_subscribers.on_each([publisher, &value](auto* subscriber) { subscriber->on_next(publisher, value); });
     }
@@ -342,16 +331,14 @@ class Publisher<None, Policy> : public detail::TypedPublisher<None, Policy> {
 public:
     /// Publish operation.
     /// Propagates the call to all attached Subscribers.
-    void publish()
-    {
+    void publish() {
         if (!this->is_completed()) { _publish(this); }
     }
 
 protected:
     /// Internal publish handler, can be overriden by subclasses.
     /// @param publisher    Publisher pushing the value, usually `this`.
-    virtual void _publish(const AnyPublisher* publisher)
-    {
+    virtual void _publish(const AnyPublisher* publisher) {
         NOTF_ASSERT(!this->is_completed());
         this->m_subscribers.on_each([publisher](auto* subscriber) { subscriber->on_next(publisher); });
     }
@@ -375,8 +362,7 @@ using DefaultPublisherPolicy = SinglePublisherPolicy;
 
 struct PublisherIdentifier {
     template<class T>
-    static constexpr auto test()
-    {
+    static constexpr auto test() {
         if constexpr (std::conjunction_v<is_shared_ptr<T>,                              //
                                          decltype(_has_policy_t<T>(std::declval<T>())), //
                                          decltype(_has_output_t<T>(std::declval<T>()))>) {

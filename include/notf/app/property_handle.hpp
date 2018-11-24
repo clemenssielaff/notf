@@ -52,8 +52,7 @@ public:
     /// The Property value.
     /// Blocks until the call can acquire the Graph mutex.
     /// @throws HandleExpiredError  If the Handle has expired.
-    const T& get() const
-    {
+    const T& get() const {
         if (is_expired()) {
             NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>());
         } else {
@@ -66,8 +65,7 @@ public:
     /// Property directly.
     /// @param value                New value.
     /// @throws HandleExpiredError  If the Handle has expired.
-    void set(const T& value)
-    {
+    void set(const T& value) {
         if (is_expired()) {
             NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>());
         } else {
@@ -80,8 +78,7 @@ public:
     /// update via a `PropertyChangeEvent` if not.
     /// @param value                New value.
     /// @throws HandleExpiredError  If the Handle has expired.
-    void set_deferred(const T& value)
-    {
+    void set_deferred(const T& value) {
         if (is_expired()) {
             NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>());
         } else if (auto possible_lock = std::unique_lock(TheGraph::get_graph_mutex(), std::try_to_lock);
@@ -110,8 +107,7 @@ public:
     /// @throws HandleExpiredError  If the Handle has expired.
     template<class Sub>
     friend std::enable_if_t<detail::is_reactive_compatible_v<operator_t, std::decay_t<Sub>>, Pipeline<std::decay_t<Sub>>>
-    operator|(const PropertyHandle& property, Sub&& subscriber)
-    {
+    operator|(const PropertyHandle& property, Sub&& subscriber) {
         return property._get_property()->get_operator() | std::forward<Sub>(subscriber);
     }
 
@@ -119,22 +115,19 @@ public:
     /// @throws HandleExpiredError  If the Handle has expired.
     template<class Pub>
     friend std::enable_if_t<detail::is_reactive_compatible_v<std::decay_t<Pub>, operator_t>, Pipeline<operator_t>>
-    operator|(Pub&& publisher, const PropertyHandle& property)
-    {
+    operator|(Pub&& publisher, const PropertyHandle& property) {
         return std::forward<Pub>(publisher) | property._get_property()->get_operator();
     }
 
     /// Connect a Property upstream to a Property downstream.
-    friend Pipeline<operator_t> operator|(const PropertyHandle& lhs, const PropertyHandle& rhs)
-    {
+    friend Pipeline<operator_t> operator|(const PropertyHandle& lhs, const PropertyHandle& rhs) {
         return lhs._get_property()->get_operator() | rhs._get_property()->get_operator();
     }
 
 private:
     /// Locks and returns an owning pointer to the handled Property.
     /// @throws HandleExpiredError  If the Handle has expired.
-    PropertyPtr<T> _get_property() const
-    {
+    PropertyPtr<T> _get_property() const {
         if (auto property = m_property.lock()) { return property; }
         NOTF_THROW(HandleExpiredError, "Property Handle of type '{}' has expired", type_name<T>());
     }

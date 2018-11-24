@@ -21,8 +21,7 @@ NOTF_OPEN_NAMESPACE
 struct AnyOperatorFactory {
     virtual ~AnyOperatorFactory() = default;
     template<class... Args>
-    AnyOperatorPtr create(Args&&... args) const
-    {
+    AnyOperatorPtr create(Args&&... args) const {
         return _create({std::forward<Args>(args)...});
     }
 
@@ -52,8 +51,7 @@ public:
 
 private:
     template<std::size_t I, class T>
-    static void _parse_argument(std::vector<std::any>& source, args_tuple& target)
-    {
+    static void _parse_argument(std::vector<std::any>& source, args_tuple& target) {
         try {
             std::get<I>(target) = fuzzy_any_cast<T>(std::move(source[I]));
         }
@@ -63,13 +61,11 @@ private:
     }
 
     template<std::size_t... I>
-    static void _parse_arguments(std::index_sequence<I...>, std::vector<std::any>& source, args_tuple& target)
-    {
+    static void _parse_arguments(std::index_sequence<I...>, std::vector<std::any>& source, args_tuple& target) {
         (_parse_argument<I, typename traits::template arg_type<I>>(source, target), ...);
     }
 
-    AnyOperatorPtr _create(std::vector<std::any>&& args) const final
-    {
+    AnyOperatorPtr _create(std::vector<std::any>&& args) const final {
         if (args.size() != traits::arity) {
             NOTF_THROW(ValueError, "Reactive operator factory failed. Expected {} argument types, got {}",
                        traits::arity, args.size());
@@ -119,8 +115,7 @@ public:
     /// @throws ValueError     If any of the arguments do not match the expected type.
     /// @returns                Untyped reactive operator.
     template<class... Args>
-    static auto create(const std::string& name, Args&&... args)
-    {
+    static auto create(const std::string& name, Args&&... args) {
         auto& registry = _get_registry();
         auto itr = registry.find(name);
         if (itr == registry.end()) {
@@ -135,8 +130,7 @@ public:
     /// @throws ValueError     If any of the arguments do not match the expected type.
     /// @returns                Correctly typed reactive operator or empty on any failure (wrong name or wrong types).
     template<class I, class O = I, class Policy = detail::DefaultPublisherPolicy, class... Args>
-    static std::shared_ptr<Operator<I, O, Policy>> create(const std::string& name, Args&&... args)
-    {
+    static std::shared_ptr<Operator<I, O, Policy>> create(const std::string& name, Args&&... args) {
         auto& registry = _get_registry();
         auto itr = registry.find(name);
         if (itr == registry.end()) { return {}; }
@@ -150,8 +144,7 @@ public:
 
 private:
     /// Encapsulates a static registry in order to properly initialize it on application start up.
-    static Registry& _get_registry()
-    {
+    static Registry& _get_registry() {
         static Registry registry;
         return registry;
     }

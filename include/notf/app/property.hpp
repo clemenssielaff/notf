@@ -39,21 +39,18 @@ public:
     PropertyOperator(T value, bool is_visible) : m_hash(is_visible ? hash(m_value) : 0), m_value(std::move(value)) {}
 
     /// Destructor.
-    ~PropertyOperator() override
-    {
+    ~PropertyOperator() override {
         clear_modified_value();
         this->complete();
     }
 
     /// Update the Property from upstream.
-    void on_next(const AnyPublisher* /*publisher*/, const T& value) final
-    {
+    void on_next(const AnyPublisher* /*publisher*/, const T& value) final {
         NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
         set(value);
     }
 
-    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) final
-    {
+    void on_error(const AnyPublisher* /*publisher*/, const std::exception& exception) final {
         report_property_operator_error(exception);
     }
 
@@ -65,8 +62,7 @@ public:
 
     /// Current value of the Property.
     /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
-    const T& get(const std::thread::id thread_id) const
-    {
+    const T& get(const std::thread::id thread_id) const {
         if (TheGraph::is_frozen_by(thread_id)) {
             return m_value; // the renderer always sees the unmodified value
         }
@@ -83,8 +79,7 @@ public:
 
     /// The Property value.
     /// @param value    New value.
-    void set(const T& value)
-    {
+    void set(const T& value) {
         NOTF_ASSERT(TheGraph::get_graph_mutex().is_locked_by_this_thread());
 
         // do nothing if the property value would not actually change
@@ -127,8 +122,7 @@ public:
     void set_callback(callback_t callback) { m_callback = std::move(callback); }
 
     /// Deletes the modified value copy, if one exists.
-    void clear_modified_value()
-    {
+    void clear_modified_value() {
         if (m_modified_value) {
             m_value = std::move(*m_modified_value.get());
             m_modified_value.reset();
@@ -222,12 +216,10 @@ public:
     /// @param value        Property value.
     /// @param is_visible   Whether a change in the Property will cause the Node to redraw or not.
     Property(T value, bool is_visible)
-        : m_operator(std::make_shared<detail::PropertyOperator<T>>(std::move(value), is_visible))
-    {}
+        : m_operator(std::make_shared<detail::PropertyOperator<T>>(std::move(value), is_visible)) {}
 
     /// Name of this Property type, for runtime reporting.
-    std::string_view get_type_name() const final
-    {
+    std::string_view get_type_name() const final {
         static const std::string my_type = type_name<T>();
         return my_type;
     }
@@ -246,8 +238,7 @@ public:
 
     /// The Property value.
     /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
-    const T& get(const std::thread::id thread_id = std::this_thread::get_id()) const noexcept
-    {
+    const T& get(const std::thread::id thread_id = std::this_thread::get_id()) const noexcept {
         return m_operator->get(thread_id);
     }
 

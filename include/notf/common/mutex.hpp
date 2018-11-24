@@ -20,15 +20,13 @@ class Mutex : public std::mutex {
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Locks the mutex.
-    void lock()
-    {
+    void lock() {
         std::mutex::lock();
         m_holder = std::this_thread::get_id();
     }
 
     /// Unlocks the mutex.
-    void unlock()
-    {
+    void unlock() {
         m_holder = std::thread::id();
         std::mutex::unlock();
     }
@@ -51,16 +49,14 @@ class RecursiveMutex : public std::recursive_mutex {
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Locks the mutex.
-    void lock()
-    {
+    void lock() {
         std::recursive_mutex::lock();
         m_holder = std::this_thread::get_id();
         ++m_counter;
     }
 
     /// Unlocks the mutex.
-    void unlock()
-    {
+    void unlock() {
         NOTF_ASSERT(m_counter > 0);
         if (--m_counter == 0) { m_holder = std::thread::id(); }
         std::recursive_mutex::unlock();

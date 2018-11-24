@@ -8,8 +8,7 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-void report_property_operator_error(const std::exception& exception)
-{
+void report_property_operator_error(const std::exception& exception) {
     NOTF_LOG_ERROR("Caught and ignored error propagated to a Property Operator: {}", exception.what());
 }
 

@@ -9,8 +9,7 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-std::vector<std::string> split(const std::string& input, const char delimiter)
-{
+std::vector<std::string> split(const std::string& input, const char delimiter) {
     std::vector<std::string> result;
     if (input.empty()) { return result; }
     std::string::size_type start_pos{0};
@@ -25,8 +24,7 @@ std::vector<std::string> split(const std::string& input, const char delimiter)
     return result;
 }
 
-bool istarts_with(const std::string& input, const std::string& prefix)
-{
+bool istarts_with(const std::string& input, const std::string& prefix) {
     // while it may look unnecesarily expensive, this is in fact the fastest way I found (so far)
     if (prefix.size() > input.size()) { return false; }
 
@@ -41,16 +39,14 @@ bool istarts_with(const std::string& input, const std::string& prefix)
     return (relevant_input.compare(0, prefix.length(), prefix_lower) == 0);
 }
 
-bool ends_with(const std::string& input, const std::string& postfix)
-{
+bool ends_with(const std::string& input, const std::string& postfix) {
     const auto input_size = input.size();
     const auto postfix_size = postfix.size();
     if (postfix_size > input_size) { return false; }
     return (input.compare(input_size - postfix_size, postfix_size, postfix) == 0);
 }
 
-bool iends_with(const std::string& input, const std::string& postfix)
-{
+bool iends_with(const std::string& input, const std::string& postfix) {
     const auto input_size = input.size();
     const auto postfix_size = postfix.size();
     if (postfix_size > input_size) { return false; }
@@ -63,16 +59,14 @@ bool iends_with(const std::string& input, const std::string& postfix)
     return (relevant_input.compare(0, postfix_size, postfix_lower) == 0);
 }
 
-bool icompare(const std::string& left, const std::string& right)
-{
+bool icompare(const std::string& left, const std::string& right) {
     if (left.length() != right.length()) { return false; }
     return std::equal(right.begin(), right.end(), left.begin(),
                       [](auto a, auto b) -> bool { return ::tolower(a) == ::tolower(b); });
 }
 
 std::string join(const std::vector<std::string>::const_iterator begin,
-                 const std::vector<std::string>::const_iterator end, const std::string& delimiter)
-{
+                 const std::vector<std::string>::const_iterator end, const std::string& delimiter) {
     if (begin == end) { return ""; }
     const auto distance = std::distance(begin, end);
     if (distance == 1) { return *begin; }
