@@ -11,12 +11,11 @@ NOTF_OPEN_NAMESPACE
 
 // the application ================================================================================================== //
 
-Application::Application(Arguments args) : m_arguments(std::move(args)), m_shared_context(nullptr, detail::window_deleter) {
+TheApplication::Application::Application(Arguments args)
+    : m_arguments(std::move(args)), m_shared_context(nullptr, detail::window_deleter) {
     // initialize GLFW
-    if (glfwInit() == 0) {
-        shutdown();
-        NOTF_THROW(StartupError, "GLFW initialization failed");
-    }
+    if (glfwInit() == 0) { NOTF_THROW(StartupError, "GLFW initialization failed"); }
+    m_state.store(State::READY);
 
     // default GLFW Window and OpenGL context hints
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
@@ -47,48 +46,51 @@ Application::Application(Arguments args) : m_arguments(std::move(args)), m_share
     NOTF_LOG_INFO("GLFW version: {}", glfwGetVersionString());
 }
 
-Application::~Application() { shutdown(); }
+TheApplication::Application::~Application() { _shutdown(); }
 
-int Application::_exec() {
+int TheApplication::Application::exec() {
+    if (State actual = State::READY; !(m_state.compare_exchange_strong(actual, State::RUNNING))) {
+        NOTF_THROW(StartupError, "Cannot call `exec` on an already running Application");
+    }
     NOTF_LOG_TRACE("Starting main loop");
 
-    // loop until there are no more windows open
+    // loop until there are no more windows open...
     while (!m_windows.empty()) {
+
+        // ... or the user has initiated a forced shutdown
+        if (m_state == State::SHUTDOWN) { break; }
 
         // wait for the next event or the next time to fire an animation frame
         glfwWaitEvents();
     }
 
-    shutdown();
+    _shutdown();
     return EXIT_SUCCESS;
 }
 
-void Application::_shutdown() {
-    // close all remaining windows and their scenes
-    for (WindowHandle& window : m_windows) {
-        window.close();
+void TheApplication::Application::shutdown() {
+    if (State expected = State::RUNNING; !(m_state.compare_exchange_strong(expected, State::SHUTDOWN))) {
+        glfwPostEmptyEvent();
     }
-    m_windows.clear();
-    //    TheGraphicsSystem::Access<Application>::shutdown();
-    glfwTerminate();
-
-    // release all resources and objects
-    //    m_thread_pool.reset();
-    //    m_event_manager.reset();
-    //    ResourceManager::get_instance().clear();
-
-    NOTF_LOG_TRACE("Application shutdown");
 }
 
-void Application::_register_window(WindowHandle window) {
+void TheApplication::Application::register_window(WindowHandle window) {
     NOTF_ASSERT(!contains(m_windows, window));
     m_windows.emplace_back(std::move(window));
 }
 
-void Application::_unregister_window(WindowHandle window) {
-    auto it = std::find(m_windows.begin(), m_windows.end(), window);
-    NOTF_ASSERT(it != m_windows.end(), "Cannot remove an unknown Window from the application");
-    m_windows.erase(it);
+void TheApplication::Application::unregister_window(WindowHandle window) {
+    if (auto it = std::find(m_windows.begin(), m_windows.end(), window); it != m_windows.end()) { m_windows.erase(it); }
+}
+
+void TheApplication::Application::_shutdown() {
+    State state = m_state;
+    if ((state != State::EMPTY) && (m_state.compare_exchange_strong(state, State::EMPTY))) {
+        NOTF_LOG_TRACE("Application shutdown");
+        m_windows.clear();
+        glfwTerminate();
+        m_shared_context.reset();
+    }
 }
 
 NOTF_CLOSE_NAMESPACE

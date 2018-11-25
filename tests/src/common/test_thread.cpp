@@ -30,16 +30,16 @@ SCENARIO("thread", "[common][thread]") {
             REQUIRE(counter == 2);
         }
 
-        SECTION("if you try to have more than one, they will throw") {
-            using namespace notf::literals;
-            Thread event1(Thread::Kind::EVENT);
-            Thread event2(Thread::Kind::EVENT);
-            event1.run([]() { this_thread::sleep_for(100ns); });
-            event2.run([]() { this_thread::sleep_for(100ns); });
-            event1.join();
-            event2.join();
-            bool exception_caught = event1.has_exception() || event2.has_exception();
-            REQUIRE(exception_caught);
-        }
+//        SECTION("if you try to have more than one, they will throw") {
+//            using namespace notf::literals;
+//            Thread event1(Thread::Kind::EVENT);
+//            Thread event2(Thread::Kind::EVENT);
+//            event1.run([]() { this_thread::sleep_for(100ns); });
+//            event2.run([]() { this_thread::sleep_for(100ns); });
+//            event1.join();
+//            event2.join();
+//            bool exception_caught = event1.has_exception() || event2.has_exception();
+//            REQUIRE(exception_caught);
+//        }
     }
 }

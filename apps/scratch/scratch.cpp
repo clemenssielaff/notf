@@ -15,7 +15,7 @@ NOTF_OPEN_NAMESPACE
 
 int run_main(int argc, char* argv[]) {
     { // initialize application
-        Application::Arguments arguments;
+        TheApplication::Arguments arguments;
         arguments.argc = argc;
         arguments.argv = argv;
         TheApplication::initialize(arguments);

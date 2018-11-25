@@ -84,7 +84,7 @@ Window::Window(valid_ptr<Node*> parent, Settings settings)
 
     // create the GLFW window
     m_glfw_window.reset(glfwCreateWindow(window_size.width(), window_size.height(), settings.title, window_monitor,
-                                         Application::AccessFor<Window>::get_shared_context(TheApplication::get())));
+                                         TheApplication::AccessFor<Window>::get_shared_context()));
     if (!m_glfw_window) {
         NOTF_THROW(initialization_error, "Window or OpenGL context creation failed for Window \"{}\"", settings.title);
     }
@@ -131,7 +131,7 @@ WindowHandle Window::create(Settings settings) {
     Node::AccessFor<Window>::finalize(*window);
     TheGraph::AccessFor<Window>::register_node(std::static_pointer_cast<Node>(window));
     RootNode::AccessFor<Window>::add_window(*root_node, window);
-    Application::AccessFor<Window>::register_window(TheApplication::get(), window);
+    TheApplication::AccessFor<Window>::register_window(window);
 
     return window;
 }
@@ -151,8 +151,10 @@ void Window::close() {
     //    m_graphics_context.reset();
 
     // remove yourself from the Application
-    Application::AccessFor<Window>::unregister_window(TheApplication::get(),
-                                                      std::static_pointer_cast<Window>(shared_from_this()));
+    TheApplication::AccessFor<Window>::unregister_window(std::static_pointer_cast<Window>(shared_from_this()));
+
+    // close the Window
+    m_glfw_window.reset();
 }
 
 void Window::_validate_settings(Settings& settings) {

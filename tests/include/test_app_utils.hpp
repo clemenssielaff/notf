@@ -8,14 +8,6 @@ NOTF_USING_NAMESPACE;
 
 // accessors ======================================================================================================== //
 
-/// Application
-template<>
-struct notf::Accessor<TheApplication, Tester> {
-    static Application& reinitialize(const Application::Arguments& args) {
-        return TheApplication::_get_instance_internal(args, /*reinit*/ true);
-    }
-};
-
 /// Graph
 template<>
 struct notf::Accessor<TheGraph, Tester> {
@@ -24,6 +16,21 @@ struct notf::Accessor<TheGraph, Tester> {
     static auto register_node(NodeHandle node) { return TheGraph::_get().m_node_registry.add(node); }
     static size_t get_node_count() { return TheGraph::_get().m_node_registry.get_count(); }
     static void reset() { TheGraph::_get()._initialize(); }
+};
+
+/// Application
+template<>
+struct notf::Accessor<TheApplication, Tester> {
+    static void reinitialize(const TheApplication::Arguments& args = TheApplication::_default_args()) {
+
+        // reset the Graph as well to be sure
+        TheGraph::AccessFor<Tester>::reset();
+
+        // reinitialize the Application
+        TheApplication::s_state = TheApplication::State::EMPTY;
+        TheApplication::s_reinit = true;
+        TheApplication::initialize(args);
+    }
 };
 
 /// Node Handle

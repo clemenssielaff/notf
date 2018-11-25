@@ -37,11 +37,8 @@ std::string_view TheGraph::NodeNameRegistry::set_name(NodeHandle node, const std
     {
         NOTF_GUARD(std::lock_guard(m_mutex));
 
-        // get or create new entry
-        auto& name_view = m_uuid_to_name[uuid];
-
         // if the node already exists under another name, we first have to unregister the old name
-        if (!name_view.empty()) {
+        if (auto& name_view = m_uuid_to_name[uuid]; !name_view.empty()) {
             _remove_name(name_view);
 
             auto iter = m_uuid_to_name.find(uuid);
@@ -49,6 +46,7 @@ std::string_view TheGraph::NodeNameRegistry::set_name(NodeHandle node, const std
             m_uuid_to_name.erase(iter);
         }
 
+        std::string_view result;
         { // (re-)register the node under its proposed name, or a unique variant thereof
             size_t counter = 2;
             auto [iter, success] = m_name_to_node.try_emplace(name, std::make_pair(uuid, node));
@@ -56,10 +54,9 @@ std::string_view TheGraph::NodeNameRegistry::set_name(NodeHandle node, const std
                 std::tie(iter, success)
                     = m_name_to_node.try_emplace(fmt::format("{}_{:0>2}", name, counter++), std::make_pair(uuid, node));
             }
-            name_view = iter->first;
+            result = iter->first;
         }
-
-        return name_view;
+        return result;
     }
 }
 

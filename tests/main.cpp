@@ -6,7 +6,7 @@
 int main(int argc, char* argv[]) {
     NOTF_USING_NAMESPACE;
 
-    // disable logger
+    // disable console output of the logger
     TheLogger::Arguments args;
     args.console_level = Logger::Level::OFF;
     TheLogger::initialize(args);
