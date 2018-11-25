@@ -6,10 +6,8 @@ NOTF_USING_NAMESPACE;
 
 // test cases ======================================================================================================= //
 
-SCENARIO("basic publisher<T> functions", "[reactive][publisher]")
-{
-    SECTION("single subscriber")
-    {
+SCENARIO("basic publisher<T> functions", "[reactive][publisher]") {
+    SECTION("single subscriber") {
         auto publisher = TestPublisher<int, detail::SinglePublisherPolicy>();
         auto subscriber = TestSubscriber();
         auto subscriber2 = TestSubscriber();
@@ -44,8 +42,7 @@ SCENARIO("basic publisher<T> functions", "[reactive][publisher]")
         REQUIRE(publisher->get_subscriber_count() == 0);
     }
 
-    SECTION("multi subscriber")
-    {
+    SECTION("multi subscriber") {
         auto publisher = TestPublisher<int, detail::MultiPublisherPolicy>();
         auto subscriber = TestSubscriber();
         publisher->subscribe(subscriber);
@@ -93,8 +90,7 @@ SCENARIO("basic publisher<T> functions", "[reactive][publisher]")
         REQUIRE(publisher->get_subscriber_count() == 0);
     }
 
-    SECTION("single subscriber failure")
-    {
+    SECTION("single subscriber failure") {
         auto publisher = TestPublisher<int, detail::SinglePublisherPolicy>();
         auto subscriber = TestSubscriber();
         publisher->subscribe(subscriber);
@@ -104,8 +100,7 @@ SCENARIO("basic publisher<T> functions", "[reactive][publisher]")
         REQUIRE(publisher->is_failed());
     }
 
-    SECTION("multi subscriber failure")
-    {
+    SECTION("multi subscriber failure") {
         auto publisher = TestPublisher<int, detail::MultiPublisherPolicy>();
         auto subscriber = TestSubscriber();
         publisher->subscribe(subscriber);
@@ -115,8 +110,7 @@ SCENARIO("basic publisher<T> functions", "[reactive][publisher]")
         REQUIRE(publisher->is_failed());
     }
 
-    SECTION("fail to subscribe a subscriber of the wrong type")
-    {
+    SECTION("fail to subscribe a subscriber of the wrong type") {
         auto publisher = TestPublisher();
         auto subscriber = TestSubscriber<std::string>();
         REQUIRE(!publisher->subscribe(std::static_pointer_cast<AnySubscriber>(subscriber)));

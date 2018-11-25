@@ -236,4 +236,5 @@ public:
     /// Closes the Window.
     void close() { _get_node()->close(); }
 };
+
 NOTF_CLOSE_NAMESPACE

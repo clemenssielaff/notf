@@ -49,8 +49,7 @@ struct notf::Accessor<MsgPack, Tester> {
     static_assert(std::is_same_v<std::variant_alternative_t<to_number(Type::EXTENSION), Variant>, MsgPack::Extension>);
 };
 
-MsgPack get_test_pack()
-{
+MsgPack get_test_pack() {
     return MsgPack::Map{
         {"oyyrnnt", "opl fw pbpx"},
         {"tgbsxnaiqh", 137},
@@ -111,12 +110,10 @@ MsgPack get_mutated_test_pack() // like the test pack but with ONE minor differe
 
 // ================================================================================================================== //
 
-SCENARIO("msgpack construction", "[common][msgpack]")
-{
+SCENARIO("msgpack construction", "[common][msgpack]") {
     bool success = false;
 
-    SECTION("default is None")
-    {
+    SECTION("default is None") {
         MsgPack pack_none;
         REQUIRE(pack_none.get<None>() == None{});
 
@@ -133,8 +130,7 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         REQUIRE_THROWS_AS(pack_none["nope"], ValueError);
     }
 
-    SECTION("Bool")
-    {
+    SECTION("Bool") {
         MsgPack pack_true(true);
         REQUIRE(pack_true.get<MsgPack::Bool>());
 
@@ -153,8 +149,7 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         REQUIRE(!pack_false.get<MsgPack::Bool>());
     }
 
-    SECTION("Signed integer")
-    {
+    SECTION("Signed integer") {
         MsgPack pack_int(-58);
 
         REQUIRE(pack_int.get<MsgPack::Int>() == -58);
@@ -172,8 +167,7 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         REQUIRE(MsgPack(58).get<MsgPack::Uint>() == 58);
     }
 
-    SECTION("Unsigned integer")
-    {
+    SECTION("Unsigned integer") {
         MsgPack pack_uint(15u);
 
         REQUIRE(pack_uint.get<MsgPack::Uint>() == 15);
@@ -191,8 +185,7 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         REQUIRE(MsgPack(max_value<MsgPack::Uint>()).get<MsgPack::Int>() == 0);
     }
 
-    SECTION("Float")
-    {
+    SECTION("Float") {
         MsgPack pack_real(6837.8f);
         REQUIRE(is_approx(pack_real.get<MsgPack::Float>(), 6837.8f));
         REQUIRE(is_approx(pack_real.get<MsgPack::Double>(), 6837.8f));
@@ -204,8 +197,7 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         REQUIRE_THROWS_AS(pack_real["nope"], ValueError);
     }
 
-    SECTION("Double")
-    {
+    SECTION("Double") {
         MsgPack pack_real(6831847.8);
         REQUIRE(is_approx(pack_real.get<MsgPack::Double>(), 6831847.8));
         REQUIRE(is_approx(pack_real.get<MsgPack::Float>(), 6831847.8, precision_low<float>()));
@@ -217,8 +209,7 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         REQUIRE_THROWS_AS(pack_real["nope"], ValueError);
     }
 
-    SECTION("String")
-    {
+    SECTION("String") {
         MsgPack pack_string("this is a test");
         REQUIRE(pack_string.get<MsgPack::String>() == "this is a test");
 
@@ -232,8 +223,7 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         REQUIRE_THROWS_AS(pack_string["nope"], ValueError);
     }
 
-    SECTION("Binary")
-    {
+    SECTION("Binary") {
         const auto binary = std::vector<char>{'a', 'b', 'c'};
 
         MsgPack pack_binary(binary);
@@ -247,8 +237,7 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         REQUIRE_THROWS_AS(pack_binary["nope"], ValueError);
     }
 
-    SECTION("Array")
-    {
+    SECTION("Array") {
         const auto array = std::vector<int>{4, 568, -414};
 
         MsgPack pack_array(array);
@@ -268,8 +257,7 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         REQUIRE_THROWS_AS(pack_array["nope"], ValueError);
     }
 
-    SECTION("Map")
-    {
+    SECTION("Map") {
         {
             const auto map = std::map<int, int>{{12, 24}, {-8, -16}, {0, 0}};
             MsgPack pack_map(map);
@@ -304,8 +292,7 @@ SCENARIO("msgpack construction", "[common][msgpack]")
         }
     }
 
-    SECTION("Extension")
-    {
+    SECTION("Extension") {
         const auto uuid = Uuid::generate();
 
         MsgPack pack_extension = MsgPack(MsgPack::ExtensionType::UUID, uuid);
@@ -321,14 +308,12 @@ SCENARIO("msgpack construction", "[common][msgpack]")
     }
 }
 
-SCENARIO("msgpack type enums", "[common][msgpack]")
-{
+SCENARIO("msgpack type enums", "[common][msgpack]") {
     REQUIRE(MsgPack("string").get_type() == MsgPack::Type::STRING);
     REQUIRE(MsgPack(45).get_type() == MsgPack::Type::INT);
 }
 
-SCENARIO("msgpack access operators", "[common][msgpack]")
-{
+SCENARIO("msgpack access operators", "[common][msgpack]") {
     bool success = false;
     {
         MsgPack pack_array(std::vector<int>{1, 2, 3, 4, 5});
@@ -366,8 +351,7 @@ SCENARIO("msgpack access operators", "[common][msgpack]")
     }
 }
 
-SCENARIO("msgpack comparison", "[common][msgpack]")
-{
+SCENARIO("msgpack comparison", "[common][msgpack]") {
     REQUIRE(MsgPack(float(84385.f)) == MsgPack(double(84385.f)));
     REQUIRE(MsgPack(int16_t(12)) == MsgPack(uint64_t(12)));
     REQUIRE(MsgPack(double(0)) != MsgPack(int(0)));
@@ -378,17 +362,14 @@ SCENARIO("msgpack comparison", "[common][msgpack]")
     REQUIRE(MsgPack(2) <= MsgPack(2));
 }
 
-SCENARIO("msgpack initializer list", "[common][msgpack]")
-{
+SCENARIO("msgpack initializer list", "[common][msgpack]") {
     auto pack = get_test_pack();
     REQUIRE(pack);
     REQUIRE(!MsgPack());
 }
 
-SCENARIO("msgpack serialization / deserialization", "[common][msgpack]")
-{
-    SECTION("None")
-    {
+SCENARIO("msgpack serialization / deserialization", "[common][msgpack]") {
+    SECTION("None") {
         std::stringstream buffer;
         MsgPack source;
         source.serialize(buffer);
@@ -397,8 +378,7 @@ SCENARIO("msgpack serialization / deserialization", "[common][msgpack]")
         REQUIRE(source == target);
     }
 
-    SECTION("bool")
-    {
+    SECTION("bool") {
         std::stringstream buffer;
         MsgPack source(true);
         source.serialize(buffer);
@@ -407,10 +387,8 @@ SCENARIO("msgpack serialization / deserialization", "[common][msgpack]")
         REQUIRE(source == target);
     }
 
-    SECTION("integer")
-    {
-        SECTION("positive")
-        {
+    SECTION("integer") {
+        SECTION("positive") {
             std::stringstream buffer;
             MsgPack source(12356);
             source.serialize(buffer);
@@ -418,8 +396,7 @@ SCENARIO("msgpack serialization / deserialization", "[common][msgpack]")
             MsgPack target = MsgPack::deserialize(buffer);
             REQUIRE(source == target);
         }
-        SECTION("negative")
-        {
+        SECTION("negative") {
             std::stringstream buffer;
             MsgPack source(-168153);
             source.serialize(buffer);
@@ -429,10 +406,8 @@ SCENARIO("msgpack serialization / deserialization", "[common][msgpack]")
         }
     }
 
-    SECTION("Floating Point")
-    {
-        SECTION("Float")
-        {
+    SECTION("Floating Point") {
+        SECTION("Float") {
             std::stringstream buffer;
             MsgPack source(5.4586f);
             source.serialize(buffer);
@@ -440,8 +415,7 @@ SCENARIO("msgpack serialization / deserialization", "[common][msgpack]")
             MsgPack target = MsgPack::deserialize(buffer);
             REQUIRE(source == target);
         }
-        SECTION("Double")
-        {
+        SECTION("Double") {
             std::stringstream buffer;
             MsgPack source(0.4897876);
             source.serialize(buffer);
@@ -451,8 +425,7 @@ SCENARIO("msgpack serialization / deserialization", "[common][msgpack]")
         }
     }
 
-    SECTION("String")
-    {
+    SECTION("String") {
         std::stringstream buffer;
         MsgPack source("derbeinthehouse");
         source.serialize(buffer);
@@ -461,8 +434,7 @@ SCENARIO("msgpack serialization / deserialization", "[common][msgpack]")
         REQUIRE(source == target);
     }
 
-    SECTION("Array")
-    {
+    SECTION("Array") {
         std::stringstream buffer;
         MsgPack source(std::vector<int>{4, 568, -414});
         source.serialize(buffer);
@@ -471,8 +443,7 @@ SCENARIO("msgpack serialization / deserialization", "[common][msgpack]")
         REQUIRE(source == target);
     }
 
-    SECTION("Map")
-    {
+    SECTION("Map") {
         std::stringstream buffer;
         MsgPack source(std::map<std::string, int>{{"one", 24}, {"two", -16}, {"three", 0}});
         source.serialize(buffer);
@@ -481,8 +452,7 @@ SCENARIO("msgpack serialization / deserialization", "[common][msgpack]")
         REQUIRE(source == target);
     }
 
-    SECTION("Binary")
-    {
+    SECTION("Binary") {
         std::stringstream buffer;
         MsgPack source(std::vector<char>{'a', 'b', 'c'});
         source.serialize(buffer);
@@ -491,8 +461,7 @@ SCENARIO("msgpack serialization / deserialization", "[common][msgpack]")
         REQUIRE(source == target);
     }
 
-    SECTION("Full Test")
-    {
+    SECTION("Full Test") {
         std::stringstream buffer;
         MsgPack source = get_test_pack();
         source.serialize(buffer);

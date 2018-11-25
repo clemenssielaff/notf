@@ -1,16 +1,14 @@
 #include "catch2/catch.hpp"
 
-#include "test_reactive_utils.hpp"
 #include "notf/reactive/registry.hpp"
+#include "test_reactive_utils.hpp"
 
 NOTF_USING_NAMESPACE;
 
 // test cases ======================================================================================================= //
 
-SCENARIO("pipeline", "[reactive][pipeline]")
-{
-    SECTION("l-value publisher => l-value subscriber")
-    {
+SCENARIO("pipeline", "[reactive][pipeline]") {
+    SECTION("l-value publisher => l-value subscriber") {
         auto publisher = DefaultPublisher();
         auto subscriber = TestSubscriber();
 
@@ -36,8 +34,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         REQUIRE(subscriber->is_completed == false);
     }
 
-    SECTION("l-value publisher => r-value subscriber")
-    {
+    SECTION("l-value publisher => r-value subscriber") {
         auto publisher = DefaultPublisher();
         decltype(TestSubscriber()) subscriber;
 
@@ -64,8 +61,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         REQUIRE(subscriber->is_completed == false);
     }
 
-    SECTION("r-value publisher => l-value subscriber")
-    {
+    SECTION("r-value publisher => l-value subscriber") {
         auto subscriber = TestSubscriber();
         decltype(DefaultPublisher()) publisher;
 
@@ -93,8 +89,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         REQUIRE(subscriber->is_completed == false);
     }
 
-    SECTION("r-value publisher => r-value subscriber")
-    {
+    SECTION("r-value publisher => r-value subscriber") {
         decltype(DefaultPublisher()) publisher;
         decltype(TestSubscriber()) subscriber;
 
@@ -123,8 +118,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         REQUIRE(subscriber->is_completed == false);
     }
 
-    SECTION("l-value pipeline => L-value subscriber")
-    {
+    SECTION("l-value pipeline => L-value subscriber") {
         auto subscriber = TestSubscriber();
         decltype(DefaultPublisher()) publisher;
 
@@ -152,8 +146,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         REQUIRE(subscriber->is_completed == false);
     }
 
-    SECTION("l-value pipeline => r-value subscriber")
-    {
+    SECTION("l-value pipeline => r-value subscriber") {
         auto publisher = DefaultPublisher();
         decltype(TestSubscriber()) subscriber;
 
@@ -180,10 +173,8 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         REQUIRE(subscriber->is_completed == false);
     }
 
-    SECTION("pipeline with mixed l- and r-values")
-    {
-        SECTION("L->R->L->R->L")
-        {
+    SECTION("pipeline with mixed l- and r-values") {
+        SECTION("L->R->L->R->L") {
             auto publisher = DefaultPublisher();
             auto l_value_operator = DefaultOperator();
             auto subscriber = TestSubscriber();
@@ -208,8 +199,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
             REQUIRE(subscriber->exception == nullptr);
             REQUIRE(subscriber->is_completed == false);
         }
-        SECTION("R->L->R->L->R")
-        {
+        SECTION("R->L->R->L->R") {
             auto first_operator = DefaultOperator();
             auto second_operator = DefaultOperator();
             decltype(DefaultPublisher()) publisher;
@@ -241,10 +231,8 @@ SCENARIO("pipeline", "[reactive][pipeline]")
         }
     }
 
-    SECTION("pipeline with mixed typed / untyped functions")
-    {
-        SECTION("L -> UL -> L")
-        {
+    SECTION("pipeline with mixed typed / untyped functions") {
+        SECTION("L -> UL -> L") {
             auto i_publisher = TestPublisher<int>();
             auto i_subscriber = TestSubscriber<int>();
             auto ii_relay = TheReactiveRegistry::create("IIRelay");
@@ -255,8 +243,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
             REQUIRE(i_subscriber->values.size() == 1);
             REQUIRE(i_subscriber->values[0] == 234);
         }
-        SECTION("L -> UR -> L")
-        {
+        SECTION("L -> UR -> L") {
             auto i_publisher = TestPublisher<int>();
             auto i_subscriber = TestSubscriber<int>();
 
@@ -266,8 +253,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
             REQUIRE(i_subscriber->values.size() == 1);
             REQUIRE(i_subscriber->values[0] == 234);
         }
-        SECTION("R -> UR -> UR -> L")
-        {
+        SECTION("R -> UR -> UR -> L") {
             decltype(TestPublisher<int>()) i_publisher;
             auto i_subscriber = TestSubscriber<int>();
 
@@ -281,8 +267,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
             REQUIRE(i_subscriber->values.size() == 1);
             REQUIRE(i_subscriber->values[0] == 234);
         }
-        SECTION("L -> UR -> R -> UL -> R")
-        {
+        SECTION("L -> UR -> R -> UL -> R") {
             auto i_publisher = TestPublisher<int>();
             auto ii_relay = TheReactiveRegistry::create("IIRelay");
             decltype(TestSubscriber<int>()) i_subscriber;
@@ -297,14 +282,12 @@ SCENARIO("pipeline", "[reactive][pipeline]")
             REQUIRE(i_subscriber->values.size() == 1);
             REQUIRE(i_subscriber->values[0] == 234);
         }
-        SECTION("failure if you try to connect a wrong type to an untyped typeline")
-        {
+        SECTION("failure if you try to connect a wrong type to an untyped typeline") {
             REQUIRE_THROWS_AS(TestPublisher<int>() | TheReactiveRegistry::create("IIRelay")
                                   | DefaultOperator<std::string>(),
                               PipelineError);
         }
-        SECTION("failure if the pipeline closes with a subscriber")
-        {
+        SECTION("failure if the pipeline closes with a subscriber") {
             // we really have to try to create an untyped subscriber that is not also an operator,
             // I don't expect this to happen in production but you never know...
             REQUIRE_THROWS_AS(TestPublisher<int>()
@@ -313,8 +296,7 @@ SCENARIO("pipeline", "[reactive][pipeline]")
             REQUIRE_THROWS_AS(TestPublisher<int>() | std::dynamic_pointer_cast<AnyOperator>(TestSubscriber<int>()),
                               PipelineError);
         }
-        SECTION("failure if you try to attach a nullptr")
-        {
+        SECTION("failure if you try to attach a nullptr") {
             REQUIRE_THROWS_AS(TestPublisher<int>() | AnyOperatorPtr{}, PipelineError);
             REQUIRE_THROWS_AS(TestPublisher<int>() | std::make_shared<AnyOperator>(), PipelineError);
             REQUIRE_THROWS_AS(TestPublisher() | DefaultOperator() | AnyOperatorPtr{}, PipelineError);

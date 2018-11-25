@@ -13,15 +13,10 @@ NOTF_NORETURN void throwing_with_msg() { NOTF_THROW(LogicError, "this is a {} me
 
 } // namespace
 
-SCENARIO("exception", "[meta][exception]")
-{
-    SECTION("simple exception throwing with the NOTF_THROW macro")
-    {
-        REQUIRE_THROWS_AS(throwing_no_msg(), ValueError);
-    }
+SCENARIO("exception", "[meta][exception]") {
+    SECTION("simple exception throwing with the NOTF_THROW macro") { REQUIRE_THROWS_AS(throwing_no_msg(), ValueError); }
 
-    SECTION("NOTF_THROW supports formatted messages")
-    {
+    SECTION("NOTF_THROW supports formatted messages") {
         try {
             throwing_with_msg();
         }
@@ -30,8 +25,7 @@ SCENARIO("exception", "[meta][exception]")
         }
     }
 
-    SECTION("exceptions can tell their origin")
-    {
+    SECTION("exceptions can tell their origin") {
         try {
             throwing_with_msg();
         }

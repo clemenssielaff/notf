@@ -5,10 +5,8 @@
 
 NOTF_USING_NAMESPACE;
 
-SCENARIO("time", "[meta][time]")
-{
-    SECTION("fps literal")
-    {
+SCENARIO("time", "[meta][time]") {
+    SECTION("fps literal") {
         using namespace notf::literals;
 
         const auto fps24_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(24_fps).count();

@@ -4,10 +4,8 @@
 
 NOTF_USING_NAMESPACE;
 
-SCENARIO("functions related to numeric operations", "[meta][numeric]")
-{
-    SECTION("constexpr exponent operator")
-    {
+SCENARIO("functions related to numeric operations", "[meta][numeric]") {
+    SECTION("constexpr exponent operator") {
         const double double_v = 3.;
         REQUIRE(is_approx(exp(double_v, 3), 27));
         REQUIRE(is_approx(exp(double_v, 0), 1));

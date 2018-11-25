@@ -3,7 +3,7 @@ set(CURRENT_TARGET notf-tests)
 
 # add test files
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
-    app/test_app.cpp
+    app/test_application.cpp
     app/test_graph.cpp
     app/test_node.cpp
     app/test_property.cpp
@@ -67,10 +67,7 @@ target_link_libraries(${CURRENT_TARGET} PUBLIC
 
 # global defines and options
 target_compile_options(${CURRENT_TARGET} PRIVATE ${NOTF_GLOBAL_OPTIONS})
-target_compile_definitions(${CURRENT_TARGET} PUBLIC
-    ${NOTF_GLOBAL_DEFINES}
-    NOTF_TEST
-)
+target_compile_definitions(${CURRENT_TARGET} PUBLIC ${NOTF_GLOBAL_DEFINES})
 
 # register the test runner as a test
 add_test(NAME "NotfTestRunner" COMMAND ${CURRENT_TARGET})

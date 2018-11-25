@@ -6,16 +6,14 @@ NOTF_USING_NAMESPACE;
 
 // test cases ======================================================================================================= //
 
-SCENARIO("basic operator<T -> T> functions", "[reactive][operator]")
-{
+SCENARIO("basic operator<T -> T> functions", "[reactive][operator]") {
     auto publisher = DefaultPublisher();
     auto op = DefaultOperator();
     auto subscriber = TestSubscriber();
     publisher->subscribe(op);
     op->subscribe(subscriber);
 
-    SECTION("on_next")
-    {
+    SECTION("on_next") {
         publisher->publish(42);
 
         REQUIRE(subscriber->values.size() == 1);
@@ -24,8 +22,7 @@ SCENARIO("basic operator<T -> T> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception == nullptr);
     }
 
-    SECTION("on_error")
-    {
+    SECTION("on_error") {
         publisher->publish(1);
         publisher->error(std::logic_error("a logic error"));
         publisher->publish(2);
@@ -36,8 +33,7 @@ SCENARIO("basic operator<T -> T> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception);
     }
 
-    SECTION("on_complete")
-    {
+    SECTION("on_complete") {
         publisher->publish(1);
         publisher->complete();
         publisher->publish(2);
@@ -49,16 +45,14 @@ SCENARIO("basic operator<T -> T> functions", "[reactive][operator]")
     }
 }
 
-SCENARIO("basic operator<None -> None> functions", "[reactive][operator]")
-{
+SCENARIO("basic operator<None -> None> functions", "[reactive][operator]") {
     auto publisher = DefaultPublisher<None>();
     auto op = DefaultOperator<None>();
     auto subscriber = TestSubscriber<None>();
     publisher->subscribe(op);
     op->subscribe(subscriber);
 
-    SECTION("publish")
-    {
+    SECTION("publish") {
         publisher->publish();
 
         REQUIRE(subscriber->counter == 1);
@@ -66,8 +60,7 @@ SCENARIO("basic operator<None -> None> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception == nullptr);
     }
 
-    SECTION("error")
-    {
+    SECTION("error") {
         publisher->publish();
         publisher->error(std::logic_error("a logic error"));
         publisher->publish();
@@ -77,8 +70,7 @@ SCENARIO("basic operator<None -> None> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception);
     }
 
-    SECTION("complete")
-    {
+    SECTION("complete") {
         publisher->publish();
         publisher->complete();
         publisher->publish();
@@ -89,16 +81,14 @@ SCENARIO("basic operator<None -> None> functions", "[reactive][operator]")
     }
 }
 
-SCENARIO("basic operator<T -> None> functions", "[reactive][operator]")
-{
+SCENARIO("basic operator<T -> None> functions", "[reactive][operator]") {
     auto publisher = DefaultPublisher<int>();
     auto op = DefaultOperator<int, None>();
     auto subscriber = TestSubscriber<None>();
     publisher->subscribe(op);
     op->subscribe(subscriber);
 
-    SECTION("on_next")
-    {
+    SECTION("on_next") {
         publisher->publish(7);
 
         REQUIRE(subscriber->counter == 1);
@@ -106,8 +96,7 @@ SCENARIO("basic operator<T -> None> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception == nullptr);
     }
 
-    SECTION("on_error")
-    {
+    SECTION("on_error") {
         publisher->publish(7);
         publisher->error(std::logic_error("a logic error"));
         publisher->publish(8);
@@ -117,8 +106,7 @@ SCENARIO("basic operator<T -> None> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception);
     }
 
-    SECTION("on_complete")
-    {
+    SECTION("on_complete") {
         publisher->publish(6);
         publisher->complete();
         publisher->publish(2);
@@ -129,16 +117,14 @@ SCENARIO("basic operator<T -> None> functions", "[reactive][operator]")
     }
 }
 
-SCENARIO("basic operator<None -> T> functions", "[reactive][operator]")
-{
+SCENARIO("basic operator<None -> T> functions", "[reactive][operator]") {
     auto publisher = DefaultPublisher<None>();
     auto generator = DefaultGenerator<int>();
     auto subscriber = TestSubscriber<int>();
     publisher->subscribe(generator);
     generator->subscribe(subscriber);
 
-    SECTION("publish")
-    {
+    SECTION("publish") {
         generator->publish();
         generator->publish();
         generator->publish();
@@ -153,8 +139,7 @@ SCENARIO("basic operator<None -> T> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception == nullptr);
     }
 
-    SECTION("error")
-    {
+    SECTION("error") {
         generator->publish(45);
         generator->error(std::logic_error("a logic error"));
         generator->publish(8);
@@ -165,8 +150,7 @@ SCENARIO("basic operator<None -> T> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception);
     }
 
-    SECTION("complete")
-    {
+    SECTION("complete") {
         generator->publish(6);
         generator->complete();
         generator->publish(2);
@@ -177,8 +161,7 @@ SCENARIO("basic operator<None -> T> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception == nullptr);
     }
 
-    SECTION("on_next")
-    {
+    SECTION("on_next") {
         publisher->publish();
 
         REQUIRE(subscriber->values.size() == 1);
@@ -187,8 +170,7 @@ SCENARIO("basic operator<None -> T> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception == nullptr);
     }
 
-    SECTION("on_error")
-    {
+    SECTION("on_error") {
         publisher->publish();
         publisher->publish();
         publisher->error(std::logic_error(""));
@@ -201,8 +183,7 @@ SCENARIO("basic operator<None -> T> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception);
     }
 
-    SECTION("on_complete")
-    {
+    SECTION("on_complete") {
         publisher->publish();
         publisher->publish();
         publisher->complete();
@@ -216,8 +197,7 @@ SCENARIO("basic operator<None -> T> functions", "[reactive][operator]")
     }
 }
 
-SCENARIO("basic operator<All -> T> functions", "[reactive][operator]")
-{
+SCENARIO("basic operator<All -> T> functions", "[reactive][operator]") {
     auto int_publisher = DefaultPublisher<int>();
     auto float_publisher = DefaultPublisher<float>();
     auto op = EverythingRelay<int>();
@@ -226,8 +206,7 @@ SCENARIO("basic operator<All -> T> functions", "[reactive][operator]")
     float_publisher->subscribe(op);
     op->subscribe(subscriber);
 
-    SECTION("publish")
-    {
+    SECTION("publish") {
         op->publish();
         op->publish();
         op->publish();
@@ -242,8 +221,7 @@ SCENARIO("basic operator<All -> T> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception == nullptr);
     }
 
-    SECTION("error")
-    {
+    SECTION("error") {
         op->publish(45);
         op->error(std::logic_error("a logic error"));
         op->publish(8);
@@ -254,8 +232,7 @@ SCENARIO("basic operator<All -> T> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception);
     }
 
-    SECTION("complete")
-    {
+    SECTION("complete") {
         op->publish(6);
         op->complete();
         op->publish(2);
@@ -266,8 +243,7 @@ SCENARIO("basic operator<All -> T> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception == nullptr);
     }
 
-    SECTION("on_next")
-    {
+    SECTION("on_next") {
         int_publisher->publish(123);
         float_publisher->publish(456.f);
 
@@ -278,8 +254,7 @@ SCENARIO("basic operator<All -> T> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception == nullptr);
     }
 
-    SECTION("on_error")
-    {
+    SECTION("on_error") {
         int_publisher->publish(123);
         float_publisher->publish(456.f);
         int_publisher->error(std::logic_error(""));
@@ -292,8 +267,7 @@ SCENARIO("basic operator<All -> T> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception);
     }
 
-    SECTION("on_complete")
-    {
+    SECTION("on_complete") {
         int_publisher->publish(123);
         float_publisher->publish(456.f);
         int_publisher->complete();
@@ -307,8 +281,7 @@ SCENARIO("basic operator<All -> T> functions", "[reactive][operator]")
     }
 }
 
-SCENARIO("basic operator<All -> None> functions", "[reactive][operator]")
-{
+SCENARIO("basic operator<All -> None> functions", "[reactive][operator]") {
     auto int_publisher = DefaultPublisher<int>();
     auto float_publisher = DefaultPublisher<float>();
     auto op = EverythingRelay<None>();
@@ -317,8 +290,7 @@ SCENARIO("basic operator<All -> None> functions", "[reactive][operator]")
     float_publisher->subscribe(op);
     op->subscribe(subscriber);
 
-    SECTION("publish")
-    {
+    SECTION("publish") {
         op->publish();
         op->publish();
         op->publish();
@@ -328,8 +300,7 @@ SCENARIO("basic operator<All -> None> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception == nullptr);
     }
 
-    SECTION("error")
-    {
+    SECTION("error") {
         op->publish();
         op->error(std::logic_error("a logic error"));
         op->publish();
@@ -339,8 +310,7 @@ SCENARIO("basic operator<All -> None> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception);
     }
 
-    SECTION("complete")
-    {
+    SECTION("complete") {
         op->publish();
         op->complete();
         op->publish();
@@ -350,8 +320,7 @@ SCENARIO("basic operator<All -> None> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception == nullptr);
     }
 
-    SECTION("on_next")
-    {
+    SECTION("on_next") {
         int_publisher->publish(123);
         float_publisher->publish(456.f);
 
@@ -360,8 +329,7 @@ SCENARIO("basic operator<All -> None> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception == nullptr);
     }
 
-    SECTION("on_error")
-    {
+    SECTION("on_error") {
         int_publisher->publish(123);
         float_publisher->publish(456.f);
         int_publisher->error(std::logic_error(""));
@@ -372,8 +340,7 @@ SCENARIO("basic operator<All -> None> functions", "[reactive][operator]")
         REQUIRE(subscriber->exception);
     }
 
-    SECTION("on_complete")
-    {
+    SECTION("on_complete") {
         int_publisher->publish(123);
         float_publisher->publish(456.f);
         int_publisher->complete();

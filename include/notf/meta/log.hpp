@@ -26,7 +26,7 @@ public:
     };
 
     /// Arguments passed to the Logger on creation.
-    struct Args {
+    struct Arguments {
         /// Name of the Logger singleton.
         std::string name = "notf";
 
@@ -57,7 +57,7 @@ public:
 public:
     /// Constructor.
     /// @param args     Construction arguments pack.
-    Logger(const Args& args) : m_console_sink(std::make_shared<decltype(m_console_sink)::element_type>()) {
+    Logger(const Arguments& args) : m_console_sink(std::make_shared<decltype(m_console_sink)::element_type>()) {
         m_console_sink->set_level(static_cast<spdlog::level::level_enum>(args.console_level));
         m_console_sink->set_pattern("%i %l: %v");
 
@@ -100,21 +100,21 @@ public:
     using Level = Logger::Level;
 
     /// Arguments passed to the Logger on creation.
-    using Args = Logger::Args;
+    using Arguments = Logger::Arguments;
 
     // methods --------------------------------------------------------------------------------- //
 private:
     /// Constructor.
     /// @param args     Construction arguments pack.
-    TheLogger(const Args& args) : m_logger(args) {}
+    TheLogger(const Arguments& args) : m_logger(args) {}
 
 public:
     /// Initializes the Logger if this is the first time `initialize` or `get` is called - otherwise acts like `get`.
-    static TheLogger& initialize(const Args& args) { return _get(args); }
+    static TheLogger& initialize(const Arguments& args) { return _get(args); }
 
     /// Access to the Logger singleton.
     static TheLogger& get() {
-        static Args default_args;
+        static Arguments default_args;
         return _get(default_args);
     }
 
@@ -123,7 +123,7 @@ public:
 
 public:
     /// Static instance provider.
-    static TheLogger& _get(const Args& args) {
+    static TheLogger& _get(const Arguments& args) {
         static TheLogger instance(args);
         return instance;
     }

@@ -6,14 +6,12 @@ namespace {
 NOTF_USING_NAMESPACE;
 
 template<class T = int>
-NOTF_UNUSED auto DefaultPublisher()
-{
+NOTF_UNUSED auto DefaultPublisher() {
     return std::make_shared<Publisher<T, detail::SinglePublisherPolicy>>();
 }
 
 template<class O = int>
-NOTF_UNUSED auto DefaultGenerator()
-{
+NOTF_UNUSED auto DefaultGenerator() {
     struct DefaultGeneratorImpl : public Operator<None, O> {
         void on_next(const AnyPublisher* /*publisher*/) override { this->publish(m_state++); }
         O m_state = 1;
@@ -22,14 +20,12 @@ NOTF_UNUSED auto DefaultGenerator()
 }
 
 template<class I = int, class O = I>
-NOTF_UNUSED auto DefaultOperator()
-{
+NOTF_UNUSED auto DefaultOperator() {
     return std::make_shared<Operator<I, O, detail::SinglePublisherPolicy>>();
 }
 
 template<class T = int>
-NOTF_UNUSED auto DefaultSubscriber()
-{
+NOTF_UNUSED auto DefaultSubscriber() {
     struct DefaultSubscriberImpl : Subscriber<T> {
         void on_next(const AnyPublisher*, const T&) final {}
     };
@@ -37,13 +33,11 @@ NOTF_UNUSED auto DefaultSubscriber()
 }
 
 template<class T = int, class Policy = detail::DefaultPublisherPolicy>
-NOTF_UNUSED auto TestPublisher()
-{
+NOTF_UNUSED auto TestPublisher() {
     struct TestPublisherImpl : public Publisher<T, Policy> {
         using parent_t = Publisher<T, Policy>;
 
-        void _error(const std::exception& error) final
-        {
+        void _error(const std::exception& error) final {
             try {
                 throw error;
             }
@@ -55,14 +49,12 @@ NOTF_UNUSED auto TestPublisher()
 
         void _complete() final { parent_t::_complete(); }
 
-        void _publish(const AnyPublisher* publisher, const T& value) final
-        {
+        void _publish(const AnyPublisher* publisher, const T& value) final {
             published.emplace_back(value);
             parent_t::_publish(publisher, value);
         }
 
-        bool _subscribe(SubscriberPtr<T>& subscriber) final
-        {
+        bool _subscribe(SubscriberPtr<T>& subscriber) final {
             if (allow_new_subscribers) {
                 return parent_t::_subscribe(subscriber);
             } else {
@@ -79,14 +71,12 @@ NOTF_UNUSED auto TestPublisher()
 }
 
 template<class T = int>
-NOTF_UNUSED auto TestSubscriber()
-{
+NOTF_UNUSED auto TestSubscriber() {
     struct TestSubscriberTImpl : public Subscriber<T> {
 
         void on_next(const AnyPublisher*, const T& value) final { values.emplace_back(value); }
 
-        void on_error(const AnyPublisher*, const std::exception& error) final
-        {
+        void on_error(const AnyPublisher*, const std::exception& error) final {
             try {
                 throw error;
             }
@@ -106,14 +96,12 @@ NOTF_UNUSED auto TestSubscriber()
 }
 
 template<>
-auto TestSubscriber<None>()
-{
+auto TestSubscriber<None>() {
     struct TestSubscriberNoneImpl : public Subscriber<None> {
 
         void on_next(const AnyPublisher*) final { ++counter; }
 
-        void on_error(const AnyPublisher*, const std::exception& error) final
-        {
+        void on_error(const AnyPublisher*, const std::exception& error) final {
             try {
                 throw error;
             }
@@ -133,8 +121,7 @@ auto TestSubscriber<None>()
 }
 
 template<class T = int>
-NOTF_UNUSED auto EverythingRelay()
-{
+NOTF_UNUSED auto EverythingRelay() {
     struct EverythingRelayImpl : Operator<All, T> {
         void on_next(const AnyPublisher*, ...) final { this->publish(m_state++); }
         T m_state = 1;
@@ -142,8 +129,7 @@ NOTF_UNUSED auto EverythingRelay()
     return std::make_shared<EverythingRelayImpl>();
 }
 template<>
-auto EverythingRelay<None>()
-{
+auto EverythingRelay<None>() {
     return std::make_shared<Operator<All, None>>();
 }
 
@@ -162,7 +148,6 @@ struct notf::Accessor<Pipeline<Last>, Tester> {
     Pipeline<Last>& m_pipeline;
 };
 template<class Pipe, class P = std::decay_t<Pipe>>
-auto PipelinePrivate(Pipe&& pipeline)
-{
+auto PipelinePrivate(Pipe&& pipeline) {
     return notf::Accessor<Pipeline<typename P::last_t>, Tester>{std::forward<Pipe>(pipeline)};
 }

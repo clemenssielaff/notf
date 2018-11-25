@@ -4,10 +4,8 @@
 
 NOTF_USING_NAMESPACE;
 
-SCENARIO("split strings", "[common][string]")
-{
-    SECTION("a string with one or more delimiter characters is passed")
-    {
+SCENARIO("split strings", "[common][string]") {
+    SECTION("a string with one or more delimiter characters is passed") {
         const char* simple_char = "hello-world";
         std::string simple_str = simple_char;
         std::vector<std::string> simple_expected{"hello", "world"};
@@ -22,8 +20,7 @@ SCENARIO("split strings", "[common][string]")
         REQUIRE(split(multi_str, '-') == multi_expected);
     }
 
-    SECTION("an empty string results in an empty vector")
-    {
+    SECTION("an empty string results in an empty vector") {
         const char* empty_char = "";
         std::string empty_str = empty_char;
 
@@ -31,15 +28,13 @@ SCENARIO("split strings", "[common][string]")
         REQUIRE(split(empty_str, '-') == std::vector<std::string>());
     }
 
-    SECTION("an nullptr c-style character array is passed, the result in an empty vector")
-    {
+    SECTION("an nullptr c-style character array is passed, the result in an empty vector") {
         const char* null_char = nullptr;
 
         REQUIRE(split(null_char, '-') == std::vector<std::string>());
     }
 
-    SECTION("additional delimiters at the start- will be trimmed")
-    {
+    SECTION("additional delimiters at the start- will be trimmed") {
         const char* weird_char = "--hello--world-what-indeed----";
         std::string weird_str = weird_char;
         std::vector<std::string> expected{"hello", "world", "what", "indeed"};
@@ -48,8 +43,7 @@ SCENARIO("split strings", "[common][string]")
         REQUIRE(split(weird_str, '-') == expected);
     }
 
-    SECTION("a string without any delimiters results in a vector with a single entry")
-    {
+    SECTION("a string without any delimiters results in a vector with a single entry") {
         const char* no_delimiter_char = "helloworld";
         std::string no_delimiter_str = no_delimiter_char;
         std::vector<std::string> expected{"helloworld"};
@@ -59,10 +53,8 @@ SCENARIO("split strings", "[common][string]")
     }
 }
 
-SCENARIO("string startwith / endwith", "[common][string]")
-{
-    SECTION("startwith case sensitive")
-    {
+SCENARIO("string startwith / endwith", "[common][string]") {
+    SECTION("startwith case sensitive") {
         REQUIRE(starts_with(std::string(), ""));
         REQUIRE(starts_with(std::string("hello world"), "hello"));
         REQUIRE(starts_with(std::string(" derb"), " d"));
@@ -75,8 +67,7 @@ SCENARIO("string startwith / endwith", "[common][string]")
         REQUIRE(!starts_with(std::string(" derb"), "underb"));
     }
 
-    SECTION("startwith case insensitive")
-    {
+    SECTION("startwith case insensitive") {
         REQUIRE(istarts_with(std::string(), ""));
         REQUIRE(istarts_with(std::string("hello world"), "hello"));
         REQUIRE(istarts_with(std::string("hello world"), "Hello"));
@@ -91,8 +82,7 @@ SCENARIO("string startwith / endwith", "[common][string]")
         REQUIRE(!istarts_with(std::string(" derb"), "underb"));
     }
 
-    SECTION("endswith case sensitive")
-    {
+    SECTION("endswith case sensitive") {
         REQUIRE(ends_with(std::string(), ""));
         REQUIRE(ends_with(std::string("this is the end"), "end"));
         REQUIRE(ends_with(std::string("very derbe "), " derbe "));
@@ -105,8 +95,7 @@ SCENARIO("string startwith / endwith", "[common][string]")
         REQUIRE(!ends_with(std::string("very derbe"), "very derbe "));
     }
 
-    SECTION("endswith case insensitive")
-    {
+    SECTION("endswith case insensitive") {
         REQUIRE(iends_with(std::string(), ""));
         REQUIRE(iends_with(std::string("this is the end"), "end"));
         REQUIRE(iends_with(std::string("very derbe "), " derbe "));
@@ -119,8 +108,7 @@ SCENARIO("string startwith / endwith", "[common][string]")
         REQUIRE(!iends_with(std::string("very derbe"), "very derbe "));
     }
 
-    SECTION("case insensitive comparison")
-    {
+    SECTION("case insensitive comparison") {
         REQUIRE(icompare(std::string(), ""));
         REQUIRE(icompare(std::string("jup"), "jup"));
         REQUIRE(icompare(std::string("jup"), "JUP"));
@@ -136,8 +124,7 @@ SCENARIO("string startwith / endwith", "[common][string]")
         REQUIRE(!icompare(std::string(""), "anYThInG"));
     }
 
-    SECTION("join strings")
-    {
+    SECTION("join strings") {
         std::vector<std::string> vec = {"hello", "world", ",", "what's", "up?"};
         const std::string result = join(vec, " ");
         REQUIRE(result == "hello world , what's up?");
@@ -148,8 +135,7 @@ SCENARIO("string startwith / endwith", "[common][string]")
         REQUIRE(join(std::vector<std::string>{"-", "-", "-"}, "") == "---");
     }
 
-    SECTION("length of c strings")
-    {
+    SECTION("length of c strings") {
         const std::string test = "test";
         REQUIRE(cstring_length(test.c_str()) == 4);
     }

@@ -4,10 +4,8 @@
 
 NOTF_USING_NAMESPACE;
 
-SCENARIO("integers", "[meta][integer]")
-{
-    SECTION("fun with digits")
-    {
+SCENARIO("integers", "[meta][integer]") {
+    SECTION("fun with digits") {
         REQUIRE(get_digit(123, 0) == 3);
         REQUIRE(get_digit(123, 1) == 2);
         REQUIRE(get_digit(123, 2) == 1);

@@ -10,17 +10,14 @@ const float two_pi = notf::pi<float>() * 2;
 
 NOTF_USING_NAMESPACE;
 
-SCENARIO("functions related to floating-point calculation", "[meta][real]")
-{
-    SECTION("check constants")
-    {
+SCENARIO("functions related to floating-point calculation", "[meta][real]") {
+    SECTION("check constants") {
         REQUIRE(is_approx(pi<double>(), 3.141592653589793238462643383279502884197169399375105820975));
         REQUIRE(is_approx(kappa<double>(), 0.552284749830793398402251632279597438092895833835930764235));
         REQUIRE(is_approx(phi<double>(), 1.618033988749894848204586834365638117720309179805762862135));
     }
 
-    SECTION("check real validity")
-    {
+    SECTION("check real validity") {
         REQUIRE(is_inf(INFINITY));
         REQUIRE(!is_inf(pi()));
         REQUIRE(!is_inf(123));
@@ -34,8 +31,7 @@ SCENARIO("functions related to floating-point calculation", "[meta][real]")
         REQUIRE(!is_real(NAN));
     }
 
-    SECTION("check real")
-    {
+    SECTION("check real") {
         REQUIRE(is_zero(0.));
         REQUIRE(!is_zero(1.));
 
@@ -45,8 +41,7 @@ SCENARIO("functions related to floating-point calculation", "[meta][real]")
         REQUIRE(sign(-0.) < 0);
     }
 
-    SECTION("is approx can be used to fuzzy compare real numbers")
-    {
+    SECTION("is approx can be used to fuzzy compare real numbers") {
         constexpr double double_nan = static_cast<double>(NAN);
         constexpr double double_inf = static_cast<double>(INFINITY);
 
@@ -103,8 +98,7 @@ SCENARIO("functions related to floating-point calculation", "[meta][real]")
         REQUIRE(precision_high<int>() == 0);
     }
 
-    SECTION("unormalized angles can can be correctly normalized")
-    {
+    SECTION("unormalized angles can can be correctly normalized") {
         REQUIRE(is_approx(norm_angle(-two_pi), norm_angle(two_pi), precision_low<float>()));
         REQUIRE(is_approx(norm_angle(-pi<float>()), pi<float>(), precision_low<float>()));
         REQUIRE(is_approx(norm_angle(0.), 0.f, precision_low<float>()));
@@ -112,8 +106,7 @@ SCENARIO("functions related to floating-point calculation", "[meta][real]")
         REQUIRE(is_approx(norm_angle(two_pi), 0.f, precision_low<float>()));
     }
 
-    SECTION("random angles can be correctly normalized")
-    {
+    SECTION("random angles can be correctly normalized") {
         for (auto i = 0; i < 10000; ++i) {
             const float result = norm_angle(random_tested<float>());
             REQUIRE(result >= 0);
@@ -121,8 +114,7 @@ SCENARIO("functions related to floating-point calculation", "[meta][real]")
         }
     }
 
-    SECTION("the degree literal converts degrees into radians")
-    {
+    SECTION("the degree literal converts degrees into radians") {
         REQUIRE(is_approx(0_deg, 0, precision_low<float>()));
         REQUIRE(is_approx(90._deg, pi<long double>() * 0.5l, precision_high<long double>()));
         REQUIRE(is_approx(180_deg, pi<long double>(), precision_high<long double>()));

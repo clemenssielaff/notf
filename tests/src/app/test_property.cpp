@@ -18,8 +18,7 @@ constexpr auto int_id = "int"_id;
 constexpr auto bool_id = "bool"_id;
 #endif
 
-SCENARIO("Properties", "[app][property]")
-{
+SCENARIO("Properties", "[app][property]") {
     // always reset the graph
     TheGraph::AccessFor<Tester>::reset();
     REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 1);
@@ -31,8 +30,7 @@ SCENARIO("Properties", "[app][property]")
 
     const auto render_thread_id = make_thread_id(78);
 
-    SECTION("Properties have names")
-    {
+    SECTION("Properties have names") {
         auto node_rt = root_node.create_child<LeafNodeRT>().to_handle();
         auto node_ct = root_node.create_child<LeafNodeCT>().to_handle();
 
@@ -41,8 +39,7 @@ SCENARIO("Properties", "[app][property]")
         REQUIRE(node_ct.get_property(int_id).get_name() == "int");
     }
 
-    SECTION("Properties have default values")
-    {
+    SECTION("Properties have default values") {
         auto node_rt = root_node.create_child<LeafNodeRT>().to_handle();
         auto node_ct = root_node.create_child<LeafNodeCT>().to_handle();
 
@@ -50,8 +47,7 @@ SCENARIO("Properties", "[app][property]")
         REQUIRE(node_ct.get_property<int>("int").get_default() == 123);
     }
 
-    SECTION("Only changes in visible properties change a Node's property hash")
-    {
+    SECTION("Only changes in visible properties change a Node's property hash") {
         {
             auto node = root_node.create_child<LeafNodeCT>().to_owner();
             REQUIRE(!Node::AccessFor<Tester>(node).is_dirty());
@@ -85,8 +81,7 @@ SCENARIO("Properties", "[app][property]")
         }
     }
 
-    SECTION("Properties can be used as reactive operators")
-    {
+    SECTION("Properties can be used as reactive operators") {
         auto node = root_node.create_child<LeafNodeCT>().to_handle();
         auto property = node.get_property(int_id);
 
@@ -95,8 +90,7 @@ SCENARIO("Properties", "[app][property]")
 
         auto pipeline = publisher | property | subscriber;
 
-        SECTION("Property Operators tread new values like ones set by the user")
-        {
+        SECTION("Property Operators tread new values like ones set by the user") {
             property.set(0);
             REQUIRE(property.get() == 0);
 
@@ -108,22 +102,19 @@ SCENARIO("Properties", "[app][property]")
             REQUIRE(subscriber->values[1] == 42);
         }
 
-        SECTION("Property Operators cannot be completed")
-        {
+        SECTION("Property Operators cannot be completed") {
             publisher->complete();
             REQUIRE(!subscriber->is_completed);
         }
 
-        SECTION("Property Operators report but ignore all errors")
-        {
+        SECTION("Property Operators report but ignore all errors") {
             publisher->error(std::logic_error("That's illogical"));
             REQUIRE(!subscriber->is_completed);
             REQUIRE(subscriber->exception == nullptr);
         }
     }
 
-    SECTION("Properties are frozen with the Graph")
-    {
+    SECTION("Properties are frozen with the Graph") {
         auto node_ct = root_node.create_child<LeafNodeCT>().to_handle();
         auto property_ct = node_ct.get_property(int_id);
         auto property_ct_ptr = to_shared_ptr(property_ct);
@@ -159,8 +150,7 @@ SCENARIO("Properties", "[app][property]")
         REQUIRE(property_rt.get() == 835);
     }
 
-    SECTION("Properties have optional callbacks")
-    {
+    SECTION("Properties have optional callbacks") {
         auto node_ct = root_node.create_child<LeafNodeCT>().to_handle();
         auto property_ct = node_ct.get_property(int_id);
         auto property_ct_ptr = to_shared_ptr(property_ct);
@@ -184,8 +174,7 @@ SCENARIO("Properties", "[app][property]")
         REQUIRE(property_ct.get() == 42);
     }
 
-    SECTION("Property Handles can be compared")
-    {
+    SECTION("Property Handles can be compared") {
         auto node1 = root_node.create_child<LeafNodeCT>().to_owner();
         auto handle1 = node1.get_property(int_id);
 
@@ -197,13 +186,11 @@ SCENARIO("Properties", "[app][property]")
         REQUIRE((handle1 < handle2 || handle2 < handle1));
     }
 
-    SECTION("Property Handles can expire")
-    {
+    SECTION("Property Handles can expire") {
         PropertyHandle<int> handle;
         REQUIRE(!handle);
 
-        SECTION("Property Handles expire with their Node")
-        {
+        SECTION("Property Handles expire with their Node") {
             {
                 auto node = root_node.create_child<LeafNodeRT>().to_owner();
                 handle = node.get_property<int>("int");
@@ -215,8 +202,7 @@ SCENARIO("Properties", "[app][property]")
             REQUIRE_THROWS_AS(handle.set(78), HandleExpiredError);
         }
 
-        SECTION("Expired handles will throw when used as reactive Operators")
-        {
+        SECTION("Expired handles will throw when used as reactive Operators") {
             auto publisher = TestPublisher();
             auto subscriber = TestSubscriber();
 

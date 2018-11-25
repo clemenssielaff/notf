@@ -3,6 +3,7 @@
 #include "notf/common/bitset.hpp"
 
 #include "notf/app/property_handle.hpp"
+#include "notf/app/signal.hpp"
 #include "notf/app/slot.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -230,8 +231,17 @@ public:
     /// @returns        The requested Slot.
     /// @throws         NameError / TypeError
     template<class T>
-    typename Slot<T>::subscriber_t get_slot(const std::string& name) {
-        return _try_get_slot<T>(name)->get_subscriber();
+    SlotHandle<T> get_slot(const std::string& name) {
+        return _try_get_slot<T>(name);
+    }
+
+    /// Run time access to a Signal of this Node.
+    /// @param name     Node-unique name of the Signal.
+    /// @returns        The requested Signal.
+    /// @throws         NameError / TypeError
+    template<class T>
+    SignalHandle<T> get_signal(const std::string& name) {
+        return _try_get_signal<T>(name);
     }
 
     // hierarchy --------------------------------------------------------------
@@ -347,6 +357,18 @@ protected: // for all subclasses
         return _try_get_slot<T>(name)->get_publisher();
     }
 
+    /// @{
+    /// Emits a Signal with a given value.
+    /// @param name     Name of the Signal to emit.
+    /// @param value    Data to emit.
+    /// @throws         NameError / TypeError
+    template<class T>
+    void _emit(const std::string& name, const T& value) {
+        _try_get_signal<T>(name)->publish(value);
+    }
+    void _emit(const std::string& name) { _try_get_signal<None>(name)->publish(); }
+    /// @}
+
     // flags ------------------------------------------------------------------
 
     /// Tests a user defineable flag on this Node.
@@ -412,7 +434,11 @@ private:
 
     /// Implementation specific query of a Slot, returns an empty pointer if no Slot by the given name is found.
     /// @param name     Node-unique name of the Slot.
-    virtual AnySlotPtr _get_slot_impl(const std::string& /*name*/) = 0;
+    virtual AnySlot* _get_slot_impl(const std::string& /*name*/) = 0;
+
+    /// Implementation specific query of a Signal, returns an empty pointer if no Signal by the given name is found.
+    /// @param name     Node-unique name of the Signal.
+    virtual AnySignalPtr _get_signal_impl(const std::string& /*name*/) = 0;
 
     /// Calculates the combined hash value of all Properties.
     virtual size_t _calculate_property_hash(size_t result = detail::version_hash()) const = 0;
@@ -460,17 +486,35 @@ private:
     /// @returns        The requested Slot.
     /// @throws         NameError / TypeError
     template<class T>
-    SlotPtr<T> _try_get_slot(const std::string& name) {
-        AnySlotPtr any_slot = _get_slot_impl(name);
+    Slot<T>* _try_get_slot(const std::string& name) {
+        AnySlot* any_slot = _get_slot_impl(name);
         if (!any_slot) { NOTF_THROW(NameError, "Node \"{}\" has no Slot called \"{}\"", get_name(), name); }
 
-        SlotPtr<T> slot = std::dynamic_pointer_cast<Slot<T>>(any_slot);
+        Slot<T>* slot = dynamic_cast<Slot<T>>(any_slot);
         if (!slot) {
             NOTF_THROW(TypeError,
                        "Slot \"{}\" of Node \"{}\" is of type \"{}\", but was requested as \"{}\"", //
                        name, get_name(), any_slot->get_type_name(), type_name<T>());
         }
         return slot;
+    }
+
+    /// Run time access to a Signal of this Node.
+    /// @param name     Node-unique name of the Signal.
+    /// @returns        The requested Signal.
+    /// @throws         NameError / TypeError
+    template<class T>
+    SignalPtr<T> _try_get_signal(const std::string& name) {
+        AnySignalPtr any_signal = _get_signal_impl(name);
+        if (!any_signal) { NOTF_THROW(NameError, "Node \"{}\" has no Signal called \"{}\"", get_name(), name); }
+
+        SignalPtr<T> signal = std::dynamic_pointer_cast<Signal<T>>(any_signal);
+        if (!signal) {
+            NOTF_THROW(TypeError,
+                       "Signal \"{}\" of Node \"{}\" is of type \"{}\", but was requested as \"{}\"", //
+                       name, get_name(), any_signal->get_type_name(), type_name<T>());
+        }
+        return signal;
     }
 
     /// Finds and returns the first common ancestor of two Nodes.

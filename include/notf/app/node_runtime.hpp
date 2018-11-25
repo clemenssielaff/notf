@@ -54,7 +54,7 @@ protected:
     /// Constructs a new Slot on this Node.
     /// @param name         Name of the Slot.
     /// @throws FinalizedError      If you call this method from anywhere but the constructor.
-    /// @throws not_unique_error    If there already exists a Property of the same name on this Node.
+    /// @throws not_unique_error    If there already exists a Slot of the same name on this Node.
     /// @returns            The internal publisher of the Slot.
     template<class T>
     typename Slot<T>::publisher_t _create_slot(std::string name) {
@@ -65,10 +65,27 @@ protected:
             NOTF_THROW(NotUniqueError, "Node \"{}\" already has a Slot named \"{}\"", get_name(), name);
         }
 
-        auto [itr, success] = m_slots.emplace(std::move(name), std::make_shared<Slot<T>>());
+        auto [itr, success] = m_slots.emplace(std::move(name), std::make_unique<Slot<T>>());
         NOTF_ASSERT(success);
 
         return itr->second->get_publisher();
+    }
+
+    /// Constructs a new Signal on this Node.
+    /// @param name         Name of the Signal.
+    /// @throws FinalizedError      If you call this method from anywhere but the constructor.
+    /// @throws not_unique_error    If there already exists a Signal of the same name on this Node.
+    template<class T>
+    void _create_signal(std::string name) {
+        if (NOTF_UNLIKELY(_is_finalized())) { // unlikely 'cause you only do it once
+            NOTF_THROW(FinalizedError, "Cannot create a new Signal on already finalized Node \"{}\"", get_name());
+        }
+        if (NOTF_UNLIKELY(m_signals.count(name) != 0)) {
+            NOTF_THROW(NotUniqueError, "Node \"{}\" already has a Signal named \"{}\"", get_name(), name);
+        }
+
+        auto [itr, success] = m_signals.emplace(std::move(name), std::make_shared<Signal<T>>());
+        NOTF_ASSERT(success);
     }
 
 private:
@@ -79,8 +96,14 @@ private:
     }
 
     /// Implementation specific query of a Slot.
-    AnySlotPtr _get_slot_impl(const std::string& name) final {
-        if (auto itr = m_slots.find(name); itr != m_slots.end()) { return itr->second; }
+    AnySlot* _get_slot_impl(const std::string& name) final {
+        if (auto itr = m_slots.find(name); itr != m_slots.end()) { return itr->second.get(); }
+        return {};
+    }
+
+    /// Implementation specific query of a Signal.
+    AnySignalPtr _get_signal_impl(const std::string& name) final {
+        if (auto itr = m_signals.find(name); itr != m_signals.end()) { return itr->second; }
         return {};
     }
 
@@ -120,6 +143,9 @@ private:
 
     /// Slots.
     std::map<std::string, AnySlotPtr> m_slots;
+
+    /// Signals.
+    std::map<std::string, AnySignalPtr> m_signals;
 };
 
 NOTF_CLOSE_NAMESPACE

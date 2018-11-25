@@ -6,8 +6,7 @@ NOTF_USING_NAMESPACE;
 
 class TestClass75 {};
 
-SCENARIO("demangle C++ type names", "[meta][type_name]")
-{
+SCENARIO("demangle C++ type names", "[meta][type_name]") {
     const std::string class_name1 = type_name<TestClass75>();
     const std::string class_name2 = type_name(TestClass75{});
     const std::string class_name3 = type_name(typeid(TestClass75));

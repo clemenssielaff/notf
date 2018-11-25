@@ -4,10 +4,8 @@
 
 NOTF_USING_NAMESPACE;
 
-SCENARIO("version", "[common][version]")
-{
-    SECTION("versions can be compared")
-    {
+SCENARIO("version", "[common][version]") {
+    SECTION("versions can be compared") {
         REQUIRE(Version(45) == Version(45));
         REQUIRE(Version(45) != Version(40));
         REQUIRE(Version(45) >= Version(45));

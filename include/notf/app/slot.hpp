@@ -61,14 +61,6 @@ public:
     /// Publisher, publishing the incoming data into the Node.
     publisher_t& get_publisher() { return m_publisher; }
 
-    //    /// Lets the Node owning this Slots, subscribe to its updates.
-    //    template<class Sub, class DecayedSub = std::decay_t<Sub>>
-    //    friend std::enable_if_t<detail::is_reactive_compatible_v<publisher_t, DecayedSub>, Pipeline<DecayedSub>>
-    //    operator|(const std::shared_ptr<Slot>& slot, Sub&& subscriber)
-    //    {
-    //        return slot->get_publisher() | std::forward<Sub>(subscriber);
-    //    }
-
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// Subscriber managing the incoming data to the Slot.
@@ -113,4 +105,37 @@ struct SlotSubscriber<None> : Subscriber<None> {
 /// @}
 
 } // namespace detail
+
+// slot handle ====================================================================================================== //
+
+/// Object wrapping a weak_ptr to a Slot Subscriber. Is returned by Node::get_slot and can safely be stored & copied
+/// anywhere. Is also used by Events targeting a specific Slot.
+template<class T>
+class SlotHandle {
+
+    // types ----------------------------------------------------------------------------------- //
+private:
+    using subscriber_t = typename Slot<T>::subscriber_t;
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// Constructor.
+    /// @param slot     Slot to Handle.
+    SlotHandle(const Slot<T>& slot) : m_subscriber(slot.get_subscriber()) {}
+
+    /// Reactive Pipeline "|" operator
+    template<class Pub>
+    friend std::enable_if_t<detail::is_reactive_compatible_v<std::decay_t<Pub>, subscriber_t>, Pipeline<subscriber_t>>
+    operator|(Pub&& publisher, SlotHandle& slot) {
+        subscriber_t subscriber = slot.m_subscriber.lock();
+        if (!subscriber) { NOTF_THROW(HandleExpiredError, "SlotHandle is expired"); }
+        return std::forward<Pub>(publisher) | subscriber;
+    }
+
+    // fields ---------------------------------------------------------------------------------- //
+private:
+    /// The handled Slot.
+    std::weak_ptr<detail::SlotSubscriber<T>> m_subscriber;
+};
+
 NOTF_CLOSE_NAMESPACE

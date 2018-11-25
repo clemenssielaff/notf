@@ -6,10 +6,8 @@
 
 NOTF_USING_NAMESPACE;
 
-SCENARIO("uuid", "[common][uuid]")
-{
-    SECTION("default construct a null UUID")
-    {
+SCENARIO("uuid", "[common][uuid]") {
+    SECTION("default construct a null UUID") {
         Uuid null_uuid;
         REQUIRE(null_uuid.is_null());
         REQUIRE(!null_uuid);
@@ -18,8 +16,7 @@ SCENARIO("uuid", "[common][uuid]")
         }
     }
 
-    SECTION("generated UUIDs should be unique and never null")
-    {
+    SECTION("generated UUIDs should be unique and never null") {
         Uuid uuid = Uuid::generate();
         REQUIRE(!uuid.is_null());
         REQUIRE(uuid);
@@ -27,8 +24,7 @@ SCENARIO("uuid", "[common][uuid]")
         REQUIRE(Uuid::generate() != Uuid::generate());
     }
 
-    SECTION("UUIDs can be compared")
-    {
+    SECTION("UUIDs can be compared") {
         const Uuid not_much = Uuid("01010101-0101-0101-0101-010101010101");
         const Uuid bit_more = Uuid("02020202-0202-0202-0202-020202020202");
         const Uuid verymuch = Uuid("ffffffff-ffff-ffff-ffff-ffffffffffff");
@@ -41,8 +37,7 @@ SCENARIO("uuid", "[common][uuid]")
         REQUIRE(bit_more > not_much);
     }
 
-    SECTION("We can extract the first and second word of a Uuid")
-    {
+    SECTION("We can extract the first and second word of a Uuid") {
         Uuid::Bytes array = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
         const Uuid uuid(array);
         const auto words = uuid.to_words();
@@ -51,8 +46,7 @@ SCENARIO("uuid", "[common][uuid]")
         REQUIRE(words.second >> 7 * bitsizeof<uchar>() == 9);
     }
 
-    SECTION("UUIDs can be cast from and to string")
-    {
+    SECTION("UUIDs can be cast from and to string") {
         Uuid uuid = Uuid::generate();
         std::string implicit_string = uuid;
         std::string explicit_string = uuid.to_string();
@@ -66,8 +60,7 @@ SCENARIO("uuid", "[common][uuid]")
         REQUIRE(!Uuid(valid_uuid2).is_null());
     }
 
-    SECTION("UUIDs can dump into an ostream")
-    {
+    SECTION("UUIDs can dump into an ostream") {
         const Uuid uuid = Uuid::generate();
         const std::string string = uuid;
 
@@ -77,8 +70,7 @@ SCENARIO("uuid", "[common][uuid]")
         REQUIRE(string == streamed);
     }
 
-    SECTION("trying to parse an invalid UUID string results in a null UUID")
-    {
+    SECTION("trying to parse an invalid UUID string results in a null UUID") {
         // one broken byte
         std::string invalid_uuid01 = "XXb55247-b2a5-45f7-812a-b6210fdcdaef";
         std::string invalid_uuid02 = "53XX5247-b2a5-45f7-812a-b6210fdcdaef";
@@ -125,8 +117,7 @@ SCENARIO("uuid", "[common][uuid]")
         REQUIRE(!Uuid(invalid_uuid5));
     }
 
-    SECTION("UUIDs can be build from a vector of integrals")
-    {
+    SECTION("UUIDs can be build from a vector of integrals") {
         const Uuid uuid(std::vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16});
         REQUIRE(uuid == Uuid("01020304-0506-0708-090a-0b0c0d0e0f10"));
 

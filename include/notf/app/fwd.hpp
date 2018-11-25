@@ -17,6 +17,8 @@ namespace detail {
 void window_deleter(GLFWwindow* glfw_window);
 using GlfwWindowPtr = std::unique_ptr<GLFWwindow, decltype(&window_deleter)>;
 } // namespace detail
+class Application;
+class TheApplication;
 
 // graph.hpp
 class TheGraph;
@@ -58,6 +60,10 @@ class PropertyHandle;
 NOTF_DECLARE_SHARED_POINTERS(class, RootNode);
 using RootNodeHandle = TypedNodeHandle<RootNode>;
 
+// signal.hpp
+NOTF_DECLARE_SHARED_POINTERS(class, AnySignal);
+NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, Signal);
+
 // slot.hpp
 namespace detail {
 template<class>
@@ -66,7 +72,7 @@ template<class>
 struct SlotSubscriber;
 } // namespace detail
 NOTF_DECLARE_SHARED_POINTERS(class, AnySlot);
-NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, Slot);
+NOTF_DECLARE_UNIQUE_POINTERS_TEMPLATE1(class, Slot);
 
 // window.hpp
 namespace detail {

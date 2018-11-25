@@ -114,6 +114,13 @@ protected:
     template<size_t I>
     using slot_t = typename std::tuple_element_t<I, Slots>::element_type;
 
+    /// Tuple of Signals types managed by this Node.
+    using Signals = typename policy_t::signals;
+
+    /// Type of a specific Signal of this Node.
+    template<size_t I>
+    using signal_t = typename std::tuple_element_t<I, Signals>::element_type;
+
     // helper --------------------------------------------------------------------------------- //
 private:
     /// Finds the index of a Property by its name.
@@ -144,6 +151,20 @@ private:
         }
     }
 
+    /// Finds the index of a Signal by its name.
+    template<size_t I = 0, char... Cs>
+    static constexpr size_t _get_signal_index(StringType<Cs...> name) {
+        if constexpr (I < std::tuple_size_v<Signals>) {
+            if constexpr (signal_t<I>::get_const_name() == name) {
+                return I;
+            } else {
+                return _get_signal_index<I + 1>(name);
+            }
+        } else {
+            NOTF_THROW(OutOfBounds);
+        }
+    }
+
     // methods --------------------------------------------------------------------------------- //
 protected:
     /// Value constructor.
@@ -164,7 +185,12 @@ protected:
 
         // slots
         for_each(m_slots, [this](auto& slot) {
-            slot = std::make_shared<typename std::decay_t<decltype(slot)>::element_type>();
+            slot = std::make_unique<typename std::decay_t<decltype(slot)>::element_type>();
+        });
+
+        // signals
+        for_each(m_signals, [this](auto& signal) {
+            signal = std::make_shared<typename std::decay_t<decltype(signal)>::element_type>();
         });
     }
 
@@ -222,10 +248,12 @@ public:
 
     /// @{
     /// Returns the requested Slot or void (which doesn't compile).
-    /// @param name     Name of the requested Property.
+    /// @param name     Name of the requested Slot.
     template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{})>
     constexpr auto get_slot(StringType<Cs...>) {
-        return std::get<I>(m_slots)->get_subscriber();
+        auto* slot = std::get<I>(m_slots).get();
+        using value_t = typename std::decay_t<decltype(slot)>::value_t;
+        return SlotHandle<value_t>(*slot);
     }
     template<const StringConst& name>
     constexpr auto get_slot() {
@@ -233,7 +261,21 @@ public:
     }
     /// @}
 
+    /// @{
+    /// Returns the requested Signal or void (which doesn't compile).
+    /// @param name     Name of the requested Signal.
+    template<char... Cs, size_t I = _get_signal_index(StringType<Cs...>{})>
+    constexpr auto get_signal(StringType<Cs...>) {
+        return std::get<I>(m_signals);
+    }
+    template<const StringConst& name>
+    constexpr auto get_signal() {
+        return get_signal(make_string_type<name>());
+    }
+    /// @}
+
     // Use the base class' runtime methods alongside the compile time implementation.
+    using Node::get_signal;
     using Node::get_slot;
 
 protected:
@@ -268,7 +310,25 @@ protected:
     }
     /// @}
 
+    /// @{
+    /// Emits a Signal with a given value.
+    /// @param name     Name of the Signal to emit.
+    /// @param value    Data to emit.
+    /// @throws         NameError / TypeError
+    template<char... Cs, size_t I = _get_signal_index(StringType<Cs...>{}),
+             class T = typename std::tuple_element_t<I, Signals>::value_t>
+    void _emit(StringType<Cs...>, const T& value) {
+        std::get<I>(m_signals)->publish(value);
+    }
+    template<char... Cs, size_t I = _get_signal_index(StringType<Cs...>{}),
+             class T = typename std::tuple_element_t<I, Signals>::value_t>
+    void _emit(StringType<Cs...>) {
+        std::get<I>(m_signals)->publish();
+    }
+    /// @}
+
     // Use the base class' runtime methods alongside the compile time implementation.
+    using Node::_emit;
     using Node::_get_slot;
 
 private:
@@ -292,17 +352,35 @@ private:
     /// @{
     /// Implementation specific query of a Slot, returns an empty pointer if no Slot by the given name is found.
     /// @param name     Node-unique name of the Slot.
-    AnySlotPtr _get_slot_impl(const std::string& name) final { return _get_slot_ct(hash_string(name)); }
+    AnySlot* _get_slot_impl(const std::string& name) final { return _get_slot_ct(hash_string(name)); }
     template<size_t I = 0>
-    AnySlotPtr _get_slot_ct(const size_t hash_value) {
+    AnySlot* _get_slot_ct(const size_t hash_value) {
         if constexpr (I < std::tuple_size_v<Slots>) {
             if (slot_t<I>::get_const_name().get_hash() == hash_value) {
-                return std::static_pointer_cast<AnySlot>(std::get<I>(m_properties));
+                return std::get<I>(m_slots).get();
             } else {
                 return _get_slot_ct<I + 1>(hash_value);
             }
         } else {
             return {}; // no such slot
+        }
+    }
+    /// @}
+
+    /// @{
+    /// Implementation specific query of a Signal, returns an empty pointer if no Signal by the given name is found.
+    /// @param name     Node-unique name of the Signal.
+    AnySignalPtr _get_signal_impl(const std::string& name) final { return _get_signal_ct(hash_string(name)); }
+    template<size_t I = 0>
+    AnySignalPtr _get_signal_ct(const size_t hash_value) {
+        if constexpr (I < std::tuple_size_v<Signals>) {
+            if (signal_t<I>::get_const_name().get_hash() == hash_value) {
+                return std::get<I>(m_signals);
+            } else {
+                return _get_signal_ct<I + 1>(hash_value);
+            }
+        } else {
+            return {}; // no such signal
         }
     }
     /// @}
@@ -339,6 +417,9 @@ private:
 
     /// All Slots of this Node.
     Slots m_slots;
+
+    /// All Signals of this Node.
+    Signals m_signals;
 };
 
 NOTF_CLOSE_NAMESPACE

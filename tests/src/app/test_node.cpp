@@ -18,8 +18,7 @@ constexpr auto int_id = "int"_id;
 constexpr auto float_id = "float"_id;
 #endif
 
-SCENARIO("Nodes can limit what kind of children or parent types they can have", "[app][node]")
-{
+SCENARIO("Nodes can limit what kind of children or parent types they can have", "[app][node]") {
     struct NodeA : RunTimeNode {
         NOTF_UNUSED NodeA(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
     };
@@ -70,8 +69,7 @@ SCENARIO("Nodes can limit what kind of children or parent types they can have", 
     REQUIRE(!detail::can_node_parent<NodeB, DoNotChildB>());
 }
 
-SCENARIO("Basic Node Setup", "[app][node][property]")
-{
+SCENARIO("Basic Node Setup", "[app][node][property]") {
     // always reset the graph
     TheGraph::AccessFor<Tester>::reset();
     REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 1);
@@ -83,33 +81,27 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
     const auto render_thread_id = make_thread_id(45);
 
-    SECTION("the nested 'NewNode' type takes care of casting to a NodeOwner or -Handle of the right type")
-    {
-        SECTION("NodeOwners can only be created once")
-        {
+    SECTION("the nested 'NewNode' type takes care of casting to a NodeOwner or -Handle of the right type") {
+        SECTION("NodeOwners can only be created once") {
             auto new_node = root_node.create_child<LeafNodeCT>();
             TypedNodeOwner<LeafNodeCT> owner1 = new_node.to_owner();
             REQUIRE_THROWS_AS(new_node.to_owner(), ValueError);
         }
     }
 
-    SECTION("Nodes can create child Nodes")
-    {
-        SECTION("and count them")
-        {
+    SECTION("Nodes can create child Nodes") {
+        SECTION("and count them") {
             REQUIRE(root_node_handle.get_child_count() == 0);
             NodeHandle new_node = root_node.create_child<LeafNodeCT>();
             REQUIRE(root_node_handle.get_child_count() == 1);
             REQUIRE(new_node.get_child_count() == 0);
         }
 
-        SECTION("but only on themselves")
-        {
+        SECTION("but only on themselves") {
             class SchlawinerNode : public RunTimeNode {
             public:
                 NOTF_UNUSED SchlawinerNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
-                void be_naughty()
-                {
+                void be_naughty() {
                     NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
                     _create_child<LeafNodeCT>(to_shared_ptr(get_parent()).get());
                 }
@@ -123,8 +115,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         }
     }
 
-    SECTION("Nodes can inspect their hierarchy")
-    {
+    SECTION("Nodes can inspect their hierarchy") {
         NodeHandle two_child_node = root_node.create_child<TwoChildrenNode>();
         NodeHandle first_child = two_child_node.get_child(0);
         NodeHandle second_child = two_child_node.get_child(1);
@@ -147,19 +138,15 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         REQUIRE_THROWS_AS(two_child_node.get_child(1000), OutOfBounds);
     }
 
-    SECTION("Nodes can modify their hierarchy")
-    {
-        SECTION("remove a child")
-        {
+    SECTION("Nodes can modify their hierarchy") {
+        SECTION("remove a child") {
             class RemoveChildNode : public RunTimeNode {
             public:
-                NOTF_UNUSED RemoveChildNode(valid_ptr<Node*> parent) : RunTimeNode(parent)
-                {
+                NOTF_UNUSED RemoveChildNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {
                     NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
                     first_child = _create_child<LeafNodeRT>(this);
                 }
-                NOTF_UNUSED void remove_child()
-                {
+                NOTF_UNUSED void remove_child() {
                     NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
                     first_child = {};
                 }
@@ -179,8 +166,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
             REQUIRE(node.get_child_count() == 0);
         }
 
-        SECTION("add a child")
-        {
+        SECTION("add a child") {
             auto node1 = root_node.create_child<TestNode>().to_owner();
             REQUIRE(node1.get_child_count() == 0);
             {
@@ -195,8 +181,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
             REQUIRE(node1.get_child_count() == 2);
         }
 
-        SECTION("Change a parent")
-        {
+        SECTION("Change a parent") {
             auto node1 = root_node.create_child<TestNode>().to_owner();
             auto node2 = root_node.create_child<TestNode>().to_owner();
 
@@ -229,8 +214,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         }
     }
 
-    SECTION("Nodes have a default name")
-    {
+    SECTION("Nodes have a default name") {
         auto node1 = root_node.create_child<LeafNodeCT>().to_owner();
         auto node2 = root_node.create_child<LeafNodeRT>().to_handle();
 
@@ -238,8 +222,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         REQUIRE(node1.get_default_name() != node2.get_default_name());
     }
 
-    SECTION("Nodes have user definable flags")
-    {
+    SECTION("Nodes have user definable flags") {
         enum UserFlags { FIRST, OUT_OF_BOUNDS = Node::AccessFor<Tester>::get_user_flag_count() + 1 };
         NodeHandle node_handle = root_node.create_child<TestNode>();
         TestNode& node = *(std::static_pointer_cast<TestNode>(to_shared_ptr(node_handle)));
@@ -254,8 +237,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         REQUIRE_THROWS_AS(node.set_flag(OUT_OF_BOUNDS), OutOfBounds);
     }
 
-    SECTION("User definable flags are frozen with the Graph")
-    {
+    SECTION("User definable flags are frozen with the Graph") {
         NodeHandle node_handle = root_node.create_child<TestNode>();
         TestNode& node = *(std::static_pointer_cast<TestNode>(to_shared_ptr(node_handle)));
 
@@ -271,15 +253,13 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         REQUIRE(node.get_flag(0));
     }
 
-    SECTION("Nodes have a z-order")
-    {
+    SECTION("Nodes have a z-order") {
         NodeHandle three_child_node = root_node.create_child<ThreeChildrenNode>();
         NodeHandle first = three_child_node.get_child(0);
         NodeHandle second = three_child_node.get_child(1);
         NodeHandle third = three_child_node.get_child(2);
 
-        SECTION("The z-order can be queried")
-        {
+        SECTION("The z-order can be queried") {
             REQUIRE(!first.is_in_front());
             REQUIRE(!second.is_in_front());
             REQUIRE(third.is_in_front());
@@ -304,26 +284,22 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
             REQUIRE(!third.is_behind(first));
             REQUIRE(!third.is_behind(second));
         }
-        SECTION("The z-order of Nodes can be modified")
-        {
-            SECTION("first.stack_front")
-            {
+        SECTION("The z-order of Nodes can be modified") {
+            SECTION("first.stack_front") {
                 first.stack_front();
                 REQUIRE(first.is_in_front());
                 REQUIRE(second.is_in_back());
                 REQUIRE(third.is_before(second));
                 REQUIRE(third.is_behind(first));
             }
-            SECTION("second.stack_front")
-            {
+            SECTION("second.stack_front") {
                 second.stack_front();
                 REQUIRE(second.is_in_front());
                 REQUIRE(first.is_in_back());
                 REQUIRE(third.is_before(first));
                 REQUIRE(third.is_behind(second));
             }
-            SECTION("third.stack_front")
-            {
+            SECTION("third.stack_front") {
                 third.stack_front();
                 REQUIRE(third.is_in_front());
                 REQUIRE(first.is_in_back());
@@ -331,24 +307,21 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
                 REQUIRE(second.is_behind(third));
             }
 
-            SECTION("first.stack_back")
-            {
+            SECTION("first.stack_back") {
                 first.stack_back();
                 REQUIRE(first.is_in_back());
                 REQUIRE(second.is_before(first));
                 REQUIRE(second.is_behind(third));
                 REQUIRE(third.is_in_front());
             }
-            SECTION("second.stack_back")
-            {
+            SECTION("second.stack_back") {
                 second.stack_back();
                 REQUIRE(second.is_in_back());
                 REQUIRE(first.is_before(second));
                 REQUIRE(first.is_behind(third));
                 REQUIRE(third.is_in_front());
             }
-            SECTION("third.stack_back")
-            {
+            SECTION("third.stack_back") {
                 third.stack_back();
                 REQUIRE(third.is_in_back());
                 REQUIRE(first.is_before(third));
@@ -356,50 +329,42 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
                 REQUIRE(second.is_in_front());
             }
 
-            SECTION("first.stack_before(first")
-            {
+            SECTION("first.stack_before(first") {
                 first.stack_before(first);
                 REQUIRE(first.is_in_back());
             }
-            SECTION("first.stack_before(second")
-            {
+            SECTION("first.stack_before(second") {
                 first.stack_before(second);
                 REQUIRE(first.is_before(second));
                 REQUIRE(first.is_behind(third));
             }
-            SECTION("first.stack_before(third")
-            {
+            SECTION("first.stack_before(third") {
                 first.stack_before(third);
                 REQUIRE(first.is_in_front());
             }
 
-            SECTION("third.stack_behind(first)")
-            {
+            SECTION("third.stack_behind(first)") {
                 third.stack_behind(first);
                 REQUIRE(third.is_in_back());
             }
-            SECTION("third.stack_behind(second)")
-            {
+            SECTION("third.stack_behind(second)") {
                 third.stack_behind(second);
                 REQUIRE(third.is_before(first));
                 REQUIRE(third.is_behind(second));
             }
-            SECTION("third.stack_behind(third)")
-            {
+            SECTION("third.stack_behind(third)") {
                 third.stack_behind(third);
                 REQUIRE(third.is_in_front());
             }
         }
     }
 
-    SECTION("Compile Time Nodes have Compile Time Properties")
-    {
+    SECTION("Compile Time Nodes have Compile Time Properties") {
         auto node = root_node.create_child<LeafNodeCT>().to_owner();
         PropertyHandle<int> int_prop = node.get_property<int>("int");
         REQUIRE(!int_prop.is_expired());
 
-        SECTION("compile time and run time acquired Properties are the same")
-        {
+        SECTION("compile time and run time acquired Properties are the same") {
             static constexpr StringConst int_string_const = "int";
             PropertyHandle<int> int_prop_rt = node.get_property(int_id);
 
@@ -408,36 +373,30 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
             REQUIRE(int_prop_rt == node.get_property<int_string_const>());
         }
 
-        SECTION("Compile Time Nodes can be asked for non-existing run time Properies")
-        {
+        SECTION("Compile Time Nodes can be asked for non-existing run time Properies") {
             REQUIRE_THROWS_AS(node.get_property<int>("float").is_expired(), TypeError);
             REQUIRE_THROWS_AS(node.get_property<float>("int").is_expired(), TypeError);
             REQUIRE_THROWS_AS(node.get_property<float>("not a property name").is_expired(), NameError);
         }
 
-        SECTION("two of the same Properties of different Nodes are not equal")
-        {
+        SECTION("two of the same Properties of different Nodes are not equal") {
             TypedNodeHandle<LeafNodeCT> node2 = root_node.create_child<LeafNodeCT>();
             PropertyHandle<int> int_prop_2 = node2.get_property<int>("int");
             REQUIRE(!int_prop_2.is_expired());
             REQUIRE(int_prop != int_prop_2);
         }
 
-        SECTION("you can change the property hash by changing any property value")
-        {
+        SECTION("you can change the property hash by changing any property value") {
             const size_t property_hash = Node::AccessFor<Tester>(node).get_property_hash();
             int_prop.set(int_prop.get() + 1);
             REQUIRE(property_hash != Node::AccessFor<Tester>(node).get_property_hash());
         }
     }
 
-    SECTION("RunTimeNodes create their Properties in the constructor")
-    {
-        SECTION("Property names have to be unique")
-        {
+    SECTION("RunTimeNodes create their Properties in the constructor") {
+        SECTION("Property names have to be unique") {
             struct NotUniquePropertyNode : public RunTimeNode {
-                NOTF_UNUSED NotUniquePropertyNode(valid_ptr<Node*> parent) : RunTimeNode(parent)
-                {
+                NOTF_UNUSED NotUniquePropertyNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {
                     _create_property<int>("not_unique", 0, true);
                     _create_property<int>("not_unique", 6587, false);
                 }
@@ -445,16 +404,13 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
             REQUIRE_THROWS_AS(root_node.create_child<NotUniquePropertyNode>(), NotUniqueError);
         }
 
-        SECTION("Properties can only be created in the constructor")
-        {
+        SECTION("Properties can only be created in the constructor") {
             struct FinalizedNode : public RunTimeNode {
-                NOTF_UNUSED FinalizedNode(valid_ptr<Node*> parent) : RunTimeNode(parent)
-                {
+                NOTF_UNUSED FinalizedNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {
                     _create_property<int>("int", 0, true);
                 }
 
-                void fail()
-                {
+                void fail() {
                     NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
                     _create_property<int>("won't work because I'm finalized", 0, true);
                 }
@@ -465,19 +421,16 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         }
     }
 
-    SECTION("Run Time Nodes have Run Time Properties")
-    {
+    SECTION("Run Time Nodes have Run Time Properties") {
         NodeHandle node = root_node.create_child<LeafNodeRT>();
 
-        SECTION("can be asked fo non-existing Properties")
-        {
+        SECTION("can be asked fo non-existing Properties") {
             REQUIRE(!node.get_property<float>("float").is_expired());
             REQUIRE_THROWS_AS(node.get_property<float>("not a property").is_expired(), NameError);
             REQUIRE_THROWS_AS(node.get_property<bool>("float").is_expired(), TypeError);
         }
 
-        SECTION("you can change the property hash by changing any property value")
-        {
+        SECTION("you can change the property hash by changing any property value") {
             PropertyHandle<float> prop = node.get_property<float>("float");
 
             const size_t property_hash = Node::AccessFor<Tester>(node).get_property_hash();
@@ -486,8 +439,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         }
     }
 
-    SECTION("whenever a Property changes, its Node is marked dirty")
-    {
+    SECTION("whenever a Property changes, its Node is marked dirty") {
         TypedNodeHandle<LeafNodeCT> node_handle = root_node.create_child<LeafNodeCT>();
         auto node = std::dynamic_pointer_cast<LeafNodeCT>(
             TypedNodeHandle<LeafNodeCT>::AccessFor<Tester>::get_shared_ptr(node_handle));
@@ -499,8 +451,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         REQUIRE(Node::AccessFor<Tester>(*node.get()).is_dirty());
     }
 
-    SECTION("Nodes create a copy of their data to modify, if the graph is frozen")
-    {
+    SECTION("Nodes create a copy of their data to modify, if the graph is frozen") {
         auto node = root_node.create_child<LeafNodeCT>().to_handle();
         auto int_property = node.get_property(int_id);
         REQUIRE(int_property.get() == 123);
@@ -512,8 +463,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         REQUIRE(int_property.get() == 321);
     }
 
-    SECTION("Node Handles will not crash when you try call a method on them when they are expired")
-    {
+    SECTION("Node Handles will not crash when you try call a method on them when they are expired") {
         NodeHandle expired;
         {
             auto owner = root_node.create_child<LeafNodeCT>().to_owner();
@@ -528,8 +478,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
         // TODO: test all node handle functions
     }
 
-    SECTION("Two Nodes should have at least the root node as a common ancestor")
-    {
+    SECTION("Two Nodes should have at least the root node as a common ancestor") {
         auto node = root_node.create_child<TestNode>().to_owner();
         auto first = to_shared_ptr(node)->create_child<TestNode>().to_owner();
         auto second = to_shared_ptr(node)->create_child<TestNode>().to_owner();
@@ -546,4 +495,12 @@ SCENARIO("Basic Node Setup", "[app][node][property]")
 
         REQUIRE(first.get_common_ancestor(first) == first);
     }
+}
+
+SCENARIO("Compile Time Nodes can be identified by type", "[app][node]") {
+    REQUIRE(detail::is_compile_time_node_v<LeafNodeCT>);
+    REQUIRE(!detail::is_compile_time_node_v<LeafNodeRT>);
+
+    REQUIRE(detail::CompileTimeNodeIdentifier().test<LeafNodeCT>());
+    REQUIRE(!detail::CompileTimeNodeIdentifier().test<LeafNodeRT>());
 }

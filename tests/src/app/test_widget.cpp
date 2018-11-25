@@ -55,8 +55,7 @@ constexpr auto state_a_id = "state_a"_id;
 
 } // namespace
 
-SCENARIO("Compile Time Widgets", "[app][node][widget]")
-{
+SCENARIO("Compile Time Widgets", "[app][node][widget]") {
     // always reset the graph
     TheGraph::AccessFor<Tester>::reset();
     REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 1);
@@ -66,8 +65,7 @@ SCENARIO("Compile Time Widgets", "[app][node][widget]")
     REQUIRE(root_node_ptr);
     auto root_node = Node::AccessFor<Tester>(*root_node_ptr);
 
-    SECTION("basic state machine")
-    {
+    SECTION("basic state machine") {
         auto widget = root_node.create_child<TestCompileTimeWidget>().to_handle();
         REQUIRE(to_shared_ptr(widget)->get_state_name() == "state_a"); // first state is the default
 

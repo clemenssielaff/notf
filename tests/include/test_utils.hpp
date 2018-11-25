@@ -1,19 +1,11 @@
 #pragma once
 
-//#include "common/arithmetic.hpp"
-//#include "common/float.hpp"
-//#include "common/matrix3.hpp"
-//#include "common/matrix4.hpp"
-//#include "common/padding.hpp"
-//#include "common/random.hpp"
-//#include "common/size2.hpp"
-//#include "common/vector2.hpp"
-
 #include <thread>
 
-#include "notf/common/random.hpp"
 #include "notf/meta/system.hpp"
 #include "notf/meta/types.hpp"
+
+#include "notf/common/random.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -27,27 +19,23 @@ constexpr long double largest_supported_diagonale() { return 11585.2375029603946
 } // namespace detail
 
 template<typename Real>
-constexpr Real lowest_tested()
-{
+constexpr Real lowest_tested() {
     return static_cast<Real>(-detail::largest_supported_diagonale());
 }
 
 template<typename Real>
-constexpr Real highest_tested()
-{
+constexpr Real highest_tested() {
     return static_cast<Real>(detail::largest_supported_diagonale());
 }
 
 /// Random number around zero in the range of a size what we'd expect to see as a monitor resolution.
 template<typename Real>
-inline Real random_tested()
-{
+inline Real random_tested() {
     return random<Real>(lowest_tested<Real>(), highest_tested<Real>());
 }
 
 /// Generates a std::thread::id, even though its constructor is private.
-inline std::thread::id make_thread_id(const uint number)
-{
+inline std::thread::id make_thread_id(const uint number) {
     using id_as_number = templated_unsigned_integer_t<bitsizeof<std::thread::id>()>;
     static_assert(max_value<decltype(number)>() <= max_value<id_as_number>(),
                   "Cannot reliably represent an unsigned integer as a std::thread::id, because it is too large to fit");

@@ -6,18 +6,14 @@
 
 NOTF_USING_NAMESPACE;
 
-SCENARIO("thread", "[common][thread]")
-{
-    SECTION("you can identify a thread by its kind")
-    {
+SCENARIO("thread", "[common][thread]") {
+    SECTION("you can identify a thread by its kind") {
         Thread worker(Thread::Kind::WORKER);
         worker.run([&]() { REQUIRE(this_thread::get_kind() == Thread::Kind::WORKER); });
     }
 
-    SECTION("some kinds can only be used once at a time")
-    {
-        SECTION("they can be closed and re-opened, as long as there is only one at a time")
-        {
+    SECTION("some kinds can only be used once at a time") {
+        SECTION("they can be closed and re-opened, as long as there is only one at a time") {
             size_t counter = 0;
             {
                 Thread event(Thread::Kind::EVENT);
@@ -34,8 +30,7 @@ SCENARIO("thread", "[common][thread]")
             REQUIRE(counter == 2);
         }
 
-        SECTION("if you try to have more than one, they will throw")
-        {
+        SECTION("if you try to have more than one, they will throw") {
             using namespace notf::literals;
             Thread event1(Thread::Kind::EVENT);
             Thread event2(Thread::Kind::EVENT);

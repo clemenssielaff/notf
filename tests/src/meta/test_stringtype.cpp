@@ -4,8 +4,7 @@
 
 NOTF_USING_NAMESPACE;
 
-SCENARIO("StringConsts", "[meta][stringtype]")
-{
+SCENARIO("StringConsts", "[meta][stringtype]") {
     constexpr StringConst test_string = "th/s_1s-A:T3st! 0";
     size_t constexpr_hash = test_string.get_hash();
 
@@ -13,8 +12,7 @@ SCENARIO("StringConsts", "[meta][stringtype]")
     REQUIRE(constexpr_hash == hash_string(test_string.c_str(), test_string.get_size()));
 
 #ifndef NOTF_MSVC
-    SECTION("id literal")
-    {
+    SECTION("id literal") {
         using namespace notf::literals;
         constexpr StringConst derbe_id = "derbe";
         REQUIRE("derbe"_id == derbe_id);
