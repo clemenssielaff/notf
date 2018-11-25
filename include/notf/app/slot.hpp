@@ -1,5 +1,6 @@
 #pragma once
 
+#include "notf/meta/stringtype.hpp"
 #include "notf/meta/typename.hpp"
 
 #include "notf/reactive/pipeline.hpp"
@@ -55,11 +56,17 @@ public:
         return my_type;
     }
 
+    /// @{
     /// Subscriber managing the incoming data to the Slot.
     subscriber_t& get_subscriber() { return m_subscriber; }
+    const subscriber_t& get_subscriber() const { return m_subscriber; }
+    /// @}
 
+    /// @{
     /// Publisher, publishing the incoming data into the Node.
     publisher_t& get_publisher() { return m_publisher; }
+    const publisher_t& get_publisher() const { return m_publisher; }
+    /// @}
 
     // fields ---------------------------------------------------------------------------------- //
 private:
@@ -68,6 +75,25 @@ private:
 
     /// Publisher, publishing the incoming data into the Node.
     publisher_t m_publisher;
+};
+
+// compile time slot ================================================================================================ //
+
+template<class Policy>
+class CompileTimeSlot final : public Slot<typename Policy::value_t> {
+
+    // types ----------------------------------------------------------------------------------- //
+public:
+    /// Policy used to create this Property type.
+    using policy_t = Policy;
+
+    /// Property value type.
+    using value_t = typename policy_t::value_t;
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// The compile time constant name of this Property.
+    static constexpr const StringConst& get_const_name() noexcept { return policy_t::name; }
 };
 
 // slot internals =================================================================================================== //
@@ -122,6 +148,20 @@ public:
     /// Constructor.
     /// @param slot     Slot to Handle.
     SlotHandle(const Slot<T>& slot) : m_subscriber(slot.get_subscriber()) {}
+
+    /// Manually call the Slot with a given value (if applicable).
+    template<class X = T>
+    std::enable_if_t<std::is_same_v<X, None>> call() {
+        subscriber_t subscriber = m_subscriber.lock();
+        if (!subscriber) { NOTF_THROW(HandleExpiredError, "SlotHandle is expired"); }
+        subscriber->on_next(nullptr);
+    }
+    template<class X = T>
+    std::enable_if_t<!std::is_same_v<X, None>> call(const T& value) {
+        subscriber_t subscriber = m_subscriber.lock();
+        if (!subscriber) { NOTF_THROW(HandleExpiredError, "SlotHandle is expired"); }
+        subscriber->on_next(nullptr, value);
+    }
 
     /// Reactive Pipeline "|" operator
     template<class Pub>

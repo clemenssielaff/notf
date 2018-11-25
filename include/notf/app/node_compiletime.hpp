@@ -9,15 +9,14 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-/// Produces a std::shared_ptr<CompileTimeProperty<Policy>> for each Policy in the given tuple.
-template<class>
-struct create_compile_time_property;
-template<class... Ts>
-struct create_compile_time_property<std::tuple<Ts...>> {
-    using type = std::tuple<std::shared_ptr<CompileTimeProperty<Ts>>...>;
+template<template<class> class, class...>
+struct instantiate_policies;
+template<template<class> class Template, class... Ts>
+struct instantiate_policies<Template, std::tuple<Ts...>> {
+    using type = std::tuple<std::shared_ptr<Template<Ts>>...>;
 };
-template<class T>
-using create_compile_time_properties = typename create_compile_time_property<T>::type;
+template<template<class> class Template, class Tuple>
+using instantiate_policies_t = typename instantiate_policies<Template, Tuple>::type;
 
 template<class Policy>
 struct NodePolicyFactory {
@@ -29,10 +28,10 @@ struct NodePolicyFactory {
         struct NodePolicy {
 
             /// All Properties of the Node type.
-            using properties = create_compile_time_properties<decltype(get_properties())>;
+            using properties = instantiate_policies_t<CompileTimeProperty, decltype(get_properties())>;
 
             /// All Slots of the Node type.
-            using slots = decltype(get_slots());
+            using slots = instantiate_policies_t<CompileTimeSlot, decltype(get_slots())>;
 
             /// All Signals of the Node type.
             using signals = decltype(get_signals());
@@ -80,9 +79,7 @@ struct NodePolicyFactory {
     }
 };
 
-struct EmptyNodePolicy {
-    using properties = std::tuple<>;
-};
+struct EmptyNodePolicy {};
 
 } // namespace detail
 
@@ -252,8 +249,8 @@ public:
     template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{})>
     constexpr auto get_slot(StringType<Cs...>) {
         auto* slot = std::get<I>(m_slots).get();
-        using value_t = typename std::decay_t<decltype(slot)>::value_t;
-        return SlotHandle<value_t>(*slot);
+//        using value_t = typename std::decay_t<decltype(slot)>::value_t;
+        return SlotHandle(*slot);
     }
     template<const StringConst& name>
     constexpr auto get_slot() {

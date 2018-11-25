@@ -125,6 +125,11 @@ struct Monitor {
     static constexpr bool is_visible = false;
 };
 
+struct CloseSlot {
+    using value_t = None;
+    static constexpr StringConst name = "close";
+};
+
 struct WindowPolicy {
     using properties = std::tuple< //
         Title,                     //
@@ -135,6 +140,10 @@ struct WindowPolicy {
         State,                     //
         Monitor                    //
         >;
+
+    using slots = std::tuple< //
+        CloseSlot             //
+        >;                    //
 };
 
 } // namespace window_properties
@@ -170,6 +179,9 @@ public:
     static constexpr const StringConst& state = detail::window_properties::State::name;
     static constexpr const StringConst& monitor = detail::window_properties::Monitor::name;
 
+    static constexpr const StringConst& close = detail::window_properties::CloseSlot::name;
+
+private:
     /// Exception thrown when the OpenGL context of a Window could not be initialized.
     /// The error string will contain more detailed information about the error.
     NOTF_EXCEPTION_TYPE(initialization_error);
@@ -192,10 +204,10 @@ public:
     /// @throws Application::initialization_error   When you try to instantiate a Window without an Application.
     static WindowHandle create(Settings settings = {});
 
-    /// Closes this Window.
-    void close();
-
 private:
+    /// Closes this Window.
+    void _close();
+
     /// Validates (and modifies, if necessary) Settings to create a Window instance.
     /// @param settings     Given Settings, modified in-place if necessary.
     static void _validate_settings(Settings& settings);
@@ -234,7 +246,7 @@ public:
     std::string get_title() const { return _get_node()->get<Window::title>(); }
 
     /// Closes the Window.
-    void close() { _get_node()->close(); }
+    void close() { _get_node()->get_slot<Window::close>().call(); }
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -75,9 +75,6 @@ NOTF_DECLARE_SHARED_POINTERS(class, AnySlot);
 NOTF_DECLARE_UNIQUE_POINTERS_TEMPLATE1(class, Slot);
 
 // window.hpp
-namespace detail {
-struct WindowSettings;
-} // namespace detail
 NOTF_DECLARE_SHARED_POINTERS(class, Window);
 class WindowHandle;
 

@@ -119,6 +119,8 @@ Window::Window(valid_ptr<Node*> parent, Settings settings)
     _set_property_callback<resolution>([&](Size2i& new_res) { return _on_resolution_change(new_res); });
     _set_property_callback<monitor>([&](int& new_monitor) { return _on_monitor_change(new_monitor); });
 
+    // connect slots
+    _get_slot<close>()->subscribe(Trigger([&]() {}));
     //    NOTF_LOG_INFO("Created Window \"{}\" using OpenGl version: {}", get<title>(), glGetString(GL_VERSION));
 }
 
@@ -136,7 +138,7 @@ WindowHandle Window::create(Settings settings) {
     return window;
 }
 
-void Window::close() {
+void Window::_close() {
     NOTF_LOG_TRACE("Closing Window \"{}\"", get<title>());
 
     // disconnect the window callbacks (blocks until all queued events are handled)
