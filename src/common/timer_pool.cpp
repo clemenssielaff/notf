@@ -4,7 +4,9 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-TheTimerPool::TheTimerPool() { m_thread.run(&TheTimerPool::_run, this); }
+TheTimerPool::TheTimerPool() {
+    m_thread.run([&] { _run(); });
+}
 
 TheTimerPool::~TheTimerPool() {
     {

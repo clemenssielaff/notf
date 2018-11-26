@@ -66,6 +66,8 @@ struct WindowSettings {
 
 namespace window_properties {
 
+// properties =================================================================
+
 /// Window title.
 struct Title {
     using value_t = std::string;
@@ -125,10 +127,21 @@ struct Monitor {
     static constexpr bool is_visible = false;
 };
 
+// slots ======================================================================
+
 struct CloseSlot {
     using value_t = None;
-    static constexpr StringConst name = "close";
+    static constexpr StringConst name = "to_close";
 };
+
+// signals ====================================================================
+
+struct AboutToCloseSignal {
+    using value_t = None;
+    static constexpr StringConst name = "on_about_to_close";
+};
+
+// policy ===================================================================
 
 struct WindowPolicy {
     using properties = std::tuple< //
@@ -144,6 +157,10 @@ struct WindowPolicy {
     using slots = std::tuple< //
         CloseSlot             //
         >;                    //
+
+    using signals = std::tuple< //
+        AboutToCloseSignal      //
+        >;                      //
 };
 
 } // namespace window_properties
@@ -161,9 +178,6 @@ private:
     using super_t = CompileTimeNode<detail::window_properties::WindowPolicy>;
 
 public:
-    /// Nested `AccessFor<T>` type.
-    NOTF_ACCESS_TYPE(Window);
-
     /// Settings to create a Window instance.
     using Settings = detail::WindowSettings;
 
@@ -179,7 +193,8 @@ public:
     static constexpr const StringConst& state = detail::window_properties::State::name;
     static constexpr const StringConst& monitor = detail::window_properties::Monitor::name;
 
-    static constexpr const StringConst& close = detail::window_properties::CloseSlot::name;
+    /// Slot names.
+    static constexpr const StringConst& to_close = detail::window_properties::CloseSlot::name;
 
 private:
     /// Exception thrown when the OpenGL context of a Window could not be initialized.
@@ -234,19 +249,39 @@ private:
 // window handle ==================================================================================================== //
 
 class WindowHandle : public TypedNodeHandle<Window> {
-    friend class Window;
+//    friend class Window;
+
+    friend Accessor<WindowHandle, TheApplication>;
+
+    // types ----------------------------------------------------------------------------------- //
+public:
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(WindowHandle);
 
     // methods --------------------------------------------------------------------------------- //
-private:
+public:
     /// Constructor
     WindowHandle(WindowPtr window) : TypedNodeHandle<Window>(std::move(window)) {}
 
-public:
     /// The Window's title.
     std::string get_title() const { return _get_node()->get<Window::title>(); }
 
     /// Closes the Window.
-    void close() { _get_node()->get_slot<Window::close>().call(); }
+    void close() { _get_node()->get_slot<Window::to_close>().call(); }
+
+private:
+    /// Returns the GlfwWindow contained in a Window.
+    GLFWwindow* _get_glfw_window() { return _get_node()->m_glfw_window.get(); }
+};
+
+// accessors ======================================================================================================== //
+
+template<>
+class Accessor<WindowHandle, TheApplication> {
+    friend TheApplication;
+
+    /// Returns the GlfwWindow contained in a Window.
+    static GLFWwindow* get_glfw_window(WindowHandle& window) { return window._get_glfw_window(); }
 };
 
 NOTF_CLOSE_NAMESPACE

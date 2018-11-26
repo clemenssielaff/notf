@@ -1,6 +1,6 @@
 #pragma once
 
-#include "notf/app/window.hpp"
+#include "notf/app/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -71,6 +71,8 @@ private:
     /// The Application class.
     class Application {
 
+        friend class TheApplication;
+
         // methods --------------------------------------------------------------------------------- //
     public:
         NOTF_NO_COPY_OR_ASSIGN(Application);
@@ -82,12 +84,6 @@ private:
 
         /// Desctructor
         ~Application();
-
-        /// Application arguments as passed to the constructor.
-        const Arguments& get_arguments() const { return m_arguments; }
-
-        /// The internal GLFW window managed by the Application holding the shared context.
-        GLFWwindow* get_shared_context() const { return m_shared_context.get(); }
 
         /// Starts the application's main loop.
         /// @return  The application's return value after it has finished.
@@ -116,7 +112,10 @@ private:
         detail::GlfwWindowPtr m_shared_context;
 
         /// All Windows known the the Application.
-        std::vector<WindowHandle> m_windows;
+        std::unique_ptr<std::vector<WindowHandle>> m_windows;
+
+        /// Application-wide event scheduler.
+        SchedulerPtr m_scheduler;
 
         /// State of the Application.
         /// EMPTY -> READY -> RUNNING -> SHUTDOWN -> EMPTY
@@ -129,23 +128,26 @@ public:
     /// @param args             Application arguments.
     /// @throws StartupError    When the Application intialization failed.
     /// @throws ShutdownError   When this method is called after the Application was shut down.
-    static Application& initialize(const Arguments& args) {
+    static void initialize(const Arguments& args) {
         if (State expected = State::EMPTY; s_state.compare_exchange_strong(expected, State::READY)) {
-            return _get(args);
+            _get(args);
         } else {
             NOTF_THROW(StartupError, "The Application has already been initialized");
         }
     }
-    static Application& initialize(const int argc, char* argv[]) {
+    static void initialize(const int argc, char* argv[]) {
         Arguments args;
         args.argc = argc;
         args.argv = argv;
-        return initialize(args);
+        initialize(args);
     }
     /// @}
 
     /// Application arguments as passed to the constructor.
-    static const Arguments& get_arguments() { return _get().get_arguments(); }
+    static const Arguments& get_arguments() { return _get().m_arguments; }
+
+    /// Application-wide Scheduler.
+    static Scheduler& get_scheduler() { return *_get().m_scheduler.get(); }
 
     /// Starts the application's main loop.
     /// Can only be called once.
@@ -198,6 +200,9 @@ private:
 #endif
     }
 
+    /// The internal GLFW window managed by the Application holding the shared context.
+    static GLFWwindow* _get_shared_context() { return _get().m_shared_context.get(); }
+
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// The state of the Application singleton.
@@ -217,13 +222,13 @@ class Accessor<TheApplication, Window> {
     friend Window;
 
     /// Registers a new Window in the Application.
-    static void register_window(WindowHandle window) { TheApplication::_get().register_window(std::move(window)); }
+    static void register_window(WindowHandle window);
 
     /// Unregisters an existing Window from this Application.
-    static void unregister_window(WindowHandle window) { TheApplication::_get().unregister_window(std::move(window)); }
+    static void unregister_window(WindowHandle window);
 
     /// The internal GLFW window managed by the Application holding the shared context.
-    static GLFWwindow* get_shared_context() { return TheApplication::_get().get_shared_context(); }
+    static GLFWwindow* get_shared_context() { return TheApplication::_get_shared_context(); }
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -34,7 +34,7 @@ struct NodePolicyFactory {
             using slots = instantiate_policies_t<CompileTimeSlot, decltype(get_slots())>;
 
             /// All Signals of the Node type.
-            using signals = decltype(get_signals());
+            using signals = instantiate_policies_t<CompileTimeSignal, decltype(get_signals())>;
         };
 
         return NodePolicy();
@@ -248,9 +248,7 @@ public:
     /// @param name     Name of the requested Slot.
     template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{})>
     constexpr auto get_slot(StringType<Cs...>) {
-        auto* slot = std::get<I>(m_slots).get();
-//        using value_t = typename std::decay_t<decltype(slot)>::value_t;
-        return SlotHandle(*slot);
+        return SlotHandle(*std::get<I>(m_slots).get());
     }
     template<const StringConst& name>
     constexpr auto get_slot() {

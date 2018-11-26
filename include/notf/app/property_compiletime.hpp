@@ -16,7 +16,7 @@ struct PropertyPolicyFactory {
     /// Factory method.
     template<class Policy>
     static constexpr auto create() {
-        // validate the given Property Policy and show an appropriate error message if something goes wrong
+        // validate the given Policy and show an appropriate error message if something goes wrong
         static_assert(decltype(has_value_t<Policy>(std::declval<Policy>()))::value,
                       "A PropertyPolicy must contain the type of Property as type `value_t`");
 
@@ -40,7 +40,7 @@ struct PropertyPolicyFactory {
             /// Mandatory value type of the Property Policy.
             using value_t = typename Policy::value_t;
 
-            /// Mandatory name of the Proprty Policy.
+            /// Mandatory name of the Property Policy.
             static constexpr const StringConst& get_name() { return Policy::name; }
 
             /// Default value, either explicitly given by the user Policy or defaulted.

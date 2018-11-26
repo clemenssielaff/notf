@@ -11,6 +11,8 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/root_node.cpp
     app/window.cpp
 
+    app/event/scheduler.cpp
+
     app/widget/claim.cpp
 
     common/mnemonic.cpp

@@ -120,7 +120,7 @@ Window::Window(valid_ptr<Node*> parent, Settings settings)
     _set_property_callback<monitor>([&](int& new_monitor) { return _on_monitor_change(new_monitor); });
 
     // connect slots
-    _get_slot<close>()->subscribe(Trigger([&]() {}));
+    _get_slot<to_close>()->subscribe(Trigger([&]() {}));
     //    NOTF_LOG_INFO("Created Window \"{}\" using OpenGl version: {}", get<title>(), glGetString(GL_VERSION));
 }
 

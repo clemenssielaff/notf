@@ -79,21 +79,76 @@ private:
 
 // compile time slot ================================================================================================ //
 
+namespace detail {
+
+struct SlotPolicyFactory {
+
+    /// Factory method.
+    template<class Policy>
+    static constexpr auto create() {
+
+        // validate the given Policy and show an appropriate error message if something goes wrong
+        static_assert(decltype(has_value_t<Policy>(std::declval<Policy>()))::value,
+                      "A SlotPolicy must contain the type of Slot as type `value_t`");
+
+        static_assert(decltype(has_name<Policy>(std::declval<Policy>()))::value,
+                      "A SlotPolicy must contain the name of the Slot as `static constexpr name`");
+        static_assert(std::is_same_v<decltype(Policy::name), const StringConst>,
+                      "The name of a SlotPolicy must be of type `StringConst`");
+
+        /// Validated CompileTimeSlot policy.
+        struct SlotPolicy {
+
+            /// Mandatory value type of the Slot Policy.
+            using value_t = typename Policy::value_t;
+
+            /// Mandatory name of the Slot Policy.
+            static constexpr const StringConst& get_name() { return Policy::name; }
+        };
+
+        return SlotPolicy();
+    }
+
+    /// Checks, whether the given type has a nested type `value_t`.
+    template<class T>
+    static constexpr auto has_value_t(const T&) -> decltype(std::declval<typename T::value_t>(), std::true_type{});
+    template<class>
+    static constexpr auto has_value_t(...) -> std::false_type;
+
+    /// Checks, whether the given type has a static field `name`.
+    template<class T>
+    static constexpr auto has_name(const T&) -> decltype(T::name, std::true_type{});
+    template<class>
+    static constexpr auto has_name(...) -> std::false_type;
+};
+
+} // namespace detail
+
+/// Example Policy:
+///
+///     struct ShutdownSlot {
+///         using value_t = None;
+///         static constexpr StringConst name = "to_shutdown";
+///     };
+///
 template<class Policy>
 class CompileTimeSlot final : public Slot<typename Policy::value_t> {
 
     // types ----------------------------------------------------------------------------------- //
 public:
-    /// Policy used to create this Property type.
-    using policy_t = Policy;
+    /// Policy type as passed in by the user.
+    using user_policy_t = Policy;
 
-    /// Property value type.
+    /// Policy used to create this Slot type.
+    using policy_t = decltype(detail::SlotPolicyFactory::create<Policy>());
+
+    /// Slot value type.
     using value_t = typename policy_t::value_t;
 
     // methods --------------------------------------------------------------------------------- //
 public:
-    /// The compile time constant name of this Property.
-    static constexpr const StringConst& get_const_name() noexcept { return policy_t::name; }
+    /// The compile time constant name of this Slot.
+    static constexpr const StringConst& get_const_name() noexcept { return policy_t::get_name(); }
 };
 
 // slot internals =================================================================================================== //
