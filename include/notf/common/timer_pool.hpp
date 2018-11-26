@@ -4,7 +4,7 @@
 
 #include "notf/meta/numeric.hpp"
 #include "notf/meta/pointer.hpp"
-#include "notf/meta/smart_factories.hpp"
+#include "notf/meta/smart_ptr.hpp"
 #include "notf/meta/time.hpp"
 
 #include "notf/common/fwd.hpp"

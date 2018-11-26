@@ -1,6 +1,6 @@
 #pragma once
 
-#include "notf/meta/smart_factories.hpp"
+#include "notf/meta/smart_ptr.hpp"
 
 #include "notf/common/rational.hpp"
 #include "notf/common/size2.hpp"
