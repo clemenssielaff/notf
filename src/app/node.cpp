@@ -72,7 +72,7 @@ void Node::set_name(const std::string& name) {
     m_name = TheGraph::AccessFor<Node>::set_name(shared_from_this(), name);
 }
 
-NodeHandle Node::get_parent() { return _get_parent()->shared_from_this(); }
+NodeHandle Node::get_parent() const { return _get_parent()->shared_from_this(); }
 
 bool Node::has_ancestor(const Node* const ancestor) const {
     if (ancestor == nullptr) { return false; }
@@ -83,13 +83,13 @@ bool Node::has_ancestor(const Node* const ancestor) const {
     return next == ancestor; // true if the root node itself is the ancestor in question
 }
 
-NodeHandle Node::get_common_ancestor(const NodeHandle& other) {
+NodeHandle Node::get_common_ancestor(const NodeHandle& other) const {
     const NodeConstPtr other_lock = NodeHandle::AccessFor<Node>::get_node_ptr(other);
     if (other_lock == nullptr) { return {}; }
     return const_cast<Node*>(_get_common_ancestor(other_lock.get()))->shared_from_this();
 }
 
-NodeHandle Node::get_child(const size_t index) {
+NodeHandle Node::get_child(const size_t index) const {
     const ChildList& children = _read_children();
     if (index >= children.size()) {
         NOTF_THROW(OutOfBounds, "Cannot get child Node at index {} for Node \"{}\" with {} children", index, get_name(),
@@ -207,7 +207,7 @@ void Node::_clear_children() {
     _write_children().clear();
 }
 
-const Node* Node::_get_parent(const std::thread::id thread_id) const {
+Node* Node::_get_parent(const std::thread::id thread_id) const {
     NOTF_ASSERT(m_parent);
 
     if (TheGraph::is_frozen_by(thread_id)) {

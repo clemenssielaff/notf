@@ -91,12 +91,6 @@ file(GLOB_RECURSE SOURCE_FILES
 
 # add cross-plattform source files
 add_sources(SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/
-    fmt/format.cc
-    fmt/posix.cc
-
-    glad/glad.cc
-
-    msgpack11/msgpack11.cpp
 
     boost/fiber/algo/work_stealing.cpp
     boost/fiber/algo/round_robin.cpp
@@ -116,6 +110,15 @@ add_sources(SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/
     boost/fiber/future.cpp
 
     boost/context/execution_context.cpp
+
+    fmt/format.cc
+    fmt/posix.cc
+
+    glad/glad.cc
+
+    msgpack11/msgpack11.cpp
+
+    tinyutf8/tinyutf8.cpp
 )
 
 # add plattform-dependent source files

@@ -78,6 +78,9 @@ NOTF_DECLARE_UNIQUE_POINTERS_TEMPLATE1(class, Slot);
 NOTF_DECLARE_SHARED_POINTERS(class, Window);
 class WindowHandle;
 
+// event/event.hpp
+NOTF_DECLARE_UNIQUE_POINTERS(class, AnyEvent);
+
 // event/scheduler.hpp
 NOTF_DECLARE_UNIQUE_POINTERS(class, Scheduler);
 

@@ -10,10 +10,8 @@
 #include "notf/app/window.hpp"
 
 #include "notf/app/event/event.hpp"
-#include "notf/app/event/key_events.hpp"
-#include "notf/app/event/mouse_events.hpp"
+#include "notf/app/event/input.hpp"
 #include "notf/app/event/scheduler.hpp"
-#include "notf/app/event/window_events.hpp"
 
 // glfw event handler =============================================================================================== //
 
@@ -28,11 +26,10 @@ WindowHandle to_window_handle(GLFWwindow* glfw_window) {
     return WindowHandle(std::move(window));
 }
 
-template<class T, class... Args>
-void schedule(GLFWwindow* glfw_window, Args... args) {
+template<class Func>
+void schedule(Func&& function) {
 
-    TheApplication::get_scheduler().schedule(
-        make_unique_aggregate<T>(to_window_handle(glfw_window), std::forward<Args>(args)...));
+    TheApplication::get_scheduler().schedule(std::make_unique<Event<Func>>(std::forward<Func>(function)));
 }
 
 struct GlfwEventHandler {
@@ -88,7 +85,7 @@ struct GlfwEventHandler {
         default:
             error_name = unknown_error;
         }
-        NOTF_LOG_CRIT("GLFW Error \"{}\"({}): {}", *error_name, error, message);
+        NOTF_LOG_CRIT("GLFW Error \"{}\"({}): {}", error_name, error, message);
     }
 
     /// Called when the user presses or releases a mouse button Window.
@@ -97,12 +94,12 @@ struct GlfwEventHandler {
     /// @param action       Mouse button action, is either GLFW_PRESS or GLFW_RELEASE.
     /// @param modifiers    Modifier key bitmask.
     static void on_mouse_button(GLFWwindow* glfw_window, const int button, const int action, const int modifiers) {
-        if (action == GLFW_PRESS) {
-            schedule<MouseButtonPressEvent>(glfw_window, MouseButton(button), KeyModifiers(modifiers));
-        } else {
-            NOTF_ASSERT(action == GLFW_RELEASE);
-            schedule<MouseButtonReleaseEvent>(glfw_window, MouseButton(button), KeyModifiers(modifiers));
-        }
+        //        if (action == GLFW_PRESS) {
+        //            schedule<MouseButtonPressEvent>(glfw_window, MouseButton(button), KeyModifiers(modifiers));
+        //        } else {
+        //            NOTF_ASSERT(action == GLFW_RELEASE);
+        //            schedule<MouseButtonReleaseEvent>(glfw_window, MouseButton(button), KeyModifiers(modifiers));
+        //        }
     }
 
     /// Called when the user moves the mouse inside a Window.
@@ -110,19 +107,19 @@ struct GlfwEventHandler {
     /// @param x            X coordinate of the cursor in Window coordinates.
     /// @param y            Y coordinate of the cursor in Window coordinates.
     static void on_cursor_move(GLFWwindow* glfw_window, const double x, const double y) {
-        schedule<MouseMoveEvent>(glfw_window, V2d{x, y});
+        //        schedule<MouseMoveEvent>(glfw_window, V2d{x, y});
     }
 
     /// Called when the cursor enters or exists the client area of a Window.
     /// @param glfw_window  The GLFWwindow targeted by the event
     /// @param entered      Is GLFW_TRUE if the cursor entered the window's client area, or GLFW_FALSE if it left it.
     static void on_cursor_entered(GLFWwindow* glfw_window, int entered) {
-        if (entered == GLFW_TRUE) {
-            schedule<WindowCursorEnteredEvent>(glfw_window);
-        } else {
-            NOTF_ASSERT(entered == GLFW_FALSE);
-            schedule<WindowCursorExitedEvent>(glfw_window);
-        }
+        //        if (entered == GLFW_TRUE) {
+        //            schedule<WindowCursorEnteredEvent>(glfw_window);
+        //        } else {
+        //            NOTF_ASSERT(entered == GLFW_FALSE);
+        //            schedule<WindowCursorExitedEvent>(glfw_window);
+        //        }
     }
 
     /// Called when the user scrolls inside the Window.
@@ -130,7 +127,7 @@ struct GlfwEventHandler {
     /// @param x            Horizontal scroll delta in screen coordinates.
     /// @param y            Vertical scroll delta in screen coordinates.
     static void on_scroll(GLFWwindow* glfw_window, const double x, const double y) {
-        schedule<MouseScrollEvent>(glfw_window, V2d{x, y});
+        //        schedule<MouseScrollEvent>(glfw_window, V2d{x, y});
     }
 
     /// Called by GLFW when a key is pressed, repeated or released.
@@ -141,14 +138,14 @@ struct GlfwEventHandler {
     /// @param modifiers    Modifier key bitmask.
     static void
     on_token_key(GLFWwindow* glfw_window, const int key, const int scancode, const int action, const int modifiers) {
-        if (action == GLFW_PRESS) {
-            schedule<KeyPressEvent>(glfw_window, to_key(key), scancode, KeyModifiers(modifiers));
-        } else if (action == GLFW_RELEASE) {
-            schedule<KeyReleaseEvent>(glfw_window, to_key(key), scancode, KeyModifiers(modifiers));
-        } else {
-            NOTF_ASSERT(action == GLFW_REPEAT);
-            schedule<KeyRepeatEvent>(glfw_window, to_key(key), scancode, KeyModifiers(modifiers));
-        }
+        //        if (action == GLFW_PRESS) {
+        //            schedule<KeyPressEvent>(glfw_window, to_key(key), scancode, KeyModifiers(modifiers));
+        //        } else if (action == GLFW_RELEASE) {
+        //            schedule<KeyReleaseEvent>(glfw_window, to_key(key), scancode, KeyModifiers(modifiers));
+        //        } else {
+        //            NOTF_ASSERT(action == GLFW_REPEAT);
+        //            schedule<KeyRepeatEvent>(glfw_window, to_key(key), scancode, KeyModifiers(modifiers));
+        //        }
     }
 
     /// Called by GLFW when an unicode code point was generated.
@@ -156,7 +153,7 @@ struct GlfwEventHandler {
     /// @param codepoint    Unicode code point generated by the event as native endian UTF-32.
     /// @param modifiers    Modifier key bitmask.
     static void on_char_input(GLFWwindow* glfw_window, const uint codepoint) {
-        schedule<CharInputEvent>(glfw_window, codepoint);
+        //        schedule<CharInputEvent>(glfw_window, codepoint);
     }
 
     /// Called by GLFW when the user presses a key combination with at least one modifier key.
@@ -164,7 +161,7 @@ struct GlfwEventHandler {
     /// @param codepoint    Unicode code point generated by the event as native endian UTF-32.
     /// @param modifiers    Modifier key bitmask.
     static void on_shortcut(GLFWwindow* glfw_window, const uint codepoint, const int modifiers) {
-        schedule<ShortcutEvent>(glfw_window, codepoint, KeyModifiers(modifiers));
+        //        schedule<ShortcutEvent>(glfw_window, codepoint, KeyModifiers(modifiers));
     }
 
     /// Called when the Window was moved.
@@ -172,7 +169,7 @@ struct GlfwEventHandler {
     /// @param x            The new x-coordinate of the top-left corner of the Window, in screen coordinates.
     /// @param y            The new y-coordinate of the top-left corner of the Window, in screen coordinates.
     static void on_window_move(GLFWwindow* glfw_window, const int x, const int y) {
-        schedule<WindowMoveEvent>(glfw_window, V2i{x, y});
+        //        schedule<WindowMoveEvent>(glfw_window, V2i{x, y});
     }
 
     /// Called when the Window is resized.
@@ -180,7 +177,7 @@ struct GlfwEventHandler {
     /// @param width        New width of the Window.
     /// @param height       New height of the Window.
     static void on_window_resize(GLFWwindow* glfw_window, const int width, const int height) {
-        schedule<WindowResizeEvent>(glfw_window, Size2i{width, height});
+        //        schedule<WindowResizeEvent>(glfw_window, Size2i{width, height});
     }
 
     /// Called when the Window's framebuffer is resized.
@@ -188,35 +185,37 @@ struct GlfwEventHandler {
     /// @param width        New width of the framebuffer.
     /// @param height       New height of the framebuffer.
     static void on_framebuffer_resize(GLFWwindow* glfw_window, const int width, const int height) {
-        schedule<WindowResolutionChangeEvent>(glfw_window, Size2i{width, height});
+        //        schedule<WindowResolutionChangeEvent>(glfw_window, Size2i{width, height});
     }
 
     /// Called when the Window is refreshed by the OS.
     /// @param glfw_window  The GLFWwindow targeted by the event.
-    static void on_window_refresh(GLFWwindow* glfw_window) { schedule<WindowRefreshEvent>(glfw_window); }
+    static void on_window_refresh(GLFWwindow* glfw_window) {
+        //        schedule<WindowRefreshEvent>(glfw_window);
+    }
 
     /// Called when the Window has gained/lost OS focus.
     /// @param glfw_window  The GLFWwindow targeted by the event.
     /// @param kind         Is GLFW_TRUE if the window gained focus, or GLFW_FALSE if it lost it.
     static void on_window_focus(GLFWwindow* glfw_window, const int kind) {
-        if (kind == GLFW_TRUE) {
-            schedule<WindowFocusGainEvent>(glfw_window);
-        } else {
-            NOTF_ASSERT(kind == GLFW_FALSE);
-            schedule<WindowFocusLostEvent>(glfw_window);
-        }
+        //        if (kind == GLFW_TRUE) {
+        //            schedule<WindowFocusGainEvent>(glfw_window);
+        //        } else {
+        //            NOTF_ASSERT(kind == GLFW_FALSE);
+        //            schedule<WindowFocusLostEvent>(glfw_window);
+        //        }
     }
 
     /// Called when the Window is minimzed.
     /// @param glfw_window  The GLFWwindow targeted by the event.
     /// @param kind         Is GLFW_TRUE when the Window was minimized, or GLFW_FALSE if it was restored.
     static void on_window_minimize(GLFWwindow* glfw_window, const int kind) {
-        if (kind == GLFW_TRUE) {
-            schedule<WindowMinimizeEvent>(glfw_window);
-        } else {
-            NOTF_ASSERT(kind == GLFW_FALSE);
-            schedule<WindowRestoredEvent>(glfw_window);
-        }
+        //        if (kind == GLFW_TRUE) {
+        //            schedule<WindowMinimizeEvent>(glfw_window);
+        //        } else {
+        //            NOTF_ASSERT(kind == GLFW_FALSE);
+        //            schedule<WindowRestoredEvent>(glfw_window);
+        //        }
     }
 
     /// Called by GLFW when the user drops one or more files into the Window.
@@ -224,12 +223,15 @@ struct GlfwEventHandler {
     /// @param count        Number of dropped files.
     /// @param paths        The UTF-8 encoded file and/or directory path names.
     static void on_file_drop(GLFWwindow* glfw_window, const int count, const char** paths) {
-        schedule<WindowFileDropEvent>(glfw_window, static_cast<uint>(count), paths);
+        //        schedule<WindowFileDropEvent>(glfw_window, static_cast<uint>(count), paths);
     }
 
     /// Called by GLFW, if the user requested a window to be closed.
     /// @param glfw_window  GLFW Window to close.
-    static void on_window_close(GLFWwindow* glfw_window) { schedule<WindowCloseEvent>(glfw_window); }
+    static void on_window_close(GLFWwindow* glfw_window) {
+        // TODO: ask the Window if it should really be closed; ignore and unset the flag if not
+        schedule([window = to_window_handle(glfw_window)] { window.get_slot<Window::to_close>().call(); });
+    }
 
     /// Called by GLFW, if the user connects or disconnects a monitor.
     /// @param glfw_monitor The monitor that was connected or disconnected.
@@ -248,11 +250,105 @@ NOTF_OPEN_NAMESPACE
 
 // the application ================================================================================================== //
 
-TheApplication::Application::Application(Arguments args)
-    : m_arguments(std::move(args))
-    , m_shared_context(nullptr, detail::window_deleter)
-    , m_windows(nullptr)
-    , m_scheduler(nullptr) {
+TheApplication::Application::Application(const Arguments& args) { _startup(args); }
+
+TheApplication::Application::~Application() { _shutdown(); }
+
+int TheApplication::Application::exec() {
+    if (State actual = State::READY; !(m_state.compare_exchange_strong(actual, State::RUNNING))) {
+        NOTF_THROW(StartupError, "Cannot call `exec` on an already running Application");
+    }
+    NOTF_LOG_TRACE("Starting main loop");
+
+    // loop until there are no more windows open...
+    while (!m_windows->empty()) {
+
+        // ... or the user has initiated a forced shutdown
+        if (m_state == State::SHUTDOWN) { break; }
+
+        // wait for the next event or the next time to fire an animation frame
+        glfwWaitEvents();
+
+        // if any window has been closed, we need to find and destroy it
+        if (bool expected = true; m_has_windows_to_close.compare_exchange_strong(expected, false)) {
+            NOTF_GUARD(std::lock_guard(m_window_mutex));
+            for (size_t i = 0, end = m_windows->size(); i < end;) {
+                if (glfwWindowShouldClose((*m_windows)[i]->get_glfw_window())) {
+                    std::swap((*m_windows)[i], m_windows->back());
+                    m_windows->pop_back();
+                    --end;
+                } else {
+                    ++i;
+                }
+            }
+        }
+    }
+
+    _shutdown();
+    return EXIT_SUCCESS;
+}
+
+void TheApplication::Application::shutdown() {
+    if (State expected = State::RUNNING; !(m_state.compare_exchange_strong(expected, State::SHUTDOWN))) {
+        glfwPostEmptyEvent();
+    }
+}
+
+void TheApplication::Application::register_window(WindowPtr window) {
+
+    GLFWwindow* glfw_window = window->get_glfw_window();
+    {
+        NOTF_GUARD(std::lock_guard(m_window_mutex));
+        NOTF_ASSERT(!contains(*m_windows, window));
+        m_windows->emplace_back(std::move(window));
+    }
+
+    // register input callbacks
+    glfwSetMouseButtonCallback(glfw_window, GlfwEventHandler::on_mouse_button);
+    glfwSetCursorPosCallback(glfw_window, GlfwEventHandler::on_cursor_move);
+    glfwSetCursorEnterCallback(glfw_window, GlfwEventHandler::on_cursor_entered);
+    glfwSetScrollCallback(glfw_window, GlfwEventHandler::on_scroll);
+    glfwSetKeyCallback(glfw_window, GlfwEventHandler::on_token_key);
+    glfwSetCharCallback(glfw_window, GlfwEventHandler::on_char_input);
+    glfwSetCharModsCallback(glfw_window, GlfwEventHandler::on_shortcut);
+
+    // register window callbacks
+    glfwSetWindowPosCallback(glfw_window, GlfwEventHandler::on_window_move);
+    glfwSetWindowSizeCallback(glfw_window, GlfwEventHandler::on_window_resize);
+    glfwSetFramebufferSizeCallback(glfw_window, GlfwEventHandler::on_framebuffer_resize);
+    glfwSetWindowRefreshCallback(glfw_window, GlfwEventHandler::on_window_refresh);
+    glfwSetWindowFocusCallback(glfw_window, GlfwEventHandler::on_window_focus);
+    glfwSetDropCallback(glfw_window, GlfwEventHandler::on_file_drop);
+    glfwSetWindowIconifyCallback(glfw_window, GlfwEventHandler::on_window_minimize);
+    glfwSetWindowCloseCallback(glfw_window, GlfwEventHandler::on_window_close);
+}
+
+void TheApplication::Application::unregister_window(WindowPtr window) {
+
+    // disconnect all callbacks
+    GLFWwindow* glfw_window = window->get_glfw_window();
+    glfwSetMouseButtonCallback(glfw_window, nullptr);
+    glfwSetCursorPosCallback(glfw_window, nullptr);
+    glfwSetCursorEnterCallback(glfw_window, nullptr);
+    glfwSetScrollCallback(glfw_window, nullptr);
+    glfwSetKeyCallback(glfw_window, nullptr);
+    glfwSetCharCallback(glfw_window, nullptr);
+    glfwSetCharModsCallback(glfw_window, nullptr);
+    glfwSetWindowPosCallback(glfw_window, nullptr);
+    glfwSetWindowSizeCallback(glfw_window, nullptr);
+    glfwSetFramebufferSizeCallback(glfw_window, nullptr);
+    glfwSetWindowRefreshCallback(glfw_window, nullptr);
+    glfwSetWindowFocusCallback(glfw_window, nullptr);
+    glfwSetDropCallback(glfw_window, nullptr);
+    glfwSetWindowIconifyCallback(glfw_window, nullptr);
+    glfwSetWindowCloseCallback(glfw_window, nullptr);
+
+    m_has_windows_to_close.store(true);
+    glfwPostEmptyEvent();
+}
+
+void TheApplication::Application::_startup(const Arguments& args) {
+    m_arguments = args;
 
     // initialize GLFW
     glfwSetErrorCallback(GlfwEventHandler::on_error);
@@ -283,7 +379,7 @@ TheApplication::Application::Application(Arguments args)
     glfwSetJoystickCallback(GlfwEventHandler::on_joystick_change);
 
     // initialize other members
-    m_windows = std::make_unique<std::vector<WindowHandle>>();
+    m_windows = std::make_unique<decltype(m_windows)::element_type>();
     m_scheduler = std::make_unique<Scheduler>();
 
     // log application header
@@ -296,106 +392,30 @@ TheApplication::Application::Application(Arguments args)
     NOTF_LOG_INFO("GLFW version: {}", glfwGetVersionString());
 }
 
-TheApplication::Application::~Application() { _shutdown(); }
-
-int TheApplication::Application::exec() {
-    if (State actual = State::READY; !(m_state.compare_exchange_strong(actual, State::RUNNING))) {
-        NOTF_THROW(StartupError, "Cannot call `exec` on an already running Application");
-    }
-    NOTF_LOG_TRACE("Starting main loop");
-
-    // loop until there are no more windows open...
-    while (!m_windows->empty()) {
-
-        // ... or the user has initiated a forced shutdown
-        if (m_state == State::SHUTDOWN) { break; }
-
-        // wait for the next event or the next time to fire an animation frame
-        glfwWaitEvents();
-    }
-
-    _shutdown();
-    return EXIT_SUCCESS;
-}
-
-void TheApplication::Application::shutdown() {
-    if (State expected = State::RUNNING; !(m_state.compare_exchange_strong(expected, State::SHUTDOWN))) {
-        glfwPostEmptyEvent();
-    }
-}
-
-void TheApplication::Application::register_window(WindowHandle window) {
-    NOTF_ASSERT(!contains(*m_windows, window));
-
-    GLFWwindow* glfw_window = WindowHandle::AccessFor<TheApplication>::get_glfw_window(window);
-    m_windows->emplace_back(std::move(window));
-
-    // register all glfw callbacks
-    // input callbacks
-    glfwSetMouseButtonCallback(glfw_window, GlfwEventHandler::on_mouse_button);
-    glfwSetCursorPosCallback(glfw_window, GlfwEventHandler::on_cursor_move);
-    glfwSetCursorEnterCallback(glfw_window, GlfwEventHandler::on_cursor_entered);
-    glfwSetScrollCallback(glfw_window, GlfwEventHandler::on_scroll);
-    glfwSetKeyCallback(glfw_window, GlfwEventHandler::on_token_key);
-    glfwSetCharCallback(glfw_window, GlfwEventHandler::on_char_input);
-    glfwSetCharModsCallback(glfw_window, GlfwEventHandler::on_shortcut);
-
-    // window callbacks
-    glfwSetWindowPosCallback(glfw_window, GlfwEventHandler::on_window_move);
-    glfwSetWindowSizeCallback(glfw_window, GlfwEventHandler::on_window_resize);
-    glfwSetFramebufferSizeCallback(glfw_window, GlfwEventHandler::on_framebuffer_resize);
-    glfwSetWindowRefreshCallback(glfw_window, GlfwEventHandler::on_window_refresh);
-    glfwSetWindowFocusCallback(glfw_window, GlfwEventHandler::on_window_focus);
-    glfwSetDropCallback(glfw_window, GlfwEventHandler::on_file_drop);
-    glfwSetWindowIconifyCallback(glfw_window, GlfwEventHandler::on_window_minimize);
-    glfwSetWindowCloseCallback(glfw_window, GlfwEventHandler::on_window_close);
-}
-
-void TheApplication::Application::unregister_window(WindowHandle window) {
-    // remove the window
-    auto itr = std::find(m_windows->begin(), m_windows->end(), window);
-    if (itr == m_windows->end()) {
-        return;
-    } else {
-        m_windows->erase(itr);
-    }
-
-    // disconnect the window callbacks
-    GLFWwindow* glfw_window = WindowHandle::AccessFor<TheApplication>::get_glfw_window(window);
-    glfwSetMouseButtonCallback(glfw_window, nullptr);
-    glfwSetCursorPosCallback(glfw_window, nullptr);
-    glfwSetCursorEnterCallback(glfw_window, nullptr);
-    glfwSetScrollCallback(glfw_window, nullptr);
-    glfwSetKeyCallback(glfw_window, nullptr);
-    glfwSetCharCallback(glfw_window, nullptr);
-    glfwSetCharModsCallback(glfw_window, nullptr);
-    glfwSetWindowPosCallback(glfw_window, nullptr);
-    glfwSetWindowSizeCallback(glfw_window, nullptr);
-    glfwSetFramebufferSizeCallback(glfw_window, nullptr);
-    glfwSetWindowRefreshCallback(glfw_window, nullptr);
-    glfwSetWindowFocusCallback(glfw_window, nullptr);
-    glfwSetDropCallback(glfw_window, nullptr);
-    glfwSetWindowIconifyCallback(glfw_window, nullptr);
-    glfwSetWindowCloseCallback(glfw_window, nullptr);
-}
-
 void TheApplication::Application::_shutdown() {
     State state = m_state;
     if ((state != State::EMPTY) && (m_state.compare_exchange_strong(state, State::EMPTY))) {
         NOTF_LOG_TRACE("Application shutdown");
-        m_windows->clear();
-        glfwTerminate();
+
+        m_scheduler.reset();
         m_shared_context.reset();
+
+        { // force close all windows
+            NOTF_GUARD(std::lock_guard(m_window_mutex));
+            m_windows->clear();
+        }
+
+        glfwTerminate();
     }
 }
 
 // accessors ======================================================================================================== //
 
-void Accessor<TheApplication, Window>::register_window(WindowHandle window) {
+void Accessor<TheApplication, Window>::register_window(WindowPtr window) {
     TheApplication::_get().register_window(std::move(window));
 }
 
-void Accessor<TheApplication, Window>::unregister_window(WindowHandle window) {
+void Accessor<TheApplication, Window>::unregister_window(WindowPtr window) {
     TheApplication::_get().unregister_window(std::move(window));
 }
 

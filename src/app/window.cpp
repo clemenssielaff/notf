@@ -120,7 +120,7 @@ Window::Window(valid_ptr<Node*> parent, Settings settings)
     _set_property_callback<monitor>([&](int& new_monitor) { return _on_monitor_change(new_monitor); });
 
     // connect slots
-    _get_slot<to_close>()->subscribe(Trigger([&]() {}));
+    m_pipe_to_close = make_pipeline(_get_slot<to_close>() | Trigger([&]() { _close(); }));
     //    NOTF_LOG_INFO("Created Window \"{}\" using OpenGl version: {}", get<title>(), glGetString(GL_VERSION));
 }
 
@@ -141,22 +141,11 @@ WindowHandle Window::create(Settings settings) {
 void Window::_close() {
     NOTF_LOG_TRACE("Closing Window \"{}\"", get<title>());
 
-    // disconnect the window callbacks (blocks until all queued events are handled)
-    //    EventManager::Access<Window>::remove_window(TheApplication::get().get_event_manager(), *this);
+    // delete this Node
+    RootNode::AccessFor<Window>::remove_window(*TheGraph::AccessFor<Window>::get_root_node(), this);
 
-    // delete all child Nodes
-    _clear_children();
-
-    // destroy the graphics context
-    //    const auto current_guard = m_graphics_context->make_current();
-    //    GraphicsContext::Access<Window>::shutdown(*m_graphics_context);
-    //    m_graphics_context.reset();
-
-    // remove yourself from the Application
+    // unregister from the application and event handling
     TheApplication::AccessFor<Window>::unregister_window(std::static_pointer_cast<Window>(shared_from_this()));
-
-    // close the Window
-    m_glfw_window.reset();
 }
 
 void Window::_validate_settings(Settings& settings) {

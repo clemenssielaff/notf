@@ -4,29 +4,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-// mouse adapter ================================================================================================= //
-
-/// All mouse buttons recognized by GLFW.
-/// Can be used as indices for a ButtonStateSet object.
-enum class MouseButton {
-    __first = 0,
-    BUTTON_1 = __first,
-    BUTTON_2,
-    BUTTON_3,
-    BUTTON_4,
-    BUTTON_5,
-    BUTTON_6,
-    BUTTON_7,
-    BUTTON_8,
-    NO_BUTTON,
-    LEFT = BUTTON_1,
-    RIGHT = BUTTON_2,
-    MIDDLE = BUTTON_3,
-    INVALID = 255,
-    __last = BUTTON_8,
-};
-
-// keyboard adapter ================================================================================================= //
+// keyboard ========================================================================================================= //
 
 /// Modifier keys.
 /// If you hold down more than one key of the same modifier (both shift-keys, for example),
@@ -169,5 +147,44 @@ enum class Key : unsigned char {
 
 /// Converts a GLFW key integer into a Key enum value.
 Key to_key(int key);
+
+/// Keyboard input.
+struct KeyStroke {
+    const Key key;               /// Key pressed (as determined by GLFW)
+    const int scancode;          /// Sytem scancode, use to identify keys not recognized by GLFW.
+    const KeyModifiers modifier; /// Modifiers pressed while the stroke was generated.
+};
+
+struct CharInput {
+    const char32_t codepoint;   /// Character input
+    const KeyModifiers modifiers;
+};
+
+// mouse ============================================================================================================ //
+
+/// All mouse buttons recognized by GLFW.
+/// Can be used as indices for a ButtonStateSet object.
+enum class MouseButton {
+    __first = 0,
+    BUTTON_1 = __first,
+    BUTTON_2,
+    BUTTON_3,
+    BUTTON_4,
+    BUTTON_5,
+    BUTTON_6,
+    BUTTON_7,
+    BUTTON_8,
+    NO_BUTTON,
+    LEFT = BUTTON_1,
+    RIGHT = BUTTON_2,
+    MIDDLE = BUTTON_3,
+    INVALID = 255,
+    __last = BUTTON_8,
+};
+
+struct MouseClick {
+    const MouseButton button;
+    const KeyModifiers modifier;
+};
 
 NOTF_CLOSE_NAMESPACE

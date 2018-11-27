@@ -219,7 +219,7 @@ public:
     /// @returns        Handle to the requested Property.
     /// @throws         NameError / TypeError
     template<class T>
-    PropertyHandle<T> get_property(const std::string& name) {
+    PropertyHandle<T> get_property(const std::string& name) const {
         return PropertyHandle(_try_get_property<T>(name));
     }
 
@@ -231,7 +231,7 @@ public:
     /// @returns        The requested Slot.
     /// @throws         NameError / TypeError
     template<class T>
-    SlotHandle<T> get_slot(const std::string& name) {
+    SlotHandle<T> get_slot(const std::string& name) const {
         return _try_get_slot<T>(name);
     }
 
@@ -240,7 +240,7 @@ public:
     /// @returns        The requested Signal.
     /// @throws         NameError / TypeError
     template<class T>
-    SignalHandle<T> get_signal(const std::string& name) {
+    SignalHandle<T> get_signal(const std::string& name) const {
         return _try_get_signal<T>(name);
     }
 
@@ -253,7 +253,7 @@ public:
     void set_name(const std::string& name);
 
     /// The parent of this Node.
-    NodeHandle get_parent();
+    NodeHandle get_parent() const;
 
     /// @{
     /// Tests, if this Node is a descendant of the given ancestor.
@@ -272,12 +272,12 @@ public:
     /// If the handle passed in is expired, the returned handle will also be expired.
     /// @param other            Other Node to find the common ancestor for.
     /// @throws HierarchyError  If there is no common ancestor.
-    NodeHandle get_common_ancestor(const NodeHandle& other);
+    NodeHandle get_common_ancestor(const NodeHandle& other) const;
 
     /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
     /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
     template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
-    NodeHandle get_first_ancestor() {
+    NodeHandle get_first_ancestor() const {
         Node* next = _get_parent();
         if (auto* result = dynamic_cast<T*>(next)) { return NodeHandle(result->shared_from_this()); }
         while (next != next->_get_parent()) {
@@ -295,7 +295,7 @@ public:
     /// @param index    Index of the Node.
     /// @returns        The requested child Node.
     /// @throws OutOfBounds    If the index is out-of-bounds or the child Node is of the wrong type.
-    NodeHandle get_child(size_t index);
+    NodeHandle get_child(size_t index) const;
 
     // z-order ----------------------------------------------------------------
 
@@ -353,7 +353,7 @@ protected: // for all subclasses
     /// @returns        The requested Slot.
     /// @throws         NameError / TypeError
     template<class T>
-    typename Slot<T>::publisher_t _get_slot(const std::string& name) {
+    typename Slot<T>::publisher_t _get_slot(const std::string& name) const {
         return _try_get_slot<T>(name)->get_publisher();
     }
 
@@ -430,15 +430,15 @@ protected: // for direct subclasses only
 private:
     /// Implementation specific query of a Property, returns an empty pointer if no Property by the given name is found.
     /// @param name     Node-unique name of the Property.
-    virtual AnyPropertyPtr _get_property_impl(const std::string& /*name*/) = 0;
+    virtual AnyPropertyPtr _get_property_impl(const std::string& /*name*/) const = 0;
 
     /// Implementation specific query of a Slot, returns an empty pointer if no Slot by the given name is found.
     /// @param name     Node-unique name of the Slot.
-    virtual AnySlot* _get_slot_impl(const std::string& /*name*/) = 0;
+    virtual AnySlot* _get_slot_impl(const std::string& /*name*/) const = 0;
 
     /// Implementation specific query of a Signal, returns an empty pointer if no Signal by the given name is found.
     /// @param name     Node-unique name of the Signal.
-    virtual AnySignalPtr _get_signal_impl(const std::string& /*name*/) = 0;
+    virtual AnySignalPtr _get_signal_impl(const std::string& /*name*/) const = 0;
 
     /// Calculates the combined hash value of all Properties.
     virtual size_t _calculate_property_hash(size_t result = detail::version_hash()) const = 0;
@@ -446,15 +446,10 @@ private:
     /// Removes all modified data from all Properties.
     virtual void _clear_modified_properties() = 0;
 
-    /// @{
     /// Access to the parent of this Node.
     /// Never creates a modified copy.
     /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
-    const Node* _get_parent(std::thread::id thread_id = std::this_thread::get_id()) const;
-    Node* _get_parent(const std::thread::id thread_id = std::this_thread::get_id()) {
-        return const_cast<Node*>(const_cast<const Node*>(this)->_get_parent(thread_id));
-    }
-    /// @}
+    Node* _get_parent(std::thread::id thread_id = std::this_thread::get_id()) const;
 
     /// Changes the parent of this Node by first adding it to the new parent and then removing it from its old one.
     /// @param new_parent_handle    New parent of this Node. If it is the same as the old, this method does nothing.
@@ -468,7 +463,7 @@ private:
     /// @returns        Handle to the requested Property.
     /// @throws         NameError / TypeError
     template<class T>
-    PropertyPtr<T> _try_get_property(const std::string& name) {
+    PropertyPtr<T> _try_get_property(const std::string& name) const {
         AnyPropertyPtr property = _get_property_impl(name);
         if (!property) { NOTF_THROW(NameError, "Node \"{}\" has no Property called \"{}\"", get_name(), name); }
 
@@ -486,7 +481,7 @@ private:
     /// @returns        The requested Slot.
     /// @throws         NameError / TypeError
     template<class T>
-    Slot<T>* _try_get_slot(const std::string& name) {
+    Slot<T>* _try_get_slot(const std::string& name) const {
         AnySlot* any_slot = _get_slot_impl(name);
         if (!any_slot) { NOTF_THROW(NameError, "Node \"{}\" has no Slot called \"{}\"", get_name(), name); }
 
@@ -504,7 +499,7 @@ private:
     /// @returns        The requested Signal.
     /// @throws         NameError / TypeError
     template<class T>
-    SignalPtr<T> _try_get_signal(const std::string& name) {
+    SignalPtr<T> _try_get_signal(const std::string& name) const {
         AnySignalPtr any_signal = _get_signal_impl(name);
         if (!any_signal) { NOTF_THROW(NameError, "Node \"{}\" has no Signal called \"{}\"", get_name(), name); }
 

@@ -227,11 +227,11 @@ public:
     /// Returns a correctly typed Handle to a CompileTimeProperty or void (which doesn't compile).
     /// @param name     Name of the requested Property.
     template<char... Cs, size_t I = _get_property_index(StringType<Cs...>{})>
-    constexpr auto get_property(StringType<Cs...>) {
+    constexpr auto get_property(StringType<Cs...>) const {
         return PropertyHandle<typename property_t<I>::value_t>(std::get<I>(m_properties));
     }
     template<const StringConst& name>
-    constexpr auto get_property() {
+    constexpr auto get_property() const {
         return get_property(make_string_type<name>());
     }
     /// @}
@@ -247,11 +247,11 @@ public:
     /// Returns the requested Slot or void (which doesn't compile).
     /// @param name     Name of the requested Slot.
     template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{})>
-    constexpr auto get_slot(StringType<Cs...>) {
+    constexpr auto get_slot(StringType<Cs...>) const {
         return SlotHandle(*std::get<I>(m_slots).get());
     }
     template<const StringConst& name>
-    constexpr auto get_slot() {
+    constexpr auto get_slot() const {
         return get_slot(make_string_type<name>());
     }
     /// @}
@@ -260,11 +260,11 @@ public:
     /// Returns the requested Signal or void (which doesn't compile).
     /// @param name     Name of the requested Signal.
     template<char... Cs, size_t I = _get_signal_index(StringType<Cs...>{})>
-    constexpr auto get_signal(StringType<Cs...>) {
+    constexpr auto get_signal(StringType<Cs...>) const {
         return std::get<I>(m_signals);
     }
     template<const StringConst& name>
-    constexpr auto get_signal() {
+    constexpr auto get_signal() const {
         return get_signal(make_string_type<name>());
     }
     /// @}
@@ -296,11 +296,11 @@ protected:
     /// Internal access to a Slot of this Node.
     /// @param name     Name of the requested Property.
     template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{})>
-    constexpr auto _get_slot(StringType<Cs...>) {
+    constexpr auto _get_slot(StringType<Cs...>) const {
         return std::get<I>(m_slots)->get_publisher();
     }
     template<const StringConst& name>
-    constexpr auto _get_slot() {
+    constexpr auto _get_slot() const {
         return _get_slot(make_string_type<name>());
     }
     /// @}
@@ -329,9 +329,11 @@ protected:
 private:
     /// @{
     /// Implementation specific query of a Property.
-    AnyPropertyPtr _get_property_impl(const std::string& name) final { return _get_property_ct(hash_string(name)); }
+    AnyPropertyPtr _get_property_impl(const std::string& name) const final {
+        return _get_property_ct(hash_string(name));
+    }
     template<size_t I = 0>
-    AnyPropertyPtr _get_property_ct(const size_t hash_value) {
+    AnyPropertyPtr _get_property_ct(const size_t hash_value) const {
         if constexpr (I < std::tuple_size_v<Properties>) {
             if (property_t<I>::get_const_name().get_hash() == hash_value) {
                 return std::static_pointer_cast<AnyProperty>(std::get<I>(m_properties));
@@ -347,9 +349,9 @@ private:
     /// @{
     /// Implementation specific query of a Slot, returns an empty pointer if no Slot by the given name is found.
     /// @param name     Node-unique name of the Slot.
-    AnySlot* _get_slot_impl(const std::string& name) final { return _get_slot_ct(hash_string(name)); }
+    AnySlot* _get_slot_impl(const std::string& name) const final { return _get_slot_ct(hash_string(name)); }
     template<size_t I = 0>
-    AnySlot* _get_slot_ct(const size_t hash_value) {
+    AnySlot* _get_slot_ct(const size_t hash_value) const {
         if constexpr (I < std::tuple_size_v<Slots>) {
             if (slot_t<I>::get_const_name().get_hash() == hash_value) {
                 return std::get<I>(m_slots).get();
@@ -365,9 +367,9 @@ private:
     /// @{
     /// Implementation specific query of a Signal, returns an empty pointer if no Signal by the given name is found.
     /// @param name     Node-unique name of the Signal.
-    AnySignalPtr _get_signal_impl(const std::string& name) final { return _get_signal_ct(hash_string(name)); }
+    AnySignalPtr _get_signal_impl(const std::string& name) const final { return _get_signal_ct(hash_string(name)); }
     template<size_t I = 0>
-    AnySignalPtr _get_signal_ct(const size_t hash_value) {
+    AnySignalPtr _get_signal_ct(const size_t hash_value) const {
         if constexpr (I < std::tuple_size_v<Signals>) {
             if (signal_t<I>::get_const_name().get_hash() == hash_value) {
                 return std::get<I>(m_signals);

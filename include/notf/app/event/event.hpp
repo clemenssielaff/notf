@@ -1,72 +1,46 @@
 #pragma once
 
-#include "notf/common/variant.hpp"
+#include "notf/common/thread.hpp"
 
 #include "notf/app/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-// forwards ========================================================================================================= //
-
-struct KeyPressEvent;
-struct KeyRepeatEvent;
-struct KeyReleaseEvent;
-struct CharInputEvent;
-struct ShortcutEvent;
-struct MouseButtonPressEvent;
-struct MouseButtonReleaseEvent;
-struct MouseMoveEvent;
-struct MouseScrollEvent;
-struct WindowCursorEnteredEvent;
-struct WindowCursorExitedEvent;
-struct WindowCloseEvent;
-struct WindowMoveEvent;
-struct WindowResizeEvent;
-struct WindowResolutionChangeEvent;
-struct WindowFocusGainEvent;
-struct WindowFocusLostEvent;
-struct WindowRefreshEvent;
-struct WindowMinimizeEvent;
-struct WindowRestoredEvent;
-struct WindowFileDropEvent;
-
 // any event ======================================================================================================== //
 
-namespace detail {
+class AnyEvent {
 
-template<class...>
-struct wrap_event_types;
-template<class... Ts>
-struct wrap_event_types<std::tuple<Ts...>> {
-    using type = std::variant<std::unique_ptr<Ts>...>;
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// Virtual destructor.
+    virtual ~AnyEvent() = default;
+
+    /// Executes the event function.
+    virtual void run() = 0;
 };
-template<class... Ts>
-using wrap_event_types_t = typename wrap_event_types<std::tuple<Ts...>>::type;
 
-} // namespace detail
+// event ============================================================================================================ //
 
-using AnyEvent = detail::wrap_event_types_t< //
-    KeyPressEvent,                           //
-    KeyRepeatEvent,                          //
-    KeyReleaseEvent,                         //
-    CharInputEvent,                          //
-    ShortcutEvent,                           //
-    MouseButtonPressEvent,                   //
-    MouseButtonReleaseEvent,                 //
-    MouseMoveEvent,                          //
-    MouseScrollEvent,                        //
-    WindowCursorEnteredEvent,                //
-    WindowCursorExitedEvent,                 //
-    WindowCloseEvent,                        //
-    WindowMoveEvent,                         //
-    WindowResizeEvent,                       //
-    WindowResolutionChangeEvent,             //
-    WindowFocusGainEvent,                    //
-    WindowFocusLostEvent,                    //
-    WindowRefreshEvent,                      //
-    WindowMinimizeEvent,                     //
-    WindowRestoredEvent,                     //
-    WindowFileDropEvent                      //
-    >;
+template<class Func>
+class Event : public AnyEvent {
+    static_assert(std::is_invocable_v<Func>, "Events are templated on a callable object without arguments");
+    static_assert(std::is_same_v<std::invoke_result_t<Func>, void>, "Events callables must not return a value");
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// Constructor.
+    /// @param function Event function to execute on the event handler thread.
+    Event(Func&& function) : m_function(std::forward<Func>(function)) {}
+
+    /// Executes the event function.
+    void run() final {
+        NOTF_ASSERT(this_thread::get_kind() == Thread::Kind::EVENT);
+        if (m_function) { std::invoke(m_function); }
+    }
+
+    // fields ---------------------------------------------------------------------------------- //
+private:
+    std::function<void()> m_function;
+};
 
 NOTF_CLOSE_NAMESPACE

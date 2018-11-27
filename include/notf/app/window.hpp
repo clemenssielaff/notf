@@ -170,8 +170,6 @@ struct WindowPolicy {
 
 class Window : public CompileTimeNode<detail::window_properties::WindowPolicy> {
 
-    friend class WindowHandle;
-
     // types ----------------------------------------------------------------------------------- //
 private:
     /// Compile time Node base type.
@@ -219,6 +217,9 @@ public:
     /// @throws Application::initialization_error   When you try to instantiate a Window without an Application.
     static WindowHandle create(Settings settings = {});
 
+    /// Returns the GlfwWindow contained in this Window.
+    GLFWwindow* get_glfw_window() const { return m_glfw_window.get(); }
+
 private:
     /// Closes this Window.
     void _close();
@@ -242,6 +243,9 @@ private:
     /// The GLFW window managed by this Window.
     detail::GlfwWindowPtr m_glfw_window;
 
+    /// Internal Pipes.
+    AnyPipelinePtr m_pipe_to_close;
+
     /// Internal GraphicsContext.
     //    GraphicsContextPtr m_graphics_context;
 };
@@ -249,39 +253,11 @@ private:
 // window handle ==================================================================================================== //
 
 class WindowHandle : public TypedNodeHandle<Window> {
-//    friend class Window;
-
-    friend Accessor<WindowHandle, TheApplication>;
-
-    // types ----------------------------------------------------------------------------------- //
-public:
-    /// Nested `AccessFor<T>` type.
-    NOTF_ACCESS_TYPE(WindowHandle);
 
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor
     WindowHandle(WindowPtr window) : TypedNodeHandle<Window>(std::move(window)) {}
-
-    /// The Window's title.
-    std::string get_title() const { return _get_node()->get<Window::title>(); }
-
-    /// Closes the Window.
-    void close() { _get_node()->get_slot<Window::to_close>().call(); }
-
-private:
-    /// Returns the GlfwWindow contained in a Window.
-    GLFWwindow* _get_glfw_window() { return _get_node()->m_glfw_window.get(); }
-};
-
-// accessors ======================================================================================================== //
-
-template<>
-class Accessor<WindowHandle, TheApplication> {
-    friend TheApplication;
-
-    /// Returns the GlfwWindow contained in a Window.
-    static GLFWwindow* get_glfw_window(WindowHandle& window) { return window._get_glfw_window(); }
 };
 
 NOTF_CLOSE_NAMESPACE

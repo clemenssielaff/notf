@@ -1,12 +1,12 @@
 #pragma once
 
 #include "notf/meta/pointer.hpp"
-#include "notf/meta/stringtype.hpp"
 
 #include "notf/common/mutex.hpp"
 #include "notf/common/uuid.hpp"
 
-#include "notf/app/fwd.hpp"
+#include "notf/app/signal.hpp"
+#include "notf/app/slot.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -82,6 +82,8 @@ public:
     /// Implicit conversion to an (untyped) NodeHandle.
     operator NodeHandle() { return NodeHandle(std::static_pointer_cast<Node>(m_node.lock())); }
 
+    // inspection -------------------------------------------------------------
+
     /// @{
     /// Checks whether the NodeHandle is still valid or not.
     /// Note that there is a non-zero chance that a Handle is expired when you use it, even if `is_expired` just
@@ -104,28 +106,7 @@ public:
     /// Is not guaranteed to be unique, but collisions are unlikely with 100^4 possibilities.
     std::string get_default_name() const { return _get_node()->get_default_name(); }
 
-    /// Run time access to a Property of this Node.
-    /// @param name     Node-unique name of the Property.
-    /// @returns        Handle to the requested Property.
-    /// @throws         NameError / TypeError
-    template<class T>
-    PropertyHandle<T> get_property(const std::string& name) {
-        return _get_node()->template get_property<T>(name);
-    }
-
-    /// @{
-    /// Returns a correctly typed Handle to a CompileTimeProperty or void (which doesn't compile).
-    /// @param name     Name of the requested Property.
-    /// @returns        Typed handle to the requested Property.
-    template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    auto get_property(StringType<Cs...> name) {
-        return this->_get_node()->get_property(std::forward<decltype(name)>(name));
-    }
-    template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    constexpr auto get_property() {
-        return this->_get_node()->template get_property<name>();
-    }
-    /// @}
+    // properties -------------------------------------------------------------
 
     /// The value of a Property of this Node.
     /// If you only care about the current value of a Property this method is more efficient than
@@ -136,6 +117,15 @@ public:
     template<class T>
     const T& get(const std::string& name) const {
         return _get_node()->template get<T>(name);
+    }
+
+    /// Run time access to a Property of this Node.
+    /// @param name     Node-unique name of the Property.
+    /// @returns        Handle to the requested Property.
+    /// @throws         NameError / TypeError
+    template<class T>
+    PropertyHandle<T> get_property(const std::string& name) {
+        return _get_node()->template get_property<T>(name);
     }
 
     /// @{
@@ -149,6 +139,69 @@ public:
     template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
     constexpr auto get() const {
         return this->_get_node()->template get<name>();
+    }
+    /// @}
+
+    /// @{
+    /// Returns a correctly typed Handle to a CompileTimeProperty or void (which doesn't compile).
+    /// @param name     Name of the requested Property.
+    /// @returns        Typed handle to the requested Property.
+    template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    auto get_property(StringType<Cs...> name) const {
+        return this->_get_node()->get_property(std::forward<decltype(name)>(name));
+    }
+    template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    constexpr auto get_property() const {
+        return this->_get_node()->template get_property<name>();
+    }
+    /// @}
+
+    // signals / slots --------------------------------------------------------
+
+    /// Run time access to the subscriber of a Slot of this Node.
+    /// Use to connect Pipelines from the outside to the Node.
+    /// @param name     Node-unique name of the Slot.
+    /// @returns        The requested Slot.
+    /// @throws         NameError / TypeError
+    template<class T>
+    SlotHandle<T> get_slot(const std::string& name) const {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        return _get_node()->template _try_get_slot<T>(name);
+    }
+
+    /// Run time access to a Signal of this Node.
+    /// @param name     Node-unique name of the Signal.
+    /// @returns        The requested Signal.
+    /// @throws         NameError / TypeError
+    template<class T>
+    SignalHandle<T> get_signal(const std::string& name) const {
+        NOTF_GUARD(std::lock_guard(_get_graph_mutex()));
+        return _get_node()->template _try_get_signal<T>(name);
+    }
+
+    /// @{
+    /// Returns the requested Slot or void (which doesn't compile).
+    /// @param name     Name of the requested Slot.
+    template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    constexpr auto get_slot(StringType<Cs...> name) const {
+        return this->_get_node()->get_slot(std::forward<decltype(name)>(name));
+    }
+    template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    constexpr auto get_slot() const {
+        return get_slot(make_string_type<name>());
+    }
+    /// @}
+
+    /// @{
+    /// Returns the requested Signal or void (which doesn't compile).
+    /// @param name     Name of the requested Signal.
+    template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    constexpr auto get_signal(StringType<Cs...> name) const {
+        return this->_get_node()->get_signal(std::forward<decltype(name)>(name));
+    }
+    template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    constexpr auto get_signal() const {
+        return get_signal(make_string_type<name>());
     }
     /// @}
 

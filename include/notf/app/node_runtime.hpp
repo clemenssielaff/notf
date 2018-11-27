@@ -90,19 +90,19 @@ protected:
 
 private:
     /// Implementation specific query of a Property.
-    AnyPropertyPtr _get_property_impl(const std::string& name) final {
+    AnyPropertyPtr _get_property_impl(const std::string& name)  const final {
         if (auto itr = m_properties.find(name); itr != m_properties.end()) { return itr->second; }
         return {};
     }
 
     /// Implementation specific query of a Slot.
-    AnySlot* _get_slot_impl(const std::string& name) final {
+    AnySlot* _get_slot_impl(const std::string& name) const final {
         if (auto itr = m_slots.find(name); itr != m_slots.end()) { return itr->second.get(); }
         return {};
     }
 
     /// Implementation specific query of a Signal.
-    AnySignalPtr _get_signal_impl(const std::string& name) final {
+    AnySignalPtr _get_signal_impl(const std::string& name) const final {
         if (auto itr = m_signals.find(name); itr != m_signals.end()) { return itr->second; }
         return {};
     }

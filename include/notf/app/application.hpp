@@ -1,5 +1,7 @@
 #pragma once
 
+#include "notf/common/mutex.hpp"
+
 #include "notf/app/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -80,7 +82,7 @@ private:
         /// Constructor.
         /// @param args             Application arguments.
         /// @throws StartupError    When the Application intialization failed.
-        Application(Arguments args);
+        Application(const Arguments& args);
 
         /// Desctructor
         ~Application();
@@ -93,26 +95,33 @@ private:
         void shutdown();
 
         /// Registers a new Window in the Application.
-        void register_window(WindowHandle window);
+        void register_window(WindowPtr window);
 
         /// Unregisters an existing Window from this Application.
-        void unregister_window(WindowHandle window);
+        void unregister_window(WindowPtr window);
 
     private:
-        /// Actual shutdown procedure, is only exexuted once.
+        /// Constructor implementation.
+        /// Moved out, so it can be called repeatedly during tests (and tests only).
+        void _startup(const Arguments& args);
+
+        /// Actual shutdown procedure, is only exexuted once (except in tests).
         void _shutdown();
 
         // fields ---------------------------------------------------------------------------------- //
     private:
         /// Application arguments as passed to the constructor.
-        const Arguments m_arguments;
+        Arguments m_arguments;
 
         /// The internal GLFW window managed by the Application
         /// Does not actually open a Window, only provides the shared OpenGL context.
-        detail::GlfwWindowPtr m_shared_context;
+        detail::GlfwWindowPtr m_shared_context{nullptr, detail::window_deleter};
+
+        /// Mutex protecting the list of registered Windows.
+        Mutex m_window_mutex;
 
         /// All Windows known the the Application.
-        std::unique_ptr<std::vector<WindowHandle>> m_windows;
+        std::unique_ptr<std::vector<WindowPtr>> m_windows;
 
         /// Application-wide event scheduler.
         SchedulerPtr m_scheduler;
@@ -120,6 +129,10 @@ private:
         /// State of the Application.
         /// EMPTY -> READY -> RUNNING -> SHUTDOWN -> EMPTY
         std::atomic<State> m_state = State::EMPTY;
+
+        /// Is set to true if any of the Application's Windows have been closed and need to be destroyed on the main
+        /// thread.
+        std::atomic_bool m_has_windows_to_close = false;
     };
 
 public:
@@ -185,19 +198,17 @@ private:
             !(s_state.compare_exchange_strong(actual, State::READY)) && NOTF_UNLIKELY(actual == State::SHUTDOWN)) {
             NOTF_THROW(ShutdownError, "The Application has already been shut down");
         }
-#ifndef NOTF_TEST
         static Application instance(args);
-        return instance;
-#else
+#ifdef NOTF_TEST
         /// in test builds, it is possible to force-reinitialize the Application
-        static auto instance = std::make_unique<Application>(args);
         if (s_reinit) {
             s_reinit = false;
-            instance = std::make_unique<Application>(args);
+            instance.shutdown();
+            instance._startup(args);
             s_state.store(State::READY);
         }
-        return *instance;
 #endif
+        return instance;
     }
 
     /// The internal GLFW window managed by the Application holding the shared context.
@@ -222,10 +233,10 @@ class Accessor<TheApplication, Window> {
     friend Window;
 
     /// Registers a new Window in the Application.
-    static void register_window(WindowHandle window);
+    static void register_window(WindowPtr window);
 
     /// Unregisters an existing Window from this Application.
-    static void unregister_window(WindowHandle window);
+    static void unregister_window(WindowPtr window);
 
     /// The internal GLFW window managed by the Application holding the shared context.
     static GLFWwindow* get_shared_context() { return TheApplication::_get_shared_context(); }

@@ -146,6 +146,12 @@ public:
 
     /// Explicitly enable/disable the Pipeline.
     virtual void setEnabled(const bool is_enabled) = 0;
+
+    /// Enable the Pipeline.
+    void enable() { setEnabled(true); }
+
+    /// Disable the Pipeline.
+    void disable() { setEnabled(false); }
 };
 
 /// A Pipeline connects a single upstream publisher with a daisy-chain of downstream subscribers.
@@ -189,12 +195,6 @@ public:
 
     /// Explicitly enable/disable the Pipeline.
     void setEnabled(const bool is_enabled) final { m_toggle->setEnabled(is_enabled); }
-
-    /// Enable the Pipeline.
-    void enable() { setEnabled(true); }
-
-    /// Disable the Pipeline.
-    void disable() { setEnabled(false); }
 
     /// Connect a Pipeline to a Subscriber downstream.
     /// @param subscriber   Subscriber downstream to attach to this Pipeline
@@ -255,12 +255,12 @@ private:
     Functions m_functions;
 };
 
-// store_pipeline =================================================================================================== //
+// make pipeline ==================================================================================================== //
 
 /// Stores a Pipeline of arbitrary type into a AnyPipelinePtr (unique_ptr<AnyPipeline>).
 /// @param pipeline Pipeline to store.
 template<class Pipe, class = std::enable_if_t<std::conjunction_v<std::is_base_of<AnyPipeline, Pipe>>>>
-AnyPipelinePtr store_pipeline(Pipe&& pipeline) {
+AnyPipelinePtr make_pipeline(Pipe&& pipeline) {
     return std::make_unique<Pipe>(std::forward<Pipe>(pipeline));
 }
 
