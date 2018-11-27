@@ -1,5 +1,7 @@
 #include "notf/app/event/scheduler.hpp"
 
+#include "notf/app/event/key_events.hpp"
+#include "notf/app/event/mouse_events.hpp"
 #include "notf/app/event/window_events.hpp"
 
 // event handler ==================================================================================================== //

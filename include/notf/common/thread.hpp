@@ -159,11 +159,11 @@ public:
     /// If another function is already running, this call will block until it has finished.
     /// Any stored exception is silently dropped.
     template<class Function>
-    void run(Function function) {
+    void run(Function&& function) {
         if (m_thread.joinable()) { m_thread.join(); }
 
         m_exception = {};
-        m_thread = std::thread([this, function]() {
+        m_thread = std::thread([this, function = std::forward<Function>(function)]() {
             try {
                 NOTF_GUARD(KindCounterGuard(m_kind));
                 std::invoke(function);
