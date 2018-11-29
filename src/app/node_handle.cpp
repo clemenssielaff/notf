@@ -8,8 +8,6 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-RecursiveMutex& AnyNodeHandle::_get_graph_mutex() { return TheGraph::get_graph_mutex(); }
-
 void AnyNodeHandle::_remove_from_parent(NodePtr&& node) {
     if (node != nullptr) { Node::AccessFor<detail::AnyNodeHandle>::remove(node); }
 }

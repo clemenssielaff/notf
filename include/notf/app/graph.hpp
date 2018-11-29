@@ -66,7 +66,7 @@ private:
 
         /// Registers a new Node in the Graph.
         /// @param node                 Node to register.
-        /// @throws not_unique_error    If another Node with the same Uuid is already registered.
+        /// @throws NotUniqueError    If another Node with the same Uuid is already registered.
         void add(NodeHandle node);
 
         /// Unregisters the Node with the given Uuid.
@@ -231,7 +231,7 @@ private:
     std::thread::id m_freezing_thread;
 };
 
-// node accessor ==================================================================================================== //
+// accessors ======================================================================================================== //
 
 /// Access to selected members of TheGraph.
 template<>
@@ -240,8 +240,8 @@ class Accessor<TheGraph, Node> {
 
     /// Registers a new Node in the Graph.
     /// Automatically marks the Node as being dirty as well.
-    /// @param node                 Node to register.
-    /// @throws not_unique_error    If another Node with the same Uuid is already registered.
+    /// @param node             Node to register.
+    /// @throws NotUniqueError  If another Node with the same Uuid is already registered.
     static void register_node(NodeHandle node) {
         TheGraph::_get().m_node_registry.add(node); // first, because it may fail
         TheGraph::_get().m_dirty_nodes.emplace(std::move(node));
@@ -279,12 +279,17 @@ class Accessor<TheGraph, Window> {
 
     /// Registers a new Node in the Graph.
     /// Automatically marks the Node as being dirty as well.
-    /// @param node                 Node to register.
-    /// @throws not_unique_error    If another Node with the same Uuid is already registered.
+    /// @param node             Node to register.
+    /// @throws NotUniqueError  If another Node with the same Uuid is already registered.
     static void register_node(NodeHandle node) {
         TheGraph::_get().m_node_registry.add(node); // first, because it may fail
         TheGraph::_get().m_dirty_nodes.emplace(std::move(node));
     }
 };
+
+// helper ======================================================================================================== //
+
+/// Global access to the Graph mutex.
+RecursiveMutex& TheGraphMutex();
 
 NOTF_CLOSE_NAMESPACE

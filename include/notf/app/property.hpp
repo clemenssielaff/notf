@@ -39,10 +39,7 @@ public:
     PropertyOperator(T value, bool is_visible) : m_hash(is_visible ? hash(m_value) : 0), m_value(std::move(value)) {}
 
     /// Destructor.
-    ~PropertyOperator() override {
-        clear_modified_value();
-        this->complete();
-    }
+    ~PropertyOperator() override { this->complete(); }
 
     /// Update the Property from upstream.
     void on_next(const AnyPublisher* /*publisher*/, const T& value) final {
@@ -80,7 +77,7 @@ public:
     /// The Property value.
     /// @param value    New value.
     void set(const T& value) {
-        NOTF_ASSERT(TheGraph::get_graph_mutex().is_locked_by_this_thread());
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
 
         // do nothing if the property value would not actually change
         if (value == m_value) { return; }
@@ -119,10 +116,14 @@ public:
     }
 
     /// Installs a (new) callback that is invoked every time the value of the PropertyOperator is about to change.
-    void set_callback(callback_t callback) { m_callback = std::move(callback); }
+    void set_callback(callback_t callback) {
+        NOTF_ASSERT(TheGraph::get_graph_mutex().is_locked_by_this_thread());
+        m_callback = std::move(callback);
+    }
 
     /// Deletes the modified value copy, if one exists.
     void clear_modified_value() {
+        NOTF_ASSERT(TheGraph::get_graph_mutex().is_locked_by_this_thread());
         if (m_modified_value) {
             m_value = std::move(*m_modified_value.get());
             m_modified_value.reset();
@@ -151,13 +152,6 @@ private:
 /// Base class for all Property types.
 class AnyProperty {
 
-    friend Accessor<AnyProperty, Node>;
-
-    // types ----------------------------------------------------------------------------------- //
-public:
-    /// Nested `AccessFor<T>` type.
-    NOTF_ACCESS_TYPE(AnyProperty);
-
     // methods --------------------------------------------------------------------------------- //
 public:
     NOTF_NO_COPY_OR_ASSIGN(AnyProperty);
@@ -176,18 +170,6 @@ public:
 
     /// Deletes all modified data of this Property.
     virtual void clear_modified_data() = 0;
-
-    /// Node owning the Property.
-    NodeHandle get_node() { return m_node; }
-
-    // fields ---------------------------------------------------------------------------------- ///
-private:
-    /// Node owning the Property.
-    /// We cannot simply store a reference here, because that would lead to a race condition where we test if the
-    /// Property is still alive find that it is so and try to get a NodeHandle from the Node. However, in between the
-    /// test if the Property is still alive and the NodeHandle creation, the Node might be removed (since we are only
-    /// keeping the Property, *not* the Node alive).
-    NodeHandle m_node;
 };
 
 /// A Typed Property.
@@ -259,18 +241,6 @@ public:
 private:
     /// Reactive Property operator, most of the Property's implementation.
     operator_t m_operator;
-};
-
-// accessor ========================================================================================================= //
-
-template<>
-class Accessor<AnyProperty, Node> {
-    template<class>
-    friend class CompileTimeNode;
-    friend RunTimeNode;
-
-    /// Registers the Node with the Property after it has been created.
-    static void set_node(AnyProperty& property, NodeHandle node) { property.m_node = std::move(node); }
 };
 
 NOTF_CLOSE_NAMESPACE

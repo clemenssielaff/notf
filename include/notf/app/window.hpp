@@ -197,24 +197,24 @@ public:
 private:
     /// Exception thrown when the OpenGL context of a Window could not be initialized.
     /// The error string will contain more detailed information about the error.
-    NOTF_EXCEPTION_TYPE(initialization_error);
+    NOTF_EXCEPTION_TYPE(InitializationError);
 
     // methods --------------------------------------------------------------------------------- //
 private:
     NOTF_CREATE_SMART_FACTORIES(Window);
 
     /// Constructor.
-    /// @param parent                               Parent of this Node.
-    /// @param settings                             Initialization settings.
-    /// @throws initialization_error                If the OpenGL context creation for this Window failed
-    /// @throws Application::initialization_error   When you try to instantiate a Window without an Application.
+    /// @param parent                           Parent of this Node.
+    /// @param settings                         Initialization settings.
+    /// @throws InitializationError             If the OpenGL context creation for this Window failed
+    /// @throws TheApplication::StartupError    When you try to instantiate a Window without an Application.
     Window(valid_ptr<Node*> parent, Settings settings);
 
 public:
     /// Factory, creates a new Window.
-    /// @param settings                             Initialization settings.
-    /// @throws initialization_error                If the OpenGL context creation for this Window failed
-    /// @throws Application::initialization_error   When you try to instantiate a Window without an Application.
+    /// @param settings                         Initialization settings.
+    /// @throws InitializationError             If the OpenGL context creation for this Window failed
+    /// @throws TheApplication::StartupError    When you try to instantiate a Window without an Application.
     static WindowHandle create(Settings settings = {});
 
     /// Returns the GlfwWindow contained in this Window.

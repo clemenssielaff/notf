@@ -14,15 +14,14 @@
 NOTF_OPEN_NAMESPACE
 
 int run_main(int argc, char* argv[]) {
-    { // initialize application
-        TheApplication::Arguments arguments;
-        arguments.argc = argc;
-        arguments.argv = argv;
-        TheApplication::initialize(arguments);
-    }
+    // initialize application
+    TheApplication::Arguments arguments;
+    arguments.argc = argc;
+    arguments.argv = argv;
+    TheApplication app(std::move(arguments));
 
     auto window = Window::create();
-    return TheApplication::exec();
+    return app->exec();
 }
 
 NOTF_CLOSE_NAMESPACE

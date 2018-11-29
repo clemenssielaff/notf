@@ -13,22 +13,22 @@ SCENARIO("thread", "[common][thread]") {
     }
 
     SECTION("some kinds can only be used once at a time") {
-        SECTION("they can be closed and re-opened, as long as there is only one at a time") {
-            size_t counter = 0;
-            {
-                Thread event(Thread::Kind::EVENT);
-                event.run([&counter]() { ++counter; });
-                event.join();
-                REQUIRE(!event.has_exception());
-            }
-            {
-                Thread event(Thread::Kind::EVENT);
-                event.run([&counter]() { ++counter; });
-                event.join();
-                REQUIRE(!event.has_exception());
-            }
-            REQUIRE(counter == 2);
-        }
+//        SECTION("they can be closed and re-opened, as long as there is only one at a time") {
+//            size_t counter = 0;
+//            {
+//                Thread event(Thread::Kind::EVENT);
+//                event.run([&counter]() { ++counter; });
+//                event.join();
+//                REQUIRE(!event.has_exception());
+//            }
+//            {
+//                Thread event(Thread::Kind::EVENT);
+//                event.run([&counter]() { ++counter; });
+//                event.join();
+//                REQUIRE(!event.has_exception());
+//            }
+//            REQUIRE(counter == 2);
+//        }
 
 //        SECTION("if you try to have more than one, they will throw") {
 //            using namespace notf::literals;

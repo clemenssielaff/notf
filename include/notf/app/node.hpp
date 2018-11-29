@@ -1,8 +1,11 @@
 #pragma once
 
 #include "notf/common/bitset.hpp"
+#include "notf/common/uuid.hpp"
 
-#include "notf/app/property_handle.hpp"
+#include "notf/app/graph.hpp"
+#include "notf/app/node_handle.hpp"
+#include "notf/app/property.hpp"
 #include "notf/app/signal.hpp"
 #include "notf/app/slot.hpp"
 
@@ -210,20 +213,24 @@ public:
     /// @throws         NameError / TypeError
     template<class T>
     void set(const std::string& name, T&& value) {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
         _try_get_property<T>(name)->set(std::forward<T>(value));
     }
 
-    /// Run time access to a Property of this Node through a PropertyHandle.
-    /// @param name     Node-unique name of the Property.
-    /// @returns        Handle to the requested Property.
-    /// @throws         NameError / TypeError
-    template<class T>
-    PropertyHandle<T> get_property(const std::string& name) const {
-        return PropertyHandle(_try_get_property<T>(name));
-    }
-
     // signals / slots --------------------------------------------------------
+
+    /// @{
+    /// Manually call the requested Slot of this Node.
+    /// If T is not`None`, this method takes a second argument that is passed to the Slot.
+    /// The Publisher of the Slot's `on_next` call id is set to `nullptr`.
+    template<class T = None>
+    std::enable_if_t<std::is_same_v<T, None>> call(const std::string& name) {
+        _try_get_slot<T>(name)->call();
+    }
+    template<class T>
+    std::enable_if_t<!std::is_same_v<T, None>> call(const std::string& name, const T& value) {
+        _try_get_slot<T>(name)->call(value);
+    }
+    /// @}
 
     /// Run time access to the subscriber of a Slot of this Node.
     /// Use to connect Pipelines from the outside to the Node.
@@ -278,6 +285,7 @@ public:
     /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
     template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
     NodeHandle get_first_ancestor() const {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
         Node* next = _get_parent();
         if (auto* result = dynamic_cast<T*>(next)) { return NodeHandle(result->shared_from_this()); }
         while (next != next->_get_parent()) {
@@ -288,7 +296,10 @@ public:
     }
 
     /// The number of direct children of this Node.
-    size_t get_child_count() const { return _read_children().size(); }
+    size_t get_child_count() const {
+        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        return _read_children().size();
+    }
 
     /// Returns a handle to a child Node at the given index.
     /// Index 0 is the node furthest back, index `size() - 1` is the child drawn at the front.
@@ -416,11 +427,6 @@ protected: // for all subclasses
     void _clear_children();
 
 protected: // for direct subclasses only
-    /// Finalizes this Node.
-    /// Called on every new Node instance right after the Constructor of the most derived class has finished.
-    /// Therefore, we do no have to ensure that the Graph is frozen etc.
-    virtual void _finalize() { m_flags[to_number(InternalFlags::FINALIZED)] = true; }
-
     /// Reactive function marking this Node as dirty whenever a visible Property changes its value.
     std::shared_ptr<PropertyObserver>& _get_property_observer() { return m_property_observer; }
 
@@ -454,6 +460,11 @@ private:
     /// Changes the parent of this Node by first adding it to the new parent and then removing it from its old one.
     /// @param new_parent_handle    New parent of this Node. If it is the same as the old, this method does nothing.
     void _set_parent(NodeHandle new_parent_handle);
+
+    /// Finalizes this Node.
+    /// Called on every new Node instance right after the Constructor of the most derived class has finished.
+    /// Therefore, we do no have to ensure that the Graph is frozen etc.
+    void _finalize() { m_flags[to_number(InternalFlags::FINALIZED)] = true; }
 
     /// Deletes all modified data of this Node.
     void _clear_modified_data();

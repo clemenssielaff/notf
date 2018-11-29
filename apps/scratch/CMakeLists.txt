@@ -23,6 +23,7 @@ target_include_directories(${CURRENT_TARGET} PUBLIC
 target_link_libraries(${CURRENT_TARGET} PUBLIC
     notf-thirdparty
     notf-core
+    ${CMAKE_THREAD_LIBS_INIT}
 )
 
 # global defines and options

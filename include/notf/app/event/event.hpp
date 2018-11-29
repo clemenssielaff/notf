@@ -34,7 +34,7 @@ public:
 
     /// Executes the event function.
     void run() final {
-        NOTF_ASSERT(this_thread::get_kind() == Thread::Kind::EVENT);
+        NOTF_ASSERT(this_thread::get_kind() == Thread::Kind::EVENT); // only run on the event thread
         if (m_function) { std::invoke(m_function); }
     }
 

@@ -18,33 +18,11 @@ struct notf::Accessor<TheGraph, Tester> {
     static void reset() { TheGraph::_get()._initialize(); }
 };
 
-/// Application
-template<>
-struct notf::Accessor<TheApplication, Tester> {
-    static void reinitialize(const TheApplication::Arguments& args = TheApplication::_default_args()) {
-
-        // reset the Graph as well to be sure
-        TheGraph::AccessFor<Tester>::reset();
-
-        // reinitialize the Application
-        TheApplication::s_state = TheApplication::State::EMPTY;
-        TheApplication::s_reinit = true;
-        TheApplication::initialize(args);
-    }
-};
-
 /// Node Handle
 template<class NodeType>
 struct notf::Accessor<TypedNodeHandle<NodeType>, Tester> {
     static std::shared_ptr<NodeType> get_shared_ptr(const TypedNodeHandle<NodeType>& handle) {
         return handle.m_node.lock();
-    }
-};
-
-template<class T>
-struct notf::Accessor<PropertyHandle<T>, Tester> {
-    static std::shared_ptr<Property<T>> get_shared_ptr(const PropertyHandle<T>& handle) {
-        return handle.m_property.lock();
     }
 };
 
@@ -201,8 +179,4 @@ public:
 template<class NodeType>
 auto to_shared_ptr(TypedNodeHandle<NodeType> node) {
     return TypedNodeHandle<NodeType>::template AccessFor<Tester>::get_shared_ptr(node);
-}
-template<class T>
-auto to_shared_ptr(PropertyHandle<T>& property) {
-    return PropertyHandle<T>::template AccessFor<Tester>::get_shared_ptr(property);
 }

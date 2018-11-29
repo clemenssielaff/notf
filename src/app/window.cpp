@@ -78,7 +78,7 @@ Window::Window(valid_ptr<Node*> parent, Settings settings)
             window_monitor = get_glfw_monitor(0);
         }
         if (!window_monitor) {
-            NOTF_THROW(initialization_error, "Failed to find a monitor to display Window \"{}\"", settings.title);
+            NOTF_THROW(InitializationError, "Failed to find a monitor to display Window \"{}\"", settings.title);
         }
     }
 
@@ -86,7 +86,7 @@ Window::Window(valid_ptr<Node*> parent, Settings settings)
     m_glfw_window.reset(glfwCreateWindow(window_size.width(), window_size.height(), settings.title, window_monitor,
                                          TheApplication::AccessFor<Window>::get_shared_context()));
     if (!m_glfw_window) {
-        NOTF_THROW(initialization_error, "Window or OpenGL context creation failed for Window \"{}\"", settings.title);
+        NOTF_THROW(InitializationError, "Window or OpenGL context creation failed for Window \"{}\"", settings.title);
     }
     glfwSetWindowUserPointer(m_glfw_window.get(), this);
 
@@ -182,7 +182,7 @@ void Window::_validate_settings(Settings& settings) {
     if (settings.monitor != -1) { // make sure the monitor is valid
         int count = 0;
         glfwGetMonitors(&count);
-        if (count == 0) { NOTF_THROW(Window::initialization_error, "Cannot find a monitor to place the Window on to"); }
+        if (count == 0) { NOTF_THROW(Window::InitializationError, "Cannot find a monitor to place the Window on to"); }
         if (settings.monitor < count) {
             NOTF_LOG_WARN("Cannot place Window \"{}\" on monitor {} because the system only provides {}. "
                           "Using primary monitor instead.",

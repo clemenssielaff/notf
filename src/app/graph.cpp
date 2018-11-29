@@ -146,4 +146,8 @@ bool TheGraph::_synchronize() {
     return true; // dirty nodes cleared their modified data
 }
 
+// helper ======================================================================================================== //
+
+RecursiveMutex& TheGraphMutex() { return TheGraph::get_graph_mutex(); }
+
 NOTF_CLOSE_NAMESPACE

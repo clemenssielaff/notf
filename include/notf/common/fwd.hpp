@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "notf/meta/fwd.hpp"
 #include "notf/meta/macros.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -23,6 +24,10 @@ NOTF_DECLARE_SHARED_POINTERS(class, VariableTimer);
 
 // msgpack.hpp
 class MsgPack;
+
+// mutex.hpp
+class Mutex;
+class RecursiveMutex;
 
 // thread.hpp
 class Thread;

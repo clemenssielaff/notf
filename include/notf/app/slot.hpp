@@ -3,6 +3,8 @@
 #include "notf/meta/stringtype.hpp"
 #include "notf/meta/typename.hpp"
 
+#include "notf/common/mutex.hpp"
+
 #include "notf/reactive/pipeline.hpp"
 
 #include "notf/app/fwd.hpp"
@@ -11,6 +13,7 @@ NOTF_OPEN_NAMESPACE
 
 // any slot ========================================================================================================= //
 
+/// Base class of all Slots.
 class AnySlot {
 
     // methods --------------------------------------------------------------------------------- //
@@ -66,6 +69,19 @@ public:
     /// Publisher, publishing the incoming data into the Node.
     publisher_t& get_publisher() { return m_publisher; }
     const publisher_t& get_publisher() const { return m_publisher; }
+    /// @}
+
+    /// @{
+    /// Manually call the Slot with a given value (if T is not None).
+    /// The Publisher id is set to nullptr.
+    template<class X = T>
+    std::enable_if_t<std::is_same_v<X, None>> call() {
+        m_subscriber->on_next(nullptr);
+    }
+    template<class X = T>
+    std::enable_if_t<!std::is_same_v<X, None>> call(const T& value) {
+        m_subscriber->on_next(nullptr, value);
+    }
     /// @}
 
     // fields ---------------------------------------------------------------------------------- //
@@ -174,13 +190,19 @@ struct SlotPublisher<None> : Publisher<None, detail::SinglePublisherPolicy> {
 template<class T>
 struct SlotSubscriber : Subscriber<T> {
     SlotSubscriber(Slot<T>& slot) : m_slot(slot) {}
-    void on_next(const AnyPublisher* id, const T& value) final { m_slot.get_publisher()->publish(id, value); }
+    void on_next(const AnyPublisher* id, const T& value) final {
+        NOTF_GUARD(std::lock_guard(TheGraphMutex()));
+        m_slot.get_publisher()->publish(id, value);
+    }
     Slot<T>& m_slot;
 };
 template<>
 struct SlotSubscriber<None> : Subscriber<None> {
     SlotSubscriber(Slot<None>& slot) : m_slot(slot) {}
-    void on_next(const AnyPublisher* id) final { m_slot.get_publisher()->publish(id); }
+    void on_next(const AnyPublisher* id) final {
+        NOTF_GUARD(std::lock_guard(TheGraphMutex()));
+        m_slot.get_publisher()->publish(id);
+    }
     Slot<None>& m_slot;
 };
 /// @}

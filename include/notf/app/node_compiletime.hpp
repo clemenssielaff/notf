@@ -223,25 +223,37 @@ public:
     }
     /// @}
 
-    /// @{
-    /// Returns a correctly typed Handle to a CompileTimeProperty or void (which doesn't compile).
-    /// @param name     Name of the requested Property.
-    template<char... Cs, size_t I = _get_property_index(StringType<Cs...>{})>
-    constexpr auto get_property(StringType<Cs...>) const {
-        return PropertyHandle<typename property_t<I>::value_t>(std::get<I>(m_properties));
-    }
-    template<const StringConst& name>
-    constexpr auto get_property() const {
-        return get_property(make_string_type<name>());
-    }
-    /// @}
-
     // Use the base class' runtime methods alongside the compile time implementation.
     using Node::get;
-    using Node::get_property;
     using Node::set;
 
     // signals / slots --------------------------------------------------------
+
+    /// @{
+    /// Manually call the requested Slot of this Node.
+    /// If T is not`None`, this method takes a second argument that is passed to the Slot.
+    /// The Publisher of the Slot's `on_next` call id is set to `nullptr`.
+    template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{}),
+             class T = typename std::tuple_element_t<I, Signals>::value_t>
+    std::enable_if_t<std::is_same_v<T, None>> call(StringType<Cs...>) {
+        std::get<I>(m_slots)->call();
+    }
+    template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{}),
+             class T = typename std::tuple_element_t<I, Signals>::value_t>
+    std::enable_if_t<!std::is_same_v<T, None>> call(StringType<Cs...>, const T& value) {
+        std::get<I>(m_slots)->call(value);
+    }
+    template<const StringConst& name, size_t I = _get_slot_index(make_string_type<name>()),
+             class T = typename std::tuple_element_t<I, Signals>::value_t>
+    std::enable_if_t<std::is_same_v<T, None>> call() {
+        std::get<I>(m_slots)->call();
+    }
+    template<const StringConst& name, size_t I = _get_slot_index(make_string_type<name>()),
+             class T = typename std::tuple_element_t<I, Signals>::value_t>
+    std::enable_if_t<!std::is_same_v<T, None>> call(const T& value) {
+        std::get<I>(m_slots)->call(value);
+    }
+    /// @}
 
     /// @{
     /// Returns the requested Slot or void (which doesn't compile).
@@ -393,17 +405,7 @@ private:
         for_each(m_properties, [](auto& property) { property->clear_modified_data(); });
     }
 
-    /// Finalizes this Node.
-    /// Stores a Handle of this node in all of its Properties.
-    void _finalize() final {
-        for_each(m_properties, [this](auto& property) { //
-            AnyProperty::AccessFor<Node>::set_node(*property, shared_from_this());
-        });
-        Node::_finalize();
-    }
-
     // hide some protected methods
-    using Node::_finalize;
     using Node::_get_property_observer;
     using Node::_is_finalized;
 

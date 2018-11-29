@@ -1,6 +1,7 @@
 #define CATCH_CONFIG_RUNNER
 #include "catch2/catch.hpp"
 
+#include "notf/app/application.hpp"
 #include "notf/meta/log.hpp"
 
 int main(int argc, char* argv[]) {
@@ -8,8 +9,10 @@ int main(int argc, char* argv[]) {
 
     // disable console output of the logger
     TheLogger::Arguments args;
-    args.console_level = Logger::Level::OFF;
+    args.console_level = TheLogger::Level::INFO;
     TheLogger::initialize(args);
 
-    return Catch::Session().run(argc, argv);
+    const auto result = Catch::Session().run(argc, argv);
+
+    return result;
 }

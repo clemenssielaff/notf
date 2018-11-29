@@ -68,13 +68,17 @@ std::string Node::get_name() const {
 std::string Node::get_default_name() const { return number_to_mnemonic(hash(get_uuid()), /*max_syllables=*/4); }
 
 void Node::set_name(const std::string& name) {
-    NOTF_ASSERT(TheGraph::is_locked_by_this_thread());
+    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
     m_name = TheGraph::AccessFor<Node>::set_name(shared_from_this(), name);
 }
 
-NodeHandle Node::get_parent() const { return _get_parent()->shared_from_this(); }
+NodeHandle Node::get_parent() const {
+    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+    return _get_parent()->shared_from_this();
+}
 
 bool Node::has_ancestor(const Node* const ancestor) const {
+    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
     if (ancestor == nullptr) { return false; }
     const Node* next = _get_parent();
     for (; next != next->_get_parent(); next = next->_get_parent()) {
@@ -84,12 +88,14 @@ bool Node::has_ancestor(const Node* const ancestor) const {
 }
 
 NodeHandle Node::get_common_ancestor(const NodeHandle& other) const {
+    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
     const NodeConstPtr other_lock = NodeHandle::AccessFor<Node>::get_node_ptr(other);
     if (other_lock == nullptr) { return {}; }
     return const_cast<Node*>(_get_common_ancestor(other_lock.get()))->shared_from_this();
 }
 
 NodeHandle Node::get_child(const size_t index) const {
+    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
     const ChildList& children = _read_children();
     if (index >= children.size()) {
         NOTF_THROW(OutOfBounds, "Cannot get child Node at index {} for Node \"{}\" with {} children", index, get_name(),
@@ -98,11 +104,18 @@ NodeHandle Node::get_child(const size_t index) const {
     return children[index];
 }
 
-bool Node::is_in_front() const { return _read_siblings().back().get() == this; }
+bool Node::is_in_front() const {
+    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+    return _read_siblings().back().get() == this;
+}
 
-bool Node::is_in_back() const { return _read_siblings().front().get() == this; }
+bool Node::is_in_back() const {
+    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+    return _read_siblings().front().get() == this;
+}
 
 bool Node::is_before(const NodeHandle& sibling) const {
+    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
     if (const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
         (sibling_ptr != nullptr) && (sibling_ptr->_get_parent() == _get_parent()) && (sibling_ptr.get() != this)) {
         for (const NodePtr& other : _read_siblings()) {
@@ -117,6 +130,7 @@ bool Node::is_before(const NodeHandle& sibling) const {
 }
 
 bool Node::is_behind(const NodeHandle& sibling) const {
+    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
     if (const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
         (sibling_ptr != nullptr) && (sibling_ptr->_get_parent() == _get_parent()) && (sibling_ptr.get() != this)) {
         for (const NodePtr& other : _read_siblings()) {
@@ -131,6 +145,7 @@ bool Node::is_behind(const NodeHandle& sibling) const {
 }
 
 void Node::stack_front() {
+    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
     if (is_in_front()) { return; } // early out to avoid creating unnecessary modified copies
     ChildList& siblings = _get_parent()->_write_children();
     auto itr
@@ -140,6 +155,7 @@ void Node::stack_front() {
 }
 
 void Node::stack_back() {
+    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
     if (is_in_back()) { return; } // early out to avoid creating unnecessary modified copies
     ChildList& siblings = _get_parent()->_write_children();
     auto itr
@@ -149,6 +165,7 @@ void Node::stack_back() {
 }
 
 void Node::stack_before(const NodeHandle& sibling) {
+    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
     const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
     if ((sibling_ptr == nullptr) || (sibling_ptr.get() == this) || sibling_ptr->_get_parent() != _get_parent()) {
         return;
@@ -159,6 +176,7 @@ void Node::stack_before(const NodeHandle& sibling) {
 }
 
 void Node::stack_behind(const NodeHandle& sibling) {
+    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
     const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
     if ((sibling_ptr == nullptr) || (sibling_ptr.get() == this) || sibling_ptr->_get_parent() != _get_parent()) {
         return;

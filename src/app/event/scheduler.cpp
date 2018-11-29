@@ -1,7 +1,6 @@
 #include "notf/app/event/scheduler.hpp"
 
 #include "notf/app/event/event.hpp"
-#include "notf/app/graph.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -15,7 +14,6 @@ Scheduler::Scheduler(const size_t buffer_size)
         fibers::fiber event_fiber([&] {
             AnyEventPtr event;
             while (fibers::channel_op_status::success == m_event_queue.pop(event)) {
-                NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
                 event->run();
             }
         });

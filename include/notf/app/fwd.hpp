@@ -13,15 +13,11 @@ struct GLFWmonitor;
 NOTF_OPEN_NAMESPACE
 
 // application.hpp
-namespace detail {
-void window_deleter(GLFWwindow* glfw_window);
-using GlfwWindowPtr = std::unique_ptr<GLFWwindow, decltype(&window_deleter)>;
-} // namespace detail
-class Application;
 class TheApplication;
 
 // graph.hpp
 class TheGraph;
+RecursiveMutex& TheGraphMutex();
 
 // node.hpp
 NOTF_DECLARE_SHARED_POINTERS(class, Node);
@@ -52,10 +48,6 @@ class RunTimeProperty;
 template<class>
 class CompileTimeProperty;
 
-// property_handle.hpp
-template<class>
-class PropertyHandle;
-
 // root_node.hpp
 NOTF_DECLARE_SHARED_POINTERS(class, RootNode);
 using RootNodeHandle = TypedNodeHandle<RootNode>;
@@ -75,6 +67,10 @@ NOTF_DECLARE_SHARED_POINTERS(class, AnySlot);
 NOTF_DECLARE_UNIQUE_POINTERS_TEMPLATE1(class, Slot);
 
 // window.hpp
+namespace detail {
+void window_deleter(GLFWwindow* glfw_window);
+using GlfwWindowPtr = std::unique_ptr<GLFWwindow, decltype(&window_deleter)>;
+} // namespace detail
 NOTF_DECLARE_SHARED_POINTERS(class, Window);
 class WindowHandle;
 
@@ -90,7 +86,7 @@ class State;
 
 // exceptions ======================================================================================================= //
 
-/// Exception thrown by Node- and PropertyHandles when you try to access one when it has already expired.
+/// Exception thrown by any userland Handles when you try to access one when it has already expired.
 NOTF_EXCEPTION_TYPE(HandleExpiredError);
 
 // compile time helper ============================================================================================== //

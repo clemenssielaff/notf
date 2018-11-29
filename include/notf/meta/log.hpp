@@ -8,132 +8,6 @@
 
 NOTF_OPEN_NAMESPACE
 
-// logger =========================================================================================================== //
-
-class Logger {
-
-    // types ----------------------------------------------------------------------------------- //
-public:
-    /// Log levels in ascending order.
-    enum class Level {
-        TRACE = spdlog::level::trace,
-        DEBUG = spdlog::level::debug,
-        INFO = spdlog::level::info,
-        WARNING = spdlog::level::warn,
-        ERROR = spdlog::level::err,
-        CRITCAL = spdlog::level::critical,
-        OFF = spdlog::level::off,
-    };
-
-    /// Arguments passed to the Logger on creation.
-    struct Arguments {
-        /// Name of the Logger singleton.
-        std::string name = "notf";
-
-        /// Name of the log file to write into, leave empty to disable file logging.
-        std::string file_name = {};
-
-#ifdef NOTF_DEBUG
-        /// Initial log level for the logger itself.
-        Level log_level = Level::TRACE;
-
-        /// Log level for the console logger.
-        Level console_level = Level::TRACE;
-
-        /// Log level for the file logger (is ignored if file logging is disabled).
-        Level file_level = Level::TRACE;
-#else
-        Level log_level = Level::INFO;
-        Level console_level = Level::INFO;
-        Level file_level = Level::INFO;
-#endif
-
-        /// If true, the log file will be cleared before the logger writes into it.
-        /// If false, the logger will append to the existing content in the log file.
-        bool clear_file = false;
-    };
-
-    // methods --------------------------------------------------------------------------------- //
-public:
-    /// Constructor.
-    /// @param args     Construction arguments pack.
-    Logger(const Arguments& args) : m_console_sink(std::make_shared<decltype(m_console_sink)::element_type>()) {
-        m_console_sink->set_level(static_cast<spdlog::level::level_enum>(args.console_level));
-        m_console_sink->set_pattern("%i %l: %v");
-
-        if (args.file_name.empty()) {
-            m_logger = std::make_unique<decltype(m_logger)::element_type>(args.name, m_console_sink);
-        } else {
-            m_file_sink = std::make_shared<decltype(m_file_sink)::element_type>(args.file_name, args.clear_file);
-            m_file_sink->set_level(static_cast<spdlog::level::level_enum>(args.file_level));
-            m_file_sink->set_pattern("[%d-%m-%C %T.%e] %l: %v");
-
-            m_logger = std::make_unique<decltype(m_logger)::element_type>(
-                args.name, spdlog::sinks_init_list{m_console_sink, m_file_sink});
-        }
-        m_logger->set_level(static_cast<spdlog::level::level_enum>(args.log_level));
-    }
-
-    /// Access to the managed spdlog logger.
-    spdlog::logger* operator->() { return m_logger.get(); }
-
-    // fields ---------------------------------------------------------------------------------- //
-private:
-    /// Console sink for the logger.
-    std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> m_console_sink;
-
-    /// Log file sink, is empty if no path was defined in the arguments.
-    std::shared_ptr<spdlog::sinks::basic_file_sink_mt> m_file_sink;
-
-    /// The logger managed by this instance.
-    std::unique_ptr<spdlog::logger> m_logger;
-};
-
-// the logger ======================================================================================================= //
-
-/// notf logger singleton
-class TheLogger {
-
-    // types ----------------------------------------------------------------------------------- //
-public:
-    /// Log levels in ascending order.
-    using Level = Logger::Level;
-
-    /// Arguments passed to the Logger on creation.
-    using Arguments = Logger::Arguments;
-
-    // methods --------------------------------------------------------------------------------- //
-private:
-    /// Constructor.
-    /// @param args     Construction arguments pack.
-    TheLogger(const Arguments& args) : m_logger(args) {}
-
-public:
-    /// Initializes the Logger if this is the first time `initialize` or `get` is called - otherwise acts like `get`.
-    static TheLogger& initialize(const Arguments& args) { return _get(args); }
-
-    /// Access to the Logger singleton.
-    static TheLogger& get() {
-        static Arguments default_args;
-        return _get(default_args);
-    }
-
-    /// Access to the managed spdlog logger.
-    spdlog::logger* operator->() { return m_logger.operator->(); }
-
-public:
-    /// Static instance provider.
-    static TheLogger& _get(const Arguments& args) {
-        static TheLogger instance(args);
-        return instance;
-    }
-
-    // fields ---------------------------------------------------------------------------------- //
-private:
-    /// Logger instance managed by this singleton.
-    Logger m_logger;
-};
-
 // log macros ======================================================================================================= //
 
 /// We are using macros here instead of constexpr functions to make sure that the expression within the macro brackets
@@ -177,5 +51,132 @@ private:
 #else
 #define NOTF_LOG_CRIT(...)
 #endif
+
+// the logger ======================================================================================================= //
+
+/// notf logger singleton
+class TheLogger {
+
+    // types ----------------------------------------------------------------------------------- //
+public:
+    /// Log levels in ascending order.
+    enum class Level {
+        ALL = spdlog::level::trace,
+        TRACE = spdlog::level::trace,
+        DEBUG = spdlog::level::debug,
+        INFO = spdlog::level::info,
+        WARNING = spdlog::level::warn,
+        ERROR = spdlog::level::err,
+        CRITCAL = spdlog::level::critical,
+        OFF = spdlog::level::off,
+    };
+
+    /// Arguments passed to the Logger on creation.
+    struct Arguments {
+        /// Name of the Logger singleton.
+        std::string name = "notf";
+
+        /// Name of the log file to write into, leave empty to disable file logging.
+        std::string file_name = {};
+
+#ifdef NOTF_DEBUG
+        /// Initial log level for the logger itself.
+        Level log_level = Level::TRACE;
+
+        /// Log level for the console logger.
+        Level console_level = Level::TRACE;
+
+        /// Log level for the file logger (is ignored if file logging is disabled).
+        Level file_level = Level::TRACE;
+#else
+        Level log_level = Level::INFO;
+        Level console_level = Level::INFO;
+        Level file_level = Level::INFO;
+#endif
+
+        /// If true, the log file will be cleared before the logger writes into it.
+        /// If false, the logger will append to the existing content in the log file.
+        bool clear_file = false;
+    };
+
+private:
+    // logger ============================================================== //
+    class Logger {
+
+        // methods --------------------------------------------------------------------------------- //
+    public:
+        /// Constructor.
+        /// @param args     Construction arguments pack.
+        Logger(const Arguments& args) : m_console_sink(std::make_shared<decltype(m_console_sink)::element_type>()) {
+            m_console_sink->set_level(static_cast<spdlog::level::level_enum>(args.console_level));
+            m_console_sink->set_pattern("%i %l: %v");
+
+            if (args.file_name.empty()) {
+                m_logger = std::make_unique<decltype(m_logger)::element_type>(args.name, m_console_sink);
+            } else {
+                m_file_sink = std::make_shared<decltype(m_file_sink)::element_type>(args.file_name, args.clear_file);
+                m_file_sink->set_level(static_cast<spdlog::level::level_enum>(args.file_level));
+                m_file_sink->set_pattern("[%d-%m-%C %T.%e] %l: %v");
+
+                m_logger = std::make_unique<decltype(m_logger)::element_type>(
+                    args.name, spdlog::sinks_init_list{m_console_sink, m_file_sink});
+            }
+            m_logger->set_level(static_cast<spdlog::level::level_enum>(args.log_level));
+        }
+
+        /// Access to the managed spdlog logger.
+        spdlog::logger* operator->() { return m_logger.get(); }
+
+        /// Sets level for the Logger itself.
+        void set_level(const Level level) { m_logger->set_level(static_cast<spdlog::level::level_enum>(level)); }
+
+        /// Sets level for the console output of the Logger.
+        void set_console_level(const Level level) {
+            m_console_sink->set_level(static_cast<spdlog::level::level_enum>(level));
+        }
+
+        /// Sets level for the file output of the Logger (if a log file has been specified).
+        void set_file_level(const Level level) {
+            if (m_file_sink) {
+                m_file_sink->set_level(static_cast<spdlog::level::level_enum>(level));
+            } else {
+                NOTF_LOG_WARN("Cannot change file log level since no log file was specified during initialization");
+            }
+        }
+
+        // fields ---------------------------------------------------------------------------------- //
+    private:
+        /// Console sink for the logger.
+        std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> m_console_sink;
+
+        /// Log file sink, is empty if no path was defined in the arguments.
+        std::shared_ptr<spdlog::sinks::basic_file_sink_mt> m_file_sink;
+
+        /// The logger managed by this instance.
+        std::unique_ptr<spdlog::logger> m_logger;
+    };
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// Initializes the Logger if this is the first time `initialize` or `get` is called - otherwise acts like `get`.
+    static Logger& initialize(const Arguments& args) { return _get(args); }
+
+    /// Access to the Logger singleton.
+    static Logger& get() {
+        static Arguments default_args;
+        return _get(default_args);
+    }
+
+public:
+    /// Static instance provider.
+    static Logger& _get(const Arguments& args) {
+        static Logger instance(args);
+        return instance;
+    }
+
+    // fields ---------------------------------------------------------------------------------- //
+private:
+    /// Logger instance managed by this singleton.
+};
 
 NOTF_CLOSE_NAMESPACE

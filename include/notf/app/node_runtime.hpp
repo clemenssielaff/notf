@@ -18,16 +18,13 @@ protected:
     RunTimeNode(valid_ptr<Node*> parent) : Node(parent) {}
 
     /// Constructs a new Property on this Node.
-    /// Note that the `get_node` method on the returned PropertyHandle returns an expired NodeHandle until the Node is
-    /// finalized (the constructor has finished).
     /// @param name         Name of the Property.
     /// @param value        Initial value of the Property (also determines its type unless specified explicitly).
     /// @param is_visible   Whether or not the Property is visible.
-    /// @throws FinalizedError      If you call this method from anywhere but the constructor.
-    /// @throws not_unique_error    If there already exists a Property of the same name on this Node.
-    /// @returns            A Handle to the created Property.
+    /// @throws FinalizedError  If you call this method from anywhere but the constructor.
+    /// @throws NotUniqueError  If there already exists a Property of the same name on this Node.
     template<class T>
-    PropertyHandle<T> _create_property(std::string name, T&& value, const bool is_visible = true) {
+    void _create_property(std::string name, T&& value, const bool is_visible = true) {
         if (NOTF_UNLIKELY(_is_finalized())) { // unlikely 'cause you only do it once
             NOTF_THROW(FinalizedError, "Cannot create a new Property on already finalized Node \"{}\"", get_name());
         }
@@ -42,19 +39,17 @@ protected:
         // create the RunTimeProperty and store a string_view to the existing name in the map
         PropertyPtr<T> property = std::make_shared<RunTimeProperty<T>>(itr->first, std::forward<T>(value), is_visible);
 
-        // replace the empty pointer in the map with the actual RunTimeProperty
-        itr->second = property;
-
         // subscribe to receive an update, whenever the property changes its value
         property->get_operator()->subscribe(_get_property_observer());
 
-        return property;
+        // replace the empty pointer in the map with the actual RunTimeProperty
+        itr->second = std::move(property);
     }
 
     /// Constructs a new Slot on this Node.
     /// @param name         Name of the Slot.
-    /// @throws FinalizedError      If you call this method from anywhere but the constructor.
-    /// @throws not_unique_error    If there already exists a Slot of the same name on this Node.
+    /// @throws FinalizedError  If you call this method from anywhere but the constructor.
+    /// @throws NotUniqueError  If there already exists a Slot of the same name on this Node.
     /// @returns            The internal publisher of the Slot.
     template<class T>
     typename Slot<T>::publisher_t _create_slot(std::string name) {
@@ -73,8 +68,8 @@ protected:
 
     /// Constructs a new Signal on this Node.
     /// @param name         Name of the Signal.
-    /// @throws FinalizedError      If you call this method from anywhere but the constructor.
-    /// @throws not_unique_error    If there already exists a Signal of the same name on this Node.
+    /// @throws FinalizedError  If you call this method from anywhere but the constructor.
+    /// @throws NotUniqueError  If there already exists a Signal of the same name on this Node.
     template<class T>
     void _create_signal(std::string name) {
         if (NOTF_UNLIKELY(_is_finalized())) { // unlikely 'cause you only do it once
@@ -90,7 +85,7 @@ protected:
 
 private:
     /// Implementation specific query of a Property.
-    AnyPropertyPtr _get_property_impl(const std::string& name)  const final {
+    AnyPropertyPtr _get_property_impl(const std::string& name) const final {
         if (auto itr = m_properties.find(name); itr != m_properties.end()) { return itr->second; }
         return {};
     }
@@ -122,17 +117,7 @@ private:
         }
     }
 
-    /// Finalizes this Node.
-    /// Stores a Handle of this node in all of its Properties.
-    void _finalize() final {
-        for (auto& itr : m_properties) {
-            AnyProperty::AccessFor<Node>::set_node(*itr.second, shared_from_this());
-        }
-        Node::_finalize();
-    }
-
     // hide some protected methods
-    using Node::_finalize;
     using Node::_get_property_observer;
     using Node::_is_finalized;
 

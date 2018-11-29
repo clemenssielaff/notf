@@ -28,8 +28,7 @@ WindowHandle to_window_handle(GLFWwindow* glfw_window) {
 
 template<class Func>
 void schedule(Func&& function) {
-
-    TheApplication::get_scheduler().schedule(std::make_unique<Event<Func>>(std::forward<Func>(function)));
+    TheApplication()->get_scheduler().schedule(std::make_unique<Event<Func>>(std::forward<Func>(function)));
 }
 
 struct GlfwEventHandler {
@@ -248,112 +247,14 @@ struct GlfwEventHandler {
 
 NOTF_OPEN_NAMESPACE
 
-// the application ================================================================================================== //
+// application ====================================================================================================== //
 
-TheApplication::Application::Application(const Arguments& args) { _startup(args); }
+namespace detail {
 
-TheApplication::Application::~Application() { _shutdown(); }
-
-int TheApplication::Application::exec() {
-    if (State actual = State::READY; !(m_state.compare_exchange_strong(actual, State::RUNNING))) {
-        NOTF_THROW(StartupError, "Cannot call `exec` on an already running Application");
-    }
-    NOTF_LOG_TRACE("Starting main loop");
-
-    // loop until there are no more windows open...
-    while (!m_windows->empty()) {
-
-        // ... or the user has initiated a forced shutdown
-        if (m_state == State::SHUTDOWN) { break; }
-
-        // wait for the next event or the next time to fire an animation frame
-        glfwWaitEvents();
-
-        // if any window has been closed, we need to find and destroy it
-        if (bool expected = true; m_has_windows_to_close.compare_exchange_strong(expected, false)) {
-            NOTF_GUARD(std::lock_guard(m_window_mutex));
-            for (size_t i = 0, end = m_windows->size(); i < end;) {
-                if (glfwWindowShouldClose((*m_windows)[i]->get_glfw_window())) {
-                    std::swap((*m_windows)[i], m_windows->back());
-                    m_windows->pop_back();
-                    --end;
-                } else {
-                    ++i;
-                }
-            }
-        }
-    }
-
-    _shutdown();
-    return EXIT_SUCCESS;
-}
-
-void TheApplication::Application::shutdown() {
-    if (State expected = State::RUNNING; !(m_state.compare_exchange_strong(expected, State::SHUTDOWN))) {
-        glfwPostEmptyEvent();
-    }
-}
-
-void TheApplication::Application::register_window(WindowPtr window) {
-
-    GLFWwindow* glfw_window = window->get_glfw_window();
-    {
-        NOTF_GUARD(std::lock_guard(m_window_mutex));
-        NOTF_ASSERT(!contains(*m_windows, window));
-        m_windows->emplace_back(std::move(window));
-    }
-
-    // register input callbacks
-    glfwSetMouseButtonCallback(glfw_window, GlfwEventHandler::on_mouse_button);
-    glfwSetCursorPosCallback(glfw_window, GlfwEventHandler::on_cursor_move);
-    glfwSetCursorEnterCallback(glfw_window, GlfwEventHandler::on_cursor_entered);
-    glfwSetScrollCallback(glfw_window, GlfwEventHandler::on_scroll);
-    glfwSetKeyCallback(glfw_window, GlfwEventHandler::on_token_key);
-    glfwSetCharCallback(glfw_window, GlfwEventHandler::on_char_input);
-    glfwSetCharModsCallback(glfw_window, GlfwEventHandler::on_shortcut);
-
-    // register window callbacks
-    glfwSetWindowPosCallback(glfw_window, GlfwEventHandler::on_window_move);
-    glfwSetWindowSizeCallback(glfw_window, GlfwEventHandler::on_window_resize);
-    glfwSetFramebufferSizeCallback(glfw_window, GlfwEventHandler::on_framebuffer_resize);
-    glfwSetWindowRefreshCallback(glfw_window, GlfwEventHandler::on_window_refresh);
-    glfwSetWindowFocusCallback(glfw_window, GlfwEventHandler::on_window_focus);
-    glfwSetDropCallback(glfw_window, GlfwEventHandler::on_file_drop);
-    glfwSetWindowIconifyCallback(glfw_window, GlfwEventHandler::on_window_minimize);
-    glfwSetWindowCloseCallback(glfw_window, GlfwEventHandler::on_window_close);
-}
-
-void TheApplication::Application::unregister_window(WindowPtr window) {
-
-    // disconnect all callbacks
-    GLFWwindow* glfw_window = window->get_glfw_window();
-    glfwSetMouseButtonCallback(glfw_window, nullptr);
-    glfwSetCursorPosCallback(glfw_window, nullptr);
-    glfwSetCursorEnterCallback(glfw_window, nullptr);
-    glfwSetScrollCallback(glfw_window, nullptr);
-    glfwSetKeyCallback(glfw_window, nullptr);
-    glfwSetCharCallback(glfw_window, nullptr);
-    glfwSetCharModsCallback(glfw_window, nullptr);
-    glfwSetWindowPosCallback(glfw_window, nullptr);
-    glfwSetWindowSizeCallback(glfw_window, nullptr);
-    glfwSetFramebufferSizeCallback(glfw_window, nullptr);
-    glfwSetWindowRefreshCallback(glfw_window, nullptr);
-    glfwSetWindowFocusCallback(glfw_window, nullptr);
-    glfwSetDropCallback(glfw_window, nullptr);
-    glfwSetWindowIconifyCallback(glfw_window, nullptr);
-    glfwSetWindowCloseCallback(glfw_window, nullptr);
-
-    m_has_windows_to_close.store(true);
-    glfwPostEmptyEvent();
-}
-
-void TheApplication::Application::_startup(const Arguments& args) {
-    m_arguments = args;
-
+Application::Application(Arguments args) : m_arguments(std::move(args)) {
     // initialize GLFW
     glfwSetErrorCallback(GlfwEventHandler::on_error);
     if (glfwInit() == 0) { NOTF_THROW(StartupError, "GLFW initialization failed"); }
-    m_state.store(State::READY);
 
     // default GLFW Window and OpenGL context hints
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
@@ -383,40 +284,122 @@ void TheApplication::Application::_startup(const Arguments& args) {
     m_scheduler = std::make_unique<Scheduler>();
 
     // log application header
-    NOTF_LOG_INFO("NOTF {} ({} built with {} from {}commit \"{}\")",
+    NOTF_LOG_INFO("NOTF {} ({} built with {} from {}commit \"{}\")\n"
+                  "             GLFW version: {}",
                   config::version_string(),                           //
                   (config::is_debug_build() ? "debug" : "release"),   //
                   config::compiler_name(),                            //
                   (config::was_commit_modified() ? "modified " : ""), //
-                  config::built_from_commit());
-    NOTF_LOG_INFO("GLFW version: {}", glfwGetVersionString());
+                  config::built_from_commit(),                        //
+                  glfwGetVersionString());
 }
 
-void TheApplication::Application::_shutdown() {
-    State state = m_state;
-    if ((state != State::EMPTY) && (m_state.compare_exchange_strong(state, State::EMPTY))) {
-        NOTF_LOG_TRACE("Application shutdown");
+Application::~Application() { glfwTerminate(); }
 
-        m_scheduler.reset();
-        m_shared_context.reset();
+int Application::exec() {
+    // make sure exec is only called once
+    if (m_is_running.test_and_set()) {
+        NOTF_THROW(StartupError, "Cannot call `exec` on an already running Application");
+    }
+    m_should_continue.test_and_set();
 
-        { // force close all windows
+    // loop until there are no more windows open...
+    NOTF_LOG_INFO("Starting main loop");
+    while (!m_windows->empty()) {
+
+        // ... or the user has initiated a forced shutdown
+        if (!m_should_continue.test_and_set()) { break; }
+
+        // wait for the next event or the next time to fire an animation frame
+        glfwWaitEvents();
+
+        // if any window has been closed, we need to find and destroy it
+        if (bool expected = true; m_has_windows_to_close.compare_exchange_strong(expected, false)) {
             NOTF_GUARD(std::lock_guard(m_window_mutex));
-            m_windows->clear();
+            for (size_t i = 0, end = m_windows->size(); i < end;) {
+                if (glfwWindowShouldClose((*m_windows)[i]->get_glfw_window())) {
+                    std::swap((*m_windows)[i], m_windows->back());
+                    m_windows->pop_back();
+                    --end;
+                } else {
+                    ++i;
+                }
+            }
         }
+    }
 
-        glfwTerminate();
+    // shutdown
+    m_scheduler.reset();
+    {
+        NOTF_GUARD(std::lock_guard(m_window_mutex));
+        m_windows->clear();
+    }
+    m_shared_context.reset();
+    NOTF_LOG_INFO("Application shutdown");
+
+    return EXIT_SUCCESS;
+}
+
+void Application::shutdown() {
+    if (m_should_continue.test_and_set()) {
+        m_should_continue.clear();
+        glfwPostEmptyEvent();
     }
 }
 
-// accessors ======================================================================================================== //
+void Application::_register_window(WindowPtr window) {
 
-void Accessor<TheApplication, Window>::register_window(WindowPtr window) {
-    TheApplication::_get().register_window(std::move(window));
+    GLFWwindow* glfw_window = window->get_glfw_window();
+    {
+        NOTF_GUARD(std::lock_guard(m_window_mutex));
+        NOTF_ASSERT(!contains(*m_windows, window));
+        m_windows->emplace_back(std::move(window));
+    }
+
+    // register input callbacks
+    glfwSetMouseButtonCallback(glfw_window, GlfwEventHandler::on_mouse_button);
+    glfwSetCursorPosCallback(glfw_window, GlfwEventHandler::on_cursor_move);
+    glfwSetCursorEnterCallback(glfw_window, GlfwEventHandler::on_cursor_entered);
+    glfwSetScrollCallback(glfw_window, GlfwEventHandler::on_scroll);
+    glfwSetKeyCallback(glfw_window, GlfwEventHandler::on_token_key);
+    glfwSetCharCallback(glfw_window, GlfwEventHandler::on_char_input);
+    glfwSetCharModsCallback(glfw_window, GlfwEventHandler::on_shortcut);
+
+    // register window callbacks
+    glfwSetWindowPosCallback(glfw_window, GlfwEventHandler::on_window_move);
+    glfwSetWindowSizeCallback(glfw_window, GlfwEventHandler::on_window_resize);
+    glfwSetFramebufferSizeCallback(glfw_window, GlfwEventHandler::on_framebuffer_resize);
+    glfwSetWindowRefreshCallback(glfw_window, GlfwEventHandler::on_window_refresh);
+    glfwSetWindowFocusCallback(glfw_window, GlfwEventHandler::on_window_focus);
+    glfwSetDropCallback(glfw_window, GlfwEventHandler::on_file_drop);
+    glfwSetWindowIconifyCallback(glfw_window, GlfwEventHandler::on_window_minimize);
+    glfwSetWindowCloseCallback(glfw_window, GlfwEventHandler::on_window_close);
 }
 
-void Accessor<TheApplication, Window>::unregister_window(WindowPtr window) {
-    TheApplication::_get().unregister_window(std::move(window));
+void Application::_unregister_window(WindowPtr window) {
+
+    // disconnect all callbacks
+    GLFWwindow* glfw_window = window->get_glfw_window();
+    glfwSetMouseButtonCallback(glfw_window, nullptr);
+    glfwSetCursorPosCallback(glfw_window, nullptr);
+    glfwSetCursorEnterCallback(glfw_window, nullptr);
+    glfwSetScrollCallback(glfw_window, nullptr);
+    glfwSetKeyCallback(glfw_window, nullptr);
+    glfwSetCharCallback(glfw_window, nullptr);
+    glfwSetCharModsCallback(glfw_window, nullptr);
+    glfwSetWindowPosCallback(glfw_window, nullptr);
+    glfwSetWindowSizeCallback(glfw_window, nullptr);
+    glfwSetFramebufferSizeCallback(glfw_window, nullptr);
+    glfwSetWindowRefreshCallback(glfw_window, nullptr);
+    glfwSetWindowFocusCallback(glfw_window, nullptr);
+    glfwSetDropCallback(glfw_window, nullptr);
+    glfwSetWindowIconifyCallback(glfw_window, nullptr);
+    glfwSetWindowCloseCallback(glfw_window, nullptr);
+
+    m_has_windows_to_close.store(true);
+    glfwPostEmptyEvent();
 }
+
+} // namespace detail
 
 NOTF_CLOSE_NAMESPACE
