@@ -1,125 +1,274 @@
 #include <atomic>
 #include <iostream>
-#include <optional>
-#include <thread>
-#include <vector>
+#include <unordered_set>
 
-#include "notf/meta/assert.hpp"
-#include "notf/meta/exception.hpp"
-#include "notf/meta/typename.hpp"
+#include "notf/meta/numeric.hpp"
+#include "notf/meta/smart_ptr.hpp"
+#include "notf/meta/time.hpp"
 
-NOTF_USING_NAMESPACE;
+#include "notf/common/fibers.hpp"
+#include "notf/common/mutex.hpp"
+#include "notf/common/thread.hpp"
 
-/// Error thrown when you try to access an uninitialized Singleton.
-NOTF_EXCEPTION_TYPE(SingletonError);
+NOTF_OPEN_NAMESPACE
 
-template<class T>
-class ScopedSingleton {
+class TimerPool;
+NOTF_DECLARE_SHARED_POINTERS(class, Timer);
+
+// any timer ======================================================================================================== //
+
+class Timer {
+
+    friend TimerPool;
 
     // types ----------------------------------------------------------------------------------- //
-private:
-    /// State of the Singleton.
-    enum class State {
-        EMPTY,
-        INITIALIZING,
-        RUNNING,
-        DESTROYING,
+public:
+    /// Additional arguments on how a Timer should behave.
+    struct Flags {
+
+        /// If true, exceptions thrown during the Timer execution are ignored and the Timer will be rescheduled as if
+        /// nothing happened. The last exception is still stored in the Timer instance, all but the last exception are
+        /// lost (ignored).
+        bool ignore_exceptions = false;
+
+        /// If true, keeps the TimerPool alive, even if its destructor has been called.
+        /// Using this flag, you can ensure that a Timer will fire before the Application is closed. On the other hand,
+        /// it will prevent the whole Application from shutting down in an orderly fashion, so use only when you
+        /// know what you are doing and are sure you need it.
+        bool keep_alive = false;
+
+        /// If true, this Timer will stay alife even if there is no more `TimerPtr` held outside of the TimerPool.
+        /// Otherwise, removing the last TimerPtr to a timer on the outside will immediately stop the Timer.
+        bool anonymous = false;
     };
+
+    /// Special "repetitions" value denoting infinite repetitions.
+    static constexpr uint infinity = max_value<uint>();
 
     // methods --------------------------------------------------------------------------------- //
 public:
-    NOTF_NO_COPY_OR_ASSIGN(ScopedSingleton);
+    NOTF_NO_COPY_OR_ASSIGN(Timer);
 
-    /// Default constructor. Never attempts to create the static instance of `T`.
-    template<class X = T, class = std::enable_if_t<!std::is_default_constructible_v<X>>>
-    ScopedSingleton() {}
+    /// Constructor.
+    /// @param repetitions  Number of times the Timer should fire.
+    /// @param flags         Additional arguments on how this Timer should behave.
+    Timer(uint repetitions, Flags flags)
+        : m_repetitions_left(repetitions), m_is_active(m_repetitions_left != 0), m_flags(flags) {}
 
-    /// Perfect-forwarding constructor.
-    /// @param args             All arguments passed to the constructor of `T`.
-    /// @throws SingletonError  If you try to instantiate more than one instance of `ScopedSingleton<T>`.
-    template<class... Args>
-    ScopedSingleton(Args&&... args) {
-        if (State expected = State::EMPTY; s_state.compare_exchange_strong(expected, State::INITIALIZING)) {
-            s_instance = T(std::forward<Args>(args)...);
-            s_state.store(State::RUNNING);
-            m_is_holder = true;
-            std::cout << "initializing" << std::endl;
-        }
+    /// Virtual destructor.
+    virtual ~Timer() = default;
+
+    /// Whether or not the Timer is still active.
+    bool is_active() const noexcept { return m_is_active; }
+
+    /// Constant flags.
+    const Flags& get_flags() const { return m_flags; }
+
+    bool has_exception() const noexcept { return static_cast<bool>(m_exception); }
+
+    void rethrow() {
+        if (has_exception()) { std::rethrow_exception(m_exception); }
     }
 
-    /// Destructor.
-    /// If this instance is the holder, the destructor destroys the static instance of `T` and resets the
-    /// ScopedSingleton state so it can be instantiated anew.
-    ~ScopedSingleton() {
-        if (m_is_holder) {
-            if (State expected = State::RUNNING; s_state.compare_exchange_strong(expected, State::DESTROYING)) {
-                s_instance.reset();
-                std::cout << "destroying" << std::endl;
+    /// Stops the timer and prevents it from firing again.
+    void stop() noexcept { m_is_active = false; }
+
+private: // for Timer Pool
+    virtual timepoint_t get_next_timeout() const noexcept = 0;
+
+    /// Runs the callback stored in the Timer.
+    void fire() {
+        if (m_is_active) {
+            try {
+                _fire();
             }
-            s_state.store(State::EMPTY);
+            catch (...) {
+                m_exception = std::current_exception();
+                if (!m_flags.ignore_exceptions) { stop(); }
+            }
+
+            // stop if this was the last repetition
+            if (m_repetitions_left != infinity && --m_repetitions_left == 0) { stop(); }
         }
     }
-
-    /// Whether or not this instance is the one determining the lifetime of the static instance of `T`.
-    bool is_holder() const noexcept { return m_is_holder; }
-
-    /// @{
-    /// Access operators.
-    T* operator->() noexcept { return &_get(); }
-    T& operator*() noexcept { return _get(); }
-    const T* operator->() const noexcept { return &_get(); }
-    const T& operator*() const noexcept { return _get(); }
-    /// @}
 
 private:
-    /// The static instance of `T`.
-    /// If no `ScopedSingleton<T>` instance is alife, this throws a SingletonError.
-    static T& _get() {
-        if (NOTF_LIKELY(s_state == State::RUNNING)) { return s_instance.value(); }
-        NOTF_THROW(SingletonError, "No instance of ScopedSingleton<{}> exists", type_name<T>());
-    }
+    /// Implementation dependent fire method.
+    virtual void _fire() = 0;
 
     // fields ---------------------------------------------------------------------------------- //
 private:
-    /// Whether or not this instance is the one determining the lifetime of the static instance of `T`.
-    std::atomic_bool m_is_holder = false;
+    /// Exception thrown during execution.
+    std::exception_ptr m_exception;
 
-    /// EMPTY -> INITIALIZING -> RUNNING -> DESTROYING -> EMPTY
-    inline static std::atomic<State> s_state = State::EMPTY;
+    /// Number of times that the Timer will fire left.
+    uint m_repetitions_left;
 
-    /// The static instance of `T`.
-    inline static std::optional<T> s_instance;
+    /// Whether or not the Timer is still active or if it has been stopped.
+    std::atomic_bool m_is_active;
+
+    /// Arguments passed into the constructor.
+    const Flags m_flags;
 };
 
-struct Foo {
-    int i = 42;
-};
+// one-shot timer =================================================================================================== //
 
-int main() {
-    std::vector<std::thread> threads(10);
-    std::atomic_bool ready = false;
-    std::atomic_uint error_count = 0;
+template<class Lambda>
+auto OneShotTimer(timepoint_t timeout, Lambda&& lambda, uint repetitions = Timer::infinity, Timer::Flags flags = {}) {
 
-    std::cout << "derbe" << std::endl;
-    auto x = ScopedSingleton<Foo>();
-    for (size_t i = 0; i < threads.size(); ++i) {
-        threads[i] = std::thread([i, &ready, &error_count] {
-            while (!ready) {}
-            try {
-//                ScopedSingleton<Foo>();
-                int answer = (*ScopedSingleton<Foo>()).i;
-            }
-            catch (...) {
-                ++error_count;
-            }
-            std::cout << i;
+    class OneShotTimerImpl : public Timer {
+
+        // methods --------------------------------------------------------------------------------- //
+    private:
+        static Flags _modify_flags(Flags flags) {
+            flags.anonymous = true;
+            return flags;
+        }
+
+    public:
+        OneShotTimerImpl(timepoint_t timeout, Lambda&& lambda, uint repetitions, Flags flags)
+            : Timer(repetitions, _modify_flags(flags))
+            , m_timeout(std::move(timeout))
+            , m_lambda(std::forward<Lambda>(lambda)) {}
+
+        timepoint_t get_next_timeout() const noexcept final { return m_timeout; }
+
+    private:
+        void _fire() final {
+            stop();
+            std::invoke(m_lambda);
+        }
+
+        // fields ---------------------------------------------------------------------------------- //
+    private:
+        /// Next time the lambda is executed.
+        timepoint_t m_timeout;
+
+        /// Lambda to execute on timeout.
+        Lambda m_lambda;
+    };
+
+    return std::make_shared<OneShotTimerImpl>(timeout, std::forward<Lambda>(lambda), repetitions, flags);
+}
+
+// interval timer =================================================================================================== //
+
+// template<class Lambda>
+// auto IntervalTimer(timepoint_t timeout, Lambda&& lambda, size_t repetitions = 0, Timer::Args arguments = {}) {
+
+//    class IntervalTimerImpl : public Timer {
+
+//        // methods --------------------------------------------------------------------------------- //
+//    public:
+//        IntervalTimerImpl(timepoint_t timeout, Lambda&& lambda, Args arguments)
+//            : Timer(std::move(arguments)), m_lambda(std::forward<Lambda>(lambda)), m_timeout(std::move(timeout)) {}
+
+//        timepoint_t get_next_timeout() const noexcept final { return m_timeout; }
+
+//    private:
+//        void _fire() final {
+//            stop();
+//            std::invoke(m_lambda);
+//        }
+
+//        // fields ---------------------------------------------------------------------------------- //
+//    private:
+//        /// Lambda to execute on timeout.
+//        Lambda m_lambda;
+
+//        /// Next time the lambda is executed.
+//        timepoint_t m_timeout;
+//    };
+
+//    return std::make_shared<OneShotTimerImpl>(timeout, std::forward<Lambda>(lambda), std::move(arguments));
+//}
+
+// variable timer =================================================================================================== //
+
+// timer pool ======================================================================================================= //
+
+class TimerPool {
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// Constructor.
+    /// @param buffer_size  Number of items in the timer buffer before `schedule` blocks.
+    TimerPool(size_t buffer_size = 32) : m_buffer(buffer_size) {
+        m_timer_thread.run([this] {
+            fibers::mutex mutex;
+            Fiber([this, &mutex] {
+                TimerPtr timer;
+                while (fibers::channel_op_status::success == m_buffer.pop(timer)) {
+
+                    // each timer gets its own fiber to run on
+                    Fiber(fibers::launch::dispatch, [this, &mutex, timer = std::move(timer)]() mutable {
+                        // make sure there exist another shared_ptr that keeps the timer alive from outside the pool
+                        const TimerWeakPtr weak_timer = timer;
+                        if (!timer->get_flags().anonymous) {
+                            timer.reset();
+                            timer = weak_timer.lock();
+                        }
+
+                        while (timer && timer->is_active()) {
+                            // fire right away if the next timeout has passed
+                            const auto timeout = timer->get_next_timeout();
+                            if (timeout <= now()) {
+                                timer->fire();
+
+                            } else {
+                                // instead of just waiting, all fibers wait on a condition variable
+                                // this way, we can forcefully shut down all timers on destruction of the timer pool
+                                std::unique_lock lock(mutex);
+                                if (m_while_running.wait_until(
+                                        lock,
+                                        std::chrono::time_point_cast<std::chrono::steady_clock::duration>(timeout),
+                                        [&] { return NOTF_UNLIKELY(m_buffer.is_closed()); })) {
+                                    if (!timer->get_flags().keep_alive) {
+                                        return; // return early if the buffer has been closed
+                                    }
+                                }
+                            }
+
+                            // re-check whether the user has already discarded the timer
+                            if (!timer->get_flags().anonymous) {
+                                timer.reset();
+                                timer = weak_timer.lock();
+                            }
+                        }
+                    }).detach();
+                }
+                m_while_running.notify_all();
+            }).join();
         });
     }
-    ready = true;
-    for (size_t i = 0; i < threads.size(); ++i) {
-        threads[i].join();
-    }
-    std::cout << std::endl;
-    std::cout << "error count: " << error_count << std::endl;
+
+    /// Destructor.
+    ~TimerPool() { m_buffer.close(); }
+
+    /// Schedules a new Timer in the Pool.
+    void schedule(TimerPtr&& timer) { m_buffer.push(std::move(timer)); }
+
+    // fields ---------------------------------------------------------------------------------- //
+private:
+    fibers::condition_variable m_while_running;
+
+    /// MPMC queue buffering new Timers to be scheduled in the Pool.
+    fibers::buffered_channel<TimerPtr> m_buffer;
+
+    /// Thread running the Timer Fibers.
+    Thread m_timer_thread;
+};
+
+NOTF_CLOSE_NAMESPACE
+
+int main() {
+    NOTF_USING_NAMESPACE;
+    NOTF_USING_LITERALS;
+
+    TimerPool pool;
+    pool.schedule(OneShotTimer(now() + 1s, [] { std::cout << "derbe after 1 seconds" << std::endl; }));
+    pool.schedule(OneShotTimer(now() + 2s, [] { std::cout << "derbe after 2 seconds" << std::endl; }));
+    pool.schedule(OneShotTimer(now() + 3s, [] { std::cout << "derbe after 3 seconds" << std::endl; }));
+    std::this_thread::sleep_for(1.2s);
     return 0;
 }

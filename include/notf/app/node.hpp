@@ -197,8 +197,6 @@ public:
     // properties -------------------------------------------------------------
 
     /// The value of a Property of this Node.
-    /// If you only care about the current value of a Property this method is more efficient than
-    /// `get_property<T>()->get()` because it does not construct a handle to go through.
     /// @param name     Node-unique name of the Property.
     /// @returns        The value of the Property.
     /// @throws         NameError / TypeError

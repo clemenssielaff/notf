@@ -360,37 +360,29 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
     }
 
     SECTION("Compile Time Nodes have Compile Time Properties") {
-//        auto node = root_node.create_child<LeafNodeCT>().to_owner();
-//        PropertyHandle<int> int_prop = node.get_property<int>("int");
-//        REQUIRE(!int_prop.is_expired());
+        auto node = root_node.create_child<LeafNodeCT>().to_owner();
+        const int rt_value = node.get<int>("int");
+        REQUIRE(node.get<int>("int"));
 
-//        SECTION("compile time and run time acquired Properties are the same") {
-//            static constexpr StringConst int_string_const = "int";
-//            PropertyHandle<int> int_prop_rt = node.get_property(int_id);
+        SECTION("compile time and run time acquired Properties are the same") {
+            const int ct_value = node.get(int_id);
+            REQUIRE(rt_value == ct_value);
 
-//            REQUIRE(!int_prop_rt.is_expired());
-//            REQUIRE(int_prop_rt == int_prop);
-//            REQUIRE(int_prop_rt == node.get_property<int_string_const>());
-//        }
+            static constexpr StringConst int_string_const = "int";
+            REQUIRE(ct_value == node.get<int_string_const>());
+        }
 
-//        SECTION("Compile Time Nodes can be asked for non-existing run time Properies") {
-//            REQUIRE_THROWS_AS(node.get_property<int>("float").is_expired(), TypeError);
-//            REQUIRE_THROWS_AS(node.get_property<float>("int").is_expired(), TypeError);
-//            REQUIRE_THROWS_AS(node.get_property<float>("not a property name").is_expired(), NameError);
-//        }
+        SECTION("Compile Time Nodes can be asked for non-existing run time Properies") {
+            REQUIRE_THROWS_AS(node.get<int>("float"), TypeError);
+            REQUIRE_THROWS_AS(node.get<float>("int"), TypeError);
+            REQUIRE_THROWS_AS(node.get<float>("not a property name"), NameError);
+        }
 
-//        SECTION("two of the same Properties of different Nodes are not equal") {
-//            TypedNodeHandle<LeafNodeCT> node2 = root_node.create_child<LeafNodeCT>();
-//            PropertyHandle<int> int_prop_2 = node2.get_property<int>("int");
-//            REQUIRE(!int_prop_2.is_expired());
-//            REQUIRE(int_prop != int_prop_2);
-//        }
-
-//        SECTION("you can change the property hash by changing any property value") {
-//            const size_t property_hash = Node::AccessFor<Tester>(node).get_property_hash();
-//            int_prop.set(int_prop.get() + 1);
-//            REQUIRE(property_hash != Node::AccessFor<Tester>(node).get_property_hash());
-//        }
+        SECTION("you can change the property hash by changing any property value") {
+            const size_t property_hash = Node::AccessFor<Tester>(node).get_property_hash();
+            node.set(int_id, node.get(int_id) + 1);
+            REQUIRE(property_hash != Node::AccessFor<Tester>(node).get_property_hash());
+        }
     }
 
     SECTION("RunTimeNodes create their Properties in the constructor") {
@@ -421,46 +413,43 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
         }
     }
 
-//    SECTION("Run Time Nodes have Run Time Properties") {
-//        NodeHandle node = root_node.create_child<LeafNodeRT>();
+    SECTION("Run Time Nodes have Run Time Properties") {
+        NodeHandle node = root_node.create_child<LeafNodeRT>();
 
-//        SECTION("can be asked fo non-existing Properties") {
-//            REQUIRE(!node.get_property<float>("float").is_expired());
-//            REQUIRE_THROWS_AS(node.get_property<float>("not a property").is_expired(), NameError);
-//            REQUIRE_THROWS_AS(node.get_property<bool>("float").is_expired(), TypeError);
-//        }
+        SECTION("can be asked fo non-existing Properties") {
+            REQUIRE(node.get<float>("float") != 0.0f);
+            REQUIRE_THROWS_AS(node.get<float>("not a property"), NameError);
+            REQUIRE_THROWS_AS(node.get<bool>("float"), TypeError);
+        }
 
-//        SECTION("you can change the property hash by changing any property value") {
-//            PropertyHandle<float> prop = node.get_property<float>("float");
-
-//            const size_t property_hash = Node::AccessFor<Tester>(node).get_property_hash();
-//            prop.set(prop.get() + 1.f);
-//            REQUIRE(property_hash != Node::AccessFor<Tester>(node).get_property_hash());
-//        }
-//    }
+        SECTION("you can change the property hash by changing any property value") {
+            const float before = node.get<float>("float");
+            const size_t property_hash = Node::AccessFor<Tester>(node).get_property_hash();
+            node.set("float", before + 1.f);
+            REQUIRE(property_hash != Node::AccessFor<Tester>(node).get_property_hash());
+        }
+    }
 
     SECTION("whenever a Property changes, its Node is marked dirty") {
-//        TypedNodeHandle<LeafNodeCT> node_handle = root_node.create_child<LeafNodeCT>();
-//        auto node = std::dynamic_pointer_cast<LeafNodeCT>(
-//            TypedNodeHandle<LeafNodeCT>::AccessFor<Tester>::get_shared_ptr(node_handle));
-//        REQUIRE(node);
+        TypedNodeHandle<LeafNodeCT> node_handle = root_node.create_child<LeafNodeCT>();
+        auto node = std::dynamic_pointer_cast<LeafNodeCT>(
+            TypedNodeHandle<LeafNodeCT>::AccessFor<Tester>::get_shared_ptr(node_handle));
+        REQUIRE(node);
 
-//        REQUIRE(!Node::AccessFor<Tester>(*node.get()).is_dirty());
-//        auto property = node_handle.get_property(float_id);
-//        property.set(23);
-//        REQUIRE(Node::AccessFor<Tester>(*node.get()).is_dirty());
+        REQUIRE(!Node::AccessFor<Tester>(*node.get()).is_dirty());
+        node_handle.set(float_id, 223);
+        REQUIRE(Node::AccessFor<Tester>(*node.get()).is_dirty());
     }
 
     SECTION("Nodes create a copy of their data to modify, if the graph is frozen") {
-//        auto node = root_node.create_child<LeafNodeCT>().to_handle();
-//        auto int_property = node.get_property(int_id);
-//        REQUIRE(int_property.get() == 123);
-//        {
-//            NOTF_GUARD(TheGraph::AccessFor<Tester>::freeze(render_thread_id));
-//            int_property.set(321);
-//            REQUIRE(int_property.get() == 321);
-//        }
-//        REQUIRE(int_property.get() == 321);
+        auto node = root_node.create_child<LeafNodeCT>().to_handle();
+        REQUIRE(node.get(int_id) == 123);
+        {
+            NOTF_GUARD(TheGraph::AccessFor<Tester>::freeze(render_thread_id));
+            node.set(int_id, 321);
+            REQUIRE(node.get(int_id) == 321);
+        }
+        REQUIRE(node.get(int_id) == 321);
     }
 
     SECTION("Node Handles will not crash when you try call a method on them when they are expired") {

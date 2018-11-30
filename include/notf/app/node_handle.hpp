@@ -106,8 +106,6 @@ public:
     // properties -------------------------------------------------------------
 
     /// The value of a Property of this Node.
-    /// If you only care about the current value of a Property this method is more efficient than
-    /// `get_property<T>()->get()` because it does not construct a handle to go through.
     /// @param name     Node-unique name of the Property.
     /// @returns        The value of the Property.
     /// @throws         NameError / TypeError
@@ -115,13 +113,8 @@ public:
     const T& get(const std::string& name) const {
         return _get_node()->template get<T>(name);
     }
-
-    /// @{
-    /// Returns the correctly typed value of a CompileTimeProperty.
-    /// @param name     Name of the requested Property.
-    /// @returns        Current value of the requested Property.
     template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    auto get(StringType<Cs...> name) const {
+    constexpr auto get(StringType<Cs...> name) const {
         return this->_get_node()->get(std::forward<decltype(name)>(name));
     }
     template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
@@ -130,8 +123,60 @@ public:
     }
     /// @}
 
+    /// Updates the value of a Property of this Node.
+    /// @param name     Node-unique name of the Property.
+    /// @param value    New value of the Property.
+    /// @throws         NameError / TypeError
+    template<class T>
+    void set(const std::string& name, T&& value) {
+        _get_node()->template set<T>(name, std::forward<T>(value));
+    }
+    template<class T, char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    constexpr void set(StringType<Cs...> name, T&& value) {
+        _get_node()->template set<T>(std::forward<decltype(name)>(name), std::forward<T>(value));
+    }
+    template<const StringConst& name, class T, class X = NodeType,
+             class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    constexpr void set(T&& value) {
+        _get_node()->template set<T>(std::forward<decltype(name)>(name), std::forward<T>(value));
+    }
+    /// @}
+
     // signals / slots --------------------------------------------------------
 
+    /// @{
+    /// Manually call the requested Slot of this Node.
+    /// If T is not`None`, this method takes a second argument that is passed to the Slot.
+    /// The Publisher of the Slot's `on_next` call id is set to `nullptr`.
+    template<class T = None>
+    std::enable_if_t<std::is_same_v<T, None>> call(const std::string& name) {
+        this->_get_node()->call(name);
+    }
+    template<class T>
+    std::enable_if_t<!std::is_same_v<T, None>> call(const std::string& name, const T& value) {
+        this->_get_node()->call(name, value);
+    }
+    template<char... Cs, class T = None, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    std::enable_if_t<std::is_same_v<T, None>> call(StringType<Cs...> name) {
+        return this->_get_node()->call(std::forward<decltype(name)>(name));
+    }
+    template<char... Cs, class T = None, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    std::enable_if_t<!std::is_same_v<T, None>> call(StringType<Cs...> name, const T& value) {
+        return this->_get_node()->call(std::forward<decltype(name)>(name), value);
+    }
+    template<const StringConst& name, class T = None, class X = NodeType,
+             class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    std::enable_if_t<std::is_same_v<T, None>> call() {
+        return this->_get_node()->call(make_string_type<name>());
+    }
+    template<const StringConst& name, class T = None, class X = NodeType,
+             class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    std::enable_if_t<!std::is_same_v<T, None>> call(const T& value) {
+        return this->_get_node()->call(make_string_type<name>(), value);
+    }
+    /// @}
+
+    /// @{
     /// Run time access to the subscriber of a Slot of this Node.
     /// Use to connect Pipelines from the outside to the Node.
     /// @param name     Node-unique name of the Slot.
@@ -141,19 +186,6 @@ public:
     SlotHandle<T> get_slot(const std::string& name) const {
         return _get_node()->template _try_get_slot<T>(name);
     }
-
-    /// Run time access to a Signal of this Node.
-    /// @param name     Node-unique name of the Signal.
-    /// @returns        The requested Signal.
-    /// @throws         NameError / TypeError
-    template<class T>
-    SignalHandle<T> get_signal(const std::string& name) const {
-        return _get_node()->template _try_get_signal<T>(name);
-    }
-
-    /// @{
-    /// Returns the requested Slot or void (which doesn't compile).
-    /// @param name     Name of the requested Slot.
     template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
     constexpr auto get_slot(StringType<Cs...> name) const {
         return this->_get_node()->get_slot(std::forward<decltype(name)>(name));
@@ -165,8 +197,14 @@ public:
     /// @}
 
     /// @{
-    /// Returns the requested Signal or void (which doesn't compile).
-    /// @param name     Name of the requested Signal.
+    /// Run time access to a Signal of this Node.
+    /// @param name     Node-unique name of the Signal.
+    /// @returns        The requested Signal.
+    /// @throws         NameError / TypeError
+    template<class T>
+    SignalHandle<T> get_signal(const std::string& name) const {
+        return _get_node()->template _try_get_signal<T>(name);
+    }
     template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
     constexpr auto get_signal(StringType<Cs...> name) const {
         return this->_get_node()->get_signal(std::forward<decltype(name)>(name));

@@ -145,6 +145,15 @@ struct GlfwEventHandler {
         //            NOTF_ASSERT(action == GLFW_REPEAT);
         //            schedule<KeyRepeatEvent>(glfw_window, to_key(key), scancode, KeyModifiers(modifiers));
         //        }
+
+        if (action == GLFW_PRESS) {
+            using namespace std::chrono_literals;
+            schedule([key]() {
+                std::cout << key << " (1)"<<  std::endl;
+                this_fiber::sleep_for(1s);
+                std::cout << key << " (2)"<<  std::endl;
+            });
+        }
     }
 
     /// Called by GLFW when an unicode code point was generated.
@@ -229,7 +238,7 @@ struct GlfwEventHandler {
     /// @param glfw_window  GLFW Window to close.
     static void on_window_close(GLFWwindow* glfw_window) {
         // TODO: ask the Window if it should really be closed; ignore and unset the flag if not
-        schedule([window = to_window_handle(glfw_window)] { window.get_slot<Window::to_close>().call(); });
+        schedule([window = to_window_handle(glfw_window)]() mutable { window.call<Window::to_close>(); });
     }
 
     /// Called by GLFW, if the user connects or disconnects a monitor.

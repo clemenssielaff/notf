@@ -12,26 +12,28 @@
 
 SCENARIO("TheApplication Singleton", "[app][application]") {
 
-//    SECTION("can be accessed anywhere in the code") { REQUIRE(TheApplication::get_arguments().argc == -1); }
+    SECTION("no instance") {
+        SECTION("Requesting TheApplication without a running instance will throw `SingletonError`") {
+            REQUIRE_THROWS_AS(TheApplication()->get_arguments(), SingletonError);
+        }
+    }
 
-//    SECTION("can be started (with exec) and shut down") {
-//        int result = TheApplication::exec(); // does not block since no Windows are open
-//        TheApplication::shutdown();
-//        REQUIRE(result == EXIT_SUCCESS);
-//    }
+    SECTION("valid instance") {
+        TheApplication app(TheApplication::Arguments{});
 
-//    SECTION("can not be initialized more than once") {
-//        TheApplication::AccessFor<Tester>::reinitialize();
-//        REQUIRE_THROWS_AS(TheApplication::initialize(42, nullptr), TheApplication::StartupError);
-//    }
+        SECTION("can be accessed anywhere in the code") { REQUIRE(TheApplication()->get_arguments().argc == -1); }
 
-//    SECTION("can not run exec more than once") {
-//        TheApplication::exec();
-//        REQUIRE_THROWS_AS(TheApplication::exec(), TheApplication::StartupError);
-//    }
+        SECTION("can be started (with exec) and shut down") {
+            int result = TheApplication()->exec(); // does not block since no Windows are open
+            TheApplication()->shutdown();
+            REQUIRE(result == EXIT_SUCCESS);
+        }
 
-//    // Always reset the Application singleton when the test case has finished
-//    TheApplication::AccessFor<Tester>::reinitialize();
+        SECTION("can not run exec more than once") {
+            TheApplication()->exec();
+            REQUIRE_THROWS_AS(TheApplication()->exec(), TheApplication::StartupError);
+        }
+    }
 }
 
 NOTF_USING_NAMESPACE;

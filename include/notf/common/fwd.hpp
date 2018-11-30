@@ -15,13 +15,6 @@ template<class, class, class, size_t>
 struct Arithmetic;
 } // namespace detail
 
-// timer_pool.hpp
-class TheTimerPool;
-NOTF_DECLARE_SHARED_POINTERS(class, Timer);
-NOTF_DECLARE_SHARED_POINTERS(class, OneShotTimer);
-NOTF_DECLARE_SHARED_POINTERS(class, IntervalTimer);
-NOTF_DECLARE_SHARED_POINTERS(class, VariableTimer);
-
 // msgpack.hpp
 class MsgPack;
 

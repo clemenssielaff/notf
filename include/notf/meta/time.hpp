@@ -29,6 +29,11 @@ using duration_t = std::chrono::duration<std::chrono::nanoseconds::rep, std::rat
 /// Point in time.
 using timepoint_t = std::chrono::time_point<clock_t, duration_t>;
 
+// functions ======================================================================================================== //
+
+/// What time is it right now?
+inline timepoint_t now() { return std::chrono::time_point_cast<duration_t>(clock_t::now()); }
+
 // fps literal ====================================================================================================== //
 
 NOTF_OPEN_LITERALS_NAMESPACE

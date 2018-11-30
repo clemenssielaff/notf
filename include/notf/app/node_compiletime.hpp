@@ -211,11 +211,10 @@ public:
     /// Updates the value of a CompileTimeProperty of this Node.
     /// @param name     Node-unique name of the Property.
     /// @param value    New value of the Property.
-    template<char... Cs, class T, size_t I = _get_property_index(StringType<Cs...>{})>
+    template<class T, char... Cs, size_t I = _get_property_index(StringType<Cs...>{}),
+             class = std::enable_if_t<std::is_convertible_v<T, typename property_t<I>::value_t>>>
     constexpr void set(StringType<Cs...>, T&& value) {
-        if constexpr (std::is_convertible_v<T, property_t<I>>) {
-            std::get<I>(m_properties)->set(std::forward<T>(value));
-        }
+        std::get<I>(m_properties)->set(std::forward<T>(value));
     }
     template<const StringConst& name, class T>
     constexpr void set(T&& value) {
@@ -233,23 +232,21 @@ public:
     /// Manually call the requested Slot of this Node.
     /// If T is not`None`, this method takes a second argument that is passed to the Slot.
     /// The Publisher of the Slot's `on_next` call id is set to `nullptr`.
-    template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{}),
-             class T = typename std::tuple_element_t<I, Signals>::value_t>
+    template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{}), class T = typename slot_t<I>::value_t>
     std::enable_if_t<std::is_same_v<T, None>> call(StringType<Cs...>) {
         std::get<I>(m_slots)->call();
     }
-    template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{}),
-             class T = typename std::tuple_element_t<I, Signals>::value_t>
+    template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{}), class T = typename slot_t<I>::value_t>
     std::enable_if_t<!std::is_same_v<T, None>> call(StringType<Cs...>, const T& value) {
         std::get<I>(m_slots)->call(value);
     }
     template<const StringConst& name, size_t I = _get_slot_index(make_string_type<name>()),
-             class T = typename std::tuple_element_t<I, Signals>::value_t>
+             class T = typename slot_t<I>::value_t>
     std::enable_if_t<std::is_same_v<T, None>> call() {
         std::get<I>(m_slots)->call();
     }
     template<const StringConst& name, size_t I = _get_slot_index(make_string_type<name>()),
-             class T = typename std::tuple_element_t<I, Signals>::value_t>
+             class T = typename slot_t<I>::value_t>
     std::enable_if_t<!std::is_same_v<T, None>> call(const T& value) {
         std::get<I>(m_slots)->call(value);
     }
@@ -322,13 +319,11 @@ protected:
     /// @param name     Name of the Signal to emit.
     /// @param value    Data to emit.
     /// @throws         NameError / TypeError
-    template<char... Cs, size_t I = _get_signal_index(StringType<Cs...>{}),
-             class T = typename std::tuple_element_t<I, Signals>::value_t>
+    template<char... Cs, size_t I = _get_signal_index(StringType<Cs...>{}), class T = typename signal_t<I>::value_t>
     void _emit(StringType<Cs...>, const T& value) {
         std::get<I>(m_signals)->publish(value);
     }
-    template<char... Cs, size_t I = _get_signal_index(StringType<Cs...>{}),
-             class T = typename std::tuple_element_t<I, Signals>::value_t>
+    template<char... Cs, size_t I = _get_signal_index(StringType<Cs...>{}), class T = typename signal_t<I>::value_t>
     void _emit(StringType<Cs...>) {
         std::get<I>(m_signals)->publish();
     }
