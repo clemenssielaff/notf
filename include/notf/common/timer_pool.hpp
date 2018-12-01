@@ -1,287 +1,247 @@
-//#pragma once
-
-//#include <forward_list>
-
-//#include "notf/meta/numeric.hpp"
-//#include "notf/meta/pointer.hpp"
-//#include "notf/meta/smart_ptr.hpp"
-//#include "notf/meta/time.hpp"
-
-//#include "notf/common/fwd.hpp"
-//#include "notf/common/mutex.hpp"
-//#include "notf/common/thread.hpp"
-
-//// timer_pool.hpp
-//class TheTimerPool;
-//NOTF_DECLARE_SHARED_POINTERS(class, Timer);
-//NOTF_DECLARE_SHARED_POINTERS(class, OneShotTimer);
-//NOTF_DECLARE_SHARED_POINTERS(class, IntervalTimer);
-//NOTF_DECLARE_SHARED_POINTERS(class, VariableTimer);
-
-
-//// ================================================================================================================== //
-
-//NOTF_OPEN_NAMESPACE
-
-///// A single thread running 0-n Timer instances used to trigger timed events like animations.
-//class TheTimerPool {
-//    friend class Timer;
-//    friend class OneShotTimer;
-//    friend class IntervalTimer;
-//    friend class VariableTimer;
-
-//    // methods --------------------------------------------------------------------------------- //
-//private:
-//    /// Default Constructor.
-//    TheTimerPool();
-
-//    /// Static (private) function holding the actual TimerPool instance.
-//    static TheTimerPool& _instance() {
-//        static TheTimerPool instance;
-//        return instance;
-//    }
-
-//public:
-//    NOTF_NO_COPY_OR_ASSIGN(TheTimerPool);
-
-//    /// The singleton Timer Pool instance.
-//    static TheTimerPool& get() { return _instance(); }
-
-//    /// Destructor.
-//    ~TheTimerPool();
-
-//private:
-//    /// Worker thread method.
-//    void _run();
-
-//    /// Schedules a new Timer.
-//    /// @param timer    Timer to schedule.
-//    void _schedule(TimerPtr timer);
-
-//    /// Unschedules an existing Timer.
-//    /// @param timer    Timer to unschedule.
-//    void _unschedule(const valid_ptr<Timer*> timer);
-
-//    /// Current time point.
-//    static timepoint_t _now() { return std::chrono::time_point_cast<duration_t>(clock_t::now()); }
-
-//    // fields ---------------------------------------------------------------------------------- //
-//private:
-//    /// All registered Timers, ordered by their next timeout.
-//    std::forward_list<TimerPtr> m_timer;
-
-//    /// Worker thread.
-//    Thread m_thread;
-
-//    /// Mutex guarding the Timer thread's state.
-//    Mutex m_mutex;
-
-//    /// Condition variable to wait for.
-//    ConditionVariable m_condition;
-
-//    /// Is true as long at the thread is alive.
-//    bool m_is_running = true;
-//};
-
-//// ================================================================================================================== //
-
-///// The Timer class is fully thread-safe.
-///// Timers are manged through shared pointers. If a Timer is scheduled when its last user-held shared_ptr goes out of
-///// scope, it will execute once more before being removed from the TimerPool. This way, we can create anonymous one-shot
-///// Timers that are never held by the user.
-//class Timer : public std::enable_shared_from_this<Timer> {
-//    friend class TheTimerPool;
-
-//    // types ----------------------------------------------------------------------------------- //
-//protected:
-//    /// Callback signature.
-//    using Callback = std::function<void()>;
-
-//    // methods --------------------------------------------------------------------------------- //
-//protected:
-//    /// Value Constructor.
-//    /// @param callback     Function called when this Timer times out.
-//    /// @param repetitions  How often the Timer should fire. Default is infinite.
-//    Timer(Callback callback, size_t repetitions = _infinity())
-//        : m_callback(std::move(callback)), m_times_left(repetitions) {}
-
-//public:
-//    NOTF_NO_COPY_OR_ASSIGN(Timer);
-
-//    /// Destructor.
-//    virtual ~Timer();
-
-//    /// Starts the Timer to fire once at a given point in the future.
-//    /// If the Timer is already running, it is restarted with the given value.
-//    /// If the time point is not in the future, the Callback is called immediately on this thread.
-//    /// @param timeout      Point in time to call the Callback.
-//    void start(timepoint_t timeout);
-
-//    /// Stops the Timer, if it is active.
-//    void stop();
-
-//protected:
-//    /// Time to wait between this Timer fires.
-//    virtual duration_t _interval() const = 0;
-
-//    /// Tests whether the Timer is currently active or not.
-//    bool _is_active() const { return m_next_timeout != timepoint_t(); }
-
-//    /// Tests whether this Timer repeats infinitely.
-//    bool _is_infinite() const { return m_times_left == _infinity(); }
-
-//    /// If the user wants to have the Callback repeated this much, it might as well be infinity.
-//    constexpr static size_t _infinity() { return max_value<size_t>(); }
-
-//    // fields ---------------------------------------------------------------------------------- //
-//protected:
-//    /// Function called when this Timer times out.
-//    Callback m_callback;
-
-//    /// Time when the timer fires next.
-//    timepoint_t m_next_timeout = timepoint_t();
-
-//    /// How often the Timer will fire, if it is continuous.
-//    size_t m_times_left;
-//};
-
-//// ================================================================================================================== //
-
-///// Fires once, after a given delay.
-//class OneShotTimer : public Timer {
-
-//    // methods --------------------------------------------------------------------------------- //
-//private:
-//    NOTF_CREATE_SMART_FACTORIES(OneShotTimer);
-
-//    /// Value Constructor.
-//    /// @param callback     Function called when this Timer times out.
-//    OneShotTimer(Callback callback) : Timer(std::move(callback), 1) {}
-
-//    /// Factory.
-//    /// @param callback     Function called when this Timer times out.
-//    static OneShotTimerPtr create(Callback callback) { return _create_shared(std::move(callback)); }
-
-//public:
-//    /// Destructor.
-//    ~OneShotTimer() override;
-
-//    /// Schedules a one-off Timer to fire the given Callback at a certain point in the future.
-//    /// If the time point is not in the future, the Callback is called immediately on this thread.
-//    /// @param timeout      Point in time to run the callback.
-//    /// @param callback     Callback function.
-//    static void create(const timepoint_t timeout, Callback callback) {
-//        if (timeout <= TheTimerPool::_now()) {
-//            callback();
-//            return;
-//        }
-//        create(std::move(callback))->start(timeout);
-//    }
-
-//    /// Schedules a one-off Timer to fire the given Callback at a certain point in the future.
-//    /// If the time point is not in the future, the Callback is called immediately on this thread.
-//    /// @param duration     Wait time until the Callback from now.
-//    /// @param callback     Callback function.
-//    static void create(const duration_t interval, Callback callback) {
-//        create(TheTimerPool::_now() + interval, std::move(callback));
-//    }
-
-//protected:
-//    /// Time to wait between this Timer fires.
-//    duration_t _interval() const override { return duration_t(0); } // is never actually called
-//};
-
-//// ================================================================================================================== //
-
-///// An IntervalTimer fires continuously with a fixed interval.
-//class IntervalTimer : public Timer {
-
-//    // methods --------------------------------------------------------------------------------- //
-//private:
-//    NOTF_CREATE_SMART_FACTORIES(IntervalTimer);
-
-//    /// Value Constructor.
-//    /// @param callback     Function called when this Timer times out.
-//    /// @param interval     Interval wait time of the Timer.
-//    /// @param repetitions  How often the Timer should fire. Default is infinite.
-//    IntervalTimer(Callback callback, duration_t interval, size_t repetitions)
-//        : Timer(std::move(callback), repetitions), m_interval(std::move(interval)) {}
-
-//public:
-//    /// Destructor.
-//    ~IntervalTimer() override;
-
-//    /// Factory.
-//    /// @param callback     Function called when this Timer times out.
-//    /// @param interval     Interval wait time of the Timer.
-//    /// @param repetitions  How often the Timer should fire. Default is infinite.
-//    static IntervalTimerPtr
-//    create(Callback callback, duration_t interval = duration_t(0), size_t repetitions = _infinity()) {
-//        return _create_shared(std::move(callback), std::move(interval), repetitions);
-//    }
-
-//    /// Starts with a given interval as a continuous Timer.
-//    /// If the Timer is already running, it is restarted with the given values.
-//    /// If the interval is zero, the Callback is fired immediately on this thread, as many times as the repetitions
-//    /// parameter says, except if it is infinite - then the Callback is executed just once (for your convenience).
-//    /// @param interval     Interval wait time of the Timer, starts from now.
-//    /// @param repetitions  How often the Timer should fire. Default is infinite.
-//    void start(duration_t interval, size_t repetitions);
-//    void start(size_t repetitions) { start(m_interval, repetitions); }
-//    void start(duration_t interval) { start(interval, m_times_left); }
-//    void start() { start(m_interval, m_times_left); }
-
-//private:
-//    /// Time to wait between this Timer fires.
-//    duration_t _interval() const override { return m_interval; }
-
-//    // fields ---------------------------------------------------------------------------------- //
-//private:
-//    /// Time between firing.
-//    duration_t m_interval = duration_t(0);
-//};
-
-//// ================================================================================================================== //
-
-///// An Variable fires continuously with an interval determined through a user-defined lambda.
-//class VariableTimer : public Timer {
-
-//    // types ----------------------------------------------------------------------------------- //
-//public:
-//    /// Interval function signature.
-//    using IntervalFunction = std::function<duration_t()>;
-
-//    // methods --------------------------------------------------------------------------------- //
-//private:
-//    NOTF_CREATE_SMART_FACTORIES(VariableTimer);
-
-//    /// Value Constructor.
-//    /// @param callback     Function called when this Timer times out.
-//    VariableTimer(Callback callback) : Timer(std::move(callback)) {}
-
-//public:
-//    /// Destructor.
-//    ~VariableTimer() override;
-
-//    /// Factory.
-//    /// @param callback     Function called when this Timer times out.
-//    static VariableTimerPtr create(Callback callback) { return _create_shared(std::move(callback)); }
-
-//    /// Starts with a given interval function.
-//    /// If the Timer is already running, it is restarted with the new function.
-//    /// The Timer is always scheduled, even if the given function returns zero.
-//    /// @param function     Function used to determine the next interval of this Timer.
-//    /// @param repetitions  How often the Timer should fire. Default is infinite.
-//    void start(IntervalFunction function, size_t repetitions = _infinity());
-
-//private:
-//    /// Time to wait between this Timer fires.
-//    duration_t _interval() const override { return m_function(); }
-
-//    // fields ---------------------------------------------------------------------------------- //
-//private:
-//    /// Function used to determine the next interval of this Timer.
-//    IntervalFunction m_function;
-//};
-
-//NOTF_CLOSE_NAMESPACE
+#pragma once
+
+#include "notf/meta/numeric.hpp"
+#include "notf/meta/time.hpp"
+
+#include "notf/common/fibers.hpp"
+#include "notf/common/thread.hpp"
+
+NOTF_OPEN_NAMESPACE
+
+// timer ============================================================================================================ //
+
+/// Timer Baseclass.
+class Timer {
+
+    // types ----------------------------------------------------------------------------------- //
+public:
+    /// Special "repetitions" value denoting infinite repetitions.
+    static constexpr uint infinite = max_value<uint>();
+
+    // methods --------------------------------------------------------------------------------- //
+protected:
+    /// Constructor.
+    /// @param repetitions  Number of times that the Timer will fire left.
+    Timer(const uint repetitions = infinite) : m_repetitions_left(repetitions), m_is_active(m_repetitions_left != 0) {}
+
+public:
+    NOTF_NO_COPY_OR_ASSIGN(Timer);
+
+    /// Virtual destructor.
+    virtual ~Timer() = default;
+
+    /// Whether or not the Timer is still active.
+    bool is_active() const noexcept { return m_is_active; }
+
+    /// @{
+    /// If false, stops timer on the first exceptions, otherwise keeps going.
+    bool is_ignoring_exceptions() const noexcept { return m_ignore_exceptions; }
+    void set_ignore_exceptions(const bool value = true) noexcept { m_ignore_exceptions = value; }
+    /// @}
+
+    /// @{
+    /// If true, will keep the TimerPool alive until the Timer has finished on its own.
+    bool is_keeping_alive() const noexcept { return m_keep_alive; }
+    void set_keep_alive(const bool value = true) noexcept { m_keep_alive = value; }
+    /// @}
+
+    /// @{
+    /// If true, will keep the Timer alive even if there are no more owning references to it outside the TimerPool.
+    bool is_anonymous() const noexcept { return m_anonymous; }
+    void set_anonymous(const bool value = true) noexcept { m_anonymous = value; }
+    /// @}
+
+    /// Next time the lambda is executed.
+    timepoint_t get_next_timeout() const noexcept { return m_next_timeout; }
+
+    /// Checks if the Timer's callback threw an exception during its last execution.
+    bool has_exception() const noexcept { return static_cast<bool>(m_exception); }
+
+    /// If the Timer has a stored exception, this will re-throw it.
+    void rethrow() {
+        if (has_exception()) { std::rethrow_exception(m_exception); }
+    }
+
+    /// Stops the timer and prevents it from firing again.
+    void stop() noexcept { m_is_active = false; }
+
+    /// Runs the callback stored in the Timer.
+    void fire() {
+        if (m_is_active) {
+            try {
+                _fire();
+            }
+            catch (...) {
+                m_exception = std::current_exception();
+                if (!m_ignore_exceptions) { stop(); }
+            }
+
+            // stop if this was the last repetition
+            if (m_repetitions_left != infinite && --m_repetitions_left == 0) { stop(); }
+        }
+    }
+
+protected:
+    /// Lets the implementations set the next timeout for this Timer.
+    void _set_next_timeout(timepoint_t next_timeout) {
+        if (next_timeout < m_next_timeout.load()) {
+            NOTF_THROW(LogicError, "The next timeout of a Timer cannot be earlier than the last");
+        }
+        m_next_timeout.store(next_timeout);
+    }
+
+private:
+    /// Implementation dependent fire method.
+    virtual void _fire() = 0;
+
+    // fields ---------------------------------------------------------------------------------- //
+private:
+    /// Exception thrown during execution.
+    std::exception_ptr m_exception;
+
+    /// Next time the lambda is executed.
+    std::atomic<timepoint_t> m_next_timeout;
+
+    /// Number of times that the Timer will fire left.
+    uint m_repetitions_left = infinite;
+
+    /// Whether or not the Timer is still active or if it has been stopped.
+    std::atomic_bool m_is_active = true;
+
+    /// If true, exceptions thrown during the Timer execution are ignored and the Timer will be rescheduled as if
+    /// nothing happened. The last exception is still stored in the Timer instance, all but the last exception are
+    /// lost (ignored).
+    bool m_ignore_exceptions = false;
+
+    /// If true, keeps the TimerPool alive, even if its destructor has been called.
+    /// Using this flag, you can ensure that a Timer will fire before the Application is closed. On the other hand,
+    /// it will prevent the whole Application from shutting down in an orderly fashion, so use only when you
+    /// know what you are doing and are sure you need it.
+    bool m_keep_alive = false;
+
+    /// If true, this Timer will stay alife even if there is no more `TimerPtr` held outside of the TimerPool.
+    /// Otherwise, removing the last TimerPtr to a timer on the outside will immediately stop the Timer.
+    bool m_anonymous = false;
+};
+
+// timer pool ======================================================================================================= //
+
+class TimerPool {
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// Constructor.
+    /// @param buffer_size  Number of items in the timer buffer before `schedule` blocks.
+    TimerPool(size_t buffer_size = 32);
+
+    /// Destructor.
+    /// Automatically closes the pool and shuts down all running Timers (unless they are "keep-alive").
+    ~TimerPool() {
+        m_buffer.close();
+        m_timer_thread.join();
+    }
+
+    /// @{
+    /// Schedules a new Timer in the Pool.
+    /// There are two overloads here, set up in a way that hopefully results in expected behavior in most cases.
+    ///
+    /// If you pass in a Timer as an r-value, it is assumed that the Timer should be "anonymous", meaning that it itself
+    /// stops when it is finished, since there is no way to stop it from the outside once it has been scheduled in the
+    /// pool.
+    /// This is useful for inline Timers such as:
+    ///
+    ///     pool.schedule(OneShotTimer(now() + 5s, []{ ... })); // r-value Timer is made anonymous by the Scheduler
+    ///
+    /// Here, the Timer would never fire if it wasn't anonymous, since all external references to the instance would
+    /// have gone out of scope before it even had the chance to run.
+    ///
+    /// l-values on the other hand are passed through as they are. They might still be anonymous (you can set the flag
+    /// on the Timer itself), but they don't have to be. When the last reference on the outside goes out of scope, the
+    /// Timer in the pool also ceases to exist.
+    ///
+    /// The caveat here is that you are also able to pass in a Timer as an r-value that has other `shared_ptrs` pointing
+    /// to it, by moving it into the function call parameter. We try to detect this case and do not make Timers
+    /// anonymous that have more than one owning `shared_ptr`, but the method of detection is not foolproof. You might
+    /// (for example) keep a `weak_ptr` on the outside, schedule the last `shared_ptr` by moving it into the `schedule`
+    /// method and then re-lock the weak_ptr to restore an owning reference outside the pool.
+    /// Then again ... this is C++. If you want to shoot yourself into the foot hard enough, we cannot stop you.
+    void schedule(const TimerPtr& timer) { m_buffer.push(timer); }
+    void schedule(TimerPtr&& timer) {
+        if (timer.use_count() == 1) { timer->set_anonymous(); }
+        m_buffer.push(std::move(timer));
+    }
+    /// @}
+
+    // fields ---------------------------------------------------------------------------------- //
+private:
+    /// MPMC queue buffering new Timers to be scheduled in the Pool.
+    fibers::buffered_channel<TimerPtr> m_buffer;
+
+    /// Thread running the Timer Fibers.
+    Thread m_timer_thread;
+};
+
+// one-shot timer =================================================================================================== //
+
+/// Timer firing a single time at some point in the future.
+template<class Lambda, class Timepoint>
+auto OneShotTimer(Timepoint timeout, Lambda&& lambda) {
+    static const Lambda factory_lambda = std::forward<Lambda>(lambda);
+
+    struct OneShotTimerImpl : public Timer {
+        OneShotTimerImpl(timepoint_t timeout) : Timer() { _set_next_timeout(timeout); }
+
+    private:
+        void _fire() final {
+            stop();
+            std::invoke(factory_lambda);
+        }
+    };
+
+    return std::make_shared<OneShotTimerImpl>(std::chrono::time_point_cast<duration_t>(timeout));
+}
+
+// interval timer =================================================================================================== //
+
+/// Timer firing `n` times in a constant interval.
+template<class Lambda, class Duration>
+auto IntervalTimer(Duration interval, Lambda&& lambda, uint repetitions = Timer::infinite) {
+    static const Lambda factory_lambda = std::forward<Lambda>(lambda);
+    static const duration_t factory_interval = std::chrono::duration_cast<duration_t>(interval);
+
+    struct IntervalTimerImpl : public Timer {
+        IntervalTimerImpl(uint repetitions) : Timer(repetitions) { _set_next_timeout(now() + factory_interval); }
+
+    private:
+        void _fire() final {
+            _set_next_timeout(now() + factory_interval);
+            std::invoke(factory_lambda);
+        }
+    };
+
+    return std::make_shared<IntervalTimerImpl>(repetitions);
+}
+
+// variable timer =================================================================================================== //
+
+/// Timer firing `n` times with a variable timeout in between.
+/// The Variable func must take no arguments to run and produce a `duration_t` value every time.
+template<class Lambda, class VariableFunc>
+auto VariableTimer(Lambda&& lambda, VariableFunc&& func, uint repetitions = Timer::infinite) {
+    static const Lambda factory_lambda = std::forward<Lambda>(lambda);
+    static const VariableFunc variable_func = std::forward<VariableFunc>(func);
+
+    struct VariableTimerImpl : public Timer {
+        VariableTimerImpl(uint repetitions) : Timer(repetitions) { _set_next_timeout(now() + variable_func()); }
+
+    private:
+        void _fire() final {
+            _set_next_timeout(now() + variable_func());
+            std::invoke(factory_lambda);
+        }
+    };
+
+    return std::make_shared<VariableTimerImpl>(repetitions);
+}
+
+NOTF_CLOSE_NAMESPACE
