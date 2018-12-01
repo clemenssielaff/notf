@@ -40,7 +40,7 @@ class TypedNodeHandle : public detail::AnyNodeHandle {
     friend class TypedNodeHandle; // befriend all other TypedNodeHandles so you can copy their node
 
     friend Accessor<TypedNodeHandle, Node>;
-    friend Accessor<TypedNodeHandle, TheGraph>;
+    friend Accessor<TypedNodeHandle, detail::Graph>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -385,8 +385,8 @@ public:
 // node handle accessors ============================================================================================ //
 
 template<class NodeType>
-class Accessor<TypedNodeHandle<NodeType>, TheGraph> {
-    friend TheGraph;
+class Accessor<TypedNodeHandle<NodeType>, detail::Graph> {
+    friend detail::Graph;
 
     /// Unwraps the shared_ptr contained in a NodeHandle.
     static NodePtr get_node_ptr(const NodeHandle& node) { return node.m_node.lock(); }

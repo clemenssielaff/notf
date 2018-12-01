@@ -125,9 +125,9 @@ Window::Window(valid_ptr<Node*> parent, Settings settings)
 }
 
 WindowHandle Window::create(Settings settings) {
-    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+    NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
 
-    RootNodePtr root_node = TheGraph::AccessFor<Window>::get_root_node();
+    RootNodePtr root_node = TheGraph::AccessFor<Window>::get_root_node_ptr();
     WindowPtr window = _create_shared(root_node.get(), std::move(settings));
 
     Node::AccessFor<Window>::finalize(*window);
@@ -142,7 +142,7 @@ void Window::_close() {
     NOTF_LOG_TRACE("Closing Window \"{}\"", get<title>());
 
     // delete this Node
-    RootNode::AccessFor<Window>::remove_window(*TheGraph::AccessFor<Window>::get_root_node(), this);
+    RootNode::AccessFor<Window>::remove_window(*TheGraph::AccessFor<Window>::get_root_node_ptr(), this);
 
     // unregister from the application and event handling
     TheApplication::AccessFor<Window>::unregister_window(std::static_pointer_cast<Window>(shared_from_this()));

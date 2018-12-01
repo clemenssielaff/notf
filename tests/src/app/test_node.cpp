@@ -74,7 +74,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
     TheGraph::AccessFor<Tester>::reset();
     REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 1);
 
-    NodeHandle root_node_handle = TheGraph::get_root_node();
+    NodeHandle root_node_handle = TheGraph()->get_root_node();
     RootNodePtr root_node_ptr = std::static_pointer_cast<RootNode>(to_shared_ptr(root_node_handle));
     REQUIRE(root_node_ptr);
     auto root_node = Node::AccessFor<Tester>(*root_node_ptr);
@@ -102,7 +102,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
             public:
                 NOTF_UNUSED SchlawinerNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
                 void be_naughty() {
-                    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+                    NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
                     _create_child<LeafNodeCT>(to_shared_ptr(get_parent()).get());
                 }
             };
@@ -143,11 +143,11 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
             class RemoveChildNode : public RunTimeNode {
             public:
                 NOTF_UNUSED RemoveChildNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {
-                    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+                    NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
                     first_child = _create_child<LeafNodeRT>(this);
                 }
                 NOTF_UNUSED void remove_child() {
-                    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+                    NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
                     first_child = {};
                 }
                 NodeOwner first_child;
@@ -156,7 +156,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
             auto node = root_node.create_child<RemoveChildNode>().to_handle();
 
             { // these are not real functions, you will never get to them through the API alone
-                NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+                NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
                 Node::AccessFor<Tester>(node).remove_child(NodeHandle());     // ignored
                 Node::AccessFor<Tester>(node).remove_child(root_node_handle); // ignored
             }
@@ -403,7 +403,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
                 }
 
                 void fail() {
-                    NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+                    NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
                     _create_property<int>("won't work because I'm finalized", 0, true);
                 }
             };

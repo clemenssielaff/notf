@@ -7,6 +7,7 @@
 #include "notf/common/version.hpp"
 
 #include "notf/app/glfw.hpp"
+#include "notf/app/graph.hpp"
 #include "notf/app/timer_pool.hpp"
 #include "notf/app/window.hpp"
 
@@ -305,6 +306,9 @@ Application::Application(Arguments args) : m_arguments(std::move(args)) {
 
     m_timer_pool = TheTimerPool::AccessFor<Application>::create(m_arguments.timer_buffer_size);
     NOTF_ASSERT(m_timer_pool->is_holder());
+
+    m_graph = TheGraph::AccessFor<Application>::create();
+    NOTF_ASSERT(m_graph->is_holder());
 
     // log application header
     NOTF_LOG_INFO("NOTF {} ({} built with {} from {}commit \"{}\")\n"

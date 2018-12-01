@@ -36,11 +36,12 @@ public:
     /// Type stored in this ScopedSingleton.
     using type = T;
 
-    /// Trait passed as argument if you want to make sure that the created `ScopedSingleton<T>` instance will never hold
-    /// the static instance of T.
-    struct NoHolder {};
+    /// Trait passed in as the first argument for a holding ScopedSingleton.
+    /// Is used to differentiate between an access-singleton (default constructible) and one that constructs a default-
+    /// constructible type T to hold.
+    struct Holder {};
 
-private:
+protected:
     /// State of the Singleton.
     enum class State {
         EMPTY,
@@ -55,29 +56,22 @@ protected:
     /// @param args             All arguments passed to the constructor of `T`.
     /// @throws SingletonError  If you try to instantiate more than one instance of `ScopedSingleton<T>`.
     template<class... Args>
-    ScopedSingleton(Args&&... args) noexcept(noexcept(T(std::forward<Args>(args)...))) {
+    ScopedSingleton(Holder, Args&&... args) noexcept(noexcept(T(std::forward<Args>(args)...))) {
         if (State expected = State::EMPTY; s_state.compare_exchange_strong(expected, State::INITIALIZING)) {
             s_instance.emplace(std::forward<Args>(args)...);
             s_state.store(State::RUNNING);
             m_is_holder = true;
         } else {
-            if constexpr (!std::is_default_constructible_v<T>) {
-                NOTF_THROW(SingletonError, "Cannot create more than once instance of type ScopedSingleton<{}>",
-                           type_name<T>());
-            }
+            NOTF_THROW(SingletonError, "Cannot create more than once instance of type ScopedSingleton<{}>",
+                       type_name<T>());
         }
     }
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(ScopedSingleton);
 
-    /// Unambiguous no-holder constructor, in case `T` is default-constructible and you want to make sure that a call
-    /// to `ScopedSingleton<T>()` will not create a holding instance.
-    ScopedSingleton(NoHolder) noexcept {}
-
     /// Default constructor. Never attempts to create the static instance of `T`.
-    template<class X = T, class = std::enable_if_t<!std::is_default_constructible_v<X>>>
-    ScopedSingleton() noexcept : ScopedSingleton(NoHolder{}) {}
+    ScopedSingleton() = default;
 
     /// Destructor.
     /// If this instance is the holder, the destructor destroys the static instance of `T` and resets the
@@ -109,6 +103,9 @@ protected:
         if (NOTF_LIKELY(s_state == State::RUNNING)) { return s_instance.value(); }
         NOTF_THROW(SingletonError, "No instance of ScopedSingleton<{}> exists", type_name<T>());
     }
+
+    /// The current state of the Singleton.
+    static State _get_state() noexcept { return s_state; }
 
     // fields ---------------------------------------------------------------------------------- //
 private:

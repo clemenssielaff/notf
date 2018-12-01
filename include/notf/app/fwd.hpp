@@ -19,8 +19,11 @@ class Application;
 class TheApplication;
 
 // graph.hpp
+namespace detail {
+class Graph;
+}
 class TheGraph;
-RecursiveMutex& TheGraphMutex(); // TODO: remove TheGraphMutex()
+RecursiveMutex& TheGraphMutex();
 
 // node.hpp
 NOTF_DECLARE_SHARED_POINTERS(class, Node);
@@ -68,6 +71,8 @@ struct SlotSubscriber;
 } // namespace detail
 NOTF_DECLARE_SHARED_POINTERS(class, AnySlot);
 NOTF_DECLARE_UNIQUE_POINTERS_TEMPLATE1(class, Slot);
+template<class>
+class SlotHandle;
 
 // timer_pool.hpp
 NOTF_DECLARE_SHARED_POINTERS(class, Timer);

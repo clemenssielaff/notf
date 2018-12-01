@@ -43,7 +43,7 @@ public:
 
     /// Update the Property from upstream.
     void on_next(const AnyPublisher* /*publisher*/, const T& value) final {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
         set(value);
     }
 
@@ -60,13 +60,13 @@ public:
     /// Current value of the Property.
     /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
     const T& get(const std::thread::id thread_id) const {
-        if (TheGraph::is_frozen_by(thread_id)) {
+        if (TheGraph()->is_frozen_by(thread_id)) {
             return m_value; // the renderer always sees the unmodified value
         }
 
         // if there exist a modified value, return that one instead
         if (T* modified_value = m_modified_value.get()) {
-            NOTF_ASSERT(TheGraph::is_frozen());
+            NOTF_ASSERT(TheGraph()->is_frozen());
             return *modified_value;
         }
 
@@ -77,7 +77,7 @@ public:
     /// The Property value.
     /// @param value    New value.
     void set(const T& value) {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
 
         // do nothing if the property value would not actually change
         if (value == m_value) { return; }
@@ -88,9 +88,9 @@ public:
 
         // if the graph is currently frozen and this is the first modification of this property,
         // create a modified value copy
-        if (TheGraph::is_frozen()) {
+        if (TheGraph()->is_frozen()) {
             // the render thread must never modify a Property
-            NOTF_ASSERT(!TheGraph::is_frozen_by(std::this_thread::get_id()));
+            NOTF_ASSERT(!TheGraph()->is_frozen_by(std::this_thread::get_id()));
 
             // if this is the first modification, create a modified copy
             if (m_modified_value == nullptr) {
@@ -117,13 +117,13 @@ public:
 
     /// Installs a (new) callback that is invoked every time the value of the PropertyOperator is about to change.
     void set_callback(callback_t callback) {
-        NOTF_ASSERT(TheGraph::get_graph_mutex().is_locked_by_this_thread());
+        NOTF_ASSERT(TheGraph()->get_graph_mutex().is_locked_by_this_thread());
         m_callback = std::move(callback);
     }
 
     /// Deletes the modified value copy, if one exists.
     void clear_modified_value() {
-        NOTF_ASSERT(TheGraph::get_graph_mutex().is_locked_by_this_thread());
+        NOTF_ASSERT(TheGraph()->get_graph_mutex().is_locked_by_this_thread());
         if (m_modified_value) {
             m_value = std::move(*m_modified_value.get());
             m_modified_value.reset();

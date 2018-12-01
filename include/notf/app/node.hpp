@@ -22,7 +22,7 @@ class Node : public std::enable_shared_from_this<Node> {
     friend Accessor<Node, detail::AnyNodeHandle>;
     friend Accessor<Node, RootNode>;
     friend Accessor<Node, Window>;
-    friend Accessor<Node, TheGraph>;
+    friend Accessor<Node, detail::Graph>;
 
     // types ----------------------------------------------------------------------------------- //
 private:
@@ -283,7 +283,7 @@ public:
     /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
     template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
     NodeHandle get_first_ancestor() const {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
         Node* next = _get_parent();
         if (auto* result = dynamic_cast<T*>(next)) { return NodeHandle(result->shared_from_this()); }
         while (next != next->_get_parent()) {
@@ -295,7 +295,7 @@ public:
 
     /// The number of direct children of this Node.
     size_t get_child_count() const {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
         return _read_children().size();
     }
 
@@ -594,7 +594,7 @@ class Accessor<Node, detail::AnyNodeHandle> {
 
     /// Lets a NodeOwner remove the managed Node on destruction.
     static void remove(const NodePtr& node) {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
         NodePtr parent;
         if (auto weak_parent = node->_get_parent()->weak_from_this(); !weak_parent.expired()) {
             parent = weak_parent.lock();
@@ -638,8 +638,8 @@ class Accessor<Node, Window> {
 };
 
 template<>
-class Accessor<Node, TheGraph> {
-    friend TheGraph;
+class Accessor<Node, detail::Graph> {
+    friend detail::Graph;
 
     /// Deletes all modified data of this Node.
     static void clear_modified_data(Node& node) { node._clear_modified_data(); }

@@ -112,6 +112,7 @@ private:
     /// There is no need to get them out of the Application, just call `TheEventHandler()->...` or whatever to use them.
     std::unique_ptr<TheEventHandler> m_event_handler;
     std::unique_ptr<TheTimerPool> m_timer_pool;
+    std::unique_ptr<TheGraph> m_graph;
     /// @}
 
     std::atomic_flag m_is_running = ATOMIC_FLAG_INIT;
@@ -143,9 +144,11 @@ public:
 
     // methods --------------------------------------------------------------------------------- //
 public:
-    /// Allow the user to construct the Application singleton instance.
+    using ScopedSingleton<detail::Application>::ScopedSingleton;
+
+    /// Allow the user to construct the holder-singleton instance.
     template<class... Args>
-    TheApplication(Args&&... args) : ScopedSingleton<detail::Application>(std::forward<Args>(args)...) {}
+    TheApplication(Args&&... args) : ScopedSingleton<detail::Application>(Holder{}, std::forward<Args>(args)...) {}
 
 private:
     /// The internal GLFW window managed by the Application holding the shared context.

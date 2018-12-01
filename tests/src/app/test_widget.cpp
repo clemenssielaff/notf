@@ -60,7 +60,7 @@ SCENARIO("Compile Time Widgets", "[app][node][widget]") {
     TheGraph::AccessFor<Tester>::reset();
     REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 1);
 
-    NodeHandle root_node_handle = TheGraph::get_root_node();
+    NodeHandle root_node_handle = TheGraph()->get_root_node();
     RootNodePtr root_node_ptr = std::static_pointer_cast<RootNode>(to_shared_ptr(root_node_handle));
     REQUIRE(root_node_ptr);
     auto root_node = Node::AccessFor<Tester>(*root_node_ptr);

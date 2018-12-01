@@ -10,7 +10,7 @@ SCENARIO("graph", "[app][graph]") {
     TheGraph::AccessFor<Tester>::reset();
     REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 1);
 
-    NodeHandle root_node_handle = TheGraph::get_root_node();
+    NodeHandle root_node_handle = TheGraph()->get_root_node();
     RootNodePtr root_node_ptr = std::static_pointer_cast<RootNode>(to_shared_ptr(root_node_handle));
     REQUIRE(root_node_ptr);
     auto root_node = Node::AccessFor<Tester>(*root_node_ptr);
@@ -23,10 +23,10 @@ SCENARIO("graph", "[app][graph]") {
     }
 
     SECTION("The Grah can be locked from anywhere") {
-        { REQUIRE(!TheGraph::is_locked_by_this_thread()); }
+        { REQUIRE(!TheGraph()->is_locked_by_this_thread()); }
         {
-            NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
-            REQUIRE(TheGraph::is_locked_by_this_thread());
+            NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
+            REQUIRE(TheGraph()->is_locked_by_this_thread());
         }
     }
 
@@ -42,15 +42,15 @@ SCENARIO("graph", "[app][graph]") {
             NodeHandle leaf_node = root_node.create_child<LeafNodeCT>();
             leaf_node.set_name(test_name);
             REQUIRE(leaf_node.get_name() == test_name);
-            REQUIRE(TheGraph::get_node(test_name) == leaf_node);
-            REQUIRE(TheGraph::get_node(test_name) == leaf_node);
-            REQUIRE(TheGraph::get_node("this_is_not_a_node") != leaf_node);
+            REQUIRE(TheGraph()->get_node(test_name) == leaf_node);
+            REQUIRE(TheGraph()->get_node(test_name) == leaf_node);
+            REQUIRE(TheGraph()->get_node("this_is_not_a_node") != leaf_node);
         }
 
         SECTION("Nodes in the Graph can be requested by their unique Uuid") {
             auto node = root_node.create_child<LeafNodeCT>().to_handle();
-            REQUIRE(TheGraph::get_node(node.get_uuid()) == node);
-            REQUIRE(!TheGraph::get_node(Uuid()));
+            REQUIRE(TheGraph()->get_node(node.get_uuid()) == node);
+            REQUIRE(!TheGraph()->get_node(Uuid()));
 
             auto evil_node = std::make_shared<TestNode>();
             NodeHandle evil_node_handle(evil_node);
@@ -61,10 +61,10 @@ SCENARIO("graph", "[app][graph]") {
         SECTION("Nodes can be named and renamed") {
             auto node = root_node.create_child<LeafNodeCT>().to_handle();
             node.set_name("SuperName3000");
-            REQUIRE(TheGraph::get_node("SuperName3000") == node);
+            REQUIRE(TheGraph()->get_node("SuperName3000") == node);
 
             node.set_name("SuperAwesomeName4000Pro");
-            REQUIRE(TheGraph::get_node("SuperAwesomeName4000Pro") == node);
+            REQUIRE(TheGraph()->get_node("SuperAwesomeName4000Pro") == node);
         }
 
         SECTION("Node names are unique") {
@@ -75,8 +75,8 @@ SCENARIO("graph", "[app][graph]") {
                 auto impostor = root_node.create_child<LeafNodeCT>().to_handle();
                 impostor.set_name("Connor MacLeod");
 
-                REQUIRE(TheGraph::get_node("Connor MacLeod") == original);
-                REQUIRE(TheGraph::get_node("Connor MacLeod_02") == impostor);
+                REQUIRE(TheGraph()->get_node("Connor MacLeod") == original);
+                REQUIRE(TheGraph()->get_node("Connor MacLeod_02") == impostor);
             }
 
             SECTION("names of expired nodes are available") {
@@ -92,40 +92,40 @@ SCENARIO("graph", "[app][graph]") {
 
     SECTION("The Graph can be frozen") {
         SECTION("from this thread") {
-            REQUIRE(!TheGraph::is_frozen());
+            REQUIRE(!TheGraph()->is_frozen());
             {
-                NOTF_GUARD(TheGraph::freeze());
+                NOTF_GUARD(TheGraph()->freeze());
 
-                REQUIRE(TheGraph::is_frozen());
-                REQUIRE(TheGraph::is_frozen_by(std::this_thread::get_id()));
-                REQUIRE(!TheGraph::is_frozen_by(render_thread_id));
+                REQUIRE(TheGraph()->is_frozen());
+                REQUIRE(TheGraph()->is_frozen_by(std::this_thread::get_id()));
+                REQUIRE(!TheGraph()->is_frozen_by(render_thread_id));
             }
-            REQUIRE(!TheGraph::is_frozen());
+            REQUIRE(!TheGraph()->is_frozen());
         }
 
         SECTION("from another thread") {
-            REQUIRE(!TheGraph::is_frozen());
+            REQUIRE(!TheGraph()->is_frozen());
             {
                 NOTF_GUARD(TheGraph::AccessFor<Tester>::freeze(render_thread_id));
 
-                REQUIRE(TheGraph::is_frozen());
-                REQUIRE(TheGraph::is_frozen_by(render_thread_id));
-                REQUIRE(!TheGraph::is_frozen_by(std::this_thread::get_id()));
+                REQUIRE(TheGraph()->is_frozen());
+                REQUIRE(TheGraph()->is_frozen_by(render_thread_id));
+                REQUIRE(!TheGraph()->is_frozen_by(std::this_thread::get_id()));
             }
-            REQUIRE(!TheGraph::is_frozen());
+            REQUIRE(!TheGraph()->is_frozen());
         }
 
         SECTION("only once") {
-            REQUIRE(!TheGraph::is_frozen());
+            REQUIRE(!TheGraph()->is_frozen());
             {
                 NOTF_GUARD(TheGraph::AccessFor<Tester>::freeze(render_thread_id));
-                NOTF_GUARD(TheGraph::freeze());
+                NOTF_GUARD(TheGraph()->freeze());
 
-                REQUIRE(TheGraph::is_frozen());
-                REQUIRE(TheGraph::is_frozen_by(render_thread_id));
-                REQUIRE(!TheGraph::is_frozen_by(std::this_thread::get_id()));
+                REQUIRE(TheGraph()->is_frozen());
+                REQUIRE(TheGraph()->is_frozen_by(render_thread_id));
+                REQUIRE(!TheGraph()->is_frozen_by(std::this_thread::get_id()));
             }
-            REQUIRE(!TheGraph::is_frozen());
+            REQUIRE(!TheGraph()->is_frozen());
         }
     }
 }

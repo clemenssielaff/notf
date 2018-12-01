@@ -8,7 +8,7 @@ NOTF_OPEN_NAMESPACE
 
 class RootNode final : public CompileTimeNode<> {
 
-    friend Accessor<RootNode, TheGraph>;
+    friend Accessor<RootNode, detail::Graph>;
     friend Accessor<RootNode, Window>;
 
     // types ----------------------------------------------------------------------------------- //
@@ -45,8 +45,8 @@ private:
 // root node accessors ============================================================================================== //
 
 template<>
-class Accessor<RootNode, TheGraph> {
-    friend TheGraph;
+class Accessor<RootNode, detail::Graph> {
+    friend detail::Graph;
 
     /// Finalizes the given RootNode.
     static void finalize(RootNode& node) { node._finalize_root(); }

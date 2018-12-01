@@ -10,12 +10,11 @@ NOTF_USING_NAMESPACE;
 
 /// Graph
 template<>
-struct notf::Accessor<TheGraph, Tester> {
-    static TheGraph& get() { return TheGraph::_get(); }
-    static auto freeze(std::thread::id id) { return TheGraph::_get()._freeze_guard(id); }
-    static auto register_node(NodeHandle node) { return TheGraph::_get().m_node_registry.add(node); }
-    static size_t get_node_count() { return TheGraph::_get().m_node_registry.get_count(); }
-    static void reset() { TheGraph::_get()._initialize(); }
+struct notf::Accessor<detail::Graph, Tester> {
+    static detail::Graph& get() { return *TheGraph(); }
+    static auto freeze(std::thread::id id) { return TheGraph()->_freeze_guard(id); }
+    static auto register_node(NodeHandle node) { return TheGraph()->m_node_registry.add(node); }
+    static size_t get_node_count() { return TheGraph()->m_node_registry.get_count(); }
 };
 
 /// Node Handle
@@ -42,7 +41,7 @@ struct notf::Accessor<Node, Tester> {
     size_t get_property_hash() const { return m_node._calculate_property_hash(); }
 
     bool is_dirty() const {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
         return m_node._get_flag_impl(to_number(Node::InternalFlags::DIRTY));
     }
 
@@ -59,7 +58,7 @@ struct notf::Accessor<Node, Tester> {
     void remove_child(NodeHandle handle) { m_node._remove_child(handle); }
 
     void set_parent(NodeHandle parent) {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
         m_node._set_parent(parent);
     }
 
@@ -70,13 +69,13 @@ struct notf::Accessor<Node, Tester> {
     }
 
     size_t get_child_count(std::thread::id thread_id = std::this_thread::get_id()) {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
         return m_node._read_children(thread_id).size();
     }
 
     template<class T, class... Args>
     auto create_child(Args... args) {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
         return m_node._create_child<T>(&m_node, std::forward<Args>(args)...);
     }
 
@@ -128,18 +127,18 @@ public:
     NOTF_UNUSED TestNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
 
     NOTF_UNUSED bool get_flag(size_t index) {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
 
         return _get_flag(index);
     }
     NOTF_UNUSED void set_flag(size_t index, bool value = true) {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
         _set_flag(index, value);
     }
 
     template<class T, class... Args>
     NOTF_UNUSED auto create_child(Args... args) {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
         return _create_child<T>(this, std::forward<Args>(args)...);
     }
 };
@@ -152,7 +151,7 @@ public:
 class TwoChildrenNode : public RunTimeNode {
 public:
     NOTF_UNUSED TwoChildrenNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
         first_child = _create_child<LeafNodeRT>(this);
         second_child = _create_child<LeafNodeRT>(this);
     }
@@ -164,7 +163,7 @@ public:
 class ThreeChildrenNode : public RunTimeNode {
 public:
     NOTF_UNUSED ThreeChildrenNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {
-        NOTF_GUARD(std::lock_guard(TheGraph::get_graph_mutex()));
+        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
         first_child = _create_child<LeafNodeRT>(this);
         second_child = _create_child<LeafNodeRT>(this);
         third_child = _create_child<LeafNodeRT>(this);

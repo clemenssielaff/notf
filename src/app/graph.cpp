@@ -3,16 +3,27 @@
 #include "notf/app/root_node.hpp"
 
 NOTF_OPEN_NAMESPACE
+namespace detail {
 
-// the graph - node registry ======================================================================================== //
+// graph - freeze guard ============================================================================================= //
 
-NodeHandle TheGraph::NodeRegistry::get_node(Uuid uuid) const {
+Graph::FreezeGuard::FreezeGuard(std::thread::id thread_id) : m_thread_id(std::move(thread_id)) {
+    if (!TheGraph()->_freeze(m_thread_id)) { m_thread_id = std::thread::id(); }
+}
+
+Graph::FreezeGuard::~FreezeGuard() {
+    if (is_valid()) { TheGraph()->_unfreeze(m_thread_id); }
+}
+
+// graph - node registry ============================================================================================ //
+
+NodeHandle Graph::NodeRegistry::get_node(Uuid uuid) const {
     NOTF_GUARD(std::lock_guard(m_mutex));
     if (auto iter = m_registry.find(uuid); iter != m_registry.end()) { return iter->second; }
     return {}; // no node found
 }
 
-void TheGraph::NodeRegistry::add(NodeHandle node) {
+void Graph::NodeRegistry::add(NodeHandle node) {
     const Uuid& uuid = node.get_uuid();
     {
         NOTF_GUARD(std::lock_guard(m_mutex));
@@ -25,14 +36,14 @@ void TheGraph::NodeRegistry::add(NodeHandle node) {
     }
 }
 
-void TheGraph::NodeRegistry::remove(Uuid uuid) {
+void Graph::NodeRegistry::remove(Uuid uuid) {
     NOTF_GUARD(std::lock_guard(m_mutex));
     if (auto iter = m_registry.find(uuid); iter != m_registry.end()) { m_registry.erase(iter); }
 }
 
 // the graph - node name registry =================================================================================== //
 
-std::string_view TheGraph::NodeNameRegistry::set_name(NodeHandle node, const std::string& name) {
+std::string_view Graph::NodeNameRegistry::set_name(NodeHandle node, const std::string& name) {
     const Uuid& uuid = node.get_uuid(); // this might throw if the handle is expired, do it before locking the mutex
     {
         NOTF_GUARD(std::lock_guard(m_mutex));
@@ -60,7 +71,7 @@ std::string_view TheGraph::NodeNameRegistry::set_name(NodeHandle node, const std
     }
 }
 
-NodeHandle TheGraph::NodeNameRegistry::get_node(const std::string& name) const {
+NodeHandle Graph::NodeNameRegistry::get_node(const std::string& name) const {
     NOTF_GUARD(std::lock_guard(m_mutex));
 
     // find the handle
@@ -73,7 +84,7 @@ NodeHandle TheGraph::NodeNameRegistry::get_node(const std::string& name) const {
     return node;
 }
 
-void TheGraph::NodeNameRegistry::remove_node(const Uuid uuid) {
+void Graph::NodeNameRegistry::remove_node(const Uuid uuid) {
     NOTF_GUARD(std::lock_guard(m_mutex));
     if (auto uuid_iter = m_uuid_to_name.find(uuid); uuid_iter != m_uuid_to_name.end()) {
         _remove_name(uuid_iter->second);
@@ -81,7 +92,7 @@ void TheGraph::NodeNameRegistry::remove_node(const Uuid uuid) {
     }
 }
 
-void TheGraph::NodeNameRegistry::_remove_name(std::string_view name_view) {
+void Graph::NodeNameRegistry::_remove_name(std::string_view name_view) {
     NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
     static std::string name; // copy the value of the string_view into a reusable static string
     name = name_view;
@@ -89,20 +100,12 @@ void TheGraph::NodeNameRegistry::_remove_name(std::string_view name_view) {
     if (iter != m_name_to_node.end()) { m_name_to_node.erase(iter); }
 }
 
-// the graph ======================================================================================================== //
+// graph ============================================================================================================ //
 
-TheGraph::TheGraph() { _initialize(); }
-
-TheGraph::~TheGraph() {
-    m_root_node.reset(); // erase all nodes by erasing the root
-}
-
-RootNodeHandle TheGraph::get_root_node() { return _get().m_root_node; }
-
-void TheGraph::_initialize() {
+Graph::Graph() {
     // create the new root node ...
     m_root_node = std::make_shared<RootNode>();
-    RootNode::AccessFor<TheGraph>::finalize(*m_root_node);
+    RootNode::AccessFor<Graph>::finalize(*m_root_node);
 
     // ... and register it
     NodePtr node = std::static_pointer_cast<Node>(m_root_node);
@@ -110,8 +113,14 @@ void TheGraph::_initialize() {
     m_dirty_nodes.emplace(std::move(node));
 }
 
-bool TheGraph::_freeze(const std::thread::id thread_id) {
-    if (_is_frozen() || thread_id == std::thread::id()) { return false; }
+Graph::~Graph() {
+    m_root_node.reset(); // erase all nodes by erasing the root
+}
+
+RootNodeHandle Graph::get_root_node() { return m_root_node; }
+
+bool Graph::_freeze(const std::thread::id thread_id) {
+    if (is_frozen() || thread_id == std::thread::id()) { return false; }
     NOTF_GUARD(std::lock_guard(m_mutex));
 
     // freeze the graph
@@ -120,8 +129,8 @@ bool TheGraph::_freeze(const std::thread::id thread_id) {
     return true;
 }
 
-void TheGraph::_unfreeze(const std::thread::id thread_id) {
-    if (!_is_frozen_by(thread_id)) { return; }
+void Graph::_unfreeze(const std::thread::id thread_id) {
+    if (!is_frozen_by(thread_id)) { return; }
     NOTF_GUARD(std::lock_guard(m_mutex));
 
     // unfreeze the graph
@@ -130,7 +139,7 @@ void TheGraph::_unfreeze(const std::thread::id thread_id) {
     _synchronize();
 }
 
-bool TheGraph::_synchronize() {
+bool Graph::_synchronize() {
     NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
 
     if (m_dirty_nodes.empty()) {
@@ -138,16 +147,18 @@ bool TheGraph::_synchronize() {
     }
 
     for (auto& handle : m_dirty_nodes) {
-        if (NodePtr node = NodeHandle::AccessFor<TheGraph>::get_node_ptr(handle)) {
-            Node::AccessFor<TheGraph>::clear_modified_data(*node);
+        if (NodePtr node = NodeHandle::AccessFor<Graph>::get_node_ptr(handle)) {
+            Node::AccessFor<Graph>::clear_modified_data(*node);
         }
     }
     m_dirty_nodes.clear();
     return true; // dirty nodes cleared their modified data
 }
 
-// helper ======================================================================================================== //
+} // namespace detail
 
-RecursiveMutex& TheGraphMutex() { return TheGraph::get_graph_mutex(); }
+// helper =========================================================================================================== //
+
+RecursiveMutex& TheGraphMutex() { return TheGraph()->get_graph_mutex(); }
 
 NOTF_CLOSE_NAMESPACE

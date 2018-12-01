@@ -52,11 +52,10 @@ public:
     NOTF_ACCESS_TYPE(TheEventHandler);
 
     // methods --------------------------------------------------------------------------------- //
-protected:
+private:
     NOTF_CREATE_SMART_FACTORIES(TheEventHandler);
 
 public:
-    // forward all constructors
     using ScopedSingleton<detail::EventHandler>::ScopedSingleton;
 };
 
@@ -69,7 +68,7 @@ class Accessor<TheEventHandler, detail::Application> {
     /// Creates the ScopedSingleton holder instance of TheEventHandler.
     template<class... Args>
     static auto create(Args... args) {
-        return TheEventHandler::_create_unique(std::forward<Args>(args)...);
+        return TheEventHandler::_create_unique(TheEventHandler::Holder{}, std::forward<Args>(args)...);
     }
 };
 

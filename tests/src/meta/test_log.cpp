@@ -17,7 +17,7 @@ SCENARIO("the logger", "[meta][log]") {
     the_logger->set_level(spdlog::level::trace); // always set the level back
 }
 
-//SCENARIO("manual logger", "[meta][log]") {
+// SCENARIO("manual logger", "[meta][log]") {
 //    SECTION("you can create additional loggers") {
 //        TheLogger::Arguments logger_args;
 //        logger_args.console_level = TheLogger::Level::OFF; // do not print to the console
@@ -31,7 +31,7 @@ SCENARIO("the logger", "[meta][log]") {
 //    }
 //}
 
-//SCENARIO("log to file", "[meta][log][slow]") {
+// SCENARIO("log to file", "[meta][log][slow]") {
 //    SECTION("loggers can write to files as well") {
 //        TheLogger::Arguments logger_args;
 //        logger_args.file_name = "test_log.txt";

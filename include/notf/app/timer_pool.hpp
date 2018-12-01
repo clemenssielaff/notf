@@ -59,11 +59,10 @@ public:
     NOTF_ACCESS_TYPE(TheTimerPool);
 
     // methods --------------------------------------------------------------------------------- //
-protected:
+private:
     NOTF_CREATE_SMART_FACTORIES(TheTimerPool);
 
 public:
-    // forward all constructors
     using ScopedSingleton<detail::TimerPool>::ScopedSingleton;
 };
 
@@ -76,7 +75,7 @@ class Accessor<TheTimerPool, detail::Application> {
     /// Creates the ScopedSingleton holder instance of TheTimerPool.
     template<class... Args>
     static auto create(Args... args) {
-        return TheTimerPool::_create_unique(std::forward<Args>(args)...);
+        return TheTimerPool::_create_unique(TheTimerPool::Holder{}, std::forward<Args>(args)...);
     }
 };
 
