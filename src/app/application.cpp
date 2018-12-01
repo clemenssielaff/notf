@@ -16,7 +16,7 @@
 
 // glfw event handler =============================================================================================== //
 
-namespace { // anonymous
+namespace {
 NOTF_USING_NAMESPACE;
 
 WindowHandle to_window_handle(GLFWwindow* glfw_window) {
@@ -160,8 +160,7 @@ struct GlfwEventHandler {
                                                std::cout << counter << std::endl;
                                            },
                                            10);
-                timer->set_anonymous();
-                timer->start();
+                timer->start(/*detached=*/true);
             });
         }
     }

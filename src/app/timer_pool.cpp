@@ -37,7 +37,7 @@ TimerPool::TimerPool(const size_t buffer_size)
                 Fiber(fibers::launch::dispatch, [&, timer = std::move(timer)]() mutable {
                     // make sure there exist another shared_ptr that keeps the timer alive from outside the pool
                     const TimerWeakPtr weak_timer = timer;
-                    if (!timer->is_anonymous()) {
+                    if (!timer->is_detached()) {
                         timer.reset();
                         timer = weak_timer.lock();
                     }
@@ -62,7 +62,7 @@ TimerPool::TimerPool(const size_t buffer_size)
                         }
 
                         // re-check whether the user has already discarded the timer
-                        if (!timer->is_anonymous()) {
+                        if (!timer->is_detached()) {
                             timer.reset();
                             timer = weak_timer.lock();
                         }

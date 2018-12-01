@@ -124,15 +124,13 @@ public:
     void set_keep_alive(const bool value = true) noexcept { m_keep_alive = value; }
     /// @}
 
-    /// @{
     /// If true, will keep the Timer alive even if there are no more owning references to it outside the TimerPool.
-    bool is_anonymous() const noexcept { return m_anonymous; }
-    void set_anonymous(const bool value = true) noexcept { m_anonymous = value; }
-    /// @}
+    bool is_detached() const noexcept { return m_is_detached; }
 
     /// Starts the
-    void start() {
+    void start(const bool detach = false) {
         if (State expected = State::UNSTARTED; m_state.compare_exchange_strong(expected, State::RUNNING)) {
+            m_is_detached = detach;
             TheTimerPool()->schedule(shared_from_this());
         }
     }
@@ -210,7 +208,7 @@ private:
 
     /// If true, this Timer will stay alife even if there is no more `TimerPtr` held outside of the TimerPool.
     /// Otherwise, removing the last TimerPtr to a timer on the outside will immediately stop the Timer.
-    std::atomic_bool m_anonymous = false;
+    std::atomic_bool m_is_detached = false;
 };
 
 // one-shot timer =================================================================================================== //
