@@ -13,11 +13,14 @@ struct GLFWmonitor;
 NOTF_OPEN_NAMESPACE
 
 // application.hpp
+namespace detail {
+class Application;
+}
 class TheApplication;
 
 // graph.hpp
 class TheGraph;
-RecursiveMutex& TheGraphMutex();
+RecursiveMutex& TheGraphMutex(); // TODO: remove TheGraphMutex()
 
 // node.hpp
 NOTF_DECLARE_SHARED_POINTERS(class, Node);
@@ -66,6 +69,10 @@ struct SlotSubscriber;
 NOTF_DECLARE_SHARED_POINTERS(class, AnySlot);
 NOTF_DECLARE_UNIQUE_POINTERS_TEMPLATE1(class, Slot);
 
+// timer_pool.hpp
+NOTF_DECLARE_SHARED_POINTERS(class, Timer);
+class TheTimerPool;
+
 // window.hpp
 namespace detail {
 void window_deleter(GLFWwindow* glfw_window);
@@ -77,8 +84,8 @@ class WindowHandle;
 // event/event.hpp
 NOTF_DECLARE_UNIQUE_POINTERS(class, AnyEvent);
 
-// event/scheduler.hpp
-NOTF_DECLARE_UNIQUE_POINTERS(class, Scheduler);
+// event/handler.hpp
+class TheEventHandler;
 
 // widget_compiletime.hpp
 template<class, class>

@@ -2,10 +2,13 @@
 
 #include "notf/meta/numeric.hpp"
 #include "notf/meta/singleton.hpp"
+#include "notf/meta/smart_ptr.hpp"
 #include "notf/meta/time.hpp"
 
 #include "notf/common/fibers.hpp"
 #include "notf/common/thread.hpp"
+
+#include "notf/app/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -19,7 +22,6 @@ class TimerPool {
 public:
     /// Constructor.
     /// @param buffer_size  Number of items in the timer buffer before `schedule` blocks.
-    ///                     Must be a power of two.
     /// @throws ValueError  If the buffer size is zero or not a power of two.
     TimerPool(size_t buffer_size = 32);
 
@@ -49,14 +51,33 @@ private:
 
 class TheTimerPool : public ScopedSingleton<detail::TimerPool> {
 
+    friend Accessor<TheTimerPool, detail::Application>;
+
     // types ----------------------------------------------------------------------------------- //
-private:
-    /// Base type.
-    using super_t = ScopedSingleton<detail::TimerPool>;
+public:
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(TheTimerPool);
 
     // methods --------------------------------------------------------------------------------- //
+protected:
+    NOTF_CREATE_SMART_FACTORIES(TheTimerPool);
+
 public:
-    using super_t::super_t; // use baseclass' constructors
+    // forward all constructors
+    using ScopedSingleton<detail::TimerPool>::ScopedSingleton;
+};
+
+// accessors ======================================================================================================== //
+
+template<>
+class Accessor<TheTimerPool, detail::Application> {
+    friend detail::Application;
+
+    /// Creates the ScopedSingleton holder instance of TheTimerPool.
+    template<class... Args>
+    static auto create(Args... args) {
+        return TheTimerPool::_create_unique(std::forward<Args>(args)...);
+    }
 };
 
 // timer ============================================================================================================ //
@@ -197,19 +218,23 @@ private:
 /// Timer firing a single time at some point in the future.
 template<class Lambda, class Timepoint>
 auto OneShotTimer(Timepoint timeout, Lambda&& lambda) {
-    static const Lambda factory_lambda = std::forward<Lambda>(lambda);
 
     struct OneShotTimerImpl : public Timer {
-        OneShotTimerImpl(timepoint_t timeout) : Timer() { _set_next_timeout(timeout); }
+        OneShotTimerImpl(timepoint_t timeout, Lambda lambda) : Timer(), m_lambda(std::forward<Lambda>(lambda)) {
+            _set_next_timeout(timeout);
+        }
 
     private:
         void _fire() final {
             stop();
-            std::invoke(factory_lambda);
+            std::invoke(m_lambda);
         }
+
+        Lambda m_lambda;
     };
 
-    return std::make_shared<OneShotTimerImpl>(std::chrono::time_point_cast<duration_t>(timeout));
+    return std::make_shared<OneShotTimerImpl>(std::chrono::time_point_cast<duration_t>(timeout),
+                                              std::forward<Lambda>(lambda));
 }
 
 // interval timer =================================================================================================== //
@@ -217,20 +242,25 @@ auto OneShotTimer(Timepoint timeout, Lambda&& lambda) {
 /// Timer firing `n` times in a constant interval.
 template<class Lambda, class Duration>
 auto IntervalTimer(Duration interval, Lambda&& lambda, uint repetitions = Timer::infinite) {
-    static const Lambda factory_lambda = std::forward<Lambda>(lambda);
-    static const duration_t factory_interval = std::chrono::duration_cast<duration_t>(interval);
 
     struct IntervalTimerImpl : public Timer {
-        IntervalTimerImpl(uint repetitions) : Timer(repetitions) { _set_next_timeout(now() + factory_interval); }
+        IntervalTimerImpl(duration_t interval, Lambda lambda, uint repetitions)
+            : Timer(repetitions), m_interval(interval), m_lambda(std::forward<Lambda>(lambda)) {
+            _set_next_timeout(now() + m_interval);
+        }
 
     private:
         void _fire() final {
-            _set_next_timeout(now() + factory_interval);
-            std::invoke(factory_lambda);
+            _set_next_timeout(now() + m_interval);
+            std::invoke(m_lambda);
         }
+
+        const duration_t m_interval;
+        Lambda m_lambda;
     };
 
-    return std::make_shared<IntervalTimerImpl>(repetitions);
+    return std::make_shared<IntervalTimerImpl>(std::chrono::duration_cast<duration_t>(interval),
+                                               std::forward<Lambda>(lambda), repetitions);
 }
 
 // variable timer =================================================================================================== //
@@ -239,20 +269,27 @@ auto IntervalTimer(Duration interval, Lambda&& lambda, uint repetitions = Timer:
 /// The Variable func must take no arguments to run and produce a `duration_t` value every time.
 template<class Lambda, class VariableFunc>
 auto VariableTimer(Lambda&& lambda, VariableFunc&& func, uint repetitions = Timer::infinite) {
-    static const Lambda factory_lambda = std::forward<Lambda>(lambda);
-    static const VariableFunc variable_func = std::forward<VariableFunc>(func);
 
     struct VariableTimerImpl : public Timer {
-        VariableTimerImpl(uint repetitions) : Timer(repetitions) { _set_next_timeout(now() + variable_func()); }
+        VariableTimerImpl(Lambda lambda, VariableFunc func, uint repetitions)
+            : Timer(repetitions)
+            , m_lambda(std::forward<Lambda>(lambda))
+            , m_variable_func(std::forward<VariableFunc>(func)) {
+            _set_next_timeout(now() + m_variable_func());
+        }
 
     private:
         void _fire() final {
-            _set_next_timeout(now() + variable_func());
-            std::invoke(factory_lambda);
+            _set_next_timeout(now() + m_variable_func());
+            std::invoke(m_lambda);
         }
+
+        Lambda m_lambda;
+        VariableFunc m_variable_func;
     };
 
-    return std::make_shared<VariableTimerImpl>(repetitions);
+    return std::make_shared<VariableTimerImpl>(std::forward<Lambda>(lambda), std::forward<VariableFunc>(func),
+                                               repetitions);
 }
 
 NOTF_CLOSE_NAMESPACE

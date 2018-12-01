@@ -1,5 +1,5 @@
-#include "notf/common/timer_pool.hpp"
 #include "notf/common/random.hpp"
+#include "notf/common/timer_pool.hpp"
 
 int main() {
     NOTF_USING_NAMESPACE;
@@ -7,6 +7,7 @@ int main() {
 
     std::cout << "starting" << std::endl;
     {
+        TheTimerPool thepool;
         TheTimerPool();
 
         auto random_timer = VariableTimer([] { std::cout << "so random" << std::endl; },

@@ -37,6 +37,7 @@ public:
         MAIN,          ///< The single main thread.
         EVENT,         ///< The single event handler thread, the only one allowed to modify the Graph.
         RENDER,        ///< The single render thread, used to stage data for the render pipeline.
+        TIMER_POOL,    ///< Single TimerPool thread used to wait on the next Timer.
         WORKER,        ///< One of n worker threads used for all kind of blocking or long-running functions.
         __LAST,
     };

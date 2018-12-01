@@ -7,11 +7,12 @@
 #include "notf/common/version.hpp"
 
 #include "notf/app/glfw.hpp"
+#include "notf/app/timer_pool.hpp"
 #include "notf/app/window.hpp"
 
 #include "notf/app/event/event.hpp"
+#include "notf/app/event/handler.hpp"
 #include "notf/app/event/input.hpp"
-#include "notf/app/event/scheduler.hpp"
 
 // glfw event handler =============================================================================================== //
 
@@ -28,7 +29,7 @@ WindowHandle to_window_handle(GLFWwindow* glfw_window) {
 
 template<class Func>
 void schedule(Func&& function) {
-    TheApplication()->get_scheduler().schedule(std::make_unique<Event<Func>>(std::forward<Func>(function)));
+    TheEventHandler()->schedule(std::make_unique<Event<Func>>(std::forward<Func>(function)));
 }
 
 struct GlfwEventHandler {
@@ -148,10 +149,19 @@ struct GlfwEventHandler {
 
         if (action == GLFW_PRESS) {
             using namespace std::chrono_literals;
-            schedule([key]() {
-                std::cout << key << " (1)"<<  std::endl;
-                this_fiber::sleep_for(1s);
-                std::cout << key << " (2)"<<  std::endl;
+            schedule([]() {
+                NOTF_USING_LITERALS;
+                size_t counter = 0;
+                auto timer = IntervalTimer(0.2s,
+                                           [counter]() mutable {
+                                               for (size_t i = 1, end = counter++; i <= end; ++i) {
+                                                   std::cout << " ";
+                                               }
+                                               std::cout << counter << std::endl;
+                                           },
+                                           10);
+                timer->set_anonymous();
+                timer->start();
             });
         }
     }
@@ -290,7 +300,12 @@ Application::Application(Arguments args) : m_arguments(std::move(args)) {
 
     // initialize other members
     m_windows = std::make_unique<decltype(m_windows)::element_type>();
-    m_scheduler = std::make_unique<Scheduler>();
+
+    m_event_handler = TheEventHandler::AccessFor<Application>::create(m_arguments.event_buffer_size);
+    NOTF_ASSERT(m_event_handler->is_holder());
+
+    m_timer_pool = TheTimerPool::AccessFor<Application>::create(m_arguments.timer_buffer_size);
+    NOTF_ASSERT(m_timer_pool->is_holder());
 
     // log application header
     NOTF_LOG_INFO("NOTF {} ({} built with {} from {}commit \"{}\")\n"
@@ -338,7 +353,8 @@ int Application::exec() {
     }
 
     // shutdown
-    m_scheduler.reset();
+    m_timer_pool.reset();
+    m_event_handler.reset();
     {
         NOTF_GUARD(std::lock_guard(m_window_mutex));
         m_windows->clear();

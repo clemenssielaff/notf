@@ -25,10 +25,6 @@ class RecursiveMutex;
 // thread.hpp
 class Thread;
 
-// timer_pool.hpp
-NOTF_DECLARE_SHARED_POINTERS(class, Timer);
-class TheTimerPool;
-
 // uuid.hpp
 class Uuid;
 

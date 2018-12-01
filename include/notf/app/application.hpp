@@ -49,6 +49,14 @@ public:
 
         /// System path to the application directory, absolute or relative to the executable.
         std::string app_directory = "app/";
+
+        // buffer sizes -------------------------------------------------------
+
+        /// Number of unhandled Events before the EventHandler blocks enqueuing new ones.
+        size_t event_buffer_size = 128;
+
+        /// Number of unscheduled Timers before the TimerPool blocks enqueuing new ones.
+        size_t timer_buffer_size = 32;
     };
 
     // methods --------------------------------------------------------------------------------- //
@@ -64,9 +72,6 @@ public:
 
     /// Application arguments as passed to the constructor.
     Arguments& get_arguments() { return m_arguments; }
-
-    /// Application-wide Scheduler.
-    Scheduler& get_scheduler() { return *m_scheduler; }
 
     /// Starts the application's main loop.
     /// @return  The application's return value after it has finished.
@@ -100,8 +105,14 @@ private:
     /// All Windows known the the Application.
     std::unique_ptr<std::vector<WindowPtr>> m_windows;
 
-    /// Application-wide event scheduler.
-    SchedulerPtr m_scheduler;
+    /// @{
+    /// ScopedSingleton holders.
+    /// The following objects only initialize and control the lifetime of ScopedSingletons that are available from
+    /// anywhere in the code, as long as the Application instance lives.
+    /// There is no need to get them out of the Application, just call `TheEventHandler()->...` or whatever to use them.
+    std::unique_ptr<TheEventHandler> m_event_handler;
+    std::unique_ptr<TheTimerPool> m_timer_pool;
+    /// @}
 
     std::atomic_flag m_is_running = ATOMIC_FLAG_INIT;
     std::atomic_flag m_should_continue = ATOMIC_FLAG_INIT;
@@ -119,10 +130,6 @@ class TheApplication : public ScopedSingleton<detail::Application> {
     friend Accessor<TheApplication, Window>;
 
     // types ----------------------------------------------------------------------------------- //
-private:
-    /// Base type.
-    using super_t = ScopedSingleton<detail::Application>;
-
 public:
     /// Nested `AccessFor<T>` type.
     NOTF_ACCESS_TYPE(TheApplication);
@@ -136,7 +143,9 @@ public:
 
     // methods --------------------------------------------------------------------------------- //
 public:
-    using super_t::super_t; // use baseclass' constructors
+    /// Allow the user to construct the Application singleton instance.
+    template<class... Args>
+    TheApplication(Args&&... args) : ScopedSingleton<detail::Application>(std::forward<Args>(args)...) {}
 
 private:
     /// The internal GLFW window managed by the Application holding the shared context.

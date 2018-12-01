@@ -1,4 +1,4 @@
-#include "notf/common/timer_pool.hpp"
+#include "notf/app/timer_pool.hpp"
 
 #include "notf/meta/integer.hpp"
 
@@ -23,7 +23,8 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-TimerPool::TimerPool(const size_t buffer_size) : m_buffer(check_buffer_size(buffer_size)) {
+TimerPool::TimerPool(const size_t buffer_size)
+    : m_buffer(check_buffer_size(buffer_size)), m_timer_thread(Thread(Thread::Kind::TIMER_POOL)) {
     m_timer_thread.run([& buffer = m_buffer] {
         Fiber([&buffer] {
             fibers::mutex mutex;

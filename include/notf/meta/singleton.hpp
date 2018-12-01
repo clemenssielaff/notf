@@ -50,6 +50,24 @@ private:
     };
 
     // methods --------------------------------------------------------------------------------- //
+protected:
+    /// Perfect-forwarding constructor.
+    /// @param args             All arguments passed to the constructor of `T`.
+    /// @throws SingletonError  If you try to instantiate more than one instance of `ScopedSingleton<T>`.
+    template<class... Args>
+    ScopedSingleton(Args&&... args) noexcept(noexcept(T(std::forward<Args>(args)...))) {
+        if (State expected = State::EMPTY; s_state.compare_exchange_strong(expected, State::INITIALIZING)) {
+            s_instance.emplace(std::forward<Args>(args)...);
+            s_state.store(State::RUNNING);
+            m_is_holder = true;
+        } else {
+            if constexpr (!std::is_default_constructible_v<T>) {
+                NOTF_THROW(SingletonError, "Cannot create more than once instance of type ScopedSingleton<{}>",
+                           type_name<T>());
+            }
+        }
+    }
+
 public:
     NOTF_NO_COPY_OR_ASSIGN(ScopedSingleton);
 
@@ -60,18 +78,6 @@ public:
     /// Default constructor. Never attempts to create the static instance of `T`.
     template<class X = T, class = std::enable_if_t<!std::is_default_constructible_v<X>>>
     ScopedSingleton() noexcept : ScopedSingleton(NoHolder{}) {}
-
-    /// Perfect-forwarding constructor.
-    /// @param args             All arguments passed to the constructor of `T`.
-    /// @throws SingletonError  If you try to instantiate more than one instance of `ScopedSingleton<T>`.
-    template<class... Args>
-    ScopedSingleton(Args&&... args) noexcept(noexcept(T(std::forward<Args>(args)...))) {
-        if (State expected = State::EMPTY; s_state.compare_exchange_strong(expected, State::INITIALIZING)) {
-            s_instance.emplace(std::forward<Args>(args)...);
-            s_state.store(State::RUNNING);
-            m_is_holder = true;
-        }
-    }
 
     /// Destructor.
     /// If this instance is the holder, the destructor destroys the static instance of `T` and resets the
