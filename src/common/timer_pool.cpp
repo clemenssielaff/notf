@@ -1,10 +1,29 @@
 #include "notf/common/timer_pool.hpp"
 
+#include "notf/meta/integer.hpp"
+
+// helper =========================================================================================================== //
+
+namespace {
+NOTF_USING_NAMESPACE;
+
+size_t check_buffer_size(const size_t buffer_size) {
+    if (buffer_size == 0) { NOTF_THROW(ValueError, "TimerPool buffer size must not be zero"); }
+    if (!is_power_of_two(buffer_size)) {
+        NOTF_THROW(ValueError, "TimerPool buffer size must be a power of two, not {}", buffer_size);
+    }
+    return buffer_size;
+}
+
+} // namespace
+
 NOTF_OPEN_NAMESPACE
 
 // timer pool ======================================================================================================= //
 
-TimerPool::TimerPool(const size_t buffer_size) : m_buffer(buffer_size) {
+namespace detail {
+
+TimerPool::TimerPool(const size_t buffer_size) : m_buffer(check_buffer_size(buffer_size)) {
     m_timer_thread.run([& buffer = m_buffer] {
         Fiber([&buffer] {
             fibers::mutex mutex;
@@ -29,7 +48,7 @@ TimerPool::TimerPool(const size_t buffer_size) : m_buffer(buffer_size) {
                             timer->fire();
 
                         } else {
-                            // instead of just waiting, all fibers wait on a condition variable
+                            // instead of just sleeping, all fibers wait on a condition variable
                             // this way, we can forcefully shut down all timers on destruction of the timer pool
                             std::unique_lock lock(mutex);
                             if (while_running.wait_until(
@@ -54,5 +73,7 @@ TimerPool::TimerPool(const size_t buffer_size) : m_buffer(buffer_size) {
         }).join();
     });
 }
+
+} // namespace detail
 
 NOTF_CLOSE_NAMESPACE

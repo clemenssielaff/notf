@@ -27,6 +27,12 @@ constexpr std::size_t count_digits(std::size_t number) noexcept {
     return result;
 }
 
+/// Tests if a given integer is a power of two.
+template<class I, class = std::enable_if_t<std::is_integral_v<I>>>
+constexpr bool is_power_of_two(const I number) noexcept {
+    return 0 != number && 0 == (number & (number - 1));
+}
+
 // division ========================================================================================================= //
 
 /// Implements Python's integer modulo operation where negative values wrap around.

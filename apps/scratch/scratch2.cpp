@@ -7,14 +7,14 @@ int main() {
 
     std::cout << "starting" << std::endl;
     {
-        TimerPool pool;
+        TheTimerPool();
 
         auto random_timer = VariableTimer([] { std::cout << "so random" << std::endl; },
-                                          [] { return duration_t(to_seconds(random(0.1, 2.0))); },
+                                          [] { return duration_t(to_seconds(random(0., 1.0))); },
                                           /* repetitions = */ 5);
         random_timer->set_anonymous();
         random_timer->set_keep_alive();
-        pool.schedule(random_timer);
+        random_timer->start();
         //        auto interval = IntervalTimer(0.8s, [] { std::cout << "interval derbness" << std::endl; });
         //        auto copy = interval;
         //        pool.schedule(std::move(interval));
