@@ -53,6 +53,39 @@ SCENARIO("split strings", "[common][string]") {
     }
 }
 
+SCENARIO("string trimming", "[common][string]") {
+    SECTION("rtrim in place") {
+        std::string value = " Hallo Welt       ";
+        rtrim(value);
+        REQUIRE(value == " Hallo Welt");
+    }
+    SECTION("rtrim copy") {
+        const std::string value = " Hallo Welt       ";
+        const std::string copy = rtrim_copy(value);
+        REQUIRE(copy == " Hallo Welt");
+    }
+    SECTION("ltrim in place") {
+        std::string value = "    Hallo Welt ";
+        ltrim(value);
+        REQUIRE(value == "Hallo Welt ");
+    }
+    SECTION("ltrim copy") {
+        const std::string value = "    Hallo Welt ";
+        const std::string copy = ltrim_copy(value);
+        REQUIRE(copy == "Hallo Welt ");
+    }
+    SECTION("trim in place") {
+        std::string value = "    Hallo  Welt        ";
+        trim(value);
+        REQUIRE(value == "Hallo  Welt");
+    }
+    SECTION("ltrim copy") {
+        const std::string value = "    Hallo  Welt        ";
+        const std::string copy = trim_copy(value);
+        REQUIRE(copy == "Hallo  Welt");
+    }
+}
+
 SCENARIO("string startwith / endwith", "[common][string]") {
     SECTION("startwith case sensitive") {
         REQUIRE(starts_with(std::string(), ""));

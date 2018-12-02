@@ -156,7 +156,7 @@ struct KeyStroke {
 };
 
 struct CharInput {
-    const char32_t codepoint;   /// Character input
+    const char32_t codepoint; /// Character input
     const KeyModifiers modifiers;
 };
 

@@ -25,6 +25,12 @@ random(const typename T::element_t min = 0, const typename T::element_t max = 1)
     return result;
 }
 
+/// Returns a random boolean.
+template<>
+inline bool random<bool>(const bool, const bool) {
+    return static_cast<bool>(random<int>());
+}
+
 /// Generates a random string from a pool characters.
 /// If the pool is empty, the resulting string will be empty.
 /// @param length   Length of the string (is not randomized).

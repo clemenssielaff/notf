@@ -256,7 +256,8 @@ void Node::_set_parent(NodeHandle new_parent_handle) {
     old_parent->_remove_child(shared_from_this());
 
     if (TheGraph()->is_frozen()) {
-        NOTF_ASSERT(!TheGraph()->is_frozen_by(std::this_thread::get_id())); // the render thread must never modify a Node
+        NOTF_ASSERT(!TheGraph()->is_frozen_by(std::this_thread::get_id())); // the render thread must never modify a
+                                                                            // Node
         _ensure_modified_data().parent = new_parent.get();
     } else {
         m_parent = new_parent.get();
@@ -338,7 +339,8 @@ Node::ChildList& Node::_write_children() {
     _mark_as_dirty();
 
     if (TheGraph()->is_frozen()) {
-        NOTF_ASSERT(!TheGraph()->is_frozen_by(std::this_thread::get_id())); // the render thread must never modify a Node
+        NOTF_ASSERT(!TheGraph()->is_frozen_by(std::this_thread::get_id())); // the render thread must never modify a
+                                                                            // Node
         return *_ensure_modified_data().children;
     }
 
@@ -377,7 +379,8 @@ void Node::_set_flag_impl(const size_t index, const bool value) {
     if (index != to_number(InternalFlags::DIRTY)) { _mark_as_dirty(); }
 
     if (TheGraph()->is_frozen()) {
-        NOTF_ASSERT(!TheGraph()->is_frozen_by(std::this_thread::get_id())); // the render thread must never modify a Node
+        NOTF_ASSERT(!TheGraph()->is_frozen_by(std::this_thread::get_id())); // the render thread must never modify a
+                                                                            // Node
         _ensure_modified_data().flags[index] = value;
     } else {
         m_flags[index] = value;

@@ -85,21 +85,20 @@ class Accessor<this_thread::detail::ThreadInfo, Thread> {
 
     /// Registers a new thread of a given kind.
     /// @param kind         Kind of Thread to add.
-    /// @throws LogicError  If the maximum number of Threads has been exceeded for the given kind.
+    /// @throws ThreadError If the maximum number of Threads has been exceeded for the given kind.
     static void add_one_of_kind(const this_thread::detail::ThreadInfo::Kind kind) {
         using ThreadInfo = this_thread::detail::ThreadInfo;
-        const auto previous = ThreadInfo::s_kind_counter[to_number(kind)].fetch_add(1, std::memory_order_relaxed);
+        const auto previous = ThreadInfo::s_kind_counter[to_number(kind)].fetch_add(1);
         if (previous >= ThreadInfo::_get_kind_limit(kind)) {
             remove_one_of_kind(kind);
-            NOTF_THROW(LogicError, "Cannot create more than one Thread of Kind {}", to_number(kind));
+            NOTF_THROW(ThreadError, "Cannot create more than one Thread of Kind {}", to_number(kind));
         }
         ThreadInfo::s_kind = kind;
     }
 
     static void remove_one_of_kind(const this_thread::detail::ThreadInfo::Kind kind) {
         using ThreadInfo = this_thread::detail::ThreadInfo;
-        NOTF_UNUSED const auto previous
-            = ThreadInfo::s_kind_counter[to_number(kind)].fetch_sub(1, std::memory_order_relaxed);
+        NOTF_UNUSED const auto previous = ThreadInfo::s_kind_counter[to_number(kind)].fetch_sub(1);
         NOTF_ASSERT(previous != 0);
     }
 };
@@ -157,11 +156,14 @@ public:
     ~Thread() { join(); }
 
     /// Run a given function on this thread.
-    /// If another function is already running, this call will block until it has finished.
     /// Any stored exception is silently dropped.
+    /// @throws ThreadError If this thread is already executing a function.
     template<class Function>
     void run(Function&& function) {
-        if (m_thread.joinable()) { m_thread.join(); }
+        if (is_running()) {
+            NOTF_THROW(ThreadError, "Thread is already running a function.\n"
+                                    "If you need this particular thread to run, join it first");
+        }
 
         m_exception = {};
         m_thread = std::thread([this, function = std::forward<Function>(function)]() {
@@ -174,6 +176,12 @@ public:
             }
         });
     }
+
+    /// Kind of this thread.
+    Kind get_kind() const noexcept { return m_kind; }
+
+    /// Tests if this Thread instance is currently running.
+    bool is_running() const noexcept { return m_thread.joinable(); }
 
     /// Tests if an exception has occurred during the last run.
     bool has_exception() const noexcept { return m_exception != nullptr; }
@@ -189,7 +197,7 @@ public:
 
     /// Blocks until the system thread has joined.
     void join() {
-        if (m_thread.joinable()) { m_thread.join(); }
+        if (is_running()) { m_thread.join(); }
     }
 
     // fields ---------------------------------------------------------------------------------- //

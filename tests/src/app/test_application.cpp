@@ -29,7 +29,7 @@ SCENARIO("TheApplication Singleton", "[app][application]") {
             REQUIRE(result == EXIT_SUCCESS);
         }
 
-        SECTION("can not run exec more than once") {
+        SECTION("can not run exec more than  once") {
             TheApplication()->exec();
             REQUIRE_THROWS_AS(TheApplication()->exec(), TheApplication::StartupError);
         }

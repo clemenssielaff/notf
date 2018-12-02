@@ -120,18 +120,18 @@ static constexpr bool is_derived_from_one_of_tuple_v = is_derived_from_one_of_tu
 /// Returns the requested type from a Tuple.
 /// Fails if the index is out of bounds and supports negative indices.
 template<long I, class Tuple>
-constexpr auto tuple_element() {
+constexpr auto tuple_element() { // unfortunately, this cannot be tested at runtime and always appears "uncovered"
     if constexpr (I >= 0) {
         if constexpr (I >= std::tuple_size_v<Tuple>) {
             throw 0; // Positive tuple index is out of bounds
         } else {
-            return std::tuple_element_t<static_cast<size_t>(I), Tuple>{};
+            return std::declval<std::tuple_element_t<static_cast<size_t>(I), Tuple>>();
         }
     } else {
         if constexpr (-I > std::tuple_size_v<Tuple>) {
             throw 0; // Negative tuple index is out of bounds
         } else {
-            return std::tuple_element_t<std::tuple_size_v<Tuple> - static_cast<size_t>(-I), Tuple>{};
+            return std::declval<std::tuple_element_t<std::tuple_size_v<Tuple> - static_cast<size_t>(-I), Tuple>>();
         }
     }
 };

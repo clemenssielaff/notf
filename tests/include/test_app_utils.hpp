@@ -112,6 +112,11 @@ struct TestNodePolicy {
         BoolPropertyPolicy>;       //
 };
 
+class LeafNodeCT : public CompileTimeNode<TestNodePolicy> {
+public:
+    NOTF_UNUSED LeafNodeCT(valid_ptr<Node*> parent) : CompileTimeNode<TestNodePolicy>(parent) {}
+};
+
 class LeafNodeRT : public RunTimeNode {
 public:
     NOTF_UNUSED LeafNodeRT(valid_ptr<Node*> parent) : RunTimeNode(parent) {
@@ -141,11 +146,6 @@ public:
         NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
         return _create_child<T>(this, std::forward<Args>(args)...);
     }
-};
-
-class LeafNodeCT : public CompileTimeNode<TestNodePolicy> {
-public:
-    NOTF_UNUSED LeafNodeCT(valid_ptr<Node*> parent) : CompileTimeNode<TestNodePolicy>(parent) {}
 };
 
 class TwoChildrenNode : public RunTimeNode {

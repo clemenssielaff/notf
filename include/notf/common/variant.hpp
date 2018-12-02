@@ -49,9 +49,9 @@ using variant_to_tuple_t = typename variant_to_tuple<Variant>::type;
 /// Finds and returns the first index of the given type in the Variant.
 /// @throws std::overflow_error To make this a non-constexpr on failure.
 template<class T, class Variant, size_t I = 0>
-NOTF_UNUSED static constexpr size_t get_first_variant_index() noexcept {
+NOTF_UNUSED static constexpr size_t get_first_variant_index() {
     if constexpr (I == std::variant_size_v<Variant>) {
-        throw std::overflow_error("");
+        throw 0;
     } else if constexpr (std::is_same_v<std::variant_alternative_t<I, Variant>, T>) {
         return I;
     } else {

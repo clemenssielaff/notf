@@ -4,18 +4,22 @@ set(CURRENT_TARGET notf-tests)
 # add test files
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     app/test_application.cpp
-    app/test_graph.cpp
-    app/test_node.cpp
-    app/test_property.cpp
-    app/test_widget.cpp
+#    app/test_graph.cpp
+#    app/test_node.cpp
+#    app/test_property.cpp
+#    app/test_widget.cpp
     app/test_window.cpp
 
+    common/test_any.cpp
     common/test_arithmetic.cpp
+    common/test_mutex.cpp
     common/test_msgpack.cpp
+    common/test_random.cpp
     common/test_string.cpp
     common/test_string_view.cpp
     common/test_thread.cpp
     common/test_uuid.cpp
+    common/test_variant.cpp
     common/test_vector.cpp
     common/test_version.cpp
 
@@ -30,6 +34,7 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     meta/test_real.cpp
     meta/test_stringtype.cpp
     meta/test_time.cpp
+    meta/test_tuple.cpp
     meta/test_typename.cpp
     meta/test_types.cpp
 
@@ -38,6 +43,7 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     reactive/test_reactive_operator.cpp
     reactive/test_reactive_registry.cpp
     reactive/test_subscriber.cpp
+    reactive/test_trigger.cpp
 )
 
 # add test utility files

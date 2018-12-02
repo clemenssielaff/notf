@@ -4,6 +4,7 @@
 
 #include "notf/meta/debug.hpp"
 #include "notf/meta/macros.hpp"
+#include "notf/meta/typename.hpp"
 
 #include "fmt/format.h"
 
@@ -29,22 +30,28 @@ public:
     /// @param file     File containing the function throwing the error.
     /// @param function Function in which the error was thrown.
     /// @param line     Line in `file` at which the error was thrown.
+    /// @param type     Type of the error.
     /// @param message  What has caused this exception (can be empty).
-    notf_exception(const char* file, const char* function, const long line, const char* message = "")
-        : m_file(filename_from_path(file)), m_function(function), m_line(line), m_message(message) {}
+    notf_exception(const char* file, const char* function, const long line, const char* type, const char* message = "")
+        : m_file(filename_from_path(file))
+        , m_function(function)
+        , m_line(line)
+        , m_message(fmt::format("({}) {}", type, message)) {}
 
     /// Constructor with an fmt formatted message.
     /// @param file     File containing the function throwing the error.
     /// @param function Function in which the error was thrown.
     /// @param line     Line in `file` at which the error was thrown.
+    /// @param type     Type of the error.
     /// @param fmt      Format string used to construct the message.
     /// @param args     Variadic arguments used to fill placeholders in the format string.
     template<class... Args>
-    notf_exception(const char* file, const char* function, const long line, const char* fmt, Args&&... args)
+    notf_exception(const char* file, const char* function, const long line, const char* type, const char* fmt,
+                   Args&&... args)
         : m_file(filename_from_path(file))
         , m_function(function)
         , m_line(line)
-        , m_message(fmt::format(fmt, std::forward<Args>(args)...)) {}
+        , m_message(fmt::format(fmt::format("({}) {}", type, fmt), std::forward<Args>(args)...)) {}
 
     /// Destructor.
     ~notf_exception() override = default;
@@ -78,7 +85,7 @@ private:
 
 /// Convenience macro to throw a notf_exception with a message, that additionally contains the line, file and function
 /// where the error occured.
-#define NOTF_THROW(TYPE, ...) throw TYPE(__FILE__, NOTF_CURRENT_FUNCTION, __LINE__, ##__VA_ARGS__)
+#define NOTF_THROW(TYPE, ...) throw TYPE(__FILE__, NOTF_CURRENT_FUNCTION, __LINE__, #TYPE, ##__VA_ARGS__)
 
 // built-in exception types ========================================================================================= //
 

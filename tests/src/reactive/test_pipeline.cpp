@@ -303,4 +303,11 @@ SCENARIO("pipeline", "[reactive][pipeline]") {
             REQUIRE_THROWS_AS(TestPublisher() | DefaultOperator() | std::make_shared<AnyOperator>(), PipelineError);
         }
     }
+
+    SECTION("failure if you try to attach more than one pipeline to a single-subscriber publisher") {
+        auto i_publisher = TestPublisher<int>();
+        auto i_subscriber = TestSubscriber<int>();
+        auto pipe1 = i_publisher | i_subscriber;
+        REQUIRE_THROWS_AS(i_publisher | i_subscriber, PipelineError);
+    }
 }
