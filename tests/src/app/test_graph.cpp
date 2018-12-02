@@ -5,10 +5,10 @@
 
 NOTF_USING_NAMESPACE;
 
+using GraphAccess = detail::Graph::AccessFor<Tester>;
+
 SCENARIO("graph", "[app][graph]") {
-    // always reset the graph
-    TheGraph::AccessFor<Tester>::reset();
-    REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 1);
+    TheApplication app(TheApplication::Arguments{});
 
     NodeHandle root_node_handle = TheGraph()->get_root_node();
     RootNodePtr root_node_ptr = std::static_pointer_cast<RootNode>(to_shared_ptr(root_node_handle));
@@ -17,24 +17,19 @@ SCENARIO("graph", "[app][graph]") {
 
     const auto render_thread_id = make_thread_id(45);
 
-    SECTION("TheGraph is a Singleton") {
-        TheGraph& graph = TheGraph::AccessFor<Tester>::get();
-        REQUIRE(&graph == &TheGraph::AccessFor<Tester>::get());
-    }
-
-    SECTION("The Grah can be locked from anywhere") {
-        { REQUIRE(!TheGraph()->is_locked_by_this_thread()); }
-        {
-            NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
-            REQUIRE(TheGraph()->is_locked_by_this_thread());
-        }
-    }
+    //    SECTION("The Grah can be locked from anywhere") {
+    //        { REQUIRE(!TheGraph()->is_locked_by_this_thread()); }
+    //        {
+    //            NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
+    //            REQUIRE(TheGraph()->is_locked_by_this_thread());
+    //        }
+    //    }
 
     SECTION("Nodes register with the Graph on construction") {
         SECTION("New Nodes add to the number of children in the graph") {
-            REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 1);
+            REQUIRE(GraphAccess::get_node_count() == 1);
             root_node.create_child<TwoChildrenNode>();
-            REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 4);
+            REQUIRE(GraphAccess::get_node_count() == 4);
         }
 
         SECTION("Nodes in the Graph can be requested by their name") {
@@ -55,7 +50,7 @@ SCENARIO("graph", "[app][graph]") {
             auto evil_node = std::make_shared<TestNode>();
             NodeHandle evil_node_handle(evil_node);
             Node::AccessFor<Tester>(evil_node_handle).set_uuid(node.get_uuid());
-            REQUIRE_THROWS_AS(TheGraph::AccessFor<Tester>::register_node(evil_node_handle), NotUniqueError);
+            REQUIRE_THROWS_AS(GraphAccess::register_node(evil_node_handle), NotUniqueError);
         }
 
         SECTION("Nodes can be named and renamed") {
@@ -106,7 +101,7 @@ SCENARIO("graph", "[app][graph]") {
         SECTION("from another thread") {
             REQUIRE(!TheGraph()->is_frozen());
             {
-                NOTF_GUARD(TheGraph::AccessFor<Tester>::freeze(render_thread_id));
+                NOTF_GUARD(GraphAccess::freeze(render_thread_id));
 
                 REQUIRE(TheGraph()->is_frozen());
                 REQUIRE(TheGraph()->is_frozen_by(render_thread_id));
@@ -118,7 +113,7 @@ SCENARIO("graph", "[app][graph]") {
         SECTION("only once") {
             REQUIRE(!TheGraph()->is_frozen());
             {
-                NOTF_GUARD(TheGraph::AccessFor<Tester>::freeze(render_thread_id));
+                NOTF_GUARD(GraphAccess::freeze(render_thread_id));
                 NOTF_GUARD(TheGraph()->freeze());
 
                 REQUIRE(TheGraph()->is_frozen());

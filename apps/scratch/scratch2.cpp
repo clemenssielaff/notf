@@ -1,30 +1,45 @@
-#include "notf/common/random.hpp"
-#include "notf/common/timer_pool.hpp"
+#include <iostream>
+#include <memory>
+
+struct Node {
+    void public_a() { std::cout << "public A" << std::endl; }
+    void public_b() { std::cout << "public B" << std::endl; }
+    void private_c() { std::cout << "private C" << std::endl; }
+};
+using NodePtr = std::shared_ptr<Node>;
+
+struct SuperNode : public Node {
+    void public_super_a() { std::cout << "public super A" << std::endl; }
+};
+using SuperPtr = std::shared_ptr<SuperNode>;
+
+template<class T>
+struct CommonInterface : protected T {
+    using T::public_a;
+    using T::public_b;
+};
+template<class T>
+struct Interface : public CommonInterface<T> {};
+using NodeInterface = Interface<Node>;
+
+template<>
+struct Interface<SuperNode> : public CommonInterface<SuperNode> {
+    using SuperNode::public_super_a;
+};
+using SuperInterface = Interface<SuperNode>;
 
 int main() {
-    NOTF_USING_NAMESPACE;
-    NOTF_USING_LITERALS;
+    NodePtr nodeptr = std::make_shared<SuperNode>();
+    auto iptr = std::static_pointer_cast<NodeInterface>(nodeptr);
+    auto sptr = std::static_pointer_cast<SuperInterface>(nodeptr);
 
-    std::cout << "starting" << std::endl;
-    {
-        TheTimerPool thepool;
-        TheTimerPool();
+    iptr->public_a();
+    iptr->public_b();
+    //    iptr->private_c();
 
-        auto random_timer = VariableTimer([] { std::cout << "so random" << std::endl; },
-                                          [] { return duration_t(to_seconds(random(0., 1.0))); },
-                                          /* repetitions = */ 5);
-        random_timer->set_anonymous();
-        random_timer->set_keep_alive();
-        random_timer->start();
-        //        auto interval = IntervalTimer(0.8s, [] { std::cout << "interval derbness" << std::endl; });
-        //        auto copy = interval;
-        //        pool.schedule(std::move(interval));
-        //        //        pool.schedule(IntervalTimer(0.8s, [] { std::cout << "interval derbness" << std::endl; }));
-        //        pool.schedule(OneShotTimer(now() + 1s, [] { std::cout << "derbe after 1 seconds" << std::endl; }));
-        //        pool.schedule(OneShotTimer(now() + 2s, [] { std::cout << "derbe after 2 seconds" << std::endl; }));
-        //        pool.schedule(OneShotTimer(now() + 3s, [] { std::cout << "derbe after 3 seconds" << std::endl; }));
-        //        std::this_thread::sleep_for(5s);
-    }
-    std::cout << "closing" << std::endl;
+    sptr->public_a();
+    sptr->public_b();
+    sptr->public_super_a();
+
     return 0;
 }

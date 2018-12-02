@@ -52,10 +52,10 @@ public:
 
         // buffer sizes -------------------------------------------------------
 
-        /// Number of unhandled Events before the EventHandler blocks enqueuing new ones.
+        /// Number of unhandled Events before the EventHandler blocks enqueuing new ones (must be a power of two).
         size_t event_buffer_size = 128;
 
-        /// Number of unscheduled Timers before the TimerPool blocks enqueuing new ones.
+        /// Number of unscheduled Timers before the TimerPool blocks enqueuing new ones (must be a power of two).
         size_t timer_buffer_size = 32;
     };
 

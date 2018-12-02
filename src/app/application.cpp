@@ -1,7 +1,6 @@
 #include "notf/app/application.hpp"
 
 #include "notf/meta/log.hpp"
-#include "notf/meta/smart_ptr.hpp"
 
 #include "notf/common/vector.hpp"
 #include "notf/common/version.hpp"
