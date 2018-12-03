@@ -35,7 +35,7 @@ public:
     enum class Kind : unsigned {
         UNDEFINED = 0, ///< The default, probably a thread not managed by notf.
         MAIN,          ///< The single main thread.
-        EVENT,         ///< The single event handler thread, the only one allowed to modify the Graph.
+        EVENT,         ///< The single event handler thread, is the UI thread for most of the Application's lifetime.
         RENDER,        ///< The single render thread, used to stage data for the render pipeline.
         TIMER_POOL,    ///< Single TimerPool thread used to wait on the next Timer.
         WORKER,        ///< One of n worker threads used for all kind of blocking or long-running functions.

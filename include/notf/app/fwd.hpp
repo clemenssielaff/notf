@@ -17,6 +17,9 @@ namespace detail {
 class Application;
 }
 class TheApplication;
+namespace this_thread {
+bool is_ui_thread();
+}
 
 // graph.hpp
 namespace detail {
@@ -33,9 +36,6 @@ template<class>
 class CompileTimeNode;
 
 // node_handle.hpp
-namespace detail {
-struct AnyNodeHandle;
-}
 template<class>
 class TypedNodeHandle;
 template<class>

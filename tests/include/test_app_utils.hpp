@@ -13,7 +13,7 @@ template<>
 struct notf::Accessor<detail::Graph, Tester> {
     static detail::Graph& get() { return *TheGraph(); }
     static auto freeze(std::thread::id id) { return TheGraph()->_freeze_guard(id); }
-    static auto register_node(NodeHandle node) { return TheGraph()->m_node_registry.add(node); }
+    static auto register_node(NodePtr node) { return TheGraph()->m_node_registry.add(node); }
     static size_t get_node_count() { return TheGraph()->m_node_registry.get_count(); }
 };
 

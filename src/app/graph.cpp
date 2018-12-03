@@ -23,12 +23,13 @@ NodeHandle Graph::NodeRegistry::get_node(Uuid uuid) const {
     return {}; // no node found
 }
 
-void Graph::NodeRegistry::add(NodeHandle node) {
-    const Uuid& uuid = node.get_uuid();
+void Graph::NodeRegistry::add(NodePtr node) {
+    const Uuid& uuid = node->get_uuid();
+    NodeHandle handle = std::move(node);
     {
         NOTF_GUARD(std::lock_guard(m_mutex));
-        const auto [iter, success] = m_registry.try_emplace(uuid, node);
-        if (NOTF_UNLIKELY(!success && iter->second != node)) {
+        const auto [iter, success] = m_registry.try_emplace(uuid, handle);
+        if (NOTF_UNLIKELY(!success && iter->second != handle)) {
             // very unlikely, close to impossible without severe hacking and const-away casting
             NOTF_THROW(NotUniqueError, "A different Node with the UUID {} is already registered with the Graph",
                        uuid.to_string());
@@ -44,7 +45,7 @@ void Graph::NodeRegistry::remove(Uuid uuid) {
 // the graph - node name registry =================================================================================== //
 
 std::string_view Graph::NodeNameRegistry::set_name(NodeHandle node, const std::string& name) {
-    const Uuid& uuid = node.get_uuid(); // this might throw if the handle is expired, do it before locking the mutex
+    const Uuid& uuid = node->get_uuid(); // this might throw if the handle is expired, do it before locking the mutex
     {
         NOTF_GUARD(std::lock_guard(m_mutex));
 

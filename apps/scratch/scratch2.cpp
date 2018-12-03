@@ -30,8 +30,8 @@ using SuperInterface = Interface<SuperNode>;
 
 int main() {
     NodePtr nodeptr = std::make_shared<SuperNode>();
-    auto iptr = std::static_pointer_cast<NodeInterface>(nodeptr);
-    auto sptr = std::static_pointer_cast<SuperInterface>(nodeptr);
+    auto* iptr = reinterpret_cast<NodeInterface*>(nodeptr.get());
+    auto* sptr = reinterpret_cast<SuperInterface*>(nodeptr.get());
 
     iptr->public_a();
     iptr->public_b();

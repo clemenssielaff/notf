@@ -67,9 +67,9 @@ private:
         size_t get_count() const { return m_registry.size(); }
 
         /// Registers a new Node in the Graph.
-        /// @param node                 Node to register.
+        /// @param node               Node to register.
         /// @throws NotUniqueError    If another Node with the same Uuid is already registered.
-        void add(NodeHandle node);
+        void add(NodePtr node);
 
         /// Unregisters the Node with the given Uuid.
         /// If the Uuid is not know, this method does nothing.
@@ -242,9 +242,10 @@ private:
     /// Automatically marks the Node as being dirty as well.
     /// @param node             Node to register.
     /// @throws NotUniqueError  If another Node with the same Uuid is already registered.
-    static void _register_node(NodeHandle node) {
-        _get().m_node_registry.add(node); // first, because it may fail
-        _get().m_dirty_nodes.emplace(std::move(node));
+    static void _register_node(NodePtr node) {
+        NodeHandle handle = node;
+        _get().m_node_registry.add(std::move(node)); // first, because it may fail
+        _get().m_dirty_nodes.emplace(std::move(handle));
     }
 
     /// Unregisters the Node with the given Uuid.
@@ -284,7 +285,7 @@ class Accessor<TheGraph, Node> {
     /// Automatically marks the Node as being dirty as well.
     /// @param node             Node to register.
     /// @throws NotUniqueError  If another Node with the same Uuid is already registered.
-    static void register_node(NodeHandle node) { TheGraph()._register_node(std::move(node)); }
+    static void register_node(NodePtr node) { TheGraph()._register_node(std::move(node)); }
 
     /// Unregisters the Node with the given Uuid.
     /// If the Uuid is not know, this method does nothing.
@@ -316,7 +317,7 @@ class Accessor<TheGraph, Window> {
     /// Automatically marks the Node as being dirty as well.
     /// @param node             Node to register.
     /// @throws NotUniqueError  If another Node with the same Uuid is already registered.
-    static void register_node(NodeHandle node) { TheGraph()._register_node(std::move(node)); }
+    static void register_node(NodePtr node) { TheGraph()._register_node(std::move(node)); }
 };
 
 template<>

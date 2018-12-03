@@ -29,7 +29,7 @@ class Event : public AnyEvent {
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor.
-    /// @param function Event function to execute on the event handler thread.
+    /// @param function Event function to execute on the UI thread.
     Event(Func&& function) : m_function(std::forward<Func>(function)) {}
 
     /// Executes the event function.

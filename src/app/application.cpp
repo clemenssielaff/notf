@@ -247,7 +247,7 @@ struct GlfwEventHandler {
     /// @param glfw_window  GLFW Window to close.
     static void on_window_close(GLFWwindow* glfw_window) {
         // TODO: ask the Window if it should really be closed; ignore and unset the flag if not
-        schedule([window = to_window_handle(glfw_window)]() mutable { window.call<Window::to_close>(); });
+        schedule([window = to_window_handle(glfw_window)]() mutable { window->call<Window::to_close>(); });
     }
 
     /// Called by GLFW, if the user connects or disconnects a monitor.
@@ -269,7 +269,7 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-Application::Application(Arguments args) : m_arguments(std::move(args)) {
+Application::Application(Arguments args) : m_arguments(std::move(args)), m_ui_lock(m_ui_mutex) {
     // initialize GLFW
     glfwSetErrorCallback(GlfwEventHandler::on_error);
     if (glfwInit() == 0) { NOTF_THROW(StartupError, "GLFW initialization failed"); }
@@ -329,19 +329,13 @@ int Application::exec() {
     }
     m_should_continue.test_and_set();
 
-    // loop until there are no more windows open...
     NOTF_LOG_INFO("Starting main loop");
-    while (!m_windows->empty()) {
-
-        // ... or the user has initiated a forced shutdown
-        if (!m_should_continue.test_and_set()) { break; }
-
-        // wait for the next event or the next time to fire an animation frame
+    while (!m_should_continue.test_and_set()) {
         glfwWaitEvents();
 
         // if any window has been closed, we need to find and destroy it
-        if (bool expected = true; m_has_windows_to_close.compare_exchange_strong(expected, false)) {
-            NOTF_GUARD(std::lock_guard(m_window_mutex));
+        if (!m_are_windows_intact.test_and_set()) {
+            NOTF_GUARD(std::lock_guard(m_windows_mutex));
             for (size_t i = 0, end = m_windows->size(); i < end;) {
                 if (glfwWindowShouldClose((*m_windows)[i]->get_glfw_window())) {
                     std::swap((*m_windows)[i], m_windows->back());
@@ -351,16 +345,16 @@ int Application::exec() {
                     ++i;
                 }
             }
+
+            // if this was the last window, close the application
+            if (m_windows->empty()) { break; }
         }
     }
 
     // shutdown
     m_timer_pool.reset();
     m_event_handler.reset();
-    {
-        NOTF_GUARD(std::lock_guard(m_window_mutex));
-        m_windows->clear();
-    }
+    m_windows->clear();
     m_shared_context.reset();
     NOTF_LOG_INFO("Application shutdown");
 
@@ -378,7 +372,7 @@ void Application::_register_window(WindowPtr window) {
 
     GLFWwindow* glfw_window = window->get_glfw_window();
     {
-        NOTF_GUARD(std::lock_guard(m_window_mutex));
+        NOTF_GUARD(std::lock_guard(m_windows_mutex));
         NOTF_ASSERT(!contains(*m_windows, window));
         m_windows->emplace_back(std::move(window));
     }
@@ -423,10 +417,18 @@ void Application::_unregister_window(WindowPtr window) {
     glfwSetWindowIconifyCallback(glfw_window, nullptr);
     glfwSetWindowCloseCallback(glfw_window, nullptr);
 
-    m_has_windows_to_close.store(true);
+    m_are_windows_intact.clear();
     glfwPostEmptyEvent();
 }
 
 } // namespace detail
+
+// this_thread (injection) ========================================================================================== //
+
+namespace this_thread {
+
+bool is_ui_thread() { return TheApplication()._is_this_the_ui_thread(); }
+
+} // namespace this_thread
 
 NOTF_CLOSE_NAMESPACE

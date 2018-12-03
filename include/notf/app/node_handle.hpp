@@ -1,28 +1,72 @@
 #pragma once
 
-#include "notf/meta/pointer.hpp"
+#include "notf/meta/hash.hpp"
 
-#include "notf/common/mutex.hpp"
-#include "notf/common/uuid.hpp"
-
-#include "notf/app/signal.hpp"
-#include "notf/app/slot.hpp"
+#include "notf/app/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-// node handle base ================================================================================================= //
+// node handle interface ============================================================================================ //
 
 namespace detail {
 
-/// Base class of all NodeHandles.
-/// Offers static functions that allow us to not include node.hpp in this header.
-struct AnyNodeHandle {
+/// Interface common to all Node subclasses.
+template<class NodeType>
+struct NodeHandleBaseInterface : protected NodeType {
 
-    // methods --------------------------------------------------------------------------------- //
-protected:
-    /// Removes the given Node from its parent Node.
-    static void _remove_from_parent(NodePtr&& node);
+    // inspection -------------------------------------------------------------
+
+    using NodeType::get_default_name;
+    using NodeType::get_name;
+    using NodeType::get_uuid;
+
+    // properties -------------------------------------------------------------
+
+    using NodeType::get;
+    using NodeType::set;
+
+    // signals / slots --------------------------------------------------------
+
+    using NodeType::call;
+    using NodeType::get_signal;
+    using NodeType::get_slot;
+
+    // hierarchy --------------------------------------------------------------
+
+    using NodeType::get_child;
+    using NodeType::get_child_count;
+    using NodeType::get_common_ancestor;
+    using NodeType::get_first_ancestor;
+    using NodeType::get_parent;
+    using NodeType::has_ancestor;
+    using NodeType::set_name;
+
+    // z-order ----------------------------------------------------------------
+
+    using NodeType::is_before;
+    using NodeType::is_behind;
+    using NodeType::is_in_back;
+    using NodeType::is_in_front;
+    using NodeType::stack_back;
+    using NodeType::stack_before;
+    using NodeType::stack_behind;
+    using NodeType::stack_front;
 };
+
+/// Generic Node Handle Interface.
+/// Is used as fallback and exposes the methods common to all NodeHandles.
+/// If you want to have special TypedNodeHandles, you can specialize this template and still derive from the base
+/// interface. Then, you can simply add your special methods to the common ones, without listing them explicitly:
+///
+///     template<>
+///     struct Interface<SuperNode> : public CommonInterface<SuperNode> {
+///         // automatically exposes all methods listed in the common interface
+///         // ...
+///         using SuperNode::additional_method; // only exists on `SuperNode`.
+///     };
+///
+template<class T>
+struct NodeHandleInterface : public NodeHandleBaseInterface<T> {};
 
 } // namespace detail
 
@@ -30,7 +74,7 @@ protected:
 
 /// Members common to NodeHandle and NodeOwner.
 template<class NodeType>
-class TypedNodeHandle : public detail::AnyNodeHandle {
+class TypedNodeHandle {
 
     static_assert(std::is_base_of_v<Node, NodeType>, "NodeType must be a type derived from Node");
 
@@ -53,6 +97,8 @@ public:
 private:
     /// Short name of this type.
     using this_t = TypedNodeHandle;
+
+    using Interface = detail::NodeHandleInterface<NodeType>;
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -90,203 +136,10 @@ public:
     explicit operator bool() const { return !is_expired(); }
     /// @}
 
-    /// The Uuid of this Node.
-    /// @throws     HandleExpiredError  If the Handle has expired.
-    Uuid get_uuid() const { return _get_node()->get_uuid(); }
+    // access -----------------------------------------------------------------
 
-    /// The Graph-unique name of this Node.
-    /// @returns    Name of this Node. Is an l-value because the name of the Node may change.
-    /// @throws     HandleExpiredError  If the Handle has expired.
-    std::string get_name() const { return _get_node()->get_name(); }
-
-    /// A 4-syllable mnemonic name, based on this Node's Uuid.
-    /// Is not guaranteed to be unique, but collisions are unlikely with 100^4 possibilities.
-    std::string get_default_name() const { return _get_node()->get_default_name(); }
-
-    // properties -------------------------------------------------------------
-
-    /// The value of a Property of this Node.
-    /// @param name     Node-unique name of the Property.
-    /// @returns        The value of the Property.
-    /// @throws         NameError / TypeError
-    template<class T>
-    const T& get(const std::string& name) const {
-        return _get_node()->template get<T>(name);
-    }
-    template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    constexpr auto get(StringType<Cs...> name) const {
-        return this->_get_node()->get(std::forward<decltype(name)>(name));
-    }
-    template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    constexpr auto get() const {
-        return this->_get_node()->template get<name>();
-    }
-    /// @}
-
-    /// Updates the value of a Property of this Node.
-    /// @param name     Node-unique name of the Property.
-    /// @param value    New value of the Property.
-    /// @throws         NameError / TypeError
-    template<class T>
-    void set(const std::string& name, T&& value) {
-        _get_node()->template set<T>(name, std::forward<T>(value));
-    }
-    template<class T, char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    constexpr void set(StringType<Cs...> name, T&& value) {
-        _get_node()->template set<T>(std::forward<decltype(name)>(name), std::forward<T>(value));
-    }
-    template<const StringConst& name, class T, class X = NodeType,
-             class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    constexpr void set(T&& value) {
-        _get_node()->template set<T>(std::forward<decltype(name)>(name), std::forward<T>(value));
-    }
-    /// @}
-
-    // signals / slots --------------------------------------------------------
-
-    /// @{
-    /// Manually call the requested Slot of this Node.
-    /// If T is not`None`, this method takes a second argument that is passed to the Slot.
-    /// The Publisher of the Slot's `on_next` call id is set to `nullptr`.
-    template<class T = None>
-    std::enable_if_t<std::is_same_v<T, None>> call(const std::string& name) {
-        this->_get_node()->call(name);
-    }
-    template<class T>
-    std::enable_if_t<!std::is_same_v<T, None>> call(const std::string& name, const T& value) {
-        this->_get_node()->call(name, value);
-    }
-    template<char... Cs, class T = None, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    std::enable_if_t<std::is_same_v<T, None>> call(StringType<Cs...> name) {
-        return this->_get_node()->call(std::forward<decltype(name)>(name));
-    }
-    template<char... Cs, class T = None, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    std::enable_if_t<!std::is_same_v<T, None>> call(StringType<Cs...> name, const T& value) {
-        return this->_get_node()->call(std::forward<decltype(name)>(name), value);
-    }
-    template<const StringConst& name, class T = None, class X = NodeType,
-             class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    std::enable_if_t<std::is_same_v<T, None>> call() {
-        return this->_get_node()->call(make_string_type<name>());
-    }
-    template<const StringConst& name, class T = None, class X = NodeType,
-             class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    std::enable_if_t<!std::is_same_v<T, None>> call(const T& value) {
-        return this->_get_node()->call(make_string_type<name>(), value);
-    }
-    /// @}
-
-    /// @{
-    /// Run time access to the subscriber of a Slot of this Node.
-    /// Use to connect Pipelines from the outside to the Node.
-    /// @param name     Node-unique name of the Slot.
-    /// @returns        The requested Slot.
-    /// @throws         NameError / TypeError
-    template<class T>
-    SlotHandle<T> get_slot(const std::string& name) const {
-        return _get_node()->template _try_get_slot<T>(name);
-    }
-    template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    constexpr auto get_slot(StringType<Cs...> name) const {
-        return this->_get_node()->get_slot(std::forward<decltype(name)>(name));
-    }
-    template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    constexpr auto get_slot() const {
-        return get_slot(make_string_type<name>());
-    }
-    /// @}
-
-    /// @{
-    /// Run time access to a Signal of this Node.
-    /// @param name     Node-unique name of the Signal.
-    /// @returns        The requested Signal.
-    /// @throws         NameError / TypeError
-    template<class T>
-    SignalHandle<T> get_signal(const std::string& name) const {
-        return _get_node()->template _try_get_signal<T>(name);
-    }
-    template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    constexpr auto get_signal(StringType<Cs...> name) const {
-        return this->_get_node()->get_signal(std::forward<decltype(name)>(name));
-    }
-    template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    constexpr auto get_signal() const {
-        return get_signal(make_string_type<name>());
-    }
-    /// @}
-
-    // hierarchy --------------------------------------------------------------
-
-    /// (Re-)Names the Node.
-    /// If another Node with the same name already exists in the Graph, this method will append the lowest integer
-    /// postfix that makes the name unique.
-    /// @param name     Proposed name of the Node.
-    void set_name(const std::string& name) { _get_node()->set_name(name); }
-
-    /// The parent of this Node.
-    NodeHandle get_parent() { return _get_node()->get_parent(); }
-
-    /// Tests, if this Node is a descendant of the given ancestor.
-    /// @param ancestor         Potential ancestor to verify.
-    bool has_ancestor(const NodeHandle& ancestor) const { return _get_node()->has_ancestor(ancestor); }
-
-    /// Finds and returns the first common ancestor of two Nodes.
-    /// At the latest, the RootNode is always a common ancestor.
-    /// If the handle passed in is expired, the returned handle will also be expired.
-    /// @param other            Other Node to find the common ancestor for.
-    /// @throws HierarchyError  If there is no common ancestor.
-    NodeHandle get_common_ancestor(const NodeHandle& other) { return _get_node()->get_common_ancestor(other); }
-
-    /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
-    /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
-    template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
-    NodeHandle get_first_ancestor() {
-        return _get_node()->template get_first_ancestor<T>();
-    }
-
-    /// The number of direct children of this Node.
-    size_t get_child_count() const { return _get_node()->get_child_count(); }
-
-    /// Returns a handle to a child Node at the given index.
-    /// Index 0 is the node furthest back, index `size() - 1` is the child drawn at the front.
-    /// @param index    Index of the Node.
-    /// @returns        The requested child Node.
-    /// @throws OutOfBounds    If the index is out-of-bounds or the child Node is of the wrong type.
-    NodeHandle get_child(const size_t index) { return _get_node()->get_child(index); }
-
-    // z-order ----------------------------------------------------------------
-
-    /// Checks if this Node is in front of all of its siblings.
-    bool is_in_front() const { return _get_node()->is_in_front(); }
-
-    /// Checks if this Node is behind all of its siblings.
-    bool is_in_back() const { return _get_node()->is_in_back(); }
-
-    /// Returns true if this node is stacked anywhere in front of the given sibling.
-    /// Also returns false if the handle is expired, the given Node is not a sibling or it is the same as this.
-    /// @param sibling  Sibling node to test against.
-    bool is_before(const NodeHandle& sibling) const { return _get_node()->is_before(sibling); }
-
-    /// Returns true if this node is stacked anywhere behind the given sibling.
-    /// Also returns false if the handle is expired, the given Node is not a sibling or it is the same as this.
-    /// @param sibling  Sibling node to test against.
-    bool is_behind(const NodeHandle& sibling) const { return _get_node()->is_behind(sibling); }
-
-    /// Moves this Node in front of all of its siblings.
-    void stack_front() { _get_node()->stack_front(); }
-
-    /// Moves this Node behind all of its siblings.
-    void stack_back() { _get_node()->stack_back(); }
-
-    /// Moves this Node before a given sibling.
-    /// @param sibling  Sibling to stack before.
-    /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    void stack_before(const NodeHandle& sibling) { _get_node()->stack_before(sibling); }
-
-    /// Moves this Node behind a given sibling.
-    /// @param sibling  Sibling to stack behind.
-    /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    void stack_behind(const NodeHandle& sibling) { _get_node()->stack_behind(sibling); }
+    Interface* operator->() { return _get_interface(); }
+    const Interface* operator->() const { return _get_interface(); }
 
     // comparison -------------------------------------------------------------
 
@@ -312,18 +165,22 @@ protected:
     /// Raw pointer to the handled Node (does not check if the Node is still alive).
     const Node* _get_ptr() const { return static_cast<const Node*>(raw_from_weak_ptr(m_node)); }
 
-    /// @{
-    /// Locks and returns an owning pointer to the handled Node.
+    /// Returns an interface pointer.
     /// @throws HandleExpiredError  If the Handle has expired.
-    std::shared_ptr<NodeType> _get_node() {
-        if (auto node = m_node.lock()) { return node; }
-        NOTF_THROW(HandleExpiredError, "Node Handle has expired");
+    /// @throws ThreadError         If the current thread is not the UI thread.
+    std::shared_ptr<NodeType> _get_node() const {
+        auto nodeptr = m_node.lock();
+        if (!nodeptr) { NOTF_THROW(HandleExpiredError, "Node Handle has expired"); }
+        if (!this_thread::is_ui_thread()) {
+            NOTF_THROW(ThreadError, "NodeHandles may only be accessed from the UI thread");
+        }
+        return nodeptr;
     }
-    std::shared_ptr<const NodeType> _get_node() const {
-        if (auto node = m_node.lock()) { return node; }
-        NOTF_THROW(HandleExpiredError, "Node Handle has expired");
-    }
-    /// }@
+
+    /// Returns an interface pointer.
+    /// @throws HandleExpiredError  If the Handle has expired.
+    /// @throws ThreadError         If the current thread is not the UI thread.
+    Interface* _get_interface() const { return reinterpret_cast<Interface*>(_get_node().get()); }
 
     // fields ---------------------------------------------------------------------------------- //
 protected:
@@ -365,12 +222,11 @@ public:
 
     /// Value Constructor.
     /// @param node     Node to handle.
-    /// @throws NotValidError   If the given Node pointer is empty.
-    TypedNodeOwner(valid_ptr<std::shared_ptr<NodeType>> node) : TypedNodeHandle<NodeType>(node) {}
+    TypedNodeOwner(std::shared_ptr<NodeType> node) : TypedNodeHandle<NodeType>(node) {}
 
     /// Move assignment operator.
     TypedNodeOwner& operator=(TypedNodeOwner&& other) {
-        this->_remove_from_parent(this->m_node.lock());
+        if (auto node = this->_get_node(); node) { node->remove(); }
         this->m_node = std::move(other.m_node);
         return *this;
     }
@@ -379,7 +235,9 @@ public:
     /// Note that the destruction of a Node requires the Graph mutex. Normally (if you store the Handle on the parent
     /// Node or some other Node in the Graph) this does not block, but it might if the mutex is not already held by this
     /// thread.
-    ~TypedNodeOwner() { this->_remove_from_parent(this->m_node.lock()); }
+    ~TypedNodeOwner() {
+        if (auto node = this->_get_node(); node) { node->remove(); };
+    }
 };
 
 // node handle accessors ============================================================================================ //

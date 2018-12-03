@@ -19,7 +19,6 @@ NOTF_OPEN_NAMESPACE
 /// for the user of this interface; first and foremost whether the Graph mutex is locked when a method is called.
 class Node : public std::enable_shared_from_this<Node> {
 
-    friend Accessor<Node, detail::AnyNodeHandle>;
     friend Accessor<Node, RootNode>;
     friend Accessor<Node, Window>;
     friend Accessor<Node, detail::Graph>;
@@ -306,6 +305,27 @@ public:
     /// @throws OutOfBounds    If the index is out-of-bounds or the child Node is of the wrong type.
     NodeHandle get_child(size_t index) const;
 
+    /// Destroys this Node by deleting the owning pointer in its parent.
+    /// This method is basically a destructor, make sure not to dereference this Node after this function call!
+    void remove() {
+        NodePtr parent;
+        if (auto weak_parent = _get_parent()->weak_from_this(); !weak_parent.expired()) {
+            parent = weak_parent.lock();
+        } else {
+            // Often, a NodeOwner is stored on the parent Node itself.
+            // In that case, it will be destroyed right after the parent's Node class destructor has finished, and
+            // just before the next subclass' destructor begins. At that point, the `shared_ptr` wrapping the deepest
+            // nested subclass, will have already been destroyed and all calls to `shared_from_this` or other
+            // `shared_ptr` functions will throw.
+            // Luckily, we can reliably test for this by checking if the `weak_ptr` contained in any Node through its
+            // inheritance of `std::enable_shared_from_this` has expired. If so, we don't have to tell the parent to
+            // remove the handled child, since the parent is about to be destroyed anyway and will take down all
+            // children with it.
+            return;
+        }
+        NOTF_ASSERT(parent);
+        parent->_remove_child(shared_from_this());
+    }
     // z-order ----------------------------------------------------------------
 
     /// Checks if this Node is in front of all of its siblings.
@@ -587,33 +607,6 @@ private:
 };
 
 // node accessors =================================================================================================== //
-
-template<>
-class Accessor<Node, detail::AnyNodeHandle> {
-    friend detail::AnyNodeHandle;
-
-    /// Lets a NodeOwner remove the managed Node on destruction.
-    static void remove(const NodePtr& node) {
-        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
-        NodePtr parent;
-        if (auto weak_parent = node->_get_parent()->weak_from_this(); !weak_parent.expired()) {
-            parent = weak_parent.lock();
-        } else {
-            // Often, a NodeOwner is stored on the parent Node itself.
-            // In that case, it will be destroyed right after the parent's Node class destructor has finished, and
-            // just before the next subclass' destructor begins. At that point, the `shared_ptr` wrapping the deepest
-            // nested subclass, will have already been destroyed and all calls to `shared_from_this` or other
-            // `shared_ptr` functions will throw.
-            // Luckily, we can reliably test for this by checking if the `weak_ptr` contained in any Node through its
-            // inheritance of `std::enable_shared_from_this` has expired. If so, we don't have to tell the parent to
-            // remove the handled child, since the parent is about to be destroyed anyway and will take down all
-            // children with it.
-            return;
-        }
-        NOTF_ASSERT(parent);
-        parent->_remove_child(node);
-    }
-};
 
 template<>
 class Accessor<Node, RootNode> {

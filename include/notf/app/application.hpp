@@ -99,11 +99,15 @@ private:
     /// Does not actually open a Window, only provides the shared OpenGL context.
     detail::GlfwWindowPtr m_shared_context{nullptr, detail::window_deleter};
 
-    /// Mutex protecting the list of registered Windows.
-    Mutex m_window_mutex;
+    /// Mutex determining which thread is the UI-thread.
+    RecursiveMutex m_ui_mutex;
+
+    /// Lock held by the UI-thread.
+    std::unique_lock<RecursiveMutex> m_ui_lock;
 
     /// All Windows known the the Application.
     std::unique_ptr<std::vector<WindowPtr>> m_windows;
+    Mutex m_windows_mutex;
 
     /// @{
     /// ScopedSingleton holders.
@@ -115,11 +119,14 @@ private:
     std::unique_ptr<TheGraph> m_graph;
     /// @}
 
+    /// Set once at the beginning of `exec` to make sure the main loop is only started once.
     std::atomic_flag m_is_running = ATOMIC_FLAG_INIT;
-    std::atomic_flag m_should_continue = ATOMIC_FLAG_INIT;
 
-    /// Is true if any of the Application's Windows have been closed and need to be destroyed on the main thread.
-    std::atomic_bool m_has_windows_to_close = false;
+    /// Is set to true at the beginning of the main loop and cleared by the user when it is time to stop.
+    std::atomic_flag m_should_continue;
+
+    /// Is false if any one of the Application's Windows has been closed and needs to be destroyed on the main thread.
+    std::atomic_flag m_are_windows_intact = ATOMIC_FLAG_INIT;
 };
 
 }; // namespace detail
@@ -129,6 +136,7 @@ private:
 class TheApplication : public ScopedSingleton<detail::Application> {
 
     friend Accessor<TheApplication, Window>;
+    friend bool this_thread::is_ui_thread();
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -155,10 +163,19 @@ private:
     GLFWwindow* _get_shared_context() { return _get().m_shared_context.get(); }
 
     /// Registers a new Window in the Application.
-    void _register_window(WindowPtr window) { _get()._register_window(std::move(window)); }
+    void _register_window(WindowPtr window) {
+        NOTF_ASSERT(_is_this_the_ui_thread());
+        _get()._register_window(std::move(window));
+    }
 
     /// Unregisters an existing Window from this Application.
-    void _unregister_window(WindowPtr window) { _get()._unregister_window(std::move(window)); }
+    void _unregister_window(WindowPtr window) {
+        NOTF_ASSERT(_is_this_the_ui_thread());
+        _get()._unregister_window(std::move(window));
+    }
+
+    /// Tests if the calling thread is the notf "UI-thread".
+    bool _is_this_the_ui_thread() { return std::unique_lock(_get().m_ui_mutex).try_lock(); }
 };
 
 // accessors ======================================================================================================== //
@@ -176,5 +193,14 @@ class Accessor<TheApplication, Window> {
     /// The internal GLFW window managed by the Application holding the shared context.
     static GLFWwindow* get_shared_context() { return TheApplication()._get_shared_context(); }
 };
+
+// this_thread (injection) ========================================================================================== //
+
+namespace this_thread {
+
+/// Tests if the calling thread is the notf "UI-thread".
+bool is_ui_thread();
+
+} // namespace this_thread
 
 NOTF_CLOSE_NAMESPACE
