@@ -215,6 +215,7 @@ public:
     /// @param settings                         Initialization settings.
     /// @throws InitializationError             If the OpenGL context creation for this Window failed
     /// @throws TheApplication::StartupError    When you try to instantiate a Window without an Application.
+    /// @throws ThreadError                     When you call this method from any thread but the UI thread.
     static WindowHandle create(Settings settings = {});
 
     /// Returns the GlfwWindow contained in this Window.

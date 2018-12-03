@@ -1,6 +1,7 @@
 #pragma once
 
 #include "notf/meta/hash.hpp"
+#include "notf/meta/stringtype.hpp"
 
 #include "notf/app/fwd.hpp"
 
@@ -14,15 +15,8 @@ namespace detail {
 template<class NodeType>
 struct NodeHandleBaseInterface : protected NodeType {
 
-    // inspection -------------------------------------------------------------
-
-    using NodeType::get_default_name;
-    using NodeType::get_name;
-    using NodeType::get_uuid;
-
     // properties -------------------------------------------------------------
 
-    using NodeType::get;
     using NodeType::set;
 
     // signals / slots --------------------------------------------------------
@@ -73,6 +67,8 @@ struct NodeHandleInterface : public NodeHandleBaseInterface<T> {};
 // typed node handle ================================================================================================ //
 
 /// Members common to NodeHandle and NodeOwner.
+/// All methods accessible via `.` can be called from anywhere, methods accessible via `->` must only be called from the
+/// UI thread.
 template<class NodeType>
 class TypedNodeHandle {
 
@@ -125,7 +121,7 @@ public:
     /// Implicit conversion to an (untyped) NodeHandle.
     operator NodeHandle() { return NodeHandle(std::static_pointer_cast<Node>(m_node.lock())); }
 
-    // inspection -------------------------------------------------------------
+    // identification ---------------------------------------------------------
 
     /// @{
     /// Checks whether the NodeHandle is still valid or not.
@@ -134,6 +130,32 @@ public:
     /// However, if `is_expired` returns true, you can be certain that the Handle is expired for good.
     bool is_expired() const { return m_node.expired(); }
     explicit operator bool() const { return !is_expired(); }
+    /// @}
+
+    /// Uuid of this Node.
+    auto get_uuid() const { return _get_node()->get_uuid(); }
+
+    /// The Graph-unique name of this Node.
+    std::string get_name() const { return _get_node()->get_name(); }
+
+    // properties -------------------------------------------------------------
+
+    /// The value of a Property of this Node.
+    /// @param name     Node-unique name of the Property.
+    /// @returns        The value of the Property.
+    /// @throws         NameError / TypeError
+    template<class T>
+    const T& get(const std::string& name) const {
+        return _get_node()->template get<T>(name);
+    }
+    template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    constexpr auto get(StringType<Cs...> name) const {
+        return this->_get_node()->get(std::forward<decltype(name)>(name));
+    }
+    template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
+    constexpr auto get() const {
+        return this->_get_node()->template get<name>();
+    }
     /// @}
 
     // access -----------------------------------------------------------------
@@ -167,20 +189,21 @@ protected:
 
     /// Returns an interface pointer.
     /// @throws HandleExpiredError  If the Handle has expired.
-    /// @throws ThreadError         If the current thread is not the UI thread.
     std::shared_ptr<NodeType> _get_node() const {
         auto nodeptr = m_node.lock();
-        if (!nodeptr) { NOTF_THROW(HandleExpiredError, "Node Handle has expired"); }
-        if (!this_thread::is_ui_thread()) {
-            NOTF_THROW(ThreadError, "NodeHandles may only be accessed from the UI thread");
-        }
+        if (!nodeptr) { NOTF_THROW(HandleExpiredError, "Node Handle is expired"); }
         return nodeptr;
     }
 
     /// Returns an interface pointer.
     /// @throws HandleExpiredError  If the Handle has expired.
     /// @throws ThreadError         If the current thread is not the UI thread.
-    Interface* _get_interface() const { return reinterpret_cast<Interface*>(_get_node().get()); }
+    Interface* _get_interface() const {
+        if (!this_thread::is_the_ui_thread()) {
+            NOTF_THROW(ThreadError, "NodeHandles may only be modified from the UI thread");
+        }
+        return reinterpret_cast<Interface*>(_get_node().get());
+    }
 
     // fields ---------------------------------------------------------------------------------- //
 protected:

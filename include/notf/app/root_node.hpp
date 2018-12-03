@@ -22,10 +22,6 @@ public:
     /// Only the Root Node itself may be its own parent.
     using allowed_parent_types = std::tuple<RootNode>;
 
-private:
-    /// Owning list of child Nodes, ordered from back to front.
-    using ChildList = Node::AccessFor<RootNode>::ChildList;
-
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default Constructor.

@@ -33,6 +33,13 @@ SCENARIO("TheApplication Singleton", "[app][application]") {
             TheApplication()->exec();
             REQUIRE_THROWS_AS(TheApplication()->exec(), TheApplication::StartupError);
         }
+
+        SECTION("you can test whether this is the UI thread from anywhere") {
+            REQUIRE(this_thread::is_the_ui_thread());
+            bool hopefully_not = true;
+            Thread().run([&] { hopefully_not = this_thread::is_the_ui_thread(); });
+            REQUIRE(!hopefully_not);
+        }
     }
 }
 

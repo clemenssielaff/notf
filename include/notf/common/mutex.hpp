@@ -25,6 +25,17 @@ public:
         m_holder = std::this_thread::get_id();
     }
 
+    /// Tries to lock the mutex.
+    /// @returns    True, iff the lock acquisition was successfull.
+    bool try_lock() {
+        if (std::mutex::try_lock()) {
+            m_holder = std::this_thread::get_id();
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     /// Unlocks the mutex.
     void unlock() {
         m_holder = std::thread::id();
@@ -55,6 +66,18 @@ public:
         ++m_counter;
     }
 
+    /// Tries to lock the mutex.
+    /// @returns    True, iff the lock acquisition was successfull.
+    bool try_lock() {
+        if (std::recursive_mutex::try_lock()) {
+            m_holder = std::this_thread::get_id();
+            ++m_counter;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     /// Unlocks the mutex.
     void unlock() {
         NOTF_ASSERT(m_counter > 0);
@@ -71,7 +94,7 @@ private:
     std::thread::id m_holder;
 
     /// How often the mutex has been locked.
-    size_t m_counter = 0;
+    std::atomic_size_t m_counter = 0;
 };
 
 /// In order to work with notf::Mutex in debug mode, we have to use condition_variable_any for condition variables.

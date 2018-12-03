@@ -427,7 +427,7 @@ void Application::_unregister_window(WindowPtr window) {
 
 namespace this_thread {
 
-bool is_ui_thread() { return TheApplication()._is_this_the_ui_thread(); }
+bool is_the_ui_thread() { return TheApplication()._is_this_the_ui_thread(); }
 
 } // namespace this_thread
 

@@ -16,7 +16,7 @@ NOTF_OPEN_NAMESPACE
 /// Base class for both RunTimeNode and CompileTimeNode.
 /// The Node interface is used internally only, meaning only through Node subclasses or by other notf objects.
 /// All user-access should occur through NodeHandle instances. This way, we can rely on certain preconditions to be met
-/// for the user of this interface; first and foremost whether the Graph mutex is locked when a method is called.
+/// for the user of this interface; first and foremost that mutating methods are only called from the UI thread.
 class Node : public std::enable_shared_from_this<Node> {
 
     friend Accessor<Node, RootNode>;
@@ -25,11 +25,6 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // types ----------------------------------------------------------------------------------- //
 private:
-    /// Owning list of child Nodes, ordered from back to front.
-    using ChildList = std::vector<NodePtr>;
-
-    // new node ---------------------------------------------------------------
-
     /// Type returned by Node::_create_child.
     /// Can be cast to a NodeOwner (once), but can also be safely ignored without the Node being erased immediately.
     template<class NodeType>
@@ -43,30 +38,30 @@ private:
         /// @param node     The newly created Node.
         NewNode(std::shared_ptr<NodeType>&& node) : m_node(std::move(node)) {}
 
-        /// Implicitly cast to a CompileTimeNodeHandle, if the Node Type derives from CompileTimeNode.
-        /// Can be called multiple times.
-        operator TypedNodeHandle<NodeType>() const { return TypedNodeHandle<NodeType>(m_node.lock()); }
-
-        /// Implicit cast to a NodeOwner.
-        /// Must only be called once.
-        /// @throws ValueError  If called more than once or the Node has already expired.
-        operator TypedNodeOwner<NodeType>() { return _to_node_owner<NodeType>(); }
-
         /// Implicit cast to a NodeHandle.
         /// Can be called multiple times.
         operator NodeHandle() const { return NodeHandle(m_node.lock()); }
 
         /// Implicit cast to a NodeOwner.
         /// Must only be called once.
-        /// @throws ValueError  If called more than once or the Node has already expired.
+        /// @throws HandleExpiredError  If called more than once or the Node has already expired.
         operator NodeOwner() { return _to_node_owner<Node>(); }
 
-        /// Implicit conversion to a NodeHandle.
+        /// Implicitly cast to a TypedNodeHandle, if the Node Type derives from NodeType.
+        /// Can be called multiple times.
+        operator TypedNodeHandle<NodeType>() const { return TypedNodeHandle<NodeType>(m_node.lock()); }
+
+        /// Implicit cast to a NodeOwner.
+        /// Must only be called once.
+        /// @throws HandleExpiredError  If called more than once or the Node has already expired.
+        operator TypedNodeOwner<NodeType>() { return _to_node_owner<NodeType>(); }
+
+        /// Explicit conversion to a TypedNodeHandle.
         /// Is useful when you don't want to type the name:
         ///     auto owner = parent->create_child<VeryLongNodeName>(...).to_handle();
         auto to_handle() const { return operator TypedNodeHandle<NodeType>(); }
 
-        /// Implicit conversion to a NodeOwner.
+        /// Explicit conversion to a NodeType.
         /// Is useful when you don't want to type the name:
         ///     auto owner = parent->create_child<VeryLongNodeName>(...).to_owner();
         auto to_owner() { return operator TypedNodeOwner<NodeType>(); }
@@ -74,12 +69,12 @@ private:
     private:
         template<class T>
         TypedNodeOwner<T> _to_node_owner() {
-            if (auto node = m_node.lock()) {
-                m_node.reset();
-                return TypedNodeOwner<T>(std::move(node));
-            } else {
-                NOTF_THROW(ValueError, "Cannot create a NodeOwner for a Node that is already expired");
+            auto node = m_node.lock();
+            if (!node) {
+                NOTF_THROW(HandleExpiredError, "Cannot create a NodeOwner for a Node that is already expired");
             }
+            m_node.reset();
+            return TypedNodeOwner<T>(std::move(node));
         }
 
         // fields ------------------------------------------------------------------------------ //
@@ -114,8 +109,8 @@ private:
 
     // flags ------------------------------------------------------------------
 
-    /// Total bumber of flags on a Node (as many as fit into a pointer).
-    using Flags = std::bitset<bitsizeof<void*>()>;
+    /// Total bumber of flags on a Node (as many as fit into a word).
+    using Flags = std::bitset<bitsizeof<size_t>()>;
 
     /// Internal Flags.
     enum class InternalFlags : uchar {
@@ -132,22 +127,25 @@ private:
 
     // data -------------------------------------------------------------------
 
-    /// If a Node is modified while the Graph is frozen, all modifications will occur on a copy of the Node's Data, so
-    /// the render thread will still see everything as it was when the Graph was frozen.
+    /// Unlike event handling, which is concurrent but not parallel, rendering happens truly parallel to the UI thread.
+    /// If there was no synchronization between the render- and UI-thread, we could never be certain that the Graph
+    /// didn't change halfway through the rendering process, resulting in frames that depict weird half-states.
+    /// Therefore, all modifications on a Node are first applied to a copy of the Node's Data, while the renderer still
+    /// sees the Graph as it was when it was last "synchronized".
     /// Since it will be a lot more common for a single Node to be modified many times than it is for many Nodes to be
-    /// modified a single time, it is advantageous to have a single unused pointer in many Nodes and a few unneccessary
-    /// data copies on some, than it is to have many unused pointers on most Nodes.
+    /// modified a single time, it is advantageous to have a single unused pointer to data in many Nodes and a few
+    /// unneccessary data copies on some, than it is to have many unused pointers on most Nodes.
     struct Data {
         /// Value Constructor.
         /// Initializes all data, so we can be sure that all of it is valid if a modified data copy exists.
-        Data(valid_ptr<Node*> parent, const ChildList& children, Flags flags)
-            : parent(parent), children(std::make_unique<ChildList>(children)), flags(std::move(flags)) {}
+        Data(valid_ptr<Node*> parent, const std::vector<NodePtr>& children, Flags flags)
+            : parent(parent), children(std::make_unique<std::vector<NodePtr>>(children)), flags(std::move(flags)) {}
 
         /// Modified parent of this Node, if it was moved.
         valid_ptr<Node*> parent;
 
         /// Modified children of this Node, should they have been modified.
-        std::unique_ptr<ChildList> children;
+        std::unique_ptr<std::vector<NodePtr>> children;
 
         /// Modified flags of this Node.
         Flags flags;
@@ -180,18 +178,21 @@ public:
     /// Destructor.
     virtual ~Node();
 
-    // inspection -------------------------------------------------------------
+    // identification ---------------------------------------------------------
 
     /// Uuid of this Node.
     Uuid get_uuid() const noexcept { return m_uuid; }
 
     /// The Graph-unique name of this Node.
     /// @returns    Name of this Node. Is an l-value because the name of the Node may change.
-    std::string get_name() const;
+    std::string get_name() const { return TheGraph()->get_name(_get_handle()); }
 
-    /// A 4-syllable mnemonic name, based on this Node's Uuid.
-    /// Is not guaranteed to be unique, but collisions are unlikely with 100^4 possibilities.
-    std::string get_default_name() const;
+    /// (Re-)Names the Node.
+    /// If another Node with the same name already exists in the Graph, this method will append the lowest integer
+    /// postfix that makes the name unique.
+    /// @param name     Proposed name of the Node.
+    /// @returns        Actual new name of the Node.
+    std::string set_name(const std::string& name);
 
     // properties -------------------------------------------------------------
 
@@ -201,6 +202,7 @@ public:
     /// @throws         NameError / TypeError
     template<class T>
     const T& get(const std::string& name) const {
+        // can be accessed from both the UI and the render thread
         return _try_get_property<T>(name)->get();
     }
 
@@ -210,6 +212,7 @@ public:
     /// @throws         NameError / TypeError
     template<class T>
     void set(const std::string& name, T&& value) {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         _try_get_property<T>(name)->set(std::forward<T>(value));
     }
 
@@ -221,10 +224,12 @@ public:
     /// The Publisher of the Slot's `on_next` call id is set to `nullptr`.
     template<class T = None>
     std::enable_if_t<std::is_same_v<T, None>> call(const std::string& name) {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         _try_get_slot<T>(name)->call();
     }
     template<class T>
     std::enable_if_t<!std::is_same_v<T, None>> call(const std::string& name, const T& value) {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         _try_get_slot<T>(name)->call(value);
     }
     /// @}
@@ -236,6 +241,7 @@ public:
     /// @throws         NameError / TypeError
     template<class T>
     SlotHandle<T> get_slot(const std::string& name) const {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         return _try_get_slot<T>(name);
     }
 
@@ -245,16 +251,11 @@ public:
     /// @throws         NameError / TypeError
     template<class T>
     SignalHandle<T> get_signal(const std::string& name) const {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         return _try_get_signal<T>(name);
     }
 
     // hierarchy --------------------------------------------------------------
-
-    /// (Re-)Names the Node.
-    /// If another Node with the same name already exists in the Graph, this method will append the lowest integer
-    /// postfix that makes the name unique.
-    /// @param name     Proposed name of the Node.
-    void set_name(const std::string& name);
 
     /// The parent of this Node.
     NodeHandle get_parent() const;
@@ -282,7 +283,7 @@ public:
     /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
     template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
     NodeHandle get_first_ancestor() const {
-        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
+        NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
         Node* next = _get_parent();
         if (auto* result = dynamic_cast<T*>(next)) { return NodeHandle(result->shared_from_this()); }
         while (next != next->_get_parent()) {
@@ -294,7 +295,7 @@ public:
 
     /// The number of direct children of this Node.
     size_t get_child_count() const {
-        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
+        NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
         return _read_children().size();
     }
 
@@ -308,6 +309,7 @@ public:
     /// Destroys this Node by deleting the owning pointer in its parent.
     /// This method is basically a destructor, make sure not to dereference this Node after this function call!
     void remove() {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         NodePtr parent;
         if (auto weak_parent = _get_parent()->weak_from_this(); !weak_parent.expired()) {
             parent = weak_parent.lock();
@@ -371,6 +373,7 @@ protected: // for all subclasses
     /// if the value is initially different from the one stored in the PropertyOperator.
     template<class T>
     void _set_property_callback(const std::string& property_name, typename Property<T>::callback_t callback) {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         _try_get_property<T>(property_name)->set_callback(std::move(callback));
     }
 
@@ -383,6 +386,7 @@ protected: // for all subclasses
     /// @throws         NameError / TypeError
     template<class T>
     typename Slot<T>::publisher_t _get_slot(const std::string& name) const {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         return _try_get_slot<T>(name)->get_publisher();
     }
 
@@ -393,9 +397,13 @@ protected: // for all subclasses
     /// @throws         NameError / TypeError
     template<class T>
     void _emit(const std::string& name, const T& value) {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         _try_get_signal<T>(name)->publish(value);
     }
-    void _emit(const std::string& name) { _try_get_signal<None>(name)->publish(); }
+    void _emit(const std::string& name) {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
+        _try_get_signal<None>(name)->publish();
+    }
     /// @}
 
     // flags ------------------------------------------------------------------
@@ -421,6 +429,7 @@ protected: // for all subclasses
     template<class Child, class Parent, class... Args,
              class = std::enable_if_t<detail::can_node_parent<Parent, Child>()>>
     NewNode<Child> _create_child(Parent* parent, Args&&... args) {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         if (NOTF_UNLIKELY(parent != this)) {
             NOTF_THROW(InternalError, "Node::_create_child cannot be used to create children of other Nodes.");
         }
@@ -444,12 +453,16 @@ protected: // for all subclasses
     /// Remove all children from this Node.
     void _clear_children();
 
+    /// Changes the parent of this Node by first adding it to the new parent and then removing it from its old one.
+    /// @param new_parent_handle    New parent of this Node. If it is the same as the old, this method does nothing.
+    void _set_parent(NodeHandle new_parent_handle);
+
 protected: // for direct subclasses only
     /// Reactive function marking this Node as dirty whenever a visible Property changes its value.
     std::shared_ptr<PropertyObserver>& _get_property_observer() { return m_property_observer; }
 
     /// Whether or not this Node has been finalized or not.
-    bool _is_finalized() const { return _get_flag_impl(to_number(InternalFlags::FINALIZED)); }
+    bool _is_finalized() const { return _get_internal_flag(to_number(InternalFlags::FINALIZED)); }
 
 private:
     /// Implementation specific query of a Property, returns an empty pointer if no Property by the given name is found.
@@ -470,19 +483,20 @@ private:
     /// Removes all modified data from all Properties.
     virtual void _clear_modified_properties() = 0;
 
+    /// Allows const methods to create NodeHandles to this node.
+    NodeHandle _get_handle() const { return NodeHandle(const_cast<Node*>(this)->shared_from_this()); }
+
     /// Access to the parent of this Node.
     /// Never creates a modified copy.
-    /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
-    Node* _get_parent(std::thread::id thread_id = std::this_thread::get_id()) const;
-
-    /// Changes the parent of this Node by first adding it to the new parent and then removing it from its old one.
-    /// @param new_parent_handle    New parent of this Node. If it is the same as the old, this method does nothing.
-    void _set_parent(NodeHandle new_parent_handle);
+    Node* _get_parent() const;
 
     /// Finalizes this Node.
     /// Called on every new Node instance right after the Constructor of the most derived class has finished.
     /// Therefore, we do no have to ensure that the Graph is frozen etc.
-    void _finalize() { m_flags[to_number(InternalFlags::FINALIZED)] = true; }
+    void _finalize() {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
+        m_flags[to_number(InternalFlags::FINALIZED)] = true;
+    }
 
     /// Deletes all modified data of this Node.
     void _clear_modified_data();
@@ -493,6 +507,7 @@ private:
     /// @throws         NameError / TypeError
     template<class T>
     PropertyPtr<T> _try_get_property(const std::string& name) const {
+        // can be accessed from both the UI and the render thread
         AnyPropertyPtr property = _get_property_impl(name);
         if (!property) { NOTF_THROW(NameError, "Node \"{}\" has no Property called \"{}\"", get_name(), name); }
 
@@ -549,26 +564,24 @@ private:
 
     /// All children of this node, orded from back to front.
     /// Never creates a modified copy.
-    /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
-    const ChildList& _read_children(std::thread::id thread_id = std::this_thread::get_id()) const;
+    const std::vector<NodePtr>& _read_children() const;
 
     /// All children of this node, orded from back to front.
     /// Will create a modified copy the current list of children if there is no copy yet and the Graph is frozen.
-    ChildList& _write_children();
+    std::vector<NodePtr>& _write_children();
 
     /// All children of the parent.
-    const ChildList& _read_siblings() const;
+    const std::vector<NodePtr>& _read_siblings() const;
 
     /// Tests a flag on this Node.
     /// @param index        Index of the user flag.
-    /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
     /// @returns            True iff the flag is set.
-    bool _get_flag_impl(size_t index, std::thread::id thread_id = std::this_thread::get_id()) const;
+    bool _get_internal_flag(size_t index) const;
 
     /// Sets or unsets a flag on this Node.
     /// @param index            Index of the user flag.
     /// @param value            Whether to set or to unser the flag.
-    void _set_flag_impl(size_t index, bool value = true);
+    void _set_internal_flag(size_t index, bool value = true);
 
     /// Creates (if necessary) and returns the modified Data for this Node.
     Data& _ensure_modified_data();
@@ -585,10 +598,7 @@ private:
     Node* m_parent;
 
     /// All children of this Node, ordered from back to front (later Nodes are drawn on top of earlier ones).
-    ChildList m_children;
-
-    /// Name of this Node. Is empty until requested for the first time or set using `set_name`.
-    std::string_view m_name;
+    std::vector<NodePtr> m_children;
 
     /// Additional flags, contains both internal and user-definable flags.
     Flags m_flags;
@@ -612,14 +622,11 @@ template<>
 class Accessor<Node, RootNode> {
     friend RootNode;
 
-    /// Owning list of child Nodes, ordered from back to front.
-    using ChildList = Node::ChildList;
-
     /// Finalizes the given RootNode.
     static void finalize(Node& node) { node._finalize(); }
 
     /// Direct write access to child Nodes.
-    static ChildList& write_children(Node& node) { return node._write_children(); }
+    static std::vector<NodePtr>& write_children(Node& node) { return node._write_children(); }
 };
 
 template<>

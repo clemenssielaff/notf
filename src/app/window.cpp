@@ -125,7 +125,9 @@ Window::Window(valid_ptr<Node*> parent, Settings settings)
 }
 
 WindowHandle Window::create(Settings settings) {
-    NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
+    if (NOTF_UNLIKELY(!this_thread::is_the_ui_thread())) {
+        NOTF_THROW(ThreadError, "Window::create must only be called from the UI thread");
+    }
 
     RootNodePtr root_node = TheGraph::AccessFor<Window>::get_root_node_ptr();
     WindowPtr window = _create_shared(root_node.get(), std::move(settings));

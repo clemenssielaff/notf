@@ -26,32 +26,6 @@ public:
     /// Nested `AccessFor<T>` type.
     NOTF_ACCESS_TYPE(Graph);
 
-    /// RAII object to make sure that a frozen scene is *always* unfrozen again
-    class NOTF_NODISCARD FreezeGuard {
-        friend Graph;
-
-        // methods --------------------------------------------------------- //
-    private:
-        /// Constructor.
-        /// @param thread_id    ID of the freezing thread (exposed for testability).
-        FreezeGuard(std::thread::id thread_id = std::this_thread::get_id());
-
-    public:
-        NOTF_NO_COPY_OR_ASSIGN(FreezeGuard);
-        NOTF_NO_HEAP_ALLOCATION(FreezeGuard);
-
-        /// Destructor.
-        ~FreezeGuard();
-
-        /// Tests if this FreezeGuard will unfreeze the Graph again, when it goes out of scope.
-        bool is_valid() const { return m_thread_id != std::thread::id{}; }
-
-        // fields ---------------------------------------------------------- //
-    private:
-        /// Id of the freezing thread, if freezing succeeded
-        std::thread::id m_thread_id;
-    };
-
 private:
     /// Node registry Uuid -> NodeHandle.
     struct NodeRegistry {
@@ -95,19 +69,26 @@ private:
         /// @param node     Node to rename.
         /// @param name     Proposed name of the Node.
         /// @returns        New name of the Node.
-        std::string_view set_name(NodeHandle node, const std::string& name);
+        /// @throws HandleExpiredError  If the Node handle has expired.
+        std::string set_name(NodeHandle node, const std::string& name);
 
         /// The Node with the given name.
         /// @param name Name of the Node to look up.
         /// @returns    The requested Handle, is invalid if the name did not identify a Node.
         NodeHandle get_node(const std::string& name) const;
 
+        /// The name of the Node with the given Uuuid.
+        /// If the Node does not have an existing name, a default one is created in its place.
+        /// The default name is a 4-syllable mnemonic name, based on this Node's Uuid.
+        /// Is not guaranteed to be unique, but collisions are unlikely with 100^4 possibilities.
+        /// @param node Handle of the Node to look up.
+        /// @returns    The requested name.
+        /// @throws HandleExpiredError  If the Node handle has expired.
+        std::string get_name(NodeHandle node);
+
         /// Removes the Node from the registry.
         /// @param uuid Uuid of the Node to remove.
         void remove_node(Uuid uuid);
-
-        /// Mutex protecting the registry.
-        RecursiveMutex& get_mutex() { return m_mutex; }
 
     private:
         /// Manages a static std::string instance to copy into whenever you want to remove a node with a string_view.
@@ -121,7 +102,7 @@ private:
         mutable std::unordered_map<Uuid, std::string_view> m_uuid_to_name;
 
         /// Mutex protecting the registry.
-        mutable RecursiveMutex m_mutex;
+        mutable Mutex m_mutex;
     };
 
     // methods --------------------------------------------------------------------------------- //
@@ -149,51 +130,17 @@ public:
     /// @returns    The requested Handle, is invalid if the uuid did not identify a Node.
     NodeHandle get_node(Uuid uuid) { return m_node_registry.get_node(uuid); }
 
-    // freezing ---------------------------------------------------------------
+    /// The name of the Node with the given Uuuid.
+    /// @param node Handle of the Node to look up.
+    /// @returns    The requested name, is empty if not found.
+    std::string get_name(NodeHandle node) { return m_node_name_registry.get_name(std::move(node)); }
 
-    /// Freeze the Scene, if it is currently unfrozen.
-    /// @returns    FreezeGuard that keeps the scene frozen while it is alive, is invalid if freezing did not succeed.
-    FreezeGuard freeze() { return _freeze_guard(); }
-
-    /// Tests whether this Graph is currently frozen.
-    bool is_frozen() const noexcept { return m_freezing_thread != std::thread::id(); }
-
-    /// Tests whether this Graph is currently frozen by the given thread.
-    bool is_frozen_by(const std::thread::id thread_id) const noexcept { return m_freezing_thread == thread_id; }
-
-    // global mutexes ---------------------------------------------------------
-
-    /// Mutex used to protect the Graph.
-    RecursiveMutex& get_graph_mutex() { return m_mutex; }
-
-    /// Mutex used to protect the Name Registry.
-    RecursiveMutex& get_name_mutex() { return m_node_name_registry.get_mutex(); }
-#ifdef NOTF_DEBUG
-    /// Checks if the Graph is locked on the current thread (debug builds only).
-    bool is_locked_by_this_thread() noexcept { return get_graph_mutex().is_locked_by_this_thread(); }
-#endif
-private:
-    /// Freeze the Scene, if it is currently unfrozen.
-    /// @param thread_id    Id of the freezing thread (should only be used in tests).
-    /// @returns            FreezeGuard that keeps the scene frozen while it is alive, is invalid if freezing did not
-    /// succeed.
-    FreezeGuard _freeze_guard(const std::thread::id thread_id = std::this_thread::get_id()) {
-        return FreezeGuard(std::move(thread_id));
-    }
-
-    /// Freezes the Scene if it is not already frozen.
-    /// @param thread_id    Id of the freezing thread.
-    /// @returns            True iff the Scene was frozen.
-    bool _freeze(std::thread::id thread_id);
-
-    /// Unfreezes the Scene again.
-    /// @param thread_id    Id of the freezing thread (to ensure that the same thread freezes and unfreezes).
-    void _unfreeze(std::thread::id thread_id);
+    // synchronization --------------------------------------------------------
 
     /// Removes all modified data copies from the Graph - at the point that this method returns, all threads agree on
     /// the complete state of the Graph
-    /// @returns    True iff something changed in the Graph since the last synchronization.
-    bool _synchronize();
+    /// @returns    True iff the Graph has new data visible to the render thread.
+    bool synchronize();
 
     // fields ---------------------------------------------------------------------------------- //
 private:
@@ -211,9 +158,6 @@ private:
 
     /// All Nodes that were modified since the last time the Graph was rendered.
     std::unordered_set<NodeHandle> m_dirty_nodes;
-
-    /// Thread that has frozen the Graph (is 0 if the Graph is not frozen).
-    std::thread::id m_freezing_thread;
 };
 
 } // namespace detail
@@ -263,7 +207,7 @@ private:
     /// @param node     Node to rename.
     /// @param name     Proposed name of the Node.
     /// @returns        New name of the Node.
-    static std::string_view _set_name(NodeHandle node, const std::string& name) {
+    static std::string _set_name(NodeHandle node, const std::string& name) {
         return _get().m_node_name_registry.set_name(std::move(node), name);
     }
 
@@ -297,7 +241,7 @@ class Accessor<TheGraph, Node> {
     /// @param node     Node to rename.
     /// @param name     Proposed name of the Node.
     /// @returns        New name of the Node.
-    static std::string_view set_name(NodeHandle node, const std::string& name) {
+    static std::string set_name(NodeHandle node, const std::string& name) {
         return TheGraph()._set_name(std::move(node), name);
     }
 

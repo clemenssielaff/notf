@@ -43,7 +43,7 @@ public:
 
     /// Update the Property from upstream.
     void on_next(const AnyPublisher* /*publisher*/, const T& value) final {
-        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         set(value);
     }
 
@@ -59,25 +59,20 @@ public:
 
     /// Current value of the Property.
     /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
-    const T& get(const std::thread::id thread_id) const {
-        if (TheGraph()->is_frozen_by(thread_id)) {
+    const T& get() const {
+        if (!this_thread::is_the_ui_thread()) {
             return m_value; // the renderer always sees the unmodified value
         }
 
         // if there exist a modified value, return that one instead
-        if (T* modified_value = m_modified_value.get()) {
-            NOTF_ASSERT(TheGraph()->is_frozen());
-            return *modified_value;
-        }
-
-        // either the value has not been modified, or the Graph is not frozen
+        if (T* modified_value = m_modified_value.get()) { return *modified_value; }
         return m_value;
     }
 
     /// The Property value.
     /// @param value    New value.
     void set(const T& value) {
-        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
 
         // do nothing if the property value would not actually change
         if (value == m_value) { return; }
@@ -86,44 +81,27 @@ public:
         T new_value = value;
         if (m_callback && !m_callback(new_value)) { return; }
 
-        // if the graph is currently frozen and this is the first modification of this property,
-        // create a modified value copy
-        if (TheGraph()->is_frozen()) {
-            // the render thread must never modify a Property
-            NOTF_ASSERT(!TheGraph()->is_frozen_by(std::this_thread::get_id()));
-
-            // if this is the first modification, create a modified copy
-            if (m_modified_value == nullptr) {
-                m_modified_value = std::make_unique<T>(std::move(new_value));
-            }
-
-            // if a modified value already exists, update it
-            else {
-                *m_modified_value.get() = std::move(new_value);
-            }
-
-            // hash and publish the modified copy just like your regular value
-            if (m_hash != 0) { m_hash = hash(*m_modified_value.get()); }
-            this->publish(*m_modified_value.get());
+        // if this is the first modification, create a modified copy
+        if (m_modified_value == nullptr) {
+            m_modified_value = std::make_unique<T>(std::move(new_value));
+        } else { // if a modified value already exists, update it
+            *m_modified_value.get() = std::move(new_value);
         }
 
-        // if the graph is not frozen, just update, hash and publish your regular value
-        else {
-            m_value = std::move(new_value);
-            if (m_hash != 0) { m_hash = hash(m_value); }
-            this->publish(m_value);
-        }
+        // hash and publish the value
+        if (m_hash != 0) { m_hash = hash(*m_modified_value.get()); }
+        this->publish(*m_modified_value.get());
     }
 
     /// Installs a (new) callback that is invoked every time the value of the PropertyOperator is about to change.
     void set_callback(callback_t callback) {
-        NOTF_ASSERT(TheGraph()->get_graph_mutex().is_locked_by_this_thread());
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         m_callback = std::move(callback);
     }
 
     /// Deletes the modified value copy, if one exists.
     void clear_modified_value() {
-        NOTF_ASSERT(TheGraph()->get_graph_mutex().is_locked_by_this_thread());
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         if (m_modified_value) {
             m_value = std::move(*m_modified_value.get());
             m_modified_value.reset();
@@ -219,10 +197,7 @@ public:
     virtual const T& get_default() const = 0;
 
     /// The Property value.
-    /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
-    const T& get(const std::thread::id thread_id = std::this_thread::get_id()) const noexcept {
-        return m_operator->get(thread_id);
-    }
+    const T& get() const noexcept { return m_operator->get(); }
 
     /// Updater the Property value and bind it.
     /// @param value    New Property value.

@@ -18,7 +18,7 @@ class Application;
 }
 class TheApplication;
 namespace this_thread {
-bool is_ui_thread();
+bool is_the_ui_thread();
 }
 
 // graph.hpp
@@ -26,7 +26,6 @@ namespace detail {
 class Graph;
 }
 class TheGraph;
-RecursiveMutex& TheGraphMutex();
 
 // node.hpp
 NOTF_DECLARE_SHARED_POINTERS(class, Node);

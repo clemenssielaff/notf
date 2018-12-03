@@ -191,7 +191,7 @@ template<class T>
 struct SlotSubscriber : Subscriber<T> {
     SlotSubscriber(Slot<T>& slot) : m_slot(slot) {}
     void on_next(const AnyPublisher* id, const T& value) final {
-        NOTF_GUARD(std::lock_guard(TheGraphMutex()));
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         m_slot.get_publisher()->publish(id, value);
     }
     Slot<T>& m_slot;
@@ -200,7 +200,7 @@ template<>
 struct SlotSubscriber<None> : Subscriber<None> {
     SlotSubscriber(Slot<None>& slot) : m_slot(slot) {}
     void on_next(const AnyPublisher* id) final {
-        NOTF_GUARD(std::lock_guard(TheGraphMutex()));
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         m_slot.get_publisher()->publish(id);
     }
     Slot<None>& m_slot;

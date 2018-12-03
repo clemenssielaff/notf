@@ -3,7 +3,7 @@ set(CURRENT_TARGET notf-tests)
 
 # add test files
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
-    app/test_application.cpp
+#    app/test_application.cpp
 #    app/test_graph.cpp
 #    app/test_node.cpp
 #    app/test_property.cpp

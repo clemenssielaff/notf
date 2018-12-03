@@ -12,7 +12,6 @@ NOTF_USING_NAMESPACE;
 template<>
 struct notf::Accessor<detail::Graph, Tester> {
     static detail::Graph& get() { return *TheGraph(); }
-    static auto freeze(std::thread::id id) { return TheGraph()->_freeze_guard(id); }
     static auto register_node(NodePtr node) { return TheGraph()->m_node_registry.add(node); }
     static size_t get_node_count() { return TheGraph()->m_node_registry.get_count(); }
 };
@@ -42,7 +41,7 @@ struct notf::Accessor<Node, Tester> {
 
     bool is_dirty() const {
         NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
-        return m_node._get_flag_impl(to_number(Node::InternalFlags::DIRTY));
+        return m_node._get_internal_flag(to_number(Node::InternalFlags::DIRTY));
     }
 
     void set_uuid(const Uuid& uuid) { const_cast<Uuid&>(m_node.m_uuid) = uuid; }
@@ -52,7 +51,7 @@ struct notf::Accessor<Node, Tester> {
     static constexpr size_t get_user_flag_count() noexcept { return Node::s_user_flag_count; }
 
     bool get_flag(const size_t index, const std::thread::id thread_id = std::this_thread::get_id()) const {
-        return m_node._get_flag_impl(index + Node::s_internal_flag_count, thread_id);
+        return m_node._get_internal_flag(index + Node::s_internal_flag_count, thread_id);
     }
 
     void remove_child(NodeHandle handle) { m_node._remove_child(handle); }

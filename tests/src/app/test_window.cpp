@@ -7,7 +7,7 @@ NOTF_USING_NAMESPACE;
 
 SCENARIO("Window", "[app][window]") {
 
-    SECTION("open a close an empty window") {
+    SECTION("open and close an empty window") {
         TheApplication app(TheApplication::Arguments{});
         auto window = Window::create();
         window->call<Window::to_close>();

@@ -136,7 +136,7 @@ private:
 class TheApplication : public ScopedSingleton<detail::Application> {
 
     friend Accessor<TheApplication, Window>;
-    friend bool this_thread::is_ui_thread();
+    friend bool this_thread::is_the_ui_thread();
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -175,7 +175,15 @@ private:
     }
 
     /// Tests if the calling thread is the notf "UI-thread".
-    bool _is_this_the_ui_thread() { return std::unique_lock(_get().m_ui_mutex).try_lock(); }
+    bool _is_this_the_ui_thread() { //return std::unique_lock(_get().m_ui_mutex).try_lock(); }
+        RecursiveMutex& ui_mutex = _get().m_ui_mutex;
+        if(ui_mutex.try_lock()){
+            ui_mutex.unlock();
+            return true;
+        } else {
+            return false;
+        }
+    }
 };
 
 // accessors ======================================================================================================== //
@@ -199,7 +207,7 @@ class Accessor<TheApplication, Window> {
 namespace this_thread {
 
 /// Tests if the calling thread is the notf "UI-thread".
-bool is_ui_thread();
+bool is_the_ui_thread();
 
 } // namespace this_thread
 
