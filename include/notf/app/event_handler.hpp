@@ -16,6 +16,8 @@ namespace detail {
 
 class EventHandler {
 
+    friend TheEventHandler;
+
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor.
@@ -24,10 +26,20 @@ public:
     EventHandler(size_t buffer_size);
 
     /// Destructor.
-    ~EventHandler() { m_event_queue.close(); }
+    ~EventHandler() { _stop(); }
 
     /// Schedules a new event to be handled on the event thread.
     void schedule(AnyEventPtr&& event) { m_event_queue.push(std::move(event)); }
+
+private:
+    /// Starts the event handling thread.
+    /// @param ui_mutex Mutex turning the event handler thread into the Ui-thread.
+    void _start(RecursiveMutex& ui_mutex);
+
+    /// Closes the event handling thread.
+    void _stop() {
+        m_event_queue.close(); // can be called multiple times
+    }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
@@ -55,6 +67,13 @@ public:
 private:
     NOTF_CREATE_SMART_FACTORIES(TheEventHandler);
 
+    /// Starts the event handling thread.
+    /// @param ui_mutex Mutex turning the event handler thread into the Ui-thread.
+    void _start(RecursiveMutex& ui_mutex) { _get()._start(ui_mutex); }
+
+    /// Closes the event handling thread.
+    void _stop() { _get()._stop(); }
+
 public:
     using ScopedSingleton<detail::EventHandler>::ScopedSingleton;
 };
@@ -70,6 +89,13 @@ class Accessor<TheEventHandler, detail::Application> {
     static auto create(Args... args) {
         return TheEventHandler::_create_unique(TheEventHandler::Holder{}, std::forward<Args>(args)...);
     }
+
+    /// Starts the event handling thread.
+    /// @param ui_mutex Mutex turning the event handler thread into the Ui-thread.
+    static void start(RecursiveMutex& ui_mutex) { TheEventHandler()._start(ui_mutex); }
+
+    /// Closes the event handling thread.
+    static void stop() { TheEventHandler()._stop(); }
 };
 
 NOTF_CLOSE_NAMESPACE

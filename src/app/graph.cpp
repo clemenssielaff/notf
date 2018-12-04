@@ -16,7 +16,7 @@ NodeHandle Graph::NodeRegistry::get_node(Uuid uuid) const {
 }
 
 void Graph::NodeRegistry::add(NodePtr node) {
-    NOTF_ASSERT(this_thread::is_the_ui_thread());
+    // do not check whether this is the UI thread as we need this method during Application construction
     const Uuid& uuid = node->get_uuid();
     NodeHandle handle = std::move(node);
     {

@@ -1,8 +1,10 @@
-#include "notf/app/event/handler.hpp"
+#include "notf/app/event_handler.hpp"
 
 #include "notf/meta/integer.hpp"
 
-#include "notf/app/event/event.hpp"
+#include "notf/common/mutex.hpp"
+
+#include "notf/app/event.hpp"
 
 // helper =========================================================================================================== //
 
@@ -26,10 +28,15 @@ NOTF_OPEN_NAMESPACE
 namespace detail {
 
 EventHandler::EventHandler(const size_t buffer_size)
-    : m_event_queue(check_buffer_size(buffer_size)), m_event_handler(Thread(Thread::Kind::EVENT)) {
+    : m_event_queue(check_buffer_size(buffer_size)), m_event_handler(Thread(Thread::Kind::EVENT)) {}
 
-    // event handling loop
-    m_event_handler.run([& queue = m_event_queue] {
+void EventHandler::_start(RecursiveMutex& ui_mutex) {
+    m_event_handler.run([& queue = m_event_queue, &ui_mutex] {
+        // take over as the UI thread
+        std::unique_lock<RecursiveMutex> ui_lock(ui_mutex);
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
+
+        // start the event handling loop
         Fiber event_fiber([&] {
             AnyEventPtr event;
             while (fibers::channel_op_status::success == queue.pop(event)) {

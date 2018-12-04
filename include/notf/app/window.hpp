@@ -219,7 +219,7 @@ public:
     static WindowHandle create(Settings settings = {});
 
     /// Returns the GlfwWindow contained in this Window.
-    GLFWwindow* get_glfw_window() const { return m_glfw_window.get(); }
+    GLFWwindow* get_glfw_window() const { return m_glfw_window; }
 
 private:
     /// Closes this Window.
@@ -242,7 +242,7 @@ private:
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// The GLFW window managed by this Window.
-    detail::GlfwWindowPtr m_glfw_window;
+    GLFWwindow* m_glfw_window;
 
     /// Internal Pipes.
     AnyPipelinePtr m_pipe_to_close;

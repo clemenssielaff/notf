@@ -2,6 +2,7 @@
 
 #include "notf/meta/singleton.hpp"
 
+#include "notf/common/fibers.hpp"
 #include "notf/common/mutex.hpp"
 
 #include "notf/app/fwd.hpp"
@@ -57,6 +58,9 @@ public:
 
         /// Number of unscheduled Timers before the TimerPool blocks enqueuing new ones (must be a power of two).
         size_t timer_buffer_size = 32;
+
+        /// Number of unhandled Events before the Application blocks enqueuing new ones (must be a power of two).
+        size_t app_buffer_size = 16;
     };
 
     // methods --------------------------------------------------------------------------------- //
@@ -79,13 +83,16 @@ public:
     /// @throws ShutdownError   When this method is called after the Application was shut down.
     int exec();
 
+    /// Schedules a new event to be handled on the main thread.
+    void schedule(AnyEventPtr&& event);
+
     /// Forces a shutdown of a running Application.
     /// Does nothing if the Application is already shut down.
     void shutdown();
 
 private:
     /// Registers a new Window in the Application.
-    void _register_window(WindowPtr window);
+    void _register_window(detail::GlfwWindowPtr window);
 
     /// Unregisters an existing Window from this Application.
     void _unregister_window(WindowPtr window);
@@ -105,8 +112,11 @@ private:
     /// Lock held by the UI-thread.
     std::unique_lock<RecursiveMutex> m_ui_lock;
 
+    /// MPMC queue buffering Events for the main thread.
+    fibers::buffered_channel<AnyEventPtr> m_event_queue;
+
     /// All Windows known the the Application.
-    std::unique_ptr<std::vector<WindowPtr>> m_windows;
+    std::unique_ptr<std::vector<detail::GlfwWindowPtr>> m_windows;
     Mutex m_windows_mutex;
 
     /// @{
@@ -163,7 +173,7 @@ private:
     GLFWwindow* _get_shared_context() { return _get().m_shared_context.get(); }
 
     /// Registers a new Window in the Application.
-    void _register_window(WindowPtr window) {
+    void _register_window(detail::GlfwWindowPtr&& window) {
         NOTF_ASSERT(_is_this_the_ui_thread());
         _get()._register_window(std::move(window));
     }
@@ -175,9 +185,9 @@ private:
     }
 
     /// Tests if the calling thread is the notf "UI-thread".
-    bool _is_this_the_ui_thread() { //return std::unique_lock(_get().m_ui_mutex).try_lock(); }
+    bool _is_this_the_ui_thread() {
         RecursiveMutex& ui_mutex = _get().m_ui_mutex;
-        if(ui_mutex.try_lock()){
+        if (ui_mutex.try_lock()) {
             ui_mutex.unlock();
             return true;
         } else {
@@ -193,7 +203,9 @@ class Accessor<TheApplication, Window> {
     friend Window;
 
     /// Registers a new Window in the Application.
-    static void register_window(WindowPtr window) { TheApplication()._register_window(std::move(window)); }
+    static void register_window(detail::GlfwWindowPtr&& window) {
+        TheApplication()._register_window(std::move(window));
+    }
 
     /// Unregisters an existing Window from this Application.
     static void unregister_window(WindowPtr window) { TheApplication()._unregister_window(std::move(window)); }

@@ -4,15 +4,14 @@ set(CURRENT_TARGET notf-core)
 # add core files
 add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/application.cpp
+    app/event_handler.cpp
     app/graph.cpp
+    app/input.cpp
     app/node.cpp
     app/property.cpp
     app/root_node.cpp
     app/timer_pool.cpp
     app/window.cpp
-
-    app/event/input.cpp
-    app/event/handler.cpp
 
     app/widget/claim.cpp
 

@@ -54,9 +54,6 @@ class Accessor<RootNode, Window> {
 
     /// Adds a new Window as child of the given RootNode.
     static void add_window(RootNode& node, WindowPtr window) { node._add_window(std::move(window)); }
-
-    /// Deletes a Window as child of this RootNode (deletes the Window instance as well).
-    static void remove_window(RootNode& node, const Window* window) { node._remove_window(window); }
 };
 
 NOTF_CLOSE_NAMESPACE

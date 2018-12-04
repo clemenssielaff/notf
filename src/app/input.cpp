@@ -1,4 +1,4 @@
-#include "notf/app/event/input.hpp"
+#include "notf/app/input.hpp"
 
 #include "notf/meta/log.hpp"
 

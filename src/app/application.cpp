@@ -10,9 +10,9 @@
 #include "notf/app/timer_pool.hpp"
 #include "notf/app/window.hpp"
 
-#include "notf/app/event/event.hpp"
-#include "notf/app/event/handler.hpp"
-#include "notf/app/event/input.hpp"
+#include "notf/app/event.hpp"
+#include "notf/app/event_handler.hpp"
+#include "notf/app/input.hpp"
 
 // glfw event handler =============================================================================================== //
 
@@ -263,13 +263,24 @@ struct GlfwEventHandler {
 
 } // namespace
 
+// window deleter =================================================================================================== //
+
 NOTF_OPEN_NAMESPACE
+
+namespace detail {
+
+void window_deleter(GLFWwindow* glfw_window) {
+    if (glfw_window != nullptr) { glfwDestroyWindow(glfw_window); }
+}
+
+} // namespace detail
 
 // application ====================================================================================================== //
 
 namespace detail {
 
-Application::Application(Arguments args) : m_arguments(std::move(args)), m_ui_lock(m_ui_mutex) {
+Application::Application(Arguments args)
+    : m_arguments(std::move(args)), m_ui_lock(m_ui_mutex), m_event_queue(m_arguments.app_buffer_size) {
     // initialize GLFW
     glfwSetErrorCallback(GlfwEventHandler::on_error);
     if (glfwInit() == 0) { NOTF_THROW(StartupError, "GLFW initialization failed"); }
@@ -329,15 +340,19 @@ int Application::exec() {
     }
     m_should_continue.test_and_set();
 
+    // turn the event handler into the UI thread
     NOTF_LOG_INFO("Starting main loop");
-    while (!m_should_continue.test_and_set()) {
+    TheEventHandler::AccessFor<Application>::start(m_ui_mutex);
+    m_ui_lock.unlock();
+
+    while (m_should_continue.test_and_set() && !m_windows->empty()) {
         glfwWaitEvents();
 
         // if any window has been closed, we need to find and destroy it
         if (!m_are_windows_intact.test_and_set()) {
             NOTF_GUARD(std::lock_guard(m_windows_mutex));
             for (size_t i = 0, end = m_windows->size(); i < end;) {
-                if (glfwWindowShouldClose((*m_windows)[i]->get_glfw_window())) {
+                if (glfwWindowShouldClose((*m_windows)[i].get())) {
                     std::swap((*m_windows)[i], m_windows->back());
                     m_windows->pop_back();
                     --end;
@@ -345,20 +360,34 @@ int Application::exec() {
                     ++i;
                 }
             }
+        }
 
-            // if this was the last window, close the application
-            if (m_windows->empty()) { break; }
+        { // see if there are any events scheduled to run on the main thread
+            AnyEventPtr event;
+            while (m_event_queue.try_pop(event) == fibers::channel_op_status::success) {
+                event->run();
+            }
         }
     }
+
+    // after the event handler is closed, the main thread becomes the UI thread again
+    TheEventHandler::AccessFor<Application>::stop();
+    m_ui_lock.lock();
 
     // shutdown
     m_timer_pool.reset();
     m_event_handler.reset();
     m_windows->clear();
     m_shared_context.reset();
+    m_graph.reset();
     NOTF_LOG_INFO("Application shutdown");
 
     return EXIT_SUCCESS;
+}
+
+void Application::schedule(AnyEventPtr&& event) {
+    m_event_queue.push(std::move(event));
+    glfwPostEmptyEvent();
 }
 
 void Application::shutdown() {
@@ -368,9 +397,9 @@ void Application::shutdown() {
     }
 }
 
-void Application::_register_window(WindowPtr window) {
+void Application::_register_window(GlfwWindowPtr window) {
 
-    GLFWwindow* glfw_window = window->get_glfw_window();
+    GLFWwindow* glfw_window = window.get();
     {
         NOTF_GUARD(std::lock_guard(m_windows_mutex));
         NOTF_ASSERT(!contains(*m_windows, window));

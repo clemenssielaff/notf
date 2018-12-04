@@ -20,7 +20,8 @@ int run_main(int argc, char* argv[]) {
     arguments.argv = argv;
     TheApplication app(std::move(arguments));
 
-    auto window = Window::create();
+    auto window1 = Window::create();
+    auto window2 = Window::create();
     return app->exec();
 }
 

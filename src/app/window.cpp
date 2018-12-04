@@ -27,20 +27,11 @@ GLFWmonitor* get_glfw_monitor(int index) {
 
 } // namespace
 
-NOTF_OPEN_NAMESPACE
-
-namespace detail {
-
-void window_deleter(GLFWwindow* glfw_window) {
-    if (glfw_window != nullptr) { glfwDestroyWindow(glfw_window); }
-}
-
-} // namespace detail
-
 // window =========================================================================================================== //
 
-Window::Window(valid_ptr<Node*> parent, Settings settings)
-    : super_t(parent), m_glfw_window(nullptr, detail::window_deleter) {
+NOTF_OPEN_NAMESPACE
+
+Window::Window(valid_ptr<Node*> parent, Settings settings) : super_t(parent), m_glfw_window(nullptr) {
     _validate_settings(settings);
 
     // Window specific GLFW hints (see Application constructor for application-wide hints)
@@ -83,25 +74,29 @@ Window::Window(valid_ptr<Node*> parent, Settings settings)
     }
 
     // create the GLFW window
-    m_glfw_window.reset(glfwCreateWindow(window_size.width(), window_size.height(), settings.title, window_monitor,
-                                         TheApplication::AccessFor<Window>::get_shared_context()));
+    m_glfw_window = glfwCreateWindow(window_size.width(), window_size.height(), settings.title, window_monitor,
+                                     TheApplication::AccessFor<Window>::get_shared_context());
     if (!m_glfw_window) {
         NOTF_THROW(InitializationError, "Window or OpenGL context creation failed for Window \"{}\"", settings.title);
     }
-    glfwSetWindowUserPointer(m_glfw_window.get(), this);
+    // TODO: glfwCreateWindow should only be called from the main thread, yet it will be possible to create windows from the ui thread
+
+    // store the GLFW window in a unique_ptr, in case something goes wrong in the constructor
+    detail::GlfwWindowPtr glfw_window(m_glfw_window, detail::window_deleter);
+    glfwSetWindowUserPointer(m_glfw_window, this);
 
     // position the window
     if (settings.state == State::MINIMIZED || settings.state == State::MAXIMIZED) {
         _on_state_change(settings.state);
     } else if (settings.state == State::WINDOWED && settings.position != Position::default_value) {
-        glfwSetWindowPos(m_glfw_window.get(), settings.position.x(), settings.position.y());
+        glfwSetWindowPos(m_glfw_window, settings.position.x(), settings.position.y());
     }
 
     // show the window after setting it up
-    if (settings.state != State::FULLSCREEN && settings.is_visible) { glfwShowWindow(m_glfw_window.get()); }
+    if (settings.state != State::FULLSCREEN && settings.is_visible) { glfwShowWindow(m_glfw_window); }
 
     // create the graphics context
-    //    m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window.get());
+    //    m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window);
     //    auto context_guard = m_graphics_context->make_current();
 
     // store settings in properties
@@ -122,6 +117,9 @@ Window::Window(valid_ptr<Node*> parent, Settings settings)
     // connect slots
     m_pipe_to_close = make_pipeline(_get_slot<to_close>() | Trigger([&]() { _close(); }));
     //    NOTF_LOG_INFO("Created Window \"{}\" using OpenGl version: {}", get<title>(), glGetString(GL_VERSION));
+
+    // finally, register with the application
+    TheApplication::AccessFor<Window>::register_window(std::move(glfw_window));
 }
 
 WindowHandle Window::create(Settings settings) {
@@ -135,7 +133,6 @@ WindowHandle Window::create(Settings settings) {
     Node::AccessFor<Window>::finalize(*window);
     TheGraph::AccessFor<Window>::register_node(std::static_pointer_cast<Node>(window));
     RootNode::AccessFor<Window>::add_window(*root_node, window);
-    TheApplication::AccessFor<Window>::register_window(window);
 
     return window;
 }
@@ -143,11 +140,10 @@ WindowHandle Window::create(Settings settings) {
 void Window::_close() {
     NOTF_LOG_TRACE("Closing Window \"{}\"", get<title>());
 
-    // delete this Node
-    RootNode::AccessFor<Window>::remove_window(*TheGraph::AccessFor<Window>::get_root_node_ptr(), this);
-
     // unregister from the application and event handling
     TheApplication::AccessFor<Window>::unregister_window(std::static_pointer_cast<Window>(shared_from_this()));
+
+    remove();
 }
 
 void Window::_validate_settings(Settings& settings) {
@@ -205,30 +201,30 @@ void Window::_move_to_monitor(GLFWmonitor* window_monitor) {
     } else {
         buffer_size = {video_mode->width, video_mode->height};
     }
-    glfwSetWindowMonitor(m_glfw_window.get(), window_monitor, /*xpos*/ GLFW_DONT_CARE, /*ypos*/ GLFW_DONT_CARE,
+    glfwSetWindowMonitor(m_glfw_window, window_monitor, /*xpos*/ GLFW_DONT_CARE, /*ypos*/ GLFW_DONT_CARE,
                          buffer_size.width(), buffer_size.height(), video_mode->refreshRate);
 }
 
 bool Window::_on_state_change(Settings::State& new_state) {
     { // windowify the window first, if it is currently in full screen
-        GLFWmonitor* monitor = glfwGetWindowMonitor(m_glfw_window.get());
+        GLFWmonitor* monitor = glfwGetWindowMonitor(m_glfw_window);
         if (monitor && (new_state != State::FULLSCREEN)) {
             const V2i& window_pos = get<position>();
             const Size2i& window_size = get<size>();
-            glfwSetWindowMonitor(m_glfw_window.get(), /*monitor*/ nullptr, window_pos.x(), window_pos.y(), //
+            glfwSetWindowMonitor(m_glfw_window, /*monitor*/ nullptr, window_pos.x(), window_pos.y(), //
                                  window_size.width(), window_size.height(), /*refresh rate*/ GLFW_DONT_CARE);
         }
     }
 
     switch (new_state) {
     case State::MINIMIZED:
-        glfwIconifyWindow(m_glfw_window.get());
+        glfwIconifyWindow(m_glfw_window);
         break;
     case State::WINDOWED:
-        glfwRestoreWindow(m_glfw_window.get());
+        glfwRestoreWindow(m_glfw_window);
         break;
     case State::MAXIMIZED:
-        glfwMaximizeWindow(m_glfw_window.get());
+        glfwMaximizeWindow(m_glfw_window);
         break;
     case State::FULLSCREEN:
         _move_to_monitor(get_glfw_monitor(get<monitor>()));
@@ -241,9 +237,7 @@ bool Window::_on_state_change(Settings::State& new_state) {
 bool Window::_on_size_change(Size2i& new_size) {
     new_size.max(Size2i::zero());
 
-    if (get<state>() == State::WINDOWED) {
-        glfwSetWindowSize(m_glfw_window.get(), new_size.width(), new_size.height());
-    }
+    if (get<state>() == State::WINDOWED) { glfwSetWindowSize(m_glfw_window, new_size.width(), new_size.height()); }
 
     return true; // always succeed
 }
@@ -252,7 +246,7 @@ bool Window::_on_resolution_change(Size2i& new_resolution) {
     new_resolution.max(Size2i::zero());
 
     if (get<state>() == State::FULLSCREEN) {
-        glfwSetWindowSize(m_glfw_window.get(), new_resolution.width(), new_resolution.height());
+        glfwSetWindowSize(m_glfw_window, new_resolution.width(), new_resolution.height());
     }
 
     return true; // always succeed

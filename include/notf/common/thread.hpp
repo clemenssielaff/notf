@@ -20,6 +20,10 @@ namespace this_thread {
 using namespace ::std::this_thread;
 
 namespace detail {
+
+/// Id of the main thread.
+static const std::thread::id main_thread_id = std::this_thread::get_id();
+
 struct ThreadInfo {
 
     friend Accessor<ThreadInfo, ::NOTF_NAMESPACE_NAME::Thread>;
@@ -76,6 +80,9 @@ private:
 
 /// The kind of this thread.
 inline auto get_kind() { return detail::ThreadInfo::get_kind(); }
+
+/// Tests if this is the main thread.
+inline bool is_main_thread() { return std::this_thread::get_id() == detail::main_thread_id; }
 
 } // namespace this_thread
 
@@ -166,7 +173,7 @@ public:
         }
 
         m_exception = {};
-        m_thread = std::thread([this, function = std::forward<Function>(function)]() {
+        m_thread = std::thread([this, function = std::forward<Function>(function)]() mutable {
             try {
                 NOTF_GUARD(KindCounterGuard(m_kind));
                 std::invoke(function);

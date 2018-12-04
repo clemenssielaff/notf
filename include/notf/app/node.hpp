@@ -494,7 +494,7 @@ private:
     /// Called on every new Node instance right after the Constructor of the most derived class has finished.
     /// Therefore, we do no have to ensure that the Graph is frozen etc.
     void _finalize() {
-        NOTF_ASSERT(this_thread::is_the_ui_thread());
+        // do not check whether this is the UI thread as we need this method during Application construction
         m_flags[to_number(InternalFlags::FINALIZED)] = true;
     }
 
