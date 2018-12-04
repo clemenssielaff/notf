@@ -2,6 +2,8 @@
 
 #include "notf/meta/log.hpp"
 
+#include "notf/common/thread.hpp"
+
 #include "notf/reactive/trigger.hpp"
 
 #include "notf/app/application.hpp"
@@ -12,11 +14,12 @@
 // helper =========================================================================================================== //
 
 namespace {
+NOTF_USING_NAMESPACE;
 
 /// Property policies.
-using Resolution = ::NOTF_NAMESPACE_NAME::detail::window_properties::Resolution;
-using Position = ::NOTF_NAMESPACE_NAME::detail::window_properties::Position;
-using Monitor = ::NOTF_NAMESPACE_NAME::detail::window_properties::Monitor;
+using Resolution = detail::window_properties::Resolution;
+using Position = detail::window_properties::Position;
+using Monitor = detail::window_properties::Monitor;
 
 GLFWmonitor* get_glfw_monitor(int index) {
     int count = 0;
@@ -31,58 +34,8 @@ GLFWmonitor* get_glfw_monitor(int index) {
 
 NOTF_OPEN_NAMESPACE
 
-Window::Window(valid_ptr<Node*> parent, Settings settings) : super_t(parent), m_glfw_window(nullptr) {
-    _validate_settings(settings);
-
-    // Window specific GLFW hints (see Application constructor for application-wide hints)
-    glfwWindowHint(GLFW_VISIBLE, settings.is_visible);
-    glfwWindowHint(GLFW_FOCUSED, settings.is_focused);
-    glfwWindowHint(GLFW_DECORATED, settings.is_decorated);
-    glfwWindowHint(GLFW_RESIZABLE, settings.is_resizeable);
-    glfwWindowHint(GLFW_SAMPLES, settings.samples);
-    glfwWindowHint(GLFW_MAXIMIZED, settings.state == State::MAXIMIZED);
-    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); // always start out invisible
-
-    GLFWmonitor* window_monitor = nullptr;
-    Size2i window_size = settings.size;
-    if (settings.state == State::FULLSCREEN) {
-
-        // fullscreen windows adopt the system resolution by default, but can use a manually specified resolution
-        if (settings.resolution != Resolution::default_value) {
-            window_size = settings.resolution;
-        } else {
-            const GLFWvidmode* mode = glfwGetVideoMode(window_monitor);
-            window_size = {mode->width, mode->height};
-        }
-
-        // find the monitor to display the Window
-        if (settings.monitor != Monitor::default_value) {
-            window_monitor = get_glfw_monitor(settings.monitor);
-            if (!window_monitor) {
-                window_monitor = get_glfw_monitor(0);
-                if (window_monitor) {
-                    NOTF_LOG_WARN("Cannot place Window \"{}\" on unknown monitor {}, using default monitor instead",
-                                  settings.title, settings.monitor);
-                }
-            }
-        } else {
-            window_monitor = get_glfw_monitor(0);
-        }
-        if (!window_monitor) {
-            NOTF_THROW(InitializationError, "Failed to find a monitor to display Window \"{}\"", settings.title);
-        }
-    }
-
-    // create the GLFW window
-    m_glfw_window = glfwCreateWindow(window_size.width(), window_size.height(), settings.title, window_monitor,
-                                     TheApplication::AccessFor<Window>::get_shared_context());
-    if (!m_glfw_window) {
-        NOTF_THROW(InitializationError, "Window or OpenGL context creation failed for Window \"{}\"", settings.title);
-    }
-    // TODO: glfwCreateWindow should only be called from the main thread, yet it will be possible to create windows from the ui thread
-
-    // store the GLFW window in a unique_ptr, in case something goes wrong in the constructor
-    detail::GlfwWindowPtr glfw_window(m_glfw_window, detail::window_deleter);
+Window::Window(valid_ptr<Node*> parent, valid_ptr<GLFWwindow*> window, Settings settings)
+    : super_t(parent), m_glfw_window(window) {
     glfwSetWindowUserPointer(m_glfw_window, this);
 
     // position the window
@@ -109,17 +62,17 @@ Window::Window(valid_ptr<Node*> parent, Settings settings) : super_t(parent), m_
     set<monitor>(settings.monitor);
 
     // connect property callbacks
-    _set_property_callback<state>([&](State& new_state) { return _on_state_change(new_state); });
-    _set_property_callback<size>([&](Size2i& new_size) { return _on_size_change(new_size); });
-    _set_property_callback<resolution>([&](Size2i& new_res) { return _on_resolution_change(new_res); });
-    _set_property_callback<monitor>([&](int& new_monitor) { return _on_monitor_change(new_monitor); });
+    _set_property_callback<state>([this](State& new_state) { return _on_state_change(new_state); });
+    _set_property_callback<size>([this](Size2i& new_size) { return _on_size_change(new_size); });
+    _set_property_callback<resolution>([this](Size2i& new_res) { return _on_resolution_change(new_res); });
+    _set_property_callback<monitor>([this](int& new_monitor) { return _on_monitor_change(new_monitor); });
 
     // connect slots
     m_pipe_to_close = make_pipeline(_get_slot<to_close>() | Trigger([&]() { _close(); }));
     //    NOTF_LOG_INFO("Created Window \"{}\" using OpenGl version: {}", get<title>(), glGetString(GL_VERSION));
 
     // finally, register with the application
-    TheApplication::AccessFor<Window>::register_window(std::move(glfw_window));
+    TheApplication::AccessFor<Window>::register_window(m_glfw_window);
 }
 
 WindowHandle Window::create(Settings settings) {
@@ -127,12 +80,30 @@ WindowHandle Window::create(Settings settings) {
         NOTF_THROW(ThreadError, "Window::create must only be called from the UI thread");
     }
 
-    RootNodePtr root_node = TheGraph::AccessFor<Window>::get_root_node_ptr();
-    WindowPtr window = _create_shared(root_node.get(), std::move(settings));
+    _validate_settings(settings);
+    GLFWwindow* glfw_window = nullptr;
+    {
+        if (this_thread::is_main_thread()) {
+            glfw_window = _create_glfw_window(settings);
+        } else {
+            fibers::promise<GLFWwindow*> promise;
+            auto future = promise.get_future();
+            TheApplication()->schedule([&settings, promise = std::move(promise)]() mutable {
+                promise.set_value(Window::_create_glfw_window(settings));
+            });
+            glfw_window = future.get();
+        }
+    }
+    if (!glfw_window) {
+        NOTF_THROW(InitializationError, "Window or OpenGL context creation failed for Window \"{}\"", settings.title);
+    }
 
+    RootNodePtr root_node = TheGraph::AccessFor<Window>::get_root_node_ptr();
+    WindowPtr window = _create_shared(root_node.get(), glfw_window, std::move(settings));
     Node::AccessFor<Window>::finalize(*window);
-    TheGraph::AccessFor<Window>::register_node(std::static_pointer_cast<Node>(window));
+
     RootNode::AccessFor<Window>::add_window(*root_node, window);
+    TheGraph::AccessFor<Window>::register_node(std::static_pointer_cast<Node>(window));
 
     return window;
 }
@@ -141,7 +112,7 @@ void Window::_close() {
     NOTF_LOG_TRACE("Closing Window \"{}\"", get<title>());
 
     // unregister from the application and event handling
-    TheApplication::AccessFor<Window>::unregister_window(std::static_pointer_cast<Window>(shared_from_this()));
+    TheApplication::AccessFor<Window>::unregister_window(m_glfw_window);
 
     remove();
 }
@@ -191,6 +162,51 @@ void Window::_validate_settings(Settings& settings) {
 
     // correct nonsensical values
     settings.samples = max(0, settings.samples);
+}
+
+GLFWwindow* Window::_create_glfw_window(const Settings& settings) {
+
+    // Window specific GLFW hints (see Application constructor for application-wide hints)
+    glfwWindowHint(GLFW_VISIBLE, settings.is_visible);
+    glfwWindowHint(GLFW_FOCUSED, settings.is_focused);
+    glfwWindowHint(GLFW_DECORATED, settings.is_decorated);
+    glfwWindowHint(GLFW_RESIZABLE, settings.is_resizeable);
+    glfwWindowHint(GLFW_SAMPLES, settings.samples);
+    glfwWindowHint(GLFW_MAXIMIZED, settings.state == State::MAXIMIZED);
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); // always start out invisible
+
+    GLFWmonitor* window_monitor = nullptr;
+    Size2i window_size = settings.size;
+    if (settings.state == State::FULLSCREEN) {
+
+        // fullscreen windows adopt the system resolution by default, but can use a manually specified resolution
+        if (settings.resolution != Resolution::default_value) {
+            window_size = settings.resolution;
+        } else {
+            const GLFWvidmode* mode = glfwGetVideoMode(window_monitor);
+            window_size = {mode->width, mode->height};
+        }
+
+        // find the monitor to display the Window
+        if (settings.monitor != Monitor::default_value) {
+            window_monitor = get_glfw_monitor(settings.monitor);
+            if (!window_monitor) {
+                window_monitor = get_glfw_monitor(0);
+                if (window_monitor) {
+                    NOTF_LOG_WARN("Cannot place Window \"{}\" on unknown monitor {}, using default monitor instead",
+                                  settings.title, settings.monitor);
+                }
+            }
+        } else {
+            window_monitor = get_glfw_monitor(0);
+        }
+        if (!window_monitor) {
+            NOTF_THROW(InitializationError, "Failed to find a monitor to display Window \"{}\"", settings.title);
+        }
+    }
+
+    return glfwCreateWindow(window_size.width(), window_size.height(), settings.title, window_monitor,
+                            TheApplication::AccessFor<Window>::get_shared_context());
 }
 
 void Window::_move_to_monitor(GLFWmonitor* window_monitor) {

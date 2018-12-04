@@ -18,10 +18,6 @@ struct Arithmetic;
 // msgpack.hpp
 class MsgPack;
 
-// mutex.hpp
-class Mutex;
-class RecursiveMutex;
-
 // thread.hpp
 class Thread;
 

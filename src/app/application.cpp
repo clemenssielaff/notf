@@ -10,7 +10,6 @@
 #include "notf/app/timer_pool.hpp"
 #include "notf/app/window.hpp"
 
-#include "notf/app/event.hpp"
 #include "notf/app/event_handler.hpp"
 #include "notf/app/input.hpp"
 
@@ -22,15 +21,17 @@ NOTF_USING_NAMESPACE;
 WindowHandle to_window_handle(GLFWwindow* glfw_window) {
     Window* raw_window = reinterpret_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
     NOTF_ASSERT(raw_window);
-    WindowPtr window = std::dynamic_pointer_cast<Window>(raw_window->shared_from_this());
+    WindowPtr window = std::dynamic_pointer_cast<Window>(raw_window->shared_from_this()); // {1}
     NOTF_ASSERT(window);
     return WindowHandle(std::move(window));
 }
 
-template<class Func>
-void schedule(Func&& function) {
-    TheEventHandler()->schedule(std::make_unique<Event<Func>>(std::forward<Func>(function)));
-}
+/*
+{1}
+When running with ThreadSanitizer, this line causes a "data race" false positive, but only if you open the Window from
+the UI thread and close it right away, without creating any other event.
+Just FYI, if you come across this warning and don't know what to do about it.
+*/
 
 struct GlfwEventHandler {
 
@@ -149,19 +150,24 @@ struct GlfwEventHandler {
 
         if (action == GLFW_PRESS) {
             using namespace std::chrono_literals;
-            schedule([]() {
-                NOTF_USING_LITERALS;
-                size_t counter = 0;
-                auto timer = IntervalTimer(0.2s,
-                                           [counter]() mutable {
-                                               for (size_t i = 1, end = counter++; i <= end; ++i) {
-                                                   std::cout << " ";
-                                               }
-                                               std::cout << counter << std::endl;
-                                           },
-                                           10);
-                timer->start(/*detached=*/true);
-            });
+
+            if (key == GLFW_KEY_ENTER) {
+                TheEventHandler()->schedule([] { Window::create(); });
+            } else {
+                TheEventHandler()->schedule([] {
+                    NOTF_USING_LITERALS;
+                    size_t counter = 0;
+                    auto timer = IntervalTimer(0.2s,
+                                               [counter]() mutable {
+                                                   for (size_t i = 1, end = counter++; i <= end; ++i) {
+                                                       std::cout << " ";
+                                                   }
+                                                   std::cout << counter << std::endl;
+                                               },
+                                               10);
+                    timer->start(/*detached=*/true);
+                });
+            }
         }
     }
 
@@ -247,7 +253,8 @@ struct GlfwEventHandler {
     /// @param glfw_window  GLFW Window to close.
     static void on_window_close(GLFWwindow* glfw_window) {
         // TODO: ask the Window if it should really be closed; ignore and unset the flag if not
-        schedule([window = to_window_handle(glfw_window)]() mutable { window->call<Window::to_close>(); });
+        TheEventHandler()->schedule(
+            [window = to_window_handle(glfw_window)]() mutable { window->call<Window::to_close>(); });
     }
 
     /// Called by GLFW, if the user connects or disconnects a monitor.
@@ -335,35 +342,22 @@ Application::~Application() { glfwTerminate(); }
 
 int Application::exec() {
     // make sure exec is only called once
-    if (m_is_running.test_and_set()) {
+    if (State expected = State::UNSTARTED; !m_state.compare_exchange_strong(expected, State::RUNNING)) {
         NOTF_THROW(StartupError, "Cannot call `exec` on an already running Application");
     }
-    m_should_continue.test_and_set();
 
     // turn the event handler into the UI thread
     NOTF_LOG_INFO("Starting main loop");
     TheEventHandler::AccessFor<Application>::start(m_ui_mutex);
     m_ui_lock.unlock();
 
-    while (m_should_continue.test_and_set() && !m_windows->empty()) {
+    AnyEventPtr event;
+    while (m_state.load() == State::RUNNING) {
+
+        // wait for and execute all GLFW events
         glfwWaitEvents();
 
-        // if any window has been closed, we need to find and destroy it
-        if (!m_are_windows_intact.test_and_set()) {
-            NOTF_GUARD(std::lock_guard(m_windows_mutex));
-            for (size_t i = 0, end = m_windows->size(); i < end;) {
-                if (glfwWindowShouldClose((*m_windows)[i].get())) {
-                    std::swap((*m_windows)[i], m_windows->back());
-                    m_windows->pop_back();
-                    --end;
-                } else {
-                    ++i;
-                }
-            }
-        }
-
         { // see if there are any events scheduled to run on the main thread
-            AnyEventPtr event;
             while (m_event_queue.try_pop(event) == fibers::channel_op_status::success) {
                 event->run();
             }
@@ -391,63 +385,72 @@ void Application::schedule(AnyEventPtr&& event) {
 }
 
 void Application::shutdown() {
-    if (m_should_continue.test_and_set()) {
-        m_should_continue.clear();
+
+    if (State expected = State::RUNNING; m_state.compare_exchange_strong(expected, State::CLOSED)) {
         glfwPostEmptyEvent();
     }
 }
 
-void Application::_register_window(GlfwWindowPtr window) {
+void Application::_register_window(GLFWwindow* window) {
 
-    GLFWwindow* glfw_window = window.get();
-    {
-        NOTF_GUARD(std::lock_guard(m_windows_mutex));
-        NOTF_ASSERT(!contains(*m_windows, window));
-        m_windows->emplace_back(std::move(window));
-    }
+    schedule([this, window]() mutable {
+        { // store the window
+            NOTF_GUARD(std::lock_guard(m_windows_mutex));
+            detail::GlfwWindowPtr window_ptr(window, detail::window_deleter);
+            NOTF_ASSERT(!contains(*m_windows, window_ptr));
+            m_windows->emplace_back(std::move(window_ptr));
+        }
 
-    // register input callbacks
-    glfwSetMouseButtonCallback(glfw_window, GlfwEventHandler::on_mouse_button);
-    glfwSetCursorPosCallback(glfw_window, GlfwEventHandler::on_cursor_move);
-    glfwSetCursorEnterCallback(glfw_window, GlfwEventHandler::on_cursor_entered);
-    glfwSetScrollCallback(glfw_window, GlfwEventHandler::on_scroll);
-    glfwSetKeyCallback(glfw_window, GlfwEventHandler::on_token_key);
-    glfwSetCharCallback(glfw_window, GlfwEventHandler::on_char_input);
-    glfwSetCharModsCallback(glfw_window, GlfwEventHandler::on_shortcut);
+        // register input callbacks
+        glfwSetMouseButtonCallback(window, GlfwEventHandler::on_mouse_button);
+        glfwSetCursorPosCallback(window, GlfwEventHandler::on_cursor_move);
+        glfwSetCursorEnterCallback(window, GlfwEventHandler::on_cursor_entered);
+        glfwSetScrollCallback(window, GlfwEventHandler::on_scroll);
+        glfwSetKeyCallback(window, GlfwEventHandler::on_token_key);
+        glfwSetCharCallback(window, GlfwEventHandler::on_char_input);
+        glfwSetCharModsCallback(window, GlfwEventHandler::on_shortcut);
 
-    // register window callbacks
-    glfwSetWindowPosCallback(glfw_window, GlfwEventHandler::on_window_move);
-    glfwSetWindowSizeCallback(glfw_window, GlfwEventHandler::on_window_resize);
-    glfwSetFramebufferSizeCallback(glfw_window, GlfwEventHandler::on_framebuffer_resize);
-    glfwSetWindowRefreshCallback(glfw_window, GlfwEventHandler::on_window_refresh);
-    glfwSetWindowFocusCallback(glfw_window, GlfwEventHandler::on_window_focus);
-    glfwSetDropCallback(glfw_window, GlfwEventHandler::on_file_drop);
-    glfwSetWindowIconifyCallback(glfw_window, GlfwEventHandler::on_window_minimize);
-    glfwSetWindowCloseCallback(glfw_window, GlfwEventHandler::on_window_close);
+        // register window callbacks
+        glfwSetWindowPosCallback(window, GlfwEventHandler::on_window_move);
+        glfwSetWindowSizeCallback(window, GlfwEventHandler::on_window_resize);
+        glfwSetFramebufferSizeCallback(window, GlfwEventHandler::on_framebuffer_resize);
+        glfwSetWindowRefreshCallback(window, GlfwEventHandler::on_window_refresh);
+        glfwSetWindowFocusCallback(window, GlfwEventHandler::on_window_focus);
+        glfwSetDropCallback(window, GlfwEventHandler::on_file_drop);
+        glfwSetWindowIconifyCallback(window, GlfwEventHandler::on_window_minimize);
+        glfwSetWindowCloseCallback(window, GlfwEventHandler::on_window_close);
+    });
 }
 
-void Application::_unregister_window(WindowPtr window) {
+void Application::_unregister_window(GLFWwindow* window) {
+    schedule([this, window]() mutable {
+        // disconnect all callbacks
+        glfwSetMouseButtonCallback(window, nullptr);
+        glfwSetCursorPosCallback(window, nullptr);
+        glfwSetCursorEnterCallback(window, nullptr);
+        glfwSetScrollCallback(window, nullptr);
+        glfwSetKeyCallback(window, nullptr);
+        glfwSetCharCallback(window, nullptr);
+        glfwSetCharModsCallback(window, nullptr);
+        glfwSetWindowPosCallback(window, nullptr);
+        glfwSetWindowSizeCallback(window, nullptr);
+        glfwSetFramebufferSizeCallback(window, nullptr);
+        glfwSetWindowRefreshCallback(window, nullptr);
+        glfwSetWindowFocusCallback(window, nullptr);
+        glfwSetDropCallback(window, nullptr);
+        glfwSetWindowIconifyCallback(window, nullptr);
+        glfwSetWindowCloseCallback(window, nullptr);
 
-    // disconnect all callbacks
-    GLFWwindow* glfw_window = window->get_glfw_window();
-    glfwSetMouseButtonCallback(glfw_window, nullptr);
-    glfwSetCursorPosCallback(glfw_window, nullptr);
-    glfwSetCursorEnterCallback(glfw_window, nullptr);
-    glfwSetScrollCallback(glfw_window, nullptr);
-    glfwSetKeyCallback(glfw_window, nullptr);
-    glfwSetCharCallback(glfw_window, nullptr);
-    glfwSetCharModsCallback(glfw_window, nullptr);
-    glfwSetWindowPosCallback(glfw_window, nullptr);
-    glfwSetWindowSizeCallback(glfw_window, nullptr);
-    glfwSetFramebufferSizeCallback(glfw_window, nullptr);
-    glfwSetWindowRefreshCallback(glfw_window, nullptr);
-    glfwSetWindowFocusCallback(glfw_window, nullptr);
-    glfwSetDropCallback(glfw_window, nullptr);
-    glfwSetWindowIconifyCallback(glfw_window, nullptr);
-    glfwSetWindowCloseCallback(glfw_window, nullptr);
-
-    m_are_windows_intact.clear();
-    glfwPostEmptyEvent();
+        { // destroy the window
+            NOTF_GUARD(std::lock_guard(m_windows_mutex));
+            auto itr = std::find_if(m_windows->begin(), m_windows->end(),
+                                    [window](const detail::GlfwWindowPtr& stored) { return stored.get() == window; });
+            if (itr != m_windows->end()) {
+                m_windows->erase(itr);
+                if (m_windows->empty()) { shutdown(); }
+            }
+        }
+    });
 }
 
 } // namespace detail

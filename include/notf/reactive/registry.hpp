@@ -7,6 +7,7 @@
 #include "notf/meta/typename.hpp"
 
 #include "notf/common/any.hpp"
+#include "notf/common/delegate.hpp"
 
 #include "notf/reactive/operator.hpp"
 
@@ -79,7 +80,7 @@ private:
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// Factory function to construct the reactive operator instance.
-    std::function<Func> m_function;
+    Delegate<Func> m_function;
 };
 
 // the reactive registry ============================================================================================ //

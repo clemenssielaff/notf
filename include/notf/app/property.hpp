@@ -1,5 +1,7 @@
 #pragma once
 
+#include "notf/common/delegate.hpp"
+
 #include "notf/reactive/pipeline.hpp"
 
 #include "notf/app/graph.hpp"
@@ -27,7 +29,7 @@ public:
     /// Since the value is passed in by mutable reference, it can modify the value however it wants to. Even if the new
     /// value ends up the same as the old, the update will proceed. Note though, that the callback will only be called
     /// if the value is initially different from the one stored in the PropertyOperator.
-    using callback_t = std::function<bool(T&)>;
+    using callback_t = Delegate<bool(T&)>;
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -36,7 +38,7 @@ public:
     /// Value constructor.
     /// @param value        Property value.
     /// @param is_visible   Whether a change in the Property will cause the Node to redraw or not.
-    PropertyOperator(T value, bool is_visible) : m_hash(is_visible ? hash(m_value) : 0), m_value(std::move(value)) {}
+    PropertyOperator(T value, bool is_visible) : m_hash(is_visible ? hash(value) : 0), m_value(std::move(value)) {}
 
     /// Destructor.
     ~PropertyOperator() override { this->complete(); }

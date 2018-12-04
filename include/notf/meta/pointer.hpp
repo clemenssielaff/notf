@@ -2,7 +2,7 @@
 
 #include "notf/meta/assert.hpp"
 #include "notf/meta/exception.hpp"
-#include "notf/meta/hash.hpp"
+#include "notf/meta/types.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -99,13 +99,6 @@ assert_cast(From castee) noexcept(is_static_castable_v<From, To>) {
 #endif
     }
 }
-
-/// Specialized Hash for pointers.
-/// Uses `hash_mix` to improve pointer entropy.
-template<typename T>
-struct pointer_hash {
-    size_t operator()(const T& ptr) const noexcept { return hash_mix(to_number(raw_pointer(ptr))); }
-};
 
 // weak pointer functions =========================================================================================== //
 

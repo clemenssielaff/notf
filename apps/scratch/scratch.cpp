@@ -5,6 +5,8 @@
 #include "notf/app/application.hpp"
 #include "notf/app/window.hpp"
 
+#include "notf/common/thread.hpp"
+
 #include "notf/reactive/publisher.hpp"
 #include "notf/reactive/subscriber.hpp"
 #include "notf/reactive/trigger.hpp"
@@ -21,8 +23,10 @@ int run_main(int argc, char* argv[]) {
     TheApplication app(std::move(arguments));
 
     auto window1 = Window::create();
-    auto window2 = Window::create();
-    return app->exec();
+//    auto window2 = Window::create();
+
+    auto result = app->exec();
+    return result;
 }
 
 NOTF_CLOSE_NAMESPACE

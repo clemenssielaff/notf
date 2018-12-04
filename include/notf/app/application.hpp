@@ -5,7 +5,7 @@
 #include "notf/common/fibers.hpp"
 #include "notf/common/mutex.hpp"
 
-#include "notf/app/fwd.hpp"
+#include "notf/app/event.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -63,6 +63,13 @@ public:
         size_t app_buffer_size = 16;
     };
 
+private:
+    enum class State {
+        UNSTARTED,
+        RUNNING,
+        CLOSED,
+    };
+
     // methods --------------------------------------------------------------------------------- //
 public:
     NOTF_NO_COPY_OR_ASSIGN(Application);
@@ -83,8 +90,14 @@ public:
     /// @throws ShutdownError   When this method is called after the Application was shut down.
     int exec();
 
+    /// @{
     /// Schedules a new event to be handled on the main thread.
     void schedule(AnyEventPtr&& event);
+    template<class Func>
+    std::enable_if_t<std::is_invocable_v<Func>> schedule(Func&& function) {
+        schedule(std::make_unique<Event<Func>>(std::forward<Func>(function)));
+    }
+    /// @}
 
     /// Forces a shutdown of a running Application.
     /// Does nothing if the Application is already shut down.
@@ -92,10 +105,10 @@ public:
 
 private:
     /// Registers a new Window in the Application.
-    void _register_window(detail::GlfwWindowPtr window);
+    void _register_window(GLFWwindow* window);
 
     /// Unregisters an existing Window from this Application.
-    void _unregister_window(WindowPtr window);
+    void _unregister_window(GLFWwindow* window);
 
     // fields ---------------------------------------------------------------------------------- //
 private:
@@ -129,14 +142,8 @@ private:
     std::unique_ptr<TheGraph> m_graph;
     /// @}
 
-    /// Set once at the beginning of `exec` to make sure the main loop is only started once.
-    std::atomic_flag m_is_running = ATOMIC_FLAG_INIT;
-
-    /// Is set to true at the beginning of the main loop and cleared by the user when it is time to stop.
-    std::atomic_flag m_should_continue;
-
-    /// Is false if any one of the Application's Windows has been closed and needs to be destroyed on the main thread.
-    std::atomic_flag m_are_windows_intact = ATOMIC_FLAG_INIT;
+    /// State of the Application: UNSTARTED -> RUNNING -> CLOSED
+    std::atomic<State> m_state = State::UNSTARTED;
 };
 
 }; // namespace detail
@@ -173,15 +180,15 @@ private:
     GLFWwindow* _get_shared_context() { return _get().m_shared_context.get(); }
 
     /// Registers a new Window in the Application.
-    void _register_window(detail::GlfwWindowPtr&& window) {
+    void _register_window(GLFWwindow* window) {
         NOTF_ASSERT(_is_this_the_ui_thread());
-        _get()._register_window(std::move(window));
+        _get()._register_window(window);
     }
 
     /// Unregisters an existing Window from this Application.
-    void _unregister_window(WindowPtr window) {
+    void _unregister_window(GLFWwindow* window) {
         NOTF_ASSERT(_is_this_the_ui_thread());
-        _get()._unregister_window(std::move(window));
+        _get()._unregister_window(window);
     }
 
     /// Tests if the calling thread is the notf "UI-thread".
@@ -203,12 +210,10 @@ class Accessor<TheApplication, Window> {
     friend Window;
 
     /// Registers a new Window in the Application.
-    static void register_window(detail::GlfwWindowPtr&& window) {
-        TheApplication()._register_window(std::move(window));
-    }
+    static void register_window(GLFWwindow* window) { TheApplication()._register_window(window); }
 
     /// Unregisters an existing Window from this Application.
-    static void unregister_window(WindowPtr window) { TheApplication()._unregister_window(std::move(window)); }
+    static void unregister_window(GLFWwindow* window) { TheApplication()._unregister_window(window); }
 
     /// The internal GLFW window managed by the Application holding the shared context.
     static GLFWwindow* get_shared_context() { return TheApplication()._get_shared_context(); }

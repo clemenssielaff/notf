@@ -6,6 +6,7 @@
 
 #include "notf/meta/exception.hpp"
 
+#include "notf/common/delegate.hpp"
 #include "notf/common/thread.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -88,7 +89,7 @@ private:
     std::vector<Thread> m_workers;
 
     /// All outstanding tasks in the pool.
-    std::deque<std::function<void()>> m_tasks;
+    std::deque<Delegate<void()>> m_tasks;
 
     /// Mutex used to guard access to the queue and the `is_finished` flag.
     std::mutex m_queue_mutex;

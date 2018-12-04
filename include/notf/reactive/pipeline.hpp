@@ -203,7 +203,7 @@ public:
              class = std::enable_if_t<detail::is_reactive_compatible_v<Pipeline<last_t>, S>>>
     auto operator|(Sub&& rhs) {
         // AnyOperators have to be cast to AnySubscribers before we can make use of them
-        auto subscriber = [&]() {
+        auto subscriber = [&rhs]() {
             if constexpr (std::is_same_v<S, AnyOperatorPtr>) {
                 return std::dynamic_pointer_cast<AnySubscriber>(rhs);
             } else {

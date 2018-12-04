@@ -2,10 +2,6 @@
 
 #include "notf/meta/integer.hpp"
 
-#include "notf/common/mutex.hpp"
-
-#include "notf/app/event.hpp"
-
 // helper =========================================================================================================== //
 
 namespace {
@@ -37,7 +33,7 @@ void EventHandler::_start(RecursiveMutex& ui_mutex) {
         NOTF_ASSERT(this_thread::is_the_ui_thread());
 
         // start the event handling loop
-        Fiber event_fiber([&] {
+        Fiber event_fiber([&queue] {
             AnyEventPtr event;
             while (fibers::channel_op_status::success == queue.pop(event)) {
                 // each event gets its own fiber to execute on

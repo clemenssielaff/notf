@@ -1,5 +1,7 @@
 #pragma once
 
+#include "notf/common/delegate.hpp"
+
 #include "notf/app/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -37,7 +39,7 @@ public:
 
     // fields ---------------------------------------------------------------------------------- //
 private:
-    std::function<void()> m_function;
+    Delegate<void()> m_function;
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -140,7 +140,7 @@ void Node::stack_front() {
     NOTF_ASSERT(this_thread::is_the_ui_thread());
     if (is_in_front()) { return; } // early out to avoid creating unnecessary modified copies
     std::vector<NodePtr>& sibs = _get_parent()->_write_children();
-    auto itr = std::find_if(sibs.begin(), sibs.end(), [&](const NodePtr& silbing) { return silbing.get() == this; });
+    auto itr = std::find_if(sibs.begin(), sibs.end(), [this](const NodePtr& silbing) { return silbing.get() == this; });
     NOTF_ASSERT(itr != sibs.end());
     move_to_back(sibs, itr);
 }
@@ -149,7 +149,7 @@ void Node::stack_back() {
     NOTF_ASSERT(this_thread::is_the_ui_thread());
     if (is_in_back()) { return; } // early out to avoid creating unnecessary modified copies
     std::vector<NodePtr>& sibs = _get_parent()->_write_children();
-    auto itr = std::find_if(sibs.begin(), sibs.end(), [&](const NodePtr& silbing) { return silbing.get() == this; });
+    auto itr = std::find_if(sibs.begin(), sibs.end(), [this](const NodePtr& silbing) { return silbing.get() == this; });
     NOTF_ASSERT(itr != sibs.end());
     move_to_front(sibs, itr);
 }

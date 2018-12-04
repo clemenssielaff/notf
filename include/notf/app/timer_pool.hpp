@@ -186,7 +186,8 @@ private:
     std::exception_ptr m_exception;
 
     /// Next time the lambda is executed.
-    std::atomic<timepoint_t> m_next_timeout;
+    std::atomic<timepoint_t> m_next_timeout = timepoint_t{}; // set explicitly since atomics are not default-initialized
+    static_assert(decltype(m_next_timeout)::is_always_lock_free);
 
     /// Number of times that the Timer will fire left.
     uint m_repetitions_left = infinite;

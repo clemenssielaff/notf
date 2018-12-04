@@ -337,7 +337,7 @@ private:
             return from + (std::variant_size_v<StateVariant> * to);
         };
 
-        static const TransitionTable table = [&]() {
+        static const TransitionTable table = []() {
             TransitionTable result;
             for (size_t from = 0; from < std::variant_size_v<StateVariant>; ++from) {
                 for (size_t to = 0; to < std::variant_size_v<StateVariant>; ++to) {

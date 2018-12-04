@@ -1,5 +1,6 @@
 #include "catch2/catch.hpp"
 
+#include "notf/meta/hash.hpp"
 #include "notf/meta/pointer.hpp"
 
 NOTF_USING_NAMESPACE;

@@ -54,7 +54,7 @@ TimerPool::TimerPool(const size_t buffer_size)
                             std::unique_lock lock(mutex);
                             if (while_running.wait_until(
                                     lock, std::chrono::time_point_cast<std::chrono::steady_clock::duration>(timeout),
-                                    [&] { return NOTF_UNLIKELY(buffer.is_closed()); })) {
+                                    [&buffer] { return NOTF_UNLIKELY(buffer.is_closed()); })) {
                                 if (!timer->is_keeping_alive()) {
                                     return; // return early if the buffer has been closed
                                 }

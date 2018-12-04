@@ -204,11 +204,12 @@ private:
     NOTF_CREATE_SMART_FACTORIES(Window);
 
     /// Constructor.
-    /// @param parent                           Parent of this Node.
-    /// @param settings                         Initialization settings.
+    /// @param parent   Parent of this Node.
+    /// @param window   GLFW window managed by this Window instance.
+    /// @param settings Initialization settings.
     /// @throws InitializationError             If the OpenGL context creation for this Window failed
     /// @throws TheApplication::StartupError    When you try to instantiate a Window without an Application.
-    Window(valid_ptr<Node*> parent, Settings settings);
+    Window(valid_ptr<Node*> parent, valid_ptr<GLFWwindow*> window, Settings settings);
 
 public:
     /// Factory, creates a new Window.
@@ -229,6 +230,8 @@ private:
     /// @param settings     Given Settings, modified in-place if necessary.
     static void _validate_settings(Settings& settings);
 
+    static GLFWwindow* _create_glfw_window(const Settings& settings);
+
     /// Moves the fullscreen Window onto the given monitor.
     /// @param window_monitor   The monitor to move the Window on.
     void _move_to_monitor(GLFWmonitor* window_monitor);
@@ -242,7 +245,7 @@ private:
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// The GLFW window managed by this Window.
-    GLFWwindow* m_glfw_window;
+    GLFWwindow* const m_glfw_window;
 
     /// Internal Pipes.
     AnyPipelinePtr m_pipe_to_close;

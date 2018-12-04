@@ -2,6 +2,7 @@
 
 #include <functional>
 
+#include "notf/meta/pointer.hpp"
 #include "notf/meta/real.hpp"
 #include "notf/meta/system.hpp"
 
@@ -115,6 +116,13 @@ constexpr size_t hash_string(const char* string, const size_t size) noexcept {
 }
 inline size_t hash_string(const std::string& string) noexcept { return hash_string(string.c_str(), string.size()); }
 /// @}
+
+/// Specialized Hash for pointers.
+/// Uses `hash_mix` to improve pointer entropy.
+template<typename T>
+struct pointer_hash {
+    size_t operator()(const T& ptr) const noexcept { return hash_mix(to_number(raw_pointer(ptr))); }
+};
 
 // hashable concept================================================================================================== //
 

@@ -4,9 +4,10 @@
 #include "notf/meta/smart_ptr.hpp"
 
 #include "notf/common/fibers.hpp"
+#include "notf/common/mutex.hpp"
 #include "notf/common/thread.hpp"
 
-#include "notf/app/fwd.hpp"
+#include "notf/app/event.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -28,8 +29,14 @@ public:
     /// Destructor.
     ~EventHandler() { _stop(); }
 
+    /// @{
     /// Schedules a new event to be handled on the event thread.
     void schedule(AnyEventPtr&& event) { m_event_queue.push(std::move(event)); }
+    template<class Func>
+    std::enable_if_t<std::is_invocable_v<Func>> schedule(Func&& function) {
+        schedule(std::make_unique<Event<Func>>(std::forward<Func>(function)));
+    }
+    /// @}
 
 private:
     /// Starts the event handling thread.
