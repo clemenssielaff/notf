@@ -53,7 +53,7 @@ struct NodeHandleBaseInterface : protected NodeType {
 /// interface. Then, you can simply add your special methods to the common ones, without listing them explicitly:
 ///
 ///     template<>
-///     struct Interface<SuperNode> : public CommonInterface<SuperNode> {
+///     struct NodeHandleInterface<SuperNode> : public NodeHandleBaseInterface<SuperNode> {
 ///         // automatically exposes all methods listed in the common interface
 ///         // ...
 ///         using SuperNode::additional_method; // only exists on `SuperNode`.

@@ -256,12 +256,20 @@ private:
 
 // window handle ==================================================================================================== //
 
+namespace detail {
+template<>
+struct NodeHandleInterface<Window> : public NodeHandleBaseInterface<Window> {};
+} // namespace detail
+
 class WindowHandle : public TypedNodeHandle<Window> {
 
     // methods --------------------------------------------------------------------------------- //
 public:
-    /// Constructor
-    WindowHandle(WindowPtr window) : TypedNodeHandle<Window>(std::move(window)) {}
+    // use baseclass' constructors
+    using TypedNodeHandle<Window>::TypedNodeHandle;
+
+    /// Returns the GlfwWindow contained in this Window.
+    GLFWwindow* get_glfw_window() const { return _get_node()->get_glfw_window(); }
 };
 
 NOTF_CLOSE_NAMESPACE

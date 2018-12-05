@@ -126,4 +126,7 @@ NOTF_EXCEPTION_TYPE(NameError);
 /// Error thrown a type doesn't match.
 NOTF_EXCEPTION_TYPE(TypeError);
 
+/// Some kind of input wasn't expected.
+NOTF_EXCEPTION_TYPE(InputError);
+
 NOTF_CLOSE_NAMESPACE

@@ -21,6 +21,14 @@ namespace this_thread {
 bool is_the_ui_thread();
 }
 
+// driver.hpp
+class Driver;
+namespace driver {
+namespace detail {
+struct AnyInput;
+}
+}
+
 // graph.hpp
 namespace detail {
 class Graph;

@@ -19,9 +19,6 @@
 
 // notf namespace =================================================================================================== //
 
-/// The notf namespace name.
-#define NOTF_NAMESPACE_NAME @NOTF_NAMESPACE_NAME@
-
 /// Opens the notf namespace.
 #define NOTF_OPEN_NAMESPACE namespace @NOTF_NAMESPACE_NAME@ {
 

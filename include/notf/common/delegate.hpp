@@ -256,8 +256,8 @@ namespace std {
 
 /// std::hash specialization for notf::Delegate.
 template<class Result, class... Args>
-struct hash<NOTF_NAMESPACE_NAME::Delegate<Result(Args...)>> {
-    size_t operator()(NOTF_NAMESPACE_NAME::Delegate<Result(Args...)> const& delegate) const noexcept {
+struct hash<::notf::Delegate<Result(Args...)>> {
+    size_t operator()(::notf::Delegate<Result(Args...)> const& delegate) const noexcept {
         NOTF_USING_NAMESPACE;
         return hash(pointer_hash(delegate.object_ptr_), pointer_hash(delegate.stub_ptr_));
     }

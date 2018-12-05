@@ -26,7 +26,7 @@ static const std::thread::id main_thread_id = std::this_thread::get_id();
 
 struct ThreadInfo {
 
-    friend Accessor<ThreadInfo, ::NOTF_NAMESPACE_NAME::Thread>;
+    friend Accessor<ThreadInfo, ::notf::Thread>;
 
     // types ----------------------------------------------------------------------------------- //
 public:

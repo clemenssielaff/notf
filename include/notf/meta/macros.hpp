@@ -102,6 +102,9 @@ NOTF_OPEN_NAMESPACE
 #define NOTF_UNREACHABLE
 #endif
 
+/// Explicit switch-case fallthrough.
+#define NOTF_FALLTHROUGH [[fallthrough]]
+
 /// Pragma support for macros.
 #ifdef NOTF_MSVC
 #define NOTF_PRAGMA(x) __pragma(x)

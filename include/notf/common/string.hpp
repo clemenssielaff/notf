@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "notf/meta/config.hpp"
+#include "notf/meta/macros.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -98,12 +98,45 @@ inline std::string join(const std::vector<std::string>& vec, const std::string& 
 /// @}
 
 /// Get the length of a c string literal at compile time (excluding the null terminator).
-constexpr inline size_t cstring_length(const char* str) {
+constexpr inline size_t cstring_length(const char* str) noexcept {
     size_t i = 0;
     while (str[i] != '\0') {
         ++i;
     }
     return i;
+}
+
+/// Constexpr tests if a given character is uppercase or not.
+constexpr inline bool is_upper(const char character) noexcept {
+    switch (character) {
+    case 'A': NOTF_FALLTHROUGH;
+    case 'B': NOTF_FALLTHROUGH;
+    case 'C': NOTF_FALLTHROUGH;
+    case 'D': NOTF_FALLTHROUGH;
+    case 'E': NOTF_FALLTHROUGH;
+    case 'F': NOTF_FALLTHROUGH;
+    case 'G': NOTF_FALLTHROUGH;
+    case 'H': NOTF_FALLTHROUGH;
+    case 'I': NOTF_FALLTHROUGH;
+    case 'J': NOTF_FALLTHROUGH;
+    case 'K': NOTF_FALLTHROUGH;
+    case 'L': NOTF_FALLTHROUGH;
+    case 'M': NOTF_FALLTHROUGH;
+    case 'N': NOTF_FALLTHROUGH;
+    case 'O': NOTF_FALLTHROUGH;
+    case 'P': NOTF_FALLTHROUGH;
+    case 'Q': NOTF_FALLTHROUGH;
+    case 'R': NOTF_FALLTHROUGH;
+    case 'S': NOTF_FALLTHROUGH;
+    case 'T': NOTF_FALLTHROUGH;
+    case 'U': NOTF_FALLTHROUGH;
+    case 'V': NOTF_FALLTHROUGH;
+    case 'W': NOTF_FALLTHROUGH;
+    case 'X': NOTF_FALLTHROUGH;
+    case 'Y': NOTF_FALLTHROUGH;
+    case 'Z':; return true;
+    }
+    return false;
 }
 
 NOTF_CLOSE_NAMESPACE
