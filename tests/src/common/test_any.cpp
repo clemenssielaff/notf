@@ -1,8 +1,7 @@
 #include "catch2/catch.hpp"
 
 #include "notf/common/any.hpp"
-
-#include "test_utils.hpp"
+#include "notf/meta/real.hpp"
 
 NOTF_USING_NAMESPACE;
 

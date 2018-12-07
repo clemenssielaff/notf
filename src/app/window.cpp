@@ -34,7 +34,7 @@ GLFWmonitor* get_glfw_monitor(int index) {
 
 NOTF_OPEN_NAMESPACE
 
-Window::Window(valid_ptr<Node*> parent, valid_ptr<GLFWwindow*> window, Settings settings)
+Window::Window(valid_ptr<Node*> parent, valid_ptr<GLFWwindow*> window, Arguments settings)
     : super_t(parent), m_glfw_window(window) {
     glfwSetWindowUserPointer(m_glfw_window, this);
 
@@ -75,7 +75,7 @@ Window::Window(valid_ptr<Node*> parent, valid_ptr<GLFWwindow*> window, Settings 
     TheApplication::AccessFor<Window>::register_window(m_glfw_window);
 }
 
-WindowHandle Window::create(Settings settings) {
+WindowHandle Window::create(Arguments settings) {
     if (NOTF_UNLIKELY(!this_thread::is_the_ui_thread())) {
         NOTF_THROW(ThreadError, "Window::create must only be called from the UI thread");
     }
@@ -83,7 +83,7 @@ WindowHandle Window::create(Settings settings) {
     _validate_settings(settings);
     GLFWwindow* glfw_window = nullptr;
     {
-        if (this_thread::is_main_thread()) {
+        if (this_thread::is_the_main_thread()) {
             glfw_window = _create_glfw_window(settings);
         } else {
             fibers::promise<GLFWwindow*> promise;
@@ -117,7 +117,7 @@ void Window::_close() {
     remove();
 }
 
-void Window::_validate_settings(Settings& settings) {
+void Window::_validate_settings(Arguments& settings) {
     // warn about ignored settings
     if (settings.state == State::FULLSCREEN) {
         if (!settings.is_visible) {
@@ -164,7 +164,7 @@ void Window::_validate_settings(Settings& settings) {
     settings.samples = max(0, settings.samples);
 }
 
-GLFWwindow* Window::_create_glfw_window(const Settings& settings) {
+GLFWwindow* Window::_create_glfw_window(const Arguments& settings) {
 
     // Window specific GLFW hints (see Application constructor for application-wide hints)
     glfwWindowHint(GLFW_VISIBLE, settings.is_visible);
@@ -221,7 +221,7 @@ void Window::_move_to_monitor(GLFWmonitor* window_monitor) {
                          buffer_size.width(), buffer_size.height(), video_mode->refreshRate);
 }
 
-bool Window::_on_state_change(Settings::State& new_state) {
+bool Window::_on_state_change(Arguments::State& new_state) {
     { // windowify the window first, if it is currently in full screen
         GLFWmonitor* monitor = glfwGetWindowMonitor(m_glfw_window);
         if (monitor && (new_state != State::FULLSCREEN)) {

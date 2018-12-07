@@ -60,10 +60,12 @@ protected:
             NOTF_THROW(NotUniqueError, "Node \"{}\" already has a Slot named \"{}\"", get_name(), name);
         }
 
-        auto [itr, success] = m_slots.emplace(std::move(name), std::make_unique<Slot<T>>());
+        auto new_slot = std::make_unique<Slot<T>>();
+        auto publisher = new_slot->get_publisher();
+        auto [itr, success] = m_slots.emplace(std::move(name), std::move(new_slot));
         NOTF_ASSERT(success);
 
-        return itr->second->get_publisher();
+        return publisher;
     }
 
     /// Constructs a new Signal on this Node.

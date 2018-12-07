@@ -7,9 +7,9 @@
 
 NOTF_OPEN_NAMESPACE
 
-// key ============================================================================================================== //
+// key input ======================================================================================================== //
 
-struct Key {
+struct KeyInput {
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -167,13 +167,13 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default (unknown key) Constructor.
-    constexpr Key() = default;
+    constexpr KeyInput() = default;
 
     /// Value Constructor.
     /// @param glfw_key GLFW key token.
     /// @param modifier Active keyboard modifiers.
     /// @param scancode System-dependent scancode as determined by GLFW.
-    Key(int glfw_key, Modifier modifier = Modifier::NONE, int scancode = 0);
+    KeyInput(int glfw_key, Modifier modifier = Modifier::NONE, int scancode = 0);
 
     /// Value Constructor.
     /// The generated Key will correspond to the key required to generate the character on a US keyboard.
@@ -183,7 +183,7 @@ public:
     /// @param character    ASCII character to match.
     /// @param modifier     Active keyboard modifiers.
     /// @param scancode     System-dependent scancode as determined by GLFW.
-    Key(char character, Modifier modifier = Modifier::NONE, int scancode = 0);
+    KeyInput(char character, Modifier modifier = Modifier::NONE, int scancode = 0);
 
     /// Converts this Key into the corresponding GLFW key token.
     int to_glfw_key() const;
@@ -204,19 +204,21 @@ public:
 };
 
 /// Key::Modifier arithmetic.
-inline constexpr Key::Modifier operator+(const Key::Modifier lhs, const Key::Modifier rhs) noexcept {
-    return Key::Modifier(to_number(lhs) | to_number(rhs));
+inline constexpr KeyInput::Modifier operator+(const KeyInput::Modifier lhs, const KeyInput::Modifier rhs) noexcept {
+    return KeyInput::Modifier(to_number(lhs) | to_number(rhs));
 }
-inline constexpr Key::Modifier operator-(const Key::Modifier lhs, const Key::Modifier rhs) noexcept {
-    return Key::Modifier(to_number(lhs) & ~to_number(rhs));
+inline constexpr KeyInput::Modifier operator-(const KeyInput::Modifier lhs, const KeyInput::Modifier rhs) noexcept {
+    return KeyInput::Modifier(to_number(lhs) & ~to_number(rhs));
 }
 
 /// Convenience Key constructor
-inline Key operator+(const char character, const Key::Modifier modifier) noexcept { return Key(character, modifier); };
+inline KeyInput operator+(const char character, const KeyInput::Modifier modifier) noexcept {
+    return KeyInput(character, modifier);
+};
 
-// mouse ============================================================================================================ //
+// mouse input ====================================================================================================== //
 
-struct Mouse {
+struct MouseInput {
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -249,20 +251,20 @@ public:
 
     struct Click {
         const Button button;
-        const Key::Modifier modifier;
+        const KeyInput::Modifier modifier;
         const duration_t duration;
     };
 
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default (no button) constructor.
-    Mouse() = default;
+    MouseInput() = default;
 
     /// Value Constructor.
     /// @param button   Mouse button.
     /// @param x        X-axis position of the mouse in screen coordinates.
     /// @param y        Y-axis position of the mouse in screen coordinates.
-    Mouse(Button button, int x = -1, int y = -1) : button(button), position{x, y} {}
+    MouseInput(Button button, int x = -1, int y = -1) : button(button), position{x, y} {}
 
     // fields --------------------------------------------------------------------------------- //
 public:

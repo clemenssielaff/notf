@@ -45,7 +45,7 @@ private:
         /// Implicit cast to a NodeOwner.
         /// Must only be called once.
         /// @throws HandleExpiredError  If called more than once or the Node has already expired.
-        operator NodeOwner() { return _to_node_owner<Node>(); }
+        explicit operator NodeOwner() { return _to_node_owner<Node>(); }
 
         /// Implicitly cast to a TypedNodeHandle, if the Node Type derives from NodeType.
         /// Can be called multiple times.
@@ -54,7 +54,7 @@ private:
         /// Implicit cast to a NodeOwner.
         /// Must only be called once.
         /// @throws HandleExpiredError  If called more than once or the Node has already expired.
-        operator TypedNodeOwner<NodeType>() { return _to_node_owner<NodeType>(); }
+        explicit operator TypedNodeOwner<NodeType>() { return _to_node_owner<NodeType>(); }
 
         /// Explicit conversion to a TypedNodeHandle.
         /// Is useful when you don't want to type the name:
@@ -426,8 +426,13 @@ protected: // for all subclasses
     /// @param parent   Parent of the Node, must be `this` (is used for type checking).
     /// @param args     Arguments that are forwarded to the constructor of the child.
     /// @throws InternalError   If you pass anything else but `this` as the parent.
-    template<class Child, class Parent, class... Args,
+    template<class Child, class Parent, class... Args
+#ifndef NOTF_TEST
+             ,
              class = std::enable_if_t<detail::can_node_parent<Parent, Child>()>>
+#else
+             >
+#endif
     NewNode<Child> _create_child(Parent* parent, Args&&... args) {
         NOTF_ASSERT(this_thread::is_the_ui_thread());
         if (NOTF_UNLIKELY(parent != this)) {

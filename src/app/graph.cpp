@@ -45,22 +45,18 @@ std::string Graph::NodeNameRegistry::set_name(NodeHandle node, const std::string
         NOTF_GUARD(std::lock_guard(m_mutex));
 
         // if the node already exists under another name, we first have to unregister the old name
-        if (auto& name_view = m_uuid_to_name[uuid]; !name_view.empty()) {
+        if (const auto& name_view = m_uuid_to_name[uuid]; !name_view.empty()) {
             _remove_name(name_view);
-
-            auto iter = m_uuid_to_name.find(uuid);
-            NOTF_ASSERT(iter != m_uuid_to_name.end());
-            m_uuid_to_name.erase(iter);
         }
 
         std::string result;
         { // (re-)register the node under its proposed name, or a unique variant thereof
             size_t counter = 2;
-            auto [iter, success] = m_name_to_node.try_emplace(name, std::make_pair(uuid, node));
+            auto [iter, success] = m_name_to_node.try_emplace(name, node);
             while (!success) {
-                std::tie(iter, success)
-                    = m_name_to_node.try_emplace(fmt::format("{}_{:0>2}", name, counter++), std::make_pair(uuid, node));
+                std::tie(iter, success) = m_name_to_node.try_emplace(fmt::format("{}_{:0>2}", name, counter++), node);
             }
+            m_uuid_to_name[uuid] = iter->first;
             result = iter->first;
         }
         return result;
@@ -70,12 +66,12 @@ std::string Graph::NodeNameRegistry::set_name(NodeHandle node, const std::string
 NodeHandle Graph::NodeNameRegistry::get_node(const std::string& name) const {
     NOTF_GUARD(std::lock_guard(m_mutex));
 
-    // find the handle
+    // find the handle...
     auto name_iter = m_name_to_node.find(name);
     if (name_iter == m_name_to_node.end()) { return {}; }
 
-    // if the handle is valid, return it
-    NodeHandle& node = name_iter->second.second;
+    // ...and return it
+    NodeHandle& node = name_iter->second;
     NOTF_ASSERT(!node.is_expired());
     return node;
 }

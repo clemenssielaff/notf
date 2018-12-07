@@ -1,7 +1,8 @@
 #include "catch2/catch.hpp"
 
 #include "notf/reactive/registry.hpp"
-#include "test_reactive_utils.hpp"
+
+#include "test/reactive.hpp"
 
 NOTF_USING_NAMESPACE;
 

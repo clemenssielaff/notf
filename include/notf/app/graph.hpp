@@ -98,7 +98,7 @@ private:
         // fields ---------------------------------------------------------- //
     private:
         /// The registry.
-        mutable std::unordered_map<std::string, std::pair<Uuid, NodeHandle>> m_name_to_node;
+        mutable std::unordered_map<std::string, NodeHandle> m_name_to_node;
         mutable std::unordered_map<Uuid, std::string_view> m_uuid_to_name;
 
         /// Mutex protecting the registry.
@@ -134,6 +134,9 @@ public:
     /// @param node Handle of the Node to look up.
     /// @returns    The requested name, is empty if not found.
     std::string get_name(NodeHandle node) { return m_node_name_registry.get_name(std::move(node)); }
+
+    /// The number of Nodes in the current Graph.
+    size_t get_node_count() const { return m_node_registry.get_count(); }
 
     // synchronization --------------------------------------------------------
 

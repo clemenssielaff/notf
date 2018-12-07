@@ -2,7 +2,7 @@
 
 #include "notf/meta/real.hpp"
 
-#include "test_utils.hpp"
+#include "test/utils.hpp"
 
 namespace {
 const float two_pi = notf::pi<float>() * 2;

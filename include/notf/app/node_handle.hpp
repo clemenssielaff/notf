@@ -245,7 +245,7 @@ public:
 
     /// Value Constructor.
     /// @param node     Node to handle.
-    TypedNodeOwner(std::shared_ptr<NodeType> node) : TypedNodeHandle<NodeType>(node) {}
+    TypedNodeOwner(std::shared_ptr<NodeType> node) : TypedNodeHandle<NodeType>(std::move(node)) {}
 
     /// Move assignment operator.
     TypedNodeOwner& operator=(TypedNodeOwner&& other) {

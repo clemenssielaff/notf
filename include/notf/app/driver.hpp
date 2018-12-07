@@ -18,26 +18,12 @@ class Driver {
 
     // methods --------------------------------------------------------------------------------- //
 public:
-    /// Default (empty) Constructor.
-    Driver() = default;
-
-    /// Value constructor.
+    /// Constructor.
     /// @param window   Window to attach to.
-    Driver(WindowHandle window) : m_window(std::move(window)) {}
+    /// @throws HandleExpiredError  If the Window Handle is expired.
+    Driver(WindowHandle window);
 
-    // window attachement -----------------------------------------------------
-
-    /// Attaches to a given Window.
-    /// @param window   Window to attach to.
-    void attach_to(WindowHandle window) { m_window = std::move(window); }
-
-    /// Detaches from the attached Window or does nothing.
-    void detach() { m_window = {}; }
-
-    /// Tests if this Driver is attached to a Window or not.
-    bool is_attached() const { return m_window != WindowHandle{}; }
-
-    /// The Window this Driver is attached to, is invalid if it is not attached.
+    /// The Window this Driver is attached to.
     WindowHandle get_window() const { return m_window; }
 
     // event handling ---------------------------------------------------------
@@ -61,66 +47,66 @@ public:
     /// Simulate a key stroke.
     /// @param key          Key being hit and released.
     /// @throws InputError  If the key is already registered as being pressed.
-    /// @throws HandleExpiredError  If the Driver is not attached to a Window.
-    void key_stroke(Key::Token key);
+    /// @throws HandleExpiredError  If the Driver's Window Handle has expired.
+    void key_stroke(KeyInput::Token key);
 
     /// Simulate a key press.
     /// @param key          Pressed Key.
     /// @throws InputError  If the key is already registered as being pressed.
-    /// @throws HandleExpiredError  If the Driver is not attached to a Window.
-    void key_press(Key::Token key);
+    /// @throws HandleExpiredError  If the Driver's Window Handle has expired.
+    void key_press(KeyInput::Token key);
 
     /// Simulate a key repeat (hold).
     /// @param key          Held key.
     /// @throws InputError  If the key is not registered as being pressed.
-    /// @throws HandleExpiredError  If the Driver is not attached to a Window.
-    void key_hold(Key::Token key);
+    /// @throws HandleExpiredError  If the Driver's Window Handle has expired.
+    void key_hold(KeyInput::Token key);
 
     /// Simulate a key release.
     /// @param key          Released key.
     /// @throws InputError  If the key is not registered as being pressed.
-    /// @throws HandleExpiredError  If the Driver is not attached to a Window.
-    void key_release(Key::Token key);
+    /// @throws HandleExpiredError  If the Driver's Window Handle has expired.
+    void key_release(KeyInput::Token key);
 
     /// Moves the mouse cursor to a given position inside the Window.
     /// @param pos          Position of the cursor in Window coordinates.
-    /// @throws HandleExpiredError  If the Driver is not attached to a Window.
+    /// @throws HandleExpiredError  If the Driver's Window Handle has expired.
     void mouse_move(V2d pos);
 
     /// Simulate a mouse button click.
     /// @param button       Clicked button.
     /// @throws InputError  If the button is already registered as being pressed.
-    /// @throws HandleExpiredError  If the Driver is not attached to a Window.
-    void mouse_click(Mouse::Button button);
+    /// @throws HandleExpiredError  If the Driver's Window Handle has expired.
+    void mouse_click(MouseInput::Button button);
 
     /// Simulate a mouse button press.
     /// @param button       Pressed button.
     /// @throws InputError  If the button is already registered as being pressed.
-    /// @throws HandleExpiredError  If the Driver is not attached to a Window.
-    void mouse_press(Mouse::Button button);
+    /// @throws HandleExpiredError  If the Driver's Window Handle has expired.
+    void mouse_press(MouseInput::Button button);
 
     /// Simulate a mouse button release.
     /// @param button       Released button.
     /// @throws InputError  If the button is not registered as being pressed.
-    /// @throws HandleExpiredError  If the Driver is not attached to a Window.
-    void mouse_release(Mouse::Button button);
+    /// @throws HandleExpiredError  If the Driver's Window Handle has expired.
+    void mouse_release(MouseInput::Button button);
 
     // fields ---------------------------------------------------------------------------------- //
 private:
-    /// Window that this driver is currently attached to.
+    /// Window that this driver is attached to.
     WindowHandle m_window;
 
     /// Active key modifier.
-    Key::Modifier m_modifier;
+    KeyInput::Modifier m_modifier;
 
     /// Last recorded mouse position.
     V2d m_mouse_position = {-1, -1};
 
     /// All mouse buttons currently being pressed.
-    std::set<Mouse::Button> m_pressed_buttons;
+    std::set<MouseInput::Button> m_pressed_buttons;
 
     /// All keys currently being pressed.
-    std::set<Key::Token> m_pressed_keys;
+    std::set<KeyInput::Token> m_pressed_keys;
 };
 
 // driver inputs ==================================================================================================== //
@@ -161,24 +147,24 @@ public:
 } // namespace detail
 
 struct Mouse : public detail::AnyInput {
-    Mouse(::notf::Mouse::Button button, const int x = -1, const int y = -1) : m_button(button), m_pos{x, y} {}
+    Mouse(::notf::MouseInput::Button button, const int x = -1, const int y = -1) : m_button(button), m_pos{x, y} {}
     void run(Driver& driver) final;
 
 private:
-    ::notf::Mouse::Button m_button;
+    ::notf::MouseInput::Button m_button;
     V2d m_pos;
 };
 
 // convenience variables in driver namespace ======================================================================== //
 
-constexpr auto CTRL = ::notf::Key::Modifier::CTRL;
-constexpr auto SHIFT = ::notf::Key::Modifier::SHIFT;
-constexpr auto ALT = ::notf::Key::Modifier::ALT;
-constexpr auto SUPER = ::notf::Key::Modifier::SUPER;
+constexpr auto CTRL = ::notf::KeyInput::Modifier::CTRL;
+constexpr auto SHIFT = ::notf::KeyInput::Modifier::SHIFT;
+constexpr auto ALT = ::notf::KeyInput::Modifier::ALT;
+constexpr auto SUPER = ::notf::KeyInput::Modifier::SUPER;
 
-constexpr auto LEFT = ::notf::Mouse::Button::LEFT;
-constexpr auto RIGHT = ::notf::Mouse::Button::RIGHT;
-constexpr auto MIDDLE = ::notf::Mouse::Button::MIDDLE;
+constexpr auto LEFT = ::notf::MouseInput::Button::LEFT;
+constexpr auto RIGHT = ::notf::MouseInput::Button::RIGHT;
+constexpr auto MIDDLE = ::notf::MouseInput::Button::MIDDLE;
 
 } // namespace driver
 

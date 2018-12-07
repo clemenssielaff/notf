@@ -17,6 +17,7 @@ NOTF_OPEN_NAMESPACE
 namespace detail {
 
 void window_deleter(GLFWwindow* glfw_window) {
+    NOTF_ASSERT(this_thread::is_the_main_thread());
     if (glfw_window != nullptr) { glfwDestroyWindow(glfw_window); }
 }
 
@@ -81,32 +82,46 @@ Application::Application(Arguments args)
 Application::~Application() { glfwTerminate(); }
 
 int Application::exec() {
+    if (!this_thread::is_the_main_thread()) {
+        NOTF_THROW(StartupError, "You must call `Application::exec` only from the main thread");
+    }
+
     // make sure exec is only called once
     if (State expected = State::UNSTARTED; !m_state.compare_exchange_strong(expected, State::RUNNING)) {
-        NOTF_THROW(StartupError, "Cannot call `exec` on an already running Application");
+        NOTF_ASSERT(expected == State::CLOSED); // RUNNING shouldn't be possible
+        NOTF_THROW(StartupError, "Cannot call `exec` on an already closed Application");
     }
 
-    // turn the event handler into the UI thread
-    NOTF_LOG_INFO("Starting main loop");
-    TheEventHandler::AccessFor<Application>::start(m_ui_mutex);
-    m_ui_lock.unlock();
+    if (!m_windows->empty() || get_arguments().start_without_windows) {
 
-    AnyEventPtr event;
-    while (m_state.load() == State::RUNNING) {
+        // turn the event handler into the UI thread
+        NOTF_LOG_INFO("Starting main loop");
+        TheEventHandler::AccessFor<Application>::start(m_ui_mutex);
+        m_ui_lock.unlock();
 
-        // wait for and execute all GLFW events
-        glfwWaitEvents();
+        AnyEventPtr event;
+        while (m_state.load() == State::RUNNING) {
 
-        { // see if there are any events scheduled to run on the main thread
-            while (m_event_queue.try_pop(event) == fibers::channel_op_status::success) {
-                event->run();
+            // wait for and execute all GLFW events
+            glfwPollEvents();
+
+            { // see if there are any events scheduled to run on the main thread
+                while (m_event_queue.try_pop(event) == fibers::channel_op_status::success
+                       && m_state.load() == State::RUNNING) {
+                    event->run();
+                }
             }
         }
-    }
 
-    // after the event handler is closed, the main thread becomes the UI thread again
-    TheEventHandler::AccessFor<Application>::stop();
-    m_ui_lock.lock();
+        // close the timer pool first
+        // all active timers will be interrupted, unless their "keep-alive" flag is set, which means that the user
+        // intended them to block shutdown until they had time to finish
+        TheTimerPool()->close();
+
+        // after the event handler is closed, the main thread becomes the UI thread again
+        m_event_handler.reset(); // by deleting the event handler we wait for its thread to join, before re-acquiring
+        m_ui_lock.lock();        // the ui mutex (otherwise the event handler might wait and block forever)
+    }
 
     // shutdown
     m_timer_pool.reset();
@@ -120,28 +135,31 @@ int Application::exec() {
 }
 
 void Application::schedule(AnyEventPtr&& event) {
-    m_event_queue.push(std::move(event));
-    glfwPostEmptyEvent();
-}
-
-void Application::shutdown() {
-
-    if (State expected = State::RUNNING; m_state.compare_exchange_strong(expected, State::CLOSED)) {
+    if (m_state.load() != State::CLOSED) { // you can pre-schedule events prior to startup, but not after shutdown
+        m_event_queue.push(std::move(event));
         glfwPostEmptyEvent();
     }
 }
 
+void Application::shutdown() {
+    schedule([this] {
+        State expected = State::RUNNING;
+        m_state.compare_exchange_strong(expected, State::CLOSED);
+    });
+}
+
 void Application::_register_window(GLFWwindow* window) {
 
-    schedule([this, window]() mutable {
-        { // store the window
-            NOTF_GUARD(std::lock_guard(m_windows_mutex));
-            detail::GlfwWindowPtr window_ptr(window, detail::window_deleter);
-            NOTF_ASSERT(!contains(*m_windows, window_ptr));
-            m_windows->emplace_back(std::move(window_ptr));
-        }
+    { // store the window
+        NOTF_GUARD(std::lock_guard(m_windows_mutex));
+        detail::GlfwWindowPtr window_ptr(window, detail::window_deleter);
+        NOTF_ASSERT(!contains(*m_windows, window_ptr));
+        m_windows->emplace_back(std::move(window_ptr));
+    }
 
-        // register input callbacks
+    // register all callbacks
+    schedule([window]() mutable {
+        // input callbacks
         glfwSetMouseButtonCallback(window, GlfwCallbacks::_on_mouse_button);
         glfwSetCursorPosCallback(window, GlfwCallbacks::_on_cursor_move);
         glfwSetCursorEnterCallback(window, GlfwCallbacks::_on_cursor_entered);
@@ -150,7 +168,7 @@ void Application::_register_window(GLFWwindow* window) {
         glfwSetCharCallback(window, GlfwCallbacks::_on_char_input);
         glfwSetCharModsCallback(window, GlfwCallbacks::_on_shortcut);
 
-        // register window callbacks
+        // window callbacks
         glfwSetWindowPosCallback(window, GlfwCallbacks::_on_window_move);
         glfwSetWindowSizeCallback(window, GlfwCallbacks::_on_window_resize);
         glfwSetFramebufferSizeCallback(window, GlfwCallbacks::_on_framebuffer_resize);
@@ -164,31 +182,12 @@ void Application::_register_window(GLFWwindow* window) {
 
 void Application::_unregister_window(GLFWwindow* window) {
     schedule([this, window]() mutable {
-        // disconnect all callbacks
-        glfwSetMouseButtonCallback(window, nullptr);
-        glfwSetCursorPosCallback(window, nullptr);
-        glfwSetCursorEnterCallback(window, nullptr);
-        glfwSetScrollCallback(window, nullptr);
-        glfwSetKeyCallback(window, nullptr);
-        glfwSetCharCallback(window, nullptr);
-        glfwSetCharModsCallback(window, nullptr);
-        glfwSetWindowPosCallback(window, nullptr);
-        glfwSetWindowSizeCallback(window, nullptr);
-        glfwSetFramebufferSizeCallback(window, nullptr);
-        glfwSetWindowRefreshCallback(window, nullptr);
-        glfwSetWindowFocusCallback(window, nullptr);
-        glfwSetDropCallback(window, nullptr);
-        glfwSetWindowIconifyCallback(window, nullptr);
-        glfwSetWindowCloseCallback(window, nullptr);
-
-        { // destroy the window
-            NOTF_GUARD(std::lock_guard(m_windows_mutex));
-            auto itr = std::find_if(m_windows->begin(), m_windows->end(),
-                                    [window](const detail::GlfwWindowPtr& stored) { return stored.get() == window; });
-            if (itr != m_windows->end()) {
-                m_windows->erase(itr);
-                if (m_windows->empty()) { shutdown(); }
-            }
+        NOTF_GUARD(std::lock_guard(m_windows_mutex));
+        auto itr = std::find_if(m_windows->begin(), m_windows->end(),
+                                [window](const detail::GlfwWindowPtr& stored) { return stored.get() == window; });
+        if (itr != m_windows->end()) {
+            m_windows->erase(itr);
+            if (m_windows->empty()) { shutdown(); }
         }
     });
 }

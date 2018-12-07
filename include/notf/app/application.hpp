@@ -34,6 +34,14 @@ public:
         /// Number of strings in argv (first one is usually the name of the program).
         long argc = -1;
 
+        // flags --------------------------------------------------------------
+
+        /// If true, `Application::exec` will always start its main loop on , even if no Windows have been created yet.
+        /// In that case, you'll have to manually call shutdown from another thread in order to close the Application in
+        /// an orderly fashion. By default, this flag is set to false, meaning that `Application::exec` with no Windows
+        /// immediately returns without blocking.
+        bool start_without_windows = false;
+
         // directories --------------------------------------------------------
 
         /// Base directory to load resources from.
@@ -64,6 +72,7 @@ public:
     };
 
 private:
+    /// State of the Application: UNSTARTED -> RUNNING -> CLOSED
     enum class State {
         UNSTARTED,
         RUNNING,
@@ -92,6 +101,8 @@ public:
 
     /// @{
     /// Schedules a new event to be handled on the main thread.
+    /// You can schedule events prior to calling `exec` and they will be executed in the first run of the main loop.
+    /// Anything scheduled after shutdown is ignored and will never be executed.
     void schedule(AnyEventPtr&& event);
     template<class Func>
     std::enable_if_t<std::is_invocable_v<Func>> schedule(Func&& function) {

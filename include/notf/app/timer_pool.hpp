@@ -26,13 +26,17 @@ public:
     TimerPool(size_t buffer_size = 32);
 
     /// Destructor.
-    /// Automatically closes the pool and shuts down all running Timers (unless they are "keep-alive").
-    ~TimerPool() {
+    ~TimerPool() { close(); }
+
+    /// Closes the Pool for new Timer and shuts down all running ones.
+    /// Timers with the "keep-alive" flag will continue until they finish.
+    void close() {
         m_buffer.close();
         m_timer_thread.join();
     }
 
     /// Schedules a new Timer in the Pool.
+    /// If the Pool is closed, the new Timer is ignored.
     /// @param timer    Timer to schedule.
     void schedule(TimerPtr timer) { m_buffer.push(std::move(timer)); }
 

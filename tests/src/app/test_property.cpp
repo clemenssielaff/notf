@@ -1,10 +1,8 @@
 #include "catch2/catch.hpp"
 
-#include "test_app_utils.hpp"
-#include "test_reactive_utils.hpp"
-#include "test_utils.hpp"
+#include "test/app.hpp"
 
-#include "notf/app/node.hpp"
+#include "notf/app/property_runtime.hpp"
 
 NOTF_USING_NAMESPACE;
 
@@ -19,25 +17,16 @@ constexpr auto bool_id = "bool"_id;
 #endif
 
 SCENARIO("Properties", "[app][property]") {
-    //    // always reset the graph
-    //    TheGraph::AccessFor<Tester>::reset();
-    //    REQUIRE(TheGraph::AccessFor<Tester>::get_node_count() == 1);
+    TheApplication app(TheApplication::Arguments{});
 
-    //    NodeHandle root_node_handle = TheGraph()->get_root_node();
-    //    RootNodePtr root_node_ptr = std::static_pointer_cast<RootNode>(to_shared_ptr(root_node_handle));
-    //    REQUIRE(root_node_ptr);
-    //    auto root_node = Node::AccessFor<Tester>(*root_node_ptr);
+    SECTION("Properties have names") {
+        auto node_rt = TheRootNode().create_child<TestNodeRT>().to_handle();
+        auto node_ct = TheRootNode().create_child<TestNodeCT>().to_handle();
 
-    //    const auto render_thread_id = make_thread_id(78);
-
-    //    SECTION("Properties have names") {
-    //        auto node_rt = root_node.create_child<LeafNodeRT>().to_handle();
-    //        auto node_ct = root_node.create_child<LeafNodeCT>().to_handle();
-
-    //        REQUIRE(node_rt.get_property<int>("int").get_name() == "int");
-    //        REQUIRE(node_ct.get_property<int>("int").get_name() == "int");
-    //        REQUIRE(node_ct.get_property(int_id).get_name() == "int");
-    //    }
+//        REQUIRE(node_rt.get<int>("int") == 123);
+//        REQUIRE(node_ct.get_property<int>("int").get_name() == "int");
+//        REQUIRE(node_ct.get_property(int_id).get_name() == "int");
+    }
 
     //    SECTION("Properties have default values") {
     //        auto node_rt = root_node.create_child<LeafNodeRT>().to_handle();

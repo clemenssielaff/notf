@@ -27,7 +27,7 @@ public:
     EventHandler(size_t buffer_size);
 
     /// Destructor.
-    ~EventHandler() { _stop(); }
+    ~EventHandler() { m_event_queue.close(); }
 
     /// @{
     /// Schedules a new event to be handled on the event thread.
@@ -42,11 +42,6 @@ private:
     /// Starts the event handling thread.
     /// @param ui_mutex Mutex turning the event handler thread into the Ui-thread.
     void _start(RecursiveMutex& ui_mutex);
-
-    /// Closes the event handling thread.
-    void _stop() {
-        m_event_queue.close(); // can be called multiple times
-    }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
@@ -78,9 +73,6 @@ private:
     /// @param ui_mutex Mutex turning the event handler thread into the Ui-thread.
     void _start(RecursiveMutex& ui_mutex) { _get()._start(ui_mutex); }
 
-    /// Closes the event handling thread.
-    void _stop() { _get()._stop(); }
-
 public:
     using ScopedSingleton<detail::EventHandler>::ScopedSingleton;
 };
@@ -100,9 +92,6 @@ class Accessor<TheEventHandler, detail::Application> {
     /// Starts the event handling thread.
     /// @param ui_mutex Mutex turning the event handler thread into the Ui-thread.
     static void start(RecursiveMutex& ui_mutex) { TheEventHandler()._start(ui_mutex); }
-
-    /// Closes the event handling thread.
-    static void stop() { TheEventHandler()._stop(); }
 };
 
 NOTF_CLOSE_NAMESPACE

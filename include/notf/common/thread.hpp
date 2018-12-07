@@ -82,7 +82,7 @@ private:
 inline auto get_kind() { return detail::ThreadInfo::get_kind(); }
 
 /// Tests if this is the main thread.
-inline bool is_main_thread() { return std::this_thread::get_id() == detail::main_thread_id; }
+inline bool is_the_main_thread() { return std::this_thread::get_id() == detail::main_thread_id; }
 
 } // namespace this_thread
 

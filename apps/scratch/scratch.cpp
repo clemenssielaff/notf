@@ -29,7 +29,7 @@ int run_main(int argc, char* argv[]) {
             using namespace std::chrono_literals;
             using namespace notf::driver;
             this_thread::sleep_for(2s);
-            driver << "abc";
+//            driver << "abc";
         }
     });
     auto result = app->exec();

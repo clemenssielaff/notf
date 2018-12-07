@@ -15,7 +15,7 @@ NOTF_OPEN_NAMESPACE
 namespace detail {
 
 /// Settings to create a Window instance.
-struct WindowSettings {
+struct WindowArguments {
 
     /// Window title.
     const char* title = "notf";
@@ -72,7 +72,7 @@ namespace window_properties {
 struct Title {
     using value_t = std::string;
     static constexpr StringConst name = "title";
-    static inline const value_t default_value = WindowSettings().title;
+    static inline const value_t default_value = WindowArguments().title;
     static constexpr bool is_visible = true;
 };
 
@@ -80,7 +80,7 @@ struct Title {
 struct Icon {
     using value_t = std::string;
     static constexpr StringConst name = "icon";
-    static inline const value_t default_value = WindowSettings().icon;
+    static inline const value_t default_value = WindowArguments().icon;
     static constexpr bool is_visible = false;
 };
 
@@ -88,7 +88,7 @@ struct Icon {
 struct Size {
     using value_t = Size2i;
     static constexpr StringConst name = "size";
-    static constexpr value_t default_value = WindowSettings().size;
+    static constexpr value_t default_value = WindowArguments().size;
     static constexpr bool is_visible = true;
 };
 
@@ -97,7 +97,7 @@ struct Size {
 struct Position {
     using value_t = V2i;
     static constexpr StringConst name = "position";
-    static constexpr value_t default_value = WindowSettings().position;
+    static constexpr value_t default_value = WindowArguments().position;
     static constexpr bool is_visible = false;
 };
 
@@ -106,15 +106,15 @@ struct Position {
 struct Resolution {
     using value_t = Size2i;
     static constexpr StringConst name = "resolution";
-    static constexpr value_t default_value = WindowSettings().resolution;
+    static constexpr value_t default_value = WindowArguments().resolution;
     static constexpr bool is_visible = true;
 };
 
 /// Whether the window starts out is minimzed, windowed or maximized.
 struct State {
-    using value_t = WindowSettings::State;
+    using value_t = WindowArguments::State;
     static constexpr StringConst name = "state";
-    static constexpr value_t default_value = WindowSettings().state;
+    static constexpr value_t default_value = WindowArguments().state;
     static constexpr bool is_visible = true;
 };
 
@@ -123,7 +123,7 @@ struct State {
 struct Monitor {
     using value_t = int;
     static constexpr StringConst name = "monitor";
-    static constexpr value_t default_value = WindowSettings().monitor;
+    static constexpr value_t default_value = WindowArguments().monitor;
     static constexpr bool is_visible = false;
 };
 
@@ -177,10 +177,10 @@ private:
 
 public:
     /// Settings to create a Window instance.
-    using Settings = detail::WindowSettings;
+    using Arguments = detail::WindowArguments;
 
     /// System state of the Window.
-    using State = Settings::State;
+    using State = Arguments::State;
 
     /// Property names.
     static constexpr const StringConst& title = detail::window_properties::Title::name;
@@ -209,7 +209,7 @@ private:
     /// @param settings Initialization settings.
     /// @throws InitializationError             If the OpenGL context creation for this Window failed
     /// @throws TheApplication::StartupError    When you try to instantiate a Window without an Application.
-    Window(valid_ptr<Node*> parent, valid_ptr<GLFWwindow*> window, Settings settings);
+    Window(valid_ptr<Node*> parent, valid_ptr<GLFWwindow*> window, Arguments settings);
 
 public:
     /// Factory, creates a new Window.
@@ -217,7 +217,7 @@ public:
     /// @throws InitializationError             If the OpenGL context creation for this Window failed
     /// @throws TheApplication::StartupError    When you try to instantiate a Window without an Application.
     /// @throws ThreadError                     When you call this method from any thread but the UI thread.
-    static WindowHandle create(Settings settings = {});
+    static WindowHandle create(Arguments settings = {});
 
     /// Returns the GlfwWindow contained in this Window.
     GLFWwindow* get_glfw_window() const { return m_glfw_window; }
@@ -228,16 +228,16 @@ private:
 
     /// Validates (and modifies, if necessary) Settings to create a Window instance.
     /// @param settings     Given Settings, modified in-place if necessary.
-    static void _validate_settings(Settings& settings);
+    static void _validate_settings(Arguments& settings);
 
-    static GLFWwindow* _create_glfw_window(const Settings& settings);
+    static GLFWwindow* _create_glfw_window(const Arguments& settings);
 
     /// Moves the fullscreen Window onto the given monitor.
     /// @param window_monitor   The monitor to move the Window on.
     void _move_to_monitor(GLFWmonitor* window_monitor);
 
     /// Callbacks, called automatically whenever their corresponding property changed.
-    bool _on_state_change(Settings::State& new_state);
+    bool _on_state_change(Arguments::State& new_state);
     bool _on_size_change(Size2i& new_size);
     bool _on_resolution_change(Size2i& new_resolution);
     bool _on_monitor_change(int& new_monitor);
