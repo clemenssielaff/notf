@@ -1,6 +1,7 @@
 #include "catch2/catch.hpp"
 
 #include "test/app.hpp"
+#include "test/reactive.hpp"
 
 #include "notf/app/property_runtime.hpp"
 
@@ -18,90 +19,79 @@ constexpr auto bool_id = "bool"_id;
 
 SCENARIO("Properties", "[app][property]") {
     TheApplication app(TheApplication::Arguments{});
+    auto root_node = TheRootNode();
+    auto root_node_handle = TheGraph()->get_root_node();
 
     SECTION("Properties have names") {
         auto node_rt = TheRootNode().create_child<TestNodeRT>().to_handle();
         auto node_ct = TheRootNode().create_child<TestNodeCT>().to_handle();
 
-//        REQUIRE(node_rt.get<int>("int") == 123);
-//        REQUIRE(node_ct.get_property<int>("int").get_name() == "int");
-//        REQUIRE(node_ct.get_property(int_id).get_name() == "int");
+        REQUIRE(node_rt->get<int>("int") == 123);
+        REQUIRE(node_ct->get<int>("int") == 123);
     }
 
-    //    SECTION("Properties have default values") {
-    //        auto node_rt = root_node.create_child<LeafNodeRT>().to_handle();
-    //        auto node_ct = root_node.create_child<LeafNodeCT>().to_handle();
+    SECTION("Only changes in visible properties change a Node's property hash") {
+        { // visible property
+            auto node = root_node.create_child<TestNodeCT>().to_owner();
+            REQUIRE(!node->is_dirty());
+            const size_t property_hash_before = Node::AccessFor<Tester>(node).get_property_hash();
 
-    //        REQUIRE(node_rt.get_property<int>("int").get_default() == 123);
-    //        REQUIRE(node_ct.get_property<int>("int").get_default() == 123);
-    //    }
+            node->set(int_id, 123); // default value
+            REQUIRE(!node->is_dirty());
 
-    //    SECTION("Only changes in visible properties change a Node's property hash") {
-    //        {
-    //            auto node = root_node.create_child<LeafNodeCT>().to_owner();
-    //            REQUIRE(!Node::AccessFor<Tester>(node).is_dirty());
-    //            const size_t property_hash_before = Node::AccessFor<Tester>(node).get_property_hash();
+            node->set(int_id, 999);
+            REQUIRE(node->is_dirty());
 
-    //            auto visible_property = node.get_property(int_id);
-    //            REQUIRE(visible_property.is_visible());
+            const size_t property_hash_after = Node::AccessFor<Tester>(node).get_property_hash();
+            REQUIRE(property_hash_before != property_hash_after);
+        }
+        { // invisible property
+            auto node = root_node.create_child<TestNodeCT>().to_handle();
+            REQUIRE(!node->is_dirty());
+            const size_t property_hash_before = Node::AccessFor<Tester>(node).get_property_hash();
 
-    //            visible_property.set(node.get_property<int>("int").get_default());
-    //            REQUIRE(!Node::AccessFor<Tester>(node).is_dirty());
+            node->set(bool_id, true); // default value
+            REQUIRE(!node->is_dirty());
 
-    //            visible_property.set(node.get_property<int>("int").get_default() + 1);
-    //            REQUIRE(Node::AccessFor<Tester>(node).is_dirty());
+            node->set(bool_id, false);
+            REQUIRE(!node->is_dirty());
 
-    //            const size_t property_hash_after = Node::AccessFor<Tester>(node).get_property_hash();
-    //            REQUIRE(property_hash_before != property_hash_after);
-    //        }
-    //        {
-    //            auto node = root_node.create_child<LeafNodeCT>().to_handle();
-    //            REQUIRE(!Node::AccessFor<Tester>(node).is_dirty());
-    //            const size_t property_hash_before = Node::AccessFor<Tester>(node).get_property_hash();
+            const size_t property_hash_after = Node::AccessFor<Tester>(node).get_property_hash();
+            REQUIRE(property_hash_before != property_hash_after); // property hash still differs
+        }
+    }
 
-    //            auto invisible_property = node.get_property(bool_id);
-    //            REQUIRE(!invisible_property.is_visible());
+    SECTION("Properties can be used as reactive operators") {
+        auto node = root_node.create_child<TestNodeRT>().to_handle();
 
-    //            invisible_property.set(!node.get_property<bool>("bool").get_default());
-    //            REQUIRE(Node::AccessFor<Tester>(node).is_dirty());
+        auto publisher = TestPublisher();
+        auto subscriber = TestSubscriber();
 
-    //            const size_t property_hash_after = Node::AccessFor<Tester>(node).get_property_hash();
-    //            REQUIRE(property_hash_before != property_hash_after);
-    //        }
-    //    }
+        auto pipeline = publisher | node->connect_property<int>("int") | subscriber;
 
-    //    SECTION("Properties can be used as reactive operators") {
-    //        auto node = root_node.create_child<LeafNodeCT>().to_handle();
-    //        auto property = node.get_property(int_id);
+        SECTION("Property Operators tread new values like ones set by the user") {
+            node->set("int", 0);
+            REQUIRE(node->get<int>("int") == 0);
 
-    //        auto publisher = TestPublisher();
-    //        auto subscriber = TestSubscriber();
+            node->set("int", 42);
+            REQUIRE(node->get<int>("int") == 42);
 
-    //        auto pipeline = publisher | property | subscriber;
+            REQUIRE(subscriber->values.size() == 2);
+            REQUIRE(subscriber->values[0] == 0);
+            REQUIRE(subscriber->values[1] == 42);
+        }
 
-    //        SECTION("Property Operators tread new values like ones set by the user") {
-    //            property.set(0);
-    //            REQUIRE(property.get() == 0);
+        SECTION("Property Operators cannot be completed") {
+            publisher->complete();
+            REQUIRE(!subscriber->is_completed);
+        }
 
-    //            publisher->publish(42);
-    //            REQUIRE(property.get() == 42);
-
-    //            REQUIRE(subscriber->values.size() == 2);
-    //            REQUIRE(subscriber->values[0] == 0);
-    //            REQUIRE(subscriber->values[1] == 42);
-    //        }
-
-    //        SECTION("Property Operators cannot be completed") {
-    //            publisher->complete();
-    //            REQUIRE(!subscriber->is_completed);
-    //        }
-
-    //        SECTION("Property Operators report but ignore all errors") {
-    //            publisher->error(std::logic_error("That's illogical"));
-    //            REQUIRE(!subscriber->is_completed);
-    //            REQUIRE(subscriber->exception == nullptr);
-    //        }
-    //    }
+        SECTION("Property Operators report but ignore all errors") {
+            publisher->error(std::logic_error("That's illogical"));
+            REQUIRE(!subscriber->is_completed);
+            REQUIRE(subscriber->exception == nullptr);
+        }
+    }
 
     //    SECTION("Properties are frozen with the Graph") {
     //        auto node_ct = root_node.create_child<LeafNodeCT>().to_handle();
@@ -139,65 +129,27 @@ SCENARIO("Properties", "[app][property]") {
     //        REQUIRE(property_rt.get() == 835);
     //    }
 
-    //    SECTION("Properties have optional callbacks") {
-    //        auto node_ct = root_node.create_child<LeafNodeCT>().to_handle();
-    //        auto property_ct = node_ct.get_property(int_id);
-    //        auto property_ct_ptr = to_shared_ptr(property_ct);
+    SECTION("Properties have optional callbacks") {
+        struct CallbackNode : public TestNodeRT {
+            NOTF_UNUSED CallbackNode(valid_ptr<Node*> parent) : TestNodeRT(parent) {
+                set("int", 18);
+                _set_property_callback<int>("int", [](int& value) {
+                    if (value > 10) {
+                        value += 2;
+                        return true;
+                    } else {
+                        return false;
+                    }
+                });
+            }
+        };
+        auto node = root_node.create_child<CallbackNode>().to_handle();
+        REQUIRE(node->get<int>("int") == 18);
 
-    //        property_ct.set(18);
-    //        REQUIRE(property_ct.get() == 18);
+        node->set("int", 40); // is accepted by the callback
+        REQUIRE(node->get<int>("int") == 42);
 
-    //        property_ct_ptr->set_callback([](int& value) {
-    //            if (value > 10) {
-    //                value += 2;
-    //                return true;
-    //            } else {
-    //                return false;
-    //            }
-    //        });
-
-    //        property_ct.set(40); // is accepted by the callback
-    //        REQUIRE(property_ct.get() == 42);
-
-    //        property_ct.set(8); // is rejected by the callback
-    //        REQUIRE(property_ct.get() == 42);
-    //    }
-
-    //    SECTION("Property Handles can be compared") {
-    //        auto node1 = root_node.create_child<LeafNodeCT>().to_owner();
-    //        auto handle1 = node1.get_property(int_id);
-
-    //        auto node2 = root_node.create_child<LeafNodeCT>().to_owner();
-    //        auto handle2 = node2.get_property(int_id);
-
-    //        REQUIRE(handle1 == handle1);
-    //        REQUIRE(handle1 != handle2);
-    //        REQUIRE((handle1 < handle2 || handle2 < handle1));
-    //    }
-
-    //    SECTION("Property Handles can expire") {
-    //        PropertyHandle<int> handle;
-    //        REQUIRE(!handle);
-
-    //        SECTION("Property Handles expire with their Node") {
-    //            {
-    //                auto node = root_node.create_child<LeafNodeRT>().to_owner();
-    //                handle = node.get_property<int>("int");
-    //                REQUIRE(handle);
-    //            }
-    //            REQUIRE(handle.is_expired());
-
-    //            REQUIRE_THROWS_AS(handle.get(), HandleExpiredError);
-    //            REQUIRE_THROWS_AS(handle.set(78), HandleExpiredError);
-    //        }
-
-    //        SECTION("Expired handles will throw when used as reactive Operators") {
-    //            auto publisher = TestPublisher();
-    //            auto subscriber = TestSubscriber();
-
-    //            REQUIRE_THROWS_AS(publisher | handle, HandleExpiredError);
-    //            REQUIRE_THROWS_AS(handle | subscriber, HandleExpiredError);
-    //            REQUIRE_THROWS_AS(handle | handle, HandleExpiredError);
-    //        }
-    //    }
+        node->set("int", 8); // is accepted by the callback
+        REQUIRE(node->get<int>("int") == 42);
+    }
 }

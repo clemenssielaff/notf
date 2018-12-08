@@ -120,8 +120,8 @@ public:
 
 // signal handle ==================================================================================================== //
 
-/// Object wrapping a weak_ptr to a Slot Subscriber. Is returned by Node::get_signal and can safely be stored & copied
-/// anywhere.
+/// Object wrapping a weak_ptr to a Slot Subscriber. Is returned by Node::connect_signal and can safely be stored &
+/// copied anywhere.
 template<class T>
 class SignalHandle {
 
@@ -135,9 +135,11 @@ public:
     /// @param slot     Slot to Handle.
     SignalHandle(const signal_t& signal) : m_signal(signal) {}
 
+    /// Reactive Pipeline "|" operator
+    /// Connect the Signal on the left.
     template<class Sub, class DecayedSub = std::decay_t<Sub>>
     friend std::enable_if_t<detail::is_reactive_compatible_v<signal_t, DecayedSub>, Pipeline<DecayedSub>>
-    operator|(SignalHandle& signal, Sub&& subscriber) {
+    operator|(const SignalHandle& signal, Sub&& subscriber) {
         signal_t publisher = signal.m_signal.lock();
         if (!publisher) { NOTF_THROW(HandleExpiredError, "SignalHandle is expired"); }
         return publisher | std::forward<Sub>(subscriber);

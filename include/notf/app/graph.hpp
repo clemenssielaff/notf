@@ -102,7 +102,7 @@ private:
         mutable std::unordered_map<Uuid, std::string_view> m_uuid_to_name;
 
         /// Mutex protecting the registry.
-        mutable Mutex m_mutex;
+        mutable RecursiveMutex m_mutex;
     };
 
     // methods --------------------------------------------------------------------------------- //

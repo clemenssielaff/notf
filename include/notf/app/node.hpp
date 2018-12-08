@@ -5,7 +5,7 @@
 
 #include "notf/app/graph.hpp"
 #include "notf/app/node_handle.hpp"
-#include "notf/app/property.hpp"
+#include "notf/app/property_handle.hpp"
 #include "notf/app/signal.hpp"
 #include "notf/app/slot.hpp"
 
@@ -25,68 +25,6 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // types ----------------------------------------------------------------------------------- //
 private:
-    /// Type returned by Node::_create_child.
-    /// Can be cast to a NodeOwner (once), but can also be safely ignored without the Node being erased immediately.
-    template<class NodeType>
-    class NewNode {
-
-        // methods ----------------------------------------------------------------------------- //
-    public:
-        NOTF_NO_COPY_OR_ASSIGN(NewNode);
-
-        /// Constructor.
-        /// @param node     The newly created Node.
-        NewNode(std::shared_ptr<NodeType>&& node) : m_node(std::move(node)) {}
-
-        /// Implicit cast to a NodeHandle.
-        /// Can be called multiple times.
-        operator NodeHandle() const { return NodeHandle(m_node.lock()); }
-
-        /// Implicit cast to a NodeOwner.
-        /// Must only be called once.
-        /// @throws HandleExpiredError  If called more than once or the Node has already expired.
-        explicit operator NodeOwner() { return _to_node_owner<Node>(); }
-
-        /// Implicitly cast to a TypedNodeHandle, if the Node Type derives from NodeType.
-        /// Can be called multiple times.
-        operator TypedNodeHandle<NodeType>() const { return TypedNodeHandle<NodeType>(m_node.lock()); }
-
-        /// Implicit cast to a NodeOwner.
-        /// Must only be called once.
-        /// @throws HandleExpiredError  If called more than once or the Node has already expired.
-        explicit operator TypedNodeOwner<NodeType>() { return _to_node_owner<NodeType>(); }
-
-        /// Explicit conversion to a TypedNodeHandle.
-        /// Is useful when you don't want to type the name:
-        ///     auto owner = parent->create_child<VeryLongNodeName>(...).to_handle();
-        auto to_handle() const { return operator TypedNodeHandle<NodeType>(); }
-
-        /// Explicit conversion to a NodeType.
-        /// Is useful when you don't want to type the name:
-        ///     auto owner = parent->create_child<VeryLongNodeName>(...).to_owner();
-        auto to_owner() { return operator TypedNodeOwner<NodeType>(); }
-
-    private:
-        template<class T>
-        TypedNodeOwner<T> _to_node_owner() {
-            auto node = m_node.lock();
-            if (!node) {
-                NOTF_THROW(HandleExpiredError, "Cannot create a NodeOwner for a Node that is already expired");
-            }
-            m_node.reset();
-            return TypedNodeOwner<T>(std::move(node));
-        }
-
-        // fields ------------------------------------------------------------------------------ //
-    private:
-        /// The newly created Node.
-        /// Is held as a weak_ptr because the user might (foolishly) decide to store this object instead of using for
-        /// casting only, and we don't want to keep the Node alive for longer than its parent is.
-        std::weak_ptr<NodeType> m_node;
-    };
-
-    // property observer ------------------------------------------------------
-
     /// Internal reactive function that is subscribed to all visible Properties and marks the Node as dirty, should one
     /// of them change.
     class PropertyObserver : public Subscriber<All> {
@@ -216,6 +154,15 @@ public:
         _try_get_property<T>(name)->set(std::forward<T>(value));
     }
 
+    /// Allows the connection to the Property of this Node in a reactive Pipeline.
+    /// @param name     Node-unique name of the Property.
+    /// @throws         NameError / TypeError
+    template<class T>
+    PropertyHandle<T> connect_property(const std::string& name) {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
+        return PropertyHandle<T>(_try_get_property<T>(name));
+    }
+
     // signals / slots --------------------------------------------------------
 
     /// @{
@@ -239,8 +186,8 @@ public:
     /// @param name     Node-unique name of the Slot.
     /// @returns        The requested Slot.
     /// @throws         NameError / TypeError
-    template<class T>
-    SlotHandle<T> get_slot(const std::string& name) const {
+    template<class T = None>
+    SlotHandle<T> connect_slot(const std::string& name) const {
         NOTF_ASSERT(this_thread::is_the_ui_thread());
         return _try_get_slot<T>(name);
     }
@@ -249,8 +196,8 @@ public:
     /// @param name     Node-unique name of the Signal.
     /// @returns        The requested Signal.
     /// @throws         NameError / TypeError
-    template<class T>
-    SignalHandle<T> get_signal(const std::string& name) const {
+    template<class T = None>
+    SignalHandle<T> connect_signal(const std::string& name) const {
         NOTF_ASSERT(this_thread::is_the_ui_thread());
         return _try_get_signal<T>(name);
     }
@@ -433,7 +380,7 @@ protected: // for all subclasses
 #else
              >
 #endif
-    NewNode<Child> _create_child(Parent* parent, Args&&... args) {
+    detail::NewNode<Child> _create_child(Parent* parent, Args&&... args) {
         NOTF_ASSERT(this_thread::is_the_ui_thread());
         if (NOTF_UNLIKELY(parent != this)) {
             NOTF_THROW(InternalError, "Node::_create_child cannot be used to create children of other Nodes.");
@@ -534,7 +481,7 @@ private:
         AnySlot* any_slot = _get_slot_impl(name);
         if (!any_slot) { NOTF_THROW(NameError, "Node \"{}\" has no Slot called \"{}\"", get_name(), name); }
 
-        Slot<T>* slot = dynamic_cast<Slot<T>>(any_slot);
+        Slot<T>* slot = dynamic_cast<Slot<T>*>(any_slot);
         if (!slot) {
             NOTF_THROW(TypeError,
                        "Slot \"{}\" of Node \"{}\" is of type \"{}\", but was requested as \"{}\"", //

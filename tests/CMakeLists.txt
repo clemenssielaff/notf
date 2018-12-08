@@ -7,7 +7,7 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     app/test_driver.cpp
 #    app/test_event_handler.cpp
     app/test_graph.cpp
-#    app/test_input.cpp
+    app/test_input.cpp
     app/test_node.cpp # still unfinished
     app/test_property.cpp # still unfinished
 #    app/test_root_node.cpp

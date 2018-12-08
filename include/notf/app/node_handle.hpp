@@ -17,13 +17,15 @@ struct NodeHandleBaseInterface : protected NodeType {
 
     // properties -------------------------------------------------------------
 
+    using NodeType::get;
     using NodeType::set;
+    using NodeType::connect_property;
 
     // signals / slots --------------------------------------------------------
 
     using NodeType::call;
-    using NodeType::get_signal;
-    using NodeType::get_slot;
+    using NodeType::connect_signal;
+    using NodeType::connect_slot;
 
     // hierarchy --------------------------------------------------------------
 
@@ -62,6 +64,64 @@ struct NodeHandleBaseInterface : protected NodeType {
 template<class T>
 struct NodeHandleInterface : public NodeHandleBaseInterface<T> {};
 
+// new node ========================================================================================================= //
+
+/// Type returned by Node::_create_child.
+/// Can be cast to a NodeOwner (once), but can also be safely ignored without the Node being erased immediately.
+template<class NodeType>
+class NewNode {
+
+    // methods ----------------------------------------------------------------------------- //
+public:
+    NOTF_NO_COPY_OR_ASSIGN(NewNode);
+
+    /// Constructor.
+    /// @param node     The newly created Node.
+    NewNode(std::shared_ptr<NodeType>&& node) : m_node(std::move(node)) {}
+
+    /// Implicitly cast to a TypedNodeHandle, if the Node Type derives from NodeType.
+    /// Can be called multiple times.
+    template<class T = NodeType, class = std::enable_if_t<std::is_base_of_v<Node, T>>>
+    operator TypedNodeHandle<T>() const {
+        return TypedNodeHandle<T>(m_node.lock());
+    }
+
+    /// Implicit cast to a NodeOwner.
+    /// Must only be called once.
+    /// @throws HandleExpiredError  If called more than once or the Node has already expired.
+    template<class T = NodeType, class = std::enable_if_t<std::is_base_of_v<Node, T>>>
+    operator TypedNodeOwner<T>() {
+        return _to_node_owner<T>();
+    }
+
+    /// Explicit conversion to a TypedNodeHandle.
+    /// Is useful when you don't want to type the name:
+    ///     auto owner = parent->create_child<VeryLongNodeName>(...).to_handle();
+    auto to_handle() const { return operator TypedNodeHandle<NodeType>(); }
+
+    /// Explicit conversion to a NodeType.
+    /// Is useful when you don't want to type the name:
+    ///     auto owner = parent->create_child<VeryLongNodeName>(...).to_owner();
+    /// @throws HandleExpiredError  If called more than once or the Node has already expired.
+    auto to_owner() { return operator TypedNodeOwner<NodeType>(); }
+
+private:
+    template<class T>
+    TypedNodeOwner<T> _to_node_owner() {
+        auto node = m_node.lock();
+        if (!node) { NOTF_THROW(HandleExpiredError, "Cannot create a NodeOwner for a Node that is already expired"); }
+        m_node.reset();
+        return TypedNodeOwner<T>(std::move(node));
+    }
+
+    // fields ------------------------------------------------------------------------------ //
+private:
+    /// The newly created Node.
+    /// Is held as a weak_ptr because the user might (foolishly) decide to store this object instead of using for
+    /// casting only, and we don't want to keep the Node alive for longer than its parent is.
+    std::weak_ptr<NodeType> m_node;
+};
+
 } // namespace detail
 
 // typed node handle ================================================================================================ //
@@ -94,6 +154,7 @@ private:
     /// Short name of this type.
     using this_t = TypedNodeHandle;
 
+    /// Interface determining which methods of the Node type are forwarded.
     using Interface = detail::NodeHandleInterface<NodeType>;
 
     // methods --------------------------------------------------------------------------------- //
@@ -137,26 +198,6 @@ public:
 
     /// The Graph-unique name of this Node.
     std::string get_name() const { return _get_node()->get_name(); }
-
-    // properties -------------------------------------------------------------
-
-    /// The value of a Property of this Node.
-    /// @param name     Node-unique name of the Property.
-    /// @returns        The value of the Property.
-    /// @throws         NameError / TypeError
-    template<class T>
-    const T& get(const std::string& name) const {
-        return _get_node()->template get<T>(name);
-    }
-    template<char... Cs, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    constexpr auto get(StringType<Cs...> name) const {
-        return this->_get_node()->get(std::forward<decltype(name)>(name));
-    }
-    template<const StringConst& name, class X = NodeType, class = std::enable_if_t<detail::is_compile_time_node_v<X>>>
-    constexpr auto get() const {
-        return this->_get_node()->template get<name>();
-    }
-    /// @}
 
     // access -----------------------------------------------------------------
 
@@ -249,7 +290,7 @@ public:
 
     /// Move assignment operator.
     TypedNodeOwner& operator=(TypedNodeOwner&& other) {
-        if (auto node = this->_get_node(); node) { node->remove(); }
+        if (auto node = this->m_node.lock(); node) { node->remove(); };
         this->m_node = std::move(other.m_node);
         return *this;
     }
@@ -259,7 +300,7 @@ public:
     /// Node or some other Node in the Graph) this does not block, but it might if the mutex is not already held by this
     /// thread.
     ~TypedNodeOwner() {
-        if (auto node = this->_get_node(); node) { node->remove(); };
+        if (auto node = this->m_node.lock(); node) { node->remove(); };
     }
 };
 

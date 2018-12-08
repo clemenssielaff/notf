@@ -29,7 +29,8 @@ protected:
             NOTF_THROW(FinalizedError, "Cannot create a new Property on already finalized Node \"{}\"", get_name());
         }
         if (NOTF_UNLIKELY(m_properties.count(name) != 0)) {
-            NOTF_THROW(NotUniqueError, "Node \"{}\" already has a Property named \"{}\"", get_name(), name);
+            // at this point, we cannot ask for the node name because the node has not been fully constructed yet
+            NOTF_THROW(NotUniqueError, "Node already has a Property named \"{}\"", name);
         }
 
         // create an empty pointer first, to establish the name in the map
@@ -39,8 +40,8 @@ protected:
         // create the RunTimeProperty and store a string_view to the existing name in the map
         PropertyPtr<T> property = std::make_shared<RunTimeProperty<T>>(itr->first, std::forward<T>(value), is_visible);
 
-        // subscribe to receive an update, whenever the property changes its value
-        property->get_operator()->subscribe(_get_property_observer());
+        // subscribe to receive an update, whenever a visible property changes its value
+        if (property->is_visible()) { property->get_operator()->subscribe(_get_property_observer()); }
 
         // replace the empty pointer in the map with the actual RunTimeProperty
         itr->second = std::move(property);
@@ -57,7 +58,8 @@ protected:
             NOTF_THROW(FinalizedError, "Cannot create a new Slot on already finalized Node \"{}\"", get_name());
         }
         if (NOTF_UNLIKELY(m_slots.count(name) != 0)) {
-            NOTF_THROW(NotUniqueError, "Node \"{}\" already has a Slot named \"{}\"", get_name(), name);
+            // at this point, we cannot ask for the node name because the node has not been fully constructed yet
+            NOTF_THROW(NotUniqueError, "Node  already has a Slot named \"{}\"", name);
         }
 
         auto new_slot = std::make_unique<Slot<T>>();
@@ -78,7 +80,8 @@ protected:
             NOTF_THROW(FinalizedError, "Cannot create a new Signal on already finalized Node \"{}\"", get_name());
         }
         if (NOTF_UNLIKELY(m_signals.count(name) != 0)) {
-            NOTF_THROW(NotUniqueError, "Node \"{}\" already has a Signal named \"{}\"", get_name(), name);
+            // at this point, we cannot ask for the node name because the node has not been fully constructed yet
+            NOTF_THROW(NotUniqueError, "Node already has a Signal named \"{}\"", name);
         }
 
         auto [itr, success] = m_signals.emplace(std::move(name), std::make_shared<Signal<T>>());

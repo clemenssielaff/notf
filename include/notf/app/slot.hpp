@@ -211,7 +211,7 @@ struct SlotSubscriber<None> : Subscriber<None> {
 
 // slot handle ====================================================================================================== //
 
-/// Object wrapping a weak_ptr to a Slot Subscriber. Is returned by Node::get_slot and can safely be stored & copied
+/// Object wrapping a weak_ptr to a Slot Subscriber. Is returned by Node::connect_slot and can safely be stored & copied
 /// anywhere. Is also used by Events targeting a specific Slot.
 template<class T>
 class SlotHandle {
@@ -224,7 +224,7 @@ private:
 public:
     /// Constructor.
     /// @param slot     Slot to Handle.
-    SlotHandle(const Slot<T>& slot) : m_subscriber(slot.get_subscriber()) {}
+    SlotHandle(const Slot<T>* slot) : m_subscriber(slot->get_subscriber()) {}
 
     /// Manually call the Slot with a given value (if applicable).
     template<class X = T>
@@ -241,9 +241,10 @@ public:
     }
 
     /// Reactive Pipeline "|" operator
+    /// Connect the Slot on the right.
     template<class Pub>
     friend std::enable_if_t<detail::is_reactive_compatible_v<std::decay_t<Pub>, subscriber_t>, Pipeline<subscriber_t>>
-    operator|(Pub&& publisher, SlotHandle& slot) {
+    operator|(Pub&& publisher, const SlotHandle& slot) {
         subscriber_t subscriber = slot.m_subscriber.lock();
         if (!subscriber) { NOTF_THROW(HandleExpiredError, "SlotHandle is expired"); }
         return std::forward<Pub>(publisher) | subscriber;

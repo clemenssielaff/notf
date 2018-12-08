@@ -188,6 +188,13 @@ public:
     /// Converts this Key into the corresponding GLFW key token.
     int to_glfw_key() const;
 
+    /// Equality operator.
+    bool operator==(const KeyInput& other) const noexcept {
+        if (token != other.token || modifier != other.modifier) { return false; }
+        if (token == Token::UNKNOWN) { return (scancode == other.scancode); }
+        return true;
+    }
+
     // fields --------------------------------------------------------------------------------- //
 public:
     /// Key Token, corresponds to GLFW key tokens (which are plain integers).
@@ -265,6 +272,12 @@ public:
     /// @param x        X-axis position of the mouse in screen coordinates.
     /// @param y        Y-axis position of the mouse in screen coordinates.
     MouseInput(Button button, int x = -1, int y = -1) : button(button), position{x, y} {}
+    MouseInput(Button button, V2i position) : button(button), position(std::move(position)) {}
+
+    /// Equality operator.
+    bool operator==(const MouseInput& other) const noexcept {
+        return (button == other.button && position == other.position);
+    }
 
     // fields --------------------------------------------------------------------------------- //
 public:

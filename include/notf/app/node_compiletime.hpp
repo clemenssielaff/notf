@@ -175,9 +175,11 @@ protected:
             auto property_ptr = std::make_shared<property_t>();
             property = property_ptr;
 
-            // subscribe to receive an update, whenever the property changes its value
-            auto typed_property = std::static_pointer_cast<Property<typename property_t::value_t>>(property_ptr);
-            typed_property->get_operator()->subscribe(_get_property_observer());
+            // subscribe to receive an update, whenever a visible property changes its value
+            if (property_ptr->is_visible()) {
+                auto typed_property = std::static_pointer_cast<Property<typename property_t::value_t>>(property_ptr);
+                typed_property->get_operator()->subscribe(_get_property_observer());
+            }
         });
 
         // slots
@@ -222,7 +224,21 @@ public:
     }
     /// @}
 
+    /// @{
+    /// Returns the correctly typed value of a CompileTimeProperty.
+    /// @param name     Name of the requested Property.
+    template<char... Cs>
+    constexpr const auto& connect_property(StringType<Cs...> name) const {
+        return PropertyHandle(std::get<_get_property_index(name)>(m_properties));
+    }
+    template<const StringConst& name>
+    constexpr const auto& connect_property() const {
+        return connect_property(make_string_type<name>());
+    }
+    /// @}
+
     // Use the base class' runtime methods alongside the compile time implementation.
+    using Node::connect_property;
     using Node::get;
     using Node::set;
 
@@ -256,12 +272,12 @@ public:
     /// Returns the requested Slot or void (which doesn't compile).
     /// @param name     Name of the requested Slot.
     template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{})>
-    constexpr auto get_slot(StringType<Cs...>) const {
-        return SlotHandle(*std::get<I>(m_slots).get());
+    constexpr auto connect_slot(StringType<Cs...>) const {
+        return SlotHandle(std::get<I>(m_slots).get());
     }
     template<const StringConst& name>
-    constexpr auto get_slot() const {
-        return get_slot(make_string_type<name>());
+    constexpr auto connect_slot() const {
+        return connect_slot(make_string_type<name>());
     }
     /// @}
 
@@ -269,18 +285,18 @@ public:
     /// Returns the requested Signal or void (which doesn't compile).
     /// @param name     Name of the requested Signal.
     template<char... Cs, size_t I = _get_signal_index(StringType<Cs...>{})>
-    constexpr auto get_signal(StringType<Cs...>) const {
+    constexpr auto connect_signal(StringType<Cs...>) const {
         return std::get<I>(m_signals);
     }
     template<const StringConst& name>
-    constexpr auto get_signal() const {
-        return get_signal(make_string_type<name>());
+    constexpr auto connect_signal() const {
+        return connect_signal(make_string_type<name>());
     }
     /// @}
 
     // Use the base class' runtime methods alongside the compile time implementation.
-    using Node::get_signal;
-    using Node::get_slot;
+    using Node::connect_signal;
+    using Node::connect_slot;
 
 protected:
     // properties -------------------------------------------------------------

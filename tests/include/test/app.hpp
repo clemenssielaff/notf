@@ -4,6 +4,8 @@
 #include "notf/app/node_runtime.hpp"
 #include "notf/app/root_node.hpp"
 
+#include "notf/reactive/trigger.hpp"
+
 NOTF_OPEN_NAMESPACE
 
 // accessors ======================================================================================================== //
@@ -24,6 +26,8 @@ auto to_shared_ptr(TypedNodeHandle<NodeType> node) {
 template<>
 struct Accessor<Node, Tester> {
 
+    using InternalFlags = Node::InternalFlags;
+
     Accessor(Node& node) : m_node(node) {}
 
     template<class NodeType>
@@ -35,11 +39,6 @@ struct Accessor<Node, Tester> {
         : m_node(*(TypedNodeHandle<NodeType>::template AccessFor<Tester>::to_shared_ptr(node).get())) {}
 
     size_t get_property_hash() const { return m_node._calculate_property_hash(); }
-
-    //    bool is_dirty() const {
-    //        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
-    //        return m_node._get_internal_flag(to_number(Node::InternalFlags::DIRTY));
-    //    }
 
     void set_uuid(const Uuid& uuid) { const_cast<Uuid&>(m_node.m_uuid) = uuid; }
 
@@ -57,6 +56,8 @@ struct Accessor<Node, Tester> {
     }
 
     void remove_child(NodeHandle handle) { m_node._remove_child(handle); }
+
+    bool get_internal_flag(size_t index) { return m_node._get_internal_flag(index); }
 
     //    void set_parent(NodeHandle parent) {
     //        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
@@ -156,13 +157,51 @@ struct TestNodePolicy {
 } // namespace detail
 
 class TestNodeCT : public CompileTimeNode<detail::TestNodePolicy> {
+    using InternalFlags = Node::AccessFor<Tester>::InternalFlags;
+
 public:
-    TestNodeCT(valid_ptr<Node*> parent) : CompileTimeNode<detail::TestNodePolicy>(parent) {}
+    static constexpr auto to_none = detail::NoneSlot::name;
+    static constexpr auto to_int = detail::IntSlot::name;
+    static constexpr auto on_none = detail::NoneSignal::name;
+    static constexpr auto on_int = detail::IntSignal::name;
+
+public:
+    TestNodeCT(valid_ptr<Node*> parent) : CompileTimeNode<detail::TestNodePolicy>(parent) {
+        m_int_slot_pipe
+            = make_pipeline(_get_slot<to_int>() | Trigger([this](const int& value) { m_int_slot_value = value; }));
+    }
+
+    template<class T, class... Args>
+    auto create_child(Args... args) {
+        return _create_child<T>(this, std::forward<Args>(args)...);
+    }
+
+    void set_parent(NodeHandle parent) { _set_parent(std::move(parent)); }
+    bool get_flag(size_t index) const { return _get_flag(index); }
+    void set_flag(size_t index, bool value = true) { _set_flag(index, value); }
+    bool is_dirty() const {
+        return Node::AccessFor<Tester>(*const_cast<TestNodeCT*>(this))
+            .get_internal_flag(to_number(InternalFlags::DIRTY));
+    }
+    template<class T>
+    void emit(const std::string& name, const T& value) {
+        _emit(name, value);
+    }
+    void emit(const std::string& name) { _emit(name); }
+    int get_int_slot_value() const { return m_int_slot_value; }
+
+public:
+    int m_int_slot_value = 0;
+
+private:
+    AnyPipelinePtr m_int_slot_pipe;
 };
 
 // run time test node =============================================================================================== //
 
 class TestNodeRT : public RunTimeNode {
+    using InternalFlags = Node::AccessFor<Tester>::InternalFlags;
+
 public:
     TestNodeRT(valid_ptr<Node*> parent) : RunTimeNode(parent) {
         _create_property<float>("float", 0.123f, true);
@@ -174,8 +213,68 @@ public:
 
         _create_signal<None>("on_none");
         _create_signal<int>("on_int");
+
+        m_int_slot_pipe
+            = make_pipeline(_get_slot<int>("to_int") | Trigger([this](const int& value) { m_int_slot_value = value; }));
     }
+
+    template<class T, class... Args>
+    auto create_child(Args... args) {
+        return _create_child<T>(this, std::forward<Args>(args)...);
+    }
+
+    void set_parent(NodeHandle parent) { _set_parent(std::move(parent)); }
+    bool get_flag(size_t index) const { return _get_flag(index); }
+    void set_flag(size_t index, bool value = true) { _set_flag(index, value); }
+    bool is_dirty() const {
+        return Node::AccessFor<Tester>(*const_cast<TestNodeRT*>(this))
+            .get_internal_flag(to_number(InternalFlags::DIRTY));
+    }
+    template<class T>
+    void emit(const std::string& name, const T& value) {
+        _emit(name, value);
+    }
+    void emit(const std::string& name) { _emit(name); }
+    int get_int_slot_value() const { return m_int_slot_value; }
+    void fail_create_signal_finalized() { _create_signal<int>("already finalized"); }
+    void fail_create_slot_finalized() { _create_slot<int>("already finalized"); }
+
+public:
+    int m_int_slot_value = 0;
+
+private:
+    AnyPipelinePtr m_int_slot_pipe;
 };
+
+// test node handle interface ======================================================================================= //
+
+namespace detail {
+
+template<>
+struct NodeHandleInterface<TestNodeCT> : public NodeHandleBaseInterface<TestNodeCT> {
+    using TestNodeCT::create_child;
+    using TestNodeCT::emit;
+    using TestNodeCT::get_flag;
+    using TestNodeCT::get_int_slot_value;
+    using TestNodeCT::is_dirty;
+    using TestNodeCT::set_flag;
+    using TestNodeCT::set_parent;
+};
+
+template<>
+struct NodeHandleInterface<TestNodeRT> : public NodeHandleBaseInterface<TestNodeRT> {
+    using TestNodeRT::create_child;
+    using TestNodeRT::emit;
+    using TestNodeRT::get_flag;
+    using TestNodeRT::get_int_slot_value;
+    using TestNodeRT::is_dirty;
+    using TestNodeRT::set_flag;
+    using TestNodeRT::set_parent;
+    using TestNodeRT::fail_create_signal_finalized;
+    using TestNodeRT::fail_create_slot_finalized;
+};
+
+} // namespace detail
 
 // functions ======================================================================================================== //
 
@@ -191,98 +290,5 @@ struct TheRootNode {
 private:
     std::shared_ptr<RootNode> m_root;
 };
-
-// namespace {
-
-// struct FloatPropertyPolicy {
-//    using value_t = float;
-//    static constexpr StringConst name = "float";
-//    static constexpr value_t default_value = 0.123f;
-//    static constexpr bool is_visible = true;
-//};
-
-// struct BoolPropertyPolicy {
-//    using value_t = bool;
-//    static constexpr StringConst name = "bool";
-//    static constexpr value_t default_value = true;
-//    static constexpr bool is_visible = false;
-//};
-
-// struct IntPropertyPolicy {
-//    using value_t = int;
-//    static constexpr StringConst name = "int";
-//    static constexpr value_t default_value = 123;
-//    static constexpr bool is_visible = true;
-//};
-
-// struct TestNodePolicy {
-//    using properties = std::tuple< //
-//        FloatPropertyPolicy,       //
-//        IntPropertyPolicy,         //
-//        BoolPropertyPolicy>;       //
-//};
-
-// class LeafNodeCT : public CompileTimeNode<TestNodePolicy> {
-// public:
-//    NOTF_UNUSED LeafNodeCT(valid_ptr<Node*> parent) : CompileTimeNode<TestNodePolicy>(parent) {}
-//};
-
-// class LeafNodeRT : public RunTimeNode {
-// public:
-//    NOTF_UNUSED LeafNodeRT(valid_ptr<Node*> parent) : RunTimeNode(parent) {
-//        _create_property<float>("float", 0.123f, true);
-//        _create_property<bool>("bool", true, false);
-//        _create_property<int>("int", 123, true);
-//    }
-//};
-
-// class TestNode : public RunTimeNode {
-// public:
-//    NOTF_UNUSED TestNode() : RunTimeNode(this) {}
-//    NOTF_UNUSED TestNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
-
-//    NOTF_UNUSED bool get_flag(size_t index) {
-//        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
-
-//        return _get_flag(index);
-//    }
-//    NOTF_UNUSED void set_flag(size_t index, bool value = true) {
-//        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
-//        _set_flag(index, value);
-//    }
-
-//    template<class T, class... Args>
-//    NOTF_UNUSED auto create_child(Args... args) {
-//        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
-//        return _create_child<T>(this, std::forward<Args>(args)...);
-//    }
-//};
-
-// class TwoChildrenNode : public RunTimeNode {
-// public:
-//    NOTF_UNUSED TwoChildrenNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {
-//        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
-//        first_child = _create_child<LeafNodeRT>(this);
-//        second_child = _create_child<LeafNodeRT>(this);
-//    }
-
-//    TypedNodeOwner<LeafNodeRT> first_child;
-//    TypedNodeOwner<LeafNodeRT> second_child;
-//};
-
-// class ThreeChildrenNode : public RunTimeNode {
-// public:
-//    NOTF_UNUSED ThreeChildrenNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {
-//        NOTF_GUARD(std::lock_guard(TheGraph()->get_graph_mutex()));
-//        first_child = _create_child<LeafNodeRT>(this);
-//        second_child = _create_child<LeafNodeRT>(this);
-//        third_child = _create_child<LeafNodeRT>(this);
-//    }
-//    TypedNodeOwner<LeafNodeRT> first_child;
-//    TypedNodeOwner<LeafNodeRT> second_child;
-//    TypedNodeOwner<LeafNodeRT> third_child;
-//};
-
-//} // namespace
 
 NOTF_CLOSE_NAMESPACE

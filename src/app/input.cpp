@@ -378,9 +378,9 @@ int KeyInput::to_glfw_key() const {
     case KeyInput::Token::RIGHT_ALT: return GLFW_KEY_RIGHT_ALT;
     case KeyInput::Token::RIGHT_SUPER: return GLFW_KEY_RIGHT_SUPER;
     case KeyInput::Token::MENU: return GLFW_KEY_MENU;
-    case KeyInput::Token::UNKNOWN: return GLFW_KEY_UNKNOWN;
+    case KeyInput::Token::UNKNOWN: NOTF_FALLTHROUGH;
+    default: return GLFW_KEY_UNKNOWN;
     }
-    return GLFW_KEY_UNKNOWN;
 }
 
 NOTF_CLOSE_NAMESPACE

@@ -6,7 +6,7 @@ NOTF_OPEN_NAMESPACE
 
 // root node ======================================================================================================== //
 
-class RootNode final : public CompileTimeNode<> {
+class RootNode : public CompileTimeNode<> {
 
     friend Accessor<RootNode, detail::Graph>;
     friend Accessor<RootNode, Window>;
