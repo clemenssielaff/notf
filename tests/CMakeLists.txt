@@ -12,7 +12,7 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     app/test_property.cpp # still unfinished
 #    app/test_root_node.cpp
 #    app/test_slot.cpp
-#    app/test_timer_pool.cpp
+    app/test_timer_pool.cpp
 #    app/test_widget.cpp
     app/test_window.cpp # still unfinished
 
