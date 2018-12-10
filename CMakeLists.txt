@@ -190,7 +190,7 @@ set(NOTF_VERSION_STRING ${PROJECT_VERSION})
 set(NOTF_LITERALS_NAMESPACE_NAME "literals")
 
 # cmake timestamp
-# STRING(TIMESTAMP NOTF_TIMESTAMP "%b %d %Y, %H:%M:%S")
+#STRING(TIMESTAMP NOTF_TIMESTAMP "%b %d %Y, %H:%M:%S")
 
 configure_file (
     "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp.in"
@@ -204,7 +204,7 @@ if(NOTF_WINDOWS)
     set(NOTF_GLOBAL_DEFINES
         WIN32_LEAN_AND_MEAN # Don't include most of Windows.h
         NOGDI
-        NOMINMAX
+		NOMINMAX
     )
 else()
     set(NOTF_GLOBAL_DEFINES

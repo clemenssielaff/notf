@@ -12,19 +12,19 @@ namespace detail {
 template<class Policy>
 class NodePolicyFactory { // TODO: (NodePolicyFactory) check that all names are unique
 
-    template<template<class> class, class...>
+template<template<class> class, class...>
     struct instantiate_shared;
-    template<template<class> class Template, class... Ts>
+template<template<class> class Template, class... Ts>
     struct instantiate_shared<Template, std::tuple<Ts...>> {
-        using type = std::tuple<std::shared_ptr<Template<Ts>>...>;
-    };
+    using type = std::tuple<std::shared_ptr<Template<Ts>>...>;
+};
 
     template<template<class> class, class...>
     struct instantiate_unique;
     template<template<class> class Template, class... Ts>
     struct instantiate_unique<Template, std::tuple<Ts...>> {
         using type = std::tuple<std::unique_ptr<Template<Ts>>...>;
-    };
+        };
 
     NOTF_CREATE_TYPE_DETECTOR(properties);
     static constexpr auto create_properties() {
@@ -241,15 +241,13 @@ public:
     std::enable_if_t<!std::is_same_v<T, None>> call(StringType<Cs...>, const T& value) {
         std::get<I>(m_slots)->call(value);
     }
-    template<const ConstString& name, size_t I = _get_slot_index(make_string_type<name>()),
-             class T = typename slot_t<I>::value_t>
-    std::enable_if_t<std::is_same_v<T, None>> call() {
-        std::get<I>(m_slots)->call();
+    template<const ConstString& name>
+    void call() {
+        call(make_string_type<name>());
     }
-    template<const ConstString& name, size_t I = _get_slot_index(make_string_type<name>()),
-             class T = typename slot_t<I>::value_t>
-    std::enable_if_t<!std::is_same_v<T, None>> call(const T& value) {
-        std::get<I>(m_slots)->call(value);
+    template<const ConstString& name, class T>
+    void call(const T& value) {
+        call(make_string_type<name>(), value);
     }
     /// @}
 
@@ -291,9 +289,9 @@ protected:
     constexpr void _set_property_callback(StringType<Cs...>, typename property_t<I>::callback_t callback) {
         std::get<I>(m_properties)->set_callback(std::move(callback));
     }
-    template<const ConstString& name, size_t I = _get_property_index(make_string_type<name>())>
-    constexpr void _set_property_callback(typename property_t<I>::callback_t callback) {
-        _set_property_callback(make_string_type<name>(), std::move(callback));
+    template<const ConstString& name, class Callback>
+    constexpr void _set_property_callback(Callback&& callback) {
+        _set_property_callback(make_string_type<name>(), std::forward<Callback>(callback));
     }
     /// @}
 
@@ -339,7 +337,8 @@ private:
     /// Implementation specific query of a Property.
     AnyProperty* _get_property_impl(const std::string& name) const final { return _get_property_ct(hash_string(name)); }
     template<size_t I = 0>
-    AnyProperty* _get_property_ct(const size_t hash_value) const {
+    std::enable_if_t<(I < std::tuple_size_v<Properties>), AnyProperty*>
+    _get_property_ct(const size_t hash_value) const {
         if constexpr (I < std::tuple_size_v<Properties>) {
             if (property_t<I>::get_const_name().get_hash() == hash_value) {
                 return std::get<I>(m_properties).get();
@@ -350,6 +349,10 @@ private:
             return {}; // no such property
         }
     }
+    template<size_t I = 0>
+    std::enable_if_t<(I == std::tuple_size_v<Properties>), AnyProperty*> _get_property_ct(const size_t) const {
+        return {}; // no such property
+    }
     /// @}
 
     /// @{
@@ -357,7 +360,7 @@ private:
     /// @param name     Node-unique name of the Slot.
     AnySlot* _get_slot_impl(const std::string& name) const final { return _get_slot_ct(hash_string(name)); }
     template<size_t I = 0>
-    AnySlot* _get_slot_ct(const size_t hash_value) const {
+    std::enable_if_t<(I < std::tuple_size_v<Slots>), AnySlot*> _get_slot_ct(const size_t hash_value) const {
         if constexpr (I < std::tuple_size_v<Slots>) {
             if (slot_t<I>::get_const_name().get_hash() == hash_value) {
                 return std::get<I>(m_slots).get();
@@ -368,6 +371,10 @@ private:
             return {}; // no such slot
         }
     }
+    template<size_t I = 0>
+    std::enable_if_t<(I == std::tuple_size_v<Slots>), AnySlot*> _get_slot_ct(const size_t) const {
+        return {}; // no such slot
+    }
     /// @}
 
     /// @{
@@ -375,7 +382,7 @@ private:
     /// @param name     Node-unique name of the Signal.
     AnySignalPtr _get_signal_impl(const std::string& name) const final { return _get_signal_ct(hash_string(name)); }
     template<size_t I = 0>
-    AnySignalPtr _get_signal_ct(const size_t hash_value) const {
+    std::enable_if_t<(I < std::tuple_size_v<Signals>), AnySignalPtr> _get_signal_ct(const size_t hash_value) const {
         if constexpr (I < std::tuple_size_v<Signals>) {
             if (signal_t<I>::get_const_name().get_hash() == hash_value) {
                 return std::get<I>(m_signals);
@@ -385,6 +392,10 @@ private:
         } else {
             return {}; // no such signal
         }
+    }
+    template<size_t I = 0>
+    std::enable_if_t<(I == std::tuple_size_v<Signals>), AnySignalPtr> _get_signal_ct(const size_t) const {
+        return {}; // no such signal
     }
     /// @}
 

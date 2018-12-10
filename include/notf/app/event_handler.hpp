@@ -69,6 +69,11 @@ public:
 private:
     NOTF_CREATE_SMART_FACTORIES(TheEventHandler);
 
+    /// Forwarding constructor.
+    template<class... Args>
+    TheEventHandler(Holder holder, Args&&... args) noexcept(noexcept(detail::EventHandler(std::forward<Args>(args)...)))
+        : ScopedSingleton<detail::EventHandler>(holder, std::forward<Args>(args)...) {}
+
     /// Starts the event handling thread.
     /// @param ui_mutex Mutex turning the event handler thread into the Ui-thread.
     void _start(RecursiveMutex& ui_mutex) { _get()._start(ui_mutex); }

@@ -66,6 +66,11 @@ public:
 private:
     NOTF_CREATE_SMART_FACTORIES(TheTimerPool);
 
+	/// Forwarding constructor.
+    template<class... Args>
+    TheTimerPool(Holder holder, Args&&... args) noexcept(noexcept(detail::TimerPool(std::forward<Args>(args)...)))
+        : ScopedSingleton<detail::TimerPool>(holder, std::forward<Args>(args)...) {}
+
 public:
     using ScopedSingleton<detail::TimerPool>::ScopedSingleton;
 };

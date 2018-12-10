@@ -162,6 +162,11 @@ public:
 private:
     NOTF_CREATE_SMART_FACTORIES(TheGraph);
 
+    /// Forwarding constructor.
+    template<class... Args>
+    TheGraph(Holder holder, Args&&... args) noexcept(noexcept(detail::Graph(std::forward<Args>(args)...)))
+        : ScopedSingleton<detail::Graph>(holder, std::forward<Args>(args)...) {}
+
     /// Registers a new Node in the Graph.
     /// Automatically marks the Node as being dirty as well.
     /// @param node             Node to register.

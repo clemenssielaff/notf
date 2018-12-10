@@ -39,74 +39,78 @@ struct TriggerIdentifier {
     using type = decltype(TriggerIdentifier<Callback, fn_traits>::get_type());
 };
 
-} // namespace detail
-
 // trigger ========================================================================================================== //
+
+// implementation for T != None
+template<class Callback, class T, class = std::enable_if_t<!std::is_same_v<T, None>>>
+class TriggerImpl : public Subscriber<T> {
+
+    // methods ----------------------------------------------------------------------------- //
+public:
+    /// Constructor.
+    TriggerImpl(Callback&& callback) : m_callback(std::forward<Callback>(callback)) {}
+
+    /// Called whenever the Subscriber receives a new value.
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
+    /// @param value        Published value.
+    void on_next(const AnyPublisher* publisher, const T& value) final {
+        if constexpr (function_traits<Callback>::arity == 2) {
+            std::invoke(m_callback, publisher, value);
+        } else {
+            static_assert(function_traits<Callback>::arity == 1);
+            std::invoke(m_callback, value);
+        }
+    }
+
+    // fields ------------------------------------------------------------------------------ //
+private:
+    /// Callback executed whenever the Subscriber receives a new value.
+    Callback m_callback;
+};
+
+// implementation for T == None
+template<class Callback, class T, class = std::enable_if_t<std::is_same_v<T, None>>>
+class NoneTriggerImpl : public Subscriber<None> {
+
+    // methods ----------------------------------------------------------------------------- //
+public:
+    /// Constructor.
+    NoneTriggerImpl(Callback&& callback) : m_callback(std::forward<Callback>(callback)) {}
+
+    /// Called whenever the Subscriber receives a new value.
+    /// @param publisher    The Publisher publishing the value, for identification purposes only.
+    /// @param value        Published value.
+    void on_next(const AnyPublisher* publisher) final {
+        if constexpr (function_traits<Callback>::arity == 0) {
+            std::invoke(m_callback);
+        } else {
+            static_assert(function_traits<Callback>::arity == 1);
+            std::invoke(m_callback, publisher);
+        }
+    }
+
+    // fields ------------------------------------------------------------------------------ //
+private:
+    /// Callback executed whenever the Subscriber receives a new value.
+    Callback m_callback;
+};
+
+} // namespace detail
 
 /// A Trigger is a simple helper to conveniently create a Subscriber with a single lambda.
 /// @param callback Callback executed whenever the Subscriber receives a new value.
 ///                 Must be in the form `void(const T&)` or `void(const AnyPublisher*, const T&)`.
 template<class Callback, class T = typename detail::TriggerIdentifier<Callback>::template type<>>
-auto Trigger(Callback&& callback) {
-
-    // implementation for T == None
-    if constexpr (std::is_same_v<T, None>) {
-        class TriggerImpl : public Subscriber<None> {
-
-            // methods ----------------------------------------------------------------------------- //
-        public:
-            /// Constructor.
-            TriggerImpl(Callback&& callback) : m_callback(std::forward<Callback>(callback)) {}
-
-            /// Called whenever the Subscriber receives a new value.
-            /// @param publisher    The Publisher publishing the value, for identification purposes only.
-            /// @param value        Published value.
-            void on_next(const AnyPublisher* publisher) final {
-                if constexpr (function_traits<Callback>::arity == 0) {
-                    std::invoke(m_callback);
-                } else {
-                    static_assert(function_traits<Callback>::arity == 1);
-                    std::invoke(m_callback, publisher);
-                }
-            }
-
-            // fields ------------------------------------------------------------------------------ //
-        private:
-            /// Callback executed whenever the Subscriber receives a new value.
-            Callback m_callback;
-        };
-        return std::make_shared<TriggerImpl>(std::forward<Callback>(callback));
-
-    }
-
-    // implementation for T != None
-    else {
-        class TriggerImpl : public Subscriber<T> {
-
-            // methods ----------------------------------------------------------------------------- //
-        public:
-            /// Constructor.
-            TriggerImpl(Callback&& callback) : m_callback(std::forward<Callback>(callback)) {}
-
-            /// Called whenever the Subscriber receives a new value.
-            /// @param publisher    The Publisher publishing the value, for identification purposes only.
-            /// @param value        Published value.
-            void on_next(const AnyPublisher* publisher, const T& value) final {
-                if constexpr (function_traits<Callback>::arity == 2) {
-                    std::invoke(m_callback, publisher, value);
-                } else {
-                    static_assert(function_traits<Callback>::arity == 1);
-                    std::invoke(m_callback, value);
-                }
-            }
-
-            // fields ------------------------------------------------------------------------------ //
-        private:
-            /// Callback executed whenever the Subscriber receives a new value.
-            Callback m_callback;
-        };
-        return std::make_shared<TriggerImpl>(std::forward<Callback>(callback));
-    }
+auto Trigger(Callback&& callback)
+    -> decltype(std::make_shared<detail::NoneTriggerImpl<Callback, T>>(std::forward<Callback>(callback))) {
+    return std::make_shared<detail::NoneTriggerImpl<Callback, T>>(std::forward<Callback>(callback));
 }
+template<class Callback, class T = typename detail::TriggerIdentifier<Callback>::template type<>>
+auto Trigger(Callback&& callback)
+    -> decltype(std::make_shared<detail::TriggerImpl<Callback, T>>(std::forward<Callback>(callback))) {
+    return std::make_shared<detail::TriggerImpl<Callback, T>>(std::forward<Callback>(callback));
+}
+// This was once a single, beautiful if-constexpr function - but MSVC is a bit shit and requires this 
+// SFINAE monstrosity...
 
 NOTF_CLOSE_NAMESPACE
