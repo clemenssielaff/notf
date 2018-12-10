@@ -29,6 +29,7 @@ SCENARIO("TheApplication Singleton", "[app][application]") {
             REQUIRE_THROWS_AS(TheApplication()->exec(), TheApplication::StartupError);
         }
 
+#ifndef NOTF_MSVC
         SECTION("can run exec only from the main thread") {
             Thread other;
             other.run([] { TheApplication()->exec(); });
@@ -36,6 +37,7 @@ SCENARIO("TheApplication Singleton", "[app][application]") {
             REQUIRE(other.has_exception());
             REQUIRE_THROWS_AS(other.rethrow(), TheApplication::StartupError);
         }
+#endif
 
         SECTION("you can test whether this is the current UI thread from anywhere") {
             REQUIRE(this_thread::is_the_ui_thread());

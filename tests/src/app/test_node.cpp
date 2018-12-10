@@ -345,9 +345,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
         SECTION("compile time and run time acquired Properties are the same") {
             const int ct_value = node->get(int_id);
             REQUIRE(rt_value == ct_value);
-
-            static constexpr ConstString int_const_string = "int";
-            REQUIRE(ct_value == node->get<int_const_string>());
+            REQUIRE(ct_value == node->get<int_id_name>());
         }
 
         SECTION("Compile Time Nodes can be asked for non-existing run time Properies") {

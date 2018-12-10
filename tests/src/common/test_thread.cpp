@@ -51,6 +51,7 @@ SCENARIO("thread", "[common][thread]") {
             REQUIRE(counter == 2);
         }
 
+#ifndef NOTF_MSVC
         SECTION("if you try to have more than one, they will throw") {
             bool has_exception = false;
             std::exception_ptr exception;
@@ -76,6 +77,7 @@ SCENARIO("thread", "[common][thread]") {
             auto thrower = [&] { std::rethrow_exception(std::move(exception)); };
             REQUIRE_THROWS_AS(thrower(), ThreadError);
         }
+#endif
     }
 
     SECTION("threads can be move-assigned") {

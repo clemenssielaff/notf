@@ -155,27 +155,10 @@ private:
 protected:
     /// Value constructor.
     /// @param parent   Parent of this Node.
-    Node(valid_ptr<AnyNode*> parent) : AnyNode(parent) {
-        // properties
-        for_each(m_properties, [this](auto& property) {
-            using property_t = typename std::decay_t<decltype(property)>::element_type;
-
-            // create the new property
-            property = std::make_unique<property_t>();
-
-            // subscribe to receive an update, whenever a visible property changes its value
-            if (property->is_visible()) { property->get_operator()->subscribe(_get_property_observer()); }
-        });
-
-        // slots
-        for_each(m_slots, [this](auto& slot) {
-            slot = std::make_unique<typename std::decay_t<decltype(slot)>::element_type>();
-        });
-
-        // signals
-        for_each(m_signals, [this](auto& signal) {
-            signal = std::make_shared<typename std::decay_t<decltype(signal)>::element_type>();
-        });
+    CompileTimeNode(valid_ptr<Node*> parent) : Node(parent) {
+        _initialize_properties();
+        _initialize_slots();
+        _initialize_signals();
     }
 
 public:
@@ -184,9 +167,9 @@ public:
     /// @{
     /// Returns the correctly typed value of a Property.
     /// @param name     Name of the requested Property.
-    template<char... Cs>
+    template<char... Cs, size_t I = _get_property_index(StringType<Cs...>{})>
     constexpr const auto& get(StringType<Cs...> name) const {
-        return std::get<_get_property_index(name)>(m_properties)->get();
+        return std::get<I>(m_properties)->get();
     }
     template<const ConstString& name>
     constexpr const auto& get() const {
@@ -283,6 +266,25 @@ public:
 
 protected:
     // properties -------------------------------------------------------------
+
+	/// @{
+	/// Initializes all compile time Properties.
+    template<size_t I = 0>
+    std::enable_if_t<(I < std::tuple_size_v<Properties>)> _initialize_properties() {
+
+        // create the new property
+        auto& property = std::get<I>(m_properties);
+        property = std::make_unique<property_t>();
+
+        // subscribe to receive an update, whenever a visible property changes its value
+        if (property->is_visible()) { property->get_operator()->subscribe(_get_property_observer()); }
+
+		_initialize_properties<I + 1>();
+	}
+    template<size_t I = 0>
+    std::enable_if_t<(I == std::tuple_size_v<Properties>)> _initialize_properties() {}
+    /// @}
+
     /// @{
     /// (Re-)Defines a callback to be invoked every time the value of the Property is about to change.
     template<char... Cs, size_t I = _get_property_index(StringType<Cs...>{})>
@@ -299,6 +301,28 @@ protected:
     using AnyNode::_set_property_callback;
 
     // signals / slots --------------------------------------------------------
+
+    /// @{
+    /// Initializes all Slots.
+    template<size_t I = 0>
+    std::enable_if_t<(I < std::tuple_size_v<Slots>)> _initialize_slots() {
+        std::get<I>(m_slots) = std::make_unique<slot_t<I>>();
+        _initialize_slots<I + 1>();
+    }
+    template<size_t I = 0>
+    std::enable_if_t<(I == std::tuple_size_v<Slots>)> _initialize_slots() {}
+    /// @}
+
+	/// @{
+    /// Initializes all Signals.
+    template<size_t I = 0>
+    std::enable_if_t<(I < std::tuple_size_v<Signals>)> _initialize_signals() {
+        std::get<I>(m_signals) = std::make_shared<signal_t<I>>();
+        _initialize_signals<I + 1>();
+    }
+    template<size_t I = 0>
+    std::enable_if_t<(I == std::tuple_size_v<Signals>)> _initialize_signals() {}
+    /// @}
 
     /// @{
     /// Internal access to a Slot of this Node.
