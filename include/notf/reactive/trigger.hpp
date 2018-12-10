@@ -24,7 +24,7 @@ struct TriggerIdentifier {
         return std::declval<fn_traits>();
     }
 
-    static constexpr auto get_type() {
+    static constexpr auto get_type() noexcept {
         if constexpr (fn_traits::arity == 0) {
             return std::declval<None>();
         } else if constexpr (fn_traits::arity == 1) {
@@ -36,7 +36,7 @@ struct TriggerIdentifier {
     }
 
     template<class X = decltype(validate_traits())>
-    using type = decltype(get_type());
+    using type = decltype(TriggerIdentifier<Callback, fn_traits>::get_type());
 };
 
 } // namespace detail

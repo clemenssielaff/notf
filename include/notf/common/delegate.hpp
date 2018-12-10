@@ -228,13 +228,13 @@ private:
     }
 
     template<class T>
-    static std::enable_if_t<!(is_member_pair<T>{} || is_const_member_pair<T>{}), Result>
+    static std::enable_if_t<!(is_member_pair<T>::value || is_const_member_pair<T>::value), Result>
     functor_stub(void* const object_ptr, Args&&... args) {
         return (*static_cast<T*>(object_ptr))(std::forward<Args>(args)...);
     }
 
     template<class T>
-    static std::enable_if_t<is_member_pair<T>{} || is_const_member_pair<T>{}, Result>
+    static std::enable_if_t<is_member_pair<T>::value || is_const_member_pair<T>::value, Result>
     functor_stub(void* const object_ptr, Args&&... args) {
         return (static_cast<T*>(object_ptr)->first->*static_cast<T*>(object_ptr)->second)(std::forward<Args>(args)...);
     }

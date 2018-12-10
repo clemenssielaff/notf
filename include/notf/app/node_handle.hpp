@@ -17,9 +17,9 @@ struct NodeHandleBaseInterface : protected NodeType {
 
     // properties -------------------------------------------------------------
 
+    using NodeType::connect_property;
     using NodeType::get;
     using NodeType::set;
-    using NodeType::connect_property;
 
     // signals / slots --------------------------------------------------------
 
@@ -97,13 +97,13 @@ public:
     /// Explicit conversion to a TypedNodeHandle.
     /// Is useful when you don't want to type the name:
     ///     auto owner = parent->create_child<VeryLongNodeName>(...).to_handle();
-    auto to_handle() const { return operator TypedNodeHandle<NodeType>(); }
+    TypedNodeHandle<NodeType> to_handle() const { return TypedNodeHandle<NodeType>(m_node.lock()); }
 
     /// Explicit conversion to a NodeType.
     /// Is useful when you don't want to type the name:
     ///     auto owner = parent->create_child<VeryLongNodeName>(...).to_owner();
     /// @throws HandleExpiredError  If called more than once or the Node has already expired.
-    auto to_owner() { return operator TypedNodeOwner<NodeType>(); }
+    TypedNodeOwner<NodeType> to_owner() { return _to_node_owner<NodeType>(); }
 
 private:
     template<class T>

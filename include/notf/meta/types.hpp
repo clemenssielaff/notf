@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <typeinfo>
 
 #include "notf/meta/config.hpp"

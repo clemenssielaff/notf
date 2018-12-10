@@ -58,8 +58,9 @@ struct PropertyPolicyFactory {
             static constexpr bool is_visible() {
                 if constexpr (decltype(has_is_visible<Policy>(std::declval<Policy>()))::value) {
                     return Policy::is_visible;
+                } else {
+                    return true; // visible by default
                 }
-                return true; // visible by default
             }
         };
 

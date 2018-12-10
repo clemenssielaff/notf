@@ -24,11 +24,11 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default, zero constructor.
-    Uuid() = default;
+    constexpr Uuid() = default;
 
     /// Value Constructor.
     /// @param bytes    Bytes to construct the UUID with.
-    Uuid(Bytes bytes) : m_bytes(bytes) {}
+    constexpr Uuid(Bytes bytes) : m_bytes(bytes) {}
 
     /// Value Constructor.
     /// If the string does not contain a valid UUID, the resulting UUID is null.

@@ -123,11 +123,11 @@ public:
     }
 
     /// Value constructor.
-    /// @param args     Up to (Dimension) arguments, each of which must be trivially convertible to component_t.
+    /// @param args     Up to (Dimension) arguments, each of which must be trivially convertible to element_t.
     ///                 Remaining components are value-initialized.
-    template<class... Args, class = std::enable_if_t<all(sizeof...(Args) <= Dimensions,
-                                                         (std::is_trivially_constructible_v<component_t, Args>, ...))>>
-    constexpr Arithmetic(Args&&... args) noexcept : data{static_cast<component_t>(std::forward<Args>(args))...} {}
+    template<class... Args, class = std::enable_if_t<(sizeof...(Args) <= Dimensions)
+                                                     && (std::is_trivially_constructible_v<element_t, Args> && ...)>>
+    constexpr Arithmetic(Args&&... args) noexcept : data{static_cast<element_t>(std::forward<Args>(args))...} {}
 
     /// Create an arithmetic value with all elements set to the given value.
     /// @param value    Value to set.

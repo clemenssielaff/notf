@@ -223,8 +223,8 @@ void Window::_move_to_monitor(GLFWmonitor* window_monitor) {
 
 bool Window::_on_state_change(Arguments::State& new_state) {
     { // windowify the window first, if it is currently in full screen
-        GLFWmonitor* monitor = glfwGetWindowMonitor(m_glfw_window);
-        if (monitor && (new_state != State::FULLSCREEN)) {
+        GLFWmonitor* glfw_monitor = glfwGetWindowMonitor(m_glfw_window);
+        if (glfw_monitor && (new_state != State::FULLSCREEN)) {
             const V2i& window_pos = get<position>();
             const Size2i& window_size = get<size>();
             glfwSetWindowMonitor(m_glfw_window, /*monitor*/ nullptr, window_pos.x(), window_pos.y(), //
