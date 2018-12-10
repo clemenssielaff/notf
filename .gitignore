@@ -1,7 +1,8 @@
 CMakeFiles/
 build/
-docs/.sass-cache
-docs/_site
-notf.pro.user
 CMakeLists.txt.user
-.vscode/*
+__pycache__
+.idea/
+
+# auto-generated files
+include/notf/meta/config.hpp

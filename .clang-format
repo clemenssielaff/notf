@@ -8,9 +8,9 @@ AlignOperands:                              true
 AlignTrailingComments:                      true
 AllowAllParametersOfDeclarationOnNextLine:  false
 AllowShortBlocksOnASingleLine:              true
-AllowShortCaseLabelsOnASingleLine:          false
+AllowShortCaseLabelsOnASingleLine:          true
 AllowShortFunctionsOnASingleLine:           All
-AllowShortIfStatementsOnASingleLine:        false
+AllowShortIfStatementsOnASingleLine:        true
 AllowShortLoopsOnASingleLine:               false
 AlwaysBreakAfterReturnType:                 None
 AlwaysBreakBeforeMultilineStrings:          false
@@ -21,12 +21,12 @@ BraceWrapping:
   AfterClass:               false
   AfterControlStatement:    false
   AfterEnum:                false
-  AfterFunction:            true
+  AfterFunction:            false
   AfterNamespace:           false
   AfterStruct:              false
   AfterUnion:               false
   BeforeCatch:              true
-  BeforeElse:               true
+  BeforeElse:               false
   IndentBraces:             false
   SplitEmptyFunction:       false
   SplitEmptyRecord:         false

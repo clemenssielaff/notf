@@ -1,30 +1,23 @@
-#include "common/thread_pool.hpp"
+#include "notf/common/thread_pool.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-thread_pool_finished::~thread_pool_finished() {}
-
-// ================================================================================================================== //
-
-ThreadPool::ThreadPool(const size_t thread_count)
-{
+ThreadPool::ThreadPool(const size_t thread_count) {
     m_workers.reserve(thread_count);
 
     // create the worker threads
     for (size_t i = 0; i < thread_count; ++i) {
-        m_workers.emplace_back([&] {
-
+        m_workers.emplace_back(Thread::Kind::WORKER);
+        m_workers.back().run([this] {
             // worker function
             while (true) {
-                std::function<void()> task;
+                Delegate<void()> task;
                 { // grab new tasks while there are any
                     std::unique_lock<std::mutex> lock(m_queue_mutex);
-                    this->m_condition_variable.wait(lock, [&] { return !m_tasks.empty() || is_finished; });
-                    if (is_finished && m_tasks.empty()) {
-                        return;
-                    }
+                    m_condition_variable.wait(lock, [this] { return !m_tasks.empty() || m_is_finished; });
+                    if (m_is_finished && m_tasks.empty()) { return; }
                     task = std::move(m_tasks.front());
                     m_tasks.pop_front();
                 }
@@ -35,18 +28,15 @@ ThreadPool::ThreadPool(const size_t thread_count)
     }
 }
 
-ThreadPool::~ThreadPool()
-{
-    { // notify all workers that we're finished
+ThreadPool::~ThreadPool() {
+    { // notify all workers that the pool is finished
         std::lock_guard<std::mutex> lock(m_queue_mutex);
-        is_finished = true;
+        m_is_finished = true;
     }
     m_condition_variable.notify_all();
 
     // join all workers and finish
-    for (std::thread& worker : m_workers) {
-        worker.join();
-    }
+    m_workers.clear();
 }
 
 NOTF_CLOSE_NAMESPACE

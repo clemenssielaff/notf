@@ -1,7 +1,94 @@
-cmake_minimum_required(VERSION 3.10)
-project(notf)
+# require at least CMake 3.9 to support Interprocedural Optimization IPO
+# conditional copied from https://cliutils.gitlab.io/modern-cmake/chapters/basics.html
+cmake_minimum_required(VERSION 3.8)
+if(CMAKE_VERSION VERSION_LESS 3.12)
+    cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
+else()
+    cmake_policy(VERSION 3.12)
+endif()
 
-# MACROS ###############################################################################################################
+# PROJECT ##############################################################################################################
+
+# top-level project
+project(notf
+    VERSION 0.4.0.0
+    DESCRIPTION "Reactive & Lightweight UI Application Engine in C++/Python"
+    LANGUAGES CXX
+)
+
+# cmake modules
+set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+find_package(Threads REQUIRED)
+find_package(OpenGL REQUIRED)
+
+# use plain c++ 17
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# hide symbols by default
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+
+# use link-time optimization if available
+if(CMAKE_BUILD_TYPE MATCHES "Release")
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT IS_LTO_SUPPORTED OUTPUT LTO_ERROR)
+    if(IS_LTO_SUPPORTED)
+        message(STATUS ">>> notf: Building with LTO")
+        set_property(GLOBAL PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    else()
+        message(STATUS ">>> notf:Building without LTO:\n${LTO_ERROR}")
+    endif()
+endif()
+
+# use LLVM libraries and tools
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    message(STATUS ">>> notf: Using llvm tools: libc++ and lld ")
+    add_compile_options("-stdlib=libc++")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi -fuse-ld=lld")
+endif()
+
+# use ccache if available
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    message(STATUS ">>> notf: Using ccache")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE_PROGRAM})
+endif()
+
+# apply modern policies
+if(COMMAND cmake_policy)
+    cmake_policy(PUSH)
+
+    # FindOpenGL prefers GLVND by default when available.
+    if(POLICY CMP0072)
+        cmake_policy(SET CMP0072 NEW)
+    endif()
+
+    # Only interpret if() arguments as variables or keywords when unquoted.
+    if (NOT CMAKE_VERSION VERSION_LESS "3.1")
+        cmake_policy(SET CMP0054 NEW)
+    endif()
+endif()
+
+# store information about the current git revision
+# note that this only displays the revision and modification state at the time that CMake is last run - not every time
+# that the source is built
+find_package(Git QUIET)
+if(GIT_FOUND)
+    execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+                    OUTPUT_VARIABLE NOTF_BUILT_COMMIT
+                    ERROR_QUIET
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${GIT_EXECUTABLE} diff --quiet
+                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+                    RESULT_VARIABLE NOTF_BUILT_COMMIT_WAS_MODIFIED
+                    ERROR_QUIET
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+endif()
+
+# UTILITY MACROS #######################################################################################################
 
 # utility macro to add source files in a common subdirectory
 macro(add_sources source_list base_path)
@@ -10,235 +97,167 @@ macro(add_sources source_list base_path)
     endforeach()
 endmacro()
 
-# utility macro to add source files in a common subdirectory
-macro(create_module name)
-    file(GLOB_RECURSE ${name}_SOURCE RELATIVE ${CMAKE_SOURCE_DIR}
-        "src/${name}/*.cpp"
-    )
-    file(GLOB_RECURSE ${name}_HEADERS RELATIVE ${CMAKE_SOURCE_DIR}
-        "src/${name}/*.hpp"
-    )
-    file(GLOB_RECURSE ${name}_MARKDOWN RELATIVE ${CMAKE_SOURCE_DIR}
-        "src/${name}/*.md"
-    )
-    set(${name}_MODULE ${${name}_SOURCE} ${${name}_HEADERS} ${${name}_MARKDOWN})
-endmacro()
-
-# OPTIONS ##############################################################################################################
-
-option(NOTF_BUILD_APP "Build application" ON)
-option(NOTF_BUILD_TESTS "Build tests" OFF)
-option(NOTF_LOG_PRETTY_FUNCTION "Log long function names" ON)
-option(NOTF_THREAD_SANITIZATION "Enable thread sanitization" OFF)
-
 # CONFIGURATION ########################################################################################################
 
-# hide symbols by default
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+# define notf's debug/release flags
+if(CMAKE_BUILD_TYPE MATCHES "Debug")
+    message(STATUS ">>> notf: Building in debug mode")
+    set(NOTF_DEBUG TRUE)
+else()
+    message(STATUS ">>> notf: Building in release mode")
+    set(NOTF_RELEASE TRUE)
+endif()
 
-# link-time optimization
-include(CheckIPOSupported)
-check_ipo_supported(RESULT IS_LTO_SUPPORTED OUTPUT LTO_ERROR)
+# build and run the tests
+option(NOTF_BUILD_TESTS "Build tests" ON)
+if(NOTF_BUILD_TESTS)
+    message(STATUS ">>> notf: Building tests")
+    set(NOTF_TEST TRUE)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 
-# ccache
-find_program(CCACHE_FOUND ccache)
-if(CCACHE_FOUND)
-    message(STATUS "Using ccache")
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
-endif(CCACHE_FOUND)
+# build the benchmarks
+option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
+if(NOTF_BUILD_BENCHMARKS)
+    message(STATUS ">>> notf: Building benchmarks")
+    add_subdirectory(benchmarks)
+endif()
 
-# policies
-if(COMMAND cmake_policy)
-    cmake_policy(PUSH)
+# log level
+set(NOTF_LOG_LEVEL "0" CACHE STRING "Log level to compile (0=all -> 6=nothing)")
 
-    if(POLICY CMP0072)
-        cmake_policy(SET CMP0072 NEW)
-    endif()
+# abort on assert
+option(NOTF_ABORT_ON_ASSERT "Abort straight away when failing an assert" 1)
+if(NOTF_ABORT_ON_ASSERT)
+    message(STATUS ">>> notf: Aborting on assert failure")
+    set(NOTF_ABORT_ON_ASSERT 1)
 endif()
 
 # thread sanitization
-if(NOTF_THREAD_SANITIZATION)
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    option(NOTF_THREAD_SANITIZATION "Enable thread sanitization" OFF)
+    if(NOTF_THREAD_SANITIZATION)
         add_compile_options("-fsanitize=thread")
         link_libraries("-fsanitize=thread")
-        message(STATUS "Building using thread sanitization")
-    else()
-        set(NOTF_THREAD_SANITIZATION OFF)
-        message(AUTHOR_WARNING "Thread sanitization is only supported for build using Clang")
+        message(STATUS ">>> notf: Building using thread sanitization")
     endif()
 endif()
 
-# LIBRARIES ############################################################################################################
-
-# glfw
-set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-add_subdirectory(thirdparty/glfw-3.3.0)
-
-# opengl
-find_package(OpenGL REQUIRED)
-
-# freetype
-add_subdirectory(thirdparty/freetype-2.9.1)
-
-# NOTF #################################################################################################################
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DNOTF_DEBUG")
-
-if(NOTF_LOG_PRETTY_FUNCTION)
-    add_definitions(-DNOTF_LOG_PRETTY_FUNCTION)
-endif()
-
-include_directories(notf
-    src/
-    res/
-    examples/
-    thirdparty/
-    thirdparty/glfw-3.3.0/include
-    thirdparty/freetype-2.9.1/include
-)
-
-create_module(common)
-create_module(app)
-create_module(graphics)
-create_module(utils)
-create_module(auxiliary)
-
-add_sources(SOURCE_FILES examples
-    #framebuffer_example.cpp
-    #wireframe_example.cpp
-    smoke_example.cpp
-)
-
-add_sources(THIRDPARTY_FILES thirdparty
-    tinyutf8/tinyutf8.cpp
-    glad/glad.c
-    fmt/format.cc
-)
-
-add_sources(RESOURCE_FILES res
-    shaders/cell.frag
-    shaders/cell.vert
-    shaders/blinn_phong.vert
-    shaders/blinn_phong.frag
-    shaders/fullscreen.vert
-    shaders/wireframe.vert
-    shaders/wireframe.tess
-    shaders/wireframe.eval
-    shaders/wireframe.geo
-    shaders/wireframe.frag
-    shaders/plotter.vert
-    shaders/plotter.tesc
-    shaders/plotter.tese
-    shaders/plotter.frag
-    shaders/trivial.vert
-    shaders/trivial.frag
-    shaders/clouds.frag
-)
-
-add_library(notf
-    ${common_MODULE}
-    ${app_MODULE}
-    ${graphics_MODULE}
-    ${utils_MODULE}
-    ${SOURCE_FILES}
-    ${auxiliary_MODULE}
-    ${THIRDPARTY_FILES}
-    ${RESOURCE_FILES}
-)
-
-target_link_libraries(notf
-    glfw
-    freetype
-    ${PYTHON_LIBRARIES}
-    ${OPENGL_LIBRARIES}
-)
-
-if(CMAKE_BUILD_TYPE MATCHES "Release")
-
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-        set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} "-fuse-ld=lld")
-    endif()
-
-    if(IS_LTO_SUPPORTED)
-        message(STATUS "Building notf with LTO enabled")
-        set_property(TARGET notf PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    else()
-        message(STATUS "LTO failed:\n${LTO_ERROR}")
-    endif()
-
-endif()
-
-# APP ##################################################################################################################
-
-if(NOTF_BUILD_APP)
-
-    add_executable (notf-app src/main.cpp)
-    target_link_libraries (notf-app notf)
-
-endif()
-
-# TESTS ################################################################################################################
-
-if(NOTF_BUILD_TESTS)
-
-    message(STATUS "Building Tests")
-
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNOTF_TEST")
-
-    if(NOT MSVC)
+# coverage
+if(NOT MSVC)
+    option(NOTF_CREATE_COVERAGE "Create test coverage " ON)
+    if(NOTF_CREATE_COVERAGE)
         if(NOTF_THREAD_SANITIZATION)
-            message(AUTHOR_WARNING "Disabling coverage to avoid interference with thread sanitization.")
+            message(AUTHOR_WARNING ">>> notf: Disabling coverage to avoid interference with thread sanitization.")
+            set(NOTF_CREATE_COVERAGE OFF)
         else()
-            message(STATUS "Building with coverage.")
-            set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
+            message(STATUS ">>> notf: Creating coverage.")
         endif()
     endif()
-
-    add_sources(TEST_SOURCES test
-        catch.hpp
-        main.cpp
-#        glm_utils.hpp
-        testenv.hpp
-#        test_aabr.cpp
-#        test_circle.cpp
-#        test_color.cpp
-#        test_dag.cpp
-#        test_float.cpp
-#        test_half.cpp
-#        test_matrix3.cpp
-#        test_matrix4.cpp
-        test_node.hpp
-        test_node.cpp
-        test_scene.hpp
-        test_scene.cpp
-        test_scene_graph.hpp
-        test_scene_graph.cpp
-        test_timer.cpp
-        test_path.cpp
-        test_claim.cpp
-        test_properties.hpp
-        test_properties.cpp
-        test_event_manager.hpp
-        test_type_name.cpp
-#        test_signal.cpp
-#        test_string_utils.cpp
-#        test_utils.cpp
-#        test_utils.hpp
-#        test_vector2.cpp
-    )
-
-    add_executable(notf-test ${TEST_SOURCES})
-    target_link_libraries(notf-test notf)
-
 endif()
 
+# CODE INTEGRATION #####################################################################################################
+
+# check compiler ID (from https://cmake.org/cmake/help/latest/variable/CMAKE_LANG_COMPILER_ID.html)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(NOTF_CLANG TRUE)
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(NOTF_GCC TRUE)
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    set(NOTF_MSVC TRUE)
+endif()
+
+# check operating system (from https://stackoverflow.com/a/40152725)
+if(WIN32)
+    set(NOTF_WINDOWS TRUE)
+elseif(APPLE)
+    set(NOTF_MACINTOSH TRUE)
+elseif(UNIX)
+    set(NOTF_LINUX TRUE)
+endif()
+
+# check endianness
+include (TestBigEndian)
+TEST_BIG_ENDIAN(NOTF_IS_BIG_ENDIAN)
+
+# Name of the notf namespace.
+# This macro can be used to implement namespace versioning.
+set(NOTF_NAMESPACE_NAME "notf")
+
+# these variables will be defined in notf/meta/config.hpp
+set(NOTF_VERSION_STRING ${PROJECT_VERSION})
+set(NOTF_LITERALS_NAMESPACE_NAME "literals")
+
+# cmake timestamp
+STRING(TIMESTAMP NOTF_TIMESTAMP "%b %d %Y, %H:%M:%S")
+
+configure_file (
+    "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp.in"
+    "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp"
+)
+
+# SYSTEM DEPENDEND GLOBALS ############################################################################################
+
+# global definitions
+if(NOTF_WINDOWS)
+    set(NOTF_GLOBAL_DEFINES
+        WIN32_LEAN_AND_MEAN # Don't include most of Windows.h
+        NOGDI
+    )
+else()
+    set(NOTF_GLOBAL_DEFINES
+    )
+endif()
+if(NOTF_TEST)
+    set(NOTF_GLOBAL_DEFINES ${NOTF_GLOBAL_DEFINES}
+        NOTF_TEST
+    )
+endif()
+set(NOTF_GLOBAL_DEFINES ${NOTF_GLOBAL_DEFINES}
+    BOOST_ALL_NO_LIB # do not try to auto link boost libraries, we've got them all in notf-thirdparty
+)
+
+# global options
+if(NOTF_CLANG)
+    set(NOTF_GLOBAL_OPTIONS
+#		-Weverything
+#		-Wpedantic
+#		-Wno-padded
+#		-Wno-weak-vtables   # used everywhere and not a problem
+#		-Wno-c++98-compat
+#		-Wno-c++98-compat-pedantic
+
+        # clang vectorization analysis
+#        -Rpass-missed=loop-vectorized
+#        -Rpass-analysis=loop-vectorize
+#        -fsave-optimization-record
+#        -gline-tables-only
+#        -gcolumn-info
+    )
+elseif(NOTF_GCC)
+    set(NOTF_GLOBAL_OPTIONS
+        -Wall
+        -Wno-unknown-pragmas
+    )
+elseif(NOTF_MSVC)
+    set(NOTF_GLOBAL_OPTIONS
+        /W4
+        /EHs # use instead of /EHsc, tell the compiler that functions declared as extern "C" may throw an exception
+             # do *not* use `/GL` (global program optimization) as that would interfere with boost::fiber
+    )
+endif()
+
+# SUB-PROJECTS #########################################################################################################
+
+# discover all notf header files for use in subprojects
+file(GLOB_RECURSE NOTF_HEADERS
+    "include/notf/*.hpp"
+)
+
+add_subdirectory(thirdparty)
+add_subdirectory(src)
+add_subdirectory(apps)
 
 ########################################################################################################################
 

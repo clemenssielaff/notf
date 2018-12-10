@@ -1,465 +1,363 @@
-#include "app/node.hpp"
+#include "notf/app/node.hpp"
 
-#include <atomic>
-#include <string_view>
+#include "notf/meta/log.hpp"
 
-#include "app/property_graph.hpp"
-#include "common/log.hpp"
+#include "notf/common/vector.hpp"
 
-namespace { // anonymous
+namespace {
 NOTF_USING_NAMESPACE;
 
-/// Returns the name of the next node.
-/// Is thread-safe and ever-increasing.
-std::string next_node_name()
-{
-    static std::atomic_size_t nextID(1);
-    std::stringstream ss;
-    ss << "Node#" << nextID++;
-    return ss.str();
-}
-
-/// Creates a unique name from a proposed and a set of existing.
-/// @param existing     All names that are already taken.
-/// @param proposed     New proposed name, is presumably already taken.
-/// @returns            New, unique name.
-std::string make_unique_name(const std::set<std::string_view>& existing, const std::string& proposed)
-{
-    // remove all trailing numbers from the proposed name
-    std::string_view proposed_name;
+std::pair<size_t, size_t> get_this_and_sibling_index(const std::vector<NodePtr>& siblings, const Node* const caller,
+                                                     const NodeConstPtr& sibling_ptr) {
+    size_t my_index, sibling_index;
     {
-        const auto last_char = proposed.find_last_not_of("0123456789");
-        if (last_char == std::string_view::npos) {
-            proposed_name = proposed;
+        const size_t sibling_count = my_index = sibling_index = siblings.size();
+        uchar successes = 0;
+        for (size_t itr = 0; itr < sibling_count; ++itr) {
+            const auto& other = siblings[itr];
+            if (other.get() == caller) {
+                my_index = itr;
+                ++successes;
+            } else if (other == sibling_ptr) {
+                sibling_index = itr;
+                ++successes;
+            }
+            if (successes == 2) { break; }
         }
-        else {
-            proposed_name = std::string_view(proposed.c_str(), last_char + 1);
-        }
+        NOTF_ASSERT(successes == 2);
+        NOTF_ASSERT(my_index != sibling_index);
+        NOTF_ASSERT(my_index != sibling_count && sibling_index != sibling_count);
     }
-
-    // create a unique name by appending trailing numbers until one is unique
-    std::string result;
-    result.reserve(proposed_name.size() + 1);
-    result = std::string(proposed_name);
-    size_t highest_postfix = 1;
-    while (existing.count(result)) {
-        result = std::string(proposed_name);
-        result.append(std::to_string(highest_postfix++));
-    }
-    return result;
+    return std::make_pair(my_index, sibling_index);
 }
 
 } // namespace
 
 NOTF_OPEN_NAMESPACE
 
-// ================================================================================================================== //
+// node ============================================================================================================= //
 
-Node::node_finalized_error::~node_finalized_error() = default;
-
-// ================================================================================================================== //
-
-thread_local std::set<valid_ptr<const Node*>> Node::s_unfinalized_nodes = {};
-
-Node::Node(FactoryToken, Scene& scene, valid_ptr<Node*> parent)
-    : m_scene(scene), m_parent(parent), m_name(_create_name())
-{
-    log_trace << "Created \"" << get_name() << "\"";
+Node::Node(valid_ptr<Node*> parent) : m_parent(raw_pointer(parent)) {
+    NOTF_LOG_TRACE("Creating Node {}", m_uuid.to_string());
 }
 
-Node::~Node()
-{
+Node::~Node() {
+    // first, delete all children while their parent pointer is still valid
+    m_children.clear();
+    m_modified_data.reset();
+
+    TheGraph::AccessFor<Node>::unregister_node(m_uuid);
+
 #ifdef NOTF_DEBUG
-    // all children should be removed with their parent
-    for (const auto& child : m_children) {
-        NOTF_ASSERT(child.raw().use_count() == 1);
-    }
+    // make sure that the property observer is deleted with this node, because it has a raw reference to the node
+    std::weak_ptr<PropertyObserver> weak_observer = m_property_observer;
+    NOTF_ASSERT(weak_observer.lock() != nullptr);
+    m_property_observer.reset();
+    NOTF_ASSERT(weak_observer.expired());
 #endif
 
-    _finalize();
-
-    log_trace << "Destroying \"" << get_name() << "\"";
-    SceneGraph::Access<Node>::remove_dirty(get_graph(), this);
+    NOTF_LOG_TRACE("Removing Node {}", m_uuid.to_string());
 }
 
-const std::string& Node::set_name(const std::string& name)
-{
-    m_name->set(name);
-    return m_name->get();
+std::string Node::set_name(const std::string& name) {
+    NOTF_ASSERT(this_thread::is_the_ui_thread()); // only the UI thread can change the name
+    return TheGraph::AccessFor<Node>::set_name(shared_from_this(), name);
 }
 
-bool Node::has_ancestor(valid_ptr<const Node*> ancestor) const
-{
-    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
-
-    valid_ptr<const Node*> next = m_parent;
-    while (next != next->m_parent) {
-        if (next == ancestor) {
-            return true;
-        }
-        next = next->m_parent;
-    }
-    return false;
+NodeHandle Node::get_parent() const {
+    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
+    return _get_parent()->shared_from_this();
 }
 
-bool Node::is_in_front() const
-{
-    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
-
-    const NodeContainer& siblings = m_parent->_read_children();
-    NOTF_ASSERT(!siblings.empty());
-    return siblings.front() == this;
+bool Node::has_ancestor(const Node* const ancestor) const {
+    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
+    if (ancestor == nullptr) { return false; }
+    const Node* next = _get_parent();
+    for (; next != next->_get_parent(); next = next->_get_parent()) {
+        if (next == ancestor) { return true; }
+    }
+    return next == ancestor; // true if the root node itself is the ancestor in question
 }
 
-bool Node::is_in_back() const
-{
-    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
-
-    const NodeContainer& siblings = m_parent->_read_children();
-    NOTF_ASSERT(!siblings.empty());
-    return siblings.back() == this;
+NodeHandle Node::get_common_ancestor(const NodeHandle& other) const {
+    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
+    const NodeConstPtr other_lock = NodeHandle::AccessFor<Node>::get_node_ptr(other);
+    if (other_lock == nullptr) { return {}; }
+    return const_cast<Node*>(_get_common_ancestor(other_lock.get()))->shared_from_this();
 }
 
-bool Node::is_before(valid_ptr<const Node*> sibling) const
-{
-    if (this == sibling) {
-        return false;
+NodeHandle Node::get_child(const size_t index) const {
+    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
+    const std::vector<NodePtr>& children = _read_children();
+    if (index >= children.size()) {
+        NOTF_THROW(OutOfBounds, "Cannot get child Node at index {} for Node \"{}\" with {} children", index, get_name(),
+                   get_child_count());
     }
-    return !_is_behind(sibling);
+    return children[index];
 }
 
-bool Node::is_behind(valid_ptr<const Node*> sibling) const
-{
-    if (this == sibling) {
-        return false;
-    }
-    return _is_behind(sibling);
+bool Node::is_in_front() const {
+    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
+    return _read_siblings().back().get() == this;
 }
 
-void Node::stack_front()
-{
-    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
-
-    // early out to avoid creating unnecessary deltas
-    if (is_in_front()) {
-        return;
-    }
-
-    NodeContainer& siblings = m_parent->_write_children();
-    siblings.stack_front(this);
+bool Node::is_in_back() const {
+    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
+    return _read_siblings().front().get() == this;
 }
 
-void Node::stack_back()
-{
-    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
-
-    // early out to avoid creating unnecessary deltas
-    if (is_in_back()) {
-        return;
-    }
-
-    NodeContainer& siblings = m_parent->_write_children();
-    siblings.stack_back(this);
-}
-
-void Node::stack_before(valid_ptr<const Node*> sibling)
-{
-    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
-
-    size_t my_index;
-    { // early out to avoid creating unnecessary deltas
-        const NodeContainer& siblings = m_parent->_read_children();
-        auto it = std::find(siblings.begin(), siblings.end(), this);
-        NOTF_ASSERT(it != siblings.end());
-
-        my_index = static_cast<size_t>(std::distance(siblings.begin(), it));
-        if (my_index != 0 && siblings[my_index - 1] == sibling) {
-            return;
-        }
-    }
-
-    NodeContainer& siblings = m_parent->_write_children();
-    siblings.stack_before(my_index, sibling);
-}
-
-void Node::stack_behind(valid_ptr<const Node*> sibling)
-{
-    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
-
-    size_t my_index;
-    { // early out to avoid creating unnecessary deltas
-        const NodeContainer& siblings = m_parent->_read_children();
-        auto it = std::find(siblings.begin(), siblings.end(), this);
-        NOTF_ASSERT(it != siblings.end());
-
-        my_index = static_cast<size_t>(std::distance(siblings.begin(), it)); // we only need to find the index once
-        if (my_index != siblings.size() - 1 && siblings[my_index + 1] == sibling) {
-            return;
-        }
-    }
-
-    NodeContainer& siblings = m_parent->_write_children();
-    siblings.stack_behind(my_index, sibling);
-}
-
-NodePropertyPtr Node::_get_property(const Path& path)
-{
-    if (path.is_empty()) {
-        NOTF_THROW(Path::path_error, "Cannot query a Property with an empty path");
-    }
-    if (!path.is_property()) {
-        NOTF_THROW(Path::path_error, "Path \"{}\" does not refer to a Property of Node \"{}\"", path.to_string(),
-                   get_name());
-    }
-
-    uint offset = 0;
-    if (path.is_absolute()) {
-        const Path myPath = get_path();
-        if (!path.begins_with(myPath)) {
-            NOTF_THROW(Path::path_error, "Absolute path \"{}\" cannot be used to query a Property of Node \"{}\"",
-                       path.to_string(), get_name());
-        }
-        offset = narrow_cast<uint>(myPath.size());
-    }
-
-    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
-
-    NodePropertyPtr result;
-    _get_property(path, offset, result);
-    return result;
-}
-
-void Node::_get_property(const Path& path, const uint index, NodePropertyPtr& result)
-{
-    NOTF_ASSERT(_get_hierarchy_mutex().is_locked_by_this_thread());
-    NOTF_ASSERT(index < path.size());
-
-    // if this is the last step on the path, try to find the property
-    if (index + 1 == path.size()) {
-        auto it = m_properties.find(path[index]);
-        if (it == m_properties.end()) {
-            result.reset();
-        }
-        else {
-            result = it->second;
-        }
-    }
-
-    // if this isn't the last step yet, continue the search from the next child node
-    else {
-        NodePtr child = _read_children().get(path[index]).lock();
-        NOTF_ASSERT(child);
-        child->_get_property(path, index + 1, result);
-    }
-}
-
-NodePtr Node::_get_node(const Path& path)
-{
-    if (path.is_empty()) {
-        NOTF_THROW(Path::path_error, "Cannot query a Node with an empty path");
-    }
-    if (!path.is_node()) {
-        NOTF_THROW(Path::path_error, "Path \"{}\" does not refer to a descenant of Node \"{}\"", path.to_string(),
-                   get_name());
-    }
-
-    uint offset = 0;
-    if (path.is_absolute()) {
-        const Path myPath = get_path();
-        if (!path.begins_with(myPath)) {
-            NOTF_THROW(Path::path_error, "Path \"{}\" cannot be used to query descenant of Node \"{}\"",
-                       path.to_string(), get_name());
-        }
-        offset = narrow_cast<uint>(myPath.size());
-    }
-
-    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
-
-    NodePtr result;
-    _get_node(path, offset, result);
-    return result;
-}
-
-void Node::_get_node(const Path& path, const uint index, NodePtr& result)
-{
-    NOTF_ASSERT(_get_hierarchy_mutex().is_locked_by_this_thread());
-    NOTF_ASSERT(index < path.size());
-
-    // find the next node in the path
-    NodePtr child = _read_children().get(path[index]).lock();
-    NOTF_ASSERT(child);
-
-    // if this is the last step on the path, we have found what we are looking for
-    if (index + 1 == path.size()) {
-        result = child;
-    }
-
-    // if this isn't the last node yet, continue the search from the child
-    else {
-        child->_get_node(path, index + 1, result);
-    }
-}
-
-valid_ptr<const Node*> Node::_get_common_ancestor(valid_ptr<const Node*> other) const
-{
-    if (this == other) {
-        return this;
-    }
-
-    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
-
-    valid_ptr<const Node*> first = this;
-    valid_ptr<const Node*> second = other;
-    const Node* result = nullptr;
-    std::unordered_set<valid_ptr<const Node*>, pointer_hash<valid_ptr<const Node*>>> known_ancestors = {first, second};
-    while (true) {
-        first = first->m_parent;
-        if (known_ancestors.count(first)) {
-            result = first;
-            break;
-        }
-        known_ancestors.insert(first);
-
-        second = second->m_parent;
-        if (known_ancestors.count(second)) {
-            result = second;
-            break;
-        }
-        known_ancestors.insert(second);
-    }
-    NOTF_ASSERT(result);
-
-    // if the result is a scene root node, we need to make sure that it is in fact the root of BOTH nodes
-    if (result->m_parent == result && (!has_ancestor(result) || !other->has_ancestor(result))) {
-        NOTF_THROW(hierarchy_error, "Nodes \"{}\" and \"{}\" are not part of the same hierarchy", get_name(),
-                   other->get_name());
-    }
-    return result;
-}
-
-const NodeContainer& Node::_read_children() const
-{
-    NOTF_ASSERT(_get_hierarchy_mutex().is_locked_by_this_thread());
-
-    // direct access if unfrozen or this is the event handling thread
-    SceneGraph& scene_graph = get_graph();
-    if (!scene_graph.is_frozen() || !scene_graph.is_frozen_by(std::this_thread::get_id())) {
-        return m_children;
-    }
-
-    // if the scene is frozen by this thread, try to find an existing delta first
-    if (risky_ptr<NodeContainer*> delta = Scene::Access<Node>::get_delta(m_scene, this)) {
-        return *delta;
-    }
-
-    // if there is no delta, allow direct read access
-    return m_children;
-}
-
-NodeContainer& Node::_write_children()
-{
-    NOTF_ASSERT(_get_hierarchy_mutex().is_locked_by_this_thread());
-
-    // direct access if unfrozen or the node hasn't been finalized yet
-    SceneGraph& scene_graph = get_graph();
-    if (!scene_graph.is_frozen() || !_is_finalized()) {
-        return m_children;
-    }
-
-    // the render thread should never modify the hierarchy
-    NOTF_ASSERT(!scene_graph.is_frozen_by(std::this_thread::get_id()));
-
-    // if there is no delta yet, create a new one
-    if (!Scene::Access<Node>::get_delta(m_scene, this)) {
-        Scene::Access<Node>::create_delta(m_scene, this);
-    }
-
-    // always modify your actual children, not the delta
-    return m_children;
-}
-
-void Node::_clear_children()
-{
-    NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
-
-    _write_children().clear();
-}
-
-valid_ptr<TypedNodeProperty<std::string>*> Node::_create_name()
-{
-    // register this node as being unfinalized before creating a property
-    s_unfinalized_nodes.emplace(this);
-
-    // validator function for Node names, is called every time its name changes.
-    TypedNodeProperty<std::string>::Validator validator = [this](std::string& name) -> bool {
-        NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
-        const NodeContainer& siblings = m_parent->_read_children();
-
-        // create unique name
-        if (siblings.contains(name)) {
-            std::set<std::string_view> all_names;
-            for (const auto& it : NodeContainer::Access<Node>::name_map(siblings)) {
-                all_names.insert(it.first);
-            }
-            name = make_unique_name(all_names, name);
-        }
-
-        // update parent's child container
-        if (siblings.contains(this)) {
-            NodeContainer::Access<Node>::rename_child(m_parent->_write_children(), this, name);
-        }
-
-        return true; // always succeeds
-    };
-
-    TypedNodePropertyPtr<std::string> name_property
-        = _create_property_impl<std::string>("name", next_node_name(), std::move(validator), /* has_body = */ false);
-    return name_property.get();
-}
-
-void Node::_clean_tweaks()
-{
-    NOTF_ASSERT(_get_hierarchy_mutex().is_locked_by_this_thread());
-    for (auto& it : m_properties) {
-        NodeProperty::Access<Node>::clear_frozen(*it.second.get());
-    }
-}
-
-void Node::_initialize_path(const size_t depth, std::vector<std::string>& components) const
-{
-    if (m_parent == this) {
-        // root node
-        NOTF_ASSERT(components.empty());
-        components.reserve(depth);
-        components.push_back(m_scene.get_name());
-    }
-    else {
-        // ancestor node
-        m_parent->_initialize_path(depth + 1, components);
-        components.push_back(get_name());
-    }
-}
-
-bool Node::_is_behind(valid_ptr<const Node*> sibling) const
-{
-    if (m_parent != sibling->m_parent) {
-        NOTF_THROW(hierarchy_error, "Cannot compare z-order of nodes \"{}\" and \"{}\", because they are not siblings.",
-                   get_name(), sibling->get_name());
-    }
-    {
-        NOTF_GUARD(std::lock_guard(_get_hierarchy_mutex()));
-        const NodeContainer& siblings = m_parent->_read_children();
-        for (const auto& it : siblings) {
-            if (it == this) {
-                return true;
-            }
-            if (it == sibling) {
+bool Node::is_before(const NodeHandle& sibling) const {
+    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
+    if (const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
+        (sibling_ptr != nullptr) && (sibling_ptr->_get_parent() == _get_parent()) && (sibling_ptr.get() != this)) {
+        for (const NodePtr& other : _read_siblings()) {
+            if (other == sibling_ptr) { return true; }
+            if (other.get() == this) {
+                NOTF_ASSERT(contains(_read_siblings(), sibling_ptr));
                 return false;
             }
         }
     }
-    NOTF_ASSERT(false);
-    return false; // to squelch warnings
+    return false;
+}
+
+bool Node::is_behind(const NodeHandle& sibling) const {
+    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
+    if (const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
+        (sibling_ptr != nullptr) && (sibling_ptr->_get_parent() == _get_parent()) && (sibling_ptr.get() != this)) {
+        for (const NodePtr& other : _read_siblings()) {
+            if (other == sibling_ptr) { return false; }
+            if (other.get() == this) {
+                NOTF_ASSERT(contains(_read_siblings(), sibling_ptr));
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void Node::stack_front() {
+    NOTF_ASSERT(this_thread::is_the_ui_thread());
+    if (is_in_front()) { return; } // early out to avoid creating unnecessary modified copies
+    std::vector<NodePtr>& sibs = _get_parent()->_write_children();
+    auto itr = std::find_if(sibs.begin(), sibs.end(), [this](const NodePtr& silbing) { return silbing.get() == this; });
+    NOTF_ASSERT(itr != sibs.end());
+    move_to_back(sibs, itr);
+}
+
+void Node::stack_back() {
+    NOTF_ASSERT(this_thread::is_the_ui_thread());
+    if (is_in_back()) { return; } // early out to avoid creating unnecessary modified copies
+    std::vector<NodePtr>& sibs = _get_parent()->_write_children();
+    auto itr = std::find_if(sibs.begin(), sibs.end(), [this](const NodePtr& silbing) { return silbing.get() == this; });
+    NOTF_ASSERT(itr != sibs.end());
+    move_to_front(sibs, itr);
+}
+
+void Node::stack_before(const NodeHandle& sibling) {
+    NOTF_ASSERT(this_thread::is_the_ui_thread());
+    const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
+    if ((sibling_ptr == nullptr) || (sibling_ptr.get() == this) || sibling_ptr->_get_parent() != _get_parent()) {
+        return;
+    }
+    std::vector<NodePtr>& siblings = _get_parent()->_write_children();
+    const auto [my_index, sibling_index] = get_this_and_sibling_index(siblings, this, sibling_ptr);
+    move_behind_of(siblings, my_index, sibling_index);
+}
+
+void Node::stack_behind(const NodeHandle& sibling) {
+    NOTF_ASSERT(this_thread::is_the_ui_thread());
+    const NodeConstPtr sibling_ptr = NodeHandle::AccessFor<Node>::get_node_ptr(sibling);
+    if ((sibling_ptr == nullptr) || (sibling_ptr.get() == this) || sibling_ptr->_get_parent() != _get_parent()) {
+        return;
+    }
+    std::vector<NodePtr>& siblings = _get_parent()->_write_children();
+    const auto [my_index, sibling_index] = get_this_and_sibling_index(siblings, this, sibling_ptr);
+    move_in_front_of(siblings, my_index, sibling_index);
+}
+
+bool Node::_get_flag(const size_t index) const {
+    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
+    if (index >= s_user_flag_count) {
+        NOTF_THROW(OutOfBounds,
+                   "Cannot test user flag #{} of Node {}, because Nodes only have {} user-defineable flags", index,
+                   get_name(), s_user_flag_count);
+    }
+    return _get_internal_flag(index + s_internal_flag_count);
+}
+
+void Node::_set_flag(const size_t index, const bool value) {
+    NOTF_ASSERT(this_thread::is_the_ui_thread());
+    if (index >= s_user_flag_count) {
+        NOTF_THROW(OutOfBounds,
+                   "Cannot test user flag #{} of Node {}, because Nodes only have {} user-defineable flags", index,
+                   get_name(), s_user_flag_count);
+    }
+    _set_internal_flag(index + s_internal_flag_count, value);
+}
+
+void Node::_remove_child(NodeHandle child_handle) {
+    NOTF_ASSERT(this_thread::is_the_ui_thread());
+    NodePtr child = NodeHandle::AccessFor<Node>::get_node_ptr(child_handle);
+    if (child == nullptr) { return; }
+
+    // do not create a modified copy for finding the child
+    const std::vector<NodePtr>& read_only_children = _read_children();
+    auto itr = std::find(read_only_children.begin(), read_only_children.end(), child);
+    if (itr == read_only_children.end()) { return; } // not a child of this node
+
+    // remove the child node
+    const size_t child_index = static_cast<size_t>(std::distance(read_only_children.begin(), itr));
+    std::vector<NodePtr>& children = _write_children();
+    NOTF_ASSERT(children.at(child_index) == child);
+    children.erase(iterator_at(children, child_index));
+}
+
+void Node::_clear_children() {
+    NOTF_ASSERT(this_thread::is_the_ui_thread());
+    if (_read_children().empty()) { return; } // do not create a modified copy for testing
+    _write_children().clear();
+}
+
+void Node::_set_parent(NodeHandle new_parent_handle) {
+    NOTF_ASSERT(this_thread::is_the_ui_thread());
+
+    NodePtr new_parent = NodeHandle::AccessFor<Node>::get_node_ptr(new_parent_handle);
+    if (new_parent == nullptr) { return; }
+
+    Node* const old_parent = _get_parent();
+    if (new_parent.get() == old_parent) { return; }
+
+    auto& new_siblings = new_parent->_write_children();
+    new_siblings.emplace_back(shared_from_this());
+    old_parent->_remove_child(shared_from_this());
+
+    _ensure_modified_data().parent = new_parent.get();
+}
+
+Node* Node::_get_parent() const {
+    NOTF_ASSERT(m_parent);
+
+    if (!this_thread::is_the_ui_thread()) {
+        return m_parent; // the renderer always sees the unmodified parent
+    }
+
+    // if there exist a modified parent, return that one instead
+    if (m_modified_data) {
+        NOTF_ASSERT(m_modified_data->parent);
+        return m_modified_data->parent;
+    }
+    return m_parent;
+}
+
+void Node::_clear_modified_data() {
+    NOTF_ASSERT(this_thread::is_the_ui_thread());
+
+    if (m_modified_data) {
+        // move all modified data back onto the node
+        m_parent = m_modified_data->parent;
+        m_children = std::move(*m_modified_data->children.get());
+        m_flags = m_modified_data->flags;
+
+        m_modified_data.reset();
+    }
+
+    _set_internal_flag(to_number(InternalFlags::DIRTY), false);
+
+    _clear_modified_properties();
+}
+
+const Node* Node::_get_common_ancestor(const Node* const other) const {
+    NOTF_ASSERT(other);
+    if (other == this) { return this; }
+
+    const Node* first = this;
+    const Node* second = other;
+    const Node* result = nullptr;
+    bool success = false;
+    std::unordered_set<const Node*, pointer_hash<const Node*>> known_ancestors = {first, second};
+    {
+        while (true) {
+            first = first->_get_parent();
+            if (known_ancestors.count(first) != 0) {
+                result = first;
+                success = other->has_ancestor(result);
+                break;
+            }
+            known_ancestors.insert(first);
+
+            second = second->_get_parent();
+            if (known_ancestors.count(second) != 0) {
+                result = second;
+                success = this->has_ancestor(result);
+                break;
+            }
+            known_ancestors.insert(second);
+        }
+    }
+    if (!success) {
+        NOTF_THROW(HierarchyError, "Nodes \"{}\" and \"{}\" share no common ancestor", //
+                   get_uuid().to_string(), other->get_uuid().to_string());
+    }
+    return result;
+}
+
+const std::vector<NodePtr>& Node::_read_children() const {
+    if (!this_thread::is_the_ui_thread()) {
+        return m_children; // the renderer always sees the unmodified child list
+    }
+
+    // if there exist a modified child list, return that one instead
+    if (m_modified_data) {
+        NOTF_ASSERT(m_modified_data->children);
+        return *m_modified_data->children;
+    }
+    return m_children;
+}
+
+std::vector<NodePtr>& Node::_write_children() {
+    NOTF_ASSERT(this_thread::is_the_ui_thread());
+    _mark_as_dirty(); // changes in the child list make this node dirty
+    return *_ensure_modified_data().children;
+}
+
+const std::vector<NodePtr>& Node::_read_siblings() const {
+    const std::vector<NodePtr>& siblings = _get_parent()->_read_children();
+    NOTF_ASSERT(contains(siblings, shared_from_this()));
+    return siblings;
+}
+
+bool Node::_get_internal_flag(const size_t index) const {
+    NOTF_ASSERT(index < bitset_size_v<Flags>);
+
+    if (!this_thread::is_the_ui_thread()) {
+        return m_flags[index]; // the renderer always sees the unmodified flags
+    }
+
+    // if a modified flag exist, return that one instead
+    if (m_modified_data != nullptr) { return m_modified_data->flags[index]; }
+    return m_flags[index];
+}
+
+void Node::_set_internal_flag(const size_t index, const bool value) {
+    NOTF_ASSERT(index < bitset_size_v<Flags>);
+    NOTF_ASSERT(this_thread::is_the_ui_thread());
+    if (index != to_number(InternalFlags::DIRTY)) { _mark_as_dirty(); } // flag changes make this node dirty
+    _ensure_modified_data().flags[index] = value;
+}
+
+Node::Data& Node::_ensure_modified_data() {
+    NOTF_ASSERT(this_thread::is_the_ui_thread());
+    if (m_modified_data == nullptr) { m_modified_data = std::make_unique<Data>(m_parent, m_children, m_flags); }
+    return *m_modified_data;
+}
+
+void Node::_mark_as_dirty() {
+    if (NOTF_UNLIKELY(!_is_finalized())) { return; }
+    if (!_get_internal_flag(to_number(InternalFlags::DIRTY))) {
+        _set_internal_flag(to_number(InternalFlags::DIRTY));
+        TheGraph::AccessFor<Node>::mark_dirty(shared_from_this());
+    }
 }
 
 NOTF_CLOSE_NAMESPACE

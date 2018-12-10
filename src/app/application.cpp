@@ -1,209 +1,205 @@
-#include "app/application.hpp"
+#include "notf/app/application.hpp"
 
-#include <algorithm>
+#include "notf/meta/log.hpp"
 
-#include "app/event_manager.hpp"
-#include "app/glfw.hpp"
-#include "app/render_manager.hpp"
-#include "app/window.hpp"
-#include "common/log.hpp"
-#include "common/resource_manager.hpp"
-#include "common/thread_pool.hpp"
-#include "graphics/graphics_system.hpp"
+#include "notf/common/vector.hpp"
 
-namespace {
-NOTF_USING_NAMESPACE;
-void initialize_resource_types(TheApplication& app);
-} // namespace
+#include "notf/app/event_handler.hpp"
+#include "notf/app/glfw.hpp"
+#include "notf/app/glfw_callbacks.hpp"
+#include "notf/app/graph.hpp"
+#include "notf/app/timer_pool.hpp"
+
+// window deleter =================================================================================================== //
 
 NOTF_OPEN_NAMESPACE
 
-// ================================================================================================================== //
-
 namespace detail {
 
-void window_deleter(GLFWwindow* glfw_window)
-{
-    if (glfw_window != nullptr) {
-        glfwDestroyWindow(glfw_window);
-    }
+void window_deleter(GLFWwindow* glfw_window) {
+    NOTF_ASSERT(this_thread::is_the_main_thread());
+    if (glfw_window != nullptr) { glfwDestroyWindow(glfw_window); }
 }
 
 } // namespace detail
 
-// ================================================================================================================== //
+// application ====================================================================================================== //
 
-TheApplication::initialization_error::~initialization_error() = default;
+namespace detail {
 
-TheApplication::shut_down_error::~shut_down_error() = default;
-
-// ================================================================================================================== //
-
-std::atomic<bool> TheApplication::s_is_running{true};
-const timepoint_t TheApplication::s_start_time = clock_t::now();
-
-TheApplication::TheApplication(Args args)
-    : m_args(std::move(args))
-    , m_log_handler(std::make_unique<LogHandler>(128, 200)) // initial size of the log buffers
-    , m_shared_window(nullptr, detail::window_deleter)
-    , m_thread_pool(std::make_unique<ThreadPool>())
-    , m_render_manager(std::make_unique<RenderManager>())
-    , m_event_manager(std::make_unique<EventManager>())
-{
-    // install the log handler first, to catch errors right away
-    install_log_message_handler(std::bind(&LogHandler::push_log, m_log_handler.get(), std::placeholders::_1));
-    m_log_handler->start();
-
-    // exit here, if the user failed to call Application::initialize()
-    if (m_args.argc == -1) {
-        NOTF_THROW(initialization_error, "Cannot start an uninitialized Application!\n"
-                                         "Make sure to call `Application::initialize()` in `main()` "
-                                         "before creating the first NoTF object");
-    }
-
+Application::Application(Arguments args)
+    : m_arguments(std::move(args)), m_ui_lock(m_ui_mutex), m_event_queue(m_arguments.app_buffer_size) {
     // initialize GLFW
-    if (glfwInit() == 0) {
-        _shutdown();
-        NOTF_THROW(initialization_error, "GLFW initialization failed");
-    }
-    log_info << "GLFW version: " << glfwGetVersionString();
+    glfwSetErrorCallback(GlfwCallbacks::_on_error);
+    if (glfwInit() == 0) { NOTF_THROW(StartupError, "GLFW initialization failed"); }
 
     // default GLFW Window and OpenGL context hints
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-    //    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    //    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-    //    glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
-    //    glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
-    //    glfwWindowHint(GLFW_REFRESH_RATE, GLFW_DONT_CARE);
-    //    glfwWindowHint(GLFW_CONTEXT_RELEASE_BEHAVIOR, GLFW_RELEASE_BEHAVIOR_NONE);
-    //    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, is_debug_build() ? GLFW_TRUE : GLFW_FALSE);
-    //    glfwWindowHint(GLFW_CONTEXT_NO_ERROR, is_debug_build() ? GLFW_FALSE : GLFW_TRUE);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+    glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+    glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
+    glfwWindowHint(GLFW_REFRESH_RATE, GLFW_DONT_CARE);
+    glfwWindowHint(GLFW_CONTEXT_RELEASE_BEHAVIOR, GLFW_RELEASE_BEHAVIOR_NONE);
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, config::is_debug_build() ? GLFW_TRUE : GLFW_FALSE);
+    glfwWindowHint(GLFW_CONTEXT_NO_ERROR, config::is_debug_build() ? GLFW_FALSE : GLFW_TRUE);
 
     // create the shared window
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-    m_shared_window.reset(glfwCreateWindow(1, 1, "", nullptr, nullptr));
-    if (!m_shared_window) {
-        NOTF_THROW(initialization_error, "OpenGL context creation failed.");
+    m_shared_context.reset(glfwCreateWindow(1, 1, "", nullptr, nullptr));
+    if (!m_shared_context) { NOTF_THROW(StartupError, "OpenGL context creation failed."); }
+    //    TheGraphicsSystem::Access<Application>::initialize(m_shared_window.get());
+
+    // register other glfw callbacks
+    glfwSetMonitorCallback(GlfwCallbacks::_on_monitor_change);
+    glfwSetJoystickCallback(GlfwCallbacks::_on_joystick_change);
+
+    // initialize other members
+    m_windows = std::make_unique<decltype(m_windows)::element_type>();
+
+    m_event_handler = TheEventHandler::AccessFor<Application>::create(m_arguments.event_buffer_size);
+    NOTF_ASSERT(m_event_handler->is_holder());
+
+    m_timer_pool = TheTimerPool::AccessFor<Application>::create(m_arguments.timer_buffer_size);
+    NOTF_ASSERT(m_timer_pool->is_holder());
+
+    m_graph = TheGraph::AccessFor<Application>::create();
+    NOTF_ASSERT(m_graph->is_holder());
+
+    // log application header
+    NOTF_LOG_INFO("NOTF {} ({} built with {} from {}commit \"{}\")\n"
+                  "             GLFW version: {}",
+                  config::version_string(),                           //
+                  (config::is_debug_build() ? "debug" : "release"),   //
+                  config::compiler_name(),                            //
+                  (config::was_commit_modified() ? "modified " : ""), //
+                  config::built_from_commit(),                        //
+                  glfwGetVersionString());
+}
+
+Application::~Application() { glfwTerminate(); }
+
+int Application::exec() {
+    if (!this_thread::is_the_main_thread()) {
+        NOTF_THROW(StartupError, "You must call `Application::exec` only from the main thread");
     }
-    TheGraphicsSystem::Access<TheApplication>::initialize(m_shared_window.get());
 
-    initialize_resource_types(*this);
-}
-
-TheApplication::~TheApplication() { _shutdown(); }
-
-WindowPtr TheApplication::create_window()
-{
-    m_windows.emplace_back(Window::Access<TheApplication>::create());
-    return m_windows.back();
-}
-
-WindowPtr TheApplication::create_window(const detail::WindowSettings& args)
-{
-    m_windows.emplace_back(Window::Access<TheApplication>::create(args));
-    return m_windows.back();
-}
-
-int TheApplication::exec()
-{
-    log_info << "Starting main loop";
-
-    // loop until there are no more windows open
-    while (!m_windows.empty()) {
-
-        // wait for the next event or the next time to fire an animation frame
-        glfwWaitEvents();
+    // make sure exec is only called once
+    if (State expected = State::UNSTARTED; !m_state.compare_exchange_strong(expected, State::RUNNING)) {
+        NOTF_ASSERT(expected == State::CLOSED); // RUNNING shouldn't be possible
+        NOTF_THROW(StartupError, "Cannot call `exec` on an already closed Application");
     }
 
-    _shutdown();
-    return 0;
-}
+    if (!m_windows->empty() || get_arguments().start_without_windows) {
 
-void TheApplication::_unregister_window(Window* window)
-{
-    // unregister the window
-    auto it = std::find_if(m_windows.begin(), m_windows.end(),
-                           [&](const WindowPtr& candiate) -> bool { return candiate.get() == window; });
-    NOTF_ASSERT_MSG(it != m_windows.end(), "Cannot remove unknown Window from instance");
-    m_windows.erase(it);
-}
+        // turn the event handler into the UI thread
+        NOTF_LOG_INFO("Starting main loop");
+        TheEventHandler::AccessFor<Application>::start(m_ui_mutex);
+        m_ui_lock.unlock();
 
-void TheApplication::_shutdown()
-{
-    // you can only close the application once
-    if (!is_running()) {
-        return;
+        AnyEventPtr event;
+        while (m_state.load() == State::RUNNING) {
+
+            // wait for and execute all GLFW events
+            glfwPollEvents();
+
+            { // see if there are any events scheduled to run on the main thread
+                while (m_event_queue.try_pop(event) == fibers::channel_op_status::success
+                       && m_state.load() == State::RUNNING) {
+                    event->run();
+                }
+            }
+        }
+
+        // close the timer pool first
+        // all active timers will be interrupted, unless their "keep-alive" flag is set, which means that the user
+        // intended them to block shutdown until they had time to finish
+        TheTimerPool()->close();
+
+        // after the event handler is closed, the main thread becomes the UI thread again
+        m_event_handler.reset(); // by deleting the event handler we wait for its thread to join, before re-acquiring
+        m_ui_lock.lock();        // the ui mutex (otherwise the event handler might wait and block forever)
     }
-    s_is_running.store(false);
 
-    // close all remaining windows and their scenes
-    for (WindowPtr& window : m_windows) {
-        window->close();
-    }
-    m_windows.clear();
-    m_render_manager.reset();
-    TheGraphicsSystem::Access<TheApplication>::shutdown();
-    glfwTerminate();
+    // shutdown
+    m_timer_pool.reset();
+    m_event_handler.reset();
+    m_windows->clear();
+    m_shared_context.reset();
+    m_graph.reset();
+    NOTF_LOG_INFO("Application shutdown");
 
-    // release all resources and objects
-    m_thread_pool.reset();
-    m_event_manager.reset();
-    ResourceManager::get_instance().clear();
-
-    // stop the logger last
-    log_info << "Application shutdown";
-    m_log_handler->stop();
-    m_log_handler->join();
+    return EXIT_SUCCESS;
 }
+
+void Application::schedule(AnyEventPtr&& event) {
+    if (m_state.load() != State::CLOSED) { // you can pre-schedule events prior to startup, but not after shutdown
+        m_event_queue.push(std::move(event));
+        glfwPostEmptyEvent();
+    }
+}
+
+void Application::shutdown() {
+    schedule([this] {
+        State expected = State::RUNNING;
+        m_state.compare_exchange_strong(expected, State::CLOSED);
+    });
+}
+
+void Application::_register_window(GLFWwindow* window) {
+
+    { // store the window
+        NOTF_GUARD(std::lock_guard(m_windows_mutex));
+        detail::GlfwWindowPtr window_ptr(window, detail::window_deleter);
+        NOTF_ASSERT(!contains(*m_windows, window_ptr));
+        m_windows->emplace_back(std::move(window_ptr));
+    }
+
+    // register all callbacks
+    schedule([window]() mutable {
+        // input callbacks
+        glfwSetMouseButtonCallback(window, GlfwCallbacks::_on_mouse_button);
+        glfwSetCursorPosCallback(window, GlfwCallbacks::_on_cursor_move);
+        glfwSetCursorEnterCallback(window, GlfwCallbacks::_on_cursor_entered);
+        glfwSetScrollCallback(window, GlfwCallbacks::_on_scroll);
+        glfwSetKeyCallback(window, GlfwCallbacks::_on_token_key);
+        glfwSetCharCallback(window, GlfwCallbacks::_on_char_input);
+        glfwSetCharModsCallback(window, GlfwCallbacks::_on_shortcut);
+
+        // window callbacks
+        glfwSetWindowPosCallback(window, GlfwCallbacks::_on_window_move);
+        glfwSetWindowSizeCallback(window, GlfwCallbacks::_on_window_resize);
+        glfwSetFramebufferSizeCallback(window, GlfwCallbacks::_on_framebuffer_resize);
+        glfwSetWindowRefreshCallback(window, GlfwCallbacks::_on_window_refresh);
+        glfwSetWindowFocusCallback(window, GlfwCallbacks::_on_window_focus);
+        glfwSetDropCallback(window, GlfwCallbacks::_on_file_drop);
+        glfwSetWindowIconifyCallback(window, GlfwCallbacks::_on_window_minimize);
+        glfwSetWindowCloseCallback(window, GlfwCallbacks::_on_window_close);
+    });
+}
+
+void Application::_unregister_window(GLFWwindow* window) {
+    schedule([this, window]() mutable {
+        NOTF_GUARD(std::lock_guard(m_windows_mutex));
+        auto itr = std::find_if(m_windows->begin(), m_windows->end(),
+                                [window](const detail::GlfwWindowPtr& stored) { return stored.get() == window; });
+        if (itr != m_windows->end()) {
+            m_windows->erase(itr);
+            if (m_windows->empty()) { shutdown(); }
+        }
+    });
+}
+
+} // namespace detail
+
+// this_thread (injection) ========================================================================================== //
+
+namespace this_thread {
+
+bool is_the_ui_thread() { return TheApplication()._is_this_the_ui_thread(); }
+
+} // namespace this_thread
 
 NOTF_CLOSE_NAMESPACE
-
-// ================================================================================================================== //
-
-#include "graphics/shader.hpp"
-#include "graphics/text/font.hpp"
-#include "graphics/texture.hpp"
-
-namespace {
-NOTF_USING_NAMESPACE;
-
-void initialize_resource_types(TheApplication& app)
-{
-    ResourceManager& resource_manager = ResourceManager::get_instance();
-    const TheApplication::Args& args = app.get_arguments();
-
-    std::string executable_path = args.argv[0];
-    executable_path = executable_path.substr(0, executable_path.find_last_of('/') + 1);
-    resource_manager.set_base_path(executable_path + args.resource_directory);
-
-    { // Vertex Shader
-        auto& resource_type = resource_manager.get_type<VertexShader>();
-        resource_type.set_path(args.shader_directory);
-    }
-    { // Tesselation Shader
-        auto& resource_type = resource_manager.get_type<TesselationShader>();
-        resource_type.set_path(args.shader_directory);
-    }
-    { // Geometry Shader
-        auto& resource_type = resource_manager.get_type<GeometryShader>();
-        resource_type.set_path(args.shader_directory);
-    }
-    { // Fragment Shader
-        auto& resource_type = resource_manager.get_type<FragmentShader>();
-        resource_type.set_path(args.shader_directory);
-    }
-
-    { // Texture
-        auto& resource_type = resource_manager.get_type<Texture>();
-        resource_type.set_path(args.texture_directory);
-    }
-
-    { // Font
-        auto& resource_type = resource_manager.get_type<Font>();
-        resource_type.set_path(args.fonts_directory);
-    }
-}
-
-} // namespace
