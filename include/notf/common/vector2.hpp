@@ -150,11 +150,6 @@ public:
 
 } // namespace detail
 
-using V2f = detail::Vector2<float>;
-using V2d = detail::Vector2<double>;
-using V2i = detail::Vector2<int>;
-using V2s = detail::Vector2<short>;
-
 NOTF_CLOSE_NAMESPACE
 
 // std::hash ======================================================================================================== //

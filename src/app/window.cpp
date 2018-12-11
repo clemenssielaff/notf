@@ -6,8 +6,9 @@
 
 #include "notf/reactive/trigger.hpp"
 
+#include "notf/graphic/glfw.hpp"
+
 #include "notf/app/application.hpp"
-#include "notf/app/glfw.hpp"
 #include "notf/app/graph.hpp"
 #include "notf/app/root_node.hpp"
 
@@ -49,8 +50,8 @@ Window::Window(valid_ptr<Node*> parent, valid_ptr<GLFWwindow*> window, Arguments
     if (settings.state != State::FULLSCREEN && settings.is_visible) { glfwShowWindow(m_glfw_window); }
 
     // create the graphics context
-    //    m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window);
-    //    auto context_guard = m_graphics_context->make_current();
+    m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window);
+    auto context_guard = m_graphics_context->make_current();
 
     // store settings in properties
     set<title>(std::move(settings.title));
@@ -233,18 +234,10 @@ bool Window::_on_state_change(Arguments::State& new_state) {
     }
 
     switch (new_state) {
-    case State::MINIMIZED:
-        glfwIconifyWindow(m_glfw_window);
-        break;
-    case State::WINDOWED:
-        glfwRestoreWindow(m_glfw_window);
-        break;
-    case State::MAXIMIZED:
-        glfwMaximizeWindow(m_glfw_window);
-        break;
-    case State::FULLSCREEN:
-        _move_to_monitor(get_glfw_monitor(get<monitor>()));
-        break;
+    case State::MINIMIZED: glfwIconifyWindow(m_glfw_window); break;
+    case State::WINDOWED: glfwRestoreWindow(m_glfw_window); break;
+    case State::MAXIMIZED: glfwMaximizeWindow(m_glfw_window); break;
+    case State::FULLSCREEN: _move_to_monitor(get_glfw_monitor(get<monitor>())); break;
     }
 
     return true; // always succeed

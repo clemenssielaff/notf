@@ -212,9 +212,6 @@ public:
 
 } // namespace detail
 
-using M3f = detail::Matrix3<float>;
-using M3d = detail::Matrix3<double>;
-
 NOTF_CLOSE_NAMESPACE
 
 // std::hash ======================================================================================================== //

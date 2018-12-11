@@ -6,6 +6,8 @@
 #include "notf/common/size2.hpp"
 #include "notf/common/vector2.hpp"
 
+#include "notf/graphic/graphics_context.hpp"
+
 #include "notf/app/node_compiletime.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -222,6 +224,9 @@ public:
     /// Returns the GlfwWindow contained in this Window.
     GLFWwindow* get_glfw_window() const { return m_glfw_window; }
 
+    /// Internal GraphicsContext.
+    GraphicsContext& get_graphics_context() const { return *m_graphics_context; }
+
 private:
     /// Closes this Window.
     void _close();
@@ -251,7 +256,7 @@ private:
     AnyPipelinePtr m_pipe_to_close;
 
     /// Internal GraphicsContext.
-    //    GraphicsContextPtr m_graphics_context;
+    GraphicsContextPtr m_graphics_context;
 };
 
 // window handle ==================================================================================================== //

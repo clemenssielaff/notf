@@ -101,11 +101,6 @@ public:
 
 } // namespace detail
 
-using V4f = detail::Vector4<float>;
-using V4d = detail::Vector4<double>;
-using V4i = detail::Vector4<int>;
-using V4s = detail::Vector4<short>;
-
 NOTF_CLOSE_NAMESPACE
 
 // std::hash ======================================================================================================== //

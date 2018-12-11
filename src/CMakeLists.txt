@@ -17,11 +17,25 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
 
     app/widget/claim.cpp
 
+    common/color.cpp
     common/mnemonic.cpp
     common/msgpack.cpp
     common/string.cpp
     common/thread_pool.cpp
     common/uuid.cpp
+
+    graphic/frame_buffer.cpp
+    graphic/gl_errors.cpp
+    graphic/gl_utils.cpp
+    graphic/graphics_context.cpp
+    graphic/graphics_system.cpp
+    graphic/shader_program.cpp
+    graphic/prefab_factory.cpp
+    graphic/raw_image.cpp
+    graphic/shader.cpp
+    graphic/texture.cpp
+
+    meta/half.cpp
 )
 
 # add thirdparty files

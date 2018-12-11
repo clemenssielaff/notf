@@ -40,6 +40,7 @@ enum class HashID : size_t {
     SIZE2,
     AABR,
     RATIONAL,
+    COLOR,
 };
 
 } // namespace detail

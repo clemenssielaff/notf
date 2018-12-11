@@ -142,11 +142,6 @@ public:
 
 } // namespace detail
 
-using V3f = detail::Vector3<float>;
-using V3d = detail::Vector3<double>;
-using V3i = detail::Vector3<int>;
-using V3s = detail::Vector3<short>;
-
 // ================================================================================================================== //
 
 ///// Spherical linear interpolation between two vectors.

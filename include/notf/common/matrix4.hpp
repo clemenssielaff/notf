@@ -343,9 +343,6 @@ public:
 
 } // namespace detail
 
-using M4f = detail::Matrix4<float>;
-using M4d = detail::Matrix4<double>;
-
 NOTF_CLOSE_NAMESPACE
 
 // std::hash ======================================================================================================== //
