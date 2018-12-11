@@ -129,6 +129,7 @@ if(NOTF_WINDOWS)
 
         boost/context/windows/stack_traits.cpp
     )
+enable_language(ASM_MASM)
 else()
     add_sources(SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/
         boost/fiber/numa/linux/topology.cpp
@@ -136,10 +137,10 @@ else()
 
         boost/context/posix/stack_traits.cpp
     )
+enable_language(ASM)
 endif()
 
 # add boost::context assembly files
-enable_language(ASM)
 add_sources(SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/boost/context/asm/"
     make_${BOOST_CONTEXT_ARCHITECTURE}_${BOOST_CONTEXT_ABI}_${BOOST_CONTEXT_BINARY_FORMAT}_${ASM_FORMAT}
     jump_${BOOST_CONTEXT_ARCHITECTURE}_${BOOST_CONTEXT_ABI}_${BOOST_CONTEXT_BINARY_FORMAT}_${ASM_FORMAT}
@@ -183,7 +184,9 @@ target_include_directories(${CURRENT_TARGET} PUBLIC
 
 # global defines and options
 target_compile_options(${CURRENT_TARGET} PRIVATE ${NOTF_GLOBAL_OPTIONS})
-target_compile_definitions(${CURRENT_TARGET} PUBLIC ${NOTF_GLOBAL_DEFINES})
+target_compile_definitions(${CURRENT_TARGET} PUBLIC ${NOTF_GLOBAL_DEFINES}
+	BOOST_CONTEXT_EXPORT
+)
 
 # CMake cannot not determine the linker language from the files, so we'll tell it
 set_target_properties(${CURRENT_TARGET} PROPERTIES LINKER_LANGUAGE CXX)

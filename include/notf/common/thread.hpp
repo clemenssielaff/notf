@@ -196,9 +196,7 @@ public:
     /// Rethrows and clears the stored exception from the last run, if there is one.
     void rethrow() {
         if (m_exception) {
-            std::exception_ptr exception;
-            std::swap(exception, m_exception);
-            std::rethrow_exception(std::move(exception));
+            std::rethrow_exception(std::move(m_exception));
         }
     }
 

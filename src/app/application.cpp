@@ -103,7 +103,7 @@ int Application::exec() {
         while (m_state.load() == State::RUNNING) {
 
             // wait for and execute all GLFW events
-            glfwPollEvents();
+            glfwWaitEvents();
 
             { // see if there are any events scheduled to run on the main thread
                 while (m_event_queue.try_pop(event) == fibers::channel_op_status::success

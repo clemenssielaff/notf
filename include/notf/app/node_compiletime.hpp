@@ -184,7 +184,7 @@ protected:
 
         // slots
         for_each(m_slots, [this](auto& slot) {
-            slot = std::make_unique<typename std::decay_t<decltype(slot)>::element_type>();
+            slot = std::make_shared<typename std::decay_t<decltype(slot)>::element_type>();
         });
 
         // signals
