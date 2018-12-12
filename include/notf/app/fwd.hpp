@@ -4,6 +4,7 @@
 #include "notf/meta/tuple.hpp"
 
 #include "notf/common/fwd.hpp"
+#include "notf/graphic/fwd.hpp"
 
 // forwards ========================================================================================================= //
 
@@ -27,7 +28,7 @@ namespace driver {
 namespace detail {
 struct AnyInput;
 }
-}
+} // namespace driver
 
 // graph.hpp
 namespace detail {

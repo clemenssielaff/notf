@@ -1,6 +1,6 @@
 #include "catch2/catch.hpp"
 
-#include "notf/app/glfw.hpp"
+#include "notf/graphic/glfw.hpp"
 
 #include "notf/app/input.hpp"
 

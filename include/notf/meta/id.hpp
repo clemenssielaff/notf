@@ -2,6 +2,8 @@
 
 #include <functional>
 
+#include "fmt/format.h"
+
 #include "notf/meta/config.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -11,7 +13,7 @@ NOTF_OPEN_NAMESPACE
 /// Strongly typed integral identifier.
 /// Is useful if you have multiple types of identifiers that are all the same underlying type and don't want them to be
 /// assigneable / comparable.
-template<typename type, typename underlying_type, typename... aux>
+template<class type, class underlying_type, class... aux>
 struct IdType {
 
     static_assert(std::is_integral<underlying_type>::value, "The underlying type of an IdType must be integral");
@@ -47,8 +49,7 @@ public:
 
     /// Copy constructor from typed ID.
     template<typename... Ts>
-    constexpr IdType(const IdType<type_t, underlying_t, Ts...>& id) : m_value(id.value())
-    {}
+    constexpr IdType(const IdType<type_t, underlying_t, Ts...>& id) : m_value(id.value()) {}
 
     /// Explicit invalid Id generator.
     constexpr static IdType invalid() { return IdType(INVALID); }
@@ -115,29 +116,46 @@ public:
     underlying_t& data() { return m_value; }
 };
 
-// ================================================================================================================== //
+// formatting ======================================================================================================= //
 
 /// Prints the contents of an Id into a std::ostream.
 /// @param os   Output stream, implicitly passed with the << operator.
 /// @param id   Id to print.
 /// @return Output stream for further output.
 template<typename Type, typename underlying_type, typename... aux>
-std::ostream& operator<<(std::ostream& out, const IdType<Type, underlying_type, aux...>& id)
-{
+std::ostream& operator<<(std::ostream& out, const ::notf::IdType<Type, underlying_type, aux...>& id) {
     return out << id.value();
 }
 
 NOTF_CLOSE_NAMESPACE
 
-// ================================================================================================================== //
+namespace fmt {
+
+template<class T, class underlying_type, class... aux>
+struct formatter<::notf::IdType<T, underlying_type, aux...>> {
+    using type = ::notf::IdType<T, underlying_type, aux...>;
+
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const type& id, FormatContext& ctx) {
+        return format_to(ctx.begin(), "{}", id.value());
+    }
+};
+
+} // namespace fmt
+
+// std::hash ======================================================================================================== //
 
 namespace std {
 
 /// std::hash specialization for IdTypes.
 template<typename type, typename underlying_type, typename... aux>
 struct hash<notf::IdType<type, underlying_type, aux...>> {
-    size_t operator()(const notf::IdType<type, underlying_type, aux...>& id) const
-    {
+    size_t operator()(const notf::IdType<type, underlying_type, aux...>& id) const {
         return static_cast<size_t>(id.value());
     }
 };

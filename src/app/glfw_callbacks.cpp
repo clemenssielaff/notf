@@ -3,9 +3,10 @@
 #include "notf/meta/log.hpp"
 
 #include "notf/app/event_handler.hpp"
-#include "notf/app/glfw.hpp"
 #include "notf/app/timer_pool.hpp"
 #include "notf/app/window.hpp"
+
+#include "notf/graphic/glfw.hpp"
 
 // helper =========================================================================================================== //
 

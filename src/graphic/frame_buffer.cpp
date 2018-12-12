@@ -48,7 +48,7 @@ NOTF_OPEN_NAMESPACE
 
 RenderBuffer::RenderBuffer(Args&& args) : m_args(std::move(args)) {
     // check arguments
-    const TheGraphicsSystem::Environment& env = TheGraphicsSystem::get().get_environment();
+    const auto& env = TheGraphicsSystem::get_environment();
     const short max_size = static_cast<short>(env.max_render_buffer_size);
     if (!m_args.size.is_valid() || m_args.size.get_area() == 0 || m_args.size.height() > max_size
         || m_args.size.width() > max_size) {

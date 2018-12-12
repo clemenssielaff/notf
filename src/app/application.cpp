@@ -5,10 +5,12 @@
 #include "notf/common/vector.hpp"
 
 #include "notf/app/event_handler.hpp"
-#include "notf/app/glfw.hpp"
 #include "notf/app/glfw_callbacks.hpp"
 #include "notf/app/graph.hpp"
 #include "notf/app/timer_pool.hpp"
+
+#include "notf/graphic/glfw.hpp"
+#include "notf/graphic/graphics_system.hpp"
 
 // window deleter =================================================================================================== //
 
@@ -46,11 +48,11 @@ Application::Application(Arguments args)
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, config::is_debug_build() ? GLFW_TRUE : GLFW_FALSE);
     glfwWindowHint(GLFW_CONTEXT_NO_ERROR, config::is_debug_build() ? GLFW_FALSE : GLFW_TRUE);
 
-    // create the shared window
+    // create the shared context
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     m_shared_context.reset(glfwCreateWindow(1, 1, "", nullptr, nullptr));
     if (!m_shared_context) { NOTF_THROW(StartupError, "OpenGL context creation failed."); }
-    //    TheGraphicsSystem::Access<Application>::initialize(m_shared_window.get());
+    m_graphics_system = TheGraphicsSystem::AccessFor<Application>::create(m_shared_context.get());
 
     // register other glfw callbacks
     glfwSetMonitorCallback(GlfwCallbacks::_on_monitor_change);
@@ -79,7 +81,10 @@ Application::Application(Arguments args)
                   glfwGetVersionString());
 }
 
-Application::~Application() { glfwTerminate(); }
+Application::~Application() {
+    m_graphics_system.reset();
+    glfwTerminate();
+}
 
 int Application::exec() {
     if (!this_thread::is_the_main_thread()) {
@@ -128,6 +133,7 @@ int Application::exec() {
     m_event_handler.reset();
     m_windows->clear();
     m_shared_context.reset();
+    m_graphics_system.reset();
     m_graph.reset();
     NOTF_LOG_INFO("Application shutdown");
 

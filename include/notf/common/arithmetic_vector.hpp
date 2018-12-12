@@ -48,10 +48,10 @@ public:
     derived_t& normalize() {
         const element_t mag_sq = get_magnitude_sq();
         if (abs(mag_sq - 1) <= precision_high<element_t>()) { // is unit
-            return {data};
+            return *static_cast<derived_t*>(this);
         }
         if (abs(mag_sq) <= precision_high<element_t>()) { // is zero
-            return super_t::zero();
+            return *static_cast<derived_t*>(this);
         }
         return *this /= sqrt(mag_sq);
     }

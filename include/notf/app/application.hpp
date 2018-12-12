@@ -151,6 +151,7 @@ private:
     std::unique_ptr<TheEventHandler> m_event_handler;
     std::unique_ptr<TheTimerPool> m_timer_pool;
     std::unique_ptr<TheGraph> m_graph;
+    std::unique_ptr<TheGraphicsSystem> m_graphics_system;
     /// @}
 
     /// State of the Application: UNSTARTED -> RUNNING -> CLOSED

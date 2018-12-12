@@ -114,7 +114,7 @@ class Accessor<RenderBuffer, FrameBuffer> {
 // TODO: read pixels from framebuffer into raw image
 class FrameBuffer {
 
-    friend Accessor<FrameBuffer, TheGraphicsSystem>;
+    friend Accessor<FrameBuffer, detail::GraphicsSystem>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -198,8 +198,8 @@ private:
 // accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
-class Accessor<FrameBuffer, TheGraphicsSystem> {
-    friend class notf::TheGraphicsSystem;
+class Accessor<FrameBuffer, detail::GraphicsSystem> {
+    friend detail::GraphicsSystem;
 
     /// Deallocates the framebuffer data and invalidates the Framebuffer.
     static void deallocate(FrameBuffer& framebuffer) { framebuffer._deallocate(); }

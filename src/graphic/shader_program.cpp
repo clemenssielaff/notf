@@ -81,7 +81,7 @@ ShaderProgram::ShaderProgram(VertexShaderPtr vertex_shader, TesselationShaderPtr
                     error_message = error_message.substr(7, error_message.size() - 9);
                 }
             }
-            NOTF_THROW(OpenGLError, error_message);
+            NOTF_THROW(OpenGLError, "{}", error_message);
         }
     }
 

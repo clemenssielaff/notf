@@ -1,8 +1,8 @@
-//  (C) Copyright Yuriy Krasnoschek 2009. 
-//  (C) Copyright John Maddock 2001 - 2003. 
-//  (C) Copyright Jens Maurer 2001 - 2003. 
-//  Use, modification and distribution are subject to the 
-//  Boost Software License, Version 1.0. (See accompanying file 
+//  (C) Copyright Yuriy Krasnoschek 2009.
+//  (C) Copyright John Maddock 2001 - 2003.
+//  (C) Copyright Jens Maurer 2001 - 2003.
+//  Use, modification and distribution are subject to the
+//  Boost Software License, Version 1.0. (See accompanying file
 //  LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
 //  See http://www.boost.org for most recent version.
@@ -86,7 +86,7 @@
 #  define BOOST_EXCEPTION_DISABLE
 #  define BOOST_NO_EXCEPTIONS
 
-#else // TODO: More platform support e.g. UIQ
+#else
 #  error "Unsuppoted Symbian SDK"
 #endif
 

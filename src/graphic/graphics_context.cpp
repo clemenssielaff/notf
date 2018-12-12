@@ -119,7 +119,7 @@ GraphicsContext& GraphicsContext::get() {
             return static_cast<Window*>(user_pointer)->get_graphics_context();
         }
     }
-    return TheGraphicsSystem::get();
+    return *TheGraphicsSystem();
 }
 
 GraphicsContext::ContextGuard GraphicsContext::make_current() {
@@ -197,7 +197,7 @@ void GraphicsContext::finish_frame() {
 void GraphicsContext::bind_texture(const Texture* texture, uint slot) {
     if (!texture) { return unbind_texture(slot); }
 
-    const TheGraphicsSystem::Environment& environment = TheGraphicsSystem::get_environment();
+    const auto& environment = TheGraphicsSystem::get_environment();
     if (slot >= environment.texture_slot_count) {
         NOTF_THROW(ValueError, "Invalid texture slot: {} - largest texture slot is: {}", slot,
                    environment.texture_slot_count - 1);
@@ -215,7 +215,7 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot) {
 }
 
 void GraphicsContext::unbind_texture(uint slot) {
-    const TheGraphicsSystem::Environment& environment = TheGraphicsSystem::get_environment();
+    const auto& environment = TheGraphicsSystem::get_environment();
     if (slot >= environment.texture_slot_count) {
         NOTF_THROW(ValueError, "Invalid texture slot: {} - largest texture slot is: {}", slot,
                    environment.texture_slot_count - 1);
@@ -258,7 +258,7 @@ void GraphicsContext::_release_current() {
 }
 
 void GraphicsContext::_unbind_all_textures() {
-    const TheGraphicsSystem::Environment& environment = TheGraphicsSystem::get_environment();
+    const auto& environment = TheGraphicsSystem::get_environment();
     for (uint slot = 0; slot < environment.texture_slot_count; ++slot) {
         unbind_texture(slot);
     }
@@ -268,7 +268,7 @@ GraphicsContext::State GraphicsContext::_create_state() const {
     State result; // default constructed
 
     // query number of texture slots
-    const TheGraphicsSystem::Environment& environment = TheGraphicsSystem::get_environment();
+    const auto& environment = TheGraphicsSystem::get_environment();
     result.texture_slots.resize(environment.texture_slot_count);
 
     // query current window size

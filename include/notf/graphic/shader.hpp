@@ -23,7 +23,7 @@ NOTF_OPEN_NAMESPACE
 ///
 class Shader : public std::enable_shared_from_this<Shader> {
 
-    friend Accessor<Shader, TheGraphicsSystem>;
+    friend Accessor<Shader, detail::GraphicsSystem>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -180,8 +180,8 @@ void Shader::set_uniform(const std::string&, const M4f& value);
 // accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
-class Accessor<Shader, TheGraphicsSystem> {
-    friend TheGraphicsSystem;
+class Accessor<Shader, detail::GraphicsSystem> {
+    friend detail::GraphicsSystem;
 
     /// Deallocates the Shader data and invalidates the Shader.
     static void deallocate(Shader& shader) { shader._deallocate(); }

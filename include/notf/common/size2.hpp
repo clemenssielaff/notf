@@ -114,7 +114,7 @@ struct formatter<notf::detail::Size2<Element>> {
 
     template<typename FormatContext>
     auto format(const type& size, FormatContext& ctx) {
-        return format_to(ctx.begin(), "{}({}x{})", type::get_name(), size.width, size.height);
+        return format_to(ctx.begin(), "{}({}x{})", type::get_name(), size.width(), size.height());
     }
 };
 

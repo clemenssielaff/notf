@@ -19,7 +19,7 @@ NOTF_OPEN_NAMESPACE
 /// Manages the loading and setup of an OpenGL texture.
 class Texture : public std::enable_shared_from_this<Texture> {
 
-    friend Accessor<Texture, TheGraphicsSystem>;
+    friend Accessor<Texture, detail::GraphicsSystem>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -210,8 +210,8 @@ private:
 // accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
-class Accessor<Texture, TheGraphicsSystem> {
-    friend TheGraphicsSystem;
+class Accessor<Texture, detail::GraphicsSystem> {
+    friend detail::GraphicsSystem;
 
     /// Deallocates the Texture data and invalidates the Texture.
     static void deallocate(Texture& texture) { texture._deallocate(); }

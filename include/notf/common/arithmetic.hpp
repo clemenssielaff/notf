@@ -80,10 +80,6 @@ static constexpr bool is_arithmetic_type = decltype(ArithmeticIdentifier::test<T
 template<class Derived, class Element, class Component, size_t Dimensions>
 struct Arithmetic {
 
-    static_assert(std::is_arithmetic_v<Element>, "The element type of an Arithmetic must be a scalar");
-    static_assert(any(std::is_same_v<Component, Element>, is_arithmetic_type<Component>),
-                  "The component type of an arithmetic type must either be the same as its element type "
-                  "or itself an arithmetic type");
     static_assert(Dimensions > 0, "Cannot define a zero-dimensional arithmetic type");
 
     // helper ---------------------------------------------------------------------------------- //
@@ -169,8 +165,20 @@ public:
 
     /// @{
     /// Raw pointer to the first address of the value's data.
-    const element_t* as_ptr() const { return &data[0]; }
-    element_t* as_ptr() { return &data[0]; }
+    const element_t* as_ptr() const {
+        if constexpr (_is_ground()) {
+            return &data[0];
+        } else {
+            return data[0].as_ptr();
+        }
+    }
+    element_t* as_ptr() {
+        if constexpr (_is_ground()) {
+            return &data[0];
+        } else {
+            return data[0].as_ptr();
+        }
+    }
     /// @}
 
     /// Tests whether all components of this value are real (not NAN, not INFINITY).
@@ -268,7 +276,7 @@ public:
         result.max(other);
         return result;
     }
-    constexpr derived_t&& get_max(const derived_t& other) && noexcept { return this->max(other); }
+    constexpr derived_t get_max(const derived_t& other) && noexcept { return this->max(other); }
     /// @}
 
     /// Get the element-wise minimum of this and the other value.
@@ -292,7 +300,7 @@ public:
         result.min(other);
         return result;
     }
-    constexpr derived_t&& get_min(const derived_t& other) && noexcept { return this->min(other); }
+    constexpr derived_t get_min(const derived_t& other) && noexcept { return this->min(other); }
     /// @}
 
     /// Sum of all elements of this value.
@@ -361,7 +369,7 @@ public:
         }
         return result;
     }
-    constexpr derived_t&& operator*(const element_t factor) && noexcept { return this *= factor; }
+    constexpr derived_t operator*(const element_t factor) && noexcept { return this *= factor; }
     /// @}
 
     /// @{
@@ -374,7 +382,7 @@ public:
         }
         return result;
     }
-    constexpr derived_t&& operator/(const element_t divisor) && noexcept { return this /= divisor; }
+    constexpr derived_t operator/(const element_t divisor) && noexcept { return this /= divisor; }
     /// @}
 
     /// The inverted value.
@@ -428,7 +436,7 @@ public:
         }
         return result;
     }
-    constexpr derived_t&& operator+(const derived_t& other) && noexcept { return *this += other; }
+    constexpr derived_t operator+(const derived_t& other) && noexcept { return *this += other; }
     /// @}
 
     /// @{
@@ -441,7 +449,7 @@ public:
         }
         return result;
     }
-    constexpr derived_t&& operator-(const derived_t& other) && noexcept { return *this -= other; }
+    constexpr derived_t operator-(const derived_t& other) && noexcept { return *this -= other; }
     /// @}
 
     /// @{
@@ -454,7 +462,7 @@ public:
         }
         return result;
     }
-    constexpr derived_t&& operator*(const derived_t& other) && noexcept { return *this *= other; }
+    constexpr derived_t operator*(const derived_t& other) && noexcept { return *this *= other; }
     /// @}
 
     /// @{
@@ -467,7 +475,7 @@ public:
         }
         return result;
     }
-    constexpr derived_t&& operator/(const derived_t& other) && noexcept { return *this /= other; }
+    constexpr derived_t operator/(const derived_t& other) && noexcept { return *this /= other; }
     /// @}
 
     // fields ---------------------------------------------------------------------------------- //

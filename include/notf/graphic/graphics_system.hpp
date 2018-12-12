@@ -3,35 +3,35 @@
 #include <atomic>
 #include <unordered_map>
 
+#include "notf/meta/singleton.hpp"
+#include "notf/meta/smart_ptr.hpp"
+
 #include "notf/graphic/graphics_context.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-class TheApplication;
+namespace detail {
+class Application;
+}
 
-// the graphics system ============================================================================================== //
+// graphics system ================================================================================================== //
+
+namespace detail {
 
 /// The GraphicsSystem abstract a single, shared OpenGL graphics context.
 /// Is a singleton.
 /// Unlike the GraphicsContext class in graphics/core, the GraphicsSystem is not meant for rendering, but to be
 /// used exclusively for resource management.
-class TheGraphicsSystem final : public GraphicsContext {
+class GraphicsSystem : public GraphicsContext {
 
-    friend Accessor<TheGraphicsSystem, TheApplication>;
-    friend Accessor<TheGraphicsSystem, Texture>;
-    friend Accessor<TheGraphicsSystem, Shader>;
-    friend Accessor<TheGraphicsSystem, FrameBuffer>;
-    friend Accessor<TheGraphicsSystem, ShaderProgram>;
+    friend TheGraphicsSystem;
 
     // types ----------------------------------------------------------------------------------- //
 public:
-    /// Nested `AccessFor<T>` type.
-    NOTF_ACCESS_TYPE(TheGraphicsSystem);
-
     /// Helper struct that can be used to test whether selected extensions are available.
     /// Only tests for extensions on first instantiation.
     class Extensions {
-        friend class TheGraphicsSystem;
+        friend class GraphicsSystem;
 
         // methods ------------------------------------------------------------
     private:
@@ -58,7 +58,7 @@ public:
     /// Helper struct containing variables that need to be read from OpenGL at runtime and won't change over the
     /// course of the app.
     class Environment {
-        friend class TheGraphicsSystem;
+        friend class GraphicsSystem;
 
         // methods ------------------------------------------------------------
     private:
@@ -87,30 +87,21 @@ public:
 
     // methods --------------------------------------------------------------------------------- //
 private:
-    /// Constructor.
-    /// @param shared_window    A GLFW window whose context to use exclusively for managing resources.
-    TheGraphicsSystem(valid_ptr<GLFWwindow*> shared_window);
-
-    /// Static (private) function holding the actual GraphicsSystem instance.
-    static TheGraphicsSystem& _instance(GLFWwindow* shared_window = nullptr) {
-        static TheGraphicsSystem instance(shared_window);
-        return instance;
-    }
-
-public:
-    NOTF_NO_COPY_OR_ASSIGN(TheGraphicsSystem);
-
-    /// The singleton Graphics System instance.
-    static TheGraphicsSystem& get() { return _instance(); }
-
-    /// Desctructor
-    ~TheGraphicsSystem() override;
-
     /// Creates and returns an GLExtension instance.
-    static const Extensions& get_extensions();
+    static const Extensions& _get_extensions();
 
     /// Creates and initializes information about the graphics environment.
-    static const Environment& get_environment();
+    static const Environment& _get_environment();
+
+public:
+    NOTF_NO_COPY_OR_ASSIGN(GraphicsSystem);
+
+    /// Constructor.
+    /// @param shared_window    A GLFW window whose context to use exclusively for managing resources.
+    GraphicsSystem(valid_ptr<GLFWwindow*> shared_window);
+
+    /// Desctructor
+    ~GraphicsSystem() override;
 
     ///@{
     /// FontManager used to render text.
@@ -221,21 +212,64 @@ private:
     std::unordered_map<ShaderProgramId, ShaderProgramWeakPtr> m_programs;
 };
 
+} // namespace detail
+
+// the graphics system ============================================================================================== //
+
+class TheGraphicsSystem : public ScopedSingleton<detail::GraphicsSystem> {
+
+    friend Accessor<TheGraphicsSystem, detail::Application>;
+    friend Accessor<TheGraphicsSystem, Texture>;
+    friend Accessor<TheGraphicsSystem, Shader>;
+    friend Accessor<TheGraphicsSystem, FrameBuffer>;
+    friend Accessor<TheGraphicsSystem, ShaderProgram>;
+
+    // types ----------------------------------------------------------------------------------- //
+public:
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(TheGraphicsSystem);
+
+    using Extensions = typename detail::GraphicsSystem::Extensions;
+    using Environment = typename detail::GraphicsSystem::Environment;
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    using ScopedSingleton<detail::GraphicsSystem>::ScopedSingleton;
+
+    /// Creates and returns an GLExtension instance.
+    static const Extensions& get_extensions() { return detail::GraphicsSystem::_get_extensions(); }
+
+    /// Creates and initializes information about the graphics environment.
+    static const Environment& get_environment() { return detail::GraphicsSystem::_get_environment(); }
+
+private:
+    NOTF_CREATE_SMART_FACTORIES(TheGraphicsSystem);
+
+    static std::unique_ptr<TheGraphicsSystem> create(valid_ptr<GLFWwindow*> shared_context) {
+        auto result = _create_unique(Holder{}, shared_context);
+        result->_get()._post_initialization();
+        return result;
+    }
+
+    /// Registers a new something with the GraphicsSystem.
+    template<class T>
+    void _register_new(std::shared_ptr<T> sth) {
+        _get()._register_new(std::move(sth));
+    }
+
+    void _shutdown() { _get()._shutdown(); }
+};
+
 // accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
-class Accessor<TheGraphicsSystem, TheApplication> {
-    friend TheApplication;
+class Accessor<TheGraphicsSystem, detail::Application> {
+    friend detail::Application;
 
-    /// Initializes the GraphicsSystem.
-    static TheGraphicsSystem& initialize(valid_ptr<GLFWwindow*> shared_window) {
-        TheGraphicsSystem& graphics_system = TheGraphicsSystem::_instance(raw_pointer(shared_window));
-        graphics_system._post_initialization();
-        return graphics_system;
+    /// Creates the ScopedSingleton holder instance of GraphicsSystem.
+    static std::unique_ptr<TheGraphicsSystem> create(valid_ptr<GLFWwindow*> shared_context) {
+        return TheGraphicsSystem::create(shared_context);
     }
-
-    /// Shuts the GraphicsSystem down for good.
-    static void shutdown() { TheGraphicsSystem::get()._shutdown(); }
 };
 
 template<>
@@ -245,7 +279,7 @@ class Accessor<TheGraphicsSystem, Texture> {
     /// Registers a new Texture.
     /// @param texture          New Texture to register.
     /// @throws internal_error  If another Texture with the same ID already exists.
-    static void register_new(TexturePtr texture) { TheGraphicsSystem::get()._register_new(std::move(texture)); }
+    static void register_new(TexturePtr texture) { TheGraphicsSystem()._register_new(std::move(texture)); }
 };
 
 template<>
@@ -255,7 +289,7 @@ class Accessor<TheGraphicsSystem, Shader> {
     /// Registers a new Shader.
     /// @param shader           New Shader to register.
     /// @throws internal_error  If another Shader with the same ID already exists.
-    static void register_new(ShaderPtr shader) { TheGraphicsSystem::get()._register_new(std::move(shader)); }
+    static void register_new(ShaderPtr shader) { TheGraphicsSystem()._register_new(std::move(shader)); }
 };
 
 template<>
@@ -265,7 +299,7 @@ class Accessor<TheGraphicsSystem, FrameBuffer> {
     /// Registers a new FrameBuffer.
     /// @param framebuffer      New FrameBuffer to register.
     /// @throws internal_error  If another FrameBuffer with the same ID already exists.
-    static void register_new(FrameBufferPtr fbuffer) { TheGraphicsSystem::get()._register_new(std::move(fbuffer)); }
+    static void register_new(FrameBufferPtr fbuffer) { TheGraphicsSystem()._register_new(std::move(fbuffer)); }
 };
 
 template<>
@@ -275,7 +309,7 @@ class Accessor<TheGraphicsSystem, ShaderProgram> {
     /// Registers a new Program.
     /// @param program          New Program to register.
     /// @throws internal_error  If another Program with the same ID already exists.
-    static void register_new(ShaderProgramPtr program) { TheGraphicsSystem::get()._register_new(std::move(program)); }
+    static void register_new(ShaderProgramPtr program) { TheGraphicsSystem()._register_new(std::move(program)); }
 };
 
 NOTF_CLOSE_NAMESPACE

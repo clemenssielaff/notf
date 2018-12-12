@@ -7,9 +7,10 @@
 #include "notf/meta/enum.hpp"
 #include "notf/meta/log.hpp"
 
-//#include "notf/common/resource_manager.hpp"
 #include "notf/common/color.hpp"
 #include "notf/common/size2.hpp"
+
+#include "notf/app/resource_manager.hpp"
 
 #include "notf/graphic/gl_errors.hpp"
 #include "notf/graphic/graphics_system.hpp"
@@ -171,8 +172,8 @@ TexturePtr Texture::load_image(const std::string& file_path, std::string name, c
         RawImage image(file_path);
         if (!image) { return {}; }
 
-        image_size.width = image.get_width();
-        image_size.height = image.get_height();
+        image_size.width() = image.get_width();
+        image_size.height() = image.get_height();
         image_bytes = image.get_channels();
         image_data = std::vector<uchar>(image.get_data(), image.get_data() + (image_size.get_area() * image_bytes));
 

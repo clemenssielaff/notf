@@ -6,7 +6,7 @@
 
 #include "notf/common/string.hpp"
 
-#include "notf/app/glfw.hpp"
+#include "notf/graphic/glfw.hpp"
 
 // conversions ====================================================================================================== //
 

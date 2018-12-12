@@ -82,8 +82,6 @@ struct algorithm_with_properties : public algorithm_with_properties_base {
     virtual void awakened( context * ctx) noexcept override final {
         fiber_properties * props = super::get_properties( ctx);
         if ( BOOST_LIKELY( nullptr == props) ) {
-            // TODO: would be great if PROPS could be allocated on the new
-            // fiber's stack somehow
             props = new_properties( ctx);
             // It is not good for new_properties() to return 0.
             BOOST_ASSERT_MSG( props, "new_properties() must return non-NULL");

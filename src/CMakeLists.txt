@@ -11,6 +11,7 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/input.cpp
     app/node.cpp
     app/property.cpp
+    app/resource_manager.cpp
     app/root_node.cpp
     app/timer_pool.cpp
     app/window.cpp
@@ -35,6 +36,11 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     graphic/shader.cpp
     graphic/texture.cpp
 
+    graphic/text/font.cpp
+    graphic/text/font_atlas.cpp
+    graphic/text/font_manager.cpp
+    graphic/text/font_utils.cpp
+
     meta/half.cpp
 )
 
@@ -54,6 +60,7 @@ target_include_directories(${CURRENT_TARGET} PUBLIC
     ${CMAKE_SOURCE_DIR}/include/
     ${CMAKE_SOURCE_DIR}/thirdparty/include/
     ${CMAKE_SOURCE_DIR}/thirdparty/lib/glfw-3.3.0/include
+    ${CMAKE_SOURCE_DIR}/thirdparty/lib/freetype-2.9.1/include
 )
 
 # dependencies
@@ -61,6 +68,7 @@ target_link_libraries(${CURRENT_TARGET} PUBLIC
     notf-thirdparty
     glfw
     uuid
+    freetype
     ${CMAKE_THREAD_LIBS_INIT}
     ${OPENGL_LIBRARIES}
 )

@@ -1,8 +1,8 @@
-//  (C) Copyright John Maddock 2002 - 2003. 
-//  (C) Copyright Jens Maurer 2002 - 2003. 
-//  (C) Copyright Beman Dawes 2002 - 2003. 
-//  Use, modification and distribution are subject to the 
-//  Boost Software License, Version 1.0. (See accompanying file 
+//  (C) Copyright John Maddock 2002 - 2003.
+//  (C) Copyright Jens Maurer 2002 - 2003.
+//  (C) Copyright Beman Dawes 2002 - 2003.
+//  Use, modification and distribution are subject to the
+//  Boost Software License, Version 1.0. (See accompanying file
 //  LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
 //  See http://www.boost.org for most recent version.
@@ -18,7 +18,7 @@
 
 //
 // std::streambuf<wchar_t> is non-standard
-// NOTE: versions of libcomo prior to beta28 have octal version numbering,
+// Note: versions of libcomo prior to beta28 have octal version numbering,
 // e.g. version 25 is 21 (dec)
 #if __LIBCOMO_VERSION__ <= 22
 #  define BOOST_NO_STD_WSTREAMBUF

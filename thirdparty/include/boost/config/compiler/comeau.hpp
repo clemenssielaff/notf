@@ -1,11 +1,11 @@
-//  (C) Copyright John Maddock 2001. 
-//  (C) Copyright Douglas Gregor 2001. 
-//  (C) Copyright Peter Dimov 2001. 
-//  (C) Copyright Aleksey Gurtovoy 2003. 
-//  (C) Copyright Beman Dawes 2003. 
-//  (C) Copyright Jens Maurer 2003. 
-//  Use, modification and distribution are subject to the 
-//  Boost Software License, Version 1.0. (See accompanying file 
+//  (C) Copyright John Maddock 2001.
+//  (C) Copyright Douglas Gregor 2001.
+//  (C) Copyright Peter Dimov 2001.
+//  (C) Copyright Aleksey Gurtovoy 2003.
+//  (C) Copyright Beman Dawes 2003.
+//  (C) Copyright Jens Maurer 2003.
+//  Use, modification and distribution are subject to the
+//  Boost Software License, Version 1.0. (See accompanying file
 //  LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
 //  See http://www.boost.org for most recent version.
@@ -24,7 +24,6 @@
 #  endif
 
 // Void returns don't work when emulating VC 6 (Peter Dimov)
-// TODO: look up if this doesn't apply to the whole 12xx range
 #  if defined(_MSC_VER) && (_MSC_VER < 1300)
 #     define BOOST_NO_VOID_RETURNS
 #  endif

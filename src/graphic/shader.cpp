@@ -9,9 +9,10 @@
 #include "notf/meta/log.hpp"
 
 #include "notf/common/matrix4.hpp"
-//#include "notf/common/resource_manager.hpp"
 #include "notf/common/vector2.hpp"
 #include "notf/common/vector4.hpp"
+
+#include "notf/app/resource_manager.hpp"
 
 #include "notf/graphic/gl_errors.hpp"
 #include "notf/graphic/gl_utils.hpp"
@@ -153,7 +154,7 @@ namespace detail {
 std::string build_glsl_header() {
     std::string result = "\n//==== notf header ========================================\n\n";
 
-    const auto& extensions = TheGraphicsSystem::get().get_extensions();
+    const auto& extensions = TheGraphicsSystem::get_extensions();
 
     { // pragmas first ...
         bool any_pragma = false;

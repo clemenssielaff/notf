@@ -34,8 +34,8 @@ private:
 #if (defined(BOOST_USE_UCONTEXT)||defined(BOOST_USE_WINFIB))
         std::move( c).resume();
 #endif
-		// execute scheduler::dispatch()
-		return get_scheduler()->dispatch();
+        // execute scheduler::dispatch()
+        return get_scheduler()->dispatch();
     }
 
 public:
@@ -275,9 +275,6 @@ context::schedule( context * ctx) noexcept {
     BOOST_ASSERT( nullptr != get_scheduler() );
     BOOST_ASSERT( nullptr != ctx->get_scheduler() );
 #if ! defined(BOOST_FIBERS_NO_ATOMICS)
-    // FIXME: comparing scheduler address' must be synchronized?
-    //        what if ctx is migrated between threads
-    //        (other scheduler assigned)
     if ( scheduler_ == ctx->get_scheduler() ) {
         // local
         get_scheduler()->schedule( ctx);

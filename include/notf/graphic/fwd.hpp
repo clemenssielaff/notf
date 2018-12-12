@@ -35,6 +35,9 @@ class PrefabType;
 template<typename>
 class PrefabFactory;
 
+namespace detail {
+class GraphicsSystem;
+} // namespace detail
 class TheGraphicsSystem;
 
 using RenderBufferId = IdType<RenderBuffer, GLuint>;

@@ -157,9 +157,6 @@
 
 // Since the Cray compiler defines '__GNUC__', we have to emulate some
 // additional GCC macros in order to make everything work.
-//
-// FIXME: Perhaps Cray should fix the compiler to define these additional
-// macros for GCC emulation?
 
 #if __cplusplus >= 201103L && defined(__GNUC__) && !defined(__GXX_EXPERIMENTAL_CXX0X__)
 #   define __GXX_EXPERIMENTAL_CXX0X__ 1
@@ -168,9 +165,6 @@
 ////
 //// Parameter validation
 ////
-
-// FIXME: Do we really need to support compilers before 8.5? Do they pass
-// the Boost.Config tests?
 
 #if BOOST_CRAY_VERSION < 80000
 #  error "Boost is not configured for Cray compilers prior to version 8, please try the configure script."
@@ -227,8 +221,8 @@
 #define BOOST_MATH_DISABLE_STD_FPCLASSIFY
 //#define BOOST_HAS_FPCLASSIFY
 
-#define BOOST_SP_USE_PTHREADS 
-#define BOOST_AC_USE_PTHREADS 
+#define BOOST_SP_USE_PTHREADS
+#define BOOST_AC_USE_PTHREADS
 
 //
 // Everything that follows is working around what are thought to be
@@ -296,8 +290,8 @@
 #undef BOOST_NO_SFINAE_EXPR
 #undef BOOST_NO_TWO_PHASE_NAME_LOOKUP
 #undef BOOST_MATH_DISABLE_STD_FPCLASSIFY
-#undef BOOST_SP_USE_PTHREADS 
-#undef BOOST_AC_USE_PTHREADS 
+#undef BOOST_SP_USE_PTHREADS
+#undef BOOST_AC_USE_PTHREADS
 
 #define BOOST_HAS_VARIADIC_TMPL
 #define BOOST_HAS_UNISTD_H

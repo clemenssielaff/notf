@@ -343,7 +343,7 @@
 //  Because std::size_t usage is so common, even in boost headers which do not
 //  otherwise use the C library, the <cstddef> workaround is included here so
 //  that ugly workaround code need not appear in many other boost headers.
-//  NOTE WELL: This is a workaround for non-conforming compilers; <cstddef>
+//  Note well: This is a workaround for non-conforming compilers; <cstddef>
 //  must still be #included in the usual places so that <cstddef> inclusion
 //  works as expected with standard conforming compilers.  The resulting
 //  double inclusion of <cstddef> is harmless.
@@ -640,7 +640,7 @@ namespace std{ using ::type_info; }
 #    if __has_attribute(noreturn)
 #      define BOOST_NORETURN [[noreturn]]
 #    endif
-#  elif defined(__has_cpp_attribute) 
+#  elif defined(__has_cpp_attribute)
 #    if __has_cpp_attribute(noreturn)
 #      define BOOST_NORETURN [[noreturn]]
 #    endif

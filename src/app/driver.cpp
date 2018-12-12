@@ -3,8 +3,9 @@
 #include "notf/meta/log.hpp"
 
 #include "notf/app/application.hpp"
-#include "notf/app/glfw.hpp"
 #include "notf/app/glfw_callbacks.hpp"
+
+#include "notf/graphic/glfw.hpp"
 
 NOTF_OPEN_NAMESPACE
 

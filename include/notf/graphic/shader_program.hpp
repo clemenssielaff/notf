@@ -13,7 +13,7 @@ NOTF_OPEN_NAMESPACE
 /// Is not managed by the context, but keeps their Shaders alive.
 class ShaderProgram : public std::enable_shared_from_this<ShaderProgram> {
 
-    friend Accessor<ShaderProgram, TheGraphicsSystem>;
+    friend Accessor<ShaderProgram, detail::GraphicsSystem>;
 
     // types -------------------------------------------------------------------------------------------------------- //
 public:
@@ -95,8 +95,8 @@ private:
 // accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
-class Accessor<ShaderProgram, TheGraphicsSystem> {
-    friend TheGraphicsSystem;
+class Accessor<ShaderProgram, detail::GraphicsSystem> {
+    friend detail::GraphicsSystem;
 
     /// Deallocates the Program.
     static void deallocate(ShaderProgram& program) { program._deallocate(); }

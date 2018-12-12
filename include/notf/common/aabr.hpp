@@ -51,11 +51,11 @@ public:
     /// @param position  Position of the Aabr's bottom-left corner.
     /// @param size      Size of the Aabr.
     Aabr(const component_t& position, const Size2<element_t>& size)
-        : super_t::data({position, component_t(position.x() + size.width, position.y() + size.height)}) {}
+        : super_t::data({position, component_t(position.x() + size.width(), position.y() + size.height)}) {}
 
     /// Constructs an Aabr of the given size with the bottom-left corner at zero.
     /// @param size  Size of the Aabr.
-    Aabr(const Size2<element_t>& size) : super_t::data({component_t(0, 0), component_t(size.width, size.height)}) {}
+    Aabr(const Size2<element_t>& size) : super_t({component_t(0, 0), component_t(size.width(), size.height())}) {}
 
     /// Constructs the Aabr from two of its corners.
     /// The corners don't need to be specific, the constructor figures out how to construct an Aabr from them.
