@@ -265,7 +265,7 @@ void assert_is_valid(const Shader&) {} // noop
 
 } // namespace
 
-// ================================================================================================================== //
+// shader =========================================================================================================== //
 
 NOTF_OPEN_NAMESPACE
 
@@ -473,8 +473,8 @@ void Shader::set_uniform(const std::string& name, const V2f& value) {
         NOTF_CHECK_GL(glProgramUniform2fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
     } else {
         NOTF_THROW(OpenGLError,
-                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"Vector2f\"",
-                   name, m_name, gl_type_name(uniform.type));
+                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"V2f\"", name,
+                   m_name, gl_type_name(uniform.type));
     }
 }
 
@@ -486,8 +486,8 @@ void Shader::set_uniform(const std::string& name, const V4f& value) {
         NOTF_CHECK_GL(glProgramUniform4fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
     } else {
         NOTF_THROW(OpenGLError,
-                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"Vector2f\"",
-                   name, m_name, gl_type_name(uniform.type));
+                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"V4f\"", name,
+                   m_name, gl_type_name(uniform.type));
     }
 }
 
@@ -500,12 +500,12 @@ void Shader::set_uniform(const std::string& name, const M4f& value) {
                                                 value.as_ptr()));
     } else {
         NOTF_THROW(OpenGLError,
-                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"Vector2f\"",
-                   name, m_name, gl_type_name(uniform.type));
+                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"M4f\"", name,
+                   m_name, gl_type_name(uniform.type));
     }
 }
 
-// ================================================================================================================== //
+// vertex shader ==================================================================================================== //
 
 VertexShader::VertexShader(const GLuint program, std::string name, std::string string)
     : Shader(program, Stage::VERTEX, std::move(name)), m_source(std::move(string)), m_attributes() {
@@ -562,7 +562,7 @@ GLuint VertexShader::get_attribute(const std::string& name) const {
     NOTF_THROW(OpenGLError, "No attribute named \"{}\" in shader \"{}\"", name, get_name());
 }
 
-// ================================================================================================================== //
+// tesselation shader =============================================================================================== //
 
 TesselationShader::TesselationShader(const GLuint program, std::string name, const std::string& control_string,
                                      const std::string& evaluation_string)
@@ -587,7 +587,7 @@ TesselationShaderPtr TesselationShader::create(const std::string& name, const st
     return shader;
 }
 
-// ================================================================================================================== //
+// geometry shader ================================================================================================== //
 
 GeometryShader::GeometryShader(const GLuint program, std::string name, std::string string)
     : Shader(program, Stage::GEOMETRY, std::move(name)), m_source(std::move(string)) {}
@@ -604,7 +604,7 @@ GeometryShaderPtr GeometryShader::create(std::string name, const std::string& st
     return shader;
 }
 
-// ================================================================================================================== //
+// fragment shader ================================================================================================== //
 
 FragmentShader::FragmentShader(const GLuint program, std::string shader_name, std::string string)
     : Shader(program, Stage::FRAGMENT, std::move(shader_name)), m_source(std::move(string)) {}

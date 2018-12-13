@@ -186,7 +186,7 @@ private:
     /// @throws runtime_error   ...if we dont.
     void _validate_arguments() const;
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// OpenGL ID of the FrameBuffer.
     FrameBufferId m_id;

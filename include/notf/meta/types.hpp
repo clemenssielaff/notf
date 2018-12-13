@@ -197,7 +197,7 @@ struct is_same_signedness : public std::integral_constant<bool, std::is_signed_v
 template<class T, class U>
 using is_same_signedness_v = typename is_same_signedness<T, U>::value;
 
-// ================================================================================================================== //
+// accessors ======================================================================================================== //
 
 /// "Special Access" type, that can be befriended by any class that wants to expose a subset of its private interface
 /// to another. Note that the struct must be defined outside the class.
@@ -223,7 +223,7 @@ struct Tester {};
     using AccessFor = Accessor<NOTF_MACRO_ARG1, NOTF_TEMPLATE_ARG1>
 #endif
 
-// ================================================================================================================== //
+// to number ======================================================================================================== //
 
 /// Constexpr to use an enum class value as a numeric value.
 /// From "Effective Modern C++ by Scott Mayers': Item #10.

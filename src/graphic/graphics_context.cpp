@@ -75,17 +75,16 @@ std::pair<GLenum, GLenum> convert_blend_mode(const BlendMode::Mode blend_mode) {
 
 } // namespace
 
-// ================================================================================================================== //
 
 NOTF_OPEN_NAMESPACE
 
-// ================================================================================================================== //
+// vao guard ======================================================================================================== //
 
 GraphicsContext::VaoGuard::VaoGuard(GLuint vao) : m_vao(vao) { NOTF_CHECK_GL(glBindVertexArray(m_vao)); }
 
 GraphicsContext::VaoGuard::~VaoGuard() { NOTF_CHECK_GL(glBindVertexArray(0)); }
 
-// ================================================================================================================== //
+// graphics context ================================================================================================= //
 
 GraphicsContext::GraphicsContext(valid_ptr<GLFWwindow*> window) : m_window(window) {
     ContextGuard guard(*this);

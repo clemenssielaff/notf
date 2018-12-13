@@ -38,24 +38,24 @@ public:
     /// @param width     Width of the Aabr.
     /// @param height    Height of the Aabr.
     Aabr(const element_t x, const element_t y, const element_t width, const element_t height)
-        : super_t::data({component_t(x, y), component_t(x + width, y + height)}) {}
+        : super_t(component_t(x, y), component_t(x + width, y + height)) {}
 
     /// Constructs an Aabr of the given width and height, with the bottom-left corner at `position`.
     /// @param position  Position of the Aabr's bottom-left corner.
     /// @param width     Width of the Aabr.
     /// @param height    Height of the Aabr.
     Aabr(const component_t position, const element_t width, const element_t height)
-        : super_t::data({position, position + component_t(width, height)}) {}
+        : super_t(position, position + component_t(width, height)) {}
 
     /// Constructs an Aabr of the given size with the bottom-left corner at `position`.
     /// @param position  Position of the Aabr's bottom-left corner.
     /// @param size      Size of the Aabr.
     Aabr(const component_t& position, const Size2<element_t>& size)
-        : super_t::data({position, component_t(position.x() + size.width(), position.y() + size.height)}) {}
+        : super_t(position, component_t(position.x() + size.width(), position.y() + size.height)) {}
 
     /// Constructs an Aabr of the given size with the bottom-left corner at zero.
     /// @param size  Size of the Aabr.
-    Aabr(const Size2<element_t>& size) : super_t({component_t(0, 0), component_t(size.width(), size.height())}) {}
+    Aabr(const Size2<element_t>& size) : super_t(component_t(0, 0), component_t(size.width(), size.height())) {}
 
     /// Constructs the Aabr from two of its corners.
     /// The corners don't need to be specific, the constructor figures out how to construct an Aabr from them.
@@ -109,7 +109,7 @@ public:
     }
 
     /// Name of this Aabr type.
-    static constexpr const char* get_name() {
+    static constexpr const char* get_name() { // TODO: this could be a free function used by all mathematic classes
         if constexpr (std::is_same_v<Element, float>) {
             return "Aabrf";
         } else if constexpr (std::is_same_v<Element, double>) {
@@ -448,33 +448,23 @@ public:
     // fields ---------------------------------------------------------------------------------- //
 public:
     /// Value data array.
-    using super_t::data;
+    using super_t::data; // TODO: this shouldn't be public
 };
 
 } // namespace detail
 
-using Aabrf = detail::Aabr<float>;
-using Aabrd = detail::Aabr<double>;
-using Aabri = detail::Aabr<int>;
-using Aabrs = detail::Aabr<short>;
+// formatting ======================================================================================================= //
+
+/// Prints the contents of an Aabr into a std::ostream.
+/// @param os   Output stream, implicitly passed with the << operator.
+/// @param aabr Aabr to print.
+/// @return Output stream for further output.
+template<class Element>
+std::ostream& operator<<(std::ostream& out, const notf::detail::Aabr<Element>& aabr) {
+    return out << fmt::format("{}", aabr);
+}
 
 NOTF_CLOSE_NAMESPACE
-
-// std::hash ======================================================================================================== //
-
-namespace std {
-
-/// std::hash specialization for Aabr.
-template<class Element>
-struct hash<notf::detail::Aabr<Element>> {
-    size_t operator()(const notf::detail::Aabr<Element>& aabr) const {
-        return notf::hash(notf::to_number(notf::detail::HashID::AABR), aabr.get_hash());
-    }
-};
-
-} // namespace std
-
-// formatting ======================================================================================================= //
 
 namespace fmt {
 
@@ -495,14 +485,19 @@ struct formatter<notf::detail::Aabr<Element>> {
 
 } // namespace fmt
 
-/// Prints the contents of an Aabr into a std::ostream.
-/// @param os   Output stream, implicitly passed with the << operator.
-/// @param aabr Aabr to print.
-/// @return Output stream for further output.
+// std::hash ======================================================================================================== //
+
+namespace std {
+
+/// std::hash specialization for Aabr.
 template<class Element>
-std::ostream& operator<<(std::ostream& out, const notf::detail::Aabr<Element>& aabr) {
-    return out << fmt::format("{}", aabr);
-}
+struct hash<notf::detail::Aabr<Element>> {
+    size_t operator()(const notf::detail::Aabr<Element>& aabr) const {
+        return notf::hash(notf::to_number(notf::detail::HashID::AABR), aabr.get_hash());
+    }
+};
+
+} // namespace std
 
 // compile time tests =============================================================================================== //
 

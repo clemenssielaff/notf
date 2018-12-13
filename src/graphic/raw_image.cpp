@@ -11,7 +11,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-// ================================================================================================================== //
+// raw image ======================================================================================================== //
 
 RawImage::RawImage(std::string image_path, const int force_format) : m_filepath(std::move(image_path)) {
     stbi_set_flip_vertically_on_load(0);

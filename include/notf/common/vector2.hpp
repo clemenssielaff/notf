@@ -65,7 +65,7 @@ public:
     /// @param epsilon   Maximal allowed distance between the two Vectors.
     constexpr bool is_approx(const Vector2& other, const element_t epsilon = precision_high<element_t>()) const
         noexcept {
-        return (*this - other).magnitude_sq() <= epsilon * epsilon;
+        return (*this - other).get_magnitude_sq() <= epsilon * epsilon;
     }
 
     /// Tests if this vector is parallel to the Y-axis.
@@ -150,23 +150,18 @@ public:
 
 } // namespace detail
 
-NOTF_CLOSE_NAMESPACE
-
-// std::hash ======================================================================================================== //
-
-namespace std {
-
-/// std::hash specialization for Vector2.
-template<class Element>
-struct hash<notf::detail::Vector2<Element>> {
-    size_t operator()(const notf::detail::Vector2<Element>& vector) const {
-        return notf::hash(notf::to_number(notf::detail::HashID::VECTOR2), vector.get_hash());
-    }
-};
-
-} // namespace std
-
 // formatting ======================================================================================================= //
+
+/// Prints the contents of a vector into a std::ostream.
+/// @param os   Output stream, implicitly passed with the << operator.
+/// @param vec  Vector to print.
+/// @return Output stream for further output.
+template<class Element>
+std::ostream& operator<<(std::ostream& out, const notf::detail::Vector2<Element>& vec) {
+    return out << fmt::format("{}", vec);
+}
+
+NOTF_CLOSE_NAMESPACE
 
 namespace fmt {
 
@@ -187,14 +182,19 @@ struct formatter<notf::detail::Vector2<Element>> {
 
 } // namespace fmt
 
-/// Prints the contents of a vector into a std::ostream.
-/// @param os   Output stream, implicitly passed with the << operator.
-/// @param vec  Vector to print.
-/// @return Output stream for further output.
+// std::hash ======================================================================================================== //
+
+namespace std {
+
+/// std::hash specialization for Vector2.
 template<class Element>
-std::ostream& operator<<(std::ostream& out, const notf::detail::Vector2<Element>& vec) {
-    return out << fmt::format("{}", vec);
-}
+struct hash<notf::detail::Vector2<Element>> {
+    size_t operator()(const notf::detail::Vector2<Element>& vector) const {
+        return notf::hash(notf::to_number(notf::detail::HashID::VECTOR2), vector.get_hash());
+    }
+};
+
+} // namespace std
 
 // compile time tests =============================================================================================== //
 

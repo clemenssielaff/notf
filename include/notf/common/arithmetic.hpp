@@ -119,17 +119,23 @@ public:
     }
 
     /// Value constructor.
-    /// @param args     Up to (Dimension) arguments, each of which must be trivially convertible to element_t.
+    /// @param args     Up to (Dimension) arguments, each of which must be trivially convertible to component_t.
     ///                 Remaining components are value-initialized.
     template<class... Args, class = std::enable_if_t<(sizeof...(Args) <= Dimensions)
-                                                     && (std::is_trivially_constructible_v<element_t, Args> && ...)>>
-    constexpr Arithmetic(Args&&... args) noexcept : data{static_cast<element_t>(std::forward<Args>(args))...} {}
+                                                     && (std::is_trivially_constructible_v<component_t, Args> && ...)>>
+    constexpr Arithmetic(Args&&... args) noexcept : data{static_cast<component_t>(std::forward<Args>(args))...} {}
 
     /// Create an arithmetic value with all elements set to the given value.
     /// @param value    Value to set.
     static derived_t all(const element_t value) {
         derived_t result;
-        result.data.fill(value);
+        if constexpr (_is_ground()) {
+            result.data.fill(value);
+        } else {
+            for (size_t i = 0; i < get_dimensions(); ++i) {
+                result[i].set_all(value);
+            }
+        }
         return result;
     }
 
@@ -369,7 +375,7 @@ public:
         }
         return result;
     }
-    constexpr derived_t operator*(const element_t factor) && noexcept { return this *= factor; }
+    constexpr derived_t operator*(const element_t factor) && noexcept { return *this *= factor; }
     /// @}
 
     /// @{
@@ -382,7 +388,7 @@ public:
         }
         return result;
     }
-    constexpr derived_t operator/(const element_t divisor) && noexcept { return this /= divisor; }
+    constexpr derived_t operator/(const element_t divisor) && noexcept { return *this /= divisor; }
     /// @}
 
     /// The inverted value.

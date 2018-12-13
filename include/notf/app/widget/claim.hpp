@@ -410,7 +410,7 @@ private:
     Ratios m_ratios;
 };
 
-// ================================================================================================================== //
+// formatting ======================================================================================================= //
 
 /// Prints the contents of a Claim::Stretch into a std::ostream.
 /// @param out       Output stream, implicitly passed with the << operator.
@@ -425,6 +425,8 @@ std::ostream& operator<<(std::ostream& out, const Claim::Stretch& stretch);
 std::ostream& operator<<(std::ostream& out, const Claim& aabr);
 
 NOTF_CLOSE_NAMESPACE
+
+// TODO: claim fmt formatting
 
 // std::hash ======================================================================================================== //
 

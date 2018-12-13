@@ -62,7 +62,7 @@ inline std::pair<half, half> unpackHalfs(unsigned int pack) noexcept {
     return std::make_pair(converter.out[0], converter.out[1]);
 }
 
-// ================================================================================================================== //
+// formatting ======================================================================================================= //
 
 /// Prints the value of a half into a std::ostream.
 /// @param out      Output stream, implicitly passed with the << operator.

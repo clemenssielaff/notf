@@ -19,8 +19,10 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/widget/claim.cpp
 
     common/color.cpp
+    common/filesystem.cpp
     common/mnemonic.cpp
     common/msgpack.cpp
+    common/segment.cpp
     common/string.cpp
     common/thread_pool.cpp
     common/uuid.cpp
@@ -35,6 +37,9 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     graphic/raw_image.cpp
     graphic/shader.cpp
     graphic/texture.cpp
+
+    graphic/renderer/fragment_renderer.cpp
+    graphic/renderer/plotter.cpp
 
     graphic/text/font.cpp
     graphic/text/font_atlas.cpp

@@ -52,7 +52,7 @@ private:
     std::thread::id m_holder;
 };
 
-// ================================================================================================================== //
+// recursive mutex ================================================================================================== //
 
 /// In debug mode, the notf::RecursiveMutex can be asked to check whether it is locked by the calling thread.
 /// From https://stackoverflow.com/a/30109512

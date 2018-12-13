@@ -27,7 +27,7 @@ NOTF_OPEN_NAMESPACE
 template<class Signature>
 class function_traits : public function_traits<decltype(&Signature::operator())> {
 
-    // types ------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 private:
     using impl_t = function_traits<decltype(&Signature::operator())>;
 

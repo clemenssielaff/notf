@@ -14,7 +14,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-// ================================================================================================================== //
+// texture ========================================================================================================== //
 
 /// Manages the loading and setup of an OpenGL texture.
 class Texture : public std::enable_shared_from_this<Texture> {

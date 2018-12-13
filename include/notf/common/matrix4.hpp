@@ -37,14 +37,10 @@ public:
     /// Default constructor.
     Matrix4() = default;
 
-    /// Forwarding constructor.
-    template<class... Args>
-    Matrix4(Args&&... args) : super_t(std::forward<Args>(args)...) {}
-
     /// Value constructor defining the diagonal of the matrix.
     /// @param a    Value to put into the diagonal.
-    Matrix4(const element_t a)
-        : super_t{component_t(a, 0, 0, 0), component_t(0, a, 0, 0), component_t(0, 0, a, 0), component_t(0, 0, 0, a)} {}
+    explicit Matrix4(const element_t a)
+        : super_t(component_t(a, 0, 0, 0), component_t(0, a, 0, 0), component_t(0, 0, a, 0), component_t(0, 0, 0, a)) {}
 
     /// Column-wise constructor of the matrix.
     /// @param a    First column.
@@ -52,14 +48,14 @@ public:
     /// @param c    Third column.
     /// @param d    Fourth column.
     Matrix4(const component_t a, const component_t b, const component_t c, const component_t d)
-        : super_t{std::move(a), std::move(b), std::move(c), std::move(d)} {}
+        : super_t(std::move(a), std::move(b), std::move(c), std::move(d)) {}
 
     /// Element-wise constructor.
     Matrix4(const element_t a, const element_t b, const element_t c, const element_t d, const element_t e,
             const element_t f, const element_t g, const element_t h, const element_t i, const element_t j,
             const element_t k, const element_t l, const element_t m, const element_t n, const element_t o,
             const element_t p)
-        : super_t{component_t(a, b, c, d), component_t(e, f, g, h), component_t(i, j, k, l), component_t(m, n, o, p)} {}
+        : super_t(component_t(a, b, c, d), component_t(e, f, g, h), component_t(i, j, k, l), component_t(m, n, o, p)) {}
 
     /// The identity matrix.
     static Matrix4 identity() { return Matrix4(1); }
@@ -343,24 +339,17 @@ public:
 
 } // namespace detail
 
-NOTF_CLOSE_NAMESPACE
-
-// std::hash ======================================================================================================== //
-
-namespace std {
-
-/// std::hash specialization for Matrix4.
-template<class Element>
-struct hash<notf::detail::Matrix4<Element>> {
-    size_t operator()(const notf::detail::Matrix4<Element>& matrix) const {
-        return notf::hash(notf::to_number(notf::detail::HashID::MATRIX4), //
-                          matrix[0], matrix[1], matrix[2], matrix[3]);
-    }
-};
-
-} // namespace std
-
 // formatting ======================================================================================================= //
+
+/// Prints the contents of a matrix into a std::ostream.
+/// @param out      Output stream, implicitly passed with the << operator.
+/// @param matrix   Matrix to print.
+/// @return Output stream for further output.
+template<typename Element>
+std::ostream& operator<<(std::ostream& out, const notf::detail::Matrix4<Element>& mat) {
+    return out << fmt::format("{}", mat);
+}
+NOTF_CLOSE_NAMESPACE
 
 namespace fmt {
 
@@ -390,14 +379,20 @@ struct formatter<notf::detail::Matrix4<Element>> {
 
 } // namespace fmt
 
-/// Prints the contents of a matrix into a std::ostream.
-/// @param out      Output stream, implicitly passed with the << operator.
-/// @param matrix   Matrix to print.
-/// @return Output stream for further output.
-template<typename Element>
-std::ostream& operator<<(std::ostream& out, const notf::detail::Matrix4<Element>& mat) {
-    return out << fmt::format("{}", mat);
-}
+// std::hash ======================================================================================================== //
+
+namespace std {
+
+/// std::hash specialization for Matrix4.
+template<class Element>
+struct hash<notf::detail::Matrix4<Element>> {
+    size_t operator()(const notf::detail::Matrix4<Element>& matrix) const {
+        return notf::hash(notf::to_number(notf::detail::HashID::MATRIX4), //
+                          matrix[0], matrix[1], matrix[2], matrix[3]);
+    }
+};
+
+} // namespace std
 
 // compile time tests =============================================================================================== //
 

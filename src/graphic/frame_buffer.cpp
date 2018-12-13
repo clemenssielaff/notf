@@ -42,7 +42,7 @@ const char* status_to_str(const GLenum status) {
 
 } // namespace
 
-// ================================================================================================================== //
+// render buffer ==================================================================================================== //
 
 NOTF_OPEN_NAMESPACE
 
@@ -119,7 +119,7 @@ void RenderBuffer::_deallocate() {
     m_id = RenderBufferId::invalid();
 }
 
-// ================================================================================================================== //
+// frame buffer ===================================================================================================== //
 
 void FrameBuffer::Args::set_color_target(const ushort id, ColorTarget target) {
     auto it = std::find_if(color_targets.begin(), color_targets.end(),

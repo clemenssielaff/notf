@@ -34,25 +34,20 @@ public:
     /// Default constructor.
     Matrix3() = default;
 
-    /// Forwarding constructor.
-    template<class... Args>
-    Matrix3(Args&&... args) : super_t(std::forward<Args>(args)...) {}
-
     /// Value constructor defining the diagonal of the matrix.
     /// @param a    Value to put into the diagonal.
-    Matrix3(const element_t a) : super_t(component_t(a, 0), component_t(0, a), component_t(0, 0)) {}
+    explicit Matrix3(const element_t a) : super_t(component_t(a, 0), component_t(0, a), component_t(0, 0)) {}
 
     /// Column-wise constructor of the matrix.
     /// @param a    First column.
     /// @param b    Second column.
     /// @param c    Third column.
-    Matrix3(const component_t a, const component_t b, const component_t c)
-        : super_t{std::move(a), std::move(b), std::move(c)} {}
+    Matrix3(component_t a, component_t b, component_t c) : super_t(std::move(a), std::move(b), std::move(c)) {}
 
     /// Element-wise constructor.
     Matrix3(const element_t a, const element_t b, const element_t c, const element_t d, const element_t e,
             const element_t f)
-        : super_t{component_t(a, b), component_t(c, d), component_t(e, f)} {}
+        : super_t(component_t(a, b), component_t(c, d), component_t(e, f)) {}
 
     /// The identity matrix.
     static Matrix3 identity() { return Matrix3(1); }
@@ -212,23 +207,18 @@ public:
 
 } // namespace detail
 
-NOTF_CLOSE_NAMESPACE
-
-// std::hash ======================================================================================================== //
-
-namespace std {
-
-/// std::hash specialization for Matrix3.
-template<class Element>
-struct hash<notf::detail::Matrix3<Element>> {
-    size_t operator()(const notf::detail::Matrix3<Element>& matrix) const {
-        return notf::hash(notf::to_number(notf::detail::HashID::MATRIX3), matrix[0], matrix[1], matrix[2]);
-    }
-};
-
-} // namespace std
-
 // formatting ======================================================================================================= //
+
+/// Prints the contents of a matrix into a std::ostream.
+/// @param out      Output stream, implicitly passed with the << operator.
+/// @param matrix   Matrix to print.
+/// @return Output stream for further output.
+template<typename Element>
+std::ostream& operator<<(std::ostream& out, const notf::detail::Matrix3<Element>& mat) {
+    return out << fmt::format("{}", mat);
+}
+
+NOTF_CLOSE_NAMESPACE
 
 namespace fmt {
 
@@ -254,14 +244,19 @@ struct formatter<notf::detail::Matrix3<Element>> {
 
 } // namespace fmt
 
-/// Prints the contents of a matrix into a std::ostream.
-/// @param out      Output stream, implicitly passed with the << operator.
-/// @param matrix   Matrix to print.
-/// @return Output stream for further output.
-template<typename Element>
-std::ostream& operator<<(std::ostream& out, const notf::detail::Matrix3<Element>& mat) {
-    return out << fmt::format("{}", mat);
-}
+// std::hash ======================================================================================================== //
+
+namespace std {
+
+/// std::hash specialization for Matrix3.
+template<class Element>
+struct hash<notf::detail::Matrix3<Element>> {
+    size_t operator()(const notf::detail::Matrix3<Element>& matrix) const {
+        return notf::hash(notf::to_number(notf::detail::HashID::MATRIX3), matrix[0], matrix[1], matrix[2]);
+    }
+};
+
+} // namespace std
 
 // compile time tests =============================================================================================== //
 

@@ -17,7 +17,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-// ================================================================================================================== //
+// prefab factory =================================================================================================== //
 
 namespace detail {
 
@@ -25,8 +25,7 @@ PrefabFactoryImpl::Definition::~Definition() {}
 PrefabFactoryImpl::Box::~Box() {}
 PrefabFactoryImpl::Sphere::~Sphere() {}
 
-PrefabFactoryImpl::Product PrefabFactoryImpl::_produce(const Box& def)
-{
+PrefabFactoryImpl::Product PrefabFactoryImpl::_produce(const Box& def) {
     V3d orient_axis = def.orient_axis;
     orient_axis.normalize();
 
@@ -165,8 +164,7 @@ PrefabFactoryImpl::Product PrefabFactoryImpl::_produce(const Box& def)
     return result;
 }
 
-PrefabFactoryImpl::Product PrefabFactoryImpl::_produce(const Sphere& def)
-{
+PrefabFactoryImpl::Product PrefabFactoryImpl::_produce(const Sphere& def) {
     const uint segment_count = max(3, def.segments);
     const uint ring_count = max(1, def.rings);
 
@@ -226,42 +224,36 @@ PrefabFactoryImpl::Product PrefabFactoryImpl::_produce(const Sphere& def)
     return result;
 }
 
-void PrefabFactoryImpl::_convert(const V2d& in, V2f& out)
-{
+void PrefabFactoryImpl::_convert(const V2d& in, V2f& out) {
     out[0] = static_cast<float>(in[0]);
     out[1] = static_cast<float>(in[1]);
 }
 
-void PrefabFactoryImpl::_convert(const V2d& in, V2h& out)
-{
+void PrefabFactoryImpl::_convert(const V2d& in, V2h& out) {
     out[0] = half(static_cast<float>(in[0]));
     out[1] = half(static_cast<float>(in[1]));
 }
 
-void PrefabFactoryImpl::_convert(const V3d& in, V3f& out)
-{
+void PrefabFactoryImpl::_convert(const V3d& in, V3f& out) {
     out[0] = static_cast<float>(in[0]);
     out[1] = static_cast<float>(in[1]);
     out[2] = static_cast<float>(in[2]);
 }
 
-void PrefabFactoryImpl::_convert(const V3d& in, V3h& out)
-{
+void PrefabFactoryImpl::_convert(const V3d& in, V3h& out) {
     out[0] = half(static_cast<float>(in[0]));
     out[1] = half(static_cast<float>(in[1]));
     out[2] = half(static_cast<float>(in[2]));
 }
 
-void PrefabFactoryImpl::_convert(const V3d& in, V4f& out)
-{
+void PrefabFactoryImpl::_convert(const V3d& in, V4f& out) {
     out[0] = static_cast<float>(in[0]);
     out[1] = static_cast<float>(in[1]);
     out[2] = static_cast<float>(in[2]);
     out[3] = 1;
 }
 
-void PrefabFactoryImpl::_convert(const V3d& in, V4h& out)
-{
+void PrefabFactoryImpl::_convert(const V3d& in, V4h& out) {
     out[0] = half(static_cast<float>(in[0]));
     out[1] = half(static_cast<float>(in[1]));
     out[2] = half(static_cast<float>(in[2]));

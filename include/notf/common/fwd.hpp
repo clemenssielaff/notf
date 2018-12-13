@@ -10,6 +10,16 @@ NOTF_OPEN_NAMESPACE
 
 // forwards ========================================================================================================= //
 
+// aabr.hpp
+namespace detail {
+template<class>
+struct Aabr;
+}
+using Aabrf = detail::Aabr<float>;
+using Aabrd = detail::Aabr<double>;
+using Aabri = detail::Aabr<int>;
+using Aabrs = detail::Aabr<short>;
+
 // arithmetic.hpp
 namespace detail {
 template<class, class, class, size_t>
@@ -76,5 +86,54 @@ using V4f = detail::Vector4<float>;
 using V4d = detail::Vector4<double>;
 using V4i = detail::Vector4<int>;
 using V4s = detail::Vector4<short>;
+
+// size2.hpp
+namespace detail {
+template<class>
+struct Size2;
+}
+using Size2f = detail::Size2<float>;
+using Size2d = detail::Size2<double>;
+using Size2i = detail::Size2<int>;
+using Size2s = detail::Size2<short>;
+
+// bezier.hpp
+namespace detail {
+template<size_t, class>
+struct Bezier;
+}
+using CubicBezier2f = detail::Bezier<3, V2f>;
+using CubicBezier2d = detail::Bezier<3, V2d>;
+
+// circle.hpp
+namespace detail {
+template<class>
+struct Circle;
+}
+using Circlef = detail::Circle<float>;
+
+// polygon.hpp
+namespace detail {
+template<class>
+class Polygon;
+}
+using Polygonf = detail::Polygon<float>;
+
+// segment.hpp
+namespace detail {
+template<class>
+struct Segment2;
+template<class>
+struct Segment3;
+}
+using Segment2f = detail::Segment2<float>;
+using Segment3f = detail::Segment3<float>;
+
+// triangle.hpp
+namespace detail {
+template<class>
+struct Triangle;
+}
+using Trianglef = detail::Triangle<float>;
 
 NOTF_CLOSE_NAMESPACE

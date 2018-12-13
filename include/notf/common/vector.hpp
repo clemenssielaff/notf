@@ -222,4 +222,34 @@ void iterate_and_clean(std::vector<T>& vector, P&& predicate, F&& functor) {
     if (gap != vector.size()) { vector.erase(iterator_at(vector, gap), vector.end()); }
 }
 
+// reverse iteration ================================================================================================ //
+
+namespace detail {
+template<typename T>
+struct reversion_wrapper {
+    T& iterable;
+};
+} // namespace detail
+
+template<typename T>
+auto begin(detail::reversion_wrapper<T> w) {
+    return std::rbegin(w.iterable);
+}
+
+template<typename T>
+auto end(detail::reversion_wrapper<T> w) {
+    return std::rend(w.iterable);
+}
+
+/// Reverse iterator adaptor.
+/// Use like this:
+///     for(const auto& foo : reverse(bar)){
+///         cout << foo << endl;
+///     }
+/// From: http://stackoverflow.com/a/28139075
+template<typename T>
+detail::reversion_wrapper<T> reverse(T&& iterable) {
+    return {iterable};
+}
+
 NOTF_CLOSE_NAMESPACE

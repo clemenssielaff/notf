@@ -78,28 +78,18 @@ public:
 
 } // namespace detail
 
-using Size2f = detail::Size2<float>;
-using Size2d = detail::Size2<double>;
-using Size2i = detail::Size2<int>;
-using Size2s = detail::Size2<short>;
+// formatting ======================================================================================================= //
+
+/// Prints the contents of a vector into a std::ostream.
+/// @param os   Output stream, implicitly passed with the << operator.
+/// @param vec  Vector to print.
+/// @return Output stream for further output.
+template<class Element>
+std::ostream& operator<<(std::ostream& out, const notf::detail::Size2<Element>& vec) {
+    return out << fmt::format("{}", vec);
+}
 
 NOTF_CLOSE_NAMESPACE
-
-// std::hash ======================================================================================================== //
-
-namespace std {
-
-/// std::hash specialization for notf::Size2.
-template<class Element>
-struct hash<notf::detail::Size2<Element>> {
-    size_t operator()(const notf::detail::Size2<Element>& size2) const {
-        return notf::hash(notf::to_number(notf::detail::HashID::SIZE2), size2.get_hash());
-    }
-};
-
-} // namespace std
-
-// formatting ======================================================================================================= //
 
 namespace fmt {
 
@@ -120,14 +110,19 @@ struct formatter<notf::detail::Size2<Element>> {
 
 } // namespace fmt
 
-/// Prints the contents of a vector into a std::ostream.
-/// @param os   Output stream, implicitly passed with the << operator.
-/// @param vec  Vector to print.
-/// @return Output stream for further output.
+// std::hash ======================================================================================================== //
+
+namespace std {
+
+/// std::hash specialization for notf::Size2.
 template<class Element>
-std::ostream& operator<<(std::ostream& out, const notf::detail::Size2<Element>& vec) {
-    return out << fmt::format("{}", vec);
-}
+struct hash<notf::detail::Size2<Element>> {
+    size_t operator()(const notf::detail::Size2<Element>& size2) const {
+        return notf::hash(notf::to_number(notf::detail::HashID::SIZE2), size2.get_hash());
+    }
+};
+
+} // namespace std
 
 // compile time tests =============================================================================================== //
 

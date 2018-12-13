@@ -41,6 +41,11 @@ enum class HashID : size_t {
     AABR,
     RATIONAL,
     COLOR,
+    BEZIER,
+    CIRCLE,
+    TRIANGLE,
+    SEGMENT,
+    POLYGON,
 };
 
 } // namespace detail

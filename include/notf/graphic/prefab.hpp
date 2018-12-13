@@ -59,11 +59,11 @@ class PrefabType : public std::enable_shared_from_this<PrefabType<INSTANCE_DATA>
     template<typename>
     friend class PrefabFactory;
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     using InstanceData = INSTANCE_DATA;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 private:
     NOTF_CREATE_SMART_FACTORIES(PrefabType);
 
@@ -115,7 +115,7 @@ public:
         return result;
     }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Name of this prefab type.
     const std::string m_name;

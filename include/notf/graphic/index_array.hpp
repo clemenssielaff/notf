@@ -106,21 +106,20 @@ public:
     std::vector<index_t>& buffer() { return m_indices; }
 
     /// Initializes the IndexArray.
-    /// @throws runtime_error   If the VBO could not be allocated.
-    /// @throws runtime_error   If no VAO is currently bound.
+    /// @throws OpenGLError If the VBO could not be allocated or no VAO is currently bound.
     void init() {
 #ifdef NOTF_DEBUG
         { // make sure there is a bound VAO
             GLint current_vao = 0;
             NOTF_CHECK_GL(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
-            if (!current_vao) { NOTF_THROW(runtime_error, "Cannot initialize an IndexArray without a bound VAO"); }
+            if (!current_vao) { NOTF_THROW(OpenGLError, "Cannot initialize an IndexArray without a bound VAO"); }
         }
 #endif
 
         if (m_vbo_id) { return _update(); }
 
         NOTF_CHECK_GL(glGenBuffers(1, &m_vbo_id));
-        if (!m_vbo_id) { NOTF_THROW(runtime_error, "Failed to allocate IndexArray"); }
+        if (!m_vbo_id) { NOTF_THROW(OpenGLError, "Failed to allocate IndexArray"); }
 
         m_type = to_gl_type(index_t());
         m_size = static_cast<GLsizei>(m_indices.size());

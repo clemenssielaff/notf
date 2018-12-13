@@ -171,7 +171,7 @@ half::operator float() const
     return converter.f;
 }
 
-// ================================================================================================================== //
+// formatting ======================================================================================================= //
 
 std::ostream& operator<<(std::ostream& out, const half& value) { return out << static_cast<float>(value); }
 

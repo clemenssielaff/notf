@@ -142,8 +142,6 @@ public:
 
 } // namespace detail
 
-// ================================================================================================================== //
-
 ///// Spherical linear interpolation between two vectors.
 ///// Travels the torque-minimal path at a constant velocity.
 ///// Taken from http://bulletphysics.org/Bullet/BulletFull/neon_2vec__aos_8h_source.html .

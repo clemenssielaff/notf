@@ -73,8 +73,6 @@ void check_gl_error(uint line, const char* file) {
 
 } // namespace detail
 
-// ================================================================================================================== //
-
 void clear_gl_errors() {
     if constexpr (config::is_debug_build()) {
         while (glGetError() != GL_NO_ERROR) {};

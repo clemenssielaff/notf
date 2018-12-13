@@ -38,7 +38,7 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-// ================================================================================================================== //
+// extensions ======================================================================================================= //
 
 #if NOTF_LOG_LEVEL <= 0
 #define NOTF_CHECK_GL_EXTENSION(member, extension)                                                                 \
@@ -62,7 +62,7 @@ GraphicsSystem::Extensions::Extensions() {
 
 #undef NOTF_CHECK_GL_EXTENSION
 
-// ================================================================================================================== //
+// environment ====================================================================================================== //
 
 GraphicsSystem::Environment::Environment() {
     constexpr GLint reserved_texture_slots = 1;
@@ -90,7 +90,7 @@ GraphicsSystem::Environment::Environment() {
     }
 }
 
-// ================================================================================================================== //
+// graphics system ================================================================================================== //
 
 const GraphicsSystem::Extensions& GraphicsSystem::_get_extensions() {
     static const Extensions singleton;

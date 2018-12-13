@@ -19,13 +19,13 @@
 
 NOTF_OPEN_NAMESPACE
 
-// ================================================================================================================== //
+// prefab factory impl ============================================================================================== //
 
 namespace detail {
 
 class PrefabFactoryImpl {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 protected:
     /// Intermediate structure independent of the Vertex layout.
     struct Study {
@@ -90,7 +90,7 @@ public:
         virtual Kind kind() const override { return Kind::SPHERE; }
     };
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Add a box to the factory's production list.
     void add(const Box& definition) { m_definitions.emplace_back(std::make_unique<Box>(std::move(definition))); }
@@ -124,7 +124,7 @@ protected:
         static_assert(always_false_v<UNSUPPORTED_TYPE>, "No conversion defined from V2d to UNSUPPORTED_TYPE");
     }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 protected:
     /// All definitions added to the factory.
     std::vector<std::unique_ptr<Definition>> m_definitions;
@@ -132,13 +132,13 @@ protected:
 
 } // namespace detail
 
-// ================================================================================================================== //
+// prefab factory =================================================================================================== //
 
 /// Factory class for building new prefabs that are stored in a given library.
 template<typename LIBRARY>
 class PrefabFactory : public detail::PrefabFactoryImpl {
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 private:
     using library_t = LIBRARY;
 
@@ -153,7 +153,7 @@ public:
 
     using InstanceData = typename library_t::instance_array_t::Vertex;
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor.
     /// @param library   Geometry library into which the factory produces prefab types.
@@ -247,7 +247,7 @@ private:
         memset(&std::get<index>(vertex), 0, sizeof(T)); // set unknown attribute to zero
     }
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Geometry library into which the factory produces.
     library_t& m_library;

@@ -8,7 +8,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-// ================================================================================================================== //
+// gl utils ========================================================================================================= //
 
 /// Modern way of creating a GLvoid buffer offset.
 constexpr char* gl_buffer_offset(size_t offset) { return static_cast<char*>(nullptr) + offset; }
@@ -30,8 +30,6 @@ inline constexpr GLenum to_gl_type(const GLuint&) { return GL_UNSIGNED_INT; }
 inline constexpr GLenum to_gl_type(const half&) { return GL_HALF_FLOAT; }
 inline constexpr GLenum to_gl_type(const GLfloat&) { return GL_FLOAT; }
 
-// ================================================================================================================== //
-
 /// The expected usage of the data.
 enum class GLUsage {
     DYNAMIC_DRAW,
@@ -45,7 +43,6 @@ enum class GLUsage {
     STREAM_COPY,
     DEFAULT = DYNAMIC_DRAW,
 };
-
 /// Converts the GLUsage type into an OpenGL enum.
 GLenum get_gl_usage(const GLUsage usage);
 

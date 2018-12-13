@@ -135,7 +135,7 @@ private:
     /// Creates a new Skyline node just left of the given node index.
     void _add_node(const size_t node_index, const Glyph::Rect& rect);
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Font atlas texture.
     TexturePtr m_texture;

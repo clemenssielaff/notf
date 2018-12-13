@@ -15,12 +15,12 @@ class ShaderProgram : public std::enable_shared_from_this<ShaderProgram> {
 
     friend Accessor<ShaderProgram, detail::GraphicsSystem>;
 
-    // types -------------------------------------------------------------------------------------------------------- //
+    // types ----------------------------------------------------------------------------------- //
 public:
     /// Nested `AccessFor<T>` type.
     NOTF_ACCESS_TYPE(ShaderProgram);
 
-    // methods ------------------------------------------------------------------------------------------------------ //
+    // methods --------------------------------------------------------------------------------- //
 private:
     NOTF_CREATE_SMART_FACTORIES(ShaderProgram);
 
@@ -73,7 +73,7 @@ private:
     /// Deallocates the Program.
     void _deallocate();
 
-    // fields ------------------------------------------------------------------------------------------------------- //
+    // fields ---------------------------------------------------------------------------------- //
 private:
     /// Vertex shader attached to this Program.
     VertexShaderPtr m_vertex_shader;

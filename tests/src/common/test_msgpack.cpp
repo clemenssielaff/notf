@@ -108,7 +108,7 @@ MsgPack get_mutated_test_pack() // like the test pack but with ONE minor differe
     };
 }
 
-// ================================================================================================================== //
+// test cases ======================================================================================================= //
 
 SCENARIO("msgpack construction", "[common][msgpack]") {
     bool success = false;

@@ -204,7 +204,7 @@ if(NOTF_WINDOWS)
     set(NOTF_GLOBAL_DEFINES
         WIN32_LEAN_AND_MEAN # Don't include most of Windows.h
         NOGDI
-		NOMINMAX
+        NOMINMAX
     )
 else()
     set(NOTF_GLOBAL_DEFINES

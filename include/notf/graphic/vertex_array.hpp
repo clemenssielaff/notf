@@ -12,7 +12,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-// ================================================================================================================== //
+// prefab factory impl ============================================================================================== //
 
 namespace detail {
 
@@ -31,7 +31,7 @@ constexpr decltype(auto) extract_trait_types(const std::tuple<Ts...>& tuple) {
 
 } // namespace detail
 
-// ================================================================================================================== //
+// attributes ======================================================================================================= //
 
 /// Definitions used to identify VertexArray traits to the Geometry factory.
 /// Used to tell the GeometryFactory how to construct a VertexArray<Traits...>::Vertex instance.
@@ -53,8 +53,6 @@ struct AttributeKind {
     /// Does not impose any restrictions on the Trait::type.
     struct Other {};
 };
-
-// ================================================================================================================== //
 
 /// Base of all attribute kinds.
 /// The base holds defaults for all trait types - some of which must be overwritten in subclasses in order to
@@ -115,7 +113,7 @@ constexpr inline bool is_trait_tuple(const std::tuple<Ts...>& tuple) {
     return detail::is_trait_tuple_impl(tuple, Indices{});
 }
 
-// ================================================================================================================== //
+// vertex array type ================================================================================================ //
 
 /// VertexArray baseclass, so other objects can hold pointers to any type of VertexArray.
 class VertexArrayType {
@@ -166,7 +164,7 @@ protected:
     static constexpr GLuint INVALID_ID = max_value<GLuint>();
 };
 
-// ================================================================================================================== //
+// vertex array ===================================================================================================== //
 
 /// The Vertex array manages an array of vertex attributes.
 /// The array's layout is defined at compile-time using traits.
@@ -177,13 +175,13 @@ protected:
 ///
 ///     struct VertexPositionTrait : public AttributeTrait {
 ///         constexpr static uint location = 0;
-///         using type                     = Vector2f;
+///         using type                     = V2f;
 ///         using kind                     = AttributeKind::Position;
 ///     };
 ///
 ///     struct VertexColorTrait : public AttributeTrait {
 ///         constexpr static uint location = 1;
-///         using type                     = Vector4h;
+///         using type                     = V4h;
 ///         using kind                     = AttributeKind::Color;
 ///     };
 ///

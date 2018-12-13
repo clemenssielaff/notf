@@ -112,6 +112,10 @@ NOTF_OPEN_NAMESPACE
 #define NOTF_PRAGMA(x) _Pragma(x)
 #endif
 
+/// Not undefined because boolean reasoning is hard.
+#define NOTF_THROWS_IF(x) noexcept(!(x))
+#define NOTF_THROWS noexcept(false)
+
 // object definition ================================================================================================ //
 
 /// Convenience macro to disable the construction of automatic copy- and assign methods.
