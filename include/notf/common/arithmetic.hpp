@@ -104,7 +104,7 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default constructor.
-    Arithmetic() = default;
+    constexpr Arithmetic() = default;
 
     /// Value constructor.
     /// @param data Raw data for this arithmetic type.
@@ -127,10 +127,10 @@ public:
 
     /// Create an arithmetic value with all elements set to the given value.
     /// @param value    Value to set.
-    static derived_t all(const element_t value) {
+    constexpr static derived_t all(const element_t value) {
         derived_t result;
         if constexpr (_is_ground()) {
-            result.data.fill(value);
+            result.set_all(value);
         } else {
             for (size_t i = 0; i < get_dimensions(); ++i) {
                 result[i].set_all(value);
@@ -140,7 +140,7 @@ public:
     }
 
     /// Arithmetic value with all elements set to zero.
-    static derived_t zero() { return all(0); }
+    constexpr static derived_t zero() { return all(0); }
 
     // inspection -------------------------------------------------------------
 

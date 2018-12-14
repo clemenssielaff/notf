@@ -18,9 +18,9 @@ namespace {
 NOTF_USING_NAMESPACE;
 
 /// Property policies.
-using Resolution = detail::window_properties::Resolution;
-using Position = detail::window_properties::Position;
-using Monitor = detail::window_properties::Monitor;
+using Resolution = detail::window_policy::Resolution;
+using Position = detail::window_policy::Position;
+using Monitor = detail::window_policy::Monitor;
 
 GLFWmonitor* get_glfw_monitor(int index) {
     int count = 0;

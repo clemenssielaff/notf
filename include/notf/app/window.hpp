@@ -8,7 +8,7 @@
 
 #include "notf/graphic/graphics_context.hpp"
 
-#include "notf/app/node_compiletime.hpp"
+#include "notf/app/scene.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -66,9 +66,9 @@ struct WindowArguments {
     bool is_resizeable = true;
 };
 
-namespace window_properties {
-
 // properties =================================================================
+
+namespace window_policy {
 
 /// Window title.
 struct Title {
@@ -154,7 +154,7 @@ struct WindowPolicy {
         Resolution,                //
         State,                     //
         Monitor                    //
-        >;
+        >;                         //
 
     using slots = std::tuple< //
         CloseSlot             //
@@ -165,17 +165,17 @@ struct WindowPolicy {
         >;                      //
 };
 
-} // namespace window_properties
+} // namespace window_policy
 } // namespace detail
 
 // window =========================================================================================================== //
 
-class Window : public CompileTimeNode<detail::window_properties::WindowPolicy> {
+class Window : public CompileTimeNode<detail::window_policy::WindowPolicy> {
 
     // types ----------------------------------------------------------------------------------- //
 private:
     /// Compile time Node base type.
-    using super_t = CompileTimeNode<detail::window_properties::WindowPolicy>;
+    using super_t = CompileTimeNode<detail::window_policy::WindowPolicy>;
 
 public:
     /// Settings to create a Window instance.
@@ -184,17 +184,23 @@ public:
     /// System state of the Window.
     using State = Arguments::State;
 
+    /// Windows are only allowed to parent Scenes.
+    using allowed_child_types = std::tuple<Scene>;
+
+    /// Only the Root Node may parent Windows.
+    using allowed_parent_types = std::tuple<RootNode>;
+
     /// Property names.
-    static constexpr const StringConst& title = detail::window_properties::Title::name;
-    static constexpr const StringConst& icon = detail::window_properties::Icon::name;
-    static constexpr const StringConst& size = detail::window_properties::Size::name;
-    static constexpr const StringConst& position = detail::window_properties::Position::name;
-    static constexpr const StringConst& resolution = detail::window_properties::Resolution::name;
-    static constexpr const StringConst& state = detail::window_properties::State::name;
-    static constexpr const StringConst& monitor = detail::window_properties::Monitor::name;
+    static constexpr const StringConst& title = detail::window_policy::Title::name;
+    static constexpr const StringConst& icon = detail::window_policy::Icon::name;
+    static constexpr const StringConst& size = detail::window_policy::Size::name;
+    static constexpr const StringConst& position = detail::window_policy::Position::name;
+    static constexpr const StringConst& resolution = detail::window_policy::Resolution::name;
+    static constexpr const StringConst& state = detail::window_policy::State::name;
+    static constexpr const StringConst& monitor = detail::window_policy::Monitor::name;
 
     /// Slot names.
-    static constexpr const StringConst& to_close = detail::window_properties::CloseSlot::name;
+    static constexpr const StringConst& to_close = detail::window_policy::CloseSlot::name;
 
 private:
     /// Exception thrown when the OpenGL context of a Window could not be initialized.
@@ -227,6 +233,15 @@ public:
     /// Internal GraphicsContext.
     GraphicsContext& get_graphics_context() const { return *m_graphics_context; }
 
+    /// (Re-)Sets the Scene displayed in this Window.
+    template<class T, class... Args>
+    SceneHandle set_scene(Args&&... args) {
+        _clear_children();
+        return _create_child<T>(std::forward<Args>(args)...);
+    }
+
+    // TODO: is there a way to ensure child arity like we do with child-type? (Window may only have one, for example).
+
 private:
     /// Closes this Window.
     void _close();
@@ -257,13 +272,21 @@ private:
 
     /// Internal GraphicsContext.
     GraphicsContextPtr m_graphics_context;
+
+    /// Scene contained in this Window.
+    SceneHandle m_scene;
 };
 
 // window handle ==================================================================================================== //
 
 namespace detail {
+
 template<>
-struct NodeHandleInterface<Window> : public NodeHandleBaseInterface<Window> {};
+struct NodeHandleInterface<Window> : public NodeHandleBaseInterface<Window> {
+
+    using Window::set_scene;
+};
+
 } // namespace detail
 
 class WindowHandle : public TypedNodeHandle<Window> {

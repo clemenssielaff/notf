@@ -2,7 +2,7 @@
 
 #include "notf/meta/pointer.hpp"
 
-#include "notf/app/fwd.hpp"
+#include "notf/app/node_handle.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -52,5 +52,22 @@ protected:
     /// @param parent   Parent of this Node.
     Widget(valid_ptr<Node*> parent) : Base(parent) {}
 };
+
+// widget handle ==================================================================================================== //
+
+//namespace detail {
+
+//template<>
+//struct NodeHandleInterface<AnyWidget> : public NodeHandleBaseInterface<AnyWidget> {};
+
+//} // namespace detail
+
+//class WidgetHandle : public TypedNodeHandle<AnyWidget> {
+
+//    // methods --------------------------------------------------------------------------------- //
+//public:
+//    // use baseclass' constructors
+//    using TypedNodeHandle<AnyWidget>::TypedNodeHandle;
+//};
 
 NOTF_CLOSE_NAMESPACE

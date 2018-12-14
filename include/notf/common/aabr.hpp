@@ -30,38 +30,39 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default constructor.
-    Aabr() = default;
+    constexpr Aabr() = default;
 
     /// Constructs an Aabr of the given width and height, with the bottom-left corner at the given coordinates.
     /// @param x         X-coordinate of the bottom-left corner.
     /// @param y         Y-coordinate of the bottom-left corner.
     /// @param width     Width of the Aabr.
     /// @param height    Height of the Aabr.
-    Aabr(const element_t x, const element_t y, const element_t width, const element_t height)
+    constexpr Aabr(const element_t x, const element_t y, const element_t width, const element_t height)
         : super_t(component_t(x, y), component_t(x + width, y + height)) {}
 
     /// Constructs an Aabr of the given width and height, with the bottom-left corner at `position`.
     /// @param position  Position of the Aabr's bottom-left corner.
     /// @param width     Width of the Aabr.
     /// @param height    Height of the Aabr.
-    Aabr(const component_t position, const element_t width, const element_t height)
+    constexpr Aabr(const component_t position, const element_t width, const element_t height)
         : super_t(position, position + component_t(width, height)) {}
 
     /// Constructs an Aabr of the given size with the bottom-left corner at `position`.
     /// @param position  Position of the Aabr's bottom-left corner.
     /// @param size      Size of the Aabr.
-    Aabr(const component_t& position, const Size2<element_t>& size)
+    constexpr Aabr(const component_t& position, const Size2<element_t>& size)
         : super_t(position, component_t(position.x() + size.width(), position.y() + size.height)) {}
 
     /// Constructs an Aabr of the given size with the bottom-left corner at zero.
     /// @param size  Size of the Aabr.
-    Aabr(const Size2<element_t>& size) : super_t(component_t(0, 0), component_t(size.width(), size.height())) {}
+    constexpr Aabr(const Size2<element_t>& size)
+        : super_t(component_t(0, 0), component_t(size.width(), size.height())) {}
 
     /// Constructs the Aabr from two of its corners.
     /// The corners don't need to be specific, the constructor figures out how to construct an Aabr from them.
     /// @param a    One corner point of the Aabr.
     /// @param b    Opposite corner point of the Aabr.
-    Aabr(const component_t& a, const component_t& b) {
+    constexpr Aabr(const component_t& a, const component_t& b) {
         if (a.x() < b.x()) {
             if (a.y() < b.y()) {
                 data[0] = a;
@@ -82,7 +83,7 @@ public:
     }
 
     /// The largest representable Aabr.
-    static Aabr huge() {
+    constexpr static Aabr huge() {
         Aabr result;
         result[0] = component_t::all(min_value<element_t>());
         result[1] = component_t::all(max_value<element_t>());
@@ -91,7 +92,7 @@ public:
 
     /// The "most wrong" Aabr (maximal negative area).
     /// Is useful as the starting point for defining an Aabr from a set of points.
-    static Aabr wrongest() {
+    constexpr static Aabr wrongest() {
         Aabr result;
         result[0] = component_t::all(max_value<element_t>());
         result[1] = component_t::all(min_value<element_t>());
@@ -99,7 +100,7 @@ public:
     }
 
     /// Returns an Aabr of a given size, with zero in the center.
-    static Aabr centered(const Size2<element_t>& size) {
+    constexpr static Aabr centered(const Size2<element_t>& size) {
         const element_t half_width = size.width / 2;
         const element_t half_height = size.height / 2;
         Aabr result;

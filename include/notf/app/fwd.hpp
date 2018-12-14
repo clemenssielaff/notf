@@ -66,6 +66,10 @@ class CompileTimeProperty;
 NOTF_DECLARE_SHARED_POINTERS(class, RootNode);
 using RootNodeHandle = TypedNodeHandle<RootNode>;
 
+// scene.hpp
+NOTF_DECLARE_SHARED_POINTERS(class, Scene);
+class SceneHandle;
+
 // signal.hpp
 NOTF_DECLARE_SHARED_POINTERS(class, AnySignal);
 NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, Signal);
@@ -85,6 +89,9 @@ class SlotHandle;
 // timer_pool.hpp
 NOTF_DECLARE_SHARED_POINTERS(class, Timer);
 class TheTimerPool;
+
+// visualizer
+NOTF_DECLARE_SHARED_POINTERS(class, Visualizer);
 
 // window.hpp
 namespace detail {

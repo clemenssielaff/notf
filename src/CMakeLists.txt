@@ -13,7 +13,9 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/property.cpp
     app/resource_manager.cpp
     app/root_node.cpp
+    app/scene.cpp
     app/timer_pool.cpp
+    app/visualizer.cpp
     app/window.cpp
 
     app/widget/claim.cpp

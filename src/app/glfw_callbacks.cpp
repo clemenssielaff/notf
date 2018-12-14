@@ -3,6 +3,7 @@
 #include "notf/meta/log.hpp"
 
 #include "notf/app/event_handler.hpp"
+#include "notf/app/input.hpp"
 #include "notf/app/timer_pool.hpp"
 #include "notf/app/window.hpp"
 
@@ -92,36 +93,14 @@ void GlfwCallbacks::_on_scroll(GLFWwindow* glfw_window, const double x, const do
 
 void GlfwCallbacks::_on_token_key(GLFWwindow* glfw_window, const int key, const int scancode, const int action,
                                   const int modifiers) {
-    //        if (action == GLFW_PRESS) {
-    //            schedule<KeyPressEvent>(glfw_window, to_key(key), scancode, KeyModifiers(modifiers));
-    //        } else if (action == GLFW_RELEASE) {
-    //            schedule<KeyReleaseEvent>(glfw_window, to_key(key), scancode, KeyModifiers(modifiers));
-    //        } else {
-    //            NOTF_ASSERT(action == GLFW_REPEAT);
-    //            schedule<KeyRepeatEvent>(glfw_window, to_key(key), scancode, KeyModifiers(modifiers));
-    //        }
-
-    if (action == GLFW_PRESS) {
-        using namespace std::chrono_literals;
-
-        if (key == GLFW_KEY_ENTER) {
-            TheEventHandler()->schedule([] { Window::create(); });
-        } else {
-            TheEventHandler()->schedule([] {
-                NOTF_USING_LITERALS;
-                size_t counter = 0;
-                auto timer = IntervalTimer(0.2s,
-                                           [counter]() mutable {
-                                               for (size_t i = 1, end = counter++; i <= end; ++i) {
-                                                   std::cout << " ";
-                                               }
-                                               std::cout << counter << std::endl;
-                                           },
-                                           10);
-                timer->start(/*detached=*/true);
-            });
-        }
-    }
+//    if (action == GLFW_PRESS) {
+//        schedule<KeyPressEvent>(glfw_window, to_key(key), scancode, KeyModifiers(modifiers));
+//    } else if (action == GLFW_RELEASE) {
+//        schedule<KeyReleaseEvent>(glfw_window, to_key(key), scancode, KeyModifiers(modifiers));
+//    } else {
+//        NOTF_ASSERT(action == GLFW_REPEAT);
+//        schedule<KeyRepeatEvent>(glfw_window, to_key(key), scancode, KeyModifiers(modifiers));
+//    }
 }
 
 void GlfwCallbacks::_on_char_input(GLFWwindow* glfw_window, const uint codepoint) {

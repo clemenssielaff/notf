@@ -263,9 +263,9 @@ public:
         } else {
             // Often, a NodeOwner is stored on the parent Node itself.
             // In that case, it will be destroyed right after the parent's Node class destructor has finished, and
-            // just before the next subclass' destructor begins. At that point, the `shared_ptr` wrapping the deepest
-            // nested subclass, will have already been destroyed and all calls to `shared_from_this` or other
-            // `shared_ptr` functions will throw.
+            // just before the next subclass' destructor begins. At that point, the `shared_ptr` wrapping the outermost
+            // subclass, will have already been destroyed causing all calls to `shared_from_this` or other `shared_ptr`
+            // functions to throw.
             // Luckily, we can reliably test for this by checking if the `weak_ptr` contained in any Node through its
             // inheritance of `std::enable_shared_from_this` has expired. If so, we don't have to tell the parent to
             // remove the handled child, since the parent is about to be destroyed anyway and will take down all
@@ -367,7 +367,7 @@ protected: // for all subclasses
     /// @throws OutOfBounds   If index >= user flag count.
     void _set_flag(size_t index, bool value = true);
 
-    // children ---------------------------------------------------------------
+    // hierarchy --------------------------------------------------------------
 
     /// Creates and adds a new child to this node.
     /// @param parent   Parent of the Node, must be `this` (is used for type checking).
@@ -408,6 +408,12 @@ protected: // for all subclasses
     /// Changes the parent of this Node by first adding it to the new parent and then removing it from its old one.
     /// @param new_parent_handle    New parent of this Node. If it is the same as the old, this method does nothing.
     void _set_parent(NodeHandle new_parent_handle);
+
+    /// Tests if the parent of
+    template<class T>
+    bool _has_parent_of_type() const {
+        return dynamic_cast<T*>(_get_parent()) != nullptr;
+    }
 
 protected: // for direct subclasses only
     /// Reactive function marking this Node as dirty whenever a visible Property changes its value.

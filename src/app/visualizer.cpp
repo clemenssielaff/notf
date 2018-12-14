@@ -1,0 +1,59 @@
+#include "notf/app/visualizer.hpp"
+
+#include "notf/graphic/frame_buffer.hpp"
+#include "notf/graphic/graphics_context.hpp"
+#include "notf/graphic/texture.hpp"
+
+NOTF_OPEN_NAMESPACE
+
+Visualizer::~Visualizer() = default;
+
+// plate ============================================================================================================ //
+
+Visualizer::Plate::Plate(Args&& args) : m_scene(std::move(args.scene)), m_visualizer(std::move(args.visualizer)) {
+    // create the texture arguments
+    Texture::Args texture_args;
+    texture_args.is_linear = true; // important
+    texture_args.anisotropy = args.anisotropy;
+
+    if (args.create_mipmaps) {
+        texture_args.min_filter = Texture::MinFilter::LINEAR_MIPMAP_LINEAR;
+        texture_args.mag_filter = Texture::MagFilter::LINEAR;
+        texture_args.create_mipmaps = true;
+    } else {
+        texture_args.min_filter = Texture::MinFilter::NEAREST;
+        texture_args.mag_filter = Texture::MagFilter::NEAREST;
+        texture_args.create_mipmaps = false;
+    }
+
+    if (args.has_transparency) {
+        texture_args.format = Texture::Format::RGBA;
+    } else {
+        texture_args.format = Texture::Format::RGB;
+    }
+
+    // create the framebuffer
+    std::string name = fmt::format("Plate#{}", to_number(this));
+    FrameBuffer::Args framebuffer_args;
+    framebuffer_args.set_color_target(0, Texture::create_empty(std::move(name), args.size, texture_args));
+    m_framebuffer = FrameBuffer::create(std::move(framebuffer_args));
+}
+
+Visualizer::Plate::~Plate() = default;
+
+const TexturePtr& Visualizer::Plate::texture() const { return m_framebuffer->get_color_texture(0); }
+
+void Visualizer::Plate::clean() {
+    if (!is_dirty()) { return; }
+
+    // prepare the graphic state
+    GraphicsContext& context = GraphicsContext::get();
+    const auto framebuffer_guard = context.bind_framebuffer(m_framebuffer);
+    context.set_render_area(texture()->get_size());
+    context.clear(Color::black());
+
+    // draw everything
+    m_visualizer->visualize(m_scene.get());
+}
+
+NOTF_CLOSE_NAMESPACE
