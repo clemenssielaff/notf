@@ -161,7 +161,7 @@ public:
     /// Type of the value pointed to by this value_ptr.
     using element_type = std::remove_pointer_t<T>;
 
-    /// Error thrown by risky_ptr, when you try to dereference a nullptr.
+    /// Error thrown by valid_ptr, when you try to dereference a nullptr.
     NOTF_EXCEPTION_TYPE(NotValidError);
 
     // methods --------------------------------------------------------------------------------- //
@@ -226,14 +226,9 @@ private:
     T m_ptr;
 };
 
-/// Denote a raw pointer as "risky".
-/// Doesn't add any functionality, only signifies to the reader that a function may return nullptr.
-template<class T>
-using risky_ptr = std::decay_t<T>*;
-
 // pointer comparisons ============================================================================================== //
 
-/// Functor to use when comparing pointers of different types (raw, valid_ptr, risky_ptr, shared_ptr, unique_ptr).
+/// Functor to use when comparing pointers of different types (raw, valid_ptr, shared_ptr, unique_ptr).
 /// From: https://stackoverflow.com/a/18940595
 struct pointer_equal {
     using is_transparent = std::true_type;

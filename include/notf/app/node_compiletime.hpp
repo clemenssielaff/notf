@@ -10,13 +10,22 @@ NOTF_OPEN_NAMESPACE
 namespace detail {
 
 template<template<class> class, class...>
-struct instantiate_policies;
+struct instantiate_shared;
 template<template<class> class Template, class... Ts>
-struct instantiate_policies<Template, std::tuple<Ts...>> {
+struct instantiate_shared<Template, std::tuple<Ts...>> {
     using type = std::tuple<std::shared_ptr<Template<Ts>>...>;
 };
 template<template<class> class Template, class Tuple>
-using instantiate_policies_t = typename instantiate_policies<Template, Tuple>::type;
+using instantiate_shared_t = typename instantiate_shared<Template, Tuple>::type;
+
+template<template<class> class, class...>
+struct instantiate_unique;
+template<template<class> class Template, class... Ts>
+struct instantiate_unique<Template, std::tuple<Ts...>> {
+    using type = std::tuple<std::unique_ptr<Template<Ts>>...>;
+};
+template<template<class> class Template, class Tuple>
+using instantiate_unique_t = typename instantiate_unique<Template, Tuple>::type;
 
 template<class Policy>
 struct NodePolicyFactory {
@@ -28,13 +37,13 @@ struct NodePolicyFactory {
         struct NodePolicy {
 
             /// All Properties of the Node type.
-            using properties = instantiate_policies_t<CompileTimeProperty, decltype(get_properties())>;
+            using properties = instantiate_shared_t<CompileTimeProperty, decltype(get_properties())>;
 
             /// All Slots of the Node type.
-            using slots = instantiate_policies_t<CompileTimeSlot, decltype(get_slots())>;
+            using slots = instantiate_unique_t<CompileTimeSlot, decltype(get_slots())>;
 
             /// All Signals of the Node type.
-            using signals = instantiate_policies_t<CompileTimeSignal, decltype(get_signals())>;
+            using signals = instantiate_shared_t<CompileTimeSignal, decltype(get_signals())>;
         };
 
         return NodePolicy();
@@ -172,19 +181,17 @@ protected:
             using property_t = typename std::decay_t<decltype(property)>::element_type;
 
             // create the new property
-            auto property_ptr = std::make_shared<property_t>();
-            property = property_ptr;
+            property = std::make_shared<property_t>();
 
             // subscribe to receive an update, whenever a visible property changes its value
-            if (property_ptr->is_visible()) {
-                auto typed_property = std::static_pointer_cast<Property<typename property_t::value_t>>(property_ptr);
-                typed_property->get_operator()->subscribe(_get_property_observer());
+            if (property->is_visible()) {
+                property->get_operator()->subscribe(_get_property_observer());
             }
         });
 
         // slots
         for_each(m_slots, [this](auto& slot) {
-            slot = std::make_shared<typename std::decay_t<decltype(slot)>::element_type>();
+            slot = std::make_unique<typename std::decay_t<decltype(slot)>::element_type>();
         });
 
         // signals

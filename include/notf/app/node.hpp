@@ -24,6 +24,75 @@ class Node : public std::enable_shared_from_this<Node> {
     friend Accessor<Node, detail::Graph>;
 
     // types ----------------------------------------------------------------------------------- //
+public:
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(Node);
+
+    /// Exception thrown when you try to do something that is only allowed to do if the node hasn't been finalized yet.
+    NOTF_EXCEPTION_TYPE(FinalizedError);
+
+    /// If two Nodes have no common ancestor.
+    NOTF_EXCEPTION_TYPE(HierarchyError);
+
+    // iterator ----------------------------------------------------------------
+
+    /// Node iterator, iterates through all children of a Node (visually back to front).
+    struct Iterator {
+
+        // types ----------------------------------------------------------- //
+    private:
+        struct Impl {
+            /// Constructor.
+            /// @param node         The iterated Node.
+            /// @param child_count  Numer of children of the Node.
+            Impl(NodeHandle node, const size_t child_count) : node(std::move(node)), end(child_count) {}
+
+            /// The iterated Node.
+            NodeHandle node;
+
+            /// Current child index.
+            size_t index = 0;
+
+            /// One index past the last child.
+            const size_t end;
+        };
+
+        // methods --------------------------------------------------------- //
+    public:
+        /// Constructor.
+        /// @param node Node at the root of the iteration.
+        Iterator(NodeHandle node) { m_iterators.emplace_back(std::move(node)); }
+
+        /// Finds and returns the next Node in the iteration.
+        /// @param node [OUT] Next Node in the iteration.
+        /// @returns    True if a new Node was found.
+        bool next(NodeHandle& node) {
+            while (true) {
+                Impl& it = m_iterators.back();
+                node = it.node;
+
+                if (it.index == it.end) {
+                    if (m_iterators.size() == 1) {
+                        return false;
+                    } else {
+                        m_iterators.pop_back();
+                        continue;
+                    }
+                }
+
+                const size_t child_count = node->get_child_count();
+                if (child_count > 0) { m_iterators.emplace_back(node->get_child(0), child_count); }
+
+                return true;
+            }
+        }
+
+        // fields ---------------------------------------------------------- //
+    private:
+        /// Stack of Iterators.
+        std::vector<Impl> m_iterators;
+    };
+
 private:
     /// Internal reactive function that is subscribed to all visible Properties and marks the Node as dirty, should one
     /// of them change.
@@ -93,16 +162,6 @@ private:
 protected:
     /// Number of user-definable flags on this system.
     static constexpr size_t s_user_flag_count = bitset_size_v<Flags> - s_internal_flag_count;
-
-public:
-    /// Nested `AccessFor<T>` type.
-    NOTF_ACCESS_TYPE(Node);
-
-    /// Exception thrown when you try to do something that is only allowed to do if the node hasn't been finalized yet.
-    NOTF_EXCEPTION_TYPE(FinalizedError);
-
-    /// If two Nodes have no common ancestor.
-    NOTF_EXCEPTION_TYPE(HierarchyError);
 
     // methods --------------------------------------------------------------------------------- //
 protected:

@@ -55,19 +55,20 @@ protected:
 
 // widget handle ==================================================================================================== //
 
-//namespace detail {
+namespace detail {
 
-//template<>
-//struct NodeHandleInterface<AnyWidget> : public NodeHandleBaseInterface<AnyWidget> {};
+template<class Base>
+struct NodeHandleInterface<Widget<Base>> : public NodeHandleBaseInterface<Widget<Base>> {};
 
-//} // namespace detail
+} // namespace detail
 
-//class WidgetHandle : public TypedNodeHandle<AnyWidget> {
+template<class Base>
+class WidgetHandle : public TypedNodeHandle<Widget<Base>> {
 
-//    // methods --------------------------------------------------------------------------------- //
-//public:
-//    // use baseclass' constructors
-//    using TypedNodeHandle<AnyWidget>::TypedNodeHandle;
-//};
+    // methods --------------------------------------------------------------------------------- //
+public:
+    // use baseclass' constructors
+    using TypedNodeHandle<Widget<Base>>::TypedNodeHandle;
+};
 
 NOTF_CLOSE_NAMESPACE

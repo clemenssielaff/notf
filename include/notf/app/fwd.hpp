@@ -30,6 +30,12 @@ struct AnyInput;
 }
 } // namespace driver
 
+// event.hpp
+NOTF_DECLARE_UNIQUE_POINTERS(class, AnyEvent);
+
+// event_handler.hpp
+class TheEventHandler;
+
 // graph.hpp
 namespace detail {
 class Graph;
@@ -101,15 +107,15 @@ using GlfwWindowPtr = std::unique_ptr<GLFWwindow, decltype(&window_deleter)>;
 NOTF_DECLARE_SHARED_POINTERS(class, Window);
 class WindowHandle;
 
-// event/event.hpp
-NOTF_DECLARE_UNIQUE_POINTERS(class, AnyEvent);
+// widget/widget_design.hpp.hpp
+class WidgetDesign;
 
-// event/handler.hpp
-class TheEventHandler;
-
-// widget_compiletime.hpp
+// widget/widget_compiletime.hpp
 template<class, class>
 class State;
+
+// widget/painterpreter.hpp
+NOTF_DECLARE_UNIQUE_POINTERS(class, Painterpreter);
 
 // exceptions ======================================================================================================= //
 

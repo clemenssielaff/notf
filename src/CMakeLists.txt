@@ -19,6 +19,11 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/window.cpp
 
     app/widget/claim.cpp
+    app/widget/widget_design.cpp
+    app/widget/painter.cpp
+    app/widget/painterpreter.cpp
+    app/widget/widget_scene.cpp
+    app/widget/widget_visualizer.cpp
 
     common/color.cpp
     common/filesystem.cpp
