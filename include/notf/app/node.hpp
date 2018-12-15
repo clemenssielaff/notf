@@ -61,7 +61,10 @@ public:
     public:
         /// Constructor.
         /// @param node Node at the root of the iteration.
-        Iterator(NodeHandle node) { m_iterators.emplace_back(std::move(node)); }
+        Iterator(NodeHandle node) {
+            const size_t child_count = node->get_child_count();
+            m_iterators.emplace_back(std::move(node), child_count);
+        }
 
         /// Finds and returns the next Node in the iteration.
         /// @param node [OUT] Next Node in the iteration.

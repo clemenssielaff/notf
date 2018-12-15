@@ -28,7 +28,7 @@ void WidgetVisualizer::visualize(valid_ptr<Scene*> scene) const {
     NodeHandle widget;
     while (true) {
         bool has_more = iterator.next(widget);
-        m_painterpreter->paint(*widget);
+//        m_painterpreter->paint(*widget);
         if (!has_more) { break; }
     }
 }

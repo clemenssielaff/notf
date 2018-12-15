@@ -134,7 +134,7 @@ public:
     /// @param args Arguments used to initialize the data of the given Command.
     template<class T, class... Args>
     std::enable_if_t<has_data_member_v<T>> add_command(Args&&... args) {
-        m_buffer.emplace_back(make_unique_aggregate<typename T::Data>(std::forward<Args>(args)...));
+        m_buffer.emplace_back(T{make_unique_aggregate<typename T::Data>(std::forward<Args>(args)...)});
     }
     template<class T, class... Args>
     std::enable_if_t<!has_data_member_v<T>> add_command(Args&&... args) {
