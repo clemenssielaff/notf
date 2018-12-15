@@ -239,7 +239,7 @@ public:
 
     /// The Graph-unique name of this Node.
     /// @returns    Name of this Node. Is an l-value because the name of the Node may change.
-    std::string get_name() const { return TheGraph()->get_name(_get_handle()); }
+    std::string get_name() const { return TheGraph()->get_name(m_uuid); }
 
     /// (Re-)Names the Node.
     /// If another Node with the same name already exists in the Graph, this method will append the lowest integer
@@ -550,9 +550,6 @@ private:
 
     /// Removes all modified data from all Properties.
     virtual void _clear_modified_properties() = 0;
-
-    /// Allows const methods to create NodeHandles to this node.
-    AnyNodeHandle _get_handle() const { return AnyNodeHandle(const_cast<AnyNode*>(this)->shared_from_this()); }
 
     /// Access to the parent of this Node.
     /// Never creates a modified copy.

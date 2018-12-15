@@ -1,14 +1,20 @@
 #include <iostream>
 #include <memory>
 
-#include "notf/common/thread.hpp"
+#include "notf/common/bimap.hpp"
 NOTF_USING_NAMESPACE;
 
 int main() {
 
-    std::cout << "Is main thread? :" << this_thread::is_main_thread() << std::endl;
-    Thread not_main;
-    not_main.run([] { std::cout << "Should not be the main thread...: " << this_thread::is_main_thread() << std::endl; });
+    Bimap<int, std::string> derbemap;
+
+    derbemap.set(23, std::string("derbe"));
+    derbemap.set(std::string("veryderbe"), 24);
+
+    std::cout << derbemap.get(23) << std::endl;
+    std::cout << derbemap.get(24) << std::endl;
+    std::cout << derbemap.get("derbe") << std::endl;
+    std::cout << derbemap.get("underbe") << std::endl;
 
     return 0;
 }

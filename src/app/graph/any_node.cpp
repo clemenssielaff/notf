@@ -61,7 +61,7 @@ AnyNode::~AnyNode() {
 
 std::string AnyNode::set_name(const std::string& name) {
     NOTF_ASSERT(this_thread::is_the_ui_thread()); // only the UI thread can change the name
-    return TheGraph::AccessFor<AnyNode>::set_name(shared_from_this(), name);
+    return TheGraph::AccessFor<AnyNode>::set_name(m_uuid, name);
 }
 
 AnyNodeHandle AnyNode::get_parent() const {

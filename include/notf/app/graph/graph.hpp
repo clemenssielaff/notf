@@ -6,6 +6,7 @@
 #include "notf/meta/singleton.hpp"
 #include "notf/meta/smart_ptr.hpp"
 
+#include "notf/common/bimap.hpp"
 #include "notf/common/mutex.hpp"
 #include "notf/common/uuid.hpp"
 
@@ -33,76 +34,55 @@ private:
         // methods --------------------------------------------------------- //
     public:
         /// The Node with the given Uuid.
-        /// @param uuid Uuid of the Node to look up.
-        /// @returns    The requested Handle, is invalid if the uuid did not identify a Node.
+        /// @param uuid     Uuid of the Node to look up.
+        /// @returns        The requested Handle, is invalid if the uuid did not identify a Node.
         AnyNodeHandle get_node(Uuid uuid) const;
 
         /// The number of Nodes in the Registry.
         size_t get_count() const { return m_registry.size(); }
 
         /// Registers a new Node in the Graph.
-        /// @param node               Node to register.
+        /// @param node     Node to register.
         /// @throws NotUniqueError    If another Node with the same Uuid is already registered.
-        void add(AnyNodePtr node); // TODO: why pass a shared_ptr here?
+        void add(AnyNodeHandle node);
 
         /// Unregisters the Node with the given Uuid.
         /// If the Uuid is not know, this method does nothing.
         void remove(Uuid uuid);
 
-        // fields ---------------------------------------------------------- //
-    private:
-        /// The registry.
-        std::unordered_map<Uuid, AnyNodeHandle> m_registry;
-
-        /// Mutex protecting the registry.
-        mutable Mutex m_mutex;
-    };
-
-    /// Node name registry std::string <-> NodeHandle.
-    struct NodeNameRegistry {
-
-        // methods --------------------------------------------------------- //
-    public:
-        /// (Re-)Names a Node in the registry.
-        /// If another Node with the same name already exists, this method will append the lowest integer postfix that
-        /// makes the name unique.
-        /// @param node     Node to rename.
-        /// @param name     Proposed name of the Node.
-        /// @returns        New name of the Node.
-        /// @throws HandleExpiredError  If the Node handle has expired.
-        std::string set_name(AnyNodeHandle node, const std::string& name);
+        // names --------------------------------------------------------------
 
         /// The Node with the given name.
-        /// @param name Name of the Node to look up.
-        /// @returns    The requested Handle, is invalid if the name did not identify a Node.
+        /// @param name     Name of the Node to look up.
+        /// @returns        The requested Handle, is invalid if the name did not identify a Node.
         AnyNodeHandle get_node(const std::string& name) const;
 
         /// The name of the Node with the given Uuuid.
         /// If the Node does not have an existing name, a default one is created in its place.
         /// The default name is a 4-syllable mnemonic name, based on this Node's Uuid.
         /// Is not guaranteed to be unique, but collisions are unlikely with 100^4 possibilities.
-        /// @param node Handle of the Node to look up.
-        /// @returns    The requested name.
-        /// @throws HandleExpiredError  If the Node handle has expired.
-        std::string get_name(AnyNodeHandle node);
+        /// @param uuid     Uuid of the Node to look up.
+        /// @returns        The requested name.
+        std::string get_name(Uuid uuid);
 
-        /// Removes the Node from the registry.
-        /// @param uuid Uuid of the Node to remove.
-        void remove_node(Uuid uuid);
-
-    private:
-        /// Manages a static std::string instance to copy into whenever you want to remove a node with a string_view.
-        /// @param name_view    string_view of the name of the Node to remove.
-        void _remove_name(std::string_view name_view);
+        /// (Re-)Names a Node in the registry.
+        /// If another Node with the same name already exists, this method will append the lowest integer postfix that
+        /// makes the name unique.
+        /// @param uuid     Uuid of the Node to rename.
+        /// @param proposal Proposed name of the Node.
+        /// @returns        New name of the Node.
+        std::string set_name(Uuid uuid, const std::string& proposal);
 
         // fields ---------------------------------------------------------- //
     private:
         /// The registry.
-        mutable std::unordered_map<std::string, AnyNodeHandle> m_name_to_node;
-        mutable std::unordered_map<Uuid, std::string_view> m_uuid_to_name;
+        std::unordered_map<Uuid, AnyNodeHandle> m_registry;
+
+        /// Bimap UUID <-> Name.
+        Bimap<Uuid, std::string> m_name_register;
 
         /// Mutex protecting the registry.
-        mutable RecursiveMutex m_mutex;
+        mutable Mutex m_mutex;
     };
 
     // methods --------------------------------------------------------------------------------- //
@@ -123,7 +103,7 @@ public:
     /// The Node with the given name.
     /// @param name Name of the Node to look up.
     /// @returns    The requested Handle, is invalid if the name did not identify a Node.
-    AnyNodeHandle get_node(const std::string& name) { return m_node_name_registry.get_node(name); }
+    AnyNodeHandle get_node(const std::string& name) { return m_node_registry.get_node(name); }
 
     /// The Node with the given Uuid.
     /// @param uuid Uuid of the Node to look up.
@@ -131,9 +111,9 @@ public:
     AnyNodeHandle get_node(Uuid uuid) { return m_node_registry.get_node(uuid); }
 
     /// The name of the Node with the given Uuuid.
-    /// @param node Handle of the Node to look up.
+    /// @param uuid Uuid of the Node to look up.
     /// @returns    The requested name, is empty if not found.
-    std::string get_name(AnyNodeHandle node) { return m_node_name_registry.get_name(std::move(node)); }
+    std::string get_name(Uuid uuid) { return m_node_registry.get_name(uuid); }
 
     /// The number of Nodes in the current Graph.
     size_t get_node_count() const { return m_node_registry.get_count(); }
@@ -152,9 +132,6 @@ private:
 
     /// Node registry Uuid -> NodeHandle.
     NodeRegistry m_node_registry;
-
-    /// Node name registry string -> NodeHandle.
-    NodeNameRegistry m_node_name_registry;
 
     /// The single Root Node in the Graph.
     RootNodePtr m_root_node;
@@ -189,10 +166,9 @@ private:
     /// Automatically marks the Node as being dirty as well.
     /// @param node             Node to register.
     /// @throws NotUniqueError  If another Node with the same Uuid is already registered.
-    static void _register_node(AnyNodePtr node) {
-        AnyNodeHandle handle = node;
-        _get().m_node_registry.add(std::move(node)); // first, because it may fail
-        _get().m_dirty_nodes.emplace(std::move(handle));
+    static void _register_node(AnyNodeHandle node) {
+        _get().m_node_registry.add(node); // first, because it may fail
+        _get().m_dirty_nodes.emplace(std::move(node));
     }
 
     /// Unregisters the Node with the given Uuid.
@@ -200,18 +176,17 @@ private:
     static void _unregister_node(Uuid uuid) {
         if (_get_state() == State::RUNNING) { // ignore unregisters during shutdown
             _get().m_node_registry.remove(uuid);
-            _get().m_node_name_registry.remove_node(uuid);
         }
     }
 
     /// (Re-)Names a Node in the registry.
     /// If another Node with the same name already exists, this method will append the lowest integer postfix that
     /// makes the name unique.
-    /// @param node     Node to rename.
+    /// @param uuid     UUID of the Node to rename.
     /// @param name     Proposed name of the Node.
     /// @returns        New name of the Node.
-    static std::string _set_name(AnyNodeHandle node, const std::string& name) {
-        return _get().m_node_name_registry.set_name(std::move(node), name);
+    static std::string _set_name(const Uuid uuid, const std::string& name) {
+        return _get().m_node_registry.set_name(uuid, name);
     }
 
     /// Registers the given Node as dirty (a visible Property was modified since the last frame was drawn).
@@ -232,7 +207,7 @@ class Accessor<TheGraph, AnyNode> {
     /// Automatically marks the Node as being dirty as well.
     /// @param node             Node to register.
     /// @throws NotUniqueError  If another Node with the same Uuid is already registered.
-    static void register_node(AnyNodePtr node) { TheGraph()._register_node(std::move(node)); }
+    static void register_node(AnyNodeHandle node) { TheGraph()._register_node(std::move(node)); }
 
     /// Unregisters the Node with the given Uuid.
     /// If the Uuid is not know, this method does nothing.
@@ -241,12 +216,10 @@ class Accessor<TheGraph, AnyNode> {
     /// (Re-)Names a Node in the registry.
     /// If another Node with the same name already exists, this method will append the lowest integer postfix that
     /// makes the name unique.
-    /// @param node     Node to rename.
+    /// @param uuid     UUID of the Node to rename.
     /// @param name     Proposed name of the Node.
     /// @returns        New name of the Node.
-    static std::string set_name(AnyNodeHandle node, const std::string& name) {
-        return TheGraph()._set_name(std::move(node), name);
-    }
+    static std::string set_name(const Uuid uuid, const std::string& name) { return TheGraph()._set_name(uuid, name); }
 
     /// Registers the given Node as dirty (a visible Property was modified since the last frame was drawn).
     /// @param node     Dirty node.
@@ -264,7 +237,7 @@ class Accessor<TheGraph, Window> {
     /// Automatically marks the Node as being dirty as well.
     /// @param node             Node to register.
     /// @throws NotUniqueError  If another Node with the same Uuid is already registered.
-    static void register_node(AnyNodePtr node) { TheGraph()._register_node(std::move(node)); }
+    static void register_node(AnyNodeHandle node) { TheGraph()._register_node(std::move(node)); }
 };
 
 template<>

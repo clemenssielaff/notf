@@ -106,6 +106,8 @@ WindowHandle Window::create(Arguments settings) {
     RootNode::AccessFor<Window>::add_window(*root_node, window);
     TheGraph::AccessFor<Window>::register_node(std::static_pointer_cast<AnyNode>(window));
 
+    // TODO: why doesn't the RootNode create Windows?
+
     return window;
 }
 

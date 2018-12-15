@@ -81,7 +81,7 @@ struct Accessor<AnyNode, Tester> {
 template<>
 struct Accessor<detail::Graph, Tester> {
     //    static detail::Graph& get() { return *TheGraph(); }
-    static auto register_node(AnyNodeHandle node) { return TheGraph()->m_node_registry.add(to_shared_ptr(node)); }
+    static auto register_node(AnyNodeHandle node) { return TheGraph()->m_node_registry.add(node); }
 };
 
 // empty node ========================================================================================================
