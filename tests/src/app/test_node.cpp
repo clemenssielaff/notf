@@ -1,7 +1,6 @@
 #include "catch2/catch.hpp"
 
 #include "notf/app/node_compiletime.hpp"
-#include "notf/app/node_runtime.hpp"
 
 #include "notf/reactive/trigger.hpp"
 
@@ -20,33 +19,38 @@ constexpr auto int_id = "int"_id;
 constexpr auto float_id = "float"_id;
 #endif
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#endif
+
 SCENARIO("Nodes can limit what kind of children or parent types they can have", "[app][node]") {
-    struct NodeA : RunTimeNode {
-        NOTF_UNUSED NodeA(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
+    struct NodeA : EmptyNode {
+        NOTF_UNUSED NodeA(valid_ptr<Node*> parent) : EmptyNode(parent) {}
     };
 
-    struct NodeB : RunTimeNode {
-        NOTF_UNUSED NodeB(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
+    struct NodeB : EmptyNode {
+        NOTF_UNUSED NodeB(valid_ptr<Node*> parent) : EmptyNode(parent) {}
     };
 
-    struct OnlyParentB : RunTimeNode {
+    struct OnlyParentB : EmptyNode {
         using allowed_child_types = std::tuple<NodeB>;
-        NOTF_UNUSED OnlyParentB(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
+        NOTF_UNUSED OnlyParentB(valid_ptr<Node*> parent) : EmptyNode(parent) {}
     };
 
-    struct DoNotParentB : RunTimeNode {
+    struct DoNotParentB : EmptyNode {
         using forbidden_child_types = std::tuple<NodeB>;
-        NOTF_UNUSED DoNotParentB(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
+        NOTF_UNUSED DoNotParentB(valid_ptr<Node*> parent) : EmptyNode(parent) {}
     };
 
-    struct OnlyChildB : RunTimeNode {
+    struct OnlyChildB : EmptyNode {
         using allowed_parent_types = std::tuple<NodeB>;
-        NOTF_UNUSED OnlyChildB(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
+        NOTF_UNUSED OnlyChildB(valid_ptr<Node*> parent) : EmptyNode(parent) {}
     };
 
-    struct DoNotChildB : RunTimeNode {
+    struct DoNotChildB : EmptyNode {
         using forbidden_parent_types = std::tuple<NodeB>;
-        NOTF_UNUSED DoNotChildB(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
+        NOTF_UNUSED DoNotChildB(valid_ptr<Node*> parent) : EmptyNode(parent) {}
     };
 
     // both must be derived from Node
@@ -78,8 +82,8 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
 
     SECTION("the nested 'NewNode' type takes care of casting to a NodeOwner or -Handle of the right type") {
         SECTION("NodeOwners can only be created once") {
-            auto new_node = root_node.create_child<TestNodeRT>();
-            TypedNodeOwner<TestNodeRT> owner1 = new_node.to_owner();
+            auto new_node = root_node.create_child<TestNode>();
+            TypedNodeOwner<TestNode> owner1 = new_node.to_owner();
             REQUIRE_THROWS_AS(new_node.to_owner(), HandleExpiredError);
         }
     }
@@ -87,16 +91,16 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
     SECTION("Nodes can create child Nodes") {
         SECTION("and count them") {
             REQUIRE(root_node_handle->get_child_count() == 0);
-            NodeHandle new_node = root_node.create_child<TestNodeCT>();
+            NodeHandle new_node = root_node.create_child<TestNode>();
             REQUIRE(root_node_handle->get_child_count() == 1);
             REQUIRE(new_node->get_child_count() == 0);
         }
 
         SECTION("but only on themselves") {
-            class SchlawinerNode : public RunTimeNode {
+            class SchlawinerNode : public EmptyNode {
             public:
-                NOTF_UNUSED SchlawinerNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {}
-                void be_naughty() { _create_child<TestNodeRT>(to_shared_ptr(get_parent()).get()); }
+                NOTF_UNUSED SchlawinerNode(valid_ptr<Node*> parent) : EmptyNode(parent) {}
+                void be_naughty() { _create_child<TestNode>(to_shared_ptr(get_parent()).get()); }
             };
 
             TypedNodeHandle<SchlawinerNode> node_handle = root_node.create_child<SchlawinerNode>();
@@ -108,19 +112,19 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
     }
 
     SECTION("Nodes can inspect their hierarchy") {
-        class NotANode : public RunTimeNode {};
+        class NotANode : public EmptyNode {};
 
-        auto two_child_node = root_node.create_child<TestNodeRT>().to_handle();
+        auto two_child_node = root_node.create_child<TestNode>().to_handle();
         {
-            two_child_node->create_child<TestNodeCT>();
-            two_child_node->create_child<TestNodeCT>();
+            two_child_node->create_child<TestNode>();
+            two_child_node->create_child<TestNode>();
         }
         NodeHandle first_child = two_child_node->get_child(0);
         NodeHandle second_child = two_child_node->get_child(1);
 
         REQUIRE(first_child->get_parent() == two_child_node);
 
-        REQUIRE(first_child->get_first_ancestor<TestNodeRT>() == two_child_node);
+        REQUIRE(first_child->get_first_ancestor<TestNode>() == two_child_node);
         REQUIRE(first_child->get_first_ancestor<RootNode>() == root_node_handle);
         REQUIRE(first_child->get_first_ancestor<NotANode>().is_expired());
 
@@ -138,10 +142,10 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
 
     SECTION("Nodes can modify their hierarchy") {
         SECTION("remove a child") {
-            class RemoveChildNode : public RunTimeNode {
+            class RemoveChildNode : public EmptyNode {
             public:
-                NOTF_UNUSED RemoveChildNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {
-                    first_child = _create_child<TestNodeCT>(this);
+                NOTF_UNUSED RemoveChildNode(valid_ptr<Node*> parent) : EmptyNode(parent) {
+                    first_child = _create_child<TestNode>(this);
                 }
                 NOTF_UNUSED void remove_child() { first_child = {}; }
                 NodeOwner first_child;
@@ -162,18 +166,18 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
         }
 
         SECTION("add a child") {
-            auto node1 = root_node.create_child<TestNodeCT>().to_owner();
+            auto node1 = root_node.create_child<TestNode>().to_owner();
             REQUIRE(node1->get_child_count() == 0);
-            to_shared_ptr(node1)->create_child<TestNodeRT>();
-            to_shared_ptr(node1)->create_child<TestNodeRT>();
+            to_shared_ptr(node1)->create_child<TestNode>();
+            to_shared_ptr(node1)->create_child<TestNode>();
             REQUIRE(node1->get_child_count() == 2);
         }
 
         SECTION("Change a parent") {
-            auto node1 = root_node.create_child<TestNodeCT>().to_owner();
-            auto node2 = root_node.create_child<TestNodeCT>().to_owner();
+            auto node1 = root_node.create_child<TestNode>().to_owner();
+            auto node2 = root_node.create_child<TestNode>().to_owner();
 
-            auto child1 = to_shared_ptr(node1)->create_child<TestNodeRT>().to_owner();
+            auto child1 = to_shared_ptr(node1)->create_child<TestNode>().to_owner();
             REQUIRE(node1->get_child_count() == 1);
             REQUIRE(node2->get_child_count() == 0);
 
@@ -194,7 +198,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
 
     SECTION("Nodes have user definable flags") {
         enum UserFlags { FIRST, OUT_OF_BOUNDS = Node::AccessFor<Tester>::get_user_flag_count() + 1 };
-        auto node = root_node.create_child<TestNodeRT>().to_handle();
+        auto node = root_node.create_child<TestNode>().to_handle();
 
         REQUIRE(Node::AccessFor<Tester>::get_user_flag_count() > 0);
 
@@ -223,11 +227,11 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
     //    }
 
     SECTION("Nodes have a z-order") {
-        auto three_child_node = root_node.create_child<TestNodeCT>().to_handle();
+        auto three_child_node = root_node.create_child<TestNode>().to_handle();
         {
-            three_child_node->create_child<TestNodeRT>();
-            three_child_node->create_child<TestNodeRT>();
-            three_child_node->create_child<TestNodeRT>();
+            three_child_node->create_child<TestNode>();
+            three_child_node->create_child<TestNode>();
+            three_child_node->create_child<TestNode>();
         }
         NodeHandle first = three_child_node->get_child(0);
         NodeHandle second = three_child_node->get_child(1);
@@ -334,7 +338,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
     }
 
     SECTION("Compile Time Nodes have Compile Time Properties") {
-        auto node = root_node.create_child<TestNodeCT>().to_owner();
+        auto node = root_node.create_child<TestNode>().to_owner();
         const int rt_value = node->get<int>("int");
         REQUIRE(node->get<int>("int"));
 
@@ -359,50 +363,9 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
         }
     }
 
-    SECTION("RunTimeNodes create their Properties in the constructor") {
-        SECTION("Property names have to be unique") {
-            struct NotUniquePropertyNode : public RunTimeNode {
-                NOTF_UNUSED NotUniquePropertyNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {
-                    _create_property<int>("not_unique", 0, true);
-                    _create_property<int>("not_unique", 6587, false);
-                }
-            };
-            REQUIRE_THROWS_AS(root_node.create_child<NotUniquePropertyNode>(), NotUniqueError);
-        }
-
-        SECTION("Properties can only be created in the constructor") {
-            struct FinalizedNode : public RunTimeNode {
-                NOTF_UNUSED FinalizedNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {
-                    _create_property<int>("int", 0, true);
-                }
-                void fail() { _create_property<int>("won't work because I'm finalized", 0, true); }
-            };
-            auto node_handle = root_node.create_child<FinalizedNode>().to_handle();
-            auto node_ptr = to_shared_ptr(node_handle);
-            REQUIRE_THROWS_AS(node_ptr->fail(), Node::FinalizedError);
-        }
-    }
-
-    SECTION("Run Time Nodes have Run Time Properties") {
-        NodeHandle node = root_node.create_child<TestNodeRT>();
-
-        SECTION("can be asked fo non-existing Properties") {
-            REQUIRE(node->get<float>("float") != 0.0f);
-            REQUIRE_THROWS_AS(node->get<float>("not a property"), NameError);
-            REQUIRE_THROWS_AS(node->get<bool>("float"), TypeError);
-        }
-
-        SECTION("you can change the property hash by changing any property value") {
-            const float before = node->get<float>("float");
-            const size_t property_hash = Node::AccessFor<Tester>(node).get_property_hash();
-            node->set("float", before + 1.f);
-            REQUIRE(property_hash != Node::AccessFor<Tester>(node).get_property_hash());
-        }
-    }
-
     SECTION("whenever a Property changes, its Node is marked dirty") {
-        auto node_ct = root_node.create_child<TestNodeCT>().to_handle();
-        auto node_rt = root_node.create_child<TestNodeRT>().to_handle();
+        auto node_ct = root_node.create_child<TestNode>().to_handle();
+        auto node_rt = root_node.create_child<TestNode>().to_handle();
         REQUIRE(!node_ct->is_dirty());
         REQUIRE(!node_rt->is_dirty());
 
@@ -430,7 +393,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
     SECTION("Node Handles will not crash when you try call a method on them when they are expired") {
         NodeHandle expired;
         {
-            auto owner = root_node.create_child<TestNodeRT>().to_owner();
+            auto owner = root_node.create_child<TestNode>().to_owner();
             expired = owner;
             REQUIRE(!expired.is_expired());
         }
@@ -441,10 +404,10 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
     }
 
     SECTION("Two Nodes should have at least the root node as a common ancestor") {
-        auto node = root_node.create_child<TestNodeCT>().to_owner();
-        auto first = node->create_child<TestNodeRT>().to_owner();
-        auto second = node->create_child<TestNodeCT>().to_owner();
-        auto third = second->create_child<TestNodeRT>().to_owner();
+        auto node = root_node.create_child<TestNode>().to_owner();
+        auto first = node->create_child<TestNode>().to_owner();
+        auto second = node->create_child<TestNode>().to_owner();
+        auto third = second->create_child<TestNode>().to_owner();
 
         REQUIRE(first->get_common_ancestor(second) == node);
         REQUIRE(second->get_common_ancestor(first) == node);
@@ -457,17 +420,17 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
             char padding[5];
         };
         auto second_root = std::make_shared<SecondRoot>();
-        NodeHandle foreign_node = second_root->_create_child<TestNodeRT>(second_root.get());
+        NodeHandle foreign_node = second_root->_create_child<TestNode>(second_root.get());
         REQUIRE_THROWS_AS(first->get_common_ancestor(foreign_node), Node::HierarchyError);
         REQUIRE(first->get_common_ancestor(first) == first);
     }
 
     SECTION("Nodes have Slots") {
         SECTION("CompileTimeNode") {
-            auto node = root_node.create_child<TestNodeCT>().to_handle();
+            auto node = root_node.create_child<TestNode>().to_handle();
             REQUIRE(node->get_int_slot_value() == 0);
 
-            auto slot_handle = node->connect_slot<TestNodeCT::to_int>();
+            auto slot_handle = node->connect_slot<TestNode::to_int>();
             auto publisher = DefaultPublisher();
             auto pipe = publisher | slot_handle;
             publisher->publish(89);
@@ -476,29 +439,17 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
             REQUIRE_THROWS_AS(node->connect_slot("notaslot"), NameError);
             REQUIRE_THROWS_AS(node->connect_slot<int>("to_none"), TypeError);
         }
-        SECTION("RunTimeNode") {
-            auto node = root_node.create_child<TestNodeRT>().to_handle();
+        SECTION("EmptyNode") {
+            auto node = root_node.create_child<TestNode>().to_handle();
             REQUIRE_THROWS_AS(node->connect_slot("notaslot"), NameError);
             REQUIRE_THROWS_AS(node->connect_slot<int>("to_none"), TypeError);
         }
     }
 
-    SECTION("Slot names must be unique") {
-        struct NotUniqueSlotNode : public RunTimeNode {
-            NOTF_UNUSED NotUniqueSlotNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {
-                _create_slot<int>("not_unique");
-                _create_slot<int>("not_unique");
-            }
-        };
-        REQUIRE_THROWS_AS(root_node.create_child<NotUniqueSlotNode>(), NotUniqueError);
-        auto naughty = root_node.create_child<TestNodeRT>().to_handle();
-        REQUIRE_THROWS_AS(naughty->fail_create_slot_finalized(), Node::FinalizedError);
-    }
-
     SECTION("Nodes have Signals") {
         SECTION("CompileTimeNode") {
             int counter = 0;
-            auto node = root_node.create_child<TestNodeCT>().to_handle();
+            auto node = root_node.create_child<TestNode>().to_handle();
             auto pipe = node->connect_signal<int>("on_int")
                         | Trigger([&counter](const int& value) { counter = value; });
             node->emit("on_int", 48);
@@ -507,9 +458,9 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
             REQUIRE_THROWS_AS(node->emit("notasignal"), NameError);
             REQUIRE_THROWS_AS(node->emit("on_none", 48), TypeError);
         }
-        SECTION("RunTimeNode") {
+        SECTION("EmptyNode") {
             int counter = 0;
-            auto node = root_node.create_child<TestNodeRT>().to_handle();
+            auto node = root_node.create_child<TestNode>().to_handle();
             auto pipe = node->connect_signal<int>("on_int")
                         | Trigger([&counter](const int& value) { counter = value; });
             node->emit("on_int", 48);
@@ -519,24 +470,8 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
             REQUIRE_THROWS_AS(node->emit("on_none", 48), TypeError);
         }
     }
-
-    SECTION("Signal names must be unique") {
-        struct NotUniqueSignalNode : public RunTimeNode {
-            NOTF_UNUSED NotUniqueSignalNode(valid_ptr<Node*> parent) : RunTimeNode(parent) {
-                _create_signal<int>("not_unique");
-                _create_signal<int>("not_unique");
-            }
-        };
-        REQUIRE_THROWS_AS(root_node.create_child<NotUniqueSignalNode>(), NotUniqueError);
-        auto naughty = root_node.create_child<TestNodeRT>().to_handle();
-        REQUIRE_THROWS_AS(naughty->fail_create_signal_finalized(), Node::FinalizedError);
-    }
 }
 
-SCENARIO("Compile Time Nodes can be identified by type", "[app][node]") {
-    REQUIRE(detail::is_compile_time_node_v<TestNodeCT>);
-    REQUIRE(!detail::is_compile_time_node_v<TestNodeRT>);
-
-    REQUIRE(detail::CompileTimeNodeIdentifier().test<TestNodeCT>());
-    REQUIRE(!detail::CompileTimeNodeIdentifier().test<TestNodeRT>());
-}
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif

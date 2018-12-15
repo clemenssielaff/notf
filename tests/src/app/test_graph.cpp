@@ -14,14 +14,14 @@ SCENARIO("graph", "[app][graph]") {
     SECTION("Nodes register with the Graph on construction") {
         SECTION("New Nodes add to the number of children in the graph") {
             REQUIRE(TheGraph()->get_node_count() == 1);
-            root_node.create_child<TestNodeCT>();
-            root_node.create_child<TestNodeRT>();
+            root_node.create_child<TestNode>();
+            root_node.create_child<TestNode>();
             REQUIRE(TheGraph()->get_node_count() == 3);
         }
 
         SECTION("Nodes in the Graph can be requested by their name") {
             const std::string test_name = "this_is_a_test_name_indeed";
-            NodeHandle leaf_node = root_node.create_child<TestNodeCT>();
+            NodeHandle leaf_node = root_node.create_child<TestNode>();
             leaf_node->set_name(test_name);
             REQUIRE(leaf_node.get_name() == test_name);
             REQUIRE(TheGraph()->get_node(test_name) == leaf_node);
@@ -29,17 +29,17 @@ SCENARIO("graph", "[app][graph]") {
         }
 
         SECTION("Nodes in the Graph can be requested by their unique Uuid") {
-            auto node = root_node.create_child<TestNodeCT>().to_handle();
+            auto node = root_node.create_child<TestNode>().to_handle();
             REQUIRE(TheGraph()->get_node(node.get_uuid()) == node);
             REQUIRE(!TheGraph()->get_node(Uuid()));
 
-            auto evil_node = root_node.create_child<TestNodeRT>().to_handle();
+            auto evil_node = root_node.create_child<TestNode>().to_handle();
             Node::AccessFor<Tester>(evil_node).set_uuid(node.get_uuid());
             REQUIRE_THROWS_AS(GraphAccess::register_node(evil_node), NotUniqueError);
         }
 
         SECTION("Nodes can be named and renamed") {
-            auto node = root_node.create_child<TestNodeRT>().to_handle();
+            auto node = root_node.create_child<TestNode>().to_handle();
             node->set_name("SuperName3000");
             REQUIRE(TheGraph()->get_node("SuperName3000") == node);
 
@@ -49,10 +49,10 @@ SCENARIO("graph", "[app][graph]") {
 
         SECTION("Node names are unique") {
             SECTION("duplicates have a ostfix added to their name") {
-                auto original = root_node.create_child<TestNodeRT>().to_handle();
+                auto original = root_node.create_child<TestNode>().to_handle();
                 original->set_name("Connor MacLeod");
 
-                auto impostor = root_node.create_child<TestNodeRT>().to_handle();
+                auto impostor = root_node.create_child<TestNode>().to_handle();
                 impostor->set_name("Connor MacLeod");
 
                 REQUIRE(TheGraph()->get_node("Connor MacLeod") == original);
@@ -61,10 +61,10 @@ SCENARIO("graph", "[app][graph]") {
 
             SECTION("names of expired nodes are available") {
                 {
-                    auto original = root_node.create_child<TestNodeRT>().to_owner();
+                    auto original = root_node.create_child<TestNode>().to_owner();
                     original->set_name("Bob");
                 }
-                auto next_original = root_node.create_child<TestNodeRT>().to_owner();
+                auto next_original = root_node.create_child<TestNode>().to_owner();
                 next_original->set_name("Bob");
             }
         }

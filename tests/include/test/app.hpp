@@ -1,7 +1,6 @@
 #pragma once
 
 #include "notf/app/application.hpp"
-#include "notf/app/node_runtime.hpp"
 #include "notf/app/root_node.hpp"
 
 #include "notf/reactive/trigger.hpp"
@@ -85,7 +84,11 @@ struct Accessor<detail::Graph, Tester> {
     static auto register_node(NodeHandle node) { return TheGraph()->m_node_registry.add(to_shared_ptr(node)); }
 };
 
-// compile time test node =========================================================================================== //
+// empty node ======================================================================================================== //
+
+using EmptyNode = CompileTimeNode<detail::EmptyNodePolicy>;
+
+// test node ======================================================================================================== //
 
 namespace detail {
 
@@ -156,7 +159,7 @@ struct TestNodePolicy {
 
 } // namespace detail
 
-class TestNodeCT : public CompileTimeNode<detail::TestNodePolicy> {
+class TestNode : public CompileTimeNode<detail::TestNodePolicy> {
     using InternalFlags = Node::AccessFor<Tester>::InternalFlags;
 
 public:
@@ -166,7 +169,7 @@ public:
     static constexpr auto on_int = detail::IntSignal::name;
 
 public:
-    TestNodeCT(valid_ptr<Node*> parent) : CompileTimeNode<detail::TestNodePolicy>(parent) {
+    TestNode(valid_ptr<Node*> parent) : CompileTimeNode<detail::TestNodePolicy>(parent) {
         m_int_slot_pipe
             = make_pipeline(_get_slot<to_int>() | Trigger([this](const int& value) { m_int_slot_value = value; }));
     }
@@ -180,7 +183,7 @@ public:
     bool get_flag(size_t index) const { return _get_flag(index); }
     void set_flag(size_t index, bool value = true) { _set_flag(index, value); }
     bool is_dirty() const {
-        return Node::AccessFor<Tester>(*const_cast<TestNodeCT*>(this))
+        return Node::AccessFor<Tester>(*const_cast<TestNode*>(this))
             .get_internal_flag(to_number(InternalFlags::DIRTY));
     }
     template<class T>
@@ -189,55 +192,6 @@ public:
     }
     void emit(const std::string& name) { _emit(name); }
     int get_int_slot_value() const { return m_int_slot_value; }
-
-public:
-    int m_int_slot_value = 0;
-
-private:
-    AnyPipelinePtr m_int_slot_pipe;
-};
-
-// run time test node =============================================================================================== //
-
-class TestNodeRT : public RunTimeNode {
-    using InternalFlags = Node::AccessFor<Tester>::InternalFlags;
-
-public:
-    TestNodeRT(valid_ptr<Node*> parent) : RunTimeNode(parent) {
-        _create_property<float>("float", 0.123f, true);
-        _create_property<bool>("bool", true, false);
-        _create_property<int>("int", 123, true);
-
-        _create_slot<None>("to_none");
-        _create_slot<int>("to_int");
-
-        _create_signal<None>("on_none");
-        _create_signal<int>("on_int");
-
-        m_int_slot_pipe
-            = make_pipeline(_get_slot<int>("to_int") | Trigger([this](const int& value) { m_int_slot_value = value; }));
-    }
-
-    template<class T, class... Args>
-    auto create_child(Args... args) {
-        return _create_child<T>(this, std::forward<Args>(args)...);
-    }
-
-    void set_parent(NodeHandle parent) { _set_parent(std::move(parent)); }
-    bool get_flag(size_t index) const { return _get_flag(index); }
-    void set_flag(size_t index, bool value = true) { _set_flag(index, value); }
-    bool is_dirty() const {
-        return Node::AccessFor<Tester>(*const_cast<TestNodeRT*>(this))
-            .get_internal_flag(to_number(InternalFlags::DIRTY));
-    }
-    template<class T>
-    void emit(const std::string& name, const T& value) {
-        _emit(name, value);
-    }
-    void emit(const std::string& name) { _emit(name); }
-    int get_int_slot_value() const { return m_int_slot_value; }
-    void fail_create_signal_finalized() { _create_signal<int>("already finalized"); }
-    void fail_create_slot_finalized() { _create_slot<int>("already finalized"); }
 
 public:
     int m_int_slot_value = 0;
@@ -251,27 +205,14 @@ private:
 namespace detail {
 
 template<>
-struct NodeHandleInterface<TestNodeCT> : public NodeHandleBaseInterface<TestNodeCT> {
-    using TestNodeCT::create_child;
-    using TestNodeCT::emit;
-    using TestNodeCT::get_flag;
-    using TestNodeCT::get_int_slot_value;
-    using TestNodeCT::is_dirty;
-    using TestNodeCT::set_flag;
-    using TestNodeCT::set_parent;
-};
-
-template<>
-struct NodeHandleInterface<TestNodeRT> : public NodeHandleBaseInterface<TestNodeRT> {
-    using TestNodeRT::create_child;
-    using TestNodeRT::emit;
-    using TestNodeRT::get_flag;
-    using TestNodeRT::get_int_slot_value;
-    using TestNodeRT::is_dirty;
-    using TestNodeRT::set_flag;
-    using TestNodeRT::set_parent;
-    using TestNodeRT::fail_create_signal_finalized;
-    using TestNodeRT::fail_create_slot_finalized;
+struct NodeHandleInterface<TestNode> : public NodeHandleBaseInterface<TestNode> {
+    using TestNode::create_child;
+    using TestNode::emit;
+    using TestNode::get_flag;
+    using TestNode::get_int_slot_value;
+    using TestNode::is_dirty;
+    using TestNode::set_flag;
+    using TestNode::set_parent;
 };
 
 } // namespace detail

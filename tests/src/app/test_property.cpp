@@ -23,8 +23,8 @@ SCENARIO("Properties", "[app][property]") {
     auto root_node_handle = TheGraph()->get_root_node();
 
     SECTION("Properties have names") {
-        auto node_rt = TheRootNode().create_child<TestNodeRT>().to_handle();
-        auto node_ct = TheRootNode().create_child<TestNodeCT>().to_handle();
+        auto node_rt = TheRootNode().create_child<TestNode>().to_handle();
+        auto node_ct = TheRootNode().create_child<TestNode>().to_handle();
 
         REQUIRE(node_rt->get<int>("int") == 123);
         REQUIRE(node_ct->get<int>("int") == 123);
@@ -32,7 +32,7 @@ SCENARIO("Properties", "[app][property]") {
 
     SECTION("Only changes in visible properties change a Node's property hash") {
         { // visible property
-            auto node = root_node.create_child<TestNodeCT>().to_owner();
+            auto node = root_node.create_child<TestNode>().to_owner();
             REQUIRE(!node->is_dirty());
             const size_t property_hash_before = Node::AccessFor<Tester>(node).get_property_hash();
 
@@ -46,7 +46,7 @@ SCENARIO("Properties", "[app][property]") {
             REQUIRE(property_hash_before != property_hash_after);
         }
         { // invisible property
-            auto node = root_node.create_child<TestNodeCT>().to_handle();
+            auto node = root_node.create_child<TestNode>().to_handle();
             REQUIRE(!node->is_dirty());
             const size_t property_hash_before = Node::AccessFor<Tester>(node).get_property_hash();
 
@@ -62,7 +62,7 @@ SCENARIO("Properties", "[app][property]") {
     }
 
     SECTION("Properties can be used as reactive operators") {
-        auto node = root_node.create_child<TestNodeRT>().to_handle();
+        auto node = root_node.create_child<TestNode>().to_handle();
 
         auto publisher = TestPublisher();
         auto subscriber = TestSubscriber();
@@ -130,8 +130,8 @@ SCENARIO("Properties", "[app][property]") {
     //    }
 
     SECTION("Properties have optional callbacks") {
-        struct CallbackNode : public TestNodeRT {
-            NOTF_UNUSED CallbackNode(valid_ptr<Node*> parent) : TestNodeRT(parent) {
+        struct CallbackNode : public TestNode {
+            NOTF_UNUSED CallbackNode(valid_ptr<Node*> parent) : TestNode(parent) {
                 set("int", 18);
                 _set_property_callback<int>("int", [](int& value) {
                     if (value > 10) {

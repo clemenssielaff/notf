@@ -13,7 +13,6 @@ NOTF_OPEN_NAMESPACE
 
 // node ============================================================================================================= //
 
-/// Base class for both RunTimeNode and CompileTimeNode.
 /// The Node interface is used internally only, meaning only through Node subclasses or by other notf objects.
 /// All user-access should occur through NodeHandle instances. This way, we can rely on certain preconditions to be met
 /// for the user of this interface; first and foremost that mutating methods are only called from the UI thread.

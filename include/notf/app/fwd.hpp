@@ -57,9 +57,6 @@ class TypedNodeOwner;
 using NodeHandle = TypedNodeHandle<Node>;
 using NodeOwner = TypedNodeOwner<Node>;
 
-// node_runtime.hpp
-class RunTimeNode;
-
 // property.hpp
 NOTF_DECLARE_SHARED_POINTERS(class, AnyProperty);
 NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, Property);
