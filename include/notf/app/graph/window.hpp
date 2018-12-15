@@ -8,7 +8,7 @@
 
 #include "notf/graphic/graphics_context.hpp"
 
-#include "notf/app/scene.hpp"
+#include "notf/app/graph/scene.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -73,7 +73,7 @@ namespace window_policy {
 /// Window title.
 struct Title {
     using value_t = std::string;
-    static constexpr StringConst name = "title";
+    static constexpr ConstString name = "title";
     static inline const value_t default_value = WindowArguments().title;
     static constexpr bool is_visible = true;
 };
@@ -81,7 +81,7 @@ struct Title {
 /// File name of the Window's icon, relative to the Application's texture directory, empty means no icon.
 struct Icon {
     using value_t = std::string;
-    static constexpr StringConst name = "icon";
+    static constexpr ConstString name = "icon";
     static inline const value_t default_value = WindowArguments().icon;
     static constexpr bool is_visible = false;
 };
@@ -89,7 +89,7 @@ struct Icon {
 /// Initial size when windowed.
 struct Size {
     using value_t = Size2i;
-    static constexpr StringConst name = "size";
+    static constexpr ConstString name = "size";
     static constexpr value_t default_value = WindowArguments().size;
     static constexpr bool is_visible = true;
 };
@@ -98,7 +98,7 @@ struct Size {
 /// The default (max int) means the system is free to place the Window.
 struct Position {
     using value_t = V2i;
-    static constexpr StringConst name = "position";
+    static constexpr ConstString name = "position";
     static constexpr value_t default_value = WindowArguments().position;
     static constexpr bool is_visible = false;
 };
@@ -107,7 +107,7 @@ struct Position {
 /// The default (zero) means that the Window will assume the native screen resolution.
 struct Resolution {
     using value_t = Size2i;
-    static constexpr StringConst name = "resolution";
+    static constexpr ConstString name = "resolution";
     static constexpr value_t default_value = WindowArguments().resolution;
     static constexpr bool is_visible = true;
 };
@@ -115,7 +115,7 @@ struct Resolution {
 /// Whether the window starts out is minimzed, windowed or maximized.
 struct State {
     using value_t = WindowArguments::State;
-    static constexpr StringConst name = "state";
+    static constexpr ConstString name = "state";
     static constexpr value_t default_value = WindowArguments().state;
     static constexpr bool is_visible = true;
 };
@@ -124,7 +124,7 @@ struct State {
 /// The default (-1) means that the OS is free to place the Window on whatever screen it wants to.
 struct Monitor {
     using value_t = int;
-    static constexpr StringConst name = "monitor";
+    static constexpr ConstString name = "monitor";
     static constexpr value_t default_value = WindowArguments().monitor;
     static constexpr bool is_visible = false;
 };
@@ -133,14 +133,14 @@ struct Monitor {
 
 struct CloseSlot {
     using value_t = None;
-    static constexpr StringConst name = "to_close";
+    static constexpr ConstString name = "to_close";
 };
 
 // signals ====================================================================
 
 struct AboutToCloseSignal {
     using value_t = None;
-    static constexpr StringConst name = "on_about_to_close";
+    static constexpr ConstString name = "on_about_to_close";
 };
 
 // policy ===================================================================
@@ -170,12 +170,12 @@ struct WindowPolicy {
 
 // window =========================================================================================================== //
 
-class Window : public CompileTimeNode<detail::window_policy::WindowPolicy> {
+class Window : public Node<detail::window_policy::WindowPolicy> {
 
     // types ----------------------------------------------------------------------------------- //
 private:
     /// Compile time Node base type.
-    using super_t = CompileTimeNode<detail::window_policy::WindowPolicy>;
+    using super_t = Node<detail::window_policy::WindowPolicy>;
 
 public:
     /// Settings to create a Window instance.
@@ -191,16 +191,16 @@ public:
     using allowed_parent_types = std::tuple<RootNode>;
 
     /// Property names.
-    static constexpr const StringConst& title = detail::window_policy::Title::name;
-    static constexpr const StringConst& icon = detail::window_policy::Icon::name;
-    static constexpr const StringConst& size = detail::window_policy::Size::name;
-    static constexpr const StringConst& position = detail::window_policy::Position::name;
-    static constexpr const StringConst& resolution = detail::window_policy::Resolution::name;
-    static constexpr const StringConst& state = detail::window_policy::State::name;
-    static constexpr const StringConst& monitor = detail::window_policy::Monitor::name;
+    static constexpr const ConstString& title = detail::window_policy::Title::name;
+    static constexpr const ConstString& icon = detail::window_policy::Icon::name;
+    static constexpr const ConstString& size = detail::window_policy::Size::name;
+    static constexpr const ConstString& position = detail::window_policy::Position::name;
+    static constexpr const ConstString& resolution = detail::window_policy::Resolution::name;
+    static constexpr const ConstString& state = detail::window_policy::State::name;
+    static constexpr const ConstString& monitor = detail::window_policy::Monitor::name;
 
     /// Slot names.
-    static constexpr const StringConst& to_close = detail::window_policy::CloseSlot::name;
+    static constexpr const ConstString& to_close = detail::window_policy::CloseSlot::name;
 
 private:
     /// Exception thrown when the OpenGL context of a Window could not be initialized.
@@ -217,7 +217,7 @@ private:
     /// @param settings Initialization settings.
     /// @throws InitializationError             If the OpenGL context creation for this Window failed
     /// @throws TheApplication::StartupError    When you try to instantiate a Window without an Application.
-    Window(valid_ptr<Node*> parent, valid_ptr<GLFWwindow*> window, Arguments settings);
+    Window(valid_ptr<AnyNode*> parent, valid_ptr<GLFWwindow*> window, Arguments settings);
 
 public:
     /// Factory, creates a new Window.
@@ -289,12 +289,12 @@ struct NodeHandleInterface<Window> : public NodeHandleBaseInterface<Window> {
 
 } // namespace detail
 
-class WindowHandle : public TypedNodeHandle<Window> {
+class WindowHandle : public NodeHandle<Window> {
 
     // methods --------------------------------------------------------------------------------- //
 public:
     // use baseclass' constructors
-    using TypedNodeHandle<Window>::TypedNodeHandle;
+    using NodeHandle<Window>::NodeHandle;
 
     /// Returns the GlfwWindow contained in this Window.
     GLFWwindow* get_glfw_window() const { return _get_node()->get_glfw_window(); }

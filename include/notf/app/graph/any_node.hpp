@@ -1,41 +1,96 @@
 #pragma once
 
+#include "notf/meta/concept.hpp"
+#include "notf/meta/tuple.hpp"
+
 #include "notf/common/bitset.hpp"
 #include "notf/common/uuid.hpp"
 
-#include "notf/app/graph.hpp"
-#include "notf/app/node_handle.hpp"
-#include "notf/app/property_handle.hpp"
-#include "notf/app/signal.hpp"
-#include "notf/app/slot.hpp"
+#include "notf/app/graph/graph.hpp"
+#include "notf/app/graph/node_handle.hpp"
+#include "notf/app/graph/property.hpp"
+#include "notf/app/graph/signal.hpp"
+#include "notf/app/graph/slot.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-// node ============================================================================================================= //
+// graph verifier =================================================================================================== //
 
+namespace detail {
+
+struct GraphVerifier {
+
+    template<class A, class B>
+    static constexpr bool can_a_parent_b() noexcept {
+        // both A and B must be derived from Node
+        if (std::negation_v<std::conjunction<std::is_base_of<AnyNode, A>, std::is_base_of<AnyNode, B>>>) {
+            return false;
+        }
+
+        // if A has a list of explicitly allowed child types, B must be in it
+        if constexpr (has_allowed_child_types<A>::value) {
+            if (!is_derived_from_one_of_tuple_v<B, typename A::allowed_child_types>) { return false; }
+        }
+        // ... otherwise, if A has a list of explicitly forbidden child types, B must NOT be in it
+        else if constexpr (has_forbidden_child_types<A>::value) {
+            if (is_derived_from_one_of_tuple_v<B, typename A::forbidden_child_types>) { return false; }
+        }
+
+        // if B has a list of explicitly allowed parent types, A must be in it
+        if constexpr (has_allowed_parent_types<B>::value) {
+            if (!is_derived_from_one_of_tuple_v<A, typename B::allowed_parent_types>) { return false; }
+        }
+        // ... otherwise, if B has a list of explicitly forbidden parent types, A must NOT be in it
+        else if constexpr (has_forbidden_parent_types<B>::value) {
+            if (is_derived_from_one_of_tuple_v<A, typename B::forbidden_parent_types>) { return false; }
+        }
+
+        return true;
+    }
+
+private:
+    NOTF_CREATE_TYPE_DETECTOR(allowed_child_types);
+    NOTF_CREATE_TYPE_DETECTOR(forbidden_child_types);
+    NOTF_CREATE_TYPE_DETECTOR(allowed_parent_types);
+    NOTF_CREATE_TYPE_DETECTOR(forbidden_parent_types);
+};
+
+} // namespace detail
+
+// any node ========================================================================================================= //
+
+/// Base class of all Nodes.
+///
+/// In notf, Nodes are usually defined by Policies that determine all Properties, Signals and Slots of the Node type as
+/// well as additional type limitations like the type and number of children.
+/// The AnyNode base class allows access to Properties, Signals and Slots of all Nodes by runtime name (std::string) in
+/// combination with the expected type, regardless of the actual Node type. If you know the type of Node, it is faster
+/// and more convenient to use the compile-time functions that use ConstStrings or StringTypes, because the compiler can
+/// use them to infer the expected type.
+/// Using the `AnyNode` class, it is also possible to create bindings for untyped languages like Python.
+///
 /// The Node interface is used internally only, meaning only through Node subclasses or by other notf objects.
 /// All user-access should occur through NodeHandle instances. This way, we can rely on certain preconditions to be met
 /// for the user of this interface; first and foremost that mutating methods are only called from the UI thread.
-class Node : public std::enable_shared_from_this<Node> {
+class AnyNode : public std::enable_shared_from_this<AnyNode> {
 
-    friend Accessor<Node, RootNode>;
-    friend Accessor<Node, Window>;
-    friend Accessor<Node, detail::Graph>;
+    friend Accessor<AnyNode, RootNode>;
+    friend Accessor<AnyNode, Window>;
+    friend Accessor<AnyNode, detail::Graph>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Nested `AccessFor<T>` type.
-    NOTF_ACCESS_TYPE(Node);
+    NOTF_ACCESS_TYPE(AnyNode);
 
     /// Exception thrown when you try to do something that is only allowed to do if the node hasn't been finalized yet.
+    /// Node finalization is an issue only with dynamic Nodes, whose Property/Slot/Signal layout is defined
+    /// programatically at runtime.
     NOTF_EXCEPTION_TYPE(FinalizedError);
-
-    /// If two Nodes have no common ancestor.
-    NOTF_EXCEPTION_TYPE(HierarchyError);
 
     // iterator ----------------------------------------------------------------
 
-    /// Node iterator, iterates through all children of a Node (visually back to front).
+    /// Node iterator, iterates through all children of a Node in draw-order (from back to front).
     struct Iterator {
 
         // types ----------------------------------------------------------- //
@@ -44,10 +99,10 @@ public:
             /// Constructor.
             /// @param node         The iterated Node.
             /// @param child_count  Numer of children of the Node.
-            Impl(NodeHandle node, const size_t child_count) : node(std::move(node)), end(child_count) {}
+            Impl(AnyNodeHandle node, const size_t child_count) : node(std::move(node)), end(child_count) {}
 
             /// The iterated Node.
-            NodeHandle node;
+            AnyNodeHandle node;
 
             /// Current child index.
             size_t index = 0;
@@ -60,7 +115,7 @@ public:
     public:
         /// Constructor.
         /// @param node Node at the root of the iteration.
-        Iterator(NodeHandle node) {
+        Iterator(AnyNodeHandle node) {
             const size_t child_count = node->get_child_count();
             m_iterators.emplace_back(std::move(node), child_count);
         }
@@ -68,7 +123,7 @@ public:
         /// Finds and returns the next Node in the iteration.
         /// @param node [OUT] Next Node in the iteration.
         /// @returns    True if a new Node was found.
-        bool next(NodeHandle& node) {
+        bool next(AnyNodeHandle& node) {
             while (true) {
                 Impl& it = m_iterators.back();
                 node = it.node;
@@ -104,7 +159,7 @@ private:
     public:
         /// Value Constructor.
         /// @param node     Node owning this Subscriber.
-        PropertyObserver(Node& node) : m_node(node) {}
+        PropertyObserver(AnyNode& node) : m_node(node) {}
 
         /// Called whenever a visible Property changed its value.
         void on_next(const AnyPublisher*, ...) final { m_node._mark_as_dirty(); }
@@ -112,7 +167,7 @@ private:
         // fields ---------------------------------------------------------- //
     private:
         /// Node owning this Subscriber.
-        Node& m_node;
+        AnyNode& m_node;
     };
     using PropertyObserverPtr = std::shared_ptr<PropertyObserver>;
 
@@ -147,14 +202,14 @@ private:
     struct Data {
         /// Value Constructor.
         /// Initializes all data, so we can be sure that all of it is valid if a modified data copy exists.
-        Data(valid_ptr<Node*> parent, const std::vector<NodePtr>& children, Flags flags)
-            : parent(parent), children(std::make_unique<std::vector<NodePtr>>(children)), flags(std::move(flags)) {}
+        Data(valid_ptr<AnyNode*> parent, const std::vector<AnyNodePtr>& children, Flags flags)
+            : parent(parent), children(std::make_unique<std::vector<AnyNodePtr>>(children)), flags(std::move(flags)) {}
 
         /// Modified parent of this Node, if it was moved.
-        valid_ptr<Node*> parent;
+        valid_ptr<AnyNode*> parent;
 
         /// Modified children of this Node, should they have been modified.
-        std::unique_ptr<std::vector<NodePtr>> children;
+        std::unique_ptr<std::vector<AnyNodePtr>> children;
 
         /// Modified flags of this Node.
         Flags flags;
@@ -169,13 +224,13 @@ protected:
 protected:
     /// Value constructor.
     /// @param parent   Parent of this Node.
-    Node(valid_ptr<Node*> parent);
+    AnyNode(valid_ptr<AnyNode*> parent);
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(Node);
+    NOTF_NO_COPY_OR_ASSIGN(AnyNode);
 
     /// Destructor.
-    virtual ~Node();
+    virtual ~AnyNode();
 
     // identification ---------------------------------------------------------
 
@@ -266,37 +321,36 @@ public:
     // hierarchy --------------------------------------------------------------
 
     /// The parent of this Node.
-    NodeHandle get_parent() const;
+    AnyNodeHandle get_parent() const;
 
-    /// @{
     /// Tests, if this Node is a descendant of the given ancestor.
+    /// If the handle passed in is expired, the answer is always false.
     /// @param ancestor         Potential ancestor to verify.
-    bool has_ancestor(const Node* ancestor) const;
-    bool has_ancestor(const NodeHandle& ancestor) const {
-        if (const NodeConstPtr ancestor_lock = NodeHandle::AccessFor<Node>::get_node_ptr(ancestor)) {
-            return has_ancestor(ancestor_lock.get());
+    bool has_ancestor(const AnyNodeHandle& ancestor) const {
+        if (const AnyNodeConstPtr ancestor_lock = AnyNodeHandle::AccessFor<AnyNode>::get_node_ptr(ancestor)) {
+            return _has_ancestor(ancestor_lock.get());
+        } else {
+            return false;
         }
-        return false;
     }
-    /// @}
 
     /// Finds and returns the first common ancestor of two Nodes.
     /// At the latest, the RootNode is always a common ancestor.
     /// If the handle passed in is expired, the returned handle will also be expired.
-    /// @param other            Other Node to find the common ancestor for.
-    /// @throws HierarchyError  If there is no common ancestor.
-    NodeHandle get_common_ancestor(const NodeHandle& other) const;
+    /// @param other        Other Node to find the common ancestor for.
+    /// @throws GraphError  If there is no common ancestor.
+    AnyNodeHandle get_common_ancestor(const AnyNodeHandle& other) const;
 
     /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
     /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
-    template<class T, typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
-    NodeHandle get_first_ancestor() const {
+    template<class T, typename = std::enable_if_t<std::is_base_of<AnyNode, T>::value>>
+    AnyNodeHandle get_first_ancestor() const {
         NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
-        Node* next = _get_parent();
-        if (auto* result = dynamic_cast<T*>(next)) { return NodeHandle(result->shared_from_this()); }
+        AnyNode* next = _get_parent();
+        if (auto* result = dynamic_cast<T*>(next)) { return AnyNodeHandle(result->shared_from_this()); }
         while (next != next->_get_parent()) {
             next = next->_get_parent();
-            if (auto* result = dynamic_cast<T*>(next)) { return NodeHandle(result->shared_from_this()); }
+            if (auto* result = dynamic_cast<T*>(next)) { return AnyNodeHandle(result->shared_from_this()); }
         }
         return {};
     }
@@ -312,13 +366,13 @@ public:
     /// @param index    Index of the Node.
     /// @returns        The requested child Node.
     /// @throws OutOfBounds    If the index is out-of-bounds or the child Node is of the wrong type.
-    NodeHandle get_child(size_t index) const;
+    AnyNodeHandle get_child(size_t index) const;
 
     /// Destroys this Node by deleting the owning pointer in its parent.
     /// This method is basically a destructor, make sure not to dereference this Node after this function call!
     void remove() {
         NOTF_ASSERT(this_thread::is_the_ui_thread());
-        NodePtr parent;
+        AnyNodePtr parent;
         if (auto weak_parent = _get_parent()->weak_from_this(); !weak_parent.expired()) {
             parent = weak_parent.lock();
         } else {
@@ -347,12 +401,12 @@ public:
     /// Returns true if this node is stacked anywhere in front of the given sibling.
     /// Also returns false if the handle is expired, the given Node is not a sibling or it is the same as this.
     /// @param sibling  Sibling node to test against.
-    bool is_before(const NodeHandle& sibling) const;
+    bool is_before(const AnyNodeHandle& sibling) const;
 
     /// Returns true if this node is stacked anywhere behind the given sibling.
     /// Also returns false if the handle is expired, the given Node is not a sibling or it is the same as this.
     /// @param sibling  Sibling node to test against.
-    bool is_behind(const NodeHandle& sibling) const;
+    bool is_behind(const AnyNodeHandle& sibling) const;
 
     /// Moves this Node in front of all of its siblings.
     void stack_front();
@@ -363,12 +417,12 @@ public:
     /// Moves this Node before a given sibling.
     /// @param sibling  Sibling to stack before.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    void stack_before(const NodeHandle& sibling);
+    void stack_before(const AnyNodeHandle& sibling);
 
     /// Moves this Node behind a given sibling.
     /// @param sibling  Sibling to stack behind.
     /// @throws hierarchy_error If the sibling is not a sibling of this node.
-    void stack_behind(const NodeHandle& sibling);
+    void stack_behind(const AnyNodeHandle& sibling);
 
 protected: // for all subclasses
     // properties -------------------------------------------------------------
@@ -380,7 +434,7 @@ protected: // for all subclasses
     /// value ends up the same as the old, the update will proceed. Note though, that the callback will only be called
     /// if the value is initially different from the one stored in the PropertyOperator.
     template<class T>
-    void _set_property_callback(const std::string& property_name, typename Property<T>::callback_t callback) {
+    void _set_property_callback(const std::string& property_name, typename TypedProperty<T>::callback_t callback) {
         NOTF_ASSERT(this_thread::is_the_ui_thread());
         _try_get_property<T>(property_name)->set_callback(std::move(callback));
     }
@@ -393,7 +447,7 @@ protected: // for all subclasses
     /// @returns        The requested Slot.
     /// @throws         NameError / TypeError
     template<class T>
-    typename Slot<T>::publisher_t _get_slot(const std::string& name) const {
+    typename TypedSlot<T>::publisher_t _get_slot(const std::string& name) const {
         NOTF_ASSERT(this_thread::is_the_ui_thread());
         return _try_get_slot<T>(name)->get_publisher();
     }
@@ -434,13 +488,8 @@ protected: // for all subclasses
     /// @param parent   Parent of the Node, must be `this` (is used for type checking).
     /// @param args     Arguments that are forwarded to the constructor of the child.
     /// @throws InternalError   If you pass anything else but `this` as the parent.
-    template<class Child, class Parent, class... Args
-#ifndef NOTF_TEST
-             ,
-             class = std::enable_if_t<detail::can_node_parent<Parent, Child>()>>
-#else
-             >
-#endif
+    template<class Child, class Parent, class... Args,
+             class = std::enable_if_t<detail::GraphVerifier::can_a_parent_b<Parent, Child>()>>
     detail::NewNode<Child> _create_child(Parent* parent, Args&&... args) {
         NOTF_ASSERT(this_thread::is_the_ui_thread());
         if (NOTF_UNLIKELY(parent != this)) {
@@ -450,9 +499,9 @@ protected: // for all subclasses
         auto child = std::make_shared<Child>(parent, std::forward<Args>(args)...);
 
         { // register the new node with the graph and store it as child
-            auto node = std::static_pointer_cast<Node>(child);
+            auto node = std::static_pointer_cast<AnyNode>(child);
             node->_finalize();
-            TheGraph::AccessFor<Node>::register_node(node);
+            TheGraph::AccessFor<AnyNode>::register_node(node);
             _write_children().emplace_back(std::move(node));
         }
 
@@ -461,14 +510,14 @@ protected: // for all subclasses
 
     /// Removes a child from this node.
     /// @param handle   Handle of the node to remove.
-    void _remove_child(NodeHandle child_handle);
+    void _remove_child(AnyNodeHandle child_handle);
 
     /// Remove all children from this Node.
     void _clear_children();
 
     /// Changes the parent of this Node by first adding it to the new parent and then removing it from its old one.
     /// @param new_parent_handle    New parent of this Node. If it is the same as the old, this method does nothing.
-    void _set_parent(NodeHandle new_parent_handle);
+    void _set_parent(AnyNodeHandle new_parent_handle);
 
     /// Tests if the parent of
     template<class T>
@@ -503,15 +552,14 @@ private:
     virtual void _clear_modified_properties() = 0;
 
     /// Allows const methods to create NodeHandles to this node.
-    NodeHandle _get_handle() const { return NodeHandle(const_cast<Node*>(this)->shared_from_this()); }
+    AnyNodeHandle _get_handle() const { return AnyNodeHandle(const_cast<AnyNode*>(this)->shared_from_this()); }
 
     /// Access to the parent of this Node.
     /// Never creates a modified copy.
-    Node* _get_parent() const;
+    AnyNode* _get_parent() const;
 
     /// Finalizes this Node.
     /// Called on every new Node instance right after the Constructor of the most derived class has finished.
-    /// Therefore, we do no have to ensure that the Graph is frozen etc.
     void _finalize() {
         // do not check whether this is the UI thread as we need this method during Application construction
         m_flags[to_number(InternalFlags::FINALIZED)] = true;
@@ -525,12 +573,12 @@ private:
     /// @returns        Handle to the requested Property.
     /// @throws         NameError / TypeError
     template<class T>
-    PropertyPtr<T> _try_get_property(const std::string& name) const {
+    TypedPropertyPtr<T> _try_get_property(const std::string& name) const {
         // can be accessed from both the UI and the render thread
         AnyPropertyPtr property = _get_property_impl(name);
         if (!property) { NOTF_THROW(NameError, "Node \"{}\" has no Property called \"{}\"", get_name(), name); }
 
-        PropertyPtr<T> typed_property = std::dynamic_pointer_cast<Property<T>>(std::move(property));
+        TypedPropertyPtr<T> typed_property = std::dynamic_pointer_cast<TypedProperty<T>>(std::move(property));
         if (!typed_property) {
             NOTF_THROW(TypeError,
                        "Property \"{}\" of Node \"{}\" is of type \"{}\", but was requested as \"{}\"", //
@@ -544,17 +592,17 @@ private:
     /// @returns        The requested Slot.
     /// @throws         NameError / TypeError
     template<class T>
-    Slot<T>* _try_get_slot(const std::string& name) const {
+    TypedSlot<T>* _try_get_slot(const std::string& name) const {
         AnySlot* any_slot = _get_slot_impl(name);
         if (!any_slot) { NOTF_THROW(NameError, "Node \"{}\" has no Slot called \"{}\"", get_name(), name); }
 
-        Slot<T>* slot = dynamic_cast<Slot<T>*>(any_slot);
-        if (!slot) {
+        TypedSlot<T>* typed_slot = dynamic_cast<TypedSlot<T>*>(any_slot);
+        if (!typed_slot) {
             NOTF_THROW(TypeError,
                        "Slot \"{}\" of Node \"{}\" is of type \"{}\", but was requested as \"{}\"", //
                        name, get_name(), any_slot->get_type_name(), type_name<T>());
         }
-        return slot;
+        return typed_slot;
     }
 
     /// Run time access to a Signal of this Node.
@@ -562,35 +610,37 @@ private:
     /// @returns        The requested Signal.
     /// @throws         NameError / TypeError
     template<class T>
-    SignalPtr<T> _try_get_signal(const std::string& name) const {
+    TypedSignalPtr<T> _try_get_signal(const std::string& name) const {
         AnySignalPtr any_signal = _get_signal_impl(name);
         if (!any_signal) { NOTF_THROW(NameError, "Node \"{}\" has no Signal called \"{}\"", get_name(), name); }
 
-        SignalPtr<T> signal = std::dynamic_pointer_cast<Signal<T>>(any_signal);
-        if (!signal) {
+        TypedSignalPtr<T> typed_signal = std::dynamic_pointer_cast<TypedSignal<T>>(any_signal);
+        if (!typed_signal) {
             NOTF_THROW(TypeError,
                        "Signal \"{}\" of Node \"{}\" is of type \"{}\", but was requested as \"{}\"", //
                        name, get_name(), any_signal->get_type_name(), type_name<T>());
         }
-        return signal;
+        return typed_signal;
     }
+
+    bool _has_ancestor(const AnyNode* ancestor) const;
 
     /// Finds and returns the first common ancestor of two Nodes.
     /// At the latest, the RootNode is always a common ancestor.
-    /// @param other            Other Node to find the common ancestor for.
-    /// @throws HierarchyError  If there is no common ancestor.
-    const Node* _get_common_ancestor(const Node* other) const;
+    /// @param other        Other Node to find the common ancestor for.
+    /// @throws GraphError  If there is no common ancestor.
+    const AnyNode* _get_common_ancestor(const AnyNode* other) const;
 
     /// All children of this node, orded from back to front.
     /// Never creates a modified copy.
-    const std::vector<NodePtr>& _read_children() const;
+    const std::vector<AnyNodePtr>& _read_children() const;
 
     /// All children of this node, orded from back to front.
-    /// Will create a modified copy the current list of children if there is no copy yet and the Graph is frozen.
-    std::vector<NodePtr>& _write_children();
+    /// Will create a modified copy of the children list.
+    std::vector<AnyNodePtr>& _write_children();
 
     /// All children of the parent.
-    const std::vector<NodePtr>& _read_siblings() const;
+    const std::vector<AnyNodePtr>& _read_siblings() const;
 
     /// Tests a flag on this Node.
     /// @param index        Index of the user flag.
@@ -614,15 +664,15 @@ private:
     const Uuid m_uuid = Uuid::generate();
 
     /// Parent of this Node.
-    Node* m_parent;
+    AnyNode* m_parent;
 
     /// All children of this Node, ordered from back to front (later Nodes are drawn on top of earlier ones).
-    std::vector<NodePtr> m_children;
+    std::vector<AnyNodePtr> m_children;
 
     /// Additional flags, contains both internal and user-definable flags.
     Flags m_flags;
 
-    /// Pointer to modified Data, should this Node have been modified while the Graph has been frozen.
+    /// Pointer to modified Data, should this Node have been modified since the last Graph synchronization.
     DataPtr m_modified_data;
 
     /// Hash of all Property values of this Node.
@@ -638,30 +688,30 @@ private:
 // node accessors =================================================================================================== //
 
 template<>
-class Accessor<Node, RootNode> {
+class Accessor<AnyNode, RootNode> {
     friend RootNode;
 
     /// Finalizes the given RootNode.
-    static void finalize(Node& node) { node._finalize(); }
+    static void finalize(AnyNode& node) { node._finalize(); }
 
     /// Direct write access to child Nodes.
-    static std::vector<NodePtr>& write_children(Node& node) { return node._write_children(); }
+    static std::vector<AnyNodePtr>& write_children(AnyNode& node) { return node._write_children(); }
 };
 
 template<>
-class Accessor<Node, Window> {
+class Accessor<AnyNode, Window> {
     friend Window;
 
     /// Finalizes the given Window(Node).
-    static void finalize(Node& node) { node._finalize(); }
+    static void finalize(AnyNode& node) { node._finalize(); }
 };
 
 template<>
-class Accessor<Node, detail::Graph> {
+class Accessor<AnyNode, detail::Graph> {
     friend detail::Graph;
 
     /// Deletes all modified data of this Node.
-    static void clear_modified_data(Node& node) { node._clear_modified_data(); }
+    static void clear_modified_data(AnyNode& node) { node._clear_modified_data(); }
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -2,8 +2,8 @@
 
 #include <set>
 
+#include "notf/app/graph/window.hpp"
 #include "notf/app/input.hpp"
-#include "notf/app/window.hpp"
 
 NOTF_OPEN_NAMESPACE
 

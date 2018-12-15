@@ -1,12 +1,12 @@
 #pragma once
 
-#include "notf/app/node_compiletime.hpp"
+#include "notf/app/graph/node.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 // root node ======================================================================================================== //
 
-class RootNode : public CompileTimeNode<> {
+class RootNode : public Node<> {
 
     friend Accessor<RootNode, detail::Graph>;
     friend Accessor<RootNode, Window>;
@@ -17,7 +17,9 @@ public:
     NOTF_ACCESS_TYPE(RootNode);
 
     /// Only Windows are allowed as children of the root.
+#ifndef NOTF_TEST
     using allowed_child_types = std::tuple<Window>;
+#endif
 
     /// Only the Root Node itself may be its own parent.
     using allowed_parent_types = std::tuple<RootNode>;
@@ -25,11 +27,11 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default Constructor.
-    RootNode() : CompileTimeNode<>(this) {}
+    RootNode() : Node<>(this) {}
 
 private:
     /// Finalizes this RootNode.
-    void _finalize_root() { Node::AccessFor<RootNode>::finalize(*this); }
+    void _finalize_root() { AnyNode::AccessFor<RootNode>::finalize(*this); }
 
     /// Adds a new Window as child of this RootNode.
     void _add_window(WindowPtr window);

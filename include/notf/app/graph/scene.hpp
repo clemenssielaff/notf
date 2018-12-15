@@ -2,7 +2,7 @@
 
 #include "notf/common/aabr.hpp"
 
-#include "notf/app/node_compiletime.hpp"
+#include "notf/app/graph/node.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -16,7 +16,7 @@ namespace scene_policy {
 /// Area of this Scene when not fullscreen.
 struct Area {
     using value_t = Aabri;
-    static constexpr StringConst name = "area";
+    static constexpr ConstString name = "area";
     static constexpr value_t default_value = Aabri::zero();
     static constexpr bool is_visible = true;
 };
@@ -44,23 +44,23 @@ struct ScenePolicy {
 /// directly into the screen buffer (a "Window Scene" owned directly by a Window).
 /// The contents of a Scene are clipped to its area. The Scene's Visualizer can query the size of this area using
 /// `GraphicsContext::render_area().size()` when drawing.
-class Scene : public CompileTimeNode<detail::scene_policy::ScenePolicy> {
+class Scene : public Node<detail::scene_policy::ScenePolicy> {
 
     // types ----------------------------------------------------------------------------------- //
 private:
     /// Compile time Node base type.
-    using super_t = CompileTimeNode<detail::scene_policy::ScenePolicy>;
+    using super_t = Node<detail::scene_policy::ScenePolicy>;
 
 public:
     /// Property names.
-    static constexpr const StringConst& area = detail::scene_policy::Area::name;
+    static constexpr const ConstString& area = detail::scene_policy::Area::name;
 
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor, constructs a full-screen, visible Scene.
     /// @param parent   Parent of this Node.
     /// @param visualizer   Visualizer that draws the Scene.
-    Scene(valid_ptr<Node*> parent, valid_ptr<VisualizerPtr> visualizer);
+    Scene(valid_ptr<AnyNode*> parent, valid_ptr<VisualizerPtr> visualizer);
 
     /// Whether the Scene is the direct child of a Window Node (a "Window Scene") or nested within another Scene.
     bool is_window_scene() const;
@@ -83,12 +83,12 @@ struct NodeHandleInterface<Scene> : public NodeHandleBaseInterface<Scene> {};
 
 } // namespace detail
 
-class SceneHandle : public TypedNodeHandle<Scene> {
+class SceneHandle : public NodeHandle<Scene> {
 
     // methods --------------------------------------------------------------------------------- //
 public:
     // use baseclass' constructors
-    using TypedNodeHandle<Scene>::TypedNodeHandle;
+    using NodeHandle<Scene>::NodeHandle;
 };
 
 NOTF_CLOSE_NAMESPACE

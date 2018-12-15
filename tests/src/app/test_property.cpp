@@ -3,13 +3,13 @@
 #include "test/app.hpp"
 #include "test/reactive.hpp"
 
-#include "notf/app/property_runtime.hpp"
+#include "notf/app/graph/property.hpp"
 
 NOTF_USING_NAMESPACE;
 
 #ifdef NOTF_MSVC
-static constexpr StringConst int_id_name = "int";
-static constexpr StringConst bool_id_name = "bool";
+static constexpr ConstString int_id_name = "int";
+static constexpr ConstString bool_id_name = "bool";
 static constexpr auto int_id = make_string_type<int_id_name>();
 static constexpr auto bool_id = make_string_type<bool_id_name>();
 #else
@@ -34,7 +34,7 @@ SCENARIO("Properties", "[app][property]") {
         { // visible property
             auto node = root_node.create_child<TestNode>().to_owner();
             REQUIRE(!node->is_dirty());
-            const size_t property_hash_before = Node::AccessFor<Tester>(node).get_property_hash();
+            const size_t property_hash_before = AnyNode::AccessFor<Tester>(node).get_property_hash();
 
             node->set(int_id, 123); // default value
             REQUIRE(!node->is_dirty());
@@ -42,13 +42,13 @@ SCENARIO("Properties", "[app][property]") {
             node->set(int_id, 999);
             REQUIRE(node->is_dirty());
 
-            const size_t property_hash_after = Node::AccessFor<Tester>(node).get_property_hash();
+            const size_t property_hash_after = AnyNode::AccessFor<Tester>(node).get_property_hash();
             REQUIRE(property_hash_before != property_hash_after);
         }
         { // invisible property
             auto node = root_node.create_child<TestNode>().to_handle();
             REQUIRE(!node->is_dirty());
-            const size_t property_hash_before = Node::AccessFor<Tester>(node).get_property_hash();
+            const size_t property_hash_before = AnyNode::AccessFor<Tester>(node).get_property_hash();
 
             node->set(bool_id, true); // default value
             REQUIRE(!node->is_dirty());
@@ -56,7 +56,7 @@ SCENARIO("Properties", "[app][property]") {
             node->set(bool_id, false);
             REQUIRE(!node->is_dirty());
 
-            const size_t property_hash_after = Node::AccessFor<Tester>(node).get_property_hash();
+            const size_t property_hash_after = AnyNode::AccessFor<Tester>(node).get_property_hash();
             REQUIRE(property_hash_before != property_hash_after); // property hash still differs
         }
     }
@@ -131,7 +131,7 @@ SCENARIO("Properties", "[app][property]") {
 
     SECTION("Properties have optional callbacks") {
         struct CallbackNode : public TestNode {
-            NOTF_UNUSED CallbackNode(valid_ptr<Node*> parent) : TestNode(parent) {
+            NOTF_UNUSED CallbackNode(valid_ptr<AnyNode*> parent) : TestNode(parent) {
                 set("int", 18);
                 _set_property_callback<int>("int", [](int& value) {
                     if (value > 10) {

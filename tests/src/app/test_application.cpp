@@ -3,7 +3,7 @@
 #include "notf/common/thread.hpp"
 
 #include "notf/app/application.hpp"
-#include "notf/app/window.hpp"
+#include "notf/app/graph/window.hpp"
 
 #include "test/app.hpp"
 

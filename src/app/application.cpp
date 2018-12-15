@@ -6,7 +6,7 @@
 
 #include "notf/app/event_handler.hpp"
 #include "notf/app/glfw_callbacks.hpp"
-#include "notf/app/graph.hpp"
+#include "notf/app/graph/graph.hpp"
 #include "notf/app/timer_pool.hpp"
 
 #include "notf/graphic/glfw.hpp"

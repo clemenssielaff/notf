@@ -1,91 +1,71 @@
 #pragma once
 
-#include "notf/app/node.hpp"
-#include "notf/app/property_compiletime.hpp"
+#include "notf/app/graph/any_node.hpp"
+#include "notf/app/graph/property.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-// helper =========================================================================================================== //
+// node policy factory ============================================================================================== //
 
 namespace detail {
 
-template<template<class> class, class...>
-struct instantiate_shared;
-template<template<class> class Template, class... Ts>
-struct instantiate_shared<Template, std::tuple<Ts...>> {
-    using type = std::tuple<std::shared_ptr<Template<Ts>>...>;
-};
-template<template<class> class Template, class Tuple>
-using instantiate_shared_t = typename instantiate_shared<Template, Tuple>::type;
-
-template<template<class> class, class...>
-struct instantiate_unique;
-template<template<class> class Template, class... Ts>
-struct instantiate_unique<Template, std::tuple<Ts...>> {
-    using type = std::tuple<std::unique_ptr<Template<Ts>>...>;
-};
-template<template<class> class Template, class Tuple>
-using instantiate_unique_t = typename instantiate_unique<Template, Tuple>::type;
-
 template<class Policy>
-struct NodePolicyFactory {
+class NodePolicyFactory { // TODO: (NodePolicyFactory) check that all names are unique
 
-    // TODO: (NodePolicyFactory) check that all names are unique
+    template<template<class> class, class...>
+    struct instantiate_shared;
+    template<template<class> class Template, class... Ts>
+    struct instantiate_shared<Template, std::tuple<Ts...>> {
+        using type = std::tuple<std::shared_ptr<Template<Ts>>...>;
+    };
 
+    template<template<class> class, class...>
+    struct instantiate_unique;
+    template<template<class> class Template, class... Ts>
+    struct instantiate_unique<Template, std::tuple<Ts...>> {
+        using type = std::tuple<std::unique_ptr<Template<Ts>>...>;
+    };
+
+    NOTF_CREATE_TYPE_DETECTOR(properties);
+    static constexpr auto create_properties() {
+        if constexpr (has_properties_v<Policy>) {
+            return std::declval<typename instantiate_shared<Property, typename Policy::properties>::type>();
+        } else {
+            return std::tuple<>();
+        }
+    }
+
+    NOTF_CREATE_TYPE_DETECTOR(slots);
+    static constexpr auto create_slots() {
+        if constexpr (has_slots_v<Policy>) {
+            return std::declval<typename instantiate_unique<Slot, typename Policy::slots>::type>();
+        } else {
+            return std::tuple<>();
+        }
+    }
+
+    NOTF_CREATE_TYPE_DETECTOR(signals);
+    static constexpr auto create_signals() {
+        if constexpr (has_signals_v<Policy>) {
+            return std::declval<typename instantiate_shared<Signal, typename Policy::signals>::type>();
+        } else {
+            return std::tuple<>();
+        }
+    }
+
+public:
     /// Factory method.
-    static constexpr auto create() {
-        struct NodePolicy {
+    struct NodePolicy {
 
-            /// All Properties of the Node type.
-            using properties = instantiate_shared_t<CompileTimeProperty, decltype(get_properties())>;
+        /// All Properties of the Node type.
+        using properties = decltype(create_properties());
 
-            /// All Slots of the Node type.
-            using slots = instantiate_unique_t<CompileTimeSlot, decltype(get_slots())>;
+        /// All Slots of the Node type.
+        using slots = decltype(create_slots());
 
-            /// All Signals of the Node type.
-            using signals = instantiate_shared_t<CompileTimeSignal, decltype(get_signals())>;
-        };
-
-        return NodePolicy();
-    }
-
-    /// Checks, whether the given type has a nested type `properties`.
-    template<class T>
-    static constexpr auto _has_properties(const T&)
-        -> decltype(std::declval<typename T::properties>(), std::true_type{});
-    template<class>
-    static constexpr auto _has_properties(...) -> std::false_type;
-    static constexpr auto get_properties() noexcept {
-        if constexpr (decltype(_has_properties<Policy>(std::declval<Policy>()))::value) {
-            return std::declval<typename Policy::properties>();
-        } else {
-            return std::tuple<>{};
-        }
-    }
-
-    template<class T>
-    static constexpr auto _has_slots(const T&) -> decltype(std::declval<typename T::slots>(), std::true_type{});
-    template<class>
-    static constexpr auto _has_slots(...) -> std::false_type;
-    static constexpr auto get_slots() noexcept {
-        if constexpr (decltype(_has_slots<Policy>(std::declval<Policy>()))::value) {
-            return std::declval<typename Policy::slots>();
-        } else {
-            return std::tuple<>{};
-        }
-    }
-
-    template<class T>
-    static constexpr auto _has_signals(const T&) -> decltype(std::declval<typename T::signals>(), std::true_type{});
-    template<class>
-    static constexpr auto _has_signals(...) -> std::false_type;
-    static constexpr auto get_signals() noexcept {
-        if constexpr (decltype(_has_signals<Policy>(std::declval<Policy>()))::value) {
-            return std::declval<typename Policy::signals>();
-        } else {
-            return std::tuple<>{};
-        }
-    }
+        /// All Signals of the Node type.
+        using signals = decltype(create_signals());
+    };
 };
 
 struct EmptyNodePolicy {};
@@ -95,7 +75,7 @@ struct EmptyNodePolicy {};
 // compile time node ================================================================================================ //
 
 template<class Policy = detail::EmptyNodePolicy>
-class CompileTimeNode : public Node {
+class Node : public AnyNode {
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -103,7 +83,7 @@ public:
     using user_policy_t = Policy;
 
     /// Policy used to create this Node type.
-    using policy_t = decltype(detail::NodePolicyFactory<Policy>::create());
+    using policy_t = typename detail::NodePolicyFactory<Policy>::NodePolicy;
 
 protected:
     /// Tuple of Property types managed by this Node.
@@ -175,7 +155,7 @@ private:
 protected:
     /// Value constructor.
     /// @param parent   Parent of this Node.
-    CompileTimeNode(valid_ptr<Node*> parent) : Node(parent) {
+    Node(valid_ptr<AnyNode*> parent) : AnyNode(parent) {
         // properties
         for_each(m_properties, [this](auto& property) {
             using property_t = typename std::decay_t<decltype(property)>::element_type;
@@ -184,9 +164,7 @@ protected:
             property = std::make_shared<property_t>();
 
             // subscribe to receive an update, whenever a visible property changes its value
-            if (property->is_visible()) {
-                property->get_operator()->subscribe(_get_property_observer());
-            }
+            if (property->is_visible()) { property->get_operator()->subscribe(_get_property_observer()); }
         });
 
         // slots
@@ -204,20 +182,20 @@ public:
     // properties -------------------------------------------------------------
 
     /// @{
-    /// Returns the correctly typed value of a CompileTimeProperty.
+    /// Returns the correctly typed value of a Property.
     /// @param name     Name of the requested Property.
     template<char... Cs>
     constexpr const auto& get(StringType<Cs...> name) const {
         return std::get<_get_property_index(name)>(m_properties)->get();
     }
-    template<const StringConst& name>
+    template<const ConstString& name>
     constexpr const auto& get() const {
         return get(make_string_type<name>());
     }
     /// @}
 
     /// @{
-    /// Updates the value of a CompileTimeProperty of this Node.
+    /// Updates the value of a Property of this Node.
     /// @param name     Node-unique name of the Property.
     /// @param value    New value of the Property.
     template<class T, char... Cs, size_t I = _get_property_index(StringType<Cs...>{}),
@@ -225,29 +203,29 @@ public:
     constexpr void set(StringType<Cs...>, T&& value) {
         std::get<I>(m_properties)->set(std::forward<T>(value));
     }
-    template<const StringConst& name, class T>
+    template<const ConstString& name, class T>
     constexpr void set(T&& value) {
         set(make_string_type<name>(), std::forward<T>(value));
     }
     /// @}
 
     /// @{
-    /// Returns the correctly typed value of a CompileTimeProperty.
+    /// Returns the correctly typed value of a Property.
     /// @param name     Name of the requested Property.
     template<char... Cs>
     constexpr const auto& connect_property(StringType<Cs...> name) const {
         return PropertyHandle(std::get<_get_property_index(name)>(m_properties));
     }
-    template<const StringConst& name>
+    template<const ConstString& name>
     constexpr const auto& connect_property() const {
         return connect_property(make_string_type<name>());
     }
     /// @}
 
     // Use the base class' runtime methods alongside the compile time implementation.
-    using Node::connect_property;
-    using Node::get;
-    using Node::set;
+    using AnyNode::connect_property;
+    using AnyNode::get;
+    using AnyNode::set;
 
     // signals / slots --------------------------------------------------------
 
@@ -263,12 +241,12 @@ public:
     std::enable_if_t<!std::is_same_v<T, None>> call(StringType<Cs...>, const T& value) {
         std::get<I>(m_slots)->call(value);
     }
-    template<const StringConst& name, size_t I = _get_slot_index(make_string_type<name>()),
+    template<const ConstString& name, size_t I = _get_slot_index(make_string_type<name>()),
              class T = typename slot_t<I>::value_t>
     std::enable_if_t<std::is_same_v<T, None>> call() {
         std::get<I>(m_slots)->call();
     }
-    template<const StringConst& name, size_t I = _get_slot_index(make_string_type<name>()),
+    template<const ConstString& name, size_t I = _get_slot_index(make_string_type<name>()),
              class T = typename slot_t<I>::value_t>
     std::enable_if_t<!std::is_same_v<T, None>> call(const T& value) {
         std::get<I>(m_slots)->call(value);
@@ -282,7 +260,7 @@ public:
     constexpr auto connect_slot(StringType<Cs...>) const {
         return SlotHandle(std::get<I>(m_slots).get());
     }
-    template<const StringConst& name>
+    template<const ConstString& name>
     constexpr auto connect_slot() const {
         return connect_slot(make_string_type<name>());
     }
@@ -295,15 +273,15 @@ public:
     constexpr auto connect_signal(StringType<Cs...>) const {
         return std::get<I>(m_signals);
     }
-    template<const StringConst& name>
+    template<const ConstString& name>
     constexpr auto connect_signal() const {
         return connect_signal(make_string_type<name>());
     }
     /// @}
 
     // Use the base class' runtime methods alongside the compile time implementation.
-    using Node::connect_signal;
-    using Node::connect_slot;
+    using AnyNode::connect_signal;
+    using AnyNode::connect_slot;
 
 protected:
     // properties -------------------------------------------------------------
@@ -313,14 +291,14 @@ protected:
     constexpr void _set_property_callback(StringType<Cs...>, typename property_t<I>::callback_t callback) {
         std::get<I>(m_properties)->set_callback(std::move(callback));
     }
-    template<const StringConst& name, size_t I = _get_property_index(make_string_type<name>())>
+    template<const ConstString& name, size_t I = _get_property_index(make_string_type<name>())>
     constexpr void _set_property_callback(typename property_t<I>::callback_t callback) {
         _set_property_callback(make_string_type<name>(), std::move(callback));
     }
     /// @}
 
     // Use the base class' runtime methods alongside the compile time implementation.
-    using Node::_set_property_callback;
+    using AnyNode::_set_property_callback;
 
     // signals / slots --------------------------------------------------------
 
@@ -331,7 +309,7 @@ protected:
     constexpr auto _get_slot(StringType<Cs...>) const {
         return std::get<I>(m_slots)->get_publisher();
     }
-    template<const StringConst& name>
+    template<const ConstString& name>
     constexpr auto _get_slot() const {
         return _get_slot(make_string_type<name>());
     }
@@ -353,8 +331,8 @@ protected:
     /// @}
 
     // Use the base class' runtime methods alongside the compile time implementation.
-    using Node::_emit;
-    using Node::_get_slot;
+    using AnyNode::_emit;
+    using AnyNode::_get_slot;
 
 private:
     /// @{
@@ -424,8 +402,8 @@ private:
     }
 
     // hide some protected methods
-    using Node::_get_property_observer;
-    using Node::_is_finalized;
+    using AnyNode::_get_property_observer;
+    using AnyNode::_is_finalized;
 
     // fields ---------------------------------------------------------------------------------- //
 private:

@@ -61,14 +61,14 @@ private:
 // string const ======================================================================================================//
 
 /// Compile time string.
-struct StringConst {
+struct ConstString {
 
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor
     /// Takes a compile time literal.
     template<size_t N>
-    constexpr StringConst(const char (&a)[N]) noexcept : m_text(a), m_size(N - 1) {}
+    constexpr ConstString(const char (&a)[N]) noexcept : m_text(a), m_size(N - 1) {}
 
     /// The constant string literal.
     constexpr const char* c_str() const noexcept { return m_text; }
@@ -80,7 +80,7 @@ public:
     constexpr size_t get_hash() const noexcept { return hash_string(m_text, m_size); }
 
     /// operator ==
-    constexpr bool operator==(const StringConst& other) const noexcept {
+    constexpr bool operator==(const ConstString& other) const noexcept {
         if (other.get_size() != get_size()) { return false; }
         for (size_t i = 0; i < get_size(); ++i) {
             if (other[i] != m_text[i]) { return false; }
@@ -91,7 +91,7 @@ public:
     /// Access to an individual character of the string.
     constexpr char operator[](const size_t index) const {
         return (index < m_size) ? m_text[index] :
-                                  throw std::out_of_range("Failed to read out-of-range StringConst character");
+                                  throw std::out_of_range("Failed to read out-of-range ConstString character");
     }
 
     // fields ---------------------------------------------------------------------------------- //
@@ -105,9 +105,9 @@ private:
 
 // comparison ======================================================================================================= //
 
-/// Comparison between a StringConst and a StringType.
+/// Comparison between a ConstString and a StringType.
 template<char... Cs>
-constexpr bool operator==(const StringConst& lhs, const StringType<Cs...>& rhs) noexcept {
+constexpr bool operator==(const ConstString& lhs, const StringType<Cs...>& rhs) noexcept {
     if (sizeof...(Cs) != lhs.get_size()) { return false; }
     for (size_t i = 0; i < lhs.get_size(); ++i) {
         if (rhs.at(i) != lhs[i]) { return false; }
@@ -115,7 +115,7 @@ constexpr bool operator==(const StringConst& lhs, const StringType<Cs...>& rhs) 
     return true;
 }
 template<char... Cs>
-constexpr bool operator==(const StringType<Cs...>& lhs, const StringConst& rhs) noexcept {
+constexpr bool operator==(const StringType<Cs...>& lhs, const ConstString& rhs) noexcept {
     return rhs == lhs;
 }
 
@@ -133,8 +133,8 @@ auto concat_string_type_impl(StringType<Ls...>, StringType<Rs...>, Tail... tail)
     return concat_string_type_impl(StringType<Ls..., Rs...>{}, std::forward<Tail>(tail)...);
 }
 
-template<const StringConst& string, size_t... I>
-constexpr auto string_const_to_string_type(std::index_sequence<I...>) noexcept {
+template<const ConstString& string, size_t... I>
+constexpr auto const_string_to_string_type(std::index_sequence<I...>) noexcept {
     return StringType<string[I]...>{};
 }
 
@@ -152,14 +152,14 @@ constexpr auto number_to_string_type(std::index_sequence<I...>) noexcept {
 
 } // namespace detail
 
-/// Creates a new StringType from a StringConst or integral literal.
-/// Note that the StringConst value that is passed must have linkage.
+/// Creates a new StringType from a ConstString or integral literal.
+/// Note that the ConstString value that is passed must have linkage.
 /// Example:
-///   constexpr StringConst test = "test";
+///   constexpr ConstString test = "test";
 ///   using TestType = decltype(make_string_type<test>());
-template<const StringConst& string>
+template<const ConstString& string>
 constexpr auto make_string_type() noexcept {
-    return detail::string_const_to_string_type<string>(std::make_index_sequence<string.get_size()>{});
+    return detail::const_string_to_string_type<string>(std::make_index_sequence<string.get_size()>{});
 }
 template<size_t number>
 constexpr auto make_string_type_from_number() noexcept {
@@ -177,7 +177,7 @@ constexpr auto make_string_type() noexcept {
 /// Helper typdef for defining a StringType with a *constexpr* value.
 /// Example:
 ///
-///     static constexpr StringConst example_string = "example";
+///     static constexpr ConstString example_string = "example";
 ///     static constexpr size_t example_number = 123;
 ///     using example_string_t = make_string_type_t<example_string>;    // works
 ///     using example_number_t = make_string_type_t<example_number>;    // works

@@ -8,8 +8,8 @@
 
 #include "notf/app/application.hpp"
 #include "notf/app/driver.hpp"
-#include "notf/app/slot.hpp"
-#include "notf/app/window.hpp"
+#include "notf/app/graph/slot.hpp"
+#include "notf/app/graph/window.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -29,7 +29,7 @@ int run_main(int argc, char* argv[]) {
             using namespace std::chrono_literals;
             using namespace notf::driver;
             this_thread::sleep_for(2s);
-//            driver << "abc";
+            //            driver << "abc";
         }
     });
     auto result = app->exec();

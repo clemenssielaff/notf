@@ -46,7 +46,7 @@ private:
 
 public:
     /// Nested `AccessFor<T>` type.
-    NOTF_ACCESS_TYPE(Node);
+    NOTF_ACCESS_TYPE(WidgetDesign);
 
     /// Paint to use in the next fill / stroke / write.
     using Paint = Plotter::Paint;

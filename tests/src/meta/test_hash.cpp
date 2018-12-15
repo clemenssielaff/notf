@@ -18,7 +18,7 @@ SCENARIO("hash functions", "[meta][hash]") {
     }
 
     SECTION("constexpr string and runtime strings are hashed to the same value") {
-        constexpr StringConst const_string = "this /s A T3st_!";
+        constexpr ConstString const_string = "this /s A T3st_!";
         constexpr size_t const_string_hash = hash_string(const_string.c_str(), const_string.get_size());
         static_assert(const_string_hash != 0);
         static_assert(const_string_hash == const_string.get_hash());

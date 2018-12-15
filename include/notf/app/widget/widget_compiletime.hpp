@@ -35,9 +35,9 @@ struct StateIdentifier {
                       "User State is not a valid subclass of State");
 
         static_assert(decltype(has_name<UserState>(std::declval<UserState>()))::value,
-                      "State subclasses must have a unique name, stored as `static constexpr StringConst name`");
-        static_assert(std::is_same_v<decltype(UserState::name), const StringConst>,
-                      "State subclasses must have a unique name, stored as `static constexpr StringConst name`");
+                      "State subclasses must have a unique name, stored as `static constexpr ConstString name`");
+        static_assert(std::is_same_v<decltype(UserState::name), const ConstString>,
+                      "State subclasses must have a unique name, stored as `static constexpr ConstString name`");
         static_assert(UserState::name.get_size() > 0, "State names must not be empty");
 
         return true;
@@ -130,7 +130,7 @@ private:
 namespace detail {
 
 template<class Policy>
-class _CompileTimeWidget : public AnyWidget, public CompileTimeNode<Policy> {
+class _CompileTimeWidget : public AnyWidget, public Node<Policy> {
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -195,8 +195,8 @@ private:
 protected:
     /// Value constructor.
     /// @param parent   Parent of this Widget.
-    _CompileTimeWidget(valid_ptr<Node*> parent)
-        : CompileTimeNode<Policy>(parent)
+    _CompileTimeWidget(valid_ptr<AnyNode*> parent)
+        : Node<Policy>(parent)
         , m_state(std::in_place_type_t<state_t<0>>(), *static_cast<typename state_t<0>::node_t*>(this)) {}
 
 public:

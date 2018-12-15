@@ -5,7 +5,7 @@
 #include "notf/app/event_handler.hpp"
 #include "notf/app/input.hpp"
 #include "notf/app/timer_pool.hpp"
-#include "notf/app/window.hpp"
+#include "notf/app/graph/window.hpp"
 
 #include "notf/graphic/glfw.hpp"
 

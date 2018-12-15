@@ -1,6 +1,6 @@
 #pragma once
 
-#include "notf/app/visualizer.hpp"
+#include "notf/app/graph/visualizer.hpp"
 
 NOTF_OPEN_NAMESPACE
 

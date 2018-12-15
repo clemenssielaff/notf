@@ -1,5 +1,6 @@
 #pragma once
 
+#include "notf/meta/concept.hpp"
 #include "notf/meta/stringtype.hpp"
 #include "notf/meta/typename.hpp"
 
@@ -25,7 +26,7 @@ public:
     virtual std::string_view get_type_name() const = 0;
 };
 
-// slot ============================================================================================================= //
+// typed slot ======================================================================================================= //
 
 /// Is used internally by `Node`.
 /// When a specific Slot is requested from the Node, it instead returns the Slot's Subscriber, so the outside world can
@@ -33,7 +34,7 @@ public:
 /// Node subclasses on the other hand, also have access to the Slot's internal Publisher. This way, they can use the "|-
 /// operator" to subscribe to updates.
 template<class T>
-class Slot : public AnySlot {
+class TypedSlot : public AnySlot {
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -49,7 +50,7 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor.
-    Slot()
+    TypedSlot()
         : m_subscriber(std::make_shared<typename subscriber_t::element_type>(*this))
         , m_publisher(std::make_shared<typename publisher_t::element_type>()) {}
 
@@ -93,49 +94,32 @@ private:
     publisher_t m_publisher;
 };
 
-// compile time slot ================================================================================================ //
+// slot ============================================================================================================= //
 
 namespace detail {
 
-struct SlotPolicyFactory {
+/// Validates a Slot policy and completes partial policies.
+template<class Policy>
+class SlotPolicyFactory {
 
-    /// Factory method.
-    template<class Policy>
-    static constexpr auto create() {
+    NOTF_CREATE_TYPE_DETECTOR(value_t);
+    static_assert(has_value_t_v<Policy>, "A SlotPolicy must contain the type of Slot as type `value_t`");
 
-        // validate the given Policy and show an appropriate error message if something goes wrong
-        static_assert(decltype(has_value_t<Policy>(std::declval<Policy>()))::value,
-                      "A SlotPolicy must contain the type of Slot as type `value_t`");
+    NOTF_CREATE_FIELD_DETECTOR(name);
+    static_assert(has_name_v<Policy>, "A SlotPolicy must contain the name of the Slot as `static constexpr name`");
+    static_assert(std::is_same_v<decltype(Policy::name), const ConstString>,
+                  "The name of a SlotPolicy must be of type `ConstString`");
 
-        static_assert(decltype(has_name<Policy>(std::declval<Policy>()))::value,
-                      "A SlotPolicy must contain the name of the Slot as `static constexpr name`");
-        static_assert(std::is_same_v<decltype(Policy::name), const StringConst>,
-                      "The name of a SlotPolicy must be of type `StringConst`");
+public:
+    /// Validated and completed Slot policy.
+    struct SlotPolicy {
 
-        /// Validated CompileTimeSlot policy.
-        struct SlotPolicy {
+        /// Mandatory value type of the Slot Policy.
+        using value_t = typename Policy::value_t;
 
-            /// Mandatory value type of the Slot Policy.
-            using value_t = typename Policy::value_t;
-
-            /// Mandatory name of the Slot Policy.
-            static constexpr const StringConst& get_name() { return Policy::name; }
-        };
-
-        return SlotPolicy();
-    }
-
-    /// Checks, whether the given type has a nested type `value_t`.
-    template<class T>
-    static constexpr auto has_value_t(const T&) -> decltype(std::declval<typename T::value_t>(), std::true_type{});
-    template<class>
-    static constexpr auto has_value_t(...) -> std::false_type;
-
-    /// Checks, whether the given type has a static field `name`.
-    template<class T>
-    static constexpr auto has_name(const T&) -> decltype(T::name, std::true_type{});
-    template<class>
-    static constexpr auto has_name(...) -> std::false_type;
+        /// Mandatory name of the Slot Policy.
+        static constexpr const ConstString name = Policy::name;
+    };
 };
 
 } // namespace detail
@@ -144,11 +128,11 @@ struct SlotPolicyFactory {
 ///
 ///     struct ShutdownSlot {
 ///         using value_t = None;
-///         static constexpr StringConst name = "to_shutdown";
+///         static constexpr ConstString name = "to_shutdown";
 ///     };
 ///
 template<class Policy>
-class CompileTimeSlot final : public Slot<typename Policy::value_t> {
+class Slot final : public TypedSlot<typename Policy::value_t> {
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -156,7 +140,7 @@ public:
     using user_policy_t = Policy;
 
     /// Policy used to create this Slot type.
-    using policy_t = decltype(detail::SlotPolicyFactory::create<Policy>());
+    using policy_t = typename detail::SlotPolicyFactory<Policy>::SlotPolicy;
 
     /// Slot value type.
     using value_t = typename policy_t::value_t;
@@ -164,7 +148,7 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// The compile time constant name of this Slot.
-    static constexpr const StringConst& get_const_name() noexcept { return policy_t::get_name(); }
+    static constexpr const ConstString& get_const_name() noexcept { return policy_t::name; }
 };
 
 // slot internals =================================================================================================== //
@@ -189,21 +173,21 @@ struct SlotPublisher<None> : Publisher<None, detail::SinglePublisherPolicy> {
 /// subscribe to a Slot - only its Node.
 template<class T>
 struct SlotSubscriber : Subscriber<T> {
-    SlotSubscriber(Slot<T>& slot) : m_slot(slot) {}
+    SlotSubscriber(TypedSlot<T>& slot) : m_slot(slot) {}
     void on_next(const AnyPublisher* id, const T& value) final {
         NOTF_ASSERT(this_thread::is_the_ui_thread());
         m_slot.get_publisher()->publish(id, value);
     }
-    Slot<T>& m_slot;
+    TypedSlot<T>& m_slot;
 };
 template<>
 struct SlotSubscriber<None> : Subscriber<None> {
-    SlotSubscriber(Slot<None>& slot) : m_slot(slot) {}
+    SlotSubscriber(TypedSlot<None>& slot) : m_slot(slot) {}
     void on_next(const AnyPublisher* id) final {
         NOTF_ASSERT(this_thread::is_the_ui_thread());
         m_slot.get_publisher()->publish(id);
     }
-    Slot<None>& m_slot;
+    TypedSlot<None>& m_slot;
 };
 /// @}
 
@@ -218,13 +202,13 @@ class SlotHandle {
 
     // types ----------------------------------------------------------------------------------- //
 private:
-    using subscriber_t = typename Slot<T>::subscriber_t;
+    using subscriber_t = typename TypedSlot<T>::subscriber_t;
 
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor.
     /// @param slot     Slot to Handle.
-    SlotHandle(const Slot<T>* slot) : m_subscriber(slot->get_subscriber()) {}
+    SlotHandle(const TypedSlot<T>* slot) : m_subscriber(slot->get_subscriber()) {}
 
     /// Manually call the Slot with a given value (if applicable).
     template<class X = T>

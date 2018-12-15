@@ -7,16 +7,17 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/driver.cpp
     app/event_handler.cpp
     app/glfw_callbacks.cpp
-    app/graph.cpp
     app/input.cpp
-    app/node.cpp
-    app/property.cpp
     app/resource_manager.cpp
-    app/root_node.cpp
-    app/scene.cpp
     app/timer_pool.cpp
-    app/visualizer.cpp
-    app/window.cpp
+
+    app/graph/any_node.cpp
+    app/graph/graph.cpp
+    app/graph/property.cpp
+    app/graph/root_node.cpp
+    app/graph/scene.cpp
+    app/graph/visualizer.cpp
+    app/graph/window.cpp
 
     app/widget/claim.cpp
     app/widget/widget_design.cpp

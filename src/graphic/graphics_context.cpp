@@ -7,7 +7,7 @@
 
 #include "notf/common/vector.hpp"
 
-#include "notf/app/window.hpp"
+#include "notf/app/graph/window.hpp"
 
 #include "notf/graphic/frame_buffer.hpp"
 #include "notf/graphic/gl_errors.hpp"

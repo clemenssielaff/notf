@@ -1,10 +1,12 @@
 #pragma once
 
+#include "notf/meta/concept.hpp"
+
 #include "notf/common/delegate.hpp"
 
 #include "notf/reactive/pipeline.hpp"
 
-#include "notf/app/graph.hpp"
+#include "notf/app/graph/graph.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -152,9 +154,12 @@ public:
     virtual void clear_modified_data() = 0;
 };
 
+// typed property =================================================================================================== //
+
 /// A Typed Property.
+/// Is not a concreate class yet, but unifies all value-related methods.
 template<class T>
-class Property : public AnyProperty {
+class TypedProperty : public AnyProperty {
 
     static_assert(std::is_move_constructible_v<T>, "Property values must be movable to freeze them");
     static_assert(is_hashable_v<T>, "Property values must be hashable");
@@ -177,7 +182,7 @@ public:
     /// Value constructor.
     /// @param value        Property value.
     /// @param is_visible   Whether a change in the Property will cause the Node to redraw or not.
-    Property(T value, bool is_visible)
+    TypedProperty(T value, bool is_visible)
         : m_operator(std::make_shared<detail::PropertyOperator<T>>(std::move(value), is_visible)) {}
 
     /// Name of this Property type, for runtime reporting.
@@ -218,6 +223,156 @@ public:
 private:
     /// Reactive Property operator, most of the Property's implementation.
     operator_t m_operator;
+};
+
+// property ========================================================================================================= //
+
+namespace detail {
+
+/// Validates a Property policy and completes partial policies.
+template<class Policy>
+class PropertyPolicyFactory {
+
+    NOTF_CREATE_TYPE_DETECTOR(value_t);
+    static_assert(has_value_t_v<Policy>, "A PropertyPolicy must contain the type of Property as type `value_t`");
+
+    NOTF_CREATE_FIELD_DETECTOR(name);
+    static_assert(has_name_v<Policy>,
+                  "A PropertyPolicy must contain the name of the Property as `static constexpr name`");
+    static_assert(std::is_same_v<decltype(Policy::name), const ConstString>,
+                  "The name of a PropertyPolicy must be of type `ConstString`");
+
+    NOTF_CREATE_FIELD_DETECTOR(default_value);
+
+    NOTF_CREATE_FIELD_DETECTOR(is_visible);
+    static constexpr bool create_is_visible() {
+        if constexpr (has_is_visible_v<Policy>) {
+            static_assert(std::is_same_v<decltype(Policy::is_visible), const bool>,
+                          "The visibility flag a PropertyPolicy must be a boolean");
+            return Policy::is_visible;
+        } else {
+            return true; // visible by default
+        }
+    }
+
+public:
+    /// Validated and completed Property policy.
+    struct PropertyPolicy {
+
+        /// Mandatory value type of the Property Policy.
+        using value_t = typename Policy::value_t;
+
+        /// Mandatory name of the Property Policy.
+        static constexpr ConstString name = Policy::name;
+
+        /// Default value, either explicitly given by the user Policy or defaulted.
+        /// Is a method, because not all types can be stored as a constexpr value.
+        static value_t get_default_value() {
+            if constexpr (has_default_value_v<Policy>) {
+                static_assert(std::is_convertible_v<decltype(Policy::default_value), typename Policy::value_t>,
+                              "The default value of a PropertyPolicy must be convertible to its type");
+                return Policy::default_value; // explicit default value
+            } else if constexpr (std::is_arithmetic_v<Policy::value_t>) {
+                return 0; // zero for numeric types
+            } else {
+                return Policy::value_t(); // default initialized value
+            }
+        }
+
+        /// Whether the Property is visible, either explicitly given by the user Policy or true by default.
+        static constexpr bool is_visible = create_is_visible();
+    };
+};
+
+} // namespace detail
+
+/// Example Policy:
+///
+///     struct PropertyPolicy {
+///         using value_t = float;
+///         static constexpr ConstString name = "position";
+///         static constexpr value_t default_value = 0.123f;
+///         static constexpr bool is_visible = true;
+///     };
+///
+template<class Policy>
+class Property final : public TypedProperty<typename Policy::value_t> {
+
+    // types ----------------------------------------------------------------------------------- //
+public:
+    /// Policy type as passed in by the user.
+    using user_policy_t = Policy;
+
+    /// Policy used to create this Property type.
+    using policy_t = typename detail::PropertyPolicyFactory<Policy>::PropertyPolicy;
+
+    /// Property value type.
+    using value_t = typename policy_t::value_t;
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// Constructor.
+    /// @param value        Property value.
+    /// @param is_visible   Whether a change in the Property will cause the Node to redraw or not.
+    Property(value_t value = policy_t::get_default_value(), bool is_visible = policy_t::is_visible)
+        : TypedProperty<value_t>(std::move(value), is_visible) {}
+
+    /// The Node-unique name of this Property.
+    std::string_view get_name() const final { return get_const_name().c_str(); }
+
+    /// The default value of this Property.
+    const value_t& get_default() const final {
+        static const value_t default_value = policy_t::get_default_value();
+        return default_value;
+    }
+
+    /// The compile time constant name of this Property.
+    static constexpr const ConstString& get_const_name() noexcept { return policy_t::name; }
+};
+
+// property handle ================================================================================================== //
+
+/// Object wrapping a weak_ptr to a Property. Is returned by Node::connect_property and can safely be stored &
+/// copied anywhere.
+template<class T>
+class PropertyHandle {
+
+    // types ----------------------------------------------------------------------------------- //
+private:
+    using property_t = TypedPropertyPtr<T>;
+
+    using operator_t = typename TypedProperty<T>::operator_t;
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// Constructor.
+    /// @param property Property to Handle.
+    PropertyHandle(const property_t& property) : m_property(property) {}
+
+    /// Reactive Pipeline "|" operator
+    /// Connects the Property on the left.
+    template<class Sub, class DecayedSub = std::decay_t<Sub>>
+    friend std::enable_if_t<detail::is_reactive_compatible_v<operator_t, DecayedSub>, Pipeline<DecayedSub>>
+    operator|(const PropertyHandle& property, Sub&& subscriber) {
+        property_t property_ptr = property.m_property.lock();
+        if (!property_ptr) { NOTF_THROW(HandleExpiredError, "PropertyHandle is expired"); }
+        return property_ptr->get_operator() | std::forward<Sub>(subscriber);
+    }
+
+    /// Reactive Pipeline "|" operator
+    /// Connect the Property on the right.
+    template<class Pub>
+    friend std::enable_if_t<detail::is_reactive_compatible_v<std::decay_t<Pub>, operator_t>, Pipeline<operator_t>>
+    operator|(Pub&& publisher, const PropertyHandle& property) {
+        property_t property_ptr = property.m_property.lock();
+        if (!property_ptr) { NOTF_THROW(HandleExpiredError, "PropertyHandle is expired"); }
+        return std::forward<Pub>(publisher) | property_ptr->get_operator();
+    }
+
+    // fields ---------------------------------------------------------------------------------- //
+private:
+    /// The handled Property.
+    TypedPropertyWeakPtr<T> m_property;
 };
 
 NOTF_CLOSE_NAMESPACE

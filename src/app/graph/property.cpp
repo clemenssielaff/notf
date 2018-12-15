@@ -1,4 +1,4 @@
-#include "notf/app/property.hpp"
+#include "notf/app/graph/property.hpp"
 
 #include "notf/meta/log.hpp"
 

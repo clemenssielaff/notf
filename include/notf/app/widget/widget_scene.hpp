@@ -1,6 +1,6 @@
 #pragma once
 
-#include "notf/app/scene.hpp"
+#include "notf/app/graph/scene.hpp"
 #include "notf/app/widget/widget.hpp"
 #include "notf/app/widget/widget_visualizer.hpp"
 
@@ -22,7 +22,7 @@ public:
 public:
     /// Constructor, constructs a full-screen, visible WidgetScene.
     /// @param parent   Parent of this Node.
-    WidgetScene(valid_ptr<Node*> parent);
+    WidgetScene(valid_ptr<AnyNode*> parent);
 
     /// Sets a new Widget at the top of the hierarchy in this Scene.
     /// @param args Arguments that are forwarded to the constructor of the child.
@@ -33,12 +33,12 @@ public:
     }
 
     /// Returns the Widget at the top of the hierarchy in this Scene.
-    NodeHandle get_widget() const { return m_root_widget; }
+    AnyNodeHandle get_widget() const { return m_root_widget; }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The Widget underneath the root of this Scene.
-    NodeHandle m_root_widget;
+    AnyNodeHandle m_root_widget;
 };
 
 NOTF_CLOSE_NAMESPACE

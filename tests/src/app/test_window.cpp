@@ -2,7 +2,7 @@
 
 #include "notf/app/application.hpp"
 #include "notf/app/event_handler.hpp"
-#include "notf/app/window.hpp"
+#include "notf/app/graph/window.hpp"
 
 NOTF_USING_NAMESPACE;
 

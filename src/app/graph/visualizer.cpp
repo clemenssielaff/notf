@@ -1,4 +1,4 @@
-#include "notf/app/visualizer.hpp"
+#include "notf/app/graph/visualizer.hpp"
 
 #include "notf/graphic/frame_buffer.hpp"
 #include "notf/graphic/graphics_context.hpp"

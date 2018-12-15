@@ -1,7 +1,6 @@
 #pragma once
 
 #include "notf/meta/exception.hpp"
-#include "notf/meta/tuple.hpp"
 
 #include "notf/common/fwd.hpp"
 #include "notf/graphic/fwd.hpp"
@@ -43,31 +42,31 @@ class Graph;
 class TheGraph;
 
 // node.hpp
-NOTF_DECLARE_SHARED_POINTERS(class, Node);
+NOTF_DECLARE_SHARED_POINTERS(class, AnyNode);
 
 // node_compiletime.hpp
 template<class>
-class CompileTimeNode;
+class Node;
 
 // node_handle.hpp
 template<class>
-class TypedNodeHandle;
+class NodeHandle;
 template<class>
-class TypedNodeOwner;
-using NodeHandle = TypedNodeHandle<Node>;
-using NodeOwner = TypedNodeOwner<Node>;
+class NodeOwner;
+using AnyNodeHandle = NodeHandle<AnyNode>;
+using AnyNodeOwner = NodeOwner<AnyNode>;
 
-// property.hpp
+// graph/property.hpp
 NOTF_DECLARE_SHARED_POINTERS(class, AnyProperty);
-NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, Property);
+NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, TypedProperty);
+
+// graph/property.hpp
 template<class>
-class RunTimeProperty;
-template<class>
-class CompileTimeProperty;
+class Property;
 
 // root_node.hpp
 NOTF_DECLARE_SHARED_POINTERS(class, RootNode);
-using RootNodeHandle = TypedNodeHandle<RootNode>;
+using RootNodeHandle = NodeHandle<RootNode>;
 
 // scene.hpp
 NOTF_DECLARE_SHARED_POINTERS(class, Scene);
@@ -75,7 +74,7 @@ class SceneHandle;
 
 // signal.hpp
 NOTF_DECLARE_SHARED_POINTERS(class, AnySignal);
-NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, Signal);
+NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, TypedSignal);
 
 // slot.hpp
 namespace detail {
@@ -119,86 +118,7 @@ NOTF_DECLARE_UNIQUE_POINTERS(class, Painterpreter);
 /// Exception thrown by any userland Handles when you try to access one when it has already expired.
 NOTF_EXCEPTION_TYPE(HandleExpiredError);
 
-// compile time helper ============================================================================================== //
-
-// is compile time node -------------------------------------------------------
-
-namespace detail {
-
-struct CompileTimeNodeIdentifier {
-    template<class T>
-    static constexpr auto test() {
-        if constexpr (decltype(_has_user_policy_t<T>(std::declval<T>()))::value) {
-            return std::is_convertible<T*, CompileTimeNode<typename T::user_policy_t>*>{};
-        } else {
-            return std::false_type{};
-        }
-    }
-
-private:
-    template<class T>
-    static constexpr auto _has_user_policy_t(const T&)
-        -> decltype(std::declval<typename T::user_policy_t>(), std::true_type{});
-    template<class>
-    static constexpr auto _has_user_policy_t(...) -> std::false_type;
-};
-
-/// Struct derived either from std::true_type or std::false type, depending on whether T is a CompileTimeNode or not.
-template<class T>
-struct is_compile_time_node : decltype(CompileTimeNodeIdentifier::test<T>()) {};
-
-/// Constexpr boolean that is true only if T is a CompileTimeNode.
-template<class T>
-static constexpr bool is_compile_time_node_v = is_compile_time_node<T>::value;
-
-// can node parent ------------------------------------------------------------
-
-template<class T, class = void>
-struct has_allowed_child_types : std::false_type {};
-template<class T>
-struct has_allowed_child_types<T, std::void_t<typename T::allowed_child_types>> : std::true_type {};
-
-template<class T, class = void>
-struct has_forbidden_child_types : std::false_type {};
-template<class T>
-struct has_forbidden_child_types<T, std::void_t<typename T::forbidden_child_types>> : std::true_type {};
-
-template<class T, class = void>
-struct has_allowed_parent_types : std::false_type {};
-template<class T>
-struct has_allowed_parent_types<T, std::void_t<typename T::allowed_parent_types>> : std::true_type {};
-
-template<class T, class = void>
-struct has_forbidden_parent_types : std::false_type {};
-template<class T>
-struct has_forbidden_parent_types<T, std::void_t<typename T::forbidden_parent_types>> : std::true_type {};
-
-template<class A, class B>
-constexpr bool can_node_parent() noexcept {
-    // both A and B must be derived from Node
-    if (std::negation_v<std::conjunction<std::is_base_of<Node, A>, std::is_base_of<Node, B>>>) { return false; }
-
-    // if A has a list of explicitly allowed child types, B must be in it
-    if constexpr (has_allowed_child_types<A>::value) {
-        if (!is_derived_from_one_of_tuple_v<B, typename A::allowed_child_types>) { return false; }
-    }
-    // ... otherwise, if A has a list of explicitly forbidden child types, B must NOT be in it
-    else if constexpr (has_forbidden_child_types<A>::value) {
-        if (is_derived_from_one_of_tuple_v<B, typename A::forbidden_child_types>) { return false; }
-    }
-
-    // if B has a list of explicitly allowed parent types, A must be in it
-    if constexpr (has_allowed_parent_types<B>::value) {
-        if (!is_derived_from_one_of_tuple_v<A, typename B::allowed_parent_types>) { return false; }
-    }
-    // ... otherwise, if B has a list of explicitly forbidden parent types, A must NOT be in it
-    else if constexpr (has_forbidden_parent_types<B>::value) {
-        if (is_derived_from_one_of_tuple_v<A, typename B::forbidden_parent_types>) { return false; }
-    }
-
-    return true;
-}
-
-} // namespace detail
+/// Error thrown when something went wrong with regards to the Graph hierarchy.
+NOTF_EXCEPTION_TYPE(GraphError);
 
 NOTF_CLOSE_NAMESPACE

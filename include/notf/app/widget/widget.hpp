@@ -2,7 +2,7 @@
 
 #include "notf/meta/pointer.hpp"
 
-#include "notf/app/node_handle.hpp"
+#include "notf/app/graph/node_handle.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -50,7 +50,7 @@ class Widget : public Base { // TODO: is `Widget<Base>` a good idea? Right now, 
 protected:
     /// Value constructor.
     /// @param parent   Parent of this Node.
-    Widget(valid_ptr<Node*> parent) : Base(parent) {}
+    Widget(valid_ptr<AnyNode*> parent) : Base(parent) {}
 };
 
 // widget handle ==================================================================================================== //
@@ -63,12 +63,12 @@ struct NodeHandleInterface<Widget<Base>> : public NodeHandleBaseInterface<Widget
 } // namespace detail
 
 template<class Base>
-class WidgetHandle : public TypedNodeHandle<Widget<Base>> {
+class WidgetHandle : public NodeHandle<Widget<Base>> {
 
     // methods --------------------------------------------------------------------------------- //
 public:
     // use baseclass' constructors
-    using TypedNodeHandle<Widget<Base>>::TypedNodeHandle;
+    using NodeHandle<Widget<Base>>::NodeHandle;
 };
 
 NOTF_CLOSE_NAMESPACE

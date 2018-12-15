@@ -9,7 +9,7 @@
 #include "notf/common/mutex.hpp"
 #include "notf/common/uuid.hpp"
 
-#include "notf/app/node_handle.hpp"
+#include "notf/app/graph/node_handle.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -35,7 +35,7 @@ private:
         /// The Node with the given Uuid.
         /// @param uuid Uuid of the Node to look up.
         /// @returns    The requested Handle, is invalid if the uuid did not identify a Node.
-        NodeHandle get_node(Uuid uuid) const;
+        AnyNodeHandle get_node(Uuid uuid) const;
 
         /// The number of Nodes in the Registry.
         size_t get_count() const { return m_registry.size(); }
@@ -43,7 +43,7 @@ private:
         /// Registers a new Node in the Graph.
         /// @param node               Node to register.
         /// @throws NotUniqueError    If another Node with the same Uuid is already registered.
-        void add(NodePtr node);
+        void add(AnyNodePtr node); // TODO: why pass a shared_ptr here?
 
         /// Unregisters the Node with the given Uuid.
         /// If the Uuid is not know, this method does nothing.
@@ -52,7 +52,7 @@ private:
         // fields ---------------------------------------------------------- //
     private:
         /// The registry.
-        std::unordered_map<Uuid, NodeHandle> m_registry;
+        std::unordered_map<Uuid, AnyNodeHandle> m_registry;
 
         /// Mutex protecting the registry.
         mutable Mutex m_mutex;
@@ -70,12 +70,12 @@ private:
         /// @param name     Proposed name of the Node.
         /// @returns        New name of the Node.
         /// @throws HandleExpiredError  If the Node handle has expired.
-        std::string set_name(NodeHandle node, const std::string& name);
+        std::string set_name(AnyNodeHandle node, const std::string& name);
 
         /// The Node with the given name.
         /// @param name Name of the Node to look up.
         /// @returns    The requested Handle, is invalid if the name did not identify a Node.
-        NodeHandle get_node(const std::string& name) const;
+        AnyNodeHandle get_node(const std::string& name) const;
 
         /// The name of the Node with the given Uuuid.
         /// If the Node does not have an existing name, a default one is created in its place.
@@ -84,7 +84,7 @@ private:
         /// @param node Handle of the Node to look up.
         /// @returns    The requested name.
         /// @throws HandleExpiredError  If the Node handle has expired.
-        std::string get_name(NodeHandle node);
+        std::string get_name(AnyNodeHandle node);
 
         /// Removes the Node from the registry.
         /// @param uuid Uuid of the Node to remove.
@@ -98,7 +98,7 @@ private:
         // fields ---------------------------------------------------------- //
     private:
         /// The registry.
-        mutable std::unordered_map<std::string, NodeHandle> m_name_to_node;
+        mutable std::unordered_map<std::string, AnyNodeHandle> m_name_to_node;
         mutable std::unordered_map<Uuid, std::string_view> m_uuid_to_name;
 
         /// Mutex protecting the registry.
@@ -123,17 +123,17 @@ public:
     /// The Node with the given name.
     /// @param name Name of the Node to look up.
     /// @returns    The requested Handle, is invalid if the name did not identify a Node.
-    NodeHandle get_node(const std::string& name) { return m_node_name_registry.get_node(name); }
+    AnyNodeHandle get_node(const std::string& name) { return m_node_name_registry.get_node(name); }
 
     /// The Node with the given Uuid.
     /// @param uuid Uuid of the Node to look up.
     /// @returns    The requested Handle, is invalid if the uuid did not identify a Node.
-    NodeHandle get_node(Uuid uuid) { return m_node_registry.get_node(uuid); }
+    AnyNodeHandle get_node(Uuid uuid) { return m_node_registry.get_node(uuid); }
 
     /// The name of the Node with the given Uuuid.
     /// @param node Handle of the Node to look up.
     /// @returns    The requested name, is empty if not found.
-    std::string get_name(NodeHandle node) { return m_node_name_registry.get_name(std::move(node)); }
+    std::string get_name(AnyNodeHandle node) { return m_node_name_registry.get_name(std::move(node)); }
 
     /// The number of Nodes in the current Graph.
     size_t get_node_count() const { return m_node_registry.get_count(); }
@@ -160,7 +160,7 @@ private:
     RootNodePtr m_root_node;
 
     /// All Nodes that were modified since the last time the Graph was rendered.
-    std::unordered_set<NodeHandle> m_dirty_nodes;
+    std::unordered_set<AnyNodeHandle> m_dirty_nodes;
 };
 
 } // namespace detail
@@ -169,7 +169,7 @@ private:
 
 class TheGraph : public ScopedSingleton<detail::Graph> {
 
-    friend Accessor<TheGraph, Node>;
+    friend Accessor<TheGraph, AnyNode>;
     friend Accessor<TheGraph, Window>;
     friend Accessor<TheGraph, detail::Application>;
 
@@ -189,8 +189,8 @@ private:
     /// Automatically marks the Node as being dirty as well.
     /// @param node             Node to register.
     /// @throws NotUniqueError  If another Node with the same Uuid is already registered.
-    static void _register_node(NodePtr node) {
-        NodeHandle handle = node;
+    static void _register_node(AnyNodePtr node) {
+        AnyNodeHandle handle = node;
         _get().m_node_registry.add(std::move(node)); // first, because it may fail
         _get().m_dirty_nodes.emplace(std::move(handle));
     }
@@ -210,13 +210,13 @@ private:
     /// @param node     Node to rename.
     /// @param name     Proposed name of the Node.
     /// @returns        New name of the Node.
-    static std::string _set_name(NodeHandle node, const std::string& name) {
+    static std::string _set_name(AnyNodeHandle node, const std::string& name) {
         return _get().m_node_name_registry.set_name(std::move(node), name);
     }
 
     /// Registers the given Node as dirty (a visible Property was modified since the last frame was drawn).
     /// @param node     Dirty node.
-    static void _mark_dirty(NodeHandle node) { _get().m_dirty_nodes.emplace(std::move(node)); }
+    static void _mark_dirty(AnyNodeHandle node) { _get().m_dirty_nodes.emplace(std::move(node)); }
 
     /// The Root Node of the Graph as `shared_ptr`.
     static RootNodePtr _get_root_node_ptr() { return _get().m_root_node; }
@@ -225,14 +225,14 @@ private:
 // accessors ======================================================================================================== //
 
 template<>
-class Accessor<TheGraph, Node> {
-    friend Node;
+class Accessor<TheGraph, AnyNode> {
+    friend AnyNode;
 
     /// Registers a new Node in the Graph.
     /// Automatically marks the Node as being dirty as well.
     /// @param node             Node to register.
     /// @throws NotUniqueError  If another Node with the same Uuid is already registered.
-    static void register_node(NodePtr node) { TheGraph()._register_node(std::move(node)); }
+    static void register_node(AnyNodePtr node) { TheGraph()._register_node(std::move(node)); }
 
     /// Unregisters the Node with the given Uuid.
     /// If the Uuid is not know, this method does nothing.
@@ -244,13 +244,13 @@ class Accessor<TheGraph, Node> {
     /// @param node     Node to rename.
     /// @param name     Proposed name of the Node.
     /// @returns        New name of the Node.
-    static std::string set_name(NodeHandle node, const std::string& name) {
+    static std::string set_name(AnyNodeHandle node, const std::string& name) {
         return TheGraph()._set_name(std::move(node), name);
     }
 
     /// Registers the given Node as dirty (a visible Property was modified since the last frame was drawn).
     /// @param node     Dirty node.
-    static void mark_dirty(NodeHandle node) { TheGraph()._mark_dirty(std::move(node)); }
+    static void mark_dirty(AnyNodeHandle node) { TheGraph()._mark_dirty(std::move(node)); }
 };
 
 template<>
@@ -264,7 +264,7 @@ class Accessor<TheGraph, Window> {
     /// Automatically marks the Node as being dirty as well.
     /// @param node             Node to register.
     /// @throws NotUniqueError  If another Node with the same Uuid is already registered.
-    static void register_node(NodePtr node) { TheGraph()._register_node(std::move(node)); }
+    static void register_node(AnyNodePtr node) { TheGraph()._register_node(std::move(node)); }
 };
 
 template<>

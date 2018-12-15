@@ -1,4 +1,4 @@
-#include "notf/app/window.hpp"
+#include "notf/app/graph/window.hpp"
 
 #include "notf/meta/log.hpp"
 
@@ -9,8 +9,8 @@
 #include "notf/graphic/glfw.hpp"
 
 #include "notf/app/application.hpp"
-#include "notf/app/graph.hpp"
-#include "notf/app/root_node.hpp"
+#include "notf/app/graph/graph.hpp"
+#include "notf/app/graph/root_node.hpp"
 
 // helper =========================================================================================================== //
 
@@ -35,7 +35,7 @@ GLFWmonitor* get_glfw_monitor(int index) {
 
 NOTF_OPEN_NAMESPACE
 
-Window::Window(valid_ptr<Node*> parent, valid_ptr<GLFWwindow*> window, Arguments settings)
+Window::Window(valid_ptr<AnyNode*> parent, valid_ptr<GLFWwindow*> window, Arguments settings)
     : super_t(parent), m_glfw_window(window) {
     glfwSetWindowUserPointer(m_glfw_window, this);
 
@@ -101,10 +101,10 @@ WindowHandle Window::create(Arguments settings) {
 
     RootNodePtr root_node = TheGraph::AccessFor<Window>::get_root_node_ptr();
     WindowPtr window = _create_shared(root_node.get(), glfw_window, std::move(settings));
-    Node::AccessFor<Window>::finalize(*window);
+    AnyNode::AccessFor<Window>::finalize(*window);
 
     RootNode::AccessFor<Window>::add_window(*root_node, window);
-    TheGraph::AccessFor<Window>::register_node(std::static_pointer_cast<Node>(window));
+    TheGraph::AccessFor<Window>::register_node(std::static_pointer_cast<AnyNode>(window));
 
     return window;
 }

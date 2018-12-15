@@ -21,7 +21,7 @@ SCENARIO("graph", "[app][graph]") {
 
         SECTION("Nodes in the Graph can be requested by their name") {
             const std::string test_name = "this_is_a_test_name_indeed";
-            NodeHandle leaf_node = root_node.create_child<TestNode>();
+            AnyNodeHandle leaf_node = root_node.create_child<TestNode>();
             leaf_node->set_name(test_name);
             REQUIRE(leaf_node.get_name() == test_name);
             REQUIRE(TheGraph()->get_node(test_name) == leaf_node);
@@ -34,7 +34,7 @@ SCENARIO("graph", "[app][graph]") {
             REQUIRE(!TheGraph()->get_node(Uuid()));
 
             auto evil_node = root_node.create_child<TestNode>().to_handle();
-            Node::AccessFor<Tester>(evil_node).set_uuid(node.get_uuid());
+            AnyNode::AccessFor<Tester>(evil_node).set_uuid(node.get_uuid());
             REQUIRE_THROWS_AS(GraphAccess::register_node(evil_node), NotUniqueError);
         }
 

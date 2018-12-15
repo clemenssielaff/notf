@@ -5,7 +5,7 @@
 #include "notf/app/widget/painterpreter.hpp"
 #include "notf/app/widget/widget.hpp"
 #include "notf/app/widget/widget_scene.hpp"
-#include "notf/app/window.hpp"
+#include "notf/app/graph/window.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -24,11 +24,11 @@ void WidgetVisualizer::visualize(valid_ptr<Scene*> scene) const {
         return;
     }
 
-    Node::Iterator iterator(widget_scene->get_widget());
-    NodeHandle widget;
+    AnyNode::Iterator iterator(widget_scene->get_widget());
+    AnyNodeHandle widget;
     while (true) {
         bool has_more = iterator.next(widget);
-//        m_painterpreter->paint(*widget);
+        //        m_painterpreter->paint(*widget);
         if (!has_more) { break; }
     }
 }
