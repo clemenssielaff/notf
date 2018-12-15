@@ -535,7 +535,7 @@ protected: // for direct subclasses only
 private:
     /// Implementation specific query of a Property, returns an empty pointer if no Property by the given name is found.
     /// @param name     Node-unique name of the Property.
-    virtual AnyPropertyPtr _get_property_impl(const std::string& /*name*/) const = 0;
+    virtual AnyProperty* _get_property_impl(const std::string& /*name*/) const = 0;
 
     /// Implementation specific query of a Slot, returns an empty pointer if no Slot by the given name is found.
     /// @param name     Node-unique name of the Slot.
@@ -573,12 +573,12 @@ private:
     /// @returns        Handle to the requested Property.
     /// @throws         NameError / TypeError
     template<class T>
-    TypedPropertyPtr<T> _try_get_property(const std::string& name) const {
+    TypedProperty<T>* _try_get_property(const std::string& name) const {
         // can be accessed from both the UI and the render thread
-        AnyPropertyPtr property = _get_property_impl(name);
+        AnyProperty* property = _get_property_impl(name);
         if (!property) { NOTF_THROW(NameError, "Node \"{}\" has no Property called \"{}\"", get_name(), name); }
 
-        TypedPropertyPtr<T> typed_property = std::dynamic_pointer_cast<TypedProperty<T>>(std::move(property));
+        auto* typed_property = dynamic_cast<TypedProperty<T>*>(property);
         if (!typed_property) {
             NOTF_THROW(TypeError,
                        "Property \"{}\" of Node \"{}\" is of type \"{}\", but was requested as \"{}\"", //

@@ -29,7 +29,7 @@ class NodePolicyFactory { // TODO: (NodePolicyFactory) check that all names are 
     NOTF_CREATE_TYPE_DETECTOR(properties);
     static constexpr auto create_properties() {
         if constexpr (has_properties_v<Policy>) {
-            return std::declval<typename instantiate_shared<Property, typename Policy::properties>::type>();
+            return std::declval<typename instantiate_unique<Property, typename Policy::properties>::type>();
         } else {
             return std::tuple<>();
         }
@@ -161,7 +161,7 @@ protected:
             using property_t = typename std::decay_t<decltype(property)>::element_type;
 
             // create the new property
-            property = std::make_shared<property_t>();
+            property = std::make_unique<property_t>();
 
             // subscribe to receive an update, whenever a visible property changes its value
             if (property->is_visible()) { property->get_operator()->subscribe(_get_property_observer()); }
@@ -337,14 +337,12 @@ protected:
 private:
     /// @{
     /// Implementation specific query of a Property.
-    AnyPropertyPtr _get_property_impl(const std::string& name) const final {
-        return _get_property_ct(hash_string(name));
-    }
+    AnyProperty* _get_property_impl(const std::string& name) const final { return _get_property_ct(hash_string(name)); }
     template<size_t I = 0>
-    AnyPropertyPtr _get_property_ct(const size_t hash_value) const {
+    AnyProperty* _get_property_ct(const size_t hash_value) const {
         if constexpr (I < std::tuple_size_v<Properties>) {
             if (property_t<I>::get_const_name().get_hash() == hash_value) {
-                return std::static_pointer_cast<AnyProperty>(std::get<I>(m_properties));
+                return std::get<I>(m_properties).get();
             } else {
                 return _get_property_ct<I + 1>(hash_value);
             }

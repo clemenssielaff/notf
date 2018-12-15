@@ -339,24 +339,26 @@ class PropertyHandle {
 
     // types ----------------------------------------------------------------------------------- //
 private:
-    using property_t = TypedPropertyPtr<T>;
-
+    /// Operator type of the handled Property type.
     using operator_t = typename TypedProperty<T>::operator_t;
+
+    /// Weak pointer to the Property's Operator type.
+    using weak_operator_t = typename operator_t::weak_type;
 
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor.
     /// @param property Property to Handle.
-    PropertyHandle(const property_t& property) : m_property(property) {}
+    PropertyHandle(valid_ptr<TypedProperty<T>*> property) : m_operator(property->get_operator()) {}
 
     /// Reactive Pipeline "|" operator
     /// Connects the Property on the left.
     template<class Sub, class DecayedSub = std::decay_t<Sub>>
     friend std::enable_if_t<detail::is_reactive_compatible_v<operator_t, DecayedSub>, Pipeline<DecayedSub>>
     operator|(const PropertyHandle& property, Sub&& subscriber) {
-        property_t property_ptr = property.m_property.lock();
-        if (!property_ptr) { NOTF_THROW(HandleExpiredError, "PropertyHandle is expired"); }
-        return property_ptr->get_operator() | std::forward<Sub>(subscriber);
+        operator_t operator_ptr = property.m_operator.lock();
+        if (!operator_ptr) { NOTF_THROW(HandleExpiredError, "PropertyHandle is expired"); }
+        return operator_ptr | std::forward<Sub>(subscriber);
     }
 
     /// Reactive Pipeline "|" operator
@@ -364,15 +366,15 @@ public:
     template<class Pub>
     friend std::enable_if_t<detail::is_reactive_compatible_v<std::decay_t<Pub>, operator_t>, Pipeline<operator_t>>
     operator|(Pub&& publisher, const PropertyHandle& property) {
-        property_t property_ptr = property.m_property.lock();
-        if (!property_ptr) { NOTF_THROW(HandleExpiredError, "PropertyHandle is expired"); }
-        return std::forward<Pub>(publisher) | property_ptr->get_operator();
+        operator_t operator_ptr = property.m_operator.lock();
+        if (!operator_ptr) { NOTF_THROW(HandleExpiredError, "PropertyHandle is expired"); }
+        return std::forward<Pub>(publisher) | operator_ptr;
     }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
-    /// The handled Property.
-    TypedPropertyWeakPtr<T> m_property;
+    /// Operator of the handled Property.
+    weak_operator_t m_operator;
 };
 
 NOTF_CLOSE_NAMESPACE
