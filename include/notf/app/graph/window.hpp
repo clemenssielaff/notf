@@ -191,16 +191,16 @@ public:
     using allowed_parent_types = std::tuple<RootNode>;
 
     /// Property names.
-    static constexpr const ConstString title = detail::window_properties::Title::name;
-    static constexpr const ConstString icon = detail::window_properties::Icon::name;
-    static constexpr const ConstString size = detail::window_properties::Size::name;
-    static constexpr const ConstString position = detail::window_properties::Position::name;
-    static constexpr const ConstString resolution = detail::window_properties::Resolution::name;
-    static constexpr const ConstString state = detail::window_properties::State::name;
-    static constexpr const ConstString monitor = detail::window_properties::Monitor::name;
+    static constexpr const ConstString title = detail::window_policy::Title::name;
+    static constexpr const ConstString icon = detail::window_policy::Icon::name;
+    static constexpr const ConstString size = detail::window_policy::Size::name;
+    static constexpr const ConstString position = detail::window_policy::Position::name;
+    static constexpr const ConstString resolution = detail::window_policy::Resolution::name;
+    static constexpr const ConstString state = detail::window_policy::State::name;
+    static constexpr const ConstString monitor = detail::window_policy::Monitor::name;
 
     /// Slot names.
-    static constexpr const ConstString to_close = detail::window_properties::CloseSlot::name;
+    static constexpr const ConstString to_close = detail::window_policy::CloseSlot::name;
 
 private:
     /// Exception thrown when the OpenGL context of a Window could not be initialized.

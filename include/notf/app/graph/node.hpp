@@ -155,7 +155,7 @@ private:
 protected:
     /// Value constructor.
     /// @param parent   Parent of this Node.
-    CompileTimeNode(valid_ptr<Node*> parent) : Node(parent) {
+    Node(valid_ptr<AnyNode*> parent) : AnyNode(parent) {
         _initialize_properties();
         _initialize_slots();
         _initialize_signals();
@@ -267,20 +267,20 @@ public:
 protected:
     // properties -------------------------------------------------------------
 
-	/// @{
-	/// Initializes all compile time Properties.
+    /// @{
+    /// Initializes all compile time Properties.
     template<size_t I = 0>
     std::enable_if_t<(I < std::tuple_size_v<Properties>)> _initialize_properties() {
 
         // create the new property
         auto& property = std::get<I>(m_properties);
-        property = std::make_unique<property_t>();
+        property = std::make_unique<property_t<I>>();
 
         // subscribe to receive an update, whenever a visible property changes its value
         if (property->is_visible()) { property->get_operator()->subscribe(_get_property_observer()); }
 
-		_initialize_properties<I + 1>();
-	}
+        _initialize_properties<I + 1>();
+    }
     template<size_t I = 0>
     std::enable_if_t<(I == std::tuple_size_v<Properties>)> _initialize_properties() {}
     /// @}
@@ -313,7 +313,7 @@ protected:
     std::enable_if_t<(I == std::tuple_size_v<Slots>)> _initialize_slots() {}
     /// @}
 
-	/// @{
+    /// @{
     /// Initializes all Signals.
     template<size_t I = 0>
     std::enable_if_t<(I < std::tuple_size_v<Signals>)> _initialize_signals() {

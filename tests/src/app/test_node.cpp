@@ -9,15 +9,10 @@
 
 NOTF_USING_NAMESPACE;
 
-#ifdef NOTF_MSVC
 static constexpr ConstString int_id_name = "int";
 static constexpr ConstString float_id_name = "float";
 static constexpr auto int_id = make_string_type<int_id_name>();
 static constexpr auto float_id = make_string_type<float_id_name>();
-#else
-constexpr auto int_id = "int"_id;
-constexpr auto float_id = "float"_id;
-#endif
 
 #ifdef __clang__
 #pragma clang diagnostic push
