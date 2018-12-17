@@ -96,10 +96,8 @@ public:
     /// Signal value type.
     using value_t = typename policy_t::value_t;
 
-    // methods --------------------------------------------------------------------------------- //
-public:
     /// The compile time constant name of this Signal.
-    static constexpr const ConstString& get_const_name() noexcept { return policy_t::name; }
+    static constexpr const ConstString& name = policy_t::name;
 };
 
 // signal handle ==================================================================================================== //

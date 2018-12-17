@@ -109,45 +109,37 @@ protected:
 
     // helper --------------------------------------------------------------------------------- //
 private:
-    /// Finds the index of a Property by its name.
-    template<size_t I = 0, char... Cs>
-    static constexpr size_t _get_property_index(StringType<Cs...> name) {
-        if constexpr (I < std::tuple_size_v<Properties>) {
-            if constexpr (property_t<I>::get_const_name() == name) {
+    /// Finds the index of the tuple element by its static ConstString field `name`.
+    /// @param name Name to look for.
+    /// @returns    Index of the matching element or the size of the tuple if not found.
+    template<class Tuple, size_t I = 0, char... Cs>
+    static constexpr size_t _get_index(StringType<Cs...> name) noexcept {
+        if constexpr (I < std::tuple_size_v<Tuple>) {
+            using type = typename std::tuple_element_t<I, Tuple>::element_type;
+            if (type::name == name) {
                 return I;
             } else {
-                return _get_property_index<I + 1>(name);
+                return _get_index<Tuple, I + 1>(name);
             }
         } else {
-            NOTF_THROW(OutOfBounds);
+            return std::tuple_size_v<Tuple>; // not found
         }
     }
 
-    /// Finds the index of a Slot by its name.
-    template<size_t I = 0, char... Cs>
-    static constexpr size_t _get_slot_index(StringType<Cs...> name) {
-        if constexpr (I < std::tuple_size_v<Slots>) {
-            if constexpr (slot_t<I>::get_const_name() == name) {
+    /// Finds the index of the tuple element by the hash value of its static ConstString field `name`.
+    /// @param hash Hash value to look for.
+    /// @returns    Index of the matching element or the size of the tuple if not found.
+    template<class Tuple, size_t I = 0>
+    static constexpr size_t _get_index(const size_t hash) noexcept {
+        if constexpr (I < std::tuple_size_v<Tuple>) {
+            using type = typename std::tuple_element_t<I, Tuple>::element_type;
+            if (type::name.get_hash() == hash) {
                 return I;
             } else {
-                return _get_slot_index<I + 1>(name);
+                return _get_index<Tuple, I + 1>(hash);
             }
         } else {
-            NOTF_THROW(OutOfBounds);
-        }
-    }
-
-    /// Finds the index of a Signal by its name.
-    template<size_t I = 0, char... Cs>
-    static constexpr size_t _get_signal_index(StringType<Cs...> name) {
-        if constexpr (I < std::tuple_size_v<Signals>) {
-            if constexpr (signal_t<I>::get_const_name() == name) {
-                return I;
-            } else {
-                return _get_signal_index<I + 1>(name);
-            }
-        } else {
-            NOTF_THROW(OutOfBounds);
+            return std::tuple_size_v<Tuple>; // not found
         }
     }
 
@@ -159,12 +151,10 @@ protected:
         // properties
         for_each(m_properties, [this](auto& property) {
             using property_t = typename std::decay_t<decltype(property)>::element_type;
-
-            // create the new property
             property = std::make_unique<property_t>();
-
-            // subscribe to receive an update, whenever a visible property changes its value
-            if (property->is_visible()) { property->get_operator()->subscribe(_get_property_observer()); }
+            if (property->is_visible()) { // receive an update, whenever a visible property changes its value
+                property->get_operator()->subscribe(_get_property_observer());
+            }
         });
 
         // slots
@@ -186,7 +176,7 @@ public:
     /// @param name     Name of the requested Property.
     template<char... Cs>
     constexpr const auto& get(StringType<Cs...> name) const {
-        return std::get<_get_property_index(name)>(m_properties)->get();
+        return std::get<_get_index<Properties>(name)>(m_properties)->get();
     }
     template<const ConstString& name>
     constexpr const auto& get() const {
@@ -198,7 +188,7 @@ public:
     /// Updates the value of a Property of this Node.
     /// @param name     Node-unique name of the Property.
     /// @param value    New value of the Property.
-    template<class T, char... Cs, size_t I = _get_property_index(StringType<Cs...>{}),
+    template<class T, char... Cs, size_t I = _get_index<Properties>(StringType<Cs...>{}),
              class = std::enable_if_t<std::is_convertible_v<T, typename property_t<I>::value_t>>>
     constexpr void set(StringType<Cs...>, T&& value) {
         std::get<I>(m_properties)->set(std::forward<T>(value));
@@ -214,7 +204,7 @@ public:
     /// @param name     Name of the requested Property.
     template<char... Cs>
     constexpr const auto& connect_property(StringType<Cs...> name) const {
-        return PropertyHandle(std::get<_get_property_index(name)>(m_properties));
+        return PropertyHandle(std::get<_get_index<Properties>(name)>(m_properties));
     }
     template<const ConstString& name>
     constexpr const auto& connect_property() const {
@@ -233,20 +223,20 @@ public:
     /// Manually call the requested Slot of this Node.
     /// If T is not`None`, this method takes a second argument that is passed to the Slot.
     /// The Publisher of the Slot's `on_next` call id is set to `nullptr`.
-    template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{}), class T = typename slot_t<I>::value_t>
+    template<char... Cs, size_t I = _get_index<Slots>(StringType<Cs...>{}), class T = typename slot_t<I>::value_t>
     std::enable_if_t<std::is_same_v<T, None>> call(StringType<Cs...>) {
         std::get<I>(m_slots)->call();
     }
-    template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{}), class T = typename slot_t<I>::value_t>
+    template<char... Cs, size_t I = _get_index<Slots>(StringType<Cs...>{}), class T = typename slot_t<I>::value_t>
     std::enable_if_t<!std::is_same_v<T, None>> call(StringType<Cs...>, const T& value) {
         std::get<I>(m_slots)->call(value);
     }
-    template<const ConstString& name, size_t I = _get_slot_index(make_string_type<name>()),
+    template<const ConstString& name, size_t I = _get_index<Slots>(make_string_type<name>()),
              class T = typename slot_t<I>::value_t>
     std::enable_if_t<std::is_same_v<T, None>> call() {
         std::get<I>(m_slots)->call();
     }
-    template<const ConstString& name, size_t I = _get_slot_index(make_string_type<name>()),
+    template<const ConstString& name, size_t I = _get_index<Slots>(make_string_type<name>()),
              class T = typename slot_t<I>::value_t>
     std::enable_if_t<!std::is_same_v<T, None>> call(const T& value) {
         std::get<I>(m_slots)->call(value);
@@ -256,7 +246,7 @@ public:
     /// @{
     /// Returns the requested Slot or void (which doesn't compile).
     /// @param name     Name of the requested Slot.
-    template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{})>
+    template<char... Cs, size_t I = _get_index<Slots>(StringType<Cs...>{})>
     constexpr auto connect_slot(StringType<Cs...>) const {
         return SlotHandle(std::get<I>(m_slots).get());
     }
@@ -269,7 +259,7 @@ public:
     /// @{
     /// Returns the requested Signal or void (which doesn't compile).
     /// @param name     Name of the requested Signal.
-    template<char... Cs, size_t I = _get_signal_index(StringType<Cs...>{})>
+    template<char... Cs, size_t I = _get_index<Signals>(StringType<Cs...>{})>
     constexpr auto connect_signal(StringType<Cs...>) const {
         return std::get<I>(m_signals);
     }
@@ -287,11 +277,11 @@ protected:
     // properties -------------------------------------------------------------
     /// @{
     /// (Re-)Defines a callback to be invoked every time the value of the Property is about to change.
-    template<char... Cs, size_t I = _get_property_index(StringType<Cs...>{})>
+    template<char... Cs, size_t I = _get_index<Properties>(StringType<Cs...>{})>
     constexpr void _set_property_callback(StringType<Cs...>, typename property_t<I>::callback_t callback) {
         std::get<I>(m_properties)->set_callback(std::move(callback));
     }
-    template<const ConstString& name, size_t I = _get_property_index(make_string_type<name>())>
+    template<const ConstString& name, size_t I = _get_index<Properties>(make_string_type<name>())>
     constexpr void _set_property_callback(typename property_t<I>::callback_t callback) {
         _set_property_callback(make_string_type<name>(), std::move(callback));
     }
@@ -305,7 +295,7 @@ protected:
     /// @{
     /// Internal access to a Slot of this Node.
     /// @param name     Name of the requested Property.
-    template<char... Cs, size_t I = _get_slot_index(StringType<Cs...>{})>
+    template<char... Cs, size_t I = _get_index<Slots>(StringType<Cs...>{})>
     constexpr auto _get_slot(StringType<Cs...>) const {
         return std::get<I>(m_slots)->get_publisher();
     }
@@ -320,11 +310,11 @@ protected:
     /// @param name     Name of the Signal to emit.
     /// @param value    Data to emit.
     /// @throws         NameError / TypeError
-    template<char... Cs, size_t I = _get_signal_index(StringType<Cs...>{}), class T = typename signal_t<I>::value_t>
+    template<char... Cs, size_t I = _get_index<Signals>(StringType<Cs...>{}), class T = typename signal_t<I>::value_t>
     void _emit(StringType<Cs...>, const T& value) {
         std::get<I>(m_signals)->publish(value);
     }
-    template<char... Cs, size_t I = _get_signal_index(StringType<Cs...>{}), class T = typename signal_t<I>::value_t>
+    template<char... Cs, size_t I = _get_index<Signals>(StringType<Cs...>{}), class T = typename signal_t<I>::value_t>
     void _emit(StringType<Cs...>) {
         std::get<I>(m_signals)->publish();
     }
@@ -335,67 +325,43 @@ protected:
     using AnyNode::_get_slot;
 
 private:
-    /// @{
     /// Implementation specific query of a Property.
-    AnyProperty* _get_property_impl(const std::string& name) const final { return _get_property_ct(hash_string(name)); }
-    template<size_t I = 0>
-    AnyProperty* _get_property_ct(const size_t hash_value) const {
-        if constexpr (I < std::tuple_size_v<Properties>) {
-            if (property_t<I>::get_const_name().get_hash() == hash_value) {
-                return std::get<I>(m_properties).get();
-            } else {
-                return _get_property_ct<I + 1>(hash_value);
-            }
+    AnyProperty* _get_property_impl(const std::string& name) const override {
+        if (const size_t index = _get_index<Properties>(hash_string(name)); index < std::tuple_size_v<Properties>) {
+            return visit_at<AnyProperty*>(m_properties, index, [](const auto& property) { return property.get(); });
         } else {
-            return {}; // no such property
+            return nullptr; // no such property
         }
     }
-    /// @}
 
-    /// @{
     /// Implementation specific query of a Slot, returns an empty pointer if no Slot by the given name is found.
     /// @param name     Node-unique name of the Slot.
-    AnySlot* _get_slot_impl(const std::string& name) const final { return _get_slot_ct(hash_string(name)); }
-    template<size_t I = 0>
-    AnySlot* _get_slot_ct(const size_t hash_value) const {
-        if constexpr (I < std::tuple_size_v<Slots>) {
-            if (slot_t<I>::get_const_name().get_hash() == hash_value) {
-                return std::get<I>(m_slots).get();
-            } else {
-                return _get_slot_ct<I + 1>(hash_value);
-            }
+    AnySlot* _get_slot_impl(const std::string& name) const override {
+        if (const size_t index = _get_index<Slots>(hash_string(name)); index < std::tuple_size_v<Slots>) {
+            return visit_at<AnySlot*>(m_slots, index, [](const auto& slot) { return slot.get(); });
         } else {
-            return {}; // no such slot
+            return nullptr; // no such slot
         }
     }
-    /// @}
 
-    /// @{
     /// Implementation specific query of a Signal, returns an empty pointer if no Signal by the given name is found.
     /// @param name     Node-unique name of the Signal.
-    AnySignalPtr _get_signal_impl(const std::string& name) const final { return _get_signal_ct(hash_string(name)); }
-    template<size_t I = 0>
-    AnySignalPtr _get_signal_ct(const size_t hash_value) const {
-        if constexpr (I < std::tuple_size_v<Signals>) {
-            if (signal_t<I>::get_const_name().get_hash() == hash_value) {
-                return std::get<I>(m_signals);
-            } else {
-                return _get_signal_ct<I + 1>(hash_value);
-            }
+    AnySignalPtr _get_signal_impl(const std::string& name) const override {
+        if (const size_t index = _get_index<Signals>(hash_string(name)); index < std::tuple_size_v<Signals>) {
+            return visit_at<AnySignalPtr>(m_signals, index, [](const auto& signal) { return signal; });
         } else {
-            return {}; // no such signal
+            return nullptr; // no such slot
         }
     }
-    /// @}
 
     /// Calculates the combined hash value of all Properties.
-    size_t _calculate_property_hash(size_t result = detail::version_hash()) const final {
+    size_t _calculate_property_hash(size_t result = detail::version_hash()) const override {
         for_each(m_properties, [](auto& property, size_t& out) { hash_combine(out, property->get()); }, result);
         return result;
     }
 
     /// Removes all modified data from all Properties.
-    void _clear_modified_properties() final {
+    void _clear_modified_properties() override {
         for_each(m_properties, [](auto& property) { property->clear_modified_data(); });
     }
 

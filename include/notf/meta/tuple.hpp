@@ -199,6 +199,72 @@ for_each(const std::tuple<Ts...>& tuple, Function&& function,
 }
 /// @}
 
+// visit at ========================================================================================================= //
+
+namespace detail {
+
+template<size_t Counter, size_t I = Counter - 1>
+struct visit_at_impl {
+    template<class Tuple, class Function, class... Args>
+    static constexpr void visit(const Tuple& tuple, const size_t index, Function fun, Args&&... args) noexcept(
+        noexcept(std::invoke(fun, std::get<I>(tuple), std::forward<Args>(args)...))
+        && noexcept(visit_at_impl<I>::visit(tuple, index, fun, std::forward<Args>(args)...))) {
+        if (index == (I)) {
+            std::invoke(fun, std::get<I>(tuple), std::forward<Args>(args)...);
+        } else {
+            visit_at_impl<I>::visit(tuple, index, fun, std::forward<Args>(args)...);
+        }
+    }
+
+    template<class Result, class Tuple, class Function, class... Args>
+    static constexpr Result visit(const Tuple& tuple, const size_t index, Function fun, Args&&... args) noexcept(
+        noexcept(std::invoke(fun, std::get<I>(tuple), std::forward<Args>(args)...))
+        && noexcept(visit_at_impl<I>::template visit<Result>(tuple, index, fun, std::forward<Args>(args)...))) {
+        if (index == I) {
+            return std::invoke(fun, std::get<I>(tuple), std::forward<Args>(args)...);
+        } else {
+            return visit_at_impl<I>::template visit<Result>(tuple, index, fun, std::forward<Args>(args)...);
+        }
+    }
+};
+
+template<>
+struct visit_at_impl<0> {
+    template<class Tuple, class Function, class... Args>
+    static constexpr void visit(const Tuple&, const size_t, Function, Args&&...) noexcept {}
+
+    template<class Result, class Tuple, class Function, class... Args>
+    static constexpr Result
+    visit(const Tuple&, const size_t, Function, Args&&...) noexcept(std::is_nothrow_default_constructible_v<Result>) {
+        static_assert(std::is_default_constructible_v<Result>,
+                      "Explicit return type of visit_at method must be default-constructible");
+        return {};
+    }
+};
+
+} // namespace detail
+
+/// @{
+/// Applies a given function to a single element of the tuple, identified by index.
+/// If you expect a return type from the function, you'll have to manually declare it as a template argument, because we
+/// cannot infer the tuple element type from a runtime index.
+/// Implemented after https://stackoverflow.com/a/47385405
+/// @param tuple    Tuple to visit over.
+/// @param index    Index to visit at.
+/// @param function Function to execute. Must take the tuple element type as first argument.
+/// @param args     (optional) Additional arguments passed bound to the 2nd to nth parameter of function.
+template<class Tuple, class Function, class... Args>
+constexpr void visit_at(const Tuple& tuple, size_t index, Function function, Args&&... args) noexcept(noexcept(
+    detail::visit_at_impl<std::tuple_size_v<Tuple>>::visit(tuple, index, function, std::forward<Args>(args)...))) {
+    detail::visit_at_impl<std::tuple_size_v<Tuple>>::visit(tuple, index, function, std::forward<Args>(args)...);
+}
+template<class Result, class Tuple, class Function, class... Args, size_t Size = std::tuple_size_v<Tuple>>
+constexpr Result visit_at(const Tuple& tuple, size_t index, Function function, Args&&... args) noexcept(noexcept(
+    detail::visit_at_impl<Size>::template visit<Result>(tuple, index, function, std::forward<Args>(args)...))) {
+    return detail::visit_at_impl<Size>::template visit<Result>(tuple, index, function, std::forward<Args>(args)...);
+}
+// @}
+
 // static tests ===================================================================================================== //
 
 static_assert(

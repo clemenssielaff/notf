@@ -145,10 +145,8 @@ public:
     /// Slot value type.
     using value_t = typename policy_t::value_t;
 
-    // methods --------------------------------------------------------------------------------- //
-public:
     /// The compile time constant name of this Slot.
-    static constexpr const ConstString& get_const_name() noexcept { return policy_t::name; }
+    static constexpr const ConstString& name = policy_t::name;
 };
 
 // slot internals =================================================================================================== //

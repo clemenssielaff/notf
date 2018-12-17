@@ -12,9 +12,8 @@ AllowShortCaseLabelsOnASingleLine:          true
 AllowShortFunctionsOnASingleLine:           All
 AllowShortIfStatementsOnASingleLine:        true
 AllowShortLoopsOnASingleLine:               false
-AlwaysBreakAfterReturnType:                 None
 AlwaysBreakBeforeMultilineStrings:          false
-AlwaysBreakTemplateDeclarations:            true
+AlwaysBreakTemplateDeclarations:            Yes
 BinPackArguments:                           true
 BinPackParameters:                          true
 BraceWrapping:   

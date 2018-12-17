@@ -309,6 +309,9 @@ public:
     /// Property value type.
     using value_t = typename policy_t::value_t;
 
+    /// The compile time constant name of this Property.
+    static constexpr const ConstString& name = policy_t::name;
+
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor.
@@ -318,16 +321,13 @@ public:
         : TypedProperty<value_t>(std::move(value), is_visible) {}
 
     /// The Node-unique name of this Property.
-    std::string_view get_name() const final { return get_const_name().c_str(); }
+    std::string_view get_name() const final { return name.c_str(); }
 
     /// The default value of this Property.
     const value_t& get_default() const final {
         static const value_t default_value = policy_t::get_default_value();
         return default_value;
     }
-
-    /// The compile time constant name of this Property.
-    static constexpr const ConstString& get_const_name() noexcept { return policy_t::name; }
 };
 
 // property handle ================================================================================================== //
