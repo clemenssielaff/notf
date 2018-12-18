@@ -84,8 +84,7 @@ struct Accessor<detail::Graph, Tester> {
     static auto register_node(AnyNodeHandle node) { return TheGraph()->m_node_registry.add(node); }
 };
 
-// empty node ========================================================================================================
-// //
+// empty node ======================================================================================================= //
 
 using EmptyNode = Node<detail::EmptyNodePolicy>;
 

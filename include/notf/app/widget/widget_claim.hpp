@@ -10,7 +10,7 @@ NOTF_OPEN_NAMESPACE
 // claim ============================================================================================================ //
 
 /// Every Widget has a Claim that determines how much space is alloted for it in its parent's Layout.
-class Claim {
+class WidgetClaim {
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -174,7 +174,7 @@ public:
     /// A Claim has two different ratio-constraints, one for the minimum ratio - one for the max.
     /// Each ratio is represented by a rational number (width / height).
     struct Ratios {
-        friend class Claim;
+        friend class WidgetClaim;
 
         // methods --------------------------------------------------------- //
     private:
@@ -229,30 +229,30 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default Constructor.
-    Claim() = default;
+    WidgetClaim() = default;
 
     /// Value Constructor.
     /// @param horizontal   Horizontal Stretch.
     /// @param vertical     Vertical Stretch.
-    Claim(Claim::Stretch horizontal, Claim::Stretch vertical)
+    WidgetClaim(WidgetClaim::Stretch horizontal, WidgetClaim::Stretch vertical)
         : m_horizontal(std::move(horizontal)), m_vertical(std::move(vertical)) {}
 
     ///@{
     /// Returns a Claim with fixed height and width.
     /// @param width    Width, is clamped to be >= 0.
     /// @param height   Height, is clamped to be >= 0.
-    static Claim fixed(const float width, const float height) {
-        Claim::Stretch horizontal, vertical;
+    static WidgetClaim fixed(const float width, const float height) {
+        WidgetClaim::Stretch horizontal, vertical;
         horizontal.set_fixed(width);
         vertical.set_fixed(height);
         return {horizontal, vertical};
     }
-    static Claim fixed(const Size2f& size) { return fixed(size.width(), size.height()); }
+    static WidgetClaim fixed(const Size2f& size) { return fixed(size.width(), size.height()); }
     ///@}
 
     /// Returns a Claim with all limits set to zero.
-    static Claim zero() {
-        Claim::Stretch horizontal, vertical;
+    static WidgetClaim zero() {
+        WidgetClaim::Stretch horizontal, vertical;
         horizontal.set_fixed(0);
         vertical.set_fixed(0);
         return {horizontal, vertical};
@@ -329,7 +329,7 @@ public:
     ///@}
 
     /// Adds a positive offset to the min, max and preferred value.
-    /// Useful, for example, if you want to add a fixed "spacing" to the Claim of a Layout.
+    /// Useful, for example, if you want to add a fixed "spacing" to the WidgetClaim of a Layout.
     /// @param offset   Offset, is truncated to be >= 0, invalid values are ignored.
     void grow_by(const float offset) {
         m_horizontal.grow_by(offset);
@@ -337,7 +337,7 @@ public:
     }
 
     /// Adds a negative offset to the min, max and preferred value.
-    /// Useful, for example, if you want to undo the effect of growing a Claim.
+    /// Useful, for example, if you want to undo the effect of growing a WidgetClaim.
     /// All values are clamped to be >= 0.
     /// @param offset   Offset, is truncated to be >= 0, invalid values are ignored.
     void shrink_by(const float offset) {
@@ -345,9 +345,9 @@ public:
         m_vertical.shrink_by(offset);
     }
 
-    /// In-place, horizontal addition operator for Claims.
-    /// @param other    Claim to add.
-    Claim& add_horizontal(const Claim& other) {
+    /// In-place, horizontal addition operator for WidgetClaims.
+    /// @param other    WidgetClaim to add.
+    WidgetClaim& add_horizontal(const WidgetClaim& other) {
         m_horizontal += other.m_horizontal;
         m_vertical.maxed(other.m_vertical);
         m_ratios.combine_horizontal(other.m_ratios);
@@ -356,7 +356,7 @@ public:
 
     /// In-place, vertical addition operator for Claims.
     /// @param other    Claim to add.
-    Claim& add_vertical(const Claim& other) {
+    WidgetClaim& add_vertical(const WidgetClaim& other) {
         m_horizontal.maxed(other.m_horizontal);
         m_vertical += other.m_vertical;
         m_ratios.combine_vertical(other.m_ratios);
@@ -374,7 +374,7 @@ public:
 
     /// In-place max operator.
     /// @param other    Claim to max width.
-    Claim& maxed(const Claim& other) {
+    WidgetClaim& maxed(const WidgetClaim& other) {
         m_horizontal.maxed(other.m_horizontal);
         m_vertical.maxed(other.m_vertical);
         const Ratios& other_ratios = other.get_ratio_limits();
@@ -385,13 +385,13 @@ public:
 
     /// Equality comparison operator.
     /// @param other    Claim to compare width.
-    bool operator==(const Claim& other) const {
+    bool operator==(const WidgetClaim& other) const {
         return (m_horizontal == other.m_horizontal && m_vertical == other.m_vertical && m_ratios == other.m_ratios);
     }
 
     /// Inequality comparison operator.
     /// @param other    Claim to compare width.
-    bool operator!=(const Claim& other) const { return !(*this == other); }
+    bool operator!=(const WidgetClaim& other) const { return !(*this == other); }
 
     /// Applies the constraints of this Claim to a given size.
     /// @param size Input size.
@@ -416,73 +416,60 @@ private:
 /// @param out       Output stream, implicitly passed with the << operator.
 /// @param stretch   Claim::Stretch to print.
 /// @return          Output stream for further output.
-std::ostream& operator<<(std::ostream& out, const Claim::Stretch& stretch);
+std::ostream& operator<<(std::ostream& out, const WidgetClaim::Stretch& stretch);
 
 /// Prints the contents of a Claim into a std::ostream.
 /// @param out   Output stream, implicitly passed with the << operator.
 /// @param claim Claim to print.
 /// @return      Output stream for further output.
-std::ostream& operator<<(std::ostream& out, const Claim& aabr);
+std::ostream& operator<<(std::ostream& out, const WidgetClaim& aabr);
+
+/// Prints the contents of a Stretch into a std::ostream.
+/// @param os       Output stream, implicitly passed with the << operator.
+/// @param stretch  Stretch to print.
+/// @return         Output stream for further output.
+inline std::ostream& operator<<(std::ostream& out, const notf::WidgetClaim::Stretch& stretch) {
+    return out << fmt::format("{}", stretch);
+}
+
+/// Prints the contents of a Claim into a std::ostream.
+/// @param os       Output stream, implicitly passed with the << operator.
+/// @param claim    Claim to print.
+/// @return         Output stream for further output.
+inline std::ostream& operator<<(std::ostream& out, const notf::WidgetClaim& claim) {
+    return out << fmt::format("{}", claim);
+}
 
 NOTF_CLOSE_NAMESPACE
-
-// TODO: claim fmt formatting
-
-// std::hash ======================================================================================================== //
-
-namespace std {
-
-/// std::hash specialization for notf::Claim::Stretch.
-template<>
-struct hash<notf::Claim::Stretch> {
-    size_t operator()(const notf::Claim::Stretch& stretch) const {
-        return notf::hash(stretch.get_preferred(), stretch.get_min(), stretch.get_max(), stretch.get_scale_factor(),
-                          stretch.get_priority());
-    }
-};
-
-/// std::hash specialization for notf::Claim.
-template<>
-struct hash<notf::Claim> {
-    size_t operator()(const notf::Claim& claim) const {
-        const notf::Claim::Ratios& ratio_limits = claim.get_ratio_limits();
-        return notf::hash(claim.get_horizontal(), claim.get_horizontal(), ratio_limits.get_lower_bound(),
-                          ratio_limits.get_upper_bound());
-    }
-};
-
-} // namespace std
-
-// formatting ======================================================================================================= //
 
 namespace fmt {
 
 template<>
-struct formatter<notf::Claim::Stretch> {
+struct formatter<notf::WidgetClaim::Stretch> {
     template<typename ParseContext>
     constexpr auto parse(ParseContext& ctx) {
         return ctx.begin();
     }
 
     template<typename FormatContext>
-    auto format(const notf::Claim::Stretch& stretch, FormatContext& ctx) {
-        return format_to(ctx.begin(), "Claim::Stretch({} <= {} <= {}, factor: {}, priority: {})", //
-                         stretch.get_min(), stretch.get_preferred(), stretch.get_max(),           //
+    auto format(const notf::WidgetClaim::Stretch& stretch, FormatContext& ctx) {
+        return format_to(ctx.begin(), "WidgetClaim::Stretch({} <= {} <= {}, factor: {}, priority: {})", //
+                         stretch.get_min(), stretch.get_preferred(), stretch.get_max(),                 //
                          stretch.get_scale_factor(), stretch.get_priority());
     }
 };
 
 template<>
-struct formatter<notf::Claim> {
+struct formatter<notf::WidgetClaim> {
     template<typename ParseContext>
     constexpr auto parse(ParseContext& ctx) {
         return ctx.begin();
     }
 
     template<typename FormatContext>
-    auto format(const notf::Claim& claim, FormatContext& ctx) {
+    auto format(const notf::WidgetClaim& claim, FormatContext& ctx) {
         return format_to(ctx.begin(),
-                         "Claim(horizontal: [{}]\n"                    //
+                         "WidgetClaim(horizontal: [{}]\n"              //
                          "      vertical:   [{}]\n"                    //
                          "      ratio min:   {}\n"                     //
                          "      ratio max:   {})",                     //
@@ -493,16 +480,27 @@ struct formatter<notf::Claim> {
 
 } // namespace fmt
 
-/// Prints the contents of a Stretch into a std::ostream.
-/// @param os       Output stream, implicitly passed with the << operator.
-/// @param stretch  Stretch to print.
-/// @return         Output stream for further output.
-std::ostream& operator<<(std::ostream& out, const notf::Claim::Stretch& stretch) {
-    return out << fmt::format("{}", stretch);
-}
+// std::hash ======================================================================================================== //
 
-/// Prints the contents of a Claim into a std::ostream.
-/// @param os       Output stream, implicitly passed with the << operator.
-/// @param claim    Claim to print.
-/// @return         Output stream for further output.
-std::ostream& operator<<(std::ostream& out, const notf::Claim& claim) { return out << fmt::format("{}", claim); }
+namespace std {
+
+/// std::hash specialization for notf::Claim::Stretch.
+template<>
+struct hash<notf::WidgetClaim::Stretch> {
+    size_t operator()(const notf::WidgetClaim::Stretch& stretch) const {
+        return notf::hash(stretch.get_preferred(), stretch.get_min(), stretch.get_max(), stretch.get_scale_factor(),
+                          stretch.get_priority());
+    }
+};
+
+/// std::hash specialization for notf::Claim.
+template<>
+struct hash<notf::WidgetClaim> {
+    size_t operator()(const notf::WidgetClaim& claim) const {
+        const notf::WidgetClaim::Ratios& ratio_limits = claim.get_ratio_limits();
+        return notf::hash(claim.get_horizontal(), claim.get_horizontal(), ratio_limits.get_lower_bound(),
+                          ratio_limits.get_upper_bound());
+    }
+};
+
+} // namespace std

@@ -103,12 +103,25 @@ using GlfwWindowPtr = std::unique_ptr<GLFWwindow, decltype(&window_deleter)>;
 NOTF_DECLARE_SHARED_POINTERS(class, Window);
 class WindowHandle;
 
+// widget //
+
+// widget/any_widget.hpp
+class AnyWidget;
+class WidgetHandle;
+
+// widget/clipping.hpp
+class Clipping;
+
+// widget/painter.hpp
+class Painter;
+
 // widget/widget_design.hpp.hpp
 class WidgetDesign;
 
-// widget/widget_compiletime.hpp
+// widget/widget.hpp
 template<class, class>
 class State;
+
 
 // widget/painterpreter.hpp
 NOTF_DECLARE_UNIQUE_POINTERS(class, Painterpreter);

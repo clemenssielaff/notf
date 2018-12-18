@@ -7,7 +7,7 @@
 #include "notf/graphic/graphics_context.hpp"
 #include "notf/graphic/renderer/plotter.hpp"
 
-#include "notf/app/widget/widget.hpp"
+#include "notf/app/widget/any_widget.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -161,7 +161,7 @@ void Painterpreter::_write(const std::string& text) {
     // plot the text
     Plotter::TextInfo text_info;
     text_info.font = state.font;
-    text_info.translation = state.xform.transform(V2f::zero());
+    text_info.translation = transform_by(V2f::zero(), state.xform);
     m_plotter->write(text, std::move(text_info));
 }
 

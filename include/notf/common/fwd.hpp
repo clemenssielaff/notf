@@ -125,7 +125,7 @@ template<class>
 struct Segment2;
 template<class>
 struct Segment3;
-}
+} // namespace detail
 using Segment2f = detail::Segment2<float>;
 using Segment3f = detail::Segment3<float>;
 
@@ -135,5 +135,15 @@ template<class>
 struct Triangle;
 }
 using Trianglef = detail::Triangle<float>;
+
+// free templates =================================================================================================== //
+
+/// Converstion template declaration.
+template<class To, class From>
+To convert_to(const From& from);
+
+/// Transforms a given value.
+template<class T, class Matrix>
+T transform_by(const T& value, const Matrix& matrix);
 
 NOTF_CLOSE_NAMESPACE

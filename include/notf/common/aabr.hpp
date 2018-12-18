@@ -58,6 +58,11 @@ public:
     constexpr Aabr(const Size2<element_t>& size)
         : super_t(component_t(0, 0), component_t(size.width(), size.height())) {}
 
+    /// Constructs an Aabr of this element type from any other Aabr type.
+    /// @param other    Aabr to copy from.
+    template<class T>
+    constexpr Aabr(const Aabr<T>& other) : Aabr(other.left(), other.bottom(), other.right(), other.top()) {}
+
     /// Constructs the Aabr from two of its corners.
     /// The corners don't need to be specific, the constructor figures out how to construct an Aabr from them.
     /// @param a    One corner point of the Aabr.
@@ -426,25 +431,6 @@ public:
     Aabr& get_union(const Aabr& other) && { return unite(other); }
     Aabr operator|(const Aabr& other) const& { return get_union(other); }
     Aabr& operator|(const Aabr& other) && { return unite(other); }
-
-    //    /// Applies a transformation to this Aabr in-place.
-    //    template<typename MATRIX>
-    //    Aabr& transformed_by(const MATRIX& matrix)
-    //    {
-    //        typename MATRIX::component_t d0(data[0][0], data[0][1]);
-    //        typename MATRIX::component_t d1(data[1][0], data[1][1]);
-    //        typename MATRIX::component_t d2(left(), top());
-    //        typename MATRIX::component_t d3(right(), bottom());
-    //        d0 = matrix.transform(d0);
-    //        d1 = matrix.transform(d1);
-    //        d2 = matrix.transform(d2);
-    //        d3 = matrix.transform(d3);
-    //        left() = min(d0.x(), d1.x(), d2.x(), d3.x());
-    //        bottom() = min(d0.y(), d1.y(), d2.y(), d3.y());
-    //        right() = max(d0.x(), d1.x(), d2.x(), d3.x());
-    //        top() = max(d0.y(), d1.y(), d2.y(), d3.y());
-    //        return *this;
-    //    }
 
     // fields ---------------------------------------------------------------------------------- //
 public:

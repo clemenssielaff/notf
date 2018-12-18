@@ -14,6 +14,10 @@ struct StringType final {
     template<char... Os>
     friend struct StringType; // to allow other StringTypes to access the private `s_text` member field.
 
+    // types ----------------------------------------------------------------------------------- //
+public:
+    static constexpr auto Chars = {Cs...};
+
     // methods --------------------------------------------------------------------------------- //
 public:
     /// The string literal that defines this type.
@@ -21,6 +25,9 @@ public:
 
     /// The numbers of letters in the TypeString without the closing null.
     static constexpr size_t get_size() noexcept { return sizeof...(Cs); }
+
+    /// Return a view on this string.
+    static std::string_view get_view() noexcept { return std::string_view(c_str(), get_size()); }
 
     /// The hash of the string.
     static constexpr size_t get_hash() noexcept { return hash_string(s_text, get_size()); }
@@ -75,6 +82,9 @@ public:
 
     /// The numbers of letters in the string without the closing null.
     constexpr size_t get_size() const noexcept { return m_size; }
+
+    /// Return a view on this string.
+    std::string_view get_view() const noexcept { return std::string_view(c_str(), get_size()); }
 
     /// The hash of the string.
     constexpr size_t get_hash() const noexcept { return hash_string(m_text, m_size); }

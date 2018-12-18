@@ -182,23 +182,6 @@ public:
         return result;
     }
 
-    /// Returns the transformed copy of a given vector.
-    /// @param vector   Vector to transform.
-    component_t transform(const component_t& vector) const {
-        return {
-            data[0][0] * vector[0] + data[1][0] * vector[1] + data[2][0],
-            data[0][1] * vector[0] + data[1][1] * vector[1] + data[2][1],
-        };
-    }
-
-    //    /// Return the transformed copy of the value.
-    //    /// @param value    Value to transform.
-    //    template<typename T>
-    //    T transform(const T& value) const
-    //    {
-    //        return detail::matrix3_transform(*this, value);
-    //    }
-
     // fields ---------------------------------------------------------------------------------- //
 public:
     /// Value data array.
@@ -206,6 +189,13 @@ public:
 };
 
 } // namespace detail
+
+/// Transformations
+template<>
+V2f transform_by<V2f, M3f>(const V2f& value, const M3f& matrix);
+
+template<>
+Aabrf transform_by<Aabrf, M3f>(const Aabrf& value, const M3f& matrix);
 
 // formatting ======================================================================================================= //
 

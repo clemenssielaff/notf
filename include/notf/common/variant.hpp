@@ -77,4 +77,28 @@ NOTF_UNUSED static constexpr bool has_variant_unique_types() noexcept {
     return std::tuple_size_v<make_tuple_unique_t<variant_to_tuple_t<Variant>>> == std::variant_size_v<Variant>;
 }
 
+// visit at ========================================================================================================= //
+
+/// @{
+/// Applies a given function to a single element of the variant, identified by index.
+/// If you expect a return type from the function, you'll have to manually declare it as a template argument, because we
+/// cannot infer the tuple element type from a runtime index.
+/// Implemented after https://stackoverflow.com/a/47385405
+/// @param variant  Variant to visit over.
+/// @param index    Index to visit at.
+/// @param function Function to execute. Must take the variant element type as first argument.
+/// @param args     (optional) Additional arguments passed bound to the 2nd to nth parameter of function.
+template<class Function, class... Ts, class... Args, size_t Size = sizeof...(Ts)>
+constexpr void visit_at(const std::variant<Ts...>& variant, size_t index, Function function, Args&&... args) noexcept(
+    noexcept(detail::visit_at_impl<Size>::visit(variant, index, function, std::forward<Args>(args)...))) {
+    detail::visit_at_impl<Size>::visit(variant, index, function, std::forward<Args>(args)...);
+}
+template<class Result, class... Ts, class Function, class... Args, size_t Size = sizeof...(Ts)>
+constexpr Result
+visit_at(const std::variant<Ts...>& variant, size_t index, Function function, Args&&... args) noexcept(noexcept(
+    detail::visit_at_impl<Size>::template visit<Result>(variant, index, function, std::forward<Args>(args)...))) {
+    return detail::visit_at_impl<Size>::template visit<Result>(variant, index, function, std::forward<Args>(args)...);
+}
+// @}
+
 NOTF_CLOSE_NAMESPACE

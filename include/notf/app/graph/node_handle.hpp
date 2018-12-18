@@ -15,6 +15,8 @@ namespace detail {
 template<class NodeType>
 struct NodeHandleBaseInterface : protected NodeType {
 
+    using NodeType::get_handle;
+
     // properties -------------------------------------------------------------
 
     using NodeType::connect_property;
@@ -140,6 +142,7 @@ class NodeHandle {
     friend class NodeHandle; // befriend all other TypedNodeHandles so you can copy their node
 
     friend Accessor<NodeHandle, AnyNode>;
+    friend Accessor<NodeHandle, AnyWidget>;
     friend Accessor<NodeHandle, detail::Graph>;
 
     // types ----------------------------------------------------------------------------------- //
@@ -166,6 +169,7 @@ public:
     /// Value Constructor.
     /// @param  node    Node to handle.
     NodeHandle(std::shared_ptr<NodeType> node) : m_node(std::move(node)) {}
+    NodeHandle(std::weak_ptr<NodeType> node) : m_node(std::move(node)) {}
 
     template<class T, class = std::enable_if_t<std::is_base_of_v<NodeType, T>>>
     NodeHandle(std::shared_ptr<T> node) : m_node(std::static_pointer_cast<NodeType>(std::move(node))) {}
@@ -310,7 +314,6 @@ template<class NodeType>
 class Accessor<NodeHandle<NodeType>, detail::Graph> {
     friend detail::Graph;
 
-    /// Unwraps the shared_ptr contained in a NodeHandle.
     static AnyNodePtr get_node_ptr(const AnyNodeHandle& node) { return node.m_node.lock(); }
 };
 
@@ -318,7 +321,13 @@ template<class NodeType>
 class Accessor<NodeHandle<NodeType>, AnyNode> {
     friend AnyNode;
 
-    /// Unwraps the shared_ptr contained in a NodeHandle.
+    static AnyNodePtr get_node_ptr(const AnyNodeHandle& node) { return node.m_node.lock(); }
+};
+
+template<class NodeType>
+class Accessor<NodeHandle<NodeType>, AnyWidget> {
+    friend AnyWidget;
+
     static AnyNodePtr get_node_ptr(const AnyNodeHandle& node) { return node.m_node.lock(); }
 };
 

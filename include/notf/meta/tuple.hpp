@@ -253,17 +253,32 @@ struct visit_at_impl<0> {
 /// @param index    Index to visit at.
 /// @param function Function to execute. Must take the tuple element type as first argument.
 /// @param args     (optional) Additional arguments passed bound to the 2nd to nth parameter of function.
-template<class Tuple, class Function, class... Args>
-constexpr void visit_at(const Tuple& tuple, size_t index, Function function, Args&&... args) noexcept(noexcept(
-    detail::visit_at_impl<std::tuple_size_v<Tuple>>::visit(tuple, index, function, std::forward<Args>(args)...))) {
-    detail::visit_at_impl<std::tuple_size_v<Tuple>>::visit(tuple, index, function, std::forward<Args>(args)...);
+template<class Function, class... Ts, class... Args, size_t Size = sizeof...(Ts)>
+constexpr void visit_at(const std::tuple<Ts...>& tuple, size_t index, Function function, Args&&... args) noexcept(
+    noexcept(detail::visit_at_impl<Size>::visit(tuple, index, function, std::forward<Args>(args)...))) {
+    detail::visit_at_impl<Size>::visit(tuple, index, function, std::forward<Args>(args)...);
 }
-template<class Result, class Tuple, class Function, class... Args, size_t Size = std::tuple_size_v<Tuple>>
-constexpr Result visit_at(const Tuple& tuple, size_t index, Function function, Args&&... args) noexcept(noexcept(
+template<class Result, class... Ts, class Function, class... Args, size_t Size = sizeof...(Ts)>
+constexpr Result
+visit_at(const std::tuple<Ts...>& tuple, size_t index, Function function, Args&&... args) noexcept(noexcept(
     detail::visit_at_impl<Size>::template visit<Result>(tuple, index, function, std::forward<Args>(args)...))) {
     return detail::visit_at_impl<Size>::template visit<Result>(tuple, index, function, std::forward<Args>(args)...);
 }
 // @}
+
+// get first index=================================================================================================== //
+
+/// Finds and returns the first index of the given type in the tuple.
+template<class T, class Tuple, size_t I = 0>
+constexpr size_t get_first_index() noexcept {
+    if constexpr (I == std::tuple_size_v<Tuple>) {
+        throw 0;
+    } else if constexpr (std::is_same_v<std::tuple_element_t<I, Tuple>, T>) {
+        return I;
+    } else {
+        return get_first_index<T, Tuple, I + 1>();
+    }
+}
 
 // static tests ===================================================================================================== //
 

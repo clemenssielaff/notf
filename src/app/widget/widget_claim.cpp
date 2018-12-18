@@ -1,4 +1,4 @@
-#include "notf/app/widget/claim.hpp"
+#include "notf/app/widget/widget_claim.hpp"
 
 #include "notf/meta/log.hpp"
 
@@ -6,7 +6,7 @@ NOTF_OPEN_NAMESPACE
 
 // claim ============================================================================================================ //
 
-void Claim::set_ratio_limits(Ratioi ratio_min, Ratioi ratio_max) {
+void WidgetClaim::set_ratio_limits(Ratioi ratio_min, Ratioi ratio_max) {
     if (ratio_min.is_zero()) {
         if (!ratio_max.is_zero()) {
             NOTF_LOG_WARN("Ignoring ratio_max value, since the ratio_min constraint is set to zero.");
@@ -24,7 +24,7 @@ void Claim::set_ratio_limits(Ratioi ratio_min, Ratioi ratio_max) {
     }
 }
 
-Size2f Claim::apply(Size2f size) const {
+Size2f WidgetClaim::apply(Size2f size) const {
     // clamp to size first
     size.width() = clamp(size.width(), m_horizontal.get_min(), m_horizontal.get_max());
     size.height() = clamp(size.height(), m_vertical.get_min(), m_vertical.get_max());

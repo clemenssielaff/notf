@@ -77,6 +77,7 @@ class AnyNode : public std::enable_shared_from_this<AnyNode> {
     friend Accessor<AnyNode, RootNode>;
     friend Accessor<AnyNode, Window>;
     friend Accessor<AnyNode, detail::Graph>;
+    friend Accessor<AnyNode, AnyWidget>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -247,6 +248,13 @@ public:
     /// @param name     Proposed name of the Node.
     /// @returns        Actual new name of the Node.
     std::string set_name(const std::string& name);
+
+    /// Tries to construct a typed Handle from this Node.
+    /// @returns    Typed Handle to this Node, or an empty Handle if the dynamic cast failed.
+    template<class T = AnyNode, class = std::enable_if_t<std::is_base_of_v<AnyNode, T>>>
+    NodeHandle<T> get_handle() const {
+        return std::dynamic_pointer_cast<T>(shared_from_this());
+    }
 
     // properties -------------------------------------------------------------
 
@@ -688,10 +696,7 @@ template<>
 class Accessor<AnyNode, RootNode> {
     friend RootNode;
 
-    /// Finalizes the given RootNode.
     static void finalize(AnyNode& node) { node._finalize(); }
-
-    /// Direct write access to child Nodes.
     static std::vector<AnyNodePtr>& write_children(AnyNode& node) { return node._write_children(); }
 };
 
@@ -699,7 +704,6 @@ template<>
 class Accessor<AnyNode, Window> {
     friend Window;
 
-    /// Finalizes the given Window(Node).
     static void finalize(AnyNode& node) { node._finalize(); }
 };
 
@@ -707,8 +711,17 @@ template<>
 class Accessor<AnyNode, detail::Graph> {
     friend detail::Graph;
 
-    /// Deletes all modified data of this Node.
     static void clear_modified_data(AnyNode& node) { node._clear_modified_data(); }
+};
+
+template<>
+class Accessor<AnyNode, AnyWidget> {
+    friend AnyWidget;
+
+    static AnyNode* get_parent(const AnyNode& node) { return node._get_parent(); }
+    static const AnyNode* get_common_ancestor(const AnyNode& node, const AnyNode* other) {
+        return node._get_common_ancestor(other);
+    }
 };
 
 NOTF_CLOSE_NAMESPACE

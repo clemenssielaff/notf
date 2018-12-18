@@ -19,17 +19,20 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/graph/visualizer.cpp
     app/graph/window.cpp
 
-    app/widget/claim.cpp
-    app/widget/widget_design.cpp
+    app/widget/any_widget.cpp
     app/widget/painter.cpp
     app/widget/painterpreter.cpp
+    app/widget/widget_claim.cpp
+    app/widget/widget_design.cpp
     app/widget/widget_scene.cpp
     app/widget/widget_visualizer.cpp
 
     common/color.cpp
     common/filesystem.cpp
+    common/matrix3.cpp
     common/mnemonic.cpp
     common/msgpack.cpp
+    common/polygon.cpp
     common/segment.cpp
     common/string.cpp
     common/thread_pool.cpp

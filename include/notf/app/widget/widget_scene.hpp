@@ -1,7 +1,8 @@
 #pragma once
 
 #include "notf/app/graph/scene.hpp"
-#include "notf/app/widget/widget.hpp"
+#include "notf/app/widget/any_widget.hpp"
+#include "notf/app/widget/clipping.hpp"
 #include "notf/app/widget/widget_visualizer.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -35,10 +36,16 @@ public:
     /// Returns the Widget at the top of the hierarchy in this Scene.
     AnyNodeHandle get_widget() const { return m_root_widget; }
 
+    /// Outermost clipping rect, encompasses the entire Scene.
+    const Clipping& get_clipping_rect() const { return m_clipping; }
+
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The Widget underneath the root of this Scene.
     AnyNodeHandle m_root_widget;
+
+    /// Outermost clipping rect, encompasses the entire Scene.
+    Clipping m_clipping;
 };
 
 NOTF_CLOSE_NAMESPACE

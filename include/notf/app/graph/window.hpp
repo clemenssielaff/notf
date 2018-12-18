@@ -12,7 +12,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-// window settings ================================================================================================== //
+// window arguments ================================================================================================= //
 
 namespace detail {
 
@@ -66,7 +66,7 @@ struct WindowArguments {
     bool is_resizeable = true;
 };
 
-// properties =================================================================
+// window policy ==================================================================================================== //
 
 namespace window_policy {
 
@@ -295,6 +295,9 @@ class WindowHandle : public NodeHandle<Window> {
 public:
     // use baseclass' constructors
     using NodeHandle<Window>::NodeHandle;
+
+    /// Constructor from specialized base.
+    WindowHandle(NodeHandle<Window>&& handle) : NodeHandle(std::move(handle)) {}
 
     /// Returns the GlfwWindow contained in this Window.
     GLFWwindow* get_glfw_window() const { return _get_node()->get_glfw_window(); }

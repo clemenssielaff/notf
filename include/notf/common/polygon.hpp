@@ -180,9 +180,9 @@ public:
 private:
     /// Enforces the construction of a simple Polygon with unique vertices.
     /// @param vertices Vertices from which to construct the Polygon.
-    /// @throws runtime_error   If the Polygon does not contain at least 3 unique vertices.
-    /// @throws runtime_error   If two non-consecutive vertices share the same position.
-    /// @throws runtime_error   If two edges of the Polygon intersect.
+    /// @throws LogicError  If the Polygon does not contain at least 3 unique vertices.
+    ///                     If two non-consecutive vertices share the same position.
+    ///                     If two edges of the Polygon intersect.
     static std::vector<vector_t> _prepare_vertices(std::vector<vector_t>&& vertices) {
         { // merge non-unique vertices (consecutive vertices that share the same position)
             size_t first_non_unique = vertices.size();
@@ -208,12 +208,12 @@ private:
         }
         vertices.shrink_to_fit();
 
-        if (vertices.size() < 3) { NOTF_THROW(runtime_error, "A Polygon must contain at least 3 unique vertices"); }
+        if (vertices.size() < 3) { NOTF_THROW(LogicError, "A Polygon must contain at least 3 unique vertices"); }
 
         for (size_t i = 0; i < vertices.size(); ++i) {
             for (size_t j = i + 1; j < vertices.size(); ++j) {
                 if (vertices[i].is_approx(vertices[j])) {
-                    NOTF_THROW(runtime_error, "Vertices in a Polygon must not share positions");
+                    NOTF_THROW(LogicError, "Vertices in a Polygon must not share positions");
                 }
             }
         }
@@ -223,7 +223,7 @@ private:
         //            for (size_t j = i + 1; j < vertices.size(); ++j) {
         //                if (Segment2<element_t>(vertices[i - 1], vertices[i])
         //                        .intersects(Segment2<element_t>(vertices[j - 1], vertices[j]))) {
-        //                    NOTF_THROW(runtime_error, "Segments in a Polygon may not intersect");
+        //                    NOTF_THROW(LogicError, "Segments in a Polygon may not intersect");
         //                }
         //            }
         //        }
@@ -239,13 +239,19 @@ private:
 
 } // namespace detail
 
+// conversions ====================================================================================================== //
+
+/// Constructs a rectangular Polygon from an Aabr.
+template<>
+Polygonf convert_to<Polygonf, Aabrf>(const Aabrf& aabr);
+
 // formatting ======================================================================================================= //
 
 /// Prints the contents of a Triangle into a std::ostream.
 /// @param os       Output stream, implicitly passed with the << operator.
 /// @param polygon  Polygon to print.
 /// @return Output stream for further output.
-std::ostream& operator<<(std::ostream& out, const Polygonf& polygon) {
+inline std::ostream& operator<<(std::ostream& out, const Polygonf& polygon) {
     out << "Polygonf(";
     for (size_t i = 0; i < polygon.get_vertices().size(); ++i) {
         const auto& vertex = polygon.get_vertices()[i];

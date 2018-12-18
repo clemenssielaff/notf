@@ -186,8 +186,8 @@ struct Segment3 : public Segment<detail::Vector3<Element>> {
 /// @param os       Output stream, implicitly passed with the << operator.
 /// @param segment  Segment to print.
 /// @return Output stream for further output.
-std::ostream& operator<<(std::ostream& out, const Segment2f& segment) { return out << fmt::format("{}", segment); }
-std::ostream& operator<<(std::ostream& out, const Segment3f& segment) { return out << fmt::format("{}", segment); }
+inline std::ostream& operator<<(std::ostream& out, const Segment2f& segment) { return out << fmt::format("{}", segment); }
+inline std::ostream& operator<<(std::ostream& out, const Segment3f& segment) { return out << fmt::format("{}", segment); }
 
 NOTF_CLOSE_NAMESPACE
 

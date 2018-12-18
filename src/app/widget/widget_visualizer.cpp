@@ -3,7 +3,7 @@
 #include "notf/meta/log.hpp"
 
 #include "notf/app/widget/painterpreter.hpp"
-#include "notf/app/widget/widget.hpp"
+#include "notf/app/widget/any_widget.hpp"
 #include "notf/app/widget/widget_scene.hpp"
 #include "notf/app/graph/window.hpp"
 

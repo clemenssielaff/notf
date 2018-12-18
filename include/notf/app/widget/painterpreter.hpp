@@ -1,7 +1,7 @@
 #pragma once
 
 #include "notf/app/widget/painter.hpp"
-#include "notf/app/widget/widget.hpp"
+#include "notf/app/widget/any_widget.hpp"
 
 NOTF_OPEN_NAMESPACE
 

@@ -13,6 +13,12 @@ class Clipping {
 
     // methods --------------------------------------------------------------------------------- //
 public:
+    /// Default (empty) Clipping.
+    Clipping() = default;
+
+    /// Construction from an Aabr only.
+    Clipping(Aabrf aabr) : m_polygon(convert_to<Polygonf>(aabr)), m_xform(M3f::identity()), m_rect(std::move(aabr)) {}
+
     /// Clipping rectangle centered around the transformation.
     const Aabrf& get_rect() const { return m_rect; }
 

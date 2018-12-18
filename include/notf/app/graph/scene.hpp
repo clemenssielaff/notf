@@ -89,6 +89,9 @@ class SceneHandle : public NodeHandle<Scene> {
 public:
     // use baseclass' constructors
     using NodeHandle<Scene>::NodeHandle;
+
+    /// Constructor from specialized base.
+    SceneHandle(NodeHandle<Scene>&& handle) : NodeHandle(std::move(handle)) {}
 };
 
 NOTF_CLOSE_NAMESPACE

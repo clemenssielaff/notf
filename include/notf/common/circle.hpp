@@ -100,7 +100,7 @@ public:
 /// @param out      Output stream, implicitly passed with the << operator.
 /// @param circle   Circle to print.
 /// @return Output stream for further output.
-std::ostream& operator<<(std::ostream& out, const Circlef& circle) { return out << fmt::format("{}", circle); }
+inline std::ostream& operator<<(std::ostream& out, const Circlef& circle) { return out << fmt::format("{}", circle); }
 
 NOTF_CLOSE_NAMESPACE
 

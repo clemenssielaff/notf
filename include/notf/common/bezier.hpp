@@ -93,7 +93,9 @@ public:
 /// @param os       Output stream, implicitly passed with the << operator.
 /// @param bezier   Bezier spline to print.
 /// @return Output stream for further output.
-std::ostream& operator<<(std::ostream& out, const CubicBezier2f& bezier) { return out; }// << fmt::format("{}", bezier); }
+inline std::ostream& operator<<(std::ostream& out, const CubicBezier2f& bezier) {
+    return out;
+} // << fmt::format("{}", bezier); }
 
 NOTF_CLOSE_NAMESPACE
 
@@ -110,7 +112,7 @@ struct formatter<notf::detail::Bezier<Order, Element>> {
 
     template<typename FormatContext>
     auto format(const type& bezier, FormatContext& ctx) {
-//        return format_to(ctx.begin(), "{}({}, {})", type::get_name(), aabr[0], aabr[1]);
+        //        return format_to(ctx.begin(), "{}({}, {})", type::get_name(), aabr[0], aabr[1]);
         // TODO: bezier printing
     }
 };
