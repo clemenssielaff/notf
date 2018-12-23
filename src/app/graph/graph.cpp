@@ -1,6 +1,7 @@
 #include "notf/app/graph/graph.hpp"
 
 #include "notf/app/graph/root_node.hpp"
+#include "notf/app/graph/window.hpp"
 
 #include "notf/common/mnemonic.hpp"
 
@@ -90,11 +91,11 @@ Graph::~Graph() {
 
 RootNodeHandle Graph::get_root_node() { return m_root_node; }
 
-bool Graph::synchronize() {
+std::vector<AnyNodeHandle> Graph::synchronize() {
     NOTF_ASSERT(this_thread::is_the_ui_thread());
 
     if (m_dirty_nodes.empty()) {
-        return false; // nothing changed
+        return {}; // nothing changed
     }
 
     for (auto& handle : m_dirty_nodes) {
@@ -103,7 +104,10 @@ bool Graph::synchronize() {
         }
     }
     m_dirty_nodes.clear();
-    return true; // dirty nodes cleared their modified data
+
+    // TODO: Actually get Windows with dirty Nodes from synchronization
+    if (m_root_node->get_child_count() > 0) { return {m_root_node->get_child(0)}; }
+    return {};
 }
 
 } // namespace detail

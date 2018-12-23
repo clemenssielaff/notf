@@ -35,6 +35,9 @@ NOTF_DECLARE_UNIQUE_POINTERS(class, AnyEvent);
 // event_handler.hpp
 class TheEventHandler;
 
+// render_manager.hpp
+class TheRenderManager;
+
 // graph.hpp
 namespace detail {
 class Graph;

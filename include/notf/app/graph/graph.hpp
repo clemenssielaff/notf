@@ -122,8 +122,8 @@ public:
 
     /// Removes all modified data copies from the Graph - at the point that this method returns, all threads agree on
     /// the complete state of the Graph
-    /// @returns    True iff the Graph has new data visible to the render thread.
-    bool synchronize();
+    /// @returns    List of Windows that need to be redrawn after the synchronization.
+    std::vector<AnyNodeHandle> synchronize();
 
     // fields ---------------------------------------------------------------------------------- //
 private:

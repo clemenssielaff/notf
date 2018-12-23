@@ -23,7 +23,7 @@ int run_main(int argc, char* argv[]) {
     auto window1 = Window::create();
 
     Thread input_thread;
-    input_thread.run([window = std::move(window1)]() mutable {
+    input_thread.run([window = std::move(window1)]() {
         Driver driver(std::move(window));
         {
             using namespace std::chrono_literals;

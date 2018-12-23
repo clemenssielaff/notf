@@ -7,6 +7,7 @@
 #include "notf/app/event_handler.hpp"
 #include "notf/app/glfw_callbacks.hpp"
 #include "notf/app/graph/graph.hpp"
+#include "notf/app/render_manager.hpp"
 #include "notf/app/timer_pool.hpp"
 
 #include "notf/graphic/glfw.hpp"
@@ -70,6 +71,9 @@ Application::Application(Arguments args)
     m_graph = TheGraph::AccessFor<Application>::create();
     NOTF_ASSERT(m_graph->is_holder());
 
+    m_render_manager = TheRenderManager::AccessFor<Application>::create();
+    NOTF_ASSERT(m_render_manager->is_holder());
+
     // log application header
     NOTF_LOG_INFO("NOTF {} ({} built with {} from {}commit \"{}\")\n"
                   "             GLFW version: {}",
@@ -104,7 +108,7 @@ int Application::exec() {
         TheEventHandler::AccessFor<Application>::start(m_ui_mutex);
         m_ui_lock.unlock();
 
-        AnyEventPtr event;
+        AnyAppEventPtr event;
         while (m_state.load() == State::RUNNING) {
 
             // wait for and execute all GLFW events
@@ -129,18 +133,19 @@ int Application::exec() {
     }
 
     // shutdown
-    m_timer_pool.reset();
-    m_event_handler.reset();
+    m_render_manager.reset();
     m_windows->clear();
-    m_shared_context.reset();
     m_graphics_system.reset();
+    m_shared_context.reset();
     m_graph.reset();
+    m_event_handler.reset();
+    m_timer_pool.reset();
     NOTF_LOG_INFO("Application shutdown");
 
     return EXIT_SUCCESS;
 }
 
-void Application::schedule(AnyEventPtr&& event) {
+void Application::schedule(AnyAppEventPtr&& event) {
     if (m_state.load() != State::CLOSED) { // you can pre-schedule events prior to startup, but not after shutdown
         m_event_queue.push(std::move(event));
         glfwPostEmptyEvent();

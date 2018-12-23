@@ -79,7 +79,11 @@ private:
 namespace detail {
 
 template<>
-struct NodeHandleInterface<Scene> : public NodeHandleBaseInterface<Scene> {};
+struct NodeHandleInterface<Scene> : public NodeHandleBaseInterface<Scene> {
+
+    using Scene::draw;
+    using Scene::is_window_scene;
+};
 
 } // namespace detail
 

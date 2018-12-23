@@ -14,7 +14,7 @@ SCENARIO("Application Driver", "[app][driver]") {
     TheApplication app(TheApplication::Arguments{});
     auto window1 = Window::create();
     Thread input_thread;
-    input_thread.run([window = std::move(window1)]() mutable {
+    input_thread.run([window = std::move(window1)]() {
         using namespace notf::driver;
         Driver driver(window);
         driver << "hello" << Mouse(LEFT);

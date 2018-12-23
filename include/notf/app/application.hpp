@@ -2,10 +2,11 @@
 
 #include "notf/meta/singleton.hpp"
 
+#include "notf/common/delegate.hpp"
 #include "notf/common/fibers.hpp"
 #include "notf/common/mutex.hpp"
 
-#include "notf/app/event.hpp"
+#include "notf/app/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -79,6 +80,21 @@ private:
         CLOSED,
     };
 
+    /// Object containing functions passed to execute on the main thread.
+    struct AnyAppEvent {
+        virtual ~AnyAppEvent() = default;
+        virtual void run() = 0;
+    };
+    template<class Func>
+    struct AppEvent : public AnyAppEvent {
+        AppEvent(Func&& function) : m_function(std::forward<Func>(function)) {}
+        void run() final {
+            if (m_function) { std::invoke(m_function); }
+        }
+        Delegate<void()> m_function;
+    };
+    using AnyAppEventPtr = std::unique_ptr<AnyAppEvent>;
+
     // methods --------------------------------------------------------------------------------- //
 public:
     NOTF_NO_COPY_OR_ASSIGN(Application);
@@ -103,10 +119,10 @@ public:
     /// Schedules a new event to be handled on the main thread.
     /// You can schedule events prior to calling `exec` and they will be executed in the first run of the main loop.
     /// Anything scheduled after shutdown is ignored and will never be executed.
-    void schedule(AnyEventPtr&& event);
+    void schedule(AnyAppEventPtr&& event);
     template<class Func>
     std::enable_if_t<std::is_invocable_v<Func>> schedule(Func&& function) {
-        schedule(std::make_unique<Event<Func>>(std::forward<Func>(function)));
+        schedule(std::make_unique<AppEvent<Func>>(std::forward<Func>(function)));
     }
     /// @}
 
@@ -137,7 +153,7 @@ private:
     std::unique_lock<RecursiveMutex> m_ui_lock;
 
     /// MPMC queue buffering Events for the main thread.
-    fibers::buffered_channel<AnyEventPtr> m_event_queue;
+    fibers::buffered_channel<AnyAppEventPtr> m_event_queue;
 
     /// All Windows known the the Application.
     std::unique_ptr<std::vector<detail::GlfwWindowPtr>> m_windows;
@@ -152,6 +168,7 @@ private:
     std::unique_ptr<TheTimerPool> m_timer_pool;
     std::unique_ptr<TheGraph> m_graph;
     std::unique_ptr<TheGraphicsSystem> m_graphics_system;
+    std::unique_ptr<TheRenderManager> m_render_manager;
     /// @}
 
     /// State of the Application: UNSTARTED -> RUNNING -> CLOSED

@@ -252,7 +252,7 @@ public:
     /// Tries to construct a typed Handle from this Node.
     /// @returns    Typed Handle to this Node, or an empty Handle if the dynamic cast failed.
     template<class T = AnyNode, class = std::enable_if_t<std::is_base_of_v<AnyNode, T>>>
-    NodeHandle<T> get_handle() const {
+    NodeHandle<T> to_handle() {
         return std::dynamic_pointer_cast<T>(shared_from_this());
     }
 

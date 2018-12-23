@@ -233,14 +233,15 @@ public:
     /// Internal GraphicsContext.
     GraphicsContext& get_graphics_context() const { return *m_graphics_context; }
 
+    /// Scene contained in this Window.
+    SceneHandle get_scene() const { return m_scene; }
+
     /// (Re-)Sets the Scene displayed in this Window.
     template<class T, class... Args>
     SceneHandle set_scene(Args&&... args) {
         _clear_children();
         return _create_child<T>(std::forward<Args>(args)...);
     }
-
-    // TODO: is there a way to ensure child arity like we do with child-type? (Window may only have one, for example).
 
 private:
     /// Closes this Window.
@@ -284,6 +285,8 @@ namespace detail {
 template<>
 struct NodeHandleInterface<Window> : public NodeHandleBaseInterface<Window> {
 
+    using Window::get_graphics_context;
+    using Window::get_scene;
     using Window::set_scene;
 };
 

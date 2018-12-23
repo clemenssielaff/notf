@@ -112,6 +112,8 @@ WindowHandle Window::create(Arguments settings) {
 }
 
 void Window::_close() {
+    // TODO: windows may only be closed during synchronization, when it is safe to assume it is not being rendered
+
     NOTF_LOG_TRACE("Closing Window \"{}\"", get<title>());
 
     // unregister from the application and event handling

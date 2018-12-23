@@ -57,11 +57,9 @@ private:
         switch (kind) {
         case Kind::MAIN:
         case Kind::EVENT:
-        case Kind::RENDER:
-            return 1;
+        case Kind::RENDER: return 1;
 
-        default:
-            return std::numeric_limits<size_t>::max();
+        default: return std::numeric_limits<size_t>::max();
         }
     }
 
@@ -165,18 +163,18 @@ public:
     /// Run a given function on this thread.
     /// Any stored exception is silently dropped.
     /// @throws ThreadError If this thread is already executing a function.
-    template<class Function>
-    void run(Function&& function) {
+    template<class Function, class... Args>
+    void run(Function&& function, Args&&... args) {
         if (is_running()) {
             NOTF_THROW(ThreadError, "Thread is already running a function.\n"
-                                    "If you need this particular thread to run, join it first");
+                                    "If you need this particular thread to run the function, join it first");
         }
 
         m_exception = {};
-        m_thread = std::thread([this, function = std::forward<Function>(function)]() mutable {
+        m_thread = std::thread([this, function = std::forward<Function>(function), &args...]() {
             try {
                 NOTF_GUARD(KindCounterGuard(m_kind));
-                std::invoke(function);
+                std::invoke(function, std::forward<Args>(args)...);
             }
             catch (...) {
                 m_exception = std::current_exception();
@@ -195,9 +193,7 @@ public:
 
     /// Rethrows and clears the stored exception from the last run, if there is one.
     void rethrow() {
-        if (m_exception) {
-            std::rethrow_exception(std::move(m_exception));
-        }
+        if (m_exception) { std::rethrow_exception(std::move(m_exception)); }
     }
 
     /// Blocks until the system thread has joined.

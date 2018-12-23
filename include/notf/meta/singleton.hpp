@@ -57,7 +57,7 @@ protected:
     /// @param args             All arguments passed to the constructor of `T`.
     /// @throws SingletonError  If you try to instantiate more than one instance of `ScopedSingleton<T>`.
     template<class... Args>
-    ScopedSingleton(Holder, Args&&... args) noexcept(noexcept(T(std::forward<Args>(args)...))) {
+    ScopedSingleton(Holder, Args&&... args) {
         if (State expected = State::EMPTY; s_state.compare_exchange_strong(expected, State::INITIALIZING)) {
             s_instance.emplace(std::forward<Args>(args)...);
             s_state.store(State::RUNNING);

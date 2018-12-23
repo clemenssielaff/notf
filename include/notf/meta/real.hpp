@@ -63,17 +63,24 @@ constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_real(const T va
     return !is_nan(value) && !is_inf(value);
 }
 
+/// @{
+/// Tests whether a given value is (almost) a zero float value.
+template<class T>
+constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_zero(const T value) noexcept {
+    return std::fpclassify(value) == FP_ZERO;
+}
+template<class T>
+constexpr std::enable_if_t<std::is_floating_point_v<T>, bool>
+is_zero(const T value, const identity_t<T> epsilon) noexcept {
+    return abs(value) < epsilon;
+}
+/// @}
+
 /// Tests, if a value is positive or negative.
 /// @return  -1 if the value is negative, 1 if it is zero or above.
 template<class T>
 constexpr T sign(const T value) {
     return std::signbit(value) ? -1 : 1;
-}
-
-/// Tests whether a given value is (almost) zero.
-template<class T>
-constexpr bool is_zero(const T value, const T epsilon = precision_high<T>()) noexcept {
-    return abs(value) < epsilon;
 }
 
 /// Save asin calculation.
@@ -107,6 +114,12 @@ template<class T>
 T norm_angle(const T alpha) {
     const T modulo = fmod(alpha, static_cast<T>(pi() * 2));
     return static_cast<T>(modulo >= 0 ? modulo : (pi() * 2) + modulo);
+}
+
+/// Next representable floating point number greater than the given one.
+template<class T>
+constexpr std::enable_if_t<std::is_floating_point_v<T>, T> next_after(const T value) noexcept {
+    return std::nextafter(value, max_value<T>());
 }
 
 /// @{

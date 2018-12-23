@@ -8,6 +8,7 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/event_handler.cpp
     app/glfw_callbacks.cpp
     app/input.cpp
+    app/render_manager.cpp
     app/resource_manager.cpp
     app/timer_pool.cpp
 

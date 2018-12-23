@@ -3,13 +3,67 @@
 #include "notf/meta/singleton.hpp"
 #include "notf/meta/smart_ptr.hpp"
 
+#include "notf/common/delegate.hpp"
 #include "notf/common/fibers.hpp"
 #include "notf/common/mutex.hpp"
 #include "notf/common/thread.hpp"
 
-#include "notf/app/event.hpp"
+#include "notf/app/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
+
+// any event ======================================================================================================== //
+
+class AnyEvent {
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// Constructor.
+    /// @param weight   Weight of this Event.
+    AnyEvent(const float weight = 0) : m_weight(weight) {}
+
+    /// Virtual destructor.
+    virtual ~AnyEvent() = default;
+
+    /// The "weight" of this Event.
+    float get_weight() const { return m_weight; }
+
+    /// Executes the event function.
+    virtual void run() = 0;
+
+    // fields ---------------------------------------------------------------------------------- //
+private:
+    /// The "weight" of an Event is a number that is added to a counter in the Event Handler. Whenver that counter
+    /// passes 1.0, a new frame is rendered, even if there are more events in the queue at that point.
+    /// The default is 0, meaning that this Event does not add to the counter.
+    /// Even if all Events have a counter of zero, the Event handler will draw a new frame eventually once the queue
+    /// of new Events is empty ... unless of course you manage to flood it (which should be rather unlikely).
+    float m_weight;
+};
+
+// event ============================================================================================================ //
+
+template<class Func>
+class Event : public AnyEvent {
+    static_assert(std::is_invocable_v<Func>, "Events are templated on a callable object without arguments");
+    static_assert(std::is_same_v<std::invoke_result_t<Func>, void>, "Events callables must not return a value");
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// Constructor.
+    /// @param function Event function to execute on the UI thread.
+    /// @param weight   Weight of this Event (see AnyEvent::m_weight for details).
+    Event(Func&& function, const float weight = 0) : AnyEvent(weight), m_function(std::forward<Func>(function)) {}
+
+    /// Executes the event function.
+    void run() final {
+        if (m_function) { std::invoke(m_function); }
+    }
+
+    // fields ---------------------------------------------------------------------------------- //
+private:
+    Delegate<void()> m_function;
+};
 
 // event handler ==================================================================================================== //
 
@@ -54,7 +108,7 @@ private:
 
 } // namespace detail
 
-// the event handler================================================================================================= //
+// the event handler ================================================================================================ //
 
 class TheEventHandler : public ScopedSingleton<detail::EventHandler> {
 

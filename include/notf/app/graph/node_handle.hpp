@@ -15,7 +15,7 @@ namespace detail {
 template<class NodeType>
 struct NodeHandleBaseInterface : protected NodeType {
 
-    using NodeType::get_handle;
+    using NodeType::to_handle;
 
     // properties -------------------------------------------------------------
 
