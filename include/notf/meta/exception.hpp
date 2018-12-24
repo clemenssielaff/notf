@@ -54,7 +54,7 @@ public:
         , m_message(fmt::format(fmt::format("({}) {}", type, fmt), std::forward<Args>(args)...)) {}
 
     /// Destructor.
-    ~notf_exception() override = default;
+    virtual ~notf_exception() override = default;
 
     /// Name of the file in which the exception was thrown.
     const char* get_file() const noexcept { return m_file; }

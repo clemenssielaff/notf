@@ -54,7 +54,7 @@ struct Accessor<AnyNode, Tester> {
         return m_node._create_child<T>(&m_node, std::forward<Args>(args)...);
     }
 
-    void remove_child(AnyNodeHandle handle) { m_node._remove_child(handle); }
+    void remove_child(const AnyNode* child) { m_node._remove_child(child); }
 
     bool get_internal_flag(size_t index) { return m_node._get_internal_flag(index); }
 

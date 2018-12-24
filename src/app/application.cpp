@@ -68,11 +68,11 @@ Application::Application(Arguments args)
     m_timer_pool = TheTimerPool::AccessFor<Application>::create(m_arguments.timer_buffer_size);
     NOTF_ASSERT(m_timer_pool->is_holder());
 
+    //    m_render_manager = TheRenderManager::AccessFor<Application>::create();
+    //    NOTF_ASSERT(m_render_manager->is_holder());
+
     m_graph = TheGraph::AccessFor<Application>::create();
     NOTF_ASSERT(m_graph->is_holder());
-
-    m_render_manager = TheRenderManager::AccessFor<Application>::create();
-    NOTF_ASSERT(m_render_manager->is_holder());
 
     // log application header
     NOTF_LOG_INFO("NOTF {} ({} built with {} from {}commit \"{}\")\n"
@@ -131,15 +131,16 @@ int Application::exec() {
         m_event_handler.reset(); // by deleting the event handler we wait for its thread to join, before re-acquiring
         m_ui_lock.lock();        // the ui mutex (otherwise the event handler might wait and block forever)
     }
+    NOTF_ASSERT(this_thread::is_the_ui_thread());
 
-    // shutdown
+    // shutdown in reverse order
     m_render_manager.reset();
+    m_graph.reset();
+    m_timer_pool.reset();
+    m_event_handler.reset();
     m_windows->clear();
     m_graphics_system.reset();
     m_shared_context.reset();
-    m_graph.reset();
-    m_event_handler.reset();
-    m_timer_pool.reset();
     NOTF_LOG_INFO("Application shutdown");
 
     return EXIT_SUCCESS;
@@ -153,20 +154,17 @@ void Application::schedule(AnyAppEventPtr&& event) {
 }
 
 void Application::shutdown() {
-    schedule([this] {
-        State expected = State::RUNNING;
-        m_state.compare_exchange_strong(expected, State::CLOSED);
-    });
+    State expected = State::RUNNING;
+    m_state.compare_exchange_strong(expected, State::CLOSED);
 }
 
 void Application::_register_window(GLFWwindow* window) {
+    if (!this_thread::is_the_ui_thread()) { NOTF_THROW(ThreadError, "Windows can only be created on the UI thread"); }
 
-    { // store the window
-        NOTF_GUARD(std::lock_guard(m_windows_mutex));
-        detail::GlfwWindowPtr window_ptr(window, detail::window_deleter);
-        NOTF_ASSERT(!contains(*m_windows, window_ptr));
-        m_windows->emplace_back(std::move(window_ptr));
-    }
+    // store the window
+    detail::GlfwWindowPtr window_ptr(window, detail::window_deleter);
+    NOTF_ASSERT(!contains(*m_windows, window_ptr));
+    m_windows->emplace_back(std::move(window_ptr));
 
     // register all callbacks
     schedule([window]() mutable {
@@ -192,8 +190,7 @@ void Application::_register_window(GLFWwindow* window) {
 }
 
 void Application::_unregister_window(GLFWwindow* window) {
-    schedule([this, window]() mutable {
-        NOTF_GUARD(std::lock_guard(m_windows_mutex));
+    schedule([this, window]() {
         auto itr = std::find_if(m_windows->begin(), m_windows->end(),
                                 [window](const detail::GlfwWindowPtr& stored) { return stored.get() == window; });
         if (itr != m_windows->end()) {

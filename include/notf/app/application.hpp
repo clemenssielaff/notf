@@ -157,7 +157,6 @@ private:
 
     /// All Windows known the the Application.
     std::unique_ptr<std::vector<detail::GlfwWindowPtr>> m_windows;
-    Mutex m_windows_mutex;
 
     /// @{
     /// ScopedSingleton holders.

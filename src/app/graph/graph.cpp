@@ -91,6 +91,11 @@ Graph::~Graph() {
 
 RootNodeHandle Graph::get_root_node() { return m_root_node; }
 
+void Graph::clear() {
+    NOTF_ASSERT(this_thread::is_the_ui_thread());
+    m_root_node->clear_children();
+}
+
 std::vector<AnyNodeHandle> Graph::synchronize() {
     NOTF_ASSERT(this_thread::is_the_ui_thread());
 

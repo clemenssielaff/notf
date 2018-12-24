@@ -188,20 +188,19 @@ void AnyNode::_set_flag(const size_t index, const bool value) {
     _set_internal_flag(index + s_internal_flag_count, value);
 }
 
-void AnyNode::_remove_child(AnyNodeHandle child_handle) {
+void AnyNode::_remove_child(const AnyNode* child) {
     NOTF_ASSERT(this_thread::is_the_ui_thread());
-    AnyNodePtr child = AnyNodeHandle::AccessFor<AnyNode>::get_node_ptr(child_handle);
-    if (child == nullptr) { return; }
 
     // do not create a modified copy for finding the child
     const std::vector<AnyNodePtr>& read_only_children = _read_children();
-    auto itr = std::find(read_only_children.begin(), read_only_children.end(), child);
+    auto itr = std::find_if(read_only_children.begin(), read_only_children.end(),
+                            [child](const AnyNodePtr& node) { return node.get() == child; });
     if (itr == read_only_children.end()) { return; } // not a child of this node
 
     // remove the child node
     const size_t child_index = static_cast<size_t>(std::distance(read_only_children.begin(), itr));
     std::vector<AnyNodePtr>& children = _write_children();
-    NOTF_ASSERT(children.at(child_index) == child);
+    NOTF_ASSERT(children.at(child_index).get() == child);
     children.erase(iterator_at(children, child_index));
 }
 
@@ -222,7 +221,7 @@ void AnyNode::_set_parent(AnyNodeHandle new_parent_handle) {
 
     auto& new_siblings = new_parent->_write_children();
     new_siblings.emplace_back(shared_from_this());
-    old_parent->_remove_child(shared_from_this());
+    old_parent->_remove_child(this);
 
     _ensure_modified_data().parent = new_parent.get();
 }

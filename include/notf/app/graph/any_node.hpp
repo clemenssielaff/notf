@@ -396,7 +396,7 @@ public:
             return;
         }
         NOTF_ASSERT(parent);
-        parent->_remove_child(shared_from_this());
+        parent->_remove_child(this);
     }
     // z-order ----------------------------------------------------------------
 
@@ -518,7 +518,7 @@ protected: // for all subclasses
 
     /// Removes a child from this node.
     /// @param handle   Handle of the node to remove.
-    void _remove_child(AnyNodeHandle child_handle);
+    void _remove_child(const AnyNode* child);
 
     /// Remove all children from this Node.
     void _clear_children();

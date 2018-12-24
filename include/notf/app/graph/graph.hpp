@@ -118,6 +118,9 @@ public:
     /// The number of Nodes in the current Graph.
     size_t get_node_count() const { return m_node_registry.get_count(); }
 
+    /// Deletes all Nodes (except the RootNode) from the Graph.
+    void clear();
+
     // synchronization --------------------------------------------------------
 
     /// Removes all modified data copies from the Graph - at the point that this method returns, all threads agree on

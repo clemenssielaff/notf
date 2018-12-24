@@ -227,6 +227,9 @@ public:
     /// @throws ThreadError                     When you call this method from any thread but the UI thread.
     static WindowHandle create(Arguments settings = {});
 
+    /// Destructor
+    ~Window() override;
+
     /// Returns the GlfwWindow contained in this Window.
     GLFWwindow* get_glfw_window() const { return m_glfw_window; }
 
@@ -244,9 +247,6 @@ public:
     }
 
 private:
-    /// Closes this Window.
-    void _close();
-
     /// Validates (and modifies, if necessary) Settings to create a Window instance.
     /// @param settings     Given Settings, modified in-place if necessary.
     static void _validate_settings(Arguments& settings);

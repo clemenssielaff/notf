@@ -154,8 +154,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
             auto node = root_node.create_child<RemoveChildNode>().to_handle();
 
             { // these are not real functions, you will never get to them through the API alone
-                AnyNode::AccessFor<Tester>(node).remove_child(AnyNodeHandle());  // ignored
-                AnyNode::AccessFor<Tester>(node).remove_child(root_node_handle); // ignored
+                AnyNode::AccessFor<Tester>(node).remove_child(nullptr); // ignored
             }
 
             REQUIRE(node->get_child_count() == 1);

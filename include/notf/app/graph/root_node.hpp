@@ -29,6 +29,9 @@ public:
     /// Default Constructor.
     RootNode() : Node<>(this) {}
 
+    /// Removes all children from underneath the Root Node.
+    void clear_children() { _clear_children(); }
+
 private:
     /// Finalizes this RootNode.
     void _finalize_root() { AnyNode::AccessFor<RootNode>::finalize(*this); }

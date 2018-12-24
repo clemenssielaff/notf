@@ -21,17 +21,18 @@ int run_main(int argc, char* argv[]) {
     TheApplication app(std::move(arguments));
 
     auto window1 = Window::create();
-
     Thread input_thread;
+
     input_thread.run([window = std::move(window1)]() {
         Driver driver(std::move(window));
         {
             using namespace std::chrono_literals;
             using namespace notf::driver;
             this_thread::sleep_for(2s);
-            //            driver << "abc";
+            driver << "abc";
         }
     });
+
     auto result = app->exec();
     input_thread.join();
     return result;

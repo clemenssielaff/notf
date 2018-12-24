@@ -137,10 +137,16 @@ endif()
 # thread sanitization
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     option(NOTF_THREAD_SANITIZATION "Enable thread sanitization" OFF)
+    option(NOTF_USE_SANITIZATION_BLACKLIST "Use sanitization blacklist" ON)
     if(NOTF_THREAD_SANITIZATION)
         add_compile_options("-fsanitize=thread")
         link_libraries("-fsanitize=thread")
         message(STATUS ">>> notf: Building using thread sanitization")
+
+        # sanitization blacklist
+        if(NOTF_USE_SANITIZATION_BLACKLIST)
+            add_compile_options("-fsanitize-blacklist=${CMAKE_SOURCE_DIR}/.sanitizer-blacklist")
+        endif()
     endif()
 endif()
 

@@ -28,6 +28,11 @@ namespace detail {
 EventHandler::EventHandler(const size_t buffer_size)
     : m_event_queue(check_buffer_size(buffer_size)), m_event_handler(Thread(Thread::Kind::EVENT)) {}
 
+EventHandler::~EventHandler() {
+    m_event_queue.close();
+    m_event_handler.join();
+}
+
 void EventHandler::_start(RecursiveMutex& ui_mutex) {
     m_event_handler.run([& queue = m_event_queue, &ui_mutex] {
         // take over as the UI thread

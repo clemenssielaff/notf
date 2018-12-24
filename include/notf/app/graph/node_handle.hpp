@@ -164,6 +164,25 @@ private:
 public:
     /// Default (empty) Constructor.
     NodeHandle() = default;
+    NodeHandle(const NodeHandle&) = default;
+
+    // Why do NodeHandles not have a default move constructor?
+    //
+    // There seems to be a curious edge case here where moving the handle from one thread onto another causes the
+    // LLVM Thread Sanitizer to report data races. I think they are spurious, because the standard says that operations
+    // on the control block are thread safe (even with non-atomic weak_ and shared_ptrs), but if there is just the
+    // faintest possibility that they are not and there are in fact cases where moving a weak_ptr may somehow interfere
+    // with the lifetime of the weak_pointer's control block, it is better to be sure.
+    //
+    // There are two ways that seem to work.
+    // First: explicitly define a move constructor and only copy the other's node:
+    //
+    //     NodeHandle(NodeHandle&& other) noexcept : m_node(other.m_node) {}
+    //
+    // Second, do not define a move constructor - not even a "default" one. This seems to be different from "deleting"
+    // the default move constructor, even though C++ shouldn't be allowed to create one in the first place (because we
+    // have a user-declared copy constructor)? Anyway, it works and since it leaves open the possibility that the
+    // compiler is smart enough to handle the situation without us telling it to copy the weak_ptr, I opt for 2.
 
     /// @{
     /// Value Constructor.
@@ -175,13 +194,12 @@ public:
     NodeHandle(std::shared_ptr<T> node) : m_node(std::static_pointer_cast<NodeType>(std::move(node))) {}
     /// @}
 
+    /// @{
     /// Assignment operator.
-    /// @param other    Other NodeHandle to copy.
-    template<class T, class = std::enable_if_t<std::is_base_of_v<NodeType, T>>>
-    NodeHandle& operator=(NodeHandle<T> other) {
-        m_node = std::static_pointer_cast<NodeType>(other.m_node.lock());
-        return *this;
-    }
+    /// @param other    Other NodeHandle to copy / move from.
+    NodeHandle& operator=(NodeHandle&&) = default;
+    NodeHandle& operator=(const NodeHandle& other) = default;
+    /// @}
 
     /// Implicit conversion to an (untyped) NodeHandle.
     operator AnyNodeHandle() { return AnyNodeHandle(std::static_pointer_cast<AnyNode>(m_node.lock())); }

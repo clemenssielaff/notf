@@ -169,9 +169,10 @@ public:
             NOTF_THROW(ThreadError, "Thread is already running a function.\n"
                                     "If you need this particular thread to run the function, join it first");
         }
-
         m_exception = {};
-        m_thread = std::thread([this, function = std::forward<Function>(function), &args...]() {
+
+        // the lambda run on the thread is mutable, in case the passed function is a mutable lambda as well
+        m_thread = std::thread([this, function = std::forward<Function>(function), &args...]() mutable {
             try {
                 NOTF_GUARD(KindCounterGuard(m_kind));
                 std::invoke(function, std::forward<Args>(args)...);

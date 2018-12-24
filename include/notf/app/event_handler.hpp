@@ -81,7 +81,7 @@ public:
     EventHandler(size_t buffer_size);
 
     /// Destructor.
-    ~EventHandler() { m_event_queue.close(); }
+    ~EventHandler();
 
     /// @{
     /// Schedules a new event to be handled on the event thread.

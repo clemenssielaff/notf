@@ -69,8 +69,11 @@ Window::Window(valid_ptr<AnyNode*> parent, valid_ptr<GLFWwindow*> window, Argume
     _set_property_callback<monitor>([this](int& new_monitor) { return _on_monitor_change(new_monitor); });
 
     // connect slots
-    m_pipe_to_close = make_pipeline(_get_slot<to_close>() | Trigger([&]() { _close(); }));
-    //    NOTF_LOG_INFO("Created Window \"{}\" using OpenGl version: {}", get<title>(), glGetString(GL_VERSION));
+    m_pipe_to_close = make_pipeline(_get_slot<to_close>() | Trigger([&]() {
+                                        NOTF_LOG_TRACE("Closing Window \"{}\"", get<title>());
+                                        remove();
+                                    }));
+    NOTF_LOG_INFO("Created Window \"{}\" using OpenGl version: {}", get<title>(), glGetString(GL_VERSION));
 
     // finally, register with the application
     TheApplication::AccessFor<Window>::register_window(m_glfw_window);
@@ -111,15 +114,9 @@ WindowHandle Window::create(Arguments settings) {
     return window;
 }
 
-void Window::_close() {
-    // TODO: windows may only be closed during synchronization, when it is safe to assume it is not being rendered
-
-    NOTF_LOG_TRACE("Closing Window \"{}\"", get<title>());
-
+Window::~Window() {
     // unregister from the application and event handling
     TheApplication::AccessFor<Window>::unregister_window(m_glfw_window);
-
-    remove();
 }
 
 void Window::_validate_settings(Arguments& settings) {
