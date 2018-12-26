@@ -192,6 +192,9 @@ public:
 
     template<class T, class = std::enable_if_t<std::is_base_of_v<NodeType, T>>>
     NodeHandle(std::shared_ptr<T> node) : m_node(std::static_pointer_cast<NodeType>(std::move(node))) {}
+
+    template<class T, class = std::enable_if_t<std::is_base_of_v<NodeType, T>>>
+    NodeHandle(NodeHandle<T> node) : m_node(std::move(node.m_node)) {}
     /// @}
 
     /// @{

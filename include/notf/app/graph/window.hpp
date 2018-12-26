@@ -241,9 +241,9 @@ public:
 
     /// (Re-)Sets the Scene displayed in this Window.
     template<class T, class... Args>
-    SceneHandle set_scene(Args&&... args) {
+    NodeHandle<T> set_scene(Args&&... args) {
         _clear_children();
-        return _create_child<T>(std::forward<Args>(args)...);
+        return _create_child<T>(this, std::forward<Args>(args)...).to_handle();
     }
 
 private:

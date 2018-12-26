@@ -11,6 +11,8 @@
 #include "notf/app/graph/slot.hpp"
 #include "notf/app/graph/window.hpp"
 
+#include "notf/app/widget/widget_scene.hpp"
+
 NOTF_OPEN_NAMESPACE
 
 int run_main(int argc, char* argv[]) {
@@ -20,21 +22,10 @@ int run_main(int argc, char* argv[]) {
     arguments.argv = argv;
     TheApplication app(std::move(arguments));
 
-    auto window1 = Window::create();
-    Thread input_thread;
+    WindowHandle window = Window::create();
+    SceneHandle scene = window->set_scene<WidgetScene>();
 
-    input_thread.run([window = std::move(window1)]() {
-        Driver driver(std::move(window));
-        {
-            using namespace std::chrono_literals;
-            using namespace notf::driver;
-            this_thread::sleep_for(2s);
-            driver << "abc";
-        }
-    });
-
-    auto result = app->exec();
-    input_thread.join();
+    const int result = app->exec();
     return result;
 }
 

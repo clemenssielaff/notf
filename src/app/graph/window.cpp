@@ -115,6 +115,12 @@ WindowHandle Window::create(Arguments settings) {
 }
 
 Window::~Window() {
+
+    { // delete all Nodes (Scenes) underneath the Window with the GraphicsContext current
+        NOTF_GUARD(m_graphics_context->make_current());
+        _clear_children();
+    }
+
     // unregister from the application and event handling
     TheApplication::AccessFor<Window>::unregister_window(m_glfw_window);
 }

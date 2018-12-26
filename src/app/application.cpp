@@ -68,8 +68,8 @@ Application::Application(Arguments args)
     m_timer_pool = TheTimerPool::AccessFor<Application>::create(m_arguments.timer_buffer_size);
     NOTF_ASSERT(m_timer_pool->is_holder());
 
-    //    m_render_manager = TheRenderManager::AccessFor<Application>::create();
-    //    NOTF_ASSERT(m_render_manager->is_holder());
+    m_render_manager = TheRenderManager::AccessFor<Application>::create();
+    NOTF_ASSERT(m_render_manager->is_holder());
 
     m_graph = TheGraph::AccessFor<Application>::create();
     NOTF_ASSERT(m_graph->is_holder());

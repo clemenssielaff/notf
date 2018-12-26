@@ -209,7 +209,7 @@ Plotter::Paint Plotter::Paint::texture_pattern(const V2f& origin, const Size2f& 
 // plotter ========================================================================================================== //
 
 Plotter::Plotter(GraphicsContext& context) : m_context(context) {
-    const auto current_guard = m_context.make_current();
+    NOTF_GUARD(m_context.make_current());
 
     { // pipeline
         const std::string vertex_src = load_file("/home/clemens/code/notf/res/shaders/plotter.vert");
@@ -231,7 +231,7 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
     // vao
     NOTF_CHECK_GL(glGenVertexArrays(1, &m_vao_id));
     if (!m_vao_id) { NOTF_THROW(OpenGLError, "Failed to allocate the Plotter VAO"); }
-    const auto vao_guard = GraphicsContext::VaoGuard(m_vao_id);
+    NOTF_GUARD(GraphicsContext::VaoGuard(m_vao_id));
 
     { // vertices
         VertexArrayType::Args vertex_args;
@@ -245,7 +245,10 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
     static_cast<PlotIndexArray*>(m_indices.get())->init();
 }
 
-Plotter::~Plotter() { NOTF_CHECK_GL(glDeleteVertexArrays(1, &m_vao_id)); }
+Plotter::~Plotter() {
+    NOTF_ASSERT(m_context.is_current());
+    NOTF_CHECK_GL(glDeleteVertexArrays(1, &m_vao_id));
+}
 
 Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {
     std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer();
@@ -482,13 +485,12 @@ void Plotter::render() const {
     }
 
     for (const DrawCall& drawcall : m_drawcalls) {
-        std::visit(
-            overloaded{
-                [&](const StrokeInfo& stroke) { _render_line(stroke); },
-                [&](const FillInfo& shape) { _render_shape(shape); },
-                [&](const TextInfo& text) { _render_text(text); },
-            },
-            drawcall);
+        std::visit(overloaded{
+                       [&](const StrokeInfo& stroke) { _render_line(stroke); },
+                       [&](const FillInfo& shape) { _render_shape(shape); },
+                       [&](const TextInfo& text) { _render_text(text); },
+                   },
+                   drawcall);
     }
 }
 

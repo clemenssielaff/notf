@@ -95,7 +95,8 @@ public:
     using NodeHandle<Scene>::NodeHandle;
 
     /// Constructor from specialized base.
-    SceneHandle(NodeHandle<Scene>&& handle) : NodeHandle(std::move(handle)) {}
+    template<class Derived, class = std::enable_if_t<std::is_base_of_v<Scene, Derived>>>
+    SceneHandle(NodeHandle<Derived>&& handle) : NodeHandle<Scene>(std::move(handle)) {}
 };
 
 NOTF_CLOSE_NAMESPACE
