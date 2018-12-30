@@ -140,7 +140,7 @@ int Application::exec() {
         // close the timer pool first
         // all active timers will be interrupted, unless their "keep-alive" flag is set, which means that the user
         // intended them to block shutdown until they had time to finish
-        TheTimerPool()->close();
+        m_timer_pool.reset();
 
         // after the event handler is closed, the main thread becomes the UI thread again
         m_event_handler.reset(); // by deleting the event handler we wait for its thread to join, before re-acquiring

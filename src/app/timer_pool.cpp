@@ -26,9 +26,9 @@ namespace detail {
 TimerPool::TimerPool(const size_t buffer_size)
     : m_buffer(check_buffer_size(buffer_size)), m_timer_thread(Thread(Thread::Kind::TIMER_POOL)) {
     m_timer_thread.run([& buffer = m_buffer] {
-        Fiber([&buffer] {
-            fibers::mutex mutex;
-            fibers::condition_variable while_running;
+        fibers::mutex mutex;
+        fibers::condition_variable while_running;
+        Fiber([&buffer, &mutex, &while_running] {
 
             TimerPtr timer;
             while (fibers::channel_op_status::success == buffer.pop(timer)) {

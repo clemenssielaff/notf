@@ -3,6 +3,8 @@
 #include "notf/meta/hash.hpp"
 #include "notf/meta/stringtype.hpp"
 
+#include "notf/common/mutex.hpp"
+
 #include "notf/app/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -122,8 +124,17 @@ private:
     std::weak_ptr<NodeType> m_node;
 };
 
+// node handle base ================================================================================================= //
+
 /// Any Node Handle base class for identification.
-struct NodeHandleBase {};
+struct NodeHandleBase {
+    virtual ~NodeHandleBase() = default;
+
+protected:
+    /// Mutex used by all Handles to guard Handle destruction.
+    /// See `~NodeHandle<T>` for details.
+    static inline Mutex s_mutex;
+};
 
 } // namespace detail
 
@@ -201,6 +212,18 @@ public:
     NodeHandle(NodeHandle<T> node) : m_node(std::move(node.m_node)) {}
     /// @}
 
+    /// Destructor.
+    ~NodeHandle() noexcept override {
+        // Again, locking this mutex seems like an unnecessary precaution and in fact I think it is ... however, clang
+        // thread sanitizer does report A LOT of data races when multiple handles from different threads are destroyed
+        // around the same time (which happens on every application shutdown).
+        // So we protect the deallocation with a mutex. Should this ever be a performance concern just remove it as it
+        // really shouldn't affect the correctness of the program, but until then there seems to be no other way to
+        // ensure that the thread sanitizer doesn't produce an avalanche of false positives on each run.
+        NOTF_GUARD(std::lock_guard(s_mutex));
+        m_node.reset();
+    }
+
     /// @{
     /// Assignment operator.
     /// @param other    Other NodeHandle to copy / move from.
@@ -219,7 +242,8 @@ public:
     /// returned false, because it might have expired in the time between the test and the next call.
     /// However, if `is_expired` returns true, you can be certain that the Handle is expired for good.
     bool is_expired() const { return m_node.expired(); }
-    explicit operator bool() const { return !is_expired(); }
+    bool is_valid() const { return !is_expired(); }
+    explicit operator bool() const { return is_valid(); }
     /// @}
 
     /// Uuid of this Node.

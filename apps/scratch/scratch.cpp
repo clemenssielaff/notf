@@ -68,15 +68,16 @@ private:
         NOTF_ASSERT(raw);
         auto handle = handle_cast<NodeHandle<SuperWidget>>(raw);
         m_animation = IntervalTimer(60_fps, [handle]() {
-            TheEventHandler()->schedule([handle]() mutable {
-                const double time
-                    = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(get_age()).count());
-                const double period = 10;
-                if (handle) { handle->set<Rotation>(fmod(time / (1000 * period), 1) * pi<double>()); }
-            });
-            ;
+            if (handle.is_valid()) {
+                TheEventHandler()->schedule([=]() mutable {
+                    const double time
+                        = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(get_age()).count());
+                    const double period = 10;
+                    if (handle.is_valid()) { handle->set<Rotation>(fmod(time / (1000 * period), 1) * pi<double>()); }
+                });
+            }
         });
-//        m_animation->start();
+        m_animation->start();
     }
 
     void _paint(Painter& painter) const override {
