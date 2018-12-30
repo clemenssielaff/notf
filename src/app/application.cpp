@@ -74,6 +74,9 @@ Application::Application(Arguments args)
     m_graph = TheGraph::AccessFor<Application>::create();
     NOTF_ASSERT(m_graph->is_holder());
 
+    // other startup stuff
+    get_age(); // the first time this is called is used as time point "zero"
+
     // log application header
     NOTF_LOG_INFO("NOTF {} ({} built with {} from {}commit \"{}\")\n"
                   "             GLFW version: {}",
@@ -88,6 +91,7 @@ Application::Application(Arguments args)
 Application::~Application() {
     m_graphics_system.reset();
     glfwTerminate();
+    NOTF_LOG_INFO("Finished Application shutdown");
 }
 
 int Application::exec() {
@@ -112,11 +116,22 @@ int Application::exec() {
         while (m_state.load() == State::RUNNING) {
 
             // wait for and execute all GLFW events
-            glfwWaitEvents();
+            glfwWaitEventsTimeout(0.1 /*seconds*/);
+            // There's a bug in GLFW that causes empty events created with `glfwPostEmptyEvent` to fail to wake
+            // `glfwWaitEvents`. In that case, the application hangs until some other event would wake GLWF and only
+            // then proceed to handle the events scheduled to run on the main thread.
+            // For details see here: https://github.com/glfw/glfw/issues/1281
+            // It seems like the bug is going to be fixed soon, which is why I opt for this simple workaround of adding
+            // a timeout to the wait, so that even if the race condition occurs, GLFW won't block the main thread for
+            // longer than 100ms at a time.
+            // Since events to run on the main thread are only needed for Window creation/removal and shutdown, the
+            // effect of this workaround should be minimal.
+            // Of course, once the bug is fixed, revert the line to `glfwWaitEvents()` and remove this comment.
 
             { // see if there are any events scheduled to run on the main thread
                 while (m_event_queue.try_pop(event) == fibers::channel_op_status::success
                        && m_state.load() == State::RUNNING) {
+                    NOTF_LOG_TRACE("Handling event scheduled on the main thread");
                     event->run();
                 }
             }
@@ -141,7 +156,7 @@ int Application::exec() {
     m_windows->clear();
     m_graphics_system.reset();
     m_shared_context.reset();
-    NOTF_LOG_INFO("Application shutdown");
+    NOTF_LOG_INFO("Finished Application main loop");
 
     return EXIT_SUCCESS;
 }
@@ -154,8 +169,11 @@ void Application::schedule(AnyAppEventPtr&& event) {
 }
 
 void Application::shutdown() {
-    State expected = State::RUNNING;
-    m_state.compare_exchange_strong(expected, State::CLOSED);
+    schedule([this] {
+        NOTF_LOG_INFO("Starting Application shutdown");
+        State expected = State::RUNNING;
+        m_state.compare_exchange_strong(expected, State::CLOSED);
+    });
 }
 
 void Application::_register_window(GLFWwindow* window) {

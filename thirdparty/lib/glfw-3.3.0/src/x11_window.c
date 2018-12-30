@@ -376,7 +376,7 @@ static void updateWindowMode(_GLFWwindow* window)
 }
 
 // Splits and translates a text/uri-list into separate file paths
-// Note: This function destroys the provided string
+// NOTE: This function destroys the provided string
 //
 static char** parseUriList(char* text, int* count)
 {
@@ -396,6 +396,7 @@ static char** parseUriList(char* text, int* count)
         if (strncmp(line, prefix, strlen(prefix)) == 0)
         {
             line += strlen(prefix);
+            // TODO: Validate hostname
             while (*line != '/')
                 line++;
         }
@@ -1454,12 +1455,20 @@ static void processEvent(XEvent *event)
 
         case EnterNotify:
         {
+            // XEnterWindowEvent is XCrossingEvent
+            const int x = event->xcrossing.x;
+            const int y = event->xcrossing.y;
+
             // HACK: This is a workaround for WMs (KWM, Fluxbox) that otherwise
             //       ignore the defined cursor for hidden cursor mode
             if (window->cursorMode == GLFW_CURSOR_HIDDEN)
                 updateCursorImage(window);
 
             _glfwInputCursorEnter(window, GLFW_TRUE);
+            _glfwInputCursorPos(window, x, y);
+
+            window->x11.lastCursorPosX = x;
+            window->x11.lastCursorPosY = y;
             return;
         }
 
@@ -2449,6 +2458,14 @@ int _glfwPlatformWindowMaximized(_GLFWwindow* window)
     Atom* states;
     unsigned long i;
     GLFWbool maximized = GLFW_FALSE;
+
+    if (!_glfw.x11.NET_WM_STATE ||
+        !_glfw.x11.NET_WM_STATE_MAXIMIZED_VERT ||
+        !_glfw.x11.NET_WM_STATE_MAXIMIZED_HORZ)
+    {
+        return maximized;
+    }
+
     const unsigned long count =
         _glfwGetWindowPropertyX11(window->x11.handle,
                                   _glfw.x11.NET_WM_STATE,
@@ -2657,7 +2674,7 @@ void _glfwPlatformPollEvents(void)
         int width, height;
         _glfwPlatformGetWindowSize(window, &width, &height);
 
-        // Note: Re-center the cursor only if it has moved since the last call,
+        // NOTE: Re-center the cursor only if it has moved since the last call,
         //       to avoid breaking glfwWaitEvents with MotionNotify
         if (window->x11.lastCursorPosX != width / 2 ||
             window->x11.lastCursorPosY != height / 2)
@@ -2863,7 +2880,7 @@ void _glfwPlatformGetRequiredInstanceExtensions(char** extensions)
 
     extensions[0] = "VK_KHR_surface";
 
-    // Note: VK_KHR_xcb_surface is preferred due to some early ICDs exposing but
+    // NOTE: VK_KHR_xcb_surface is preferred due to some early ICDs exposing but
     //       not correctly implementing VK_KHR_xlib_surface
     if (_glfw.vk.KHR_xcb_surface && _glfw.x11.x11xcb.handle)
         extensions[1] = "VK_KHR_xcb_surface";

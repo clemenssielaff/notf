@@ -423,7 +423,7 @@ GLFWbool _glfwInitGLX(void)
 //
 void _glfwTerminateGLX(void)
 {
-    // Note: This function must not call any X11 functions, as it is called
+    // NOTE: This function must not call any X11 functions, as it is called
     //       after XCloseDisplay (see _glfwPlatformTerminate for details)
 
     if (_glfw.glx.handle)
@@ -557,7 +557,7 @@ GLFWbool _glfwCreateContextGLX(_GLFWwindow* window,
                 setAttrib(GLX_CONTEXT_OPENGL_NO_ERROR_ARB, GLFW_TRUE);
         }
 
-        // Note: Only request an explicitly versioned context when necessary, as
+        // NOTE: Only request an explicitly versioned context when necessary, as
         //       explicitly requesting version 1.0 does not always return the
         //       highest version supported by the driver
         if (ctxconfig->major != 1 || ctxconfig->minor != 0)

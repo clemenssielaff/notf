@@ -75,7 +75,6 @@ std::pair<GLenum, GLenum> convert_blend_mode(const BlendMode::Mode blend_mode) {
 
 } // namespace
 
-
 NOTF_OPEN_NAMESPACE
 
 // vao guard ======================================================================================================== //
@@ -110,7 +109,10 @@ GraphicsContext::GraphicsContext(valid_ptr<GLFWwindow*> window) : m_window(windo
     clear(m_state.clear_color, Buffer::COLOR);
 }
 
-GraphicsContext::~GraphicsContext() = default;
+GraphicsContext::~GraphicsContext() {
+    NOTF_GUARD(make_current());
+    m_state = {}; // delete the state with a current OpenGL context
+}
 
 GraphicsContext& GraphicsContext::get() {
     if (GLFWwindow* glfw_window = glfwGetCurrentContext()) {

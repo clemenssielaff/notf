@@ -86,10 +86,17 @@ public:
     /// @{
     /// Schedules a new event to be handled on the event thread.
     void schedule(AnyEventPtr&& event) { m_event_queue.push(std::move(event)); }
+
     template<class Func>
     std::enable_if_t<std::is_invocable_v<Func>> schedule(Func&& function) {
         schedule(std::make_unique<Event<Func>>(std::forward<Func>(function)));
     }
+
+    template<class Func>
+    void schedule(Event<Func>&& event) {
+        schedule(std::make_unique<Event<Func>>(std::move(event)));
+    }
+
     /// @}
 
 private:

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "notf/meta/log.hpp"
 #include "notf/meta/numeric.hpp"
 #include "notf/meta/singleton.hpp"
 #include "notf/meta/smart_ptr.hpp"
@@ -161,8 +162,9 @@ public:
             try {
                 _fire();
             }
-            catch (...) {
+            catch (const std::exception& exception) {
                 m_exception = std::current_exception();
+                NOTF_LOG_WARN("Exception caught in Timer: \"{}\"", exception.what());
                 if (!m_ignore_exceptions) { stop(); }
             }
 
@@ -248,12 +250,12 @@ auto IntervalTimer(Duration interval, Lambda&& lambda, uint repetitions = Timer:
     struct IntervalTimerImpl : public Timer {
         IntervalTimerImpl(duration_t interval, Lambda lambda, uint repetitions)
             : Timer(repetitions), m_interval(interval), m_lambda(std::forward<Lambda>(lambda)) {
-            _set_next_timeout(now() + m_interval);
+            _set_next_timeout(get_now() + m_interval);
         }
 
     private:
         void _fire() final {
-            _set_next_timeout(now() + m_interval);
+            _set_next_timeout(get_now() + m_interval);
             std::invoke(m_lambda);
         }
 
@@ -277,12 +279,12 @@ auto VariableTimer(Lambda&& lambda, VariableFunc&& func, uint repetitions = Time
             : Timer(repetitions)
             , m_lambda(std::forward<Lambda>(lambda))
             , m_variable_func(std::forward<VariableFunc>(func)) {
-            _set_next_timeout(now() + m_variable_func());
+            _set_next_timeout(get_now() + m_variable_func());
         }
 
     private:
         void _fire() final {
-            _set_next_timeout(now() + m_variable_func());
+            _set_next_timeout(get_now() + m_variable_func());
             std::invoke(m_lambda);
         }
 

@@ -246,8 +246,11 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
 }
 
 Plotter::~Plotter() {
-    NOTF_ASSERT(m_context.is_current());
+    NOTF_GUARD(m_context.make_current());
     NOTF_CHECK_GL(glDeleteVertexArrays(1, &m_vao_id));
+    m_indices.reset();
+    m_vertices.reset();
+    m_program.reset();
 }
 
 Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {

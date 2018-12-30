@@ -100,10 +100,10 @@ public:
             /// Constructor.
             /// @param node         The iterated Node.
             /// @param child_count  Numer of children of the Node.
-            Impl(AnyNodeHandle node, const size_t child_count) : node(std::move(node)), end(child_count) {}
+            Impl(const AnyNodeHandle node, const size_t child_count) : node(std::move(node)), end(child_count) {}
 
             /// The iterated Node.
-            AnyNodeHandle node;
+            const AnyNodeHandle node;
 
             /// Current child index.
             size_t index = 0;
@@ -116,33 +116,30 @@ public:
     public:
         /// Constructor.
         /// @param node Node at the root of the iteration.
-        Iterator(AnyNodeHandle node) {
-            const size_t child_count = node->get_child_count();
-            m_iterators.emplace_back(std::move(node), child_count);
+        Iterator(const AnyNodeHandle node) {
+            if (node) {
+                const size_t child_count = node->get_child_count();
+                m_iterators.emplace_back(std::move(node), child_count);
+            }
         }
 
         /// Finds and returns the next Node in the iteration.
         /// @param node [OUT] Next Node in the iteration.
         /// @returns    True if a new Node was found.
-        bool next(AnyNodeHandle& node) {
-            while (true) {
+        bool next(AnyNodeHandle& output_node) {
+            while (!m_iterators.empty()) {
                 Impl& it = m_iterators.back();
-                node = it.node;
+                output_node = it.node;
 
                 if (it.index == it.end) {
-                    if (m_iterators.size() == 1) {
-                        return false;
-                    } else {
-                        m_iterators.pop_back();
-                        continue;
-                    }
+                    m_iterators.pop_back();
+                } else {
+                    const size_t child_count = output_node->get_child_count();
+                    if (child_count > 0) { m_iterators.emplace_back(output_node->get_child(0), child_count); }
                 }
-
-                const size_t child_count = node->get_child_count();
-                if (child_count > 0) { m_iterators.emplace_back(node->get_child(0), child_count); }
-
                 return true;
             }
+            return false;
         }
 
         // fields ---------------------------------------------------------- //
@@ -249,12 +246,8 @@ public:
     /// @returns        Actual new name of the Node.
     std::string set_name(const std::string& name);
 
-    /// Tries to construct a typed Handle from this Node.
-    /// @returns    Typed Handle to this Node, or an empty Handle if the dynamic cast failed.
-    template<class T = AnyNode, class = std::enable_if_t<std::is_base_of_v<AnyNode, T>>>
-    NodeHandle<T> to_handle() {
-        return std::dynamic_pointer_cast<T>(shared_from_this());
-    }
+    /// Creates a NodeHandle of this Node.
+    AnyNodeHandle handle_from_this() { return weak_from_this(); }
 
     // properties -------------------------------------------------------------
 
@@ -364,10 +357,7 @@ public:
     }
 
     /// The number of direct children of this Node.
-    size_t get_child_count() const {
-        NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
-        return _read_children().size();
-    }
+    size_t get_child_count() const { return _read_children().size(); }
 
     /// Returns a handle to a child Node at the given index.
     /// Index 0 is the node furthest back, index `size() - 1` is the child drawn at the front.
@@ -509,6 +499,7 @@ protected: // for all subclasses
         { // register the new node with the graph and store it as child
             auto node = std::static_pointer_cast<AnyNode>(child);
             node->_finalize();
+            node->_set_finalized();
             TheGraph::AccessFor<AnyNode>::register_node(node);
             _write_children().emplace_back(std::move(node));
         }
@@ -563,9 +554,14 @@ private:
     /// Never creates a modified copy.
     AnyNode* _get_parent() const;
 
-    /// Finalizes this Node.
     /// Called on every new Node instance right after the Constructor of the most derived class has finished.
-    void _finalize() {
+    /// The reason for this method is that in it, you can already create Handles to this Node, which you cannot do in
+    /// the constructor.
+    virtual void _finalize() {}
+
+    /// Marks this Node as finalized.
+    /// Called right after this Node's `_finalize` method has returned.
+    void _set_finalized() {
         // do not check whether this is the UI thread as we need this method during Application construction
         m_flags[to_number(InternalFlags::FINALIZED)] = true;
     }
@@ -696,7 +692,7 @@ template<>
 class Accessor<AnyNode, RootNode> {
     friend RootNode;
 
-    static void finalize(AnyNode& node) { node._finalize(); }
+    static void set_finalized(AnyNode& node) { node._set_finalized(); }
     static std::vector<AnyNodePtr>& write_children(AnyNode& node) { return node._write_children(); }
 };
 
@@ -704,7 +700,14 @@ template<>
 class Accessor<AnyNode, Window> {
     friend Window;
 
-    static void finalize(AnyNode& node) { node._finalize(); }
+    static void set_finalized(AnyNode& node) { node._set_finalized(); }
+
+    /// Called in the destructor, so the Window can destroy all children (including those stored in the modified data)
+    /// while its GraphicsContext is still alive.
+    static void remove_children_now(AnyNode* node) {
+        node->m_modified_data.reset();
+        node->m_children.clear();
+    }
 };
 
 template<>

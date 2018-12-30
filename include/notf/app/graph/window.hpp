@@ -240,10 +240,12 @@ public:
     SceneHandle get_scene() const { return m_scene; }
 
     /// (Re-)Sets the Scene displayed in this Window.
-    template<class T, class... Args>
-    NodeHandle<T> set_scene(Args&&... args) {
+    template<class T, class... Args, class = std::enable_if_t<std::is_base_of_v<Scene, T>>>
+    auto set_scene(Args&&... args) {
         _clear_children();
-        return _create_child<T>(this, std::forward<Args>(args)...).to_handle();
+        auto scene_node = _create_child<T>(this, std::forward<Args>(args)...).to_handle();
+        m_scene = scene_node;
+        return scene_node;
     }
 
 private:

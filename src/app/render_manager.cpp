@@ -17,7 +17,7 @@ void RenderManager::RenderThread::request_redraw(std::vector<AnyNodeHandle> wind
         NOTF_GUARD(std::lock_guard(m_mutex));
         for (auto& node : windows) { // basic round-robin scheduling
             if (!node) { continue; }
-            if (auto window = node->to_handle<Window>(); window) {
+            if (auto window = handle_cast<WindowHandle>(node); window) {
                 auto itr = std::find(m_dirty_windows.begin(), m_dirty_windows.end(), window);
                 if (itr == m_dirty_windows.end()) { m_dirty_windows.emplace_back(std::move(window)); }
             }
@@ -27,24 +27,32 @@ void RenderManager::RenderThread::request_redraw(std::vector<AnyNodeHandle> wind
 }
 
 void RenderManager::RenderThread::_run() {
-    WindowHandle window;
+    NOTF_LOG_TRACE("Starting render loop");
+
+    WindowHandle window_handle;
     while (m_is_running) {
         { // wait until the next frame is ready
             std::unique_lock<Mutex> lock(m_mutex);
             if (m_is_running) {
                 m_condition.wait(lock, [&] { return !m_dirty_windows.empty() || !m_is_running; });
             }
-            if (!m_is_running) { return; }
-            window = std::move(m_dirty_windows.front());
+            if (!m_is_running) { break; }
+            window_handle = std::move(m_dirty_windows.front());
             m_dirty_windows.pop_front();
         }
+        if (window_handle.is_expired()) { continue; }
+
+        // use a const reference for window access, otherwise the handle will throw a ThreadError because only the ui
+        // thread is allowed to access mutable methods on a handle
+        const WindowHandle& window = window_handle;
+
         { // render the window
             GraphicsContext& context = window->get_graphics_context();
-            const auto context_guard = context.make_current();
+            NOTF_GUARD(context.make_current());
 
             context.begin_frame();
             try {
-                window->get_scene()->draw();
+                if (SceneHandle scene = window->get_scene()) { SceneHandle::AccessFor<RenderManager>::draw(scene); }
             }
             // if an error bubbled all the way up here, something has gone horribly wrong
             catch (const notf_exception& error) {
@@ -53,6 +61,7 @@ void RenderManager::RenderThread::_run() {
             context.finish_frame();
         }
     }
+    NOTF_LOG_TRACE("Finished render loop");
 }
 
 void RenderManager::RenderThread::_stop() {
@@ -63,8 +72,9 @@ void RenderManager::RenderThread::_stop() {
 
 void RenderManager::render() {
     NOTF_ASSERT(this_thread::is_the_ui_thread());
-    std::vector<AnyNodeHandle> dirty_windows = TheGraph()->synchronize();
-    if (!dirty_windows.empty()) { m_render_thread->request_redraw(std::move(dirty_windows)); }
+    if (std::vector<AnyNodeHandle> dirty_windows = TheGraph()->synchronize(); !dirty_windows.empty()) {
+        m_render_thread->request_redraw(std::move(dirty_windows));
+    }
 }
 
 } // namespace detail

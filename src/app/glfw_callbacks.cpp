@@ -3,9 +3,9 @@
 #include "notf/meta/log.hpp"
 
 #include "notf/app/event_handler.hpp"
+#include "notf/app/graph/window.hpp"
 #include "notf/app/input.hpp"
 #include "notf/app/timer_pool.hpp"
-#include "notf/app/graph/window.hpp"
 
 #include "notf/graphic/glfw.hpp"
 
@@ -116,7 +116,11 @@ void GlfwCallbacks::_on_window_move(GLFWwindow* glfw_window, const int x, const 
 }
 
 void GlfwCallbacks::_on_window_resize(GLFWwindow* glfw_window, const int width, const int height) {
-    //        schedule<WindowResizeEvent>(glfw_window, Size2i{width, height});
+    if (auto window = to_window_handle(glfw_window)) {
+        TheEventHandler()->schedule(Event([window = std::move(window),
+                                           size = Size2i(width, height)]() mutable { window->set<Window::size>(size); },
+                                          /*weight*/ 1));
+    }
 }
 
 void GlfwCallbacks::_on_framebuffer_resize(GLFWwindow* glfw_window, const int width, const int height) {
@@ -152,7 +156,7 @@ void GlfwCallbacks::_on_file_drop(GLFWwindow* glfw_window, const int count, cons
 void GlfwCallbacks::_on_window_close(GLFWwindow* glfw_window) {
     // TODO: ask the Window if it should really be closed; ignore and unset the flag if not
     TheEventHandler()->schedule(
-        [window = to_window_handle(glfw_window)]() mutable { window->call<Window::to_close>(); });
+        Event([window = to_window_handle(glfw_window)]() mutable { window->call<Window::to_close>(); }, /*weight*/ 1));
 }
 
 void GlfwCallbacks::_on_monitor_change(GLFWmonitor* glfw_monitor, const int kind) {}

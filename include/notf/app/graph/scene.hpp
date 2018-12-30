@@ -46,6 +46,8 @@ struct ScenePolicy {
 /// `GraphicsContext::render_area().size()` when drawing.
 class Scene : public Node<detail::scene_policy::ScenePolicy> {
 
+    friend SceneHandle;
+
     // types ----------------------------------------------------------------------------------- //
 private:
     /// Compile time Node base type.
@@ -60,13 +62,14 @@ public:
     /// Constructor, constructs a full-screen, visible Scene.
     /// @param parent   Parent of this Node.
     /// @param visualizer   Visualizer that draws the Scene.
-    Scene(valid_ptr<AnyNode*> parent, valid_ptr<VisualizerPtr> visualizer);
+    Scene(valid_ptr<AnyNode*> parent, VisualizerPtr visualizer);
 
     /// Whether the Scene is the direct child of a Window Node (a "Window Scene") or nested within another Scene.
     bool is_window_scene() const;
 
+private:
     /// Draw the Scene.
-    void draw();
+    void _draw();
 
     // fields --------------------------------------------------------------------------------------------------- //
 private:
@@ -81,13 +84,19 @@ namespace detail {
 template<>
 struct NodeHandleInterface<Scene> : public NodeHandleBaseInterface<Scene> {
 
-    using Scene::draw;
     using Scene::is_window_scene;
 };
 
 } // namespace detail
 
 class SceneHandle : public NodeHandle<Scene> {
+
+    friend Accessor<SceneHandle, detail::RenderManager>;
+
+    // types ----------------------------------------------------------------------------------- //
+public:
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(SceneHandle);
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -97,6 +106,20 @@ public:
     /// Constructor from specialized base.
     template<class Derived, class = std::enable_if_t<std::is_base_of_v<Scene, Derived>>>
     SceneHandle(NodeHandle<Derived>&& handle) : NodeHandle<Scene>(std::move(handle)) {}
+
+private:
+    /// Draws the Scene.
+    void _draw() const { _get_node()->_draw(); }
+};
+
+// scene handle accessors =========================================================================================== //
+
+template<>
+class Accessor<SceneHandle, detail::RenderManager> {
+    friend detail::RenderManager;
+
+    /// Draws the Scene.
+    static void draw(const SceneHandle& scene) { scene._draw(); }
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -166,6 +166,7 @@ static GLFWbool parseMapping(_GLFWmapping* mapping, const char* string)
 
     while (*c)
     {
+        // TODO: Implement output modifiers
         if (*c == '+' || *c == '-')
             return GLFW_FALSE;
 
@@ -1241,7 +1242,7 @@ GLFWAPI int glfwGetGamepadState(int jid, GLFWgamepadstate* state)
         if (e->type == _GLFW_JOYSTICK_AXIS)
         {
             const float value = js->axes[e->index] * e->axisScale + e->axisOffset;
-            state->axes[i] = fminf(fmaxf(value, -1.f), 1.f);
+            state->axes[i] = _glfw_fminf(_glfw_fmaxf(value, -1.f), 1.f);
         }
         else if (e->type == _GLFW_JOYSTICK_HATBIT)
         {

@@ -262,6 +262,8 @@ struct NodeHandleInterface<AnyWidget> : public NodeHandleBaseInterface<AnyWidget
 
 class WidgetHandle : public NodeHandle<AnyWidget> {
 
+    friend Accessor<WidgetHandle, Painterpreter>;
+
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Nested `AccessFor<T>` type.
@@ -274,6 +276,20 @@ public:
 
     /// Constructor from specialized base.
     WidgetHandle(NodeHandle<AnyWidget>&& handle) : NodeHandle(std::move(handle)) {}
+
+private:
+    /// Updates (if necessary) and returns the Design of this Widget.
+    const WidgetDesign& _get_design() const { return _get_node()->_get_design(); }
+};
+
+// widget handle accessors ========================================================================================== //
+
+template<>
+class Accessor<WidgetHandle, Painterpreter> {
+    friend Painterpreter;
+
+    /// Updates (if necessary) and returns the Design of this Widget.
+    static const WidgetDesign& get_design(const WidgetHandle& widget) { return widget._get_design(); }
 };
 
 NOTF_CLOSE_NAMESPACE

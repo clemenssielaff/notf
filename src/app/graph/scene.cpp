@@ -11,12 +11,12 @@ NOTF_OPEN_NAMESPACE
 
 // scene ========================================================================================================== //
 
-Scene::Scene(valid_ptr<AnyNode*> parent, valid_ptr<VisualizerPtr> visualizer)
+Scene::Scene(valid_ptr<AnyNode*> parent, VisualizerPtr visualizer)
     : super_t(parent), m_visualizer(std::move(visualizer)) {}
 
 bool Scene::is_window_scene() const { return _has_parent_of_type<Window>(); }
 
-void Scene::draw() {
+void Scene::_draw() {
     GraphicsContext& context = GraphicsContext::get();
     NOTF_ASSERT(context.is_current());
 

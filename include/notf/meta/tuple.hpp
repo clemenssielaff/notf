@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <tuple>
+#include <variant>
 
 #include "notf/meta/types.hpp"
 

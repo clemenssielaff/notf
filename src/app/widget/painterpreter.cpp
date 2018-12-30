@@ -15,71 +15,70 @@ NOTF_OPEN_NAMESPACE
 
 Painterpreter::Painterpreter(GraphicsContext& context) : m_plotter(std::make_shared<Plotter>(context)) { _reset(); }
 
-void Painterpreter::paint(AnyWidget& widget) {
-//    { // adopt the Widget's auxiliary information
-//        m_base_xform = widget.get_xform<Widget::Space::WINDOW>();
-//        m_base_clipping = widget.get_clipping_rect();
-//    }
+void Painterpreter::paint(const WidgetHandle& widget) {
+    { // adopt the Widget's auxiliary information
+        m_base_xform = widget->get_xform<AnyWidget::Space::WINDOW>();
+        m_base_clipping = widget->get_clipping_rect();
+    }
 
-//    { // parse the commands
-//        const WidgetDesign& design = Widget::Access<Painterpreter>::get_design(widget);
-//        const std::vector<WidgetDesign::Command>& buffer = WidgetDesign::Access<Painterpreter>::get_buffer(design);
-//        for (const WidgetDesign::Command& command : buffer) {
-//            std::visit(
-//                overloaded{
-//                    [&](const WidgetDesign::PushStateCommand&) { _push_state(); },
+    { // parse the commands
+        const WidgetDesign& design = WidgetHandle::AccessFor<Painterpreter>::get_design(widget);
+        const std::vector<WidgetDesign::Command>& buffer = WidgetDesign::AccessFor<Painterpreter>::get_buffer(design);
+        for (const WidgetDesign::Command& command : buffer) {
+            std::visit(overloaded{
+                           [&](const WidgetDesign::PushStateCommand&) { _push_state(); },
 
-//                    [&](const WidgetDesign::PopStateCommand&) { _pop_state(); },
+                           [&](const WidgetDesign::PopStateCommand&) { _pop_state(); },
 
-//                    [&](const WidgetDesign::SetTransformationCommand& command) {
-//                        State& state = _get_current_state();
-//                        state.xform = command.data->transformation;
-//                    },
+                           [&](const WidgetDesign::SetTransformationCommand& command) {
+                               State& state = _get_current_state();
+                               state.xform = command.data->transformation;
+                           },
 
-//                    [&](const WidgetDesign::SetStrokeWidthCommand& command) {
-//                        State& state = _get_current_state();
-//                        state.stroke_width = command.stroke_width;
-//                    },
+                           [&](const WidgetDesign::SetStrokeWidthCommand& command) {
+                               State& state = _get_current_state();
+                               state.stroke_width = command.stroke_width;
+                           },
 
-//                    [&](const WidgetDesign::SetFontCommand& command) {
-//                        State& state = _get_current_state();
-//                        state.font = command.data->font;
-//                    },
+                           [&](const WidgetDesign::SetFontCommand& command) {
+                               State& state = _get_current_state();
+                               state.font = command.data->font;
+                           },
 
-//                    [&](const WidgetDesign::SetPolygonPathCommand& command) {
-//                        State& state = _get_current_state();
-//                        state.path = m_plotter->add(command.data->polygon);
-//                        m_paths.emplace_back(state.path);
-//                    },
+                           [&](const WidgetDesign::SetPolygonPathCommand& command) {
+                               State& state = _get_current_state();
+                               state.path = m_plotter->add(command.data->polygon);
+                               m_paths.emplace_back(state.path);
+                           },
 
-//                    [&](const WidgetDesign::SetSplinePathCommand& command) {
-//                        State& state = _get_current_state();
-//                        state.path = m_plotter->add(command.data->spline);
-//                        m_paths.emplace_back(state.path);
-//                    },
+                           [&](const WidgetDesign::SetSplinePathCommand& command) {
+                               State& state = _get_current_state();
+                               state.path = m_plotter->add(command.data->spline);
+                               m_paths.emplace_back(state.path);
+                           },
 
-//                    [&](const WidgetDesign::SetPathIndexCommand& command) {
-//                        NOTF_ASSERT(command.index);
-//                        const size_t path_index = command.index.value() - Plotter::PathId::first().value();
-//                        NOTF_ASSERT(path_index < m_paths.size());
-//                        State& state = _get_current_state();
-//                        state.path = m_paths[path_index];
-//                    },
+                           [&](const WidgetDesign::SetPathIndexCommand& command) {
+                               NOTF_ASSERT(command.index);
+                               const size_t path_index = command.index.value() - Plotter::PathId::first().value();
+                               NOTF_ASSERT(path_index < m_paths.size());
+                               State& state = _get_current_state();
+                               state.path = m_paths[path_index];
+                           },
 
-//                    [&](const WidgetDesign::WriteCommand& command) { _write(command.data->text); },
+                           [&](const WidgetDesign::WriteCommand& command) { _write(command.data->text); },
 
-//                    [&](const WidgetDesign::FillCommand&) { _fill(); },
+                           [&](const WidgetDesign::FillCommand&) { _fill(); },
 
-//                    [&](const WidgetDesign::StrokeCommand&) { _stroke(); },
-//                },
-//                command);
-//        }
-//    }
+                           [&](const WidgetDesign::StrokeCommand&) { _stroke(); },
+                       },
+                       command);
+        }
+    }
 
-//    // plot it
-//    m_plotter->swap_buffers();
-//    m_plotter->render();
-//    _reset();
+    // plot it
+    m_plotter->swap_buffers();
+    m_plotter->render();
+    _reset();
 }
 
 void Painterpreter::_reset() {
@@ -140,8 +139,9 @@ void Painterpreter::_stroke() {
         if (stroke_width < 1) {
             // if the stroke width is less than pixel size, use alpha to emulate coverage.
             const float alpha = clamp(stroke_width, 0.0f, 1.0f);
-            paint.inner_color.a *= alpha * alpha; // since coverage is area, scale by alpha*alpha
-            paint.outer_color.a *= alpha * alpha;
+            const float alpha_squared = alpha * alpha; // since coverage is area, scale by alpha*alpha
+            paint.inner_color.a *= alpha_squared;
+            paint.outer_color.a *= alpha_squared;
             stroke_width = 1;
         }
     }

@@ -15,8 +15,6 @@ namespace detail {
 template<class NodeType>
 struct NodeHandleBaseInterface : protected NodeType {
 
-    using NodeType::to_handle;
-
     // properties -------------------------------------------------------------
 
     using NodeType::connect_property;
@@ -124,6 +122,9 @@ private:
     std::weak_ptr<NodeType> m_node;
 };
 
+/// Any Node Handle base class for identification.
+struct NodeHandleBase {};
+
 } // namespace detail
 
 // typed node handle ================================================================================================ //
@@ -132,11 +133,14 @@ private:
 /// All methods accessible via `.` can be called from anywhere, methods accessible via `->` must only be called from the
 /// UI thread.
 template<class NodeType>
-class NodeHandle {
+class NodeHandle : public detail::NodeHandleBase {
 
     static_assert(std::is_base_of_v<AnyNode, NodeType>, "NodeType must be a type derived from Node");
 
     friend ::std::hash<NodeHandle<NodeType>>;
+
+    template<class Target, class T, class>
+    friend inline Target handle_cast(const NodeHandle<T>&);
 
     template<class>
     friend class NodeHandle; // befriend all other TypedNodeHandles so you can copy their node
@@ -264,12 +268,13 @@ protected:
     /// Returns an interface pointer.
     /// @throws HandleExpiredError  If the Handle has expired.
     /// @throws ThreadError         If the current thread is not the UI thread.
-    Interface* _get_interface() const {
+    Interface* _get_interface() {
         if (!this_thread::is_the_ui_thread()) {
             NOTF_THROW(ThreadError, "NodeHandles may only be modified from the UI thread");
         }
         return reinterpret_cast<Interface*>(_get_node().get());
     }
+    const Interface* _get_interface() const { return reinterpret_cast<Interface*>(_get_node().get()); }
 
     // fields ---------------------------------------------------------------------------------- //
 protected:
@@ -291,6 +296,15 @@ bool operator!=(const NodeHandle<LeftType>& lhs, const NodeHandle<RightType>& rh
 template<class LeftType, class RightType>
 bool operator<(const NodeHandle<LeftType>& lhs, const NodeHandle<RightType>& rhs) noexcept {
     return lhs.m_node.owner_before(rhs.m_node);
+}
+
+/// Cast one handle to another.
+template<class Target, class T, class = std::enable_if_t<std::is_base_of_v<detail::NodeHandleBase, Target>>>
+inline Target handle_cast(const NodeHandle<T>& from) {
+    if (auto node = from.m_node.lock()) {
+        return Target(std::dynamic_pointer_cast<typename Target::node_t>(std::move(node)));
+    }
+    return {};
 }
 
 // typed node owner ================================================================================================= //

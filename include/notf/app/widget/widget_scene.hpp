@@ -27,10 +27,12 @@ public:
 
     /// Sets a new Widget at the top of the hierarchy in this Scene.
     /// @param args Arguments that are forwarded to the constructor of the child.
-    template<class T, class... Args>
-    void set_widget(Args&&... args) {
+    template<class T, class... Args, class = std::enable_if_t<std::is_base_of_v<AnyWidget, T>>>
+    auto set_widget(Args&&... args) {
         _clear_children();
-        return _create_child<T>(std::forward<Args>(args)...);
+        auto widget = _create_child<T>(this, std::forward<Args>(args)...).to_handle();
+        m_root_widget = handle_cast<WidgetHandle>(widget);
+        return widget;
     }
 
     /// Returns the Widget at the top of the hierarchy in this Scene.
@@ -42,10 +44,34 @@ public:
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
     /// The Widget underneath the root of this Scene.
-    AnyNodeHandle m_root_widget;
+    WidgetHandle m_root_widget;
 
     /// Outermost clipping rect, encompasses the entire Scene.
     Clipping m_clipping;
+};
+
+// widget scene handle ============================================================================================== //
+
+namespace detail {
+
+template<>
+struct NodeHandleInterface<WidgetScene> : public NodeHandleBaseInterface<WidgetScene> {
+
+    using WidgetScene::get_widget;
+    using WidgetScene::set_widget;
+};
+
+} // namespace detail
+
+class WidgetSceneHandle : public NodeHandle<WidgetScene> {
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    // use baseclass' constructors
+    using NodeHandle<WidgetScene>::NodeHandle;
+
+    /// Constructor from specialized base.
+    WidgetSceneHandle(NodeHandle<WidgetScene>&& handle) : NodeHandle(std::move(handle)) {}
 };
 
 NOTF_CLOSE_NAMESPACE

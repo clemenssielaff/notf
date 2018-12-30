@@ -34,7 +34,7 @@ public:
 
 private:
     /// Finalizes this RootNode.
-    void _finalize_root() { AnyNode::AccessFor<RootNode>::finalize(*this); }
+    void _finalize_root() { AnyNode::AccessFor<RootNode>::set_finalized(*this); }
 
     /// Adds a new Window as child of this RootNode.
     void _add_window(WindowPtr window);
@@ -50,7 +50,7 @@ class Accessor<RootNode, detail::Graph> {
     friend detail::Graph;
 
     /// Finalizes the given RootNode.
-    static void finalize(RootNode& node) { node._finalize_root(); }
+    static void finalize_root(RootNode& node) { node._finalize_root(); }
 };
 
 template<>

@@ -45,7 +45,7 @@ TimerPool::TimerPool(const size_t buffer_size)
                     while (timer && timer->is_active()) {
                         // fire right away if the next timeout has passed
                         const auto timeout = timer->get_next_timeout();
-                        if (timeout <= now()) {
+                        if (timeout <= get_now()) {
                             timer->fire();
 
                         } else {

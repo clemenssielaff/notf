@@ -104,7 +104,7 @@ WindowHandle Window::create(Arguments settings) {
 
     RootNodePtr root_node = TheGraph::AccessFor<Window>::get_root_node_ptr();
     WindowPtr window = _create_shared(root_node.get(), glfw_window, std::move(settings));
-    AnyNode::AccessFor<Window>::finalize(*window);
+    AnyNode::AccessFor<Window>::set_finalized(*window);
 
     RootNode::AccessFor<Window>::add_window(*root_node, window);
     TheGraph::AccessFor<Window>::register_node(std::static_pointer_cast<AnyNode>(window));
@@ -115,11 +115,8 @@ WindowHandle Window::create(Arguments settings) {
 }
 
 Window::~Window() {
-
-    { // delete all Nodes (Scenes) underneath the Window with the GraphicsContext current
-        NOTF_GUARD(m_graphics_context->make_current());
-        _clear_children();
-    }
+    // destroy all children (including those stored in the modified data) while the GraphicsContext is still alive
+    AnyNode::AccessFor<Window>::remove_children_now(this);
 
     // unregister from the application and event handling
     TheApplication::AccessFor<Window>::unregister_window(m_glfw_window);
@@ -251,9 +248,18 @@ bool Window::_on_state_change(Arguments::State& new_state) {
 }
 
 bool Window::_on_size_change(Size2i& new_size) {
+    // size must always be valid
     new_size.max(Size2i::zero());
 
-    if (get<state>() == State::WINDOWED) { glfwSetWindowSize(m_glfw_window, new_size.width(), new_size.height()); }
+    if (get<state>() == State::WINDOWED) {
+        Size2i old_size;
+        glfwGetWindowSize(m_glfw_window, &old_size.width(), &old_size.height());
+        if (old_size != new_size) {
+            // the size is updated either from a callback notifying that the Window size has been changed, or
+            // programatically from user code. We must only change the GLFW Window size in the latter case.
+            glfwSetWindowSize(m_glfw_window, new_size.width(), new_size.height());
+        }
+    }
 
     return true; // always succeed
 }

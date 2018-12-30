@@ -36,6 +36,9 @@ NOTF_DECLARE_UNIQUE_POINTERS(class, AnyEvent);
 class TheEventHandler;
 
 // render_manager.hpp
+namespace detail {
+class RenderManager;
+}
 class TheRenderManager;
 
 // graph.hpp
@@ -96,7 +99,7 @@ NOTF_DECLARE_SHARED_POINTERS(class, Timer);
 class TheTimerPool;
 
 // visualizer
-NOTF_DECLARE_SHARED_POINTERS(class, Visualizer);
+NOTF_DECLARE_UNIQUE_POINTERS(class, Visualizer);
 
 // window.hpp
 namespace detail {
@@ -124,6 +127,10 @@ class WidgetDesign;
 // widget/widget.hpp
 template<class, class>
 class State;
+
+// widget/widget_scene.hpp
+class WidgetScene;
+class WidgetSceneHandle;
 
 
 // widget/painterpreter.hpp

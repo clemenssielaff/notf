@@ -25,7 +25,7 @@ public:
     Painterpreter(GraphicsContext& context);
 
     /// Paints the Design of the given Widget.
-    void paint(AnyWidget& widget);
+    void paint(const WidgetHandle& widget);
 
 private:
     /// Reset the internal state.

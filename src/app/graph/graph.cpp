@@ -77,7 +77,7 @@ std::string Graph::NodeRegistry::set_name(const Uuid uuid, const std::string& pr
 Graph::Graph() {
     // create the new root node ...
     m_root_node = std::make_shared<RootNode>();
-    RootNode::AccessFor<Graph>::finalize(*m_root_node);
+    RootNode::AccessFor<Graph>::finalize_root(*m_root_node);
 
     // ... and register it
     AnyNodePtr node = std::static_pointer_cast<AnyNode>(m_root_node);

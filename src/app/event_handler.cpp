@@ -72,7 +72,7 @@ void EventHandler::_start(RecursiveMutex& ui_mutex) {
 
                     // if the last event added enough weight to render a frame and no other events have been handled
                     // since, we do not need to render another frame here. Therefore we treat zero as a special case.
-                    if (is_zero(weight)) { the_render_manager->render(); }
+                    if (!is_zero(weight)) { the_render_manager->render(); }
                     weight = next_after(0.f);
 
                     // wait for the next event or for the queue to close

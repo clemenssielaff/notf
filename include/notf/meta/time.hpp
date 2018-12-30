@@ -22,13 +22,19 @@ using duration_t = std::chrono::duration<std::chrono::nanoseconds::rep, std::rat
 /// Point in time.
 using timepoint_t = std::chrono::time_point<clock_t, duration_t>;
 
-static_assert (std::is_trivially_copyable_v<duration_t>);
-static_assert (std::is_trivially_copyable_v<timepoint_t>);
+static_assert(std::is_trivially_copyable_v<duration_t>);
+static_assert(std::is_trivially_copyable_v<timepoint_t>);
 
 // functions ======================================================================================================== //
 
 /// What time is it right now?
-inline timepoint_t now() { return std::chrono::time_point_cast<duration_t>(clock_t::now()); }
+inline timepoint_t get_now() { return std::chrono::time_point_cast<duration_t>(clock_t::now()); }
+
+/// How much time has passed since the first time this function was called?
+inline duration_t get_age() {
+    static const timepoint_t start = get_now();
+    return get_now() - start;
+}
 
 /// Duration from seconds.
 template<class T, class = std::enable_if_t<std::is_arithmetic_v<T>>>
