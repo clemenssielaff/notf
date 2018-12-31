@@ -51,7 +51,7 @@ Window::Window(valid_ptr<AnyNode*> parent, valid_ptr<GLFWwindow*> window, Argume
 
     // create the graphics context
     m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window);
-    auto context_guard = m_graphics_context->make_current();
+    NOTF_GUARD(m_graphics_context->make_current());
 
     // store settings in properties
     set<title>(std::move(settings.title));
@@ -70,8 +70,8 @@ Window::Window(valid_ptr<AnyNode*> parent, valid_ptr<GLFWwindow*> window, Argume
 
     // connect slots
     m_pipe_to_close = make_pipeline(_get_slot<to_close>() | Trigger([&]() {
-                                        NOTF_LOG_TRACE("Closing Window \"{}\"", get<title>());
-                                        remove();
+                                        NOTF_LOG_TRACE("Started closing Window \"{}\"", get<title>());
+                                        this->remove();
                                     }));
     NOTF_LOG_INFO("Created Window \"{}\" using OpenGl version: {}", get<title>(), glGetString(GL_VERSION));
 
@@ -119,7 +119,16 @@ Window::~Window() {
     AnyNode::AccessFor<Window>::remove_children_now(this);
 
     // unregister from the application and event handling
-    TheApplication::AccessFor<Window>::unregister_window(m_glfw_window);
+    try {
+        TheApplication::AccessFor<Window>::unregister_window(m_glfw_window);
+    }
+    catch (const SingletonError&) {
+        // If the Application was never started, all Window objects is destroyed when TheApplication singleton goes out
+        // of scope. At that point, we can no longer unregister from it - but it doesn't matter since the Application
+        // is going down anyway.
+    }
+
+    NOTF_LOG_TRACE("Finished closing Window");
 }
 
 void Window::_validate_settings(Arguments& settings) {

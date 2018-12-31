@@ -20,13 +20,13 @@ class AnyEvent {
 public:
     /// Constructor.
     /// @param weight   Weight of this Event.
-    AnyEvent(const float weight = 0) : m_weight(weight) {}
+    AnyEvent(const double weight = 0) : m_weight(weight) {}
 
     /// Virtual destructor.
     virtual ~AnyEvent() = default;
 
     /// The "weight" of this Event.
-    float get_weight() const { return m_weight; }
+    double get_weight() const { return m_weight; }
 
     /// Executes the event function.
     virtual void run() = 0;
@@ -38,7 +38,7 @@ private:
     /// The default is 0, meaning that this Event does not add to the counter.
     /// Even if all Events have a counter of zero, the Event handler will draw a new frame eventually once the queue
     /// of new Events is empty ... unless of course you manage to flood it (which should be rather unlikely).
-    float m_weight;
+    double m_weight;
 };
 
 // event ============================================================================================================ //
@@ -53,7 +53,7 @@ public:
     /// Constructor.
     /// @param function Event function to execute on the UI thread.
     /// @param weight   Weight of this Event (see AnyEvent::m_weight for details).
-    Event(Func&& function, const float weight = 0) : AnyEvent(weight), m_function(std::forward<Func>(function)) {}
+    Event(Func&& function, const double weight = 0) : AnyEvent(weight), m_function(std::forward<Func>(function)) {}
 
     /// Executes the event function.
     void run() final {
@@ -96,7 +96,6 @@ public:
     void schedule(Event<Func>&& event) {
         schedule(std::make_unique<Event<Func>>(std::move(event)));
     }
-
     /// @}
 
 private:

@@ -1,3 +1,12 @@
+/// Timer
+/// The main class in this file is the `Timer` class, which is the base for all other Timers: Interval, One-Shot and
+/// Variable. You create a TimerPtr, which is a shared_ptr to a Timer calling one of the factory functions, named like
+/// the class they represent.
+/// Timers are managed through shared_ptrs because they are stored both in the TimerPool and (optionally) held by the
+/// user as well. If a user holds on to a TimerPtr and eventually destroys it, the TimerPool will ignore the Timer and
+/// drop it on its next timeout. The user can also "detach" a TimerPtr, in which case the TimerPool will assume
+/// ownership of the Timer and keep it alive until it finishes.
+///
 #pragma once
 
 #include "notf/meta/log.hpp"

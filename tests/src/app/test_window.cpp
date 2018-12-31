@@ -25,7 +25,7 @@ SCENARIO("Window", "[app][window]") {
         other.run([] { REQUIRE_THROWS_AS(Window::create(), ThreadError); });
     }
 
-    SECTION("Windows created from the main thread are set up immedately, those from the event thread are deferred") {
+    SECTION("Windows created from the main thread are set up immediately, those from the event thread are deferred") {
         Window::Arguments first_args;
         first_args.title = "first";
         auto first = Window::create(first_args);

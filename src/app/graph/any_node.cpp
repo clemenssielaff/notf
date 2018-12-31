@@ -357,7 +357,7 @@ void AnyNode::_mark_as_dirty() {
     if (NOTF_UNLIKELY(!_is_finalized())) { return; }
     if (!_get_internal_flag(to_number(InternalFlags::DIRTY))) {
         _set_internal_flag(to_number(InternalFlags::DIRTY));
-        TheGraph::AccessFor<AnyNode>::mark_dirty(shared_from_this());
+        TheGraph::AccessFor<AnyNode>::mark_dirty(weak_from_this());
     }
 }
 

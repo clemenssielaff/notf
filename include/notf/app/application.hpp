@@ -137,6 +137,9 @@ private:
     /// Unregisters an existing Window from this Application.
     void _unregister_window(GLFWwindow* window);
 
+    /// Destroys all Managers held by the Application.
+    void _clear_managers();
+
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// Application arguments as passed to the constructor.

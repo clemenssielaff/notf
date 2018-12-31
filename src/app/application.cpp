@@ -89,6 +89,7 @@ Application::Application(Arguments args)
 }
 
 Application::~Application() {
+    _clear_managers();
     m_graphics_system.reset();
     glfwTerminate();
     NOTF_LOG_INFO("Finished Application shutdown");
@@ -148,14 +149,7 @@ int Application::exec() {
     }
     NOTF_ASSERT(this_thread::is_the_ui_thread());
 
-    // shutdown in reverse order
-    m_render_manager.reset();
-    m_graph.reset();
-    m_timer_pool.reset();
-    m_event_handler.reset();
-    m_windows->clear();
-    m_graphics_system.reset();
-    m_shared_context.reset();
+    _clear_managers();
     NOTF_LOG_INFO("Finished Application main loop");
 
     return EXIT_SUCCESS;
@@ -216,6 +210,17 @@ void Application::_unregister_window(GLFWwindow* window) {
             if (m_windows->empty()) { shutdown(); }
         }
     });
+}
+
+void Application::_clear_managers() {
+    // shutdown in reverse order of creation
+    m_render_manager.reset();
+    m_graph.reset();
+    m_timer_pool.reset();
+    m_event_handler.reset();
+    m_windows->clear();
+    m_graphics_system.reset();
+    m_shared_context.reset();
 }
 
 } // namespace detail

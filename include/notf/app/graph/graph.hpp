@@ -177,7 +177,7 @@ private:
     /// Unregisters the Node with the given Uuid.
     /// If the Uuid is not know, this method does nothing.
     static void _unregister_node(Uuid uuid) {
-        if (_get_state() == State::RUNNING) { // ignore unregisters during shutdown
+        if (_get_state() == _State::RUNNING) { // ignore unregisters during shutdown
             _get().m_node_registry.remove(uuid);
         }
     }

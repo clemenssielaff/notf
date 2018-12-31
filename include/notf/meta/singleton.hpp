@@ -44,7 +44,7 @@ public:
 
 protected:
     /// State of the Singleton.
-    enum class State {
+    enum class _State {
         EMPTY,
         INITIALIZING,
         RUNNING,
@@ -58,9 +58,9 @@ protected:
     /// @throws SingletonError  If you try to instantiate more than one instance of `ScopedSingleton<T>`.
     template<class... Args>
     ScopedSingleton(Holder, Args&&... args) {
-        if (State expected = State::EMPTY; s_state.compare_exchange_strong(expected, State::INITIALIZING)) {
+        if (_State expected = _State::EMPTY; s_state.compare_exchange_strong(expected, _State::INITIALIZING)) {
             s_instance.emplace(std::forward<Args>(args)...);
-            s_state.store(State::RUNNING);
+            s_state.store(_State::RUNNING);
             m_is_holder = true;
         } else {
             NOTF_THROW(SingletonError, "Cannot create more than once instance of type ScopedSingleton<{}>",
@@ -79,10 +79,10 @@ public:
     /// ScopedSingleton state so it can be instantiated anew.
     ~ScopedSingleton() noexcept(std::is_nothrow_destructible_v<T>) {
         if (m_is_holder) {
-            if (State expected = State::RUNNING; s_state.compare_exchange_strong(expected, State::DESTROYING)) {
+            if (_State expected = _State::RUNNING; s_state.compare_exchange_strong(expected, _State::DESTROYING)) {
                 s_instance.reset();
             }
-            s_state.store(State::EMPTY);
+            s_state.store(_State::EMPTY);
         }
     }
 
@@ -101,12 +101,12 @@ protected:
     /// The static instance of `T`.
     /// If no `ScopedSingleton<T>` instance is alife, this throws a SingletonError.
     static T& _get() {
-        if (NOTF_LIKELY(s_state == State::RUNNING)) { return s_instance.value(); }
+        if (NOTF_LIKELY(s_state == _State::RUNNING)) { return s_instance.value(); }
         NOTF_THROW(SingletonError, "No instance of ScopedSingleton<{}> exists", type_name<T>());
     }
 
     /// The current state of the Singleton.
-    static State _get_state() noexcept { return s_state; }
+    static _State _get_state() noexcept { return s_state; }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
@@ -114,7 +114,7 @@ private:
     bool m_is_holder = false;
 
     /// EMPTY -> INITIALIZING -> RUNNING -> DESTROYING -> EMPTY
-    inline static std::atomic<State> s_state = State::EMPTY;
+    inline static std::atomic<_State> s_state = _State::EMPTY;
 
     /// The static instance of `T`.
     inline static std::optional<T> s_instance;
