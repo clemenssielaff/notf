@@ -1,11 +1,5 @@
 # require at least CMake 3.9 to support Interprocedural Optimization IPO
-# conditional copied from https://cliutils.gitlab.io/modern-cmake/chapters/basics.html
-cmake_minimum_required(VERSION 3.8)
-if(CMAKE_VERSION VERSION_LESS 3.12)
-    cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
-else()
-    cmake_policy(VERSION 3.12)
-endif()
+cmake_minimum_required(VERSION 3.9)
 
 # top-level project
 project(notf
@@ -13,6 +7,44 @@ project(notf
     DESCRIPTION "Reactive & Lightweight UI Application Engine in C++/Python"
     LANGUAGES CXX
 )
+
+# apply modern policies
+if(COMMAND cmake_policy)
+    cmake_policy(PUSH)
+
+    # from https://cliutils.gitlab.io/modern-cmake/chapters/basics.html
+    if(CMAKE_VERSION VERSION_LESS 3.12)
+        cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
+    else()
+        cmake_policy(VERSION 3.12)
+    endif()
+
+    # Only interpret if() arguments as variables or keywords when unquoted.
+    if (NOT CMAKE_VERSION VERSION_LESS "3.1")
+        cmake_policy(SET CMP0054 NEW)
+    endif()
+
+    # Use the same linker flags for `try_compile` as for the rest of the project.
+    if(POLICY CMP0056)
+        cmake_policy(SET CMP0056 NEW)
+    endif()
+
+    # Use the same compile flags for `try_compile` as for the rest of the project.
+    if(POLICY CMP0066)
+        cmake_policy(SET CMP0066 NEW)
+    endif()
+
+    # Use the same c++ standard for `try_compile` as for the rest of the project.
+    if(POLICY CMP0067)
+        cmake_policy(SET CMP0067 NEW)
+    endif()
+
+    # FindOpenGL prefers GLVND by default when available.
+    if(POLICY CMP0072)
+        cmake_policy(SET CMP0072 NEW)
+    endif()
+
+endif()
 
 # SYSTEM CHECK #########################################################################################################
 
@@ -84,48 +116,10 @@ if(CCACHE_PROGRAM)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE_PROGRAM})
 endif()
 
-# apply modern policies
-if(COMMAND cmake_policy)
-    cmake_policy(PUSH)
-
-    # FindOpenGL prefers GLVND by default when available.
-    if(POLICY CMP0072)
-        cmake_policy(SET CMP0072 NEW)
-    endif()
-
-    # Only interpret if() arguments as variables or keywords when unquoted.
-    if (NOT CMAKE_VERSION VERSION_LESS "3.1")
-        cmake_policy(SET CMP0054 NEW)
-    endif()
-endif()
-
-# store information about the current git revision
-# note that this only displays the revision and modification state at the time that CMake is last run - not every time
-# that the source is built
-find_package(Git QUIET)
-if(GIT_FOUND)
-    execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
-                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-                    OUTPUT_VARIABLE NOTF_BUILT_COMMIT
-                    ERROR_QUIET
-                    OUTPUT_STRIP_TRAILING_WHITESPACE)
-    execute_process(COMMAND ${GIT_EXECUTABLE} diff --quiet
-                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-                    RESULT_VARIABLE NOTF_BUILT_COMMIT_WAS_MODIFIED
-                    ERROR_QUIET
-                    OUTPUT_STRIP_TRAILING_WHITESPACE)
-endif()
-
-# UTILITY MACROS #######################################################################################################
-
-# utility macro to add source files in a common subdirectory
-macro(add_sources source_list base_path)
-    foreach(file ${ARGN})
-        list(APPEND ${source_list} ${base_path}/${file})
-    endforeach()
-endmacro()
-
 # CONFIGURATION ########################################################################################################
+
+# compiler feature check
+include(try_compiles)
 
 # define notf's debug/release flags
 if(CMAKE_BUILD_TYPE MATCHES "Release")
@@ -141,15 +135,12 @@ option(NOTF_BUILD_TESTS "Build tests" ON)
 if(NOTF_BUILD_TESTS)
     message(STATUS ">>> notf: Building tests")
     set(NOTF_TEST TRUE)
-    enable_testing()
-    add_subdirectory(tests)
 endif()
 
 # build the benchmarks
 option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
 if(NOTF_BUILD_BENCHMARKS)
     message(STATUS ">>> notf: Building benchmarks")
-    add_subdirectory(benchmarks)
 endif()
 
 # log level
@@ -203,6 +194,23 @@ set(NOTF_LITERALS_NAMESPACE_NAME "literals")
 
 # cmake timestamp
 # STRING(TIMESTAMP NOTF_TIMESTAMP "%b %d %Y, %H:%M:%S")
+
+# store information about the current git revision
+# note that this only displays the revision and modification state at the time that CMake is last run - not every time
+# that the source is built
+find_package(Git QUIET)
+if(GIT_FOUND)
+    execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+                    OUTPUT_VARIABLE NOTF_BUILT_COMMIT
+                    ERROR_QUIET
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${GIT_EXECUTABLE} diff --quiet
+                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+                    RESULT_VARIABLE NOTF_BUILT_COMMIT_WAS_MODIFIED
+                    ERROR_QUIET
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+endif()
 
 configure_file (
     "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp.in"
@@ -273,6 +281,13 @@ endif()
 
 # SUB-PROJECTS #########################################################################################################
 
+# utility macro to add source files in a common subdirectory
+macro(add_sources source_list base_path)
+    foreach(file ${ARGN})
+        list(APPEND ${source_list} ${base_path}/${file})
+    endforeach()
+endmacro()
+
 # discover all notf header files for use in subprojects
 file(GLOB_RECURSE NOTF_HEADERS
     "include/notf/*.hpp"
@@ -281,6 +296,15 @@ file(GLOB_RECURSE NOTF_HEADERS
 add_subdirectory(thirdparty)
 add_subdirectory(src)
 add_subdirectory(apps)
+
+if(NOTF_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
+
+if(NOTF_BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
+endif()
 
 ########################################################################################################################
 

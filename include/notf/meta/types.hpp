@@ -242,7 +242,7 @@ constexpr std::uintptr_t to_number(std::nullptr_t) noexcept { return 0; }
 
 // declval ========================================================================================================== //
 
-#ifdef NOTF_GCC
+#ifndef NOTF_COMPILER_HAS_DECLVAL
 /// GCC seems to have a bug that causes the expression
 ///     decltype(delcval<T>())
 /// to be evaluated at compile time, triggering a static assert in its definition of declval.
