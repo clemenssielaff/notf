@@ -23,7 +23,7 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default constructor.
-    constexpr Vector2() = default;
+    constexpr Vector2() noexcept = default;
 
     /// Forwarding constructor.
     template<class... Args>

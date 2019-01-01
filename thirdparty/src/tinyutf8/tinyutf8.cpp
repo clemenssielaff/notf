@@ -158,22 +158,16 @@ utf8_string::utf8_string(const char* str, size_type len, detail::read_codepoints
             while (str_iter < str_end) {
                 width_type bytes = get_codepoint_bytes(*str_iter, str_end - str_iter);
                 switch (bytes) {
-                case 7:
-                    buffer_iter[6] = str_iter[6]; // Copy data byte
-                case 6:
-                    buffer_iter[5] = str_iter[5]; // Copy data byte
-                case 5:
-                    buffer_iter[4] = str_iter[4]; // Copy data byte
-                case 4:
-                    buffer_iter[3] = str_iter[3]; // Copy data byte
-                case 3:
-                    buffer_iter[2] = str_iter[2]; // Copy data byte
+                case 7: buffer_iter[6] = str_iter[6]; // Copy data byte
+                case 6: buffer_iter[5] = str_iter[5]; // Copy data byte
+                case 5: buffer_iter[4] = str_iter[4]; // Copy data byte
+                case 4: buffer_iter[3] = str_iter[3]; // Copy data byte
+                case 3: buffer_iter[2] = str_iter[2]; // Copy data byte
                 case 2:
                     buffer_iter[1] = str_iter[1]; // Copy data byte
                     // Set next entry in the LUT!
                     utf8_string::set_lut(lut_iter -= lut_width, lut_width, str_iter - str);
-                case 1:
-                    buffer_iter[0] = str_iter[0]; // Copy data byte
+                case 1: buffer_iter[0] = str_iter[0]; // Copy data byte
                 }
                 buffer_iter += bytes;
                 str_iter += bytes;
@@ -251,22 +245,16 @@ utf8_string::utf8_string(const char* str, size_type data_len, detail::read_bytes
             while (str_iter < str_end) {
                 width_type bytes = get_codepoint_bytes(*str_iter, str_end - str_iter);
                 switch (bytes) {
-                case 7:
-                    buffer_iter[6] = str_iter[6]; // Copy data byte
-                case 6:
-                    buffer_iter[5] = str_iter[5]; // Copy data byte
-                case 5:
-                    buffer_iter[4] = str_iter[4]; // Copy data byte
-                case 4:
-                    buffer_iter[3] = str_iter[3]; // Copy data byte
-                case 3:
-                    buffer_iter[2] = str_iter[2]; // Copy data byte
+                case 7: buffer_iter[6] = str_iter[6]; // Copy data byte
+                case 6: buffer_iter[5] = str_iter[5]; // Copy data byte
+                case 5: buffer_iter[4] = str_iter[4]; // Copy data byte
+                case 4: buffer_iter[3] = str_iter[3]; // Copy data byte
+                case 3: buffer_iter[2] = str_iter[2]; // Copy data byte
                 case 2:
                     buffer_iter[1] = str_iter[1]; // Copy data byte
                     // Set next entry in the LUT!
                     utf8_string::set_lut(lut_iter -= lut_width, lut_width, str_iter - str);
-                case 1:
-                    buffer_iter[0] = str_iter[0]; // Copy data byte
+                case 1: buffer_iter[0] = str_iter[0]; // Copy data byte
                 }
                 buffer_iter += bytes;
                 str_iter += bytes;
@@ -414,8 +402,7 @@ utf8_string::width_type utf8_string::get_num_bytes_of_utf8_char_before(const cha
         if (((unsigned char)data_start[-2] & 0xE0) == 0xC0) // 110XXXXX two bytes
             return 2;
     case 1:
-    case 0:
-        return 1;
+    case 0: return 1;
     }
 }
 
@@ -442,8 +429,7 @@ utf8_string::width_type utf8_string::get_codepoint_bytes(char first_byte, size_t
         if ((first_byte & 0xE0) == 0xC0) // 110XXXXX two bytes
             return 2;
     case 1:
-    case 0:
-        return 1;
+    case 0: return 1;
     }
 }
 #endif

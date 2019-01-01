@@ -60,8 +60,7 @@ struct ArithmeticIdentifier {
 
     /// Checks, whether the given type has a nested type `component_t`.
     template<class T>
-    static constexpr auto has_component_t(const T&)
-        -> decltype(declval<typename T::component_t>(), std::true_type{});
+    static constexpr auto has_component_t(const T&) -> decltype(declval<typename T::component_t>(), std::true_type{});
     template<class>
     static constexpr auto has_component_t(...) -> std::false_type;
 
@@ -104,7 +103,7 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default constructor.
-    constexpr Arithmetic() = default;
+    constexpr Arithmetic() noexcept = default;
 
     /// Value constructor.
     /// @param data Raw data for this arithmetic type.
@@ -128,7 +127,7 @@ public:
     /// Create an arithmetic value with all elements set to the given value.
     /// @param value    Value to set.
     constexpr static derived_t all(const element_t value) {
-        derived_t result(0); // TODO: the (0) is weird and only required for GCC
+        derived_t result{};
         if constexpr (_is_ground()) {
             result.set_all(value);
         } else {
@@ -369,7 +368,7 @@ public:
     /// Multiplication of this value with a scalar.
     /// @param factor   Factor to multiply with.
     constexpr derived_t operator*(const element_t factor) const& noexcept {
-        derived_t result;
+        derived_t result{};
         for (size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] * factor;
         }
@@ -382,7 +381,7 @@ public:
     /// Division of this value by a scalar.
     /// @param divisor  Divisor to divide by.
     constexpr derived_t operator/(const element_t divisor) const& noexcept {
-        derived_t result;
+        derived_t result{};
         for (size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] / divisor;
         }
@@ -436,7 +435,7 @@ public:
     /// Sum of this value with other.
     /// @param other    Summand.
     constexpr derived_t operator+(const derived_t& other) const& noexcept {
-        derived_t result;
+        derived_t result{};
         for (size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] + other[i];
         }
@@ -449,7 +448,7 @@ public:
     /// Difference between this value and other.
     /// @param other    Subtrahend.
     constexpr derived_t operator-(const derived_t& other) const& noexcept {
-        derived_t result;
+        derived_t result{};
         for (size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] - other[i];
         }
@@ -462,7 +461,7 @@ public:
     /// Component-wise multiplication of this value with other.
     /// @param other    Value to multiply with.
     constexpr derived_t operator*(const derived_t& other) const& noexcept {
-        derived_t result;
+        derived_t result{};
         for (size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] * other[i];
         }
@@ -475,7 +474,7 @@ public:
     /// Component-wise division of this value by other.
     /// @param other    Value to divide by.
     constexpr derived_t operator/(const derived_t& other) const& noexcept {
-        derived_t result;
+        derived_t result{};
         for (size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] / other[i];
         }

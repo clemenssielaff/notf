@@ -35,7 +35,7 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default constructor.
-    Matrix4() = default;
+    constexpr Matrix4() noexcept = default;
 
     /// Value constructor defining the diagonal of the matrix.
     /// @param a    Value to put into the diagonal.

@@ -30,7 +30,7 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default constructor.
-    constexpr Aabr() = default;
+    constexpr Aabr() noexcept = default;
 
     /// Constructs an Aabr of the given width and height, with the bottom-left corner at the given coordinates.
     /// @param x         X-coordinate of the bottom-left corner.
@@ -89,7 +89,7 @@ public:
 
     /// The largest representable Aabr.
     constexpr static Aabr huge() {
-        Aabr result;
+        Aabr result{};
         result[0] = component_t::all(min_value<element_t>());
         result[1] = component_t::all(max_value<element_t>());
         return result;
@@ -98,7 +98,7 @@ public:
     /// The "most wrong" Aabr (maximal negative area).
     /// Is useful as the starting point for defining an Aabr from a set of points.
     constexpr static Aabr wrongest() {
-        Aabr result;
+        Aabr result{};
         result[0] = component_t::all(max_value<element_t>());
         result[1] = component_t::all(min_value<element_t>());
         return result;
@@ -108,7 +108,7 @@ public:
     constexpr static Aabr centered(const Size2<element_t>& size) {
         const element_t half_width = size.width / 2;
         const element_t half_height = size.height / 2;
-        Aabr result;
+        Aabr result{};
         result.data[0] = {-half_width, -half_height};
         result.data[1] = {half_width, half_height};
         return result;

@@ -70,7 +70,11 @@ endif()
 if (NOTF_CLANG)
     message(STATUS ">>> notf: Using llvm tools: libc++ and lld ")
     add_compile_options("-stdlib=libc++")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi -fuse-ld=lld")
+    add_link_options(
+        "-stdlib=libc++"
+        "-lc++abi"
+        "-fuse-ld=lld"
+    )
 endif()
 
 # use ccache if available
@@ -230,12 +234,22 @@ set(NOTF_GLOBAL_DEFINES ${NOTF_GLOBAL_DEFINES}
 # global options
 if(NOTF_CLANG)
     set(NOTF_GLOBAL_OPTIONS
-#		-Weverything
-#		-Wpedantic
-#		-Wno-padded
-#		-Wno-weak-vtables   # used everywhere and not a problem
-#		-Wno-c++98-compat
-#		-Wno-c++98-compat-pedantic
+#        -Weverything
+#        -Wno-c++98-compat
+#        -Wno-c++98-compat-pedantic
+#        -Wno-unused-macros
+#        -Wno-newline-eof
+#        -Wno-exit-time-destructors
+#        -Wno-global-constructors
+#        -Wno-gnu-zero-variadic-macro-arguments
+#        -Wno-documentation
+#        -Wno-shadow
+#        -Wno-switch-enum
+#        -Wno-missing-prototypes
+#        -Wno-used-but-marked-unused
+#        -Wno-weak-vtables
+#        -Wno-padded
+#        -Wno-weak-vtables   # used everywhere and not a problem
 
         # clang vectorization analysis
 #        -Rpass-missed=loop-vectorized

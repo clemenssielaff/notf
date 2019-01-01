@@ -173,6 +173,9 @@ if(NOTF_BUILD_BENCHMARKS)
     )
 endif()
 
+# some libraries complain about `stdlib=libc++` and this is the only way I found to get them to stop
+add_compile_options("-Wno-unused-command-line-argument" )
+
 # declare thirdparty library
 add_library(${CURRENT_TARGET} STATIC
     ${SOURCE_FILES}
@@ -195,7 +198,7 @@ set_target_properties(${CURRENT_TARGET} PROPERTIES LINKER_LANGUAGE CXX)
 # SUB-PROJECTS #########################################################################################################
 
 # glfw
-set( GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/glfw-3.3.0)

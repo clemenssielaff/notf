@@ -21,7 +21,7 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default constructor.
-    ArithmeticVector() = default;
+    constexpr ArithmeticVector() noexcept = default;
 
     /// Forwarding constructor.
     template<class... Args>
