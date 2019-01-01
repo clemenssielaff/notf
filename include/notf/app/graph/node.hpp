@@ -29,7 +29,7 @@ class NodePolicyFactory { // TODO: (NodePolicyFactory) check that all names are 
     NOTF_CREATE_TYPE_DETECTOR(properties);
     static constexpr auto create_properties() {
         if constexpr (has_properties_v<Policy>) {
-            return std::declval<typename instantiate_unique<Property, typename Policy::properties>::type>();
+            return declval<typename instantiate_unique<Property, typename Policy::properties>::type>();
         } else {
             return std::tuple<>();
         }
@@ -38,7 +38,7 @@ class NodePolicyFactory { // TODO: (NodePolicyFactory) check that all names are 
     NOTF_CREATE_TYPE_DETECTOR(slots);
     static constexpr auto create_slots() {
         if constexpr (has_slots_v<Policy>) {
-            return std::declval<typename instantiate_unique<Slot, typename Policy::slots>::type>();
+            return declval<typename instantiate_unique<Slot, typename Policy::slots>::type>();
         } else {
             return std::tuple<>();
         }
@@ -47,7 +47,7 @@ class NodePolicyFactory { // TODO: (NodePolicyFactory) check that all names are 
     NOTF_CREATE_TYPE_DETECTOR(signals);
     static constexpr auto create_signals() {
         if constexpr (has_signals_v<Policy>) {
-            return std::declval<typename instantiate_shared<Signal, typename Policy::signals>::type>();
+            return declval<typename instantiate_shared<Signal, typename Policy::signals>::type>();
         } else {
             return std::tuple<>();
         }
@@ -112,9 +112,9 @@ private:
         static constexpr const auto& get() {
             using raw_type = typename std::tuple_element_t<I, Tuple>;
             if constexpr (is_shared_ptr_v<raw_type> || is_unique_ptr_v<raw_type>) {
-                return std::declval<typename raw_type::element_type>();
+                return declval<typename raw_type::element_type>();
             } else {
-                return std::declval<raw_type>();
+                return declval<raw_type>();
             }
         }
         using type = std::decay_t<decltype(get())>;
@@ -394,7 +394,8 @@ protected: // TODO: maybe make private again and let the Widget use an Accessor 
 
     /// Calculates the combined hash value of all Properties.
     size_t _calculate_property_hash(size_t result = detail::version_hash()) const override {
-        for_each(m_node_properties, [](auto& property, size_t& out) { hash_combine(out, property->get()); }, result);
+        for_each(
+            m_node_properties, [](auto& property, size_t& out) { hash_combine(out, property->get()); }, result);
         return result;
     }
 
@@ -402,11 +403,6 @@ protected: // TODO: maybe make private again and let the Widget use an Accessor 
     void _clear_modified_properties() override {
         for_each(m_node_properties, [](auto& property) { property->clear_modified_data(); });
     }
-
-private:
-    // hide some protected methods
-    using AnyNode::_get_property_observer;
-    using AnyNode::_is_finalized;
 
     // fields ---------------------------------------------------------------------------------- //
 private:

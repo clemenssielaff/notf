@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <typeinfo>
+#include <utility>
 
 #include "notf/meta/config.hpp"
 
@@ -16,7 +17,7 @@ using ulong = unsigned long;
 
 // templated integer types ========================================================================================== //
 
-template<size_t size>
+template<std::size_t size>
 struct templated_integer;
 template<>
 struct templated_integer<8> {
@@ -34,10 +35,10 @@ template<>
 struct templated_integer<64> {
     using type = std::int64_t;
 };
-template<size_t size>
+template<std::size_t size>
 using tempated_integer_t = typename templated_integer<size>::type;
 
-template<size_t size>
+template<std::size_t size>
 struct templated_unsigned_integer;
 template<>
 struct templated_unsigned_integer<8> {
@@ -55,7 +56,7 @@ template<>
 struct templated_unsigned_integer<64> {
     using type = std::uint64_t;
 };
-template<size_t size>
+template<std::size_t size>
 using templated_unsigned_integer_t = typename templated_unsigned_integer<size>::type;
 
 // traits =========================================================================================================== //
@@ -238,5 +239,19 @@ constexpr std::uintptr_t to_number(T ptr) noexcept {
     return reinterpret_cast<std::uintptr_t>(ptr);
 }
 constexpr std::uintptr_t to_number(std::nullptr_t) noexcept { return 0; }
+
+// declval ========================================================================================================== //
+
+#ifdef NOTF_GCC
+/// GCC seems to have a bug that causes the expression
+///     decltype(delcval<T>())
+/// to be evaluated at compile time, triggering a static assert in its definition of declval.
+/// This is the definition supplied by cppreference (https://en.cppreference.com/w/cpp/utility/declval) which does the
+/// same thing but doesn't assert.
+template<class T>
+extern typename std::add_rvalue_reference<T>::type declval() noexcept;
+#else
+using std::declval;
+#endif
 
 NOTF_CLOSE_NAMESPACE

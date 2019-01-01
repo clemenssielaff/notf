@@ -67,7 +67,7 @@ private:
         auto raw = handle_from_this();
         NOTF_ASSERT(raw);
         auto handle = handle_cast<NodeHandle<SuperWidget>>(raw);
-        m_animation = IntervalTimer(60_fps, [handle]() {
+        m_animation = IntervalTimer(60_fps, [handle]() mutable {
             if (handle.is_valid()) {
                 TheEventHandler()->schedule([=]() mutable {
                     const double time

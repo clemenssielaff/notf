@@ -18,10 +18,10 @@ struct ArithmeticIdentifier {
     /// Tests if a given type is an arithmetic type.
     template<class T>
     static constexpr auto test() {
-        if constexpr (std::disjunction_v<std::negation<decltype(has_derived_t<T>(std::declval<T>()))>,
-                                         std::negation<decltype(has_element_t<T>(std::declval<T>()))>,
-                                         std::negation<decltype(has_component_t<T>(std::declval<T>()))>,
-                                         std::negation<decltype(has_get_dimensions<T>(std::declval<T>()))>>) {
+        if constexpr (std::disjunction_v<std::negation<decltype(has_derived_t<T>(declval<T>()))>,
+                                         std::negation<decltype(has_element_t<T>(declval<T>()))>,
+                                         std::negation<decltype(has_component_t<T>(declval<T>()))>,
+                                         std::negation<decltype(has_get_dimensions<T>(declval<T>()))>>) {
             return std::false_type{}; // not an arithmetic type
         } else {
             using derived_t = typename T::derived_t;
@@ -48,20 +48,20 @@ struct ArithmeticIdentifier {
 
     /// Checks, whether the given type has a nested type `derived_t`.
     template<class T>
-    static constexpr auto has_derived_t(const T&) -> decltype(std::declval<typename T::derived_t>(), std::true_type{});
+    static constexpr auto has_derived_t(const T&) -> decltype(declval<typename T::derived_t>(), std::true_type{});
     template<class>
     static constexpr auto has_derived_t(...) -> std::false_type;
 
     /// Checks, whether the given type has a nested type `element_t`.
     template<class T>
-    static constexpr auto has_element_t(const T&) -> decltype(std::declval<typename T::element_t>(), std::true_type{});
+    static constexpr auto has_element_t(const T&) -> decltype(declval<typename T::element_t>(), std::true_type{});
     template<class>
     static constexpr auto has_element_t(...) -> std::false_type;
 
     /// Checks, whether the given type has a nested type `component_t`.
     template<class T>
     static constexpr auto has_component_t(const T&)
-        -> decltype(std::declval<typename T::component_t>(), std::true_type{});
+        -> decltype(declval<typename T::component_t>(), std::true_type{});
     template<class>
     static constexpr auto has_component_t(...) -> std::false_type;
 
@@ -128,7 +128,7 @@ public:
     /// Create an arithmetic value with all elements set to the given value.
     /// @param value    Value to set.
     constexpr static derived_t all(const element_t value) {
-        derived_t result;
+        derived_t result(0); // TODO: the (0) is weird and only required for GCC
         if constexpr (_is_ground()) {
             result.set_all(value);
         } else {

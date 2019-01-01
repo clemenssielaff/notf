@@ -7,14 +7,38 @@ else()
     cmake_policy(VERSION 3.12)
 endif()
 
-# PROJECT ##############################################################################################################
-
 # top-level project
 project(notf
     VERSION 0.4.0.0
     DESCRIPTION "Reactive & Lightweight UI Application Engine in C++/Python"
     LANGUAGES CXX
 )
+
+# SYSTEM CHECK #########################################################################################################
+
+# check compiler ID (from https://cmake.org/cmake/help/latest/variable/CMAKE_LANG_COMPILER_ID.html)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(NOTF_CLANG TRUE)
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(NOTF_GCC TRUE)
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    set(NOTF_MSVC TRUE)
+endif()
+
+# check operating system (from https://stackoverflow.com/a/40152725)
+if(WIN32)
+    set(NOTF_WINDOWS TRUE)
+elseif(APPLE)
+    set(NOTF_MACINTOSH TRUE)
+elseif(UNIX)
+    set(NOTF_LINUX TRUE)
+endif()
+
+# check endianness
+include (TestBigEndian)
+TEST_BIG_ENDIAN(NOTF_IS_BIG_ENDIAN)
+
+# PROJECT ##############################################################################################################
 
 # cmake modules
 set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
@@ -43,7 +67,7 @@ if(CMAKE_BUILD_TYPE MATCHES "Release")
 endif()
 
 # use LLVM libraries and tools
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if (NOTF_CLANG)
     message(STATUS ">>> notf: Using llvm tools: libc++ and lld ")
     add_compile_options("-stdlib=libc++")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi -fuse-ld=lld")
@@ -135,7 +159,7 @@ if(NOTF_ABORT_ON_ASSERT)
 endif()
 
 # thread sanitization
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if (NOTF_CLANG)
     option(NOTF_THREAD_SANITIZATION "Enable thread sanitization" OFF)
     option(NOTF_USE_SANITIZATION_BLACKLIST "Use sanitization blacklist" ON)
     if(NOTF_THREAD_SANITIZATION)
@@ -151,7 +175,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 endif()
 
 # coverage
-if(NOT MSVC)
+if(NOTF_CLANG)
     option(NOTF_CREATE_COVERAGE "Create test coverage " ON)
     if(NOTF_CREATE_COVERAGE)
         if(NOTF_THREAD_SANITIZATION)
@@ -164,28 +188,6 @@ if(NOT MSVC)
 endif()
 
 # CODE INTEGRATION #####################################################################################################
-
-# check compiler ID (from https://cmake.org/cmake/help/latest/variable/CMAKE_LANG_COMPILER_ID.html)
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(NOTF_CLANG TRUE)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set(NOTF_GCC TRUE)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    set(NOTF_MSVC TRUE)
-endif()
-
-# check operating system (from https://stackoverflow.com/a/40152725)
-if(WIN32)
-    set(NOTF_WINDOWS TRUE)
-elseif(APPLE)
-    set(NOTF_MACINTOSH TRUE)
-elseif(UNIX)
-    set(NOTF_LINUX TRUE)
-endif()
-
-# check endianness
-include (TestBigEndian)
-TEST_BIG_ENDIAN(NOTF_IS_BIG_ENDIAN)
 
 # Name of the notf namespace.
 # This macro can be used to implement namespace versioning.

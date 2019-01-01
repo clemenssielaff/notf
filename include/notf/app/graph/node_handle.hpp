@@ -9,6 +9,19 @@
 
 NOTF_OPEN_NAMESPACE
 
+// handle cast ====================================================================================================== //
+
+/// Runtime-safe cast from one handle type to another.
+/// @param from Handle to cast from.
+/// @result     Handle to the same node but of the target type or an empty handle of the target type.
+template<class Target, class T, class = std::enable_if_t<std::is_base_of_v<detail::NodeHandleBase, Target>>>
+Target handle_cast(const NodeHandle<T>& from) {
+    if (auto node = from.m_node.lock()) {
+        return Target(std::dynamic_pointer_cast<typename Target::node_t>(std::move(node)));
+    }
+    return {};
+}
+
 // node handle interface ============================================================================================ //
 
 namespace detail {
@@ -151,7 +164,7 @@ class NodeHandle : public detail::NodeHandleBase {
     friend ::std::hash<NodeHandle<NodeType>>;
 
     template<class Target, class T, class>
-    friend inline Target handle_cast(const NodeHandle<T>&);
+    friend Target handle_cast(const NodeHandle<T>&);
 
     template<class>
     friend class NodeHandle; // befriend all other TypedNodeHandles so you can copy their node
@@ -180,24 +193,7 @@ public:
     /// Default (empty) Constructor.
     NodeHandle() = default;
     NodeHandle(const NodeHandle&) = default;
-
-    // Why do NodeHandles not have a default move constructor?
-    //
-    // There seems to be a curious edge case here where moving the handle from one thread onto another causes the
-    // LLVM Thread Sanitizer to report data races. I think they are spurious, because the standard says that operations
-    // on the control block are thread safe (even with non-atomic weak_ and shared_ptrs), but if there is just the
-    // faintest possibility that they are not and there are in fact cases where moving a weak_ptr may somehow interfere
-    // with the lifetime of the weak_pointer's control block, it is better to be sure.
-    //
-    // There are two ways that seem to work.
-    // First: explicitly define a move constructor and only copy the other's node:
-    //
-    //     NodeHandle(NodeHandle&& other) noexcept : m_node(other.m_node) {}
-    //
-    // Second, do not define a move constructor - not even a "default" one. This seems to be different from "deleting"
-    // the default move constructor, even though C++ shouldn't be allowed to create one in the first place (because we
-    // have a user-declared copy constructor)? Anyway, it works and since it leaves open the possibility that the
-    // compiler is smart enough to handle the situation without us telling it to copy the weak_ptr, I opt for 2.
+    NodeHandle(NodeHandle&&) = default;
 
     /// @{
     /// Value Constructor.
@@ -214,7 +210,7 @@ public:
 
     /// Destructor.
     ~NodeHandle() noexcept override {
-        // Again, locking this mutex seems like an unnecessary precaution and in fact I think it is ... however, clang
+        // Locking this mutex seems like an unnecessary precaution and in fact I think it is ... however, clang
         // thread sanitizer does report A LOT of data races when multiple handles from different threads are destroyed
         // around the same time (which happens on every application shutdown).
         // So we protect the deallocation with a mutex. Should this ever be a performance concern just remove it as it
@@ -320,15 +316,6 @@ bool operator!=(const NodeHandle<LeftType>& lhs, const NodeHandle<RightType>& rh
 template<class LeftType, class RightType>
 bool operator<(const NodeHandle<LeftType>& lhs, const NodeHandle<RightType>& rhs) noexcept {
     return lhs.m_node.owner_before(rhs.m_node);
-}
-
-/// Cast one handle to another.
-template<class Target, class T, class = std::enable_if_t<std::is_base_of_v<detail::NodeHandleBase, Target>>>
-inline Target handle_cast(const NodeHandle<T>& from) {
-    if (auto node = from.m_node.lock()) {
-        return Target(std::dynamic_pointer_cast<typename Target::node_t>(std::move(node)));
-    }
-    return {};
 }
 
 // typed node owner ================================================================================================= //

@@ -40,7 +40,7 @@ static constexpr bool is_valid_ptr_v = is_valid_ptr<T>::value;
 template<class From, class To, class = To>
 struct is_static_castable : std::false_type {};
 template<class From, class To>
-struct is_static_castable<From, To, decltype(static_cast<To>(std::declval<From>()))> : std::true_type {};
+struct is_static_castable<From, To, decltype(static_cast<To>(declval<From>()))> : std::true_type {};
 template<class From, class To>
 static constexpr bool is_static_castable_v = is_static_castable<From, To>::value;
 
@@ -76,7 +76,7 @@ constexpr std::enable_if_t<std::is_null_pointer_v<T>, std::nullptr_t> raw_pointe
 template<class T, class = void>
 struct has_raw_pointer : std::false_type {};
 template<class T>
-struct has_raw_pointer<T, decltype(raw_pointer(std::declval<T>()))> : std::true_type {};
+struct has_raw_pointer<T, decltype(raw_pointer(declval<T>()))> : std::true_type {};
 
 /// Cast a pointer of type From to a pointer of Type To and raises an assert if a dynamic_cast fails.
 /// If a static_cast is possible, it will be performed and always succeed.

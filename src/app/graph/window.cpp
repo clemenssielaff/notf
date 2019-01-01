@@ -118,9 +118,11 @@ Window::~Window() {
     // destroy all children (including those stored in the modified data) while the GraphicsContext is still alive
     AnyNode::AccessFor<Window>::remove_children_now(this);
 
+    m_graphics_context.reset(); // destroy while glfw window is still alive
+
     // unregister from the application and event handling
     try {
-        TheApplication::AccessFor<Window>::unregister_window(m_glfw_window);
+        TheApplication::AccessFor<Window>::unregister_window(m_glfw_window); // TODO: rename to destroy_glfw_window
     }
     catch (const SingletonError&) {
         // If the Application was never started, all Window objects is destroyed when TheApplication singleton goes out

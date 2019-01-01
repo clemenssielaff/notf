@@ -364,8 +364,8 @@ struct PublisherIdentifier {
     template<class T>
     static constexpr auto test() {
         if constexpr (std::conjunction_v<is_shared_ptr<T>,                              //
-                                         decltype(_has_policy_t<T>(std::declval<T>())), //
-                                         decltype(_has_output_t<T>(std::declval<T>()))>) {
+                                         decltype(_has_policy_t<T>(declval<T>())), //
+                                         decltype(_has_output_t<T>(declval<T>()))>) {
             using policy_t = typename T::element_type::policy_t;
             using output_t = typename T::element_type::output_t;
             return std::is_convertible<T, PublisherPtr<output_t, policy_t>>{};

@@ -13,7 +13,7 @@
 namespace {
 NOTF_USING_NAMESPACE;
 
-constexpr KeyInput::Token id_from_glfw_key(int key) {
+KeyInput::Token id_from_glfw_key(int key) {
     switch (key) {
     case GLFW_KEY_SPACE: return KeyInput::Token::SPACE;
     case GLFW_KEY_APOSTROPHE: return KeyInput::Token::APOSTROPHE;
@@ -140,7 +140,7 @@ constexpr KeyInput::Token id_from_glfw_key(int key) {
     return KeyInput::Token::UNKNOWN;
 }
 
-constexpr KeyInput::Token id_from_char(const char key) {
+KeyInput::Token id_from_char(const char key) {
     switch (key) {
     case 'a': NOTF_FALLTHROUGH;
     case 'A': return KeyInput::Token::A;

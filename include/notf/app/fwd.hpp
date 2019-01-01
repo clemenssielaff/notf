@@ -55,6 +55,9 @@ template<class>
 class Node;
 
 // node_handle.hpp
+namespace detail {
+struct NodeHandleBase;
+}
 template<class>
 class NodeHandle;
 template<class>

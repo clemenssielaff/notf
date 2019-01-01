@@ -21,17 +21,17 @@ struct TriggerIdentifier {
             static_assert(std::is_same_v<typename fn_traits::template arg_type<0>, const AnyPublisher*>,
                           "If a Trigger takes two arguments, the first one must be of type`const AnyPublisher*`");
         }
-        return std::declval<fn_traits>();
+        return declval<fn_traits>();
     }
 
     static constexpr auto get_type() noexcept {
         if constexpr (fn_traits::arity == 0) {
-            return std::declval<None>();
+            return declval<None>();
         } else if constexpr (fn_traits::arity == 1) {
-            return std::declval<std::decay_t<typename fn_traits::template arg_type<0>>>();
+            return declval<std::decay_t<typename fn_traits::template arg_type<0>>>();
         } else {
             static_assert(fn_traits::arity == 2);
-            return std::declval<std::decay_t<typename fn_traits::template arg_type<1>>>();
+            return declval<std::decay_t<typename fn_traits::template arg_type<1>>>();
         }
     }
 

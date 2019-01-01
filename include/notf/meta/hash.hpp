@@ -137,7 +137,7 @@ struct pointer_hash {
 template<class T, class = void>
 struct is_hashable : std::false_type {};
 template<class T>
-struct is_hashable<T, std::void_t<decltype(std::hash<T>()(std::declval<T>()))>> : std::true_type {};
+struct is_hashable<T, std::void_t<decltype(std::hash<T>()(declval<T>()))>> : std::true_type {};
 template<class T>
 static constexpr bool is_hashable_v = is_hashable<T>::value;
 /// @}

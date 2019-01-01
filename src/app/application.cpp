@@ -90,7 +90,6 @@ Application::Application(Arguments args)
 
 Application::~Application() {
     _clear_managers();
-    m_graphics_system.reset();
     glfwTerminate();
     NOTF_LOG_INFO("Finished Application shutdown");
 }

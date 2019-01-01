@@ -25,7 +25,7 @@ private:
     struct DataMemberDetector {
         template<class T>
         static constexpr auto has_data_member() {
-            if constexpr (decltype(_has_data_member<T>(std::declval<T>()))::value) {
+            if constexpr (decltype(_has_data_member<T>(declval<T>()))::value) {
                 return std::true_type{};
             } else {
                 return std::false_type{};
@@ -34,8 +34,7 @@ private:
 
     private:
         template<class T>
-        static constexpr auto _has_data_member(const T&)
-            -> decltype(std::declval<typename T::Data>(), std::true_type{});
+        static constexpr auto _has_data_member(const T&) -> decltype(declval<typename T::Data>(), std::true_type{});
         template<class>
         static constexpr auto _has_data_member(...) -> std::false_type;
     };

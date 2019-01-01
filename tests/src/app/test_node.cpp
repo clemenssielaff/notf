@@ -9,11 +9,11 @@
 
 NOTF_USING_NAMESPACE;
 
+static constexpr ConstString int_const_string = "int";
+static constexpr ConstString float_const_string = "float";
 #ifdef NOTF_MSVC
-static constexpr ConstString int_id_name = "int";
-static constexpr ConstString float_id_name = "float";
-static constexpr auto int_id = make_string_type<int_id_name>();
-static constexpr auto float_id = make_string_type<float_id_name>();
+static constexpr auto int_id = make_string_type<int_const_string>();
+static constexpr auto float_id = make_string_type<float_const_string>();
 #else
 constexpr auto int_id = "int"_id;
 constexpr auto float_id = "float"_id;
@@ -344,8 +344,6 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
         SECTION("compile time and run time acquired Properties are the same") {
             const int ct_value = node->get(int_id);
             REQUIRE(rt_value == ct_value);
-
-            static constexpr ConstString int_const_string = "int";
             REQUIRE(ct_value == node->get<int_const_string>());
         }
 

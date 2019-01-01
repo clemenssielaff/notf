@@ -126,13 +126,13 @@ constexpr auto tuple_element() { // unfortunately, this cannot be tested at runt
         if constexpr (I >= std::tuple_size_v<Tuple>) {
             throw 0; // Positive tuple index is out of bounds
         } else {
-            return std::declval<std::tuple_element_t<static_cast<size_t>(I), Tuple>>();
+            return declval<std::tuple_element_t<static_cast<size_t>(I), Tuple>>();
         }
     } else {
         if constexpr (-I > std::tuple_size_v<Tuple>) {
             throw 0; // Negative tuple index is out of bounds
         } else {
-            return std::declval<std::tuple_element_t<std::tuple_size_v<Tuple> - static_cast<size_t>(-I), Tuple>>();
+            return declval<std::tuple_element_t<std::tuple_size_v<Tuple> - static_cast<size_t>(-I), Tuple>>();
         }
     }
 };
