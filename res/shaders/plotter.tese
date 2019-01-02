@@ -141,7 +141,7 @@ void main()
 
         else if(patch_data.type == START_CAP){
             // screen space position of the vertex
-            vec2 normal = patch_data.ctrl1_direction.yx * vec2(-ONE, ONE);
+            vec2 normal = patch_data.ctrl1_direction.yx * vec2(ONE, -ONE);
             v_out.position = START
                     + (patch_data.ctrl1_direction * ((gl_TessCoord.x - ONE) * aa_width * TWO))  // along spline
                     + (normal * normal_offset);                                                 // along normal
@@ -153,7 +153,7 @@ void main()
 
         else if(patch_data.type == END_CAP){
             // screen space position of the vertex
-            vec2 normal = patch_data.ctrl2_direction.yx * vec2(ONE, -ONE);
+            vec2 normal = patch_data.ctrl2_direction.yx * vec2(-ONE, ONE);
             v_out.position = END
                     + (patch_data.ctrl2_direction * (-gl_TessCoord.x * aa_width * TWO)) // along spline
                     + (normal * normal_offset);                                         // along normal
