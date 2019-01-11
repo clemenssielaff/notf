@@ -519,9 +519,6 @@ GLFWbool _glfwRefreshContextAttribs(_GLFWwindow* window,
         // Read back robustness strategy
         if (glfwExtensionSupported("GL_ARB_robustness"))
         {
-            // NOTE: We avoid using the context flags for detection, as they are
-            //       only present from 3.0 while the extension applies from 1.1
-
             GLint strategy;
             window->context.GetIntegerv(GL_RESET_NOTIFICATION_STRATEGY_ARB,
                                         &strategy);
@@ -537,9 +534,6 @@ GLFWbool _glfwRefreshContextAttribs(_GLFWwindow* window,
         // Read back robustness strategy
         if (glfwExtensionSupported("GL_EXT_robustness"))
         {
-            // NOTE: The values of these constants match those of the OpenGL ARB
-            //       one, so we can reuse them here
-
             GLint strategy;
             window->context.GetIntegerv(GL_RESET_NOTIFICATION_STRATEGY_ARB,
                                         &strategy);

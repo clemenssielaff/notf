@@ -18,7 +18,7 @@ struct Area {
     using value_t = Aabri;
     static constexpr ConstString name = "area";
     static constexpr value_t default_value = Aabri::zero();
-    static constexpr bool is_visible = true;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBILE;
 };
 
 // policy =====================================================================

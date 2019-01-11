@@ -8,9 +8,11 @@
 #include "notf/common/bezier.hpp"
 #include "notf/common/polygon.hpp"
 
+#include "notf/graphic/gl_modes.hpp"
 #include "notf/graphic/renderer/plotter.hpp"
 
 #include "notf/app/fwd.hpp"
+#include "notf/app/widget/clipping.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -119,9 +121,58 @@ public:
     /// Strokes the current Path using the current Paint.
     struct StrokeCommand {};
 
+    /// Do nothing, is used to denote that a Design is being left empty on purpose.
+    struct NoopCommand {};
+
+    /// Update the Clipping.
+    struct SetClippingCommand {
+        struct Data {
+            Clipping clipping;
+        };
+        std::unique_ptr<Data> data;
+    };
+
+    /// Update the fill Paint.
+    struct SetFillPaintCommand {
+        struct Data {
+            Paint paint;
+        };
+        std::unique_ptr<Data> data;
+    };
+
+    /// Update the stroke Paint.
+    struct SetStrokePaintCommand {
+        struct Data {
+            Paint paint;
+        };
+        std::unique_ptr<Data> data;
+    };
+
+    /// Update the BlendMode.
+    struct SetBlendModeCommand {
+        BlendMode mode;
+    };
+
+    /// Update the Alpha.
+    struct SetAlphaCommand {
+        float alpha;
+    };
+
+    /// Update the LineCap.
+    struct SetLineCapCommand {
+        Paint::LineCap cap;
+    };
+
+    /// Update the LineJoin.
+    struct SetLineJoinCommand {
+        Paint::LineJoin join;
+    };
+
     using Command = std::variant<PushStateCommand, PopStateCommand, SetTransformationCommand, SetStrokeWidthCommand,
                                  SetFontCommand, SetPolygonPathCommand, SetSplinePathCommand, SetPathIndexCommand,
-                                 WriteCommand, FillCommand, StrokeCommand>;
+                                 WriteCommand, FillCommand, StrokeCommand, NoopCommand, SetClippingCommand,
+                                 SetFillPaintCommand, SetStrokePaintCommand, SetBlendModeCommand, SetAlphaCommand,
+                                 SetLineCapCommand, SetLineJoinCommand>;
     static_assert(sizeof(Command) == (sizeof(std::unique_ptr<void>) * 2),
                   "Make sure to wrap supplementary data of your Command type in a unique_ptr<>, "
                   "so it doesn't inflate the size of the Command variant");
@@ -143,6 +194,9 @@ public:
 
     /// Clears the content of the buffer and the vault.
     void reset() { m_buffer.clear(); }
+
+    /// Checks whether the Design is empty or not.
+    bool is_empty() const { return m_buffer.empty(); }
 
     // fields ---------------------------------------------------------------------------------- //
 private:

@@ -199,7 +199,7 @@ public:
             return (m_min == other.m_min) && (m_max == other.m_max);
         }
 
-        /// Ineequality operator
+        /// Inequality operator
         /// @param other    Ratio to compare against.
         constexpr bool operator!=(const Ratios& other) const noexcept { return !(*this == other); }
 

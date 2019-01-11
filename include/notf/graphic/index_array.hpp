@@ -87,7 +87,7 @@ protected:
 // index array ====================================================================================================== //
 
 /// Abstraction of an OpenGL index buffer.
-template<typename INDEX_TYPE>
+template<class INDEX_TYPE>
 class IndexArray : public IndexArrayType {
 
     // types ----------------------------------------------------------------------------------- //

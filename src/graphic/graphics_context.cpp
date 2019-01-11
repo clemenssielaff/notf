@@ -16,6 +16,7 @@
 #include "notf/graphic/shader.hpp"
 #include "notf/graphic/shader_program.hpp"
 #include "notf/graphic/texture.hpp"
+#include "notf/graphic/uniform_buffer.hpp"
 
 namespace { // anonymous
 NOTF_USING_NAMESPACE;
@@ -241,6 +242,11 @@ GraphicsContext::FramebufferGuard GraphicsContext::bind_framebuffer(const FrameB
     return FramebufferGuard(*this, framebuffer);
 }
 
+GraphicsContext::UniformBufferGuard GraphicsContext::bind_uniform_buffer(const AnyUniformBufferPtr& uniform_buffer) {
+    _bind_uniform_buffer(uniform_buffer);
+    return UniformBufferGuard(*this, uniform_buffer);
+}
+
 void GraphicsContext::_shutdown_once() {
     const auto current_guard = make_current();
     m_state = {};
@@ -291,10 +297,8 @@ void GraphicsContext::_bind_program(const ShaderProgramPtr& program) {
 
 void GraphicsContext::_unbind_program(const ShaderProgramPtr& program) {
     if (program && program != m_state.program) {
-        NOTF_LOG_CRIT("Did not find expected ShaderProgram \"{}\" to unbind, ignoring", program->get_id());
-        return;
-    }
-    if (m_state.program) {
+        NOTF_LOG_CRIT("Did not find expected ShaderProgram \"{}\", ignoring call to unbind", program->get_id());
+    } else if (m_state.program) {
         NOTF_ASSERT(is_current());
         NOTF_CHECK_GL(glUseProgram(0));
         NOTF_CHECK_GL(glBindProgramPipeline(0));
@@ -314,13 +318,31 @@ void GraphicsContext::_bind_framebuffer(const FrameBufferPtr& framebuffer) {
 
 void GraphicsContext::_unbind_framebuffer(const FrameBufferPtr& framebuffer) {
     if (framebuffer && framebuffer != m_state.framebuffer) {
-        NOTF_LOG_CRIT("Did not find expected FrameBuffer \"{}\" to unbind, ignoring", framebuffer->get_id());
-        return;
-    }
-    if (m_state.framebuffer) {
+        NOTF_LOG_CRIT("Did not find expected FrameBuffer \"{}\", ignoring call to unbind", framebuffer->get_id());
+    } else if (m_state.framebuffer) {
         NOTF_ASSERT(is_current());
         NOTF_CHECK_GL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
         m_state.framebuffer.reset();
+    }
+}
+
+void GraphicsContext::_bind_uniform_buffer(const AnyUniformBufferPtr& uniform_buffer) {
+    if (!uniform_buffer) {
+        _unbind_uniform_buffer();
+    } else if (uniform_buffer != m_state.uniform_buffer) {
+        NOTF_ASSERT(is_current());
+        NOTF_CHECK_GL(glBindBuffer(GL_UNIFORM_BUFFER, uniform_buffer->get_id().value()));
+        m_state.uniform_buffer = uniform_buffer;
+    }
+}
+
+void GraphicsContext::_unbind_uniform_buffer(const AnyUniformBufferPtr& uniform_buffer) {
+    if (uniform_buffer && uniform_buffer != m_state.uniform_buffer) {
+        NOTF_LOG_CRIT("Did not find expected UniformBuffer \"{}\", ignoring call to unbind", uniform_buffer->get_id());
+    } else if (m_state.uniform_buffer) {
+        NOTF_ASSERT(is_current());
+        NOTF_CHECK_GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));
+        m_state.uniform_buffer.reset();
     }
 }
 

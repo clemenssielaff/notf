@@ -22,7 +22,7 @@ void check_gl_error(unsigned int line, const char* file);
 #ifdef NOTF_DEBUG
 #define NOTF_CHECK_GL(A) \
     (A);                 \
-    detail::check_gl_error(__LINE__, notf::filename_from_path(__FILE__))
+    ::notf::detail::check_gl_error(__LINE__, notf::filename_from_path(__FILE__))
 #else
 #define NOTF_CHECK_GL(A) (A)
 #endif

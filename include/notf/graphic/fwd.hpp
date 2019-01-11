@@ -40,11 +40,19 @@ class GraphicsSystem;
 } // namespace detail
 class TheGraphicsSystem;
 
+// uniform_buffer.hpp ------------------------------------------------------ //
+namespace detail {
+class AnyUniformBuffer;
+}
+NOTF_DECLARE_SHARED_ALIAS_POINTERS(detail::AnyUniformBuffer, AnyUniformBuffer);
+NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, UniformBuffer);
+
 using RenderBufferId = IdType<RenderBuffer, GLuint>;
 using FrameBufferId = IdType<FrameBuffer, GLuint>;
 using ShaderId = IdType<Shader, GLuint>;
 using TextureId = IdType<Texture, GLuint>;
 using ShaderProgramId = IdType<ShaderProgram, GLuint>;
+using UniformBufferId = IdType<ShaderProgram, GLuint>;
 
 NOTF_CLOSE_NAMESPACE
 

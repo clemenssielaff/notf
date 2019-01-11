@@ -149,15 +149,15 @@ public:
     };
 
 private:
-    /// Internal reactive function that is subscribed to all visible Properties and marks the Node as dirty, should one
+    /// Internal reactive function that is subscribed to all REDRAW Properties and marks the Node as dirty, should one
     /// of them change.
-    class PropertyObserver : public Subscriber<All> {
+    class RedrawObserver : public Subscriber<All> {
 
         // methods --------------------------------------------------------- //
     public:
         /// Value Constructor.
         /// @param node     Node owning this Subscriber.
-        PropertyObserver(AnyNode& node) : m_node(node) {}
+        RedrawObserver(AnyNode& node) : m_node(node) {}
 
         /// Called whenever a visible Property changed its value.
         void on_next(const AnyPublisher*, ...) final { m_node._mark_as_dirty(); }
@@ -167,7 +167,7 @@ private:
         /// Node owning this Subscriber.
         AnyNode& m_node;
     };
-    using PropertyObserverPtr = std::shared_ptr<PropertyObserver>;
+    using RedrawObserverPtr = std::shared_ptr<RedrawObserver>;
 
     // flags ------------------------------------------------------------------
 
@@ -525,8 +525,8 @@ protected: // for all subclasses
     }
 
 protected: // for direct subclasses only
-    /// Reactive function marking this Node as dirty whenever a visible Property changes its value.
-    std::shared_ptr<PropertyObserver>& _get_property_observer() { return m_property_observer; }
+    /// Reactive function marking this Node as dirty whenever a REDRAW Property changes its value.
+    RedrawObserverPtr& _get_redraw_observer() { return m_redraw_observer; }
 
     /// Whether or not this Node has been finalized or not.
     bool _is_finalized() const { return _get_internal_flag(to_number(InternalFlags::FINALIZED)); }
@@ -682,8 +682,8 @@ private:
     /// Combines the Property hash with the Node hashes of all children in order.
     size_t m_node_hash = 0;
 
-    /// Reactive function marking this Node as dirty whenever a visible Property changes its value.
-    PropertyObserverPtr m_property_observer = std::make_shared<PropertyObserver>(*this);
+    /// Reactive function marking this Node as dirty whenever a REDRAW Property changes its value.
+    RedrawObserverPtr m_redraw_observer = std::make_shared<RedrawObserver>(*this);
 };
 
 // node accessors =================================================================================================== //

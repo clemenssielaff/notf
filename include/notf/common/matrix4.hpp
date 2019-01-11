@@ -185,13 +185,6 @@ public:
         return *this;
     }
 
-    /// Concatenate this to another another transformation matrix.
-    /// @param other    Transformation to concatenate to.
-    Matrix4& premult(const Matrix4& other) {
-        *this = other * *this;
-        return *this;
-    }
-
     /// Translates this transformation by a given delta vector.
     /// @param delta    Delta translation.
     Matrix4 translate(const component_t& delta) const {

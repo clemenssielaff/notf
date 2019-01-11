@@ -19,6 +19,7 @@ namespace detail {
 /// "Simple" means that the Polygon has no (non-consecutive) vertices that share the same position, no intersecting
 /// edges and must contain at least 3 unique points. Polygons are always closed, meaning the last point is always
 /// implicitly connected to the first one.
+/// Polygons cannot be modified once they are constructed.
 template<class Element>
 class Polygon {
 
@@ -36,7 +37,7 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// (empty) Default constructor.
-    Polygon() = default;
+    constexpr Polygon() noexcept = default;
 
     /// Value constructor.
     /// @param vertices         Vertices from which to construct the Polygon.
@@ -176,6 +177,17 @@ public:
 
     /// Checks if this Polygon is concave.
     bool is_concave() const { return !is_convex(); }
+
+    /// Tests whether this Polygon is vertex-wise approximate to another.
+    /// @param other    Other Polygon to test against.
+    /// @param epsilon  Largest ignored difference.
+    bool is_approx(const Polygon& other, const element_t epsilon = precision_high<element_t>()) const noexcept {
+        if (other.m_vertices.size() != m_vertices.size()) { return false; }
+        for (size_t i = 0; i < m_vertices.size(); ++i) {
+            if (!m_vertices[i].is_approx(other.m_vertices[i], epsilon)) { return false; }
+        }
+        return true;
+    }
 
 private:
     /// Enforces the construction of a simple Polygon with unique vertices.

@@ -22,11 +22,11 @@
 namespace { // anonymous
 NOTF_USING_NAMESPACE;
 
-/// Compiles a single shader stage from a given source.
+/// Compiles a single Shader stage from a given source.
 /// @param program_name Name of the Shader program (for error messages).
 /// @param stage        Shader stage produced by the source.
 /// @param source       Source to compile.
-/// @return OpenGL ID of the shader stage.
+/// @return OpenGL ID of the Shader stage.
 GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag stage, const char* source) {
     static const char* vertex = "vertex";
     static const char* tess_ctrl = "tesselation-control";
@@ -37,7 +37,7 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
 
     if (!source) { return 0; }
 
-    // create the OpenGL shader
+    // create the OpenGL Shader
     GLuint shader = 0;
     const char* stage_name = nullptr;
     switch (stage) {
@@ -69,7 +69,7 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
     NOTF_ASSERT(stage_name);
 
     if (!shader) {
-        NOTF_THROW(OpenGLError, "Failed to create {} shader object for for program \"{}\"", stage_name, program_name);
+        NOTF_THROW(OpenGLError, "Failed to create {} Shader object for for program \"{}\"", stage_name, program_name);
     }
 
     // compile the shader
@@ -86,7 +86,7 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
         NOTF_CHECK_GL(glGetShaderInfoLog(shader, error_size, /*length*/ nullptr, &error_message[0]));
         NOTF_CHECK_GL(glDeleteShader(shader));
 
-        NOTF_THROW(OpenGLError, "Failed to compile {} stage for shader \"{}\"\n\t{}", stage_name, program_name,
+        NOTF_THROW(OpenGLError, "Failed to compile {} stage for Shader \"{}\"\n\t{}", stage_name, program_name,
                    error_message.data());
     }
 
@@ -101,13 +101,6 @@ size_t longest_uniform_length(const GLuint program) {
     return narrow_cast<size_t>(result);
 }
 
-/// Get the size of the longest attribute name in a program.
-size_t longest_attribute_length(const GLuint program) {
-    GLint result = 0;
-    NOTF_CHECK_GL(glGetProgramiv(program, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &result));
-    return narrow_cast<size_t>(result);
-}
-
 /// Finds the index in a given GLSL source string where custom `#defines` can be injected.
 size_t find_injection_index(const std::string& source) {
     static const std::regex version_regex(R"==(\n?\s*#version\s*\d{3}\s*es[ \t]*\n)==");
@@ -118,7 +111,7 @@ size_t find_injection_index(const std::string& source) {
     std::smatch extensions;
     std::regex_search(source, extensions, extensions_regex);
     if (!extensions.empty()) {
-        // if the shader contains one or more #extension strings, we have to inject the #defines after those
+        // if the Shader contains one or more #extension strings, we have to inject the #defines after those
         injection_index = 0;
         std::string remainder;
         do {
@@ -281,7 +274,7 @@ Shader::Shader(const GLuint id, Stage::Flags stages, std::string name)
 
     std::vector<GLchar> uniform_name(longest_uniform_length(m_id.value()));
     for (GLuint index = 0; index < static_cast<GLuint>(uniform_count); ++index) {
-        Variable variable;
+        Uniform variable;
         variable.type = 0;
         variable.size = 0;
 
@@ -296,12 +289,12 @@ Shader::Shader(const GLuint id, Stage::Flags stages, std::string name)
 
         variable.location = glGetUniformLocation(m_id.value(), variable.name.c_str());
         if (variable.location == -1) {
-            NOTF_LOG_WARN("Skipping uniform \"\" on shader: \"{}\"", variable.name, m_name);
+            NOTF_LOG_WARN("Skipping uniform \"\" on Shader: \"{}\"", variable.name, m_name);
             // TODO: this is skipping uniforms in a named uniform block
             continue;
         }
 
-        NOTF_LOG_TRACE("Discovered uniform \"{}\" on shader: \"{}\"", variable.name, m_name);
+        NOTF_LOG_TRACE("Discovered uniform \"{}\" on Shader: \"{}\"", variable.name, m_name);
         m_uniforms.emplace_back(std::move(variable));
     }
     m_uniforms.shrink_to_fit();
@@ -321,7 +314,7 @@ bool Shader::validate_now() const {
     std::vector<char> message = std::vector<char>(static_cast<size_t>(message_size));
     NOTF_CHECK_GL(glGetProgramInfoLog(m_id.value(), message_size, /*length*/ nullptr, &message[0]));
 
-    NOTF_LOG_TRACE("Validation of shader \"{}\" {}", m_name,
+    NOTF_LOG_TRACE("Validation of Shader \"{}\" {}", m_name,
                    (status ? "succeeded" : fmt::format("failed:\n{}", message.data())));
     return status == GL_TRUE;
 }
@@ -335,7 +328,7 @@ GLuint Shader::_build(const std::string& name, const Args& args) {
     // For details, see:
     //     https://www.khronos.org/opengl/wiki/Interface_Matching#Separate_programs
     GLuint program = glCreateProgram();
-    if (!program) { NOTF_THROW(OpenGLError, "Failed to create program object for shader \"{}\"", name); }
+    if (!program) { NOTF_THROW(OpenGLError, "Failed to create program object for Shader \"{}\"", name); }
     NOTF_CHECK_GL(glProgramParameteri(program, GL_PROGRAM_SEPARABLE, GL_TRUE));
 
     { // create and attach the shader stages
@@ -391,10 +384,10 @@ GLuint Shader::_build(const std::string& name, const Args& args) {
             NOTF_CHECK_GL(glGetProgramInfoLog(program, error_size, /*length*/ nullptr, &error_message[0]));
             NOTF_CHECK_GL(glDeleteProgram(program));
 
-            NOTF_THROW(OpenGLError, "Failed to link shader program \"{}\":\n", name, error_message.data());
+            NOTF_THROW(OpenGLError, "Failed to link Shader program \"{}\":\n", name, error_message.data());
         }
     }
-    NOTF_LOG_TRACE("Compiled and linked shader program \"{}\".", name);
+    NOTF_LOG_TRACE("Compiled and linked Shader program \"{}\".", name);
 
     NOTF_ASSERT(program);
     return program;
@@ -405,13 +398,13 @@ void Shader::_register_with_system(const ShaderPtr& shader) {
     TheGraphicsSystem::AccessFor<Shader>::register_new(shader);
 }
 
-const Shader::Variable& Shader::_uniform(const std::string& name) const {
+const Shader::Uniform& Shader::_uniform(const std::string& name) const {
     assert_is_valid(*this);
 
     auto it = std::find_if(std::begin(m_uniforms), std::end(m_uniforms),
-                           [&](const Variable& var) -> bool { return var.name == name; });
+                           [&](const Uniform& var) -> bool { return var.name == name; });
     if (it == std::end(m_uniforms)) {
-        NOTF_THROW(OpenGLError, "No uniform named \"{}\" in shader \"{}\"", name, m_name);
+        NOTF_THROW(OpenGLError, "No uniform named \"{}\" in Shader \"{}\"", name, m_name);
     }
     return *it;
 }
@@ -419,7 +412,7 @@ const Shader::Variable& Shader::_uniform(const std::string& name) const {
 void Shader::_deallocate() {
     if (m_id.value()) {
         NOTF_CHECK_GL(glDeleteProgram(m_id.value()));
-        NOTF_LOG_TRACE("Deleted Shader Program \"{}\"", m_name);
+        NOTF_LOG_TRACE("Deleted Shader \"{}\"", m_name);
         m_id = ShaderId::invalid();
     }
 }
@@ -427,12 +420,12 @@ void Shader::_deallocate() {
 template<>
 void Shader::set_uniform(const std::string& name, const int& value) {
     assert_is_valid(*this);
-    const Variable& uniform = _uniform(name);
+    const Uniform& uniform = _uniform(name);
     if (uniform.type == GL_INT || uniform.type == GL_SAMPLER_2D) {
         NOTF_CHECK_GL(glProgramUniform1i(m_id.value(), uniform.location, value));
     } else {
         NOTF_THROW(OpenGLError,
-                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"int\"", name,
+                   "Uniform \"{}\" in Shader \"{}\" of type \"{}\" is not compatible with value type \"int\"", name,
                    m_name, gl_type_name(uniform.type));
     }
 }
@@ -440,14 +433,14 @@ void Shader::set_uniform(const std::string& name, const int& value) {
 template<>
 void Shader::set_uniform(const std::string& name, const unsigned int& value) {
     assert_is_valid(*this);
-    const Variable& uniform = _uniform(name);
+    const Uniform& uniform = _uniform(name);
     if (uniform.type == GL_UNSIGNED_INT) {
         NOTF_CHECK_GL(glProgramUniform1ui(m_id.value(), uniform.location, value));
     } else if (uniform.type == GL_SAMPLER_2D) {
         NOTF_CHECK_GL(glProgramUniform1i(m_id.value(), uniform.location, static_cast<GLint>(value)));
     } else {
         NOTF_THROW(OpenGLError,
-                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"unsigned int\"",
+                   "Uniform \"{}\" in Shader \"{}\" of type \"{}\" is not compatible with value type \"unsigned int\"",
                    name, m_name, gl_type_name(uniform.type));
     }
 }
@@ -455,12 +448,12 @@ void Shader::set_uniform(const std::string& name, const unsigned int& value) {
 template<>
 void Shader::set_uniform(const std::string& name, const float& value) {
     assert_is_valid(*this);
-    const Variable& uniform = _uniform(name);
+    const Uniform& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT) {
         NOTF_CHECK_GL(glProgramUniform1f(m_id.value(), uniform.location, value));
     } else {
         NOTF_THROW(OpenGLError,
-                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"float\"", name,
+                   "Uniform \"{}\" in Shader \"{}\" of type \"{}\" is not compatible with value type \"float\"", name,
                    m_name, gl_type_name(uniform.type));
     }
 }
@@ -468,12 +461,12 @@ void Shader::set_uniform(const std::string& name, const float& value) {
 template<>
 void Shader::set_uniform(const std::string& name, const V2f& value) {
     assert_is_valid(*this);
-    const Variable& uniform = _uniform(name);
+    const Uniform& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT_VEC2) {
         NOTF_CHECK_GL(glProgramUniform2fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
     } else {
         NOTF_THROW(OpenGLError,
-                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"V2f\"", name,
+                   "Uniform \"{}\" in Shader \"{}\" of type \"{}\" is not compatible with value type \"V2f\"", name,
                    m_name, gl_type_name(uniform.type));
     }
 }
@@ -481,12 +474,12 @@ void Shader::set_uniform(const std::string& name, const V2f& value) {
 template<>
 void Shader::set_uniform(const std::string& name, const V4f& value) {
     assert_is_valid(*this);
-    const Variable& uniform = _uniform(name);
+    const Uniform& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT_VEC4) {
         NOTF_CHECK_GL(glProgramUniform4fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
     } else {
         NOTF_THROW(OpenGLError,
-                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"V4f\"", name,
+                   "Uniform \"{}\" in Shader \"{}\" of type \"{}\" is not compatible with value type \"V4f\"", name,
                    m_name, gl_type_name(uniform.type));
     }
 }
@@ -494,53 +487,18 @@ void Shader::set_uniform(const std::string& name, const V4f& value) {
 template<>
 void Shader::set_uniform(const std::string& name, const M4f& value) {
     assert_is_valid(*this);
-    const Variable& uniform = _uniform(name);
+    const Uniform& uniform = _uniform(name);
     if (uniform.type == GL_FLOAT_MAT4) {
         NOTF_CHECK_GL(glProgramUniformMatrix4fv(m_id.value(), uniform.location, /*count*/ 1, /*transpose*/ GL_FALSE,
                                                 value.as_ptr()));
     } else {
         NOTF_THROW(OpenGLError,
-                   "Uniform \"{}\" in shader \"{}\" of type \"{}\" is not compatible with value type \"M4f\"", name,
+                   "Uniform \"{}\" in Shader \"{}\" of type \"{}\" is not compatible with value type \"M4f\"", name,
                    m_name, gl_type_name(uniform.type));
     }
 }
 
 // vertex shader ==================================================================================================== //
-
-VertexShader::VertexShader(const GLuint program, std::string name, std::string string)
-    : Shader(program, Stage::VERTEX, std::move(name)), m_source(std::move(string)), m_attributes() {
-    // discover attributes
-    GLint attribute_count = 0;
-    NOTF_CHECK_GL(glGetProgramiv(get_id().value(), GL_ACTIVE_ATTRIBUTES, &attribute_count));
-    NOTF_ASSERT(attribute_count >= 0);
-    m_attributes.reserve(static_cast<size_t>(attribute_count));
-
-    std::vector<GLchar> uniform_name(longest_attribute_length(get_id().value()));
-    for (GLuint index = 0; index < static_cast<GLuint>(attribute_count); ++index) {
-        Variable variable;
-        variable.type = 0;
-        variable.size = 0;
-
-        GLsizei name_length = 0;
-        NOTF_CHECK_GL(glGetActiveAttrib(get_id().value(), index, static_cast<GLsizei>(uniform_name.size()),
-                                        &name_length, &variable.size, &variable.type, &uniform_name[0]));
-        NOTF_ASSERT(variable.type);
-        NOTF_ASSERT(variable.size);
-
-        NOTF_ASSERT(name_length > 0);
-        variable.name = std::string(&uniform_name[0], static_cast<size_t>(name_length));
-
-        // some variable names are pre-defined by the language and cannot be set by the user
-        if (variable.name == "gl_VertexID") { continue; }
-
-        variable.location = glGetAttribLocation(get_id().value(), variable.name.c_str());
-        NOTF_ASSERT(variable.location >= 0);
-
-        NOTF_LOG_TRACE("Discovered attribute \"{}\" on shader: \"{}\"", variable.name, get_name());
-        m_attributes.emplace_back(std::move(variable));
-    }
-    m_attributes.shrink_to_fit();
-}
 
 VertexShaderPtr VertexShader::create(std::string name, const std::string& string, const Defines& defines) {
     std::string source = inject_header(string, glsl_header() + build_defines(defines));
@@ -554,21 +512,7 @@ VertexShaderPtr VertexShader::create(std::string name, const std::string& string
     return shader;
 }
 
-GLuint VertexShader::get_attribute(const std::string& name) const {
-    assert_is_valid(*this);
-    for (const Variable& variable : m_attributes) {
-        if (variable.name == name) { return static_cast<GLuint>(variable.location); }
-    }
-    NOTF_THROW(OpenGLError, "No attribute named \"{}\" in shader \"{}\"", name, get_name());
-}
-
 // tesselation shader =============================================================================================== //
-
-TesselationShader::TesselationShader(const GLuint program, std::string name, const std::string& control_string,
-                                     const std::string& evaluation_string)
-    : Shader(program, Stage::TESS_CONTROL | Stage::TESS_EVALUATION, std::move(name))
-    , m_control_source(std::move(control_string))
-    , m_evaluation_source(std::move(evaluation_string)) {}
 
 TesselationShaderPtr TesselationShader::create(const std::string& name, const std::string& control_string,
                                                const std::string& evaluation_string, const Defines& defines) {
@@ -589,9 +533,6 @@ TesselationShaderPtr TesselationShader::create(const std::string& name, const st
 
 // geometry shader ================================================================================================== //
 
-GeometryShader::GeometryShader(const GLuint program, std::string name, std::string string)
-    : Shader(program, Stage::GEOMETRY, std::move(name)), m_source(std::move(string)) {}
-
 GeometryShaderPtr GeometryShader::create(std::string name, const std::string& string, const Defines& defines) {
     std::string source = inject_header(string, glsl_header() + build_defines(defines));
 
@@ -605,9 +546,6 @@ GeometryShaderPtr GeometryShader::create(std::string name, const std::string& st
 }
 
 // fragment shader ================================================================================================== //
-
-FragmentShader::FragmentShader(const GLuint program, std::string shader_name, std::string string)
-    : Shader(program, Stage::FRAGMENT, std::move(shader_name)), m_source(std::move(string)) {}
 
 FragmentShaderPtr FragmentShader::create(std::string name, const std::string& string, const Defines& defines) {
     std::string source = inject_header(string, glsl_header() + build_defines(defines));

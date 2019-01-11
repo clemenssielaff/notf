@@ -50,9 +50,9 @@ AnyNode::~AnyNode() {
 
 #ifdef NOTF_DEBUG
     // make sure that the property observer is deleted with this node, because it has a raw reference to the node
-    std::weak_ptr<PropertyObserver> weak_observer = m_property_observer;
+    std::weak_ptr<RedrawObserver> weak_observer = m_redraw_observer;
     NOTF_ASSERT(weak_observer.lock() != nullptr);
-    m_property_observer.reset();
+    m_redraw_observer.reset();
     NOTF_ASSERT(weak_observer.expired());
 #endif
 

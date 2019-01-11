@@ -40,6 +40,18 @@ public:
         // TODO: constraint clipping Polygon to rect, or rect to polygon?
     }
 
+    /// Equality comparison operator.
+    /// @param other    Clipping to compare against.
+    bool operator==(const Clipping& other) const noexcept {
+        return m_rect.is_approx(other.m_rect)      //
+               && m_xform.is_approx(other.m_xform) //
+               && m_polygon.is_approx(other.m_polygon);
+    }
+
+    /// Inequality operator
+    /// @param other    Clipping to compare against.
+    constexpr bool operator!=(const Clipping& other) const noexcept { return !(*this == other); }
+
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// Polygon to clip to, can be empty.

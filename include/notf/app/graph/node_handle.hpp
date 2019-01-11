@@ -192,8 +192,6 @@ private:
 public:
     /// Default (empty) Constructor.
     NodeHandle() = default;
-    NodeHandle(const NodeHandle&) = default;
-    NodeHandle(NodeHandle&&) = default;
 
     /// @{
     /// Value Constructor.
@@ -219,13 +217,6 @@ public:
         NOTF_GUARD(std::lock_guard(s_mutex));
         m_node.reset();
     }
-
-    /// @{
-    /// Assignment operator.
-    /// @param other    Other NodeHandle to copy / move from.
-    NodeHandle& operator=(NodeHandle&&) = default;
-    NodeHandle& operator=(const NodeHandle& other) = default;
-    /// @}
 
     /// Implicit conversion to an (untyped) NodeHandle.
     operator AnyNodeHandle() { return AnyNodeHandle(std::static_pointer_cast<AnyNode>(m_node.lock())); }

@@ -138,7 +138,7 @@ using Trianglef = detail::Triangle<float>;
 
 // free templates =================================================================================================== //
 
-/// Converstion template declaration.
+/// Conversion template declaration.
 template<class To, class From>
 To convert_to(const From& from);
 

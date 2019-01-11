@@ -1,5 +1,7 @@
 #include "notf/app/widget/painterpreter.hpp"
 
+#include "notf/meta/log.hpp"
+
 #include "notf/common/bezier.hpp"
 #include "notf/common/variant.hpp"
 #include "notf/common/vector.hpp"
@@ -17,61 +19,91 @@ Painterpreter::Painterpreter(GraphicsContext& context) : m_plotter(std::make_sha
 
 void Painterpreter::paint(const WidgetHandle& widget) {
     { // adopt the Widget's auxiliary information
-        m_base_xform = widget->get_xform<AnyWidget::Space::WINDOW>();
-        m_base_clipping = widget->get_clipping_rect();
+        _reset();
+        _get_current_state().xform = widget->get_xform<AnyWidget::Space::WINDOW>();
+        _get_current_state().clipping = widget->get_clipping_rect();
     }
 
     { // parse the commands
         const WidgetDesign& design = WidgetHandle::AccessFor<Painterpreter>::get_design(widget);
         const std::vector<WidgetDesign::Command>& buffer = WidgetDesign::AccessFor<Painterpreter>::get_buffer(design);
         for (const WidgetDesign::Command& command : buffer) {
-            std::visit(overloaded{
-                           [&](const WidgetDesign::PushStateCommand&) { _push_state(); },
+            std::visit(
+                overloaded{
+                    [&](const WidgetDesign::PushStateCommand&) { _push_state(); },
 
-                           [&](const WidgetDesign::PopStateCommand&) { _pop_state(); },
+                    [&](const WidgetDesign::PopStateCommand&) { _pop_state(); },
 
-                           [&](const WidgetDesign::SetTransformationCommand& command) {
-                               State& state = _get_current_state();
-                               state.xform = command.data->transformation;
-                           },
+                    [&](const WidgetDesign::SetTransformationCommand& command) {
+                        State& state = _get_current_state();
+                        state.xform = command.data->transformation;
+                    },
 
-                           [&](const WidgetDesign::SetStrokeWidthCommand& command) {
-                               State& state = _get_current_state();
-                               state.stroke_width = command.stroke_width;
-                           },
+                    [&](const WidgetDesign::SetStrokeWidthCommand& command) {
+                        State& state = _get_current_state();
+                        state.stroke_width = command.stroke_width;
+                    },
 
-                           [&](const WidgetDesign::SetFontCommand& command) {
-                               State& state = _get_current_state();
-                               state.font = command.data->font;
-                           },
+                    [&](const WidgetDesign::SetFontCommand& command) {
+                        State& state = _get_current_state();
+                        state.font = command.data->font;
+                    },
 
-                           [&](const WidgetDesign::SetPolygonPathCommand& command) {
-                               State& state = _get_current_state();
-                               state.path = m_plotter->add(command.data->polygon);
-                               m_paths.emplace_back(state.path);
-                           },
+                    [&](const WidgetDesign::SetPolygonPathCommand& command) {
+                        State& state = _get_current_state();
+                        state.path = m_plotter->add(transform_by(command.data->polygon, state.xform));
+                        m_paths.emplace_back(state.path);
+                    },
 
-                           [&](const WidgetDesign::SetSplinePathCommand& command) {
-                               State& state = _get_current_state();
-                               state.path = m_plotter->add(command.data->spline);
-                               m_paths.emplace_back(state.path);
-                           },
+                    [&](const WidgetDesign::SetSplinePathCommand& command) {
+                        State& state = _get_current_state();
+                        state.path = m_plotter->add(transform_by(command.data->spline, state.xform));
+                        m_paths.emplace_back(state.path);
+                    },
 
-                           [&](const WidgetDesign::SetPathIndexCommand& command) {
-                               NOTF_ASSERT(command.index);
-                               const size_t path_index = command.index.value() - Plotter::PathId::first().value();
-                               NOTF_ASSERT(path_index < m_paths.size());
-                               State& state = _get_current_state();
-                               state.path = m_paths[path_index];
-                           },
+                    [&](const WidgetDesign::SetPathIndexCommand& command) {
+                        NOTF_ASSERT(command.index);
+                        const size_t path_index = command.index.value() - Plotter::PathId::first().value();
+                        NOTF_ASSERT(path_index < m_paths.size());
+                        State& state = _get_current_state();
+                        state.path = m_paths[path_index];
+                    },
 
-                           [&](const WidgetDesign::WriteCommand& command) { _write(command.data->text); },
+                    [&](const WidgetDesign::WriteCommand& command) { _write(command.data->text); },
 
-                           [&](const WidgetDesign::FillCommand&) { _fill(); },
+                    [&](const WidgetDesign::FillCommand&) { _fill(); },
 
-                           [&](const WidgetDesign::StrokeCommand&) { _stroke(); },
-                       },
-                       command);
+                    [&](const WidgetDesign::StrokeCommand&) { _stroke(); },
+
+                    [&](const WidgetDesign::NoopCommand&) {},
+
+                    [&](const WidgetDesign::SetClippingCommand& command) {
+                        _get_current_state().clipping = command.data->clipping;
+                    },
+
+                    [&](const WidgetDesign::SetFillPaintCommand& command) {
+                        _get_current_state().fill_paint = command.data->paint;
+                    },
+
+                    [&](const WidgetDesign::SetStrokePaintCommand& command) {
+                        _get_current_state().stroke_paint = command.data->paint;
+                    },
+
+                    [&](const WidgetDesign::SetBlendModeCommand& command) {
+                        _get_current_state().blend_mode = command.mode;
+                    },
+
+                    [&](const WidgetDesign::SetAlphaCommand& command) { _get_current_state().alpha = command.alpha; },
+
+                    [&](const WidgetDesign::SetLineCapCommand& command) {
+                        _get_current_state().line_cap = command.cap;
+                    },
+
+                    [&](const WidgetDesign::SetLineJoinCommand& command) {
+                        _get_current_state().line_join = command.join;
+                    },
+                },
+                command);
         }
     }
 
@@ -86,10 +118,6 @@ void Painterpreter::_reset() {
     m_states.emplace_back(); // always have at least one state
 
     m_paths.clear();
-
-    m_base_xform = M3f::identity();
-    m_base_clipping = {};
-    m_bounds = Aabrf::wrongest();
 }
 
 Painterpreter::State& Painterpreter::_get_current_state() {

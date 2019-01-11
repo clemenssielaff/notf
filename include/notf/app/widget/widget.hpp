@@ -281,10 +281,18 @@ protected:
 
         // properties
         for_each(m_widget_properties, [this](auto& property) {
+            // create property
             using widget_property_t = typename std::decay_t<decltype(property)>::element_type;
             property = std::make_unique<widget_property_t>();
-            if (property->is_visible()) { // receive an update, whenever a visible property changes its value
-                property->get_operator()->subscribe(_get_property_observer());
+
+            // mark this Widget dirty whenever a REDRAW property changes its value
+            if (widget_property_t::policy_t::visibility != AnyProperty::Visibility::INVISIBILE) {
+                property->get_operator()->subscribe(_get_redraw_observer());
+            }
+
+            // refresh the WidgetDesign whenever a REFRESH property changes its value
+            if (widget_property_t::policy_t::visibility == AnyProperty::Visibility::REFRESH) {
+                property->get_operator()->subscribe(_get_refresh_observer());
             }
         });
 
@@ -698,7 +706,7 @@ private:
     }
 
     // hide some protected methods
-    using AnyNode::_get_property_observer;
+    using AnyNode::_get_redraw_observer;
     using AnyNode::_is_finalized;
 
     // fields ---------------------------------------------------------------------------------- //

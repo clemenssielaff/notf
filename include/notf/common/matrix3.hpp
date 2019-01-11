@@ -36,33 +36,35 @@ public:
 
     /// Value constructor defining the diagonal of the matrix.
     /// @param a    Value to put into the diagonal.
-    explicit Matrix3(const element_t a) : super_t(component_t(a, 0), component_t(0, a), component_t(0, 0)) {}
+    explicit constexpr Matrix3(const element_t a) noexcept
+        : super_t(component_t(a, 0), component_t(0, a), component_t(0, 0)) {}
 
     /// Column-wise constructor of the matrix.
     /// @param a    First column.
     /// @param b    Second column.
     /// @param c    Third column.
-    Matrix3(component_t a, component_t b, component_t c) : super_t(std::move(a), std::move(b), std::move(c)) {}
+    constexpr Matrix3(component_t a, component_t b, component_t c) noexcept
+        : super_t(std::move(a), std::move(b), std::move(c)) {}
 
     /// Element-wise constructor.
-    Matrix3(const element_t a, const element_t b, const element_t c, const element_t d, const element_t e,
-            const element_t f)
+    constexpr Matrix3(const element_t a, const element_t b, const element_t c, const element_t d, const element_t e,
+                      const element_t f) noexcept
         : super_t(component_t(a, b), component_t(c, d), component_t(e, f)) {}
 
     /// The identity matrix.
-    static Matrix3 identity() { return Matrix3(1); }
+    static constexpr Matrix3 identity() noexcept { return Matrix3(1); }
 
     /// A translation matrix.
     /// @param translation  Translation vector.
-    static Matrix3 translation(component_t translation) {
+    static constexpr Matrix3 translation(component_t translation) noexcept {
         return Matrix3(component_t(1, 0), component_t(0, 1), std::move(translation));
     }
 
     /// A translation matrix.
     /// @param x    X component of the translation vector.
     /// @param y    Y component of the translation vector.
-    static Matrix3 get_translation(const element_t x, const element_t y) {
-        return Matrix3::get_translation(component_t(x, y));
+    static Matrix3 constexpr translation(const element_t x, const element_t y) noexcept {
+        return Matrix3::translation(component_t(x, y));
     }
 
     /// A rotation matrix.
@@ -75,27 +77,33 @@ public:
 
     /// A uniform scale matrix.
     /// @param factor   Uniform scale factor.
-    static Matrix3 scaling(const element_t factor) { return Matrix3(factor, 0, 0, factor, 0, 0); }
+    static Matrix3 constexpr scaling(const element_t factor) noexcept { return Matrix3(factor, 0, 0, factor, 0, 0); }
 
     /// A non-uniform scale matrix.
     /// You can also achieve reflection by passing (-1, 1) for a reflection over the vertical axis, (1, -1) for over the
     /// horizontal axis or (-1, -1) for a point-reflection with respect to the origin.
     /// @param vec  Non-uniform scale vector.
-    static Matrix3 scaling(const component_t& vec) { return Matrix3(vec[0], 0, 0, vec[1], 0, 0); }
+    static Matrix3 constexpr scaling(const component_t& vec) noexcept { return Matrix3(vec[0], 0, 0, vec[1], 0, 0); }
 
     /// A non-uniform scale matrix.
     /// @param x    X component of the scale vector.
     /// @param y    Y component of the scale vector.
-    static Matrix3 scaling(const element_t x, const element_t y) { return Matrix3::scaling(component_t(x, y)); }
+    static Matrix3 constexpr scaling(const element_t x, const element_t y) noexcept {
+        return Matrix3::scaling(component_t(x, y));
+    }
 
     /// A non-uniform skew matrix.
     /// @param vec  Non-uniform skew vector.
-    static Matrix3 skew(const component_t& vec) { return Matrix3(1, tan(vec[1]), tan(vec[0]), 1, 0, 0); }
+    static Matrix3 constexpr skew(const component_t& vec) noexcept {
+        return Matrix3(1, tan(vec[1]), tan(vec[0]), 1, 0, 0);
+    }
 
     /// A non-uniform skew matrix.
     /// @param x    X component of the skew vector.
     /// @param y    Y component of the skew vector.
-    static Matrix3 skew(const element_t x, const element_t y) { return Matrix3::skew(component_t(x, y)); }
+    static Matrix3 constexpr skew(const element_t x, const element_t y) noexcept {
+        return Matrix3::skew(component_t(x, y));
+    }
 
     /// Name of this Matrix3 type.
     static constexpr const char* get_name() {
@@ -106,7 +114,18 @@ public:
         }
     }
 
-    /// The translation part of this Xform.
+    /// Checks whether this matrix is the identity.
+    constexpr bool is_identity() const {
+        constexpr Matrix3 reference = identity();
+        for (size_t i = 0; i < Matrix3::get_dimensions(); ++i) {
+            for (size_t j = 0; j < component_t::get_dimensions(); ++j) {
+                if (!is_approx(data[i][j], reference[i][j])) { return false; }
+            }
+        }
+        return true;
+    }
+
+    /// The translation part of this matrix.
     const component_t& get_translation() const { return data[2]; }
 
     /// Returns the rotational part of this transformation.
@@ -123,7 +142,7 @@ public:
     }
 
     /// Checks whether the matrix is a pure rotation matrix.
-    bool is_rotation() const { return (1 - determinant()) < precision_high<element_t>(); }
+    bool is_rotation() const { return (1 - get_determinant()) < precision_high<element_t>(); }
 
     /// Scale factor along the x-axis.
     element_t scale_x() const { return sqrt(data[0][0] * data[0][0] + data[0][1] * data[0][1]); }
@@ -132,11 +151,11 @@ public:
     element_t scale_y() const { return sqrt(data[1][0] * data[1][0] + data[1][1] * data[1][1]); }
 
     /// Calculates the determinant of the transformation matrix.
-    element_t determinant() const { return (data[0][0] * data[1][1]) - (data[1][0] * data[0][1]); }
+    element_t get_determinant() const { return (data[0][0] * data[1][1]) - (data[1][0] * data[0][1]); }
 
     /// Concatenation of two transformation matrices.
     /// @param other    Transformation to concatenate.
-    Matrix3 operator*(const Matrix3& other) const {
+    constexpr Matrix3 operator*(const Matrix3& other) const noexcept {
         Matrix3 result;
         result[0][0] = data[0][0] * other[0][0] + data[1][0] * other[0][1],
         result[0][1] = data[0][1] * other[0][0] + data[1][1] * other[0][1],
@@ -154,13 +173,11 @@ public:
         return *this;
     }
 
-    /// Concatenate this to another another transformation matrix.
-    /// @param other    Transformation to concatenate to.
-    Matrix3 premult(const Matrix3& other) const { return other * *this; }
-
     /// Translates this transformation by a given delta vector.
     /// @param delta    Delta translation.
-    Matrix3 translate(const component_t& delta) const { return Matrix3(data[0], data[1], data[2] + delta); }
+    constexpr Matrix3 translate(const component_t& delta) const noexcept {
+        return Matrix3(data[0], data[1], data[2] + delta);
+    }
 
     /// Rotates the transformation by a given angle in radians.
     /// @param radians  Rotation in radians.
@@ -168,7 +185,7 @@ public:
 
     /// Returns the inverse of this matrix.
     Matrix3 inverse() const {
-        const element_t det = determinant();
+        const element_t det = get_determinant();
         if (abs(det) <= precision_high<element_t>()) { return Matrix3::identity(); }
         const element_t invdet = 1 / det;
 
@@ -190,13 +207,34 @@ public:
 
 } // namespace detail
 
-/// Transformations
-template<>
-V2f transform_by<V2f, M3f>(const V2f& value, const M3f& matrix);
+// transformations ================================================================================================== //
+// clang-format off
 
-template<>
-Aabrf transform_by<Aabrf, M3f>(const Aabrf& value, const M3f& matrix);
+// v2 * m3
+template<> V2f transform_by<V2f, M3f>(const V2f&, const M3f&);
+template<> V2d transform_by<V2d, M3f>(const V2d&, const M3f&);
 
+template<> V2f transform_by<V2f, M3d>(const V2f&, const M3d&);
+template<> V2d transform_by<V2d, M3d>(const V2d&, const M3d&);
+
+// aabr * m3
+template<> Aabrf transform_by<Aabrf, M3f>(const Aabrf&, const M3f&);
+template<> Aabrd transform_by<Aabrd, M3f>(const Aabrd&, const M3f&);
+
+template<> Aabrf transform_by<Aabrf, M3d>(const Aabrf&, const M3d&);
+template<> Aabrd transform_by<Aabrd, M3d>(const Aabrd&, const M3d&);
+
+// polygon * m3
+template<> Polygonf transform_by<Polygonf, M3f>(const Polygonf&, const M3f&);
+
+// bezier * m3
+template<> CubicBezier2f transform_by<CubicBezier2f, M3f>(const CubicBezier2f&, const M3f&);
+template<> CubicBezier2d transform_by<CubicBezier2d, M3f>(const CubicBezier2d&, const M3f&);
+
+template<> CubicBezier2f transform_by<CubicBezier2f, M3d>(const CubicBezier2f&, const M3d&);
+template<> CubicBezier2d transform_by<CubicBezier2d, M3d>(const CubicBezier2d&, const M3d&);
+
+// clang-format on
 // formatting ======================================================================================================= //
 
 /// Prints the contents of a matrix into a std::ostream.

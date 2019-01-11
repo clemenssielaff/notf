@@ -94,18 +94,18 @@ namespace {
 NOTF_USING_NAMESPACE;
 
 struct VertexPos : public AttributeTrait {
-    constexpr static uint location = 0;
+    NOTF_UNUSED constexpr static uint location = 0;
     using type = V2f;
     using kind = AttributeKind::Position;
 };
 
 struct LeftCtrlPos : public AttributeTrait {
-    constexpr static uint location = 1;
+    NOTF_UNUSED constexpr static uint location = 1;
     using type = V2f;
 };
 
 struct RightCtrlPos : public AttributeTrait {
-    constexpr static uint location = 2;
+    NOTF_UNUSED constexpr static uint location = 2;
     using type = V2f;
 };
 
@@ -120,13 +120,13 @@ void set_second_ctrl(PlotVertexArray::Vertex& vertex, V2f pos) { std::get<2>(ver
 
 void set_modified_first_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier2f::Segment& left_segment) {
     const V2f delta = left_segment.ctrl2 - left_segment.end;
-    set_first_ctrl(vertex, delta.is_zero() ? -(left_segment.tangent(1).normalize()) :
+    set_first_ctrl(vertex, delta.is_zero() ? -(left_segment.get_tangent(1).normalize()) :
                                              delta.get_normalized() * (delta.get_magnitude() + 1));
 }
 
 void set_modified_second_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier2f::Segment& right_segment) {
     const V2f delta = right_segment.ctrl1 - right_segment.start;
-    set_second_ctrl(vertex, delta.is_zero() ? right_segment.tangent(0).normalize() :
+    set_second_ctrl(vertex, delta.is_zero() ? right_segment.get_tangent(0).normalize() :
                                               delta.get_normalized() * (delta.get_magnitude() + 1));
 }
 
@@ -222,10 +222,10 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
         const std::string frag_src = load_file("/home/clemens/code/notf/res/shaders/plotter.frag");
         FragmentShaderPtr frag_shader = FragmentShader::create("plotter.frag", frag_src);
 
-        m_program = ShaderProgram::create(vertex_shader, tess_shader, frag_shader);
+        m_program = ShaderProgram::create("Plotter", vertex_shader, tess_shader, frag_shader);
 
-        tess_shader->set_uniform("aa_width", static_cast<float>(sqrt(2.l) / 2.l));
-        frag_shader->set_uniform("font_texture", TheGraphicsSystem::get_environment().font_atlas_texture_slot);
+        m_program->set_uniform("aa_width", static_cast<float>(sqrt(2.l) / 2.l));
+        m_program->set_uniform("font_texture", TheGraphicsSystem::get_environment().font_atlas_texture_slot);
     }
 
     // vao
@@ -477,16 +477,16 @@ void Plotter::render() const {
     NOTF_CHECK_GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
     NOTF_GUARD(m_context.bind_program(m_program));
-    const TesselationShaderPtr& tess_shader = m_program->get_tesselation_shader();
 
     // screen size
     const Aabri& render_area = m_context.get_render_area();
     if (m_state.screen_size != render_area.get_size()) {
         m_state.screen_size = render_area.get_size();
-        tess_shader->set_uniform("projection", M4f::orthographic(0, m_state.screen_size.width(), 0,
-                                                                 m_state.screen_size.height(), 0, 2));
+        m_program->set_uniform("projection", M4f::orthographic(0, m_state.screen_size.width(), 0,
+                                                               m_state.screen_size.height(), 0, 2));
     }
 
+    // perform the render calls
     for (const DrawCall& drawcall : m_drawcalls) {
         std::visit(overloaded{
                        [&](const StrokeInfo& stroke) { _render_line(stroke); },
@@ -498,8 +498,6 @@ void Plotter::render() const {
 }
 
 void Plotter::_render_line(const StrokeInfo& stroke) const {
-    ShaderProgram& program = *m_program.get();
-
     // patch vertices
     if (m_state.patch_vertices != 2) {
         m_state.patch_vertices = 2;
@@ -508,13 +506,13 @@ void Plotter::_render_line(const StrokeInfo& stroke) const {
 
     // patch type
     if (m_state.patch_type != PatchType::STROKE) {
-        program.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::STROKE));
+        m_program->set_uniform("patch_type", to_number(PatchType::STROKE));
         m_state.patch_type = PatchType::STROKE;
     }
 
     // stroke width
     if (abs(m_state.stroke_width - stroke.width) > precision_high<float>()) {
-        program.get_tesselation_shader()->set_uniform("stroke_width", stroke.width);
+        m_program->set_uniform("stroke_width", stroke.width);
         m_state.stroke_width = stroke.width;
     }
 
@@ -523,7 +521,6 @@ void Plotter::_render_line(const StrokeInfo& stroke) const {
 }
 
 void Plotter::_render_shape(const FillInfo& shape) const {
-    ShaderProgram& program = *m_program.get();
 
     // patch vertices
     if (m_state.patch_vertices != 2) {
@@ -534,12 +531,12 @@ void Plotter::_render_shape(const FillInfo& shape) const {
     // patch type
     if (shape.path->is_convex) {
         if (m_state.patch_type != PatchType::CONVEX) {
-            program.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONVEX));
+            m_program->set_uniform("patch_type", to_number(PatchType::CONVEX));
             m_state.patch_type = PatchType::CONVEX;
         }
     } else {
         if (m_state.patch_type != PatchType::CONCAVE) {
-            program.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::CONCAVE));
+            m_program->set_uniform("patch_type", to_number(PatchType::CONCAVE));
             m_state.patch_type = PatchType::CONCAVE;
         }
     }
@@ -549,7 +546,7 @@ void Plotter::_render_shape(const FillInfo& shape) const {
         // with a purely convex polygon, we can safely put the base vertex into the center of the polygon as it
         // will always be inside and it should never fall onto an existing vertex
         // this way, we can use antialiasing at the outer edge
-        program.get_tesselation_shader()->set_uniform("vec2_aux1", shape.path->center);
+        m_program->set_uniform("vec2_aux1", shape.path->center);
         m_state.vec2_aux1 = shape.path->center;
     }
 
@@ -566,8 +563,7 @@ void Plotter::_render_shape(const FillInfo& shape) const {
         NOTF_CHECK_GL(glEnable(GL_STENCIL_TEST));                           // enable stencil
         NOTF_CHECK_GL(glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)); // do not write into color buffer
         NOTF_CHECK_GL(glStencilMask(0xff));                                 // write to all bits of the stencil buffer
-        NOTF_CHECK_GL(glStencilFunc(GL_ALWAYS, 0, 1)); //  Always pass (other values are default values and do
-                                                       //  not matter for GL_ALWAYS)
+        NOTF_CHECK_GL(glStencilFunc(GL_ALWAYS, 0, 1)); //  Always pass (other parameters do not matter for GL_ALWAYS)
 
         NOTF_CHECK_GL(glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR_WRAP));
         NOTF_CHECK_GL(glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP));
@@ -591,7 +587,6 @@ void Plotter::_render_shape(const FillInfo& shape) const {
 }
 
 void Plotter::_render_text(const TextInfo& text) const {
-    ShaderProgram& program = *m_program.get();
 
     // patch vertices
     if (m_state.patch_vertices != 1) {
@@ -601,7 +596,7 @@ void Plotter::_render_text(const TextInfo& text) const {
 
     // patch type
     if (m_state.patch_type != PatchType::TEXT) {
-        program.get_tesselation_shader()->set_uniform("patch_type", to_number(PatchType::TEXT));
+        m_program->set_uniform("patch_type", to_number(PatchType::TEXT));
         m_state.patch_type = PatchType::TEXT;
     }
 
@@ -611,7 +606,7 @@ void Plotter::_render_text(const TextInfo& text) const {
     // atlas size
     const V2f atlas_size_vec{atlas_size.width(), atlas_size.height()};
     if (!atlas_size_vec.is_approx(m_state.vec2_aux1)) {
-        program.get_tesselation_shader()->set_uniform("vec2_aux1", atlas_size_vec);
+        m_program->set_uniform("vec2_aux1", atlas_size_vec);
         m_state.vec2_aux1 = atlas_size_vec;
     }
 

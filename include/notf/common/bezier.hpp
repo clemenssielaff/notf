@@ -64,7 +64,7 @@ struct Bezier {
             return Segment(a, a + delta_thirds, a + (delta_thirds * 2), std::move(d));
         }
 
-        vector_t tangent(element_t t) const {
+        vector_t get_tangent(element_t t) const {
             // the tangent at the very extremes 0 and 1 may not be defined
             static const element_t epsilon = precision_low<element_t>();
             t = clamp(t, epsilon, 1 - epsilon);

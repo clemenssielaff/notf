@@ -31,7 +31,7 @@ public:
     NOTF_ACCESS_TYPE(Shader);
 
     /// Information about a variable (attribute or uniform) of this shader.
-    struct Variable {
+    struct Uniform {
         /// Location of the variable, used to address the variable in the OpenGL shader.
         GLint location;
 
@@ -109,7 +109,7 @@ public:
     const std::string& get_name() const { return m_name; }
 
     /// All uniforms of this shader.
-    const std::vector<Variable>& get_uniforms() const { return m_uniforms; }
+    const std::vector<Uniform>& get_uniforms() const { return m_uniforms; }
 
     /// Updates the value of a uniform in the shader.
     /// @throws OpenGlError If the uniform cannot be found.
@@ -139,7 +139,7 @@ protected:
 private:
     /// Returns the uniform with the given name.
     /// @throws OpenGlError If there is no uniform with the given name in this shader.
-    const Variable& _uniform(const std::string& name) const;
+    const Uniform& _uniform(const std::string& name) const;
 
     /// Deallocates the Shader data and invalidates the Shader.
     void _deallocate();
@@ -150,7 +150,7 @@ private:
     const std::string m_name;
 
     ///  All uniforms of this shader.
-    std::vector<Variable> m_uniforms;
+    std::vector<Uniform> m_uniforms;
 
     //// ID of the shader program.
     ShaderId m_id = 0;
@@ -200,7 +200,8 @@ private:
     /// @param program  OpenGL Shader program ID.
     /// @param name     Human readable name of the Shader.
     /// @param string   Source string of the Shader.
-    VertexShader(const GLuint program, std::string name, std::string string);
+    VertexShader(const GLuint program, std::string name, std::string string)
+        : Shader(program, Stage::VERTEX, std::move(name)), m_source(std::move(string)) {}
 
 public:
     /// Factory.
@@ -210,13 +211,6 @@ public:
     /// @throws internal_error  If another Shader with the same ID already exists.
     static VertexShaderPtr create(std::string name, const std::string& string, const Defines& defines = s_no_defines);
 
-    /// Returns the location of the attribute with the given name.
-    /// @throws OpenGlError If there is no attribute with the given name in this shader.
-    GLuint get_attribute(const std::string& name) const;
-
-    /// All attribute variables.
-    const std::vector<Variable>& get_attributes() { return m_attributes; }
-
     /// The vertex shader source code.
     const std::string& get_source() const { return m_source; }
 
@@ -224,9 +218,6 @@ public:
 private:
     /// Vertex Shader code (including injections).
     const std::string m_source;
-
-    /// All attributes of this Shader.
-    std::vector<Variable> m_attributes;
 };
 
 // tesselation shader =============================================================================================== //
@@ -244,7 +235,10 @@ private:
     /// @param control_string       Tesselation control shader source string.
     /// @param evaluation_string    Tesselation evaluation shader source string.
     TesselationShader(const GLuint program, std::string name, const std::string& control_string,
-                      const std::string& evaluation_string);
+                      const std::string& evaluation_string)
+        : Shader(program, Stage::TESS_CONTROL | Stage::TESS_EVALUATION, std::move(name))
+        , m_control_source(std::move(control_string))
+        , m_evaluation_source(std::move(evaluation_string)) {}
 
 public:
     /// Factory.
@@ -284,7 +278,8 @@ private:
     /// @param program  OpenGL Shader program ID.
     /// @param name     Human readable name of the Shader.
     /// @param string   Source string of the Shader.
-    GeometryShader(const GLuint program, std::string name, std::string string);
+    GeometryShader(const GLuint program, std::string name, std::string string)
+        : Shader(program, Stage::GEOMETRY, std::move(name)), m_source(std::move(string)) {}
 
 public:
     /// Factory.
@@ -316,7 +311,8 @@ private:
     /// @param program  OpenGL Shader program ID.
     /// @param name     Human readable name of the Shader.
     /// @param string   Source string of the Shader.
-    FragmentShader(const GLuint program, std::string name, std::string string);
+    FragmentShader(const GLuint program, std::string name, std::string string)
+        : Shader(program, Stage::FRAGMENT, std::move(name)), m_source(std::move(string)) {}
 
 public:
     /// Factory.

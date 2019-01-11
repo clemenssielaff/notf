@@ -185,7 +185,7 @@ protected:
             using property_t = typename std::decay_t<decltype(property)>::element_type;
             property = std::make_unique<property_t>();
             if (property->is_visible()) { // receive an update, whenever a visible property changes its value
-                property->get_operator()->subscribe(_get_property_observer());
+                property->get_operator()->subscribe(_get_redraw_observer());
             }
         });
 

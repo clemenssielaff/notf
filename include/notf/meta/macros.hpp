@@ -147,6 +147,18 @@ NOTF_OPEN_NAMESPACE
     using Type##Ptr = std::unique_ptr<Type>;    \
     using Type##ConstPtr = std::unique_ptr<const Type>
 
+/// Convenience macro to define shared pointer alias types for a given type.
+#define NOTF_DECLARE_SHARED_ALIAS_POINTERS(Type, Alias)  \
+    using Alias##Ptr = std::shared_ptr<Type>;            \
+    using Alias##ConstPtr = std::shared_ptr<const Type>; \
+    using Alias##WeakPtr = std::weak_ptr<Type>;          \
+    using Alias##WeakConstPtr = std::weak_ptr<const Type>
+
+/// Convenience macro to define unique pointer alias types for a given type.
+#define NOTF_DECLARE_UNIQUE_ALIAS_POINTERS(Type, Alias) \
+    using Alias##Ptr = std::unique_ptr<Type>;           \
+    using Alias##ConstPtr = std::unique_ptr<const Type>
+
 /// Convenience macro to define shared pointer types for a given templated type with one template argument.
 #define NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(Tag, Type)  \
     template<class>                                        \

@@ -75,7 +75,7 @@ struct Title {
     using value_t = std::string;
     static constexpr ConstString name = "title";
     static inline const value_t default_value = WindowArguments().title;
-    static constexpr bool is_visible = true;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBILE;
 };
 
 /// File name of the Window's icon, relative to the Application's texture directory, empty means no icon.
@@ -83,7 +83,7 @@ struct Icon {
     using value_t = std::string;
     static constexpr ConstString name = "icon";
     static inline const value_t default_value = WindowArguments().icon;
-    static constexpr bool is_visible = false;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBILE;
 };
 
 /// Initial size when windowed.
@@ -91,7 +91,7 @@ struct Size {
     using value_t = Size2i;
     static constexpr ConstString name = "size";
     static constexpr value_t default_value = WindowArguments().size;
-    static constexpr bool is_visible = true;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::REDRAW;
 };
 
 /// Position of the Window relative to the monitor's upper left corner.
@@ -100,7 +100,7 @@ struct Position {
     using value_t = V2i;
     static constexpr ConstString name = "position";
     static constexpr value_t default_value = WindowArguments().position;
-    static constexpr bool is_visible = false;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBILE;
 };
 
 /// Size of the Window's graphics buffer when in fullscreen.
@@ -109,7 +109,7 @@ struct Resolution {
     using value_t = Size2i;
     static constexpr ConstString name = "resolution";
     static constexpr value_t default_value = WindowArguments().resolution;
-    static constexpr bool is_visible = true;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::REDRAW;
 };
 
 /// Whether the window starts out is minimzed, windowed or maximized.
@@ -117,7 +117,7 @@ struct State {
     using value_t = WindowArguments::State;
     static constexpr ConstString name = "state";
     static constexpr value_t default_value = WindowArguments().state;
-    static constexpr bool is_visible = true;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::REDRAW;
 };
 
 /// Which monitor the Window should be displayed full screen.
@@ -126,7 +126,7 @@ struct Monitor {
     using value_t = int;
     static constexpr ConstString name = "monitor";
     static constexpr value_t default_value = WindowArguments().monitor;
-    static constexpr bool is_visible = false;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBILE;
 };
 
 // slots ======================================================================

@@ -32,6 +32,15 @@ namespace detail {
 
 Application::Application(Arguments args)
     : m_arguments(std::move(args)), m_ui_lock(m_ui_mutex), m_event_queue(m_arguments.app_buffer_size) {
+
+    // log application header
+    NOTF_LOG_INFO("NOTF {} ({} built with {} from {}commit \"{}\")",
+                  config::version_string(),                           //
+                  (config::is_debug_build() ? "debug" : "release"),   //
+                  config::compiler_name(),                            //
+                  (config::was_commit_modified() ? "modified " : ""), //
+                  config::built_from_commit());
+
     // initialize GLFW
     glfwSetErrorCallback(GlfwCallbacks::_on_error);
     if (glfwInit() == 0) { NOTF_THROW(StartupError, "GLFW initialization failed"); }
@@ -77,15 +86,8 @@ Application::Application(Arguments args)
     // other startup stuff
     get_age(); // the first time this is called is used as time point "zero"
 
-    // log application header
-    NOTF_LOG_INFO("NOTF {} ({} built with {} from {}commit \"{}\")\n"
-                  "             GLFW version: {}",
-                  config::version_string(),                           //
-                  (config::is_debug_build() ? "debug" : "release"),   //
-                  config::compiler_name(),                            //
-                  (config::was_commit_modified() ? "modified " : ""), //
-                  config::built_from_commit(),                        //
-                  glfwGetVersionString());
+    // log GLFW version header
+    NOTF_LOG_INFO("GLFW version: {}", glfwGetVersionString());
 }
 
 Application::~Application() {

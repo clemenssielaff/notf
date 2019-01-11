@@ -73,15 +73,19 @@ public:
 
     // operators --------------------------------------------------------------
 
-    /// Tests whether two Colors are equal.
-    bool operator==(const Color& other) const {
-        return (is_approx(r, other.r) && is_approx(g, other.g) && is_approx(b, other.b) && is_approx(a, other.a));
+    /// Tests if two Colors are approximately equal.
+    constexpr bool is_approx(const Color& other, const float epsilon = precision_high<float>()) const noexcept {
+        return ::notf::is_approx(r, other.r, epsilon)    //
+               && ::notf::is_approx(g, other.g, epsilon) //
+               && ::notf::is_approx(b, other.b, epsilon) //
+               && ::notf::is_approx(a, other.a, epsilon);
     }
 
+    /// Tests whether two Colors are equal.
+    constexpr bool operator==(const Color& other) const noexcept { return is_approx(other); }
+
     /// Tests whether two Colors are not equal.
-    bool operator!=(const Color& other) const {
-        return (!is_approx(r, other.r) || !is_approx(g, other.g) || !is_approx(b, other.b) || !is_approx(a, other.a));
-    }
+    constexpr bool operator!=(const Color& other) const noexcept { return !(*this == other); }
 
     // modifiers --------------------------------------------------------------
 

@@ -98,21 +98,21 @@ struct FloatPropertyPolicy {
     using value_t = float;
     static constexpr ConstString name = "float";
     static constexpr value_t default_value = 0.123f;
-    static constexpr bool is_visible = true;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::REDRAW;
 };
 
 struct BoolPropertyPolicy {
     using value_t = bool;
     static constexpr ConstString name = "bool";
     static constexpr value_t default_value = true;
-    static constexpr bool is_visible = false;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBILE;
 };
 
 struct IntPropertyPolicy {
     using value_t = int;
     static constexpr ConstString name = "int";
     static constexpr value_t default_value = 123;
-    static constexpr bool is_visible = true;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::REDRAW;
 };
 
 // slots ======================================================================

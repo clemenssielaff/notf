@@ -2,7 +2,7 @@
 
 #include "notf/meta/pointer.hpp"
 
-#include "notf/graphic/shader.hpp"
+#include "notf/graphic/shader_program.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -21,11 +21,11 @@ public:
     FragmentRenderer(valid_ptr<VertexShaderPtr> vertex_shader, valid_ptr<FragmentShaderPtr> fragment_shader);
 
     /// All uniform variables of the fragment shader.
-    const std::vector<Shader::Variable>& get_uniforms() const { return m_fragment_shader->get_uniforms(); }
+    const std::vector<ShaderProgram::Uniform>& get_uniforms() const { return m_program->get_uniforms(); }
 
     template<class T>
     void set_uniform(const std::string& name, T&& value) {
-        m_fragment_shader->set_uniform(name, std::forward<T>(value));
+        m_program->set_uniform(name, std::forward<T>(value));
     }
 
     /// Renders the fragment shader into a fullscreen quad.

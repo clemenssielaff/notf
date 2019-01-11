@@ -73,6 +73,12 @@ void AnyWidget::_set_claim(WidgetClaim claim) {
     }
 }
 
+void AnyWidget::_set_child_xform(WidgetHandle& widget, M3f xform) {
+    if (AnyWidget* widget_ptr = WidgetHandle::AccessFor<AnyWidget>::get_widget(widget)) {
+        widget_ptr->m_layout_xform = std::move(xform);
+    }
+}
+
 void AnyWidget::_relayout_upwards() {
     AnyWidget* parent = dynamic_cast<AnyWidget*>(AnyNode::AccessFor<AnyWidget>::get_parent(*this));
     if (!parent) {
@@ -108,16 +114,19 @@ Aabrf AnyWidget::_calculate_content_aabr() const {
 }
 
 const WidgetDesign& AnyWidget::_get_design() {
-    Painter painter(m_design);
-    _paint(painter); // TODO: minimize widget redesign
+    if (m_design.is_empty()) {
+        Painter painter(m_design);
+        _paint(painter);
+        if (m_design.is_empty()) { m_design.add_command<WidgetDesign::NoopCommand>(); }
+    }
     return m_design;
 }
 
 void AnyWidget::_get_window_xform(M3f& result) const {
     if (AnyWidget* parent = dynamic_cast<AnyWidget*>(AnyNode::AccessFor<AnyWidget>::get_parent(*this))) {
         parent->_get_window_xform(result);
-        result.premult(get_xform<Space::PARENT>());
     }
+    result *= get_xform<Space::PARENT>();
 }
 
 template<>

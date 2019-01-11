@@ -28,11 +28,11 @@ class SuperWidget;
 
 namespace super_widget {
 
-struct Rotation {
-    using value_t = double;
-    static constexpr ConstString name = "rotation";
-    static inline const value_t default_value = 0.2;
-    static constexpr bool is_visible = true;
+struct SuperProp {
+    using value_t = float;
+    static constexpr ConstString name = "super_prop";
+    static inline const value_t default_value = 1;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::REFRESH;
 };
 
 struct SingleState : State<SingleState, SuperWidget> {
@@ -41,7 +41,7 @@ struct SingleState : State<SingleState, SuperWidget> {
 };
 
 struct Policy {
-    using properties = std::tuple<Rotation>;
+    using properties = std::tuple<SuperProp>;
     using slots = std::tuple<>;
     using signals = std::tuple<>;
     using states = std::variant<SingleState>;
@@ -55,7 +55,7 @@ private:
     using super_t = Widget<super_widget::Policy>;
 
 public:
-    static constexpr const ConstString& Rotation = super_widget::Rotation::name;
+    static constexpr const ConstString& super_prop = super_widget::SuperProp::name;
 
 public:
     SuperWidget(valid_ptr<AnyNode*> parent) : super_t(parent) {}
@@ -70,10 +70,16 @@ private:
         m_animation = IntervalTimer(60_fps, [handle]() mutable {
             if (handle.is_valid()) {
                 TheEventHandler()->schedule([=]() mutable {
-                    const double time
-                        = static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(get_age()).count());
-                    const double period = 10;
-                    if (handle.is_valid()) { handle->set<Rotation>(fmod(time / (1000 * period), 1) * pi<double>()); }
+                    const float time
+                        = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(get_age()).count());
+                    const float period = 10;
+                    const float t = fmod(time / (1000.f * period), 1.f);
+                    const float angle = t * pi<float>() * 2.f;
+                    if (handle.is_valid()) {
+                        auto xform = M3f::translation({200, 200}) * M3f::rotation(angle);
+                        handle->set<super_prop>(t);
+                        handle->set<offset_xform>(xform);
+                    }
                 });
             }
         });
@@ -81,23 +87,18 @@ private:
     }
 
     void _paint(Painter& painter) const override {
+        //        NOTF_LOG_TRACE("Called paint");
+        const float half_length = get<super_prop>() * 100.f;
+        const V2f half_line{half_length, half_length};
+        const CubicBezier2f spline({CubicBezier2f::Segment::line(-half_line, half_line)});
 
-        //        const Size2i window_size = get_scene().get_window()->get_buffer_size();
-        const Size2i window_size = {400, 400};
-        const V2f center = V2f{window_size.width(), window_size.height()} / 2;
-
-        const double length = 200;
-
-        const double half_length = length / 2;
-        const double t = get<Rotation>();
-        const double sin_t = sin(t);
-        const double cos_t = cos(t);
-        const V2f half_line{sin_t * half_length, cos_t * half_length};
-        const CubicBezier2f spline({CubicBezier2f::Segment::line(center + half_line, center - half_line)});
-        // const CubicBezier2f spline({CubicBezier2f::Segment::line(Vector2f(20, 20), Vector2f(327, 174))});
+        // draw a background
+        painter.set_fill(Color(1, 0, 0));
+        painter.set_path(convert_to<Polygonf>(Aabrf(-half_length, -half_length, half_length * 2, half_length * 2)));
+        painter.fill();
 
         // draw the rotating line
-        painter.set_stroke_width(1.2f);
+        painter.set_stroke_width(1.f);
         painter.set_path(spline);
         painter.stroke();
     }

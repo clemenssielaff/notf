@@ -87,7 +87,7 @@ public:
         };
 
         /// Winding direction of a painted Shape.
-        enum class Winding : unsigned char {
+        enum class Winding : unsigned char { // TODO: Is Winding used anywhere? Should it be?
             CCW,
             CW,
             COUNTERCLOCKWISE = CCW,
@@ -125,6 +125,22 @@ public:
             inner_color = std::move(color);
             outer_color = inner_color;
         }
+
+        /// Equality comparison operator.
+        /// @param other    Paint to compare against.
+        bool operator==(const Paint& other) const noexcept {
+            return texture != other.texture                    //
+                   && is_approx(radius, other.radius)          //
+                   && is_approx(feather, other.feather)        //
+                   && extent.is_approx(other.extent)           //
+                   && xform.is_approx(other.xform)             //
+                   && outer_color.is_approx(other.outer_color) //
+                   && inner_color.is_approx(other.inner_color);
+        }
+
+        /// Inequality operator
+        /// @param other    Paint to compare against.
+        constexpr bool operator!=(const Paint& other) const noexcept { return !(*this == other); }
 
         // fields -------------------------------------------------------------
     public:

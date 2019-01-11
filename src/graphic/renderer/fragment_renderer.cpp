@@ -8,7 +8,7 @@ NOTF_OPEN_NAMESPACE
 
 FragmentRenderer::FragmentRenderer(valid_ptr<VertexShaderPtr> vertex_shader,
                                    valid_ptr<FragmentShaderPtr> fragment_shader)
-    : m_program(ShaderProgram::create(std::move(vertex_shader), std::move(fragment_shader)))
+    : m_program(ShaderProgram::create("FragmentRenderer", std::move(vertex_shader), std::move(fragment_shader)))
     , m_fragment_shader(m_program->get_fragment_shader()) {}
 
 void FragmentRenderer::render() const {

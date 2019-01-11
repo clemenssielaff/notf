@@ -1,7 +1,7 @@
 #pragma once
 
-#include "notf/app/widget/painter.hpp"
 #include "notf/app/widget/any_widget.hpp"
+#include "notf/app/widget/painter.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -59,16 +59,6 @@ private:
 
     /// Stack of states.
     std::vector<State> m_states;
-
-    /// The Widget's window transform.
-    M3f m_base_xform;
-
-    /// Clipping provided by the Widget.
-    Clipping m_base_clipping;
-
-    /// The bounds of all vertices of a path, used to define the quad to render them onto.
-    Aabrf m_bounds; // TODO: do I really need this? maybe it's better to draw all polygons multiple times than to
-                    // overdraw
 
     /// All Paths created by the Widget, addressable by index.
     std::vector<valid_ptr<PathPtr>> m_paths;

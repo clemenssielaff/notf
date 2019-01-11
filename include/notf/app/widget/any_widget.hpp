@@ -17,8 +17,8 @@ namespace widget_policy {
 struct OffsetXform {
     using value_t = M3f;
     static constexpr ConstString name = "offset_xform";
-    static inline const value_t default_value = {};
-    static constexpr bool is_visible = true;
+    static inline const value_t default_value = M3f::identity();
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::REDRAW;
 };
 
 /// Opacity of this Widget in the range [0 -> 1].
@@ -26,7 +26,7 @@ struct Opacity {
     using value_t = float;
     static constexpr ConstString name = "opacity";
     static inline const value_t default_value = 1.f;
-    static constexpr bool is_visible = true;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::REDRAW;
 };
 
 /// Flag indicating whether this Widget should be visible or not.
@@ -36,7 +36,7 @@ struct Visibility {
     using value_t = bool;
     static constexpr ConstString name = "visibility";
     static inline const value_t default_value = true;
-    static constexpr bool is_visible = true;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::REDRAW;
 };
 
 // slots ======================================================================
@@ -82,6 +82,26 @@ class AnyWidget : public Node<detail::widget_policy::WidgetPolicy> {
 private:
     /// Base class type.
     using super_t = Node<detail::widget_policy::WidgetPolicy>;
+
+    /// Internal reactive function that is subscribed to all REFRESH Properties and clears the WidgetDesign, should one
+    /// of them change.
+    class RefreshObserver : public Subscriber<All> {
+
+        // methods --------------------------------------------------------- //
+    public:
+        /// Value Constructor.
+        /// @param widget   Widget owning this Subscriber.
+        RefreshObserver(AnyWidget& widget) : m_widget(widget) {}
+
+        /// Called whenever a REFRESH Property changed its value.
+        void on_next(const AnyPublisher*, ...) final { m_widget.m_design.reset(); }
+
+        // fields ---------------------------------------------------------- //
+    private:
+        /// Widget owning this Subscriber.
+        AnyWidget& m_widget;
+    };
+    using RefreshObserverPtr = std::shared_ptr<RefreshObserver>;
 
 public:
     /// Spaces that the transformation of a Widget passes through.
@@ -136,10 +156,6 @@ public:
     /// @param grant    New Grant.
     void set_grant(Size2f grant);
 
-    /// Sets the transform determined by the parent Layout.
-    /// Does not cause a re-layout of the Widget hierarchy.
-    void set_layout_xform(M3f xform) { m_layout_xform = std::move(xform); }
-
     // state machine ----------------------------------------------------------
 
     /// The name of the current State.
@@ -168,6 +184,13 @@ protected:
     /// Every change will cause a chain of updates to propagate up and down the Widget hierarchy. If you can, try to
     /// limit the number of times this function is called each frame.
     void _set_claim(WidgetClaim claim);
+
+    /// Sets the layout transformation of a child widget.
+    /// Does not cause a re-layout of the Widget hierarchy below the child.
+    void _set_child_xform(WidgetHandle& widget, M3f xform);
+
+    /// Reactive function clearing this Widget's design whenever a REFRESH Property changes its value.
+    RefreshObserverPtr& _get_refresh_observer() { return m_refresh_observer; }
 
 private:
     /// Changing the Claim or the visiblity of a Widget causes a relayout further up the hierarchy.
@@ -203,15 +226,18 @@ private:
     WidgetClaim m_claim;
 
     /// 2D transformation of this Widget as determined by its parent Layout.
-    M3f m_layout_xform;
+    M3f m_layout_xform = M3f::identity();
 
     /// The bounding rect of all descendant Widgets.
-    Aabrf m_content_aabr;
+    Aabrf m_content_aabr = Aabrf::zero();
 
     /// The grant of a Widget is how much space is 'granted' to it by its parent Layout.
     /// Depending on the parent Layout, the Widget's Claim can be used to influence the grant.
     /// Note that the grant can also be smaller or bigger than the Claim.
-    Size2f m_grant;
+    Size2f m_grant = Size2f::zero();
+
+    /// Reactive function clearing this Widget's design whenever a REFRESH Property changes its value.
+    RefreshObserverPtr m_refresh_observer = std::make_shared<RefreshObserver>(*this);
 };
 
 template<>
@@ -263,6 +289,7 @@ struct NodeHandleInterface<AnyWidget> : public NodeHandleBaseInterface<AnyWidget
 class WidgetHandle : public NodeHandle<AnyWidget> {
 
     friend Accessor<WidgetHandle, Painterpreter>;
+    friend Accessor<WidgetHandle, AnyWidget>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -278,11 +305,22 @@ public:
     WidgetHandle(NodeHandle<AnyWidget>&& handle) : NodeHandle(std::move(handle)) {}
 
 private:
+    /// Returns the Widget contained in this Handle.
+    AnyWidget* _get_widget() { return _get_node().get(); }
+
     /// Updates (if necessary) and returns the Design of this Widget.
     const WidgetDesign& _get_design() const { return _get_node()->_get_design(); }
 };
 
 // widget handle accessors ========================================================================================== //
+
+template<>
+class Accessor<WidgetHandle, AnyWidget> {
+    friend AnyWidget;
+
+    /// Returns the Widget contained in this Handle.
+    static AnyWidget* get_widget(WidgetHandle& widget) { return widget._get_widget(); }
+};
 
 template<>
 class Accessor<WidgetHandle, Painterpreter> {

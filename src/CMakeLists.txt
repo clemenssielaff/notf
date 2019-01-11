@@ -49,6 +49,7 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     graphic/raw_image.cpp
     graphic/shader.cpp
     graphic/texture.cpp
+    graphic/uniform_buffer.cpp
 
     graphic/renderer/fragment_renderer.cpp
     graphic/renderer/plotter.cpp

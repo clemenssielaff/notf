@@ -699,8 +699,6 @@ static GLFWbool initExtensions(void)
     }
 
     // Update the key code LUT
-    // FIXME: We should listen to XkbMapNotify events to track changes to
-    // the keyboard mapping.
     createKeyTables();
 
     // Detect whether an EWMH-conformant window manager is running
@@ -780,17 +778,11 @@ static GLFWbool initExtensions(void)
 //
 static void getSystemContentScale(float* xscale, float* yscale)
 {
-    // NOTE: Fall back to the display-wide DPI instead of RandR monitor DPI if
-    //       Xft.dpi retrieval below fails as we don't currently have an exact
-    //       policy for which monitor a window is considered to "be on"
     float xdpi = DisplayWidth(_glfw.x11.display, _glfw.x11.screen) *
         25.4f / DisplayWidthMM(_glfw.x11.display, _glfw.x11.screen);
     float ydpi = DisplayHeight(_glfw.x11.display, _glfw.x11.screen) *
         25.4f / DisplayHeightMM(_glfw.x11.display, _glfw.x11.screen);
 
-    // NOTE: Basing the scale on Xft.dpi where available should provide the most
-    //       consistent user experience (matches Qt, Gtk, etc), although not
-    //       always the most accurate one
     char* rms = XResourceManagerString(_glfw.x11.display);
     if (rms)
     {
@@ -1067,8 +1059,6 @@ void _glfwPlatformTerminate(void)
         _glfw.x11.xi.handle = NULL;
     }
 
-    // NOTE: These need to be unloaded after XCloseDisplay, as they register
-    //       cleanup callbacks that get called by that function
     _glfwTerminateEGL();
     _glfwTerminateGLX();
 

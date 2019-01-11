@@ -7,23 +7,50 @@
 #include "notf/meta/log.hpp"
 
 #include "notf/graphic/gl_errors.hpp"
+#include "notf/graphic/gl_utils.hpp"
 #include "notf/graphic/graphics_system.hpp"
 #include "notf/graphic/opengl.hpp"
 #include "notf/graphic/shader.hpp"
 
+namespace { // anonymous
+NOTF_USING_NAMESPACE;
+
+#ifdef NOTF_DEBUG
+void assert_is_valid(const ShaderProgram& shader) {
+    if (!shader.is_valid()) {
+        NOTF_THROW(ResourceError, "ShaderProgram \"{}\" was deallocated! Has TheGraphicsSystem been deleted?",
+                   shader.get_name());
+    }
+}
+#else
+void assert_is_valid(const Shader&) {} // noop
+#endif
+
+/// Get the size of the longest attribute name in a program.
+size_t longest_attribute_length(const GLuint program) {
+    GLint result = 0;
+    NOTF_CHECK_GL(glGetProgramiv(program, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &result));
+    return narrow_cast<size_t>(result);
+}
+
+} // namespace
+
 NOTF_OPEN_NAMESPACE
 
-ShaderProgram::ShaderProgram(VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
+ShaderProgram::ShaderProgram(std::string name, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
                              GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader)
-    : m_vertex_shader(std::move(vertex_shader))
+    : m_name(std::move(name))
+    , m_vertex_shader(std::move(vertex_shader))
     , m_tesselation_shader(std::move(tesselation_shader))
     , m_geometry_shader(std::move(geometry_shader))
     , m_fragment_shader(std::move(fragment_shader)) {
+
     { // generate new shader program id
         NOTF_CHECK_GL(glGenProgramPipelines(1, &m_id.data()));
-        if (m_id == 0) { NOTF_THROW(OpenGLError, "Could not allocate new ShaderProgram"); }
+        if (m_id == 0) { NOTF_THROW(OpenGLError, "Could not allocate new ShaderProgram \"{}\"", m_name); }
     }
 
+    // define the program stages
     std::vector<std::string> attached_stages;
     attached_stages.reserve(4);
 
@@ -88,7 +115,7 @@ ShaderProgram::ShaderProgram(VertexShaderPtr vertex_shader, TesselationShaderPtr
     { // log information about the successful creation
         NOTF_ASSERT(attached_stages.size() > 0 && attached_stages.size() < 5);
         std::stringstream message;
-        message << "Created new Pipline: " << m_id << " with ";
+        message << "Created new ShaderProgram: \"" << m_name << "\" with ";
         if (attached_stages.size() == 1) {
             message << attached_stages[0];
         } else if (attached_stages.size() == 2) {
@@ -101,11 +128,54 @@ ShaderProgram::ShaderProgram(VertexShaderPtr vertex_shader, TesselationShaderPtr
         }
         NOTF_LOG_INFO("{}", message.str());
     }
+
+    // collect uniforms
+    for (const auto& shader :
+         std::array<ShaderPtr, 4>{m_vertex_shader, m_tesselation_shader, m_geometry_shader, m_fragment_shader}) {
+        if (!shader) { continue; }
+        for (const auto& uniform : shader->get_uniforms()) {
+            m_uniforms.emplace_back(Uniform{shader->get_stage(), uniform});
+        }
+    }
+
+    { // discover attributes
+        GLint attribute_count = 0;
+        NOTF_CHECK_GL(glGetProgramiv(get_id().value(), GL_ACTIVE_ATTRIBUTES, &attribute_count));
+        NOTF_ASSERT(attribute_count >= 0);
+        m_attributes.reserve(static_cast<size_t>(attribute_count));
+
+        std::vector<GLchar> uniform_name(longest_attribute_length(get_id().value()));
+        for (GLuint index = 0; index < static_cast<GLuint>(attribute_count); ++index) {
+            Attribute attribute;
+            attribute.type = 0;
+            attribute.size = 0;
+
+            GLsizei name_length = 0;
+            NOTF_CHECK_GL(glGetActiveAttrib(get_id().value(), index, static_cast<GLsizei>(uniform_name.size()),
+                                            &name_length, &attribute.size, &attribute.type, &uniform_name[0]));
+            NOTF_ASSERT(attribute.type);
+            NOTF_ASSERT(attribute.size);
+
+            NOTF_ASSERT(name_length > 0);
+            attribute.name = std::string(&uniform_name[0], static_cast<size_t>(name_length));
+
+            // some variable names are pre-defined by the language and cannot be set by the user
+            if (attribute.name == "gl_VertexID") { continue; }
+
+            attribute.location = glGetAttribLocation(get_id().value(), attribute.name.c_str());
+            NOTF_ASSERT(attribute.location >= 0);
+
+            NOTF_LOG_TRACE("Discovered attribute \"{}\" on shader: \"{}\"", attribute.name, get_name());
+            m_attributes.emplace_back(std::move(attribute));
+        }
+        m_attributes.shrink_to_fit();
+    }
 }
 
-ShaderProgramPtr ShaderProgram::create(VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
-                                       GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader) {
-    ShaderProgramPtr program = _create_shared(std::move(vertex_shader), std::move(tesselation_shader),
+ShaderProgramPtr
+ShaderProgram::create(std::string name, VertexShaderPtr vertex_shader, TesselationShaderPtr tesselation_shader,
+                      GeometryShaderPtr geometry_shader, FragmentShaderPtr fragment_shader) {
+    ShaderProgramPtr program = _create_shared(std::move(name), std::move(vertex_shader), std::move(tesselation_shader),
                                               std::move(geometry_shader), std::move(fragment_shader));
     TheGraphicsSystem::AccessFor<ShaderProgram>::register_new(program);
     return program;
@@ -113,10 +183,29 @@ ShaderProgramPtr ShaderProgram::create(VertexShaderPtr vertex_shader, Tesselatio
 
 ShaderProgram::~ShaderProgram() { _deallocate(); }
 
+bool ShaderProgram::is_valid() const {
+    if (m_vertex_shader && !m_vertex_shader->is_valid()) { return false; }
+    if (m_tesselation_shader && !m_tesselation_shader->is_valid()) { return false; }
+    if (m_geometry_shader && !m_geometry_shader->is_valid()) { return false; }
+    if (m_fragment_shader && !m_fragment_shader->is_valid()) { return false; }
+    return true;
+}
+
+ShaderProgram::Uniform& ShaderProgram::_get_uniform(const std::string& name) {
+    assert_is_valid(*this);
+
+    auto it = std::find_if(std::begin(m_uniforms), std::end(m_uniforms),
+                           [&](const auto& uniform) -> bool { return uniform.variable.name == name; });
+    if (it == std::end(m_uniforms)) {
+        NOTF_THROW(OpenGLError, "No uniform named \"{}\" in shader \"{}\"", name, m_name);
+    }
+    return *it;
+}
+
 void ShaderProgram::_deallocate() {
     if (m_id) {
         NOTF_CHECK_GL(glDeleteProgramPipelines(1, &m_id.value()));
-        NOTF_LOG_TRACE("Deleted ShaderProgram: {}", m_id);
+        NOTF_LOG_TRACE("Deleted ShaderProgram: {}", m_name);
         m_id = ShaderProgramId::invalid();
     }
 }

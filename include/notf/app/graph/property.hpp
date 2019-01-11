@@ -134,6 +134,15 @@ private:
 /// Base class for all Property types.
 class AnyProperty {
 
+    // types-- --------------------------------------------------------------------------------- //
+public:
+    /// Changing this Property ...
+    enum class Visibility {
+        INVISIBILE, ///> ... does not require any action from the renderer.
+        REDRAW,     ///> ... requires the Node to be drawn again as it is (only transformed etc.).
+        REFRESH,    ///> ... requires the Node to update and then redraw.
+    };
+
     // methods --------------------------------------------------------------------------------- //
 public:
     NOTF_NO_COPY_OR_ASSIGN(AnyProperty);
@@ -244,14 +253,14 @@ class PropertyPolicyFactory {
 
     NOTF_CREATE_FIELD_DETECTOR(default_value);
 
-    NOTF_CREATE_FIELD_DETECTOR(is_visible);
-    static constexpr bool create_is_visible() {
-        if constexpr (has_is_visible_v<Policy>) {
-            static_assert(std::is_same_v<decltype(Policy::is_visible), const bool>,
-                          "The visibility flag a PropertyPolicy must be a boolean");
-            return Policy::is_visible;
+    NOTF_CREATE_FIELD_DETECTOR(visibility);
+    static constexpr AnyProperty::Visibility create_visibility() {
+        if constexpr (has_visibility_v<Policy>) {
+            static_assert(std::is_same_v<decltype(Policy::visibility), const AnyProperty::Visibility>,
+                          "The visibility of a PropertyPolicy must be of type `AnyProperty::Visibility`");
+            return Policy::visibility;
         } else {
-            return true; // visible by default
+            return AnyProperty::Visibility::REDRAW; // by default
         }
     }
 
@@ -279,8 +288,8 @@ public:
             }
         }
 
-        /// Whether the Property is visible, either explicitly given by the user Policy or true by default.
-        static constexpr bool is_visible = create_is_visible();
+        /// Whether the Property is visible, either explicitly given by the user Policy or REDRAW by default.
+        static constexpr AnyProperty::Visibility visibility = create_visibility();
     };
 };
 
@@ -292,7 +301,7 @@ public:
 ///         using value_t = float;
 ///         static constexpr ConstString name = "position";
 ///         static constexpr value_t default_value = 0.123f;
-///         static constexpr bool is_visible = true;
+///         static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::REDRAW;
 ///     };
 ///
 template<class Policy>
@@ -317,8 +326,8 @@ public:
     /// Constructor.
     /// @param value        Property value.
     /// @param is_visible   Whether a change in the Property will cause the Node to redraw or not.
-    Property(value_t value = policy_t::get_default_value(), bool is_visible = policy_t::is_visible)
-        : TypedProperty<value_t>(std::move(value), is_visible) {}
+    Property(value_t value = policy_t::get_default_value(), AnyProperty::Visibility visibility = policy_t::visibility)
+        : TypedProperty<value_t>(std::move(value), (visibility != AnyProperty::Visibility::INVISIBILE)) {}
 
     /// The Node-unique name of this Property.
     std::string_view get_name() const final { return name.c_str(); }

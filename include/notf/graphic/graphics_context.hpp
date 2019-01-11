@@ -110,13 +110,7 @@ public:
 
         /// Explicit move Constructor.
         /// @param other    ProgramGuard to move from.
-        ProgramGuard(ProgramGuard&& other)
-            : m_context(other.m_context)
-            , m_guarded_program(std::move(other.m_guarded_program))
-            , m_previous_program(std::move(other.m_previous_program)) {
-            other.m_guarded_program.reset();
-            other.m_previous_program.reset();
-        }
+        ProgramGuard(ProgramGuard&& other) = default;
 
         /// Destructor.
         ~ProgramGuard() {
@@ -161,13 +155,7 @@ public:
 
         /// Explicit move Constructor.
         /// @param other    Framebuffer to move from.
-        FramebufferGuard(FramebufferGuard&& other)
-            : m_context(other.m_context)
-            , m_guarded_framebuffer(std::move(other.m_guarded_framebuffer))
-            , m_previous_framebuffer(std::move(other.m_previous_framebuffer)) {
-            other.m_guarded_framebuffer.reset();
-            other.m_previous_framebuffer.reset();
-        }
+        FramebufferGuard(FramebufferGuard&& other) = default;
 
         /// Destructor.
         ~FramebufferGuard() {
@@ -185,6 +173,51 @@ public:
 
         /// Previously bound FrameBuffer, is restored on guard destruction.
         FrameBufferPtr m_previous_framebuffer;
+    };
+
+    // framebuffer guard  -----------------------------------------------------
+
+    /// RAII guard to make sure that a bound UniformBuffer is always properly unbound after use.
+    /// You can nest multiple guards, each will restore the previously bound UniformBuffer.
+    class NOTF_NODISCARD UniformBufferGuard {
+        friend class GraphicsContext;
+
+        // methods ------------------------------------------------------------
+    private:
+        /// Constructor.
+        /// @param context          Context that created the guard.
+        /// @param uniform_buffer   UniformBuffer to bind and unbind.
+        UniformBufferGuard(GraphicsContext& context, const AnyUniformBufferPtr& uniform_buffer)
+            : m_context(context)
+            , m_guarded_uniform_buffer(uniform_buffer)
+            , m_previous_uniform_buffer(context.m_state.uniform_buffer) {
+            context._bind_uniform_buffer(m_guarded_uniform_buffer);
+        }
+
+    public:
+        NOTF_NO_COPY_OR_ASSIGN(UniformBufferGuard);
+        NOTF_NO_HEAP_ALLOCATION(UniformBufferGuard);
+
+        /// Explicit move constructor.
+        /// @param other    UniformBuffer to move from.
+        UniformBufferGuard(UniformBufferGuard&& other) = default;
+
+        /// Destructor.
+        ~UniformBufferGuard() {
+            m_context._unbind_uniform_buffer(m_guarded_uniform_buffer);
+            if (m_previous_uniform_buffer) { m_context._bind_uniform_buffer(m_previous_uniform_buffer); }
+        }
+
+        // fields -------------------------------------------------------------
+    private:
+        /// Context that created the guard.
+        GraphicsContext& m_context;
+
+        /// UniformBuffer to bind and unbind.
+        AnyUniformBufferPtr m_guarded_uniform_buffer;
+
+        /// Previously bound UniformBuffer, is restored on guard destruction.
+        AnyUniformBufferPtr m_previous_uniform_buffer;
     };
 
     // vao guard  -------------------------------------------------------------
@@ -233,6 +266,9 @@ private:
 
         /// Bound Framebuffer.
         FrameBufferPtr framebuffer = {};
+
+        /// Bound UniformBuffer
+        AnyUniformBufferPtr uniform_buffer = {};
 
         /// Color applied when the bound framebuffer is cleared.
         Color clear_color = Color::black();
@@ -330,7 +366,10 @@ public:
     /// @returns Guard, making sure that the FrameBuffer is properly unbound and the previous one restored after use.
     FramebufferGuard bind_framebuffer(const FrameBufferPtr& framebuffer);
 
-    void unbind_framebuffer() { _unbind_framebuffer(); }
+    /// Binds the given UniformBuffer, if it is not already bound.
+    /// @param uniform_buffer   UniformBuffer to bind.
+    /// @returns Guard, making sure that the UniformBuffer is properly unbound and the previous one restored after use.
+    UniformBufferGuard bind_uniform_buffer(const AnyUniformBufferPtr& uniform_buffer);
 
     // methods --------------------------------------------------------------------------------- //
 protected:
@@ -367,8 +406,8 @@ private:
     void _bind_program(const ShaderProgramPtr& program);
 
     /// Unbinds the current ShaderProgram.
-    /// @param program  Only unbind the current ShaderProgram, if it is equal to the one given. If empty (default), the
-    ///                 current ShaderProgram is always unbound.
+    /// @param program  Only unbind the current ShaderProgram, if it is equal to the one given. If empty (the default),
+    ///                 the current ShaderProgram is always unbound.
     void _unbind_program(const ShaderProgramPtr& program = {});
 
     // framebuffer ------------------------------------------------------------
@@ -378,10 +417,20 @@ private:
     void _bind_framebuffer(const FrameBufferPtr& framebuffer);
 
     /// Unbinds the current FrameBuffer.
-    /// @param framebuffer  Only unbind the current FrameBuffer, if it is equal to the one given. If empty (default),
-    /// the
-    ///                     current FrameBuffer is always unbound.
+    /// @param framebuffer  Only unbind the current FrameBuffer, if it is equal to the one given. If empty (the
+    ///                     default), the current FrameBuffer is always unbound.
     void _unbind_framebuffer(const FrameBufferPtr& framebuffer = {});
+
+    // uniform buffer ---------------------------------------------------------
+
+    /// Binds the given UniformBuffer, if it is not already bound.
+    /// @param uniform_buffer   UniformBuffer to bind.
+    void _bind_uniform_buffer(const AnyUniformBufferPtr& uniform_buffer);
+
+    /// Unbinds the current UniformBuffer.
+    /// @param uniform_buffer   Only unbind the current UniformBuffer, if it is equal to the one given. If empty
+    ///                         (the default), the current UniformBuffer is always unbound.
+    void _unbind_uniform_buffer(const AnyUniformBufferPtr& uniform_buffer = {});
 
     // fields ---------------------------------------------------------------------------------- //
 protected:

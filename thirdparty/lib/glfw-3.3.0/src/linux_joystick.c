@@ -71,8 +71,6 @@ static void handleAbsEvent(_GLFWjoystick* js, int code, int value)
         const int axis = (code - ABS_HAT0X) % 2;
         int* state = js->linjs.hats[hat];
 
-        // NOTE: Looking at several input drivers, it seems all hat events use
-        //       -1 for left / up, 0 for centered and 1 for right / down
         if (value == 0)
             state[axis] = 0;
         else if (value < 0)
