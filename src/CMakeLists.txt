@@ -71,6 +71,7 @@ add_sources(CORE_FILES ${CMAKE_SOURCE_DIR}/thirdparty/include/
 add_library(${CURRENT_TARGET} STATIC
     ${CORE_FILES}
     ${NOTF_HEADERS}
+    ${NOTF_DOCS} # just so they show up as part of the project
 )
 
 # include paths

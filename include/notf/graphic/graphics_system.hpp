@@ -78,6 +78,9 @@ public:
         /// subtracts slots used for internal purposed (the font atlas texture, for example).
         GLuint texture_slot_count;
 
+        /// Number of uniform buffer slots, meaning the highest valid slot is uniform_buffer_count - 1.
+        GLuint uniform_buffer_count;
+
         /// Texture slot reserved for the font atlas texture.
         /// Note that this is the slot number, not the enum value corresponding to the slot.
         /// In order to get that use:

@@ -240,6 +240,17 @@ constexpr std::uintptr_t to_number(T ptr) noexcept {
 }
 constexpr std::uintptr_t to_number(std::nullptr_t) noexcept { return 0; }
 
+// auto list ======================================================================================================== //
+
+/// Use to create a list of compatible objects to iterate through.
+/// Example:
+///     for(const auto& itr : auto_list(x, y, z){...}
+/// With std::common_type_t<decltype(x), decltype(y), decltype(z)> defined.
+template<class... Args, class Common = std::common_type_t<Args...>, size_t Size = sizeof...(Args)>
+constexpr std::array<Common, Size> auto_list(Args&&... args) {
+    return {std::forward<Args>(args)...};
+}
+
 // declval ========================================================================================================== //
 
 #ifndef NOTF_COMPILER_HAS_DECLVAL

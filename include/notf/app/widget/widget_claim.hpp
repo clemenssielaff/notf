@@ -482,11 +482,9 @@ struct formatter<notf::WidgetClaim> {
 
 // std::hash ======================================================================================================== //
 
-namespace std {
-
 /// std::hash specialization for notf::Claim::Stretch.
 template<>
-struct hash<notf::WidgetClaim::Stretch> {
+struct std::hash<notf::WidgetClaim::Stretch> {
     size_t operator()(const notf::WidgetClaim::Stretch& stretch) const {
         return notf::hash(stretch.get_preferred(), stretch.get_min(), stretch.get_max(), stretch.get_scale_factor(),
                           stretch.get_priority());
@@ -495,12 +493,10 @@ struct hash<notf::WidgetClaim::Stretch> {
 
 /// std::hash specialization for notf::Claim.
 template<>
-struct hash<notf::WidgetClaim> {
+struct std::hash<notf::WidgetClaim> {
     size_t operator()(const notf::WidgetClaim& claim) const {
         const notf::WidgetClaim::Ratios& ratio_limits = claim.get_ratio_limits();
         return notf::hash(claim.get_horizontal(), claim.get_horizontal(), ratio_limits.get_lower_bound(),
                           ratio_limits.get_upper_bound());
     }
 };
-
-} // namespace std

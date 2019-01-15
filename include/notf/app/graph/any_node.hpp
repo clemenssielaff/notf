@@ -363,7 +363,7 @@ public:
     /// Index 0 is the node furthest back, index `size() - 1` is the child drawn at the front.
     /// @param index    Index of the Node.
     /// @returns        The requested child Node.
-    /// @throws OutOfBounds    If the index is out-of-bounds or the child Node is of the wrong type.
+    /// @throws IndexError    If the index is out-of-bounds or the child Node is of the wrong type.
     AnyNodeHandle get_child(size_t index) const;
 
     /// Destroys this Node by deleting the owning pointer in its parent.
@@ -471,13 +471,13 @@ protected: // for all subclasses
     /// Tests a user defineable flag on this Node.
     /// @param index            Index of the user flag.
     /// @returns                True iff the flag is set.
-    /// @throws OutOfBounds   If index >= user flag count.
+    /// @throws IndexError   If index >= user flag count.
     bool _get_flag(size_t index) const;
 
     /// Sets or unsets a user flag.
     /// @param index            Index of the user flag.
     /// @param value            Whether to set or to unser the flag.
-    /// @throws OutOfBounds   If index >= user flag count.
+    /// @throws IndexError   If index >= user flag count.
     void _set_flag(size_t index, bool value = true);
 
     // hierarchy --------------------------------------------------------------

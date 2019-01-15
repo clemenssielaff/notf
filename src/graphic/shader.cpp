@@ -1,23 +1,15 @@
 #include "notf/graphic/shader.hpp"
 
-#include <algorithm>
 #include <regex>
 #include <sstream>
 
 #include "notf/meta/assert.hpp"
-#include "notf/meta/exception.hpp"
 #include "notf/meta/log.hpp"
-
-#include "notf/common/matrix4.hpp"
-#include "notf/common/vector2.hpp"
-#include "notf/common/vector4.hpp"
 
 #include "notf/app/resource_manager.hpp"
 
 #include "notf/graphic/gl_errors.hpp"
-#include "notf/graphic/gl_utils.hpp"
 #include "notf/graphic/graphics_system.hpp"
-#include "notf/graphic/opengl.hpp"
 
 namespace { // anonymous
 NOTF_USING_NAMESPACE;
@@ -85,20 +77,12 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
         std::vector<char> error_message(static_cast<size_t>(error_size));
         NOTF_CHECK_GL(glGetShaderInfoLog(shader, error_size, /*length*/ nullptr, &error_message[0]));
         NOTF_CHECK_GL(glDeleteShader(shader));
-
         NOTF_THROW(OpenGLError, "Failed to compile {} stage for Shader \"{}\"\n\t{}", stage_name, program_name,
                    error_message.data());
     }
 
     NOTF_ASSERT(shader);
     return shader;
-}
-
-/// Get the size of the longest uniform name in a program.
-size_t longest_uniform_length(const GLuint program) {
-    GLint result = 0;
-    NOTF_CHECK_GL(glGetProgramiv(program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &result));
-    return narrow_cast<size_t>(result);
 }
 
 /// Finds the index in a given GLSL source string where custom `#defines` can be injected.
@@ -264,42 +248,6 @@ NOTF_OPEN_NAMESPACE
 
 const Shader::Defines Shader::s_no_defines = {};
 
-Shader::Shader(const GLuint id, Stage::Flags stages, std::string name)
-    : m_name(std::move(name)), m_id(id), m_stages(stages) {
-    // discover uniforms
-    GLint uniform_count = 0;
-    NOTF_CHECK_GL(glGetProgramiv(m_id.value(), GL_ACTIVE_UNIFORMS, &uniform_count));
-    NOTF_ASSERT(uniform_count >= 0);
-    m_uniforms.reserve(static_cast<size_t>(uniform_count));
-
-    std::vector<GLchar> uniform_name(longest_uniform_length(m_id.value()));
-    for (GLuint index = 0; index < static_cast<GLuint>(uniform_count); ++index) {
-        Uniform variable;
-        variable.type = 0;
-        variable.size = 0;
-
-        GLsizei name_length = 0;
-        NOTF_CHECK_GL(glGetActiveUniform(m_id.value(), index, static_cast<GLsizei>(uniform_name.size()), &name_length,
-                                         &variable.size, &variable.type, &uniform_name[0]));
-        NOTF_ASSERT(variable.type);
-        NOTF_ASSERT(variable.size);
-
-        NOTF_ASSERT(name_length > 0);
-        variable.name = std::string(&uniform_name[0], static_cast<size_t>(name_length));
-
-        variable.location = glGetUniformLocation(m_id.value(), variable.name.c_str());
-        if (variable.location == -1) {
-            NOTF_LOG_WARN("Skipping uniform \"\" on Shader: \"{}\"", variable.name, m_name);
-            // TODO: this is skipping uniforms in a named uniform block
-            continue;
-        }
-
-        NOTF_LOG_TRACE("Discovered uniform \"{}\" on Shader: \"{}\"", variable.name, m_name);
-        m_uniforms.emplace_back(std::move(variable));
-    }
-    m_uniforms.shrink_to_fit();
-}
-
 Shader::~Shader() { _deallocate(); }
 
 #ifdef NOTF_DEBUG
@@ -384,10 +332,10 @@ GLuint Shader::_build(const std::string& name, const Args& args) {
             NOTF_CHECK_GL(glGetProgramInfoLog(program, error_size, /*length*/ nullptr, &error_message[0]));
             NOTF_CHECK_GL(glDeleteProgram(program));
 
-            NOTF_THROW(OpenGLError, "Failed to link Shader program \"{}\":\n", name, error_message.data());
+            NOTF_THROW(OpenGLError, "Failed to link Shader \"{}\":\n", name, error_message.data());
         }
     }
-    NOTF_LOG_TRACE("Compiled and linked Shader program \"{}\".", name);
+    NOTF_LOG_TRACE("Compiled and linked Shader \"{}\".", name);
 
     NOTF_ASSERT(program);
     return program;
@@ -398,103 +346,11 @@ void Shader::_register_with_system(const ShaderPtr& shader) {
     TheGraphicsSystem::AccessFor<Shader>::register_new(shader);
 }
 
-const Shader::Uniform& Shader::_uniform(const std::string& name) const {
-    assert_is_valid(*this);
-
-    auto it = std::find_if(std::begin(m_uniforms), std::end(m_uniforms),
-                           [&](const Uniform& var) -> bool { return var.name == name; });
-    if (it == std::end(m_uniforms)) {
-        NOTF_THROW(OpenGLError, "No uniform named \"{}\" in Shader \"{}\"", name, m_name);
-    }
-    return *it;
-}
-
 void Shader::_deallocate() {
     if (m_id.value()) {
         NOTF_CHECK_GL(glDeleteProgram(m_id.value()));
         NOTF_LOG_TRACE("Deleted Shader \"{}\"", m_name);
         m_id = ShaderId::invalid();
-    }
-}
-
-template<>
-void Shader::set_uniform(const std::string& name, const int& value) {
-    assert_is_valid(*this);
-    const Uniform& uniform = _uniform(name);
-    if (uniform.type == GL_INT || uniform.type == GL_SAMPLER_2D) {
-        NOTF_CHECK_GL(glProgramUniform1i(m_id.value(), uniform.location, value));
-    } else {
-        NOTF_THROW(OpenGLError,
-                   "Uniform \"{}\" in Shader \"{}\" of type \"{}\" is not compatible with value type \"int\"", name,
-                   m_name, gl_type_name(uniform.type));
-    }
-}
-
-template<>
-void Shader::set_uniform(const std::string& name, const unsigned int& value) {
-    assert_is_valid(*this);
-    const Uniform& uniform = _uniform(name);
-    if (uniform.type == GL_UNSIGNED_INT) {
-        NOTF_CHECK_GL(glProgramUniform1ui(m_id.value(), uniform.location, value));
-    } else if (uniform.type == GL_SAMPLER_2D) {
-        NOTF_CHECK_GL(glProgramUniform1i(m_id.value(), uniform.location, static_cast<GLint>(value)));
-    } else {
-        NOTF_THROW(OpenGLError,
-                   "Uniform \"{}\" in Shader \"{}\" of type \"{}\" is not compatible with value type \"unsigned int\"",
-                   name, m_name, gl_type_name(uniform.type));
-    }
-}
-
-template<>
-void Shader::set_uniform(const std::string& name, const float& value) {
-    assert_is_valid(*this);
-    const Uniform& uniform = _uniform(name);
-    if (uniform.type == GL_FLOAT) {
-        NOTF_CHECK_GL(glProgramUniform1f(m_id.value(), uniform.location, value));
-    } else {
-        NOTF_THROW(OpenGLError,
-                   "Uniform \"{}\" in Shader \"{}\" of type \"{}\" is not compatible with value type \"float\"", name,
-                   m_name, gl_type_name(uniform.type));
-    }
-}
-
-template<>
-void Shader::set_uniform(const std::string& name, const V2f& value) {
-    assert_is_valid(*this);
-    const Uniform& uniform = _uniform(name);
-    if (uniform.type == GL_FLOAT_VEC2) {
-        NOTF_CHECK_GL(glProgramUniform2fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
-    } else {
-        NOTF_THROW(OpenGLError,
-                   "Uniform \"{}\" in Shader \"{}\" of type \"{}\" is not compatible with value type \"V2f\"", name,
-                   m_name, gl_type_name(uniform.type));
-    }
-}
-
-template<>
-void Shader::set_uniform(const std::string& name, const V4f& value) {
-    assert_is_valid(*this);
-    const Uniform& uniform = _uniform(name);
-    if (uniform.type == GL_FLOAT_VEC4) {
-        NOTF_CHECK_GL(glProgramUniform4fv(m_id.value(), uniform.location, /*count*/ 1, value.as_ptr()));
-    } else {
-        NOTF_THROW(OpenGLError,
-                   "Uniform \"{}\" in Shader \"{}\" of type \"{}\" is not compatible with value type \"V4f\"", name,
-                   m_name, gl_type_name(uniform.type));
-    }
-}
-
-template<>
-void Shader::set_uniform(const std::string& name, const M4f& value) {
-    assert_is_valid(*this);
-    const Uniform& uniform = _uniform(name);
-    if (uniform.type == GL_FLOAT_MAT4) {
-        NOTF_CHECK_GL(glProgramUniformMatrix4fv(m_id.value(), uniform.location, /*count*/ 1, /*transpose*/ GL_FALSE,
-                                                value.as_ptr()));
-    } else {
-        NOTF_THROW(OpenGLError,
-                   "Uniform \"{}\" in Shader \"{}\" of type \"{}\" is not compatible with value type \"M4f\"", name,
-                   m_name, gl_type_name(uniform.type));
     }
 }
 

@@ -65,7 +65,7 @@ GraphicsSystem::Extensions::Extensions() {
 // environment ====================================================================================================== //
 
 GraphicsSystem::Environment::Environment() {
-    constexpr GLint reserved_texture_slots = 1;
+    static constexpr GLint reserved_texture_slots = 1;
 
     { // max render buffer size
         GLint max_renderbuffer_size = -1;
@@ -83,6 +83,12 @@ GraphicsSystem::Environment::Environment() {
         GLint max_image_units = -1;
         NOTF_CHECK_GL(glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_image_units));
         texture_slot_count = narrow_cast<decltype(texture_slot_count)>(max_image_units - reserved_texture_slots);
+    }
+
+    { // uniform buffer slot count
+        GLint max_uniform_buffer_slots = -1;
+        NOTF_CHECK_GL(glGetIntegerv(GL_MAX_UNIFORM_BUFFER_BINDINGS, &max_uniform_buffer_slots));
+        uniform_buffer_count = narrow_cast<decltype(uniform_buffer_count)>(max_uniform_buffer_slots);
     }
 
     { // font atlas texture slot
@@ -110,7 +116,7 @@ GraphicsSystem::~GraphicsSystem() { _shutdown(); }
 TexturePtr GraphicsSystem::get_texture(const TextureId& id) const {
     auto it = m_textures.find(id);
     if (it == m_textures.end()) {
-        NOTF_THROW(OutOfBounds, "The GraphicsSystem does not contain a Texture with ID \"{}\"", id);
+        NOTF_THROW(IndexError, "The GraphicsSystem does not contain a Texture with ID \"{}\"", id);
     }
     return it->second.lock();
 }
@@ -118,7 +124,7 @@ TexturePtr GraphicsSystem::get_texture(const TextureId& id) const {
 ShaderPtr GraphicsSystem::get_shader(const ShaderId& id) const {
     auto it = m_shaders.find(id);
     if (it == m_shaders.end()) {
-        NOTF_THROW(OutOfBounds, "The GraphicsSystem does not contain a Shader with ID \"{}\"", id);
+        NOTF_THROW(IndexError, "The GraphicsSystem does not contain a Shader with ID \"{}\"", id);
     }
     return it->second.lock();
 }
@@ -126,7 +132,7 @@ ShaderPtr GraphicsSystem::get_shader(const ShaderId& id) const {
 ShaderProgramPtr GraphicsSystem::get_program(const ShaderProgramId id) const {
     auto it = m_programs.find(id);
     if (it == m_programs.end()) {
-        NOTF_THROW(OutOfBounds, "The GraphicsSystem does not contain a ShaderProgram with ID \"{}\"", id);
+        NOTF_THROW(IndexError, "The GraphicsSystem does not contain a ShaderProgram with ID \"{}\"", id);
     }
     return it->second.lock();
 }
@@ -134,7 +140,7 @@ ShaderProgramPtr GraphicsSystem::get_program(const ShaderProgramId id) const {
 FrameBufferPtr GraphicsSystem::get_framebuffer(const FrameBufferId& id) const {
     auto it = m_framebuffers.find(id);
     if (it == m_framebuffers.end()) {
-        NOTF_THROW(OutOfBounds, "The GraphicsSystem does not contain a FrameBuffer with ID \"{}\"", id);
+        NOTF_THROW(IndexError, "The GraphicsSystem does not contain a FrameBuffer with ID \"{}\"", id);
     }
     return it->second.lock();
 }

@@ -18,7 +18,7 @@ constexpr auto bool_id = "bool"_id;
 #endif
 
 SCENARIO("Properties", "[app][property]") {
-    TheApplication app(TheApplication::Arguments{});
+    TheApplication app(test_app_arguments());
     auto root_node = TheRootNode();
     auto root_node_handle = TheGraph()->get_root_node();
 

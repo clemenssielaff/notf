@@ -272,7 +272,7 @@ SCENARIO("msgpack construction", "[common][msgpack]") {
             REQUIRE(!success);
 
             REQUIRE_THROWS_AS(pack_map[12], ValueError);
-            REQUIRE_THROWS_AS(pack_map["12"], OutOfBounds);
+            REQUIRE_THROWS_AS(pack_map["12"], IndexError);
         }
         {
             const auto map = std::unordered_map<int, int>{{12, 24}, {-8, -16}, {0, 0}};
@@ -288,7 +288,7 @@ SCENARIO("msgpack construction", "[common][msgpack]") {
             REQUIRE(!success);
 
             REQUIRE_THROWS_AS(pack_map[12], ValueError);
-            REQUIRE_THROWS_AS(pack_map["12"], OutOfBounds);
+            REQUIRE_THROWS_AS(pack_map["12"], IndexError);
         }
     }
 
@@ -325,7 +325,7 @@ SCENARIO("msgpack access operators", "[common][msgpack]") {
         REQUIRE(array.at(1).get<MsgPack::Int>() == 2);
 
         REQUIRE(pack_array[2].get<MsgPack::Int>() == 3);
-        REQUIRE_THROWS_AS(pack_array[123], OutOfBounds);
+        REQUIRE_THROWS_AS(pack_array[123], IndexError);
 
         pack_array.get<MsgPack::String>(success);
         REQUIRE(!success);
@@ -346,7 +346,7 @@ SCENARIO("msgpack access operators", "[common][msgpack]") {
 
         REQUIRE(pack_map["derbe"] == true);
         REQUIRE(pack_map["underbe"] == false);
-        REQUIRE_THROWS_AS(pack_map["ausserst_underbe"], OutOfBounds);
+        REQUIRE_THROWS_AS(pack_map["ausserst_underbe"], IndexError);
         REQUIRE_THROWS_AS(pack_map[15], ValueError);
     }
 }

@@ -108,7 +108,7 @@ assert_cast(From castee) noexcept(is_static_castable_v<From, To>) {
 /// @param a    First weak_ptr.
 /// @param b    Second weak_ptr.
 template<class T>
-bool weak_ptr_equal(const std::weak_ptr<T>& a, const identity_t<std::weak_ptr<T>>& b) noexcept {
+bool is_weak_ptr_equal(const std::weak_ptr<T>& a, const identity_t<std::weak_ptr<T>>& b) noexcept {
     return !a.owner_before(b) && !b.owner_before(a);
 }
 
@@ -116,8 +116,8 @@ bool weak_ptr_equal(const std::weak_ptr<T>& a, const identity_t<std::weak_ptr<T>
 /// @param ptr  Weak pointer to test
 /// @returns    True iff the weak pointer is empty (not initialized).
 template<class T>
-bool weak_ptr_empty(const std::weak_ptr<T>& ptr) noexcept {
-    return weak_ptr_equal(ptr, std::weak_ptr<T>{});
+bool is_weak_ptr_empty(const std::weak_ptr<T>& ptr) noexcept {
+    return is_weak_ptr_equal(ptr, std::weak_ptr<T>{});
 }
 
 /// Extracts the raw pointer from a std::weak_ptr.

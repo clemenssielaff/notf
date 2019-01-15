@@ -150,14 +150,10 @@ struct formatter<::notf::IdType<T, underlying_type, aux...>> {
 
 // std::hash ======================================================================================================== //
 
-namespace std {
-
 /// std::hash specialization for IdTypes.
 template<typename type, typename underlying_type, typename... aux>
-struct hash<notf::IdType<type, underlying_type, aux...>> {
+struct std::hash<notf::IdType<type, underlying_type, aux...>> {
     size_t operator()(const notf::IdType<type, underlying_type, aux...>& id) const {
         return static_cast<size_t>(id.value());
     }
 };
-
-} // namespace std

@@ -393,17 +393,13 @@ NOTF_CLOSE_NAMESPACE
 
 // std::hash ======================================================================================================== //
 
-namespace std {
-
 /// std::hash specialization for notf::Rational<T>.
 template<class Integer>
-struct hash<notf::detail::Rational<Integer>> {
+struct std::hash<notf::detail::Rational<Integer>> {
     size_t operator()(const notf::detail::Rational<Integer>& rational) const {
         return notf::hash(notf::to_number(notf::detail::HashID::RATIONAL), rational.num(), rational.den());
     }
 };
-
-} // namespace std
 
 // formatting ======================================================================================================= //
 

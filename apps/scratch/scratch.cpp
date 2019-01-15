@@ -113,9 +113,7 @@ private:
 
 int run_main(int argc, char* argv[]) {
     // initialize application
-    TheApplication::Arguments arguments;
-    arguments.argc = argc;
-    arguments.argv = argv;
+    TheApplication::Arguments arguments("Scratch1", argc, argv);
     TheApplication app(std::move(arguments));
 
     WindowHandle window = Window::create();

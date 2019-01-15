@@ -126,17 +126,13 @@ struct formatter<notf::detail::Circle<Element>> {
 
 // std::hash ======================================================================================================== //
 
-namespace std {
-
 /// std::hash specialization for Circle.
 template<typename REAL>
-struct hash<notf::detail::Circle<REAL>> {
+struct std::hash<notf::detail::Circle<REAL>> {
     size_t operator()(const notf::detail::Circle<REAL>& circle) const {
         return notf::hash(static_cast<size_t>(notf::detail::HashID::CIRCLE), circle.center, circle.radius);
     }
 };
-
-} // namespace std
 
 // compile time tests =============================================================================================== //
 

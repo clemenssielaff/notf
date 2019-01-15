@@ -112,17 +112,13 @@ struct formatter<notf::detail::Triangle<Element>> {
 
 // std::hash ======================================================================================================== //
 
-namespace std {
-
 /// std::hash specialization for Triangle.
 template<typename REAL>
-struct hash<notf::detail::Triangle<REAL>> {
+struct std::hash<notf::detail::Triangle<REAL>> {
     size_t operator()(const notf::detail::Triangle<REAL>& triangle) const {
         return notf::hash(static_cast<size_t>(notf::detail::HashID::TRIANGLE), triangle.a, triangle.b, triangle.c);
     }
 };
-
-} // namespace std
 
 // compile time tests =============================================================================================== //
 

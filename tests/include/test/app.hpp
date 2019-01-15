@@ -7,14 +7,15 @@
 
 NOTF_OPEN_NAMESPACE
 
+/// Application arguments for testing only.
+inline auto test_app_arguments() { return TheApplication::Arguments("Test Application", -1, nullptr); }
+
 // accessors ======================================================================================================== //
 
 /// Node Handle
 template<class NodeType>
 struct Accessor<NodeHandle<NodeType>, Tester> {
-    static std::shared_ptr<NodeType> to_shared_ptr(const NodeHandle<NodeType>& handle) {
-        return handle.m_node.lock();
-    }
+    static std::shared_ptr<NodeType> to_shared_ptr(const NodeHandle<NodeType>& handle) { return handle.m_node.lock(); }
 };
 template<class NodeType>
 auto to_shared_ptr(NodeHandle<NodeType> node) {

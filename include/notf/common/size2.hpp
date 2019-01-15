@@ -112,17 +112,13 @@ struct formatter<notf::detail::Size2<Element>> {
 
 // std::hash ======================================================================================================== //
 
-namespace std {
-
 /// std::hash specialization for notf::Size2.
 template<class Element>
-struct hash<notf::detail::Size2<Element>> {
+struct std::hash<notf::detail::Size2<Element>> {
     size_t operator()(const notf::detail::Size2<Element>& size2) const {
         return notf::hash(notf::to_number(notf::detail::HashID::SIZE2), size2.get_hash());
     }
 };
-
-} // namespace std
 
 // compile time tests =============================================================================================== //
 

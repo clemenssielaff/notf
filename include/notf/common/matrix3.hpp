@@ -274,17 +274,13 @@ struct formatter<notf::detail::Matrix3<Element>> {
 
 // std::hash ======================================================================================================== //
 
-namespace std {
-
 /// std::hash specialization for Matrix3.
 template<class Element>
-struct hash<notf::detail::Matrix3<Element>> {
+struct std::hash<notf::detail::Matrix3<Element>> {
     size_t operator()(const notf::detail::Matrix3<Element>& matrix) const {
         return notf::hash(notf::to_number(notf::detail::HashID::MATRIX3), matrix[0], matrix[1], matrix[2]);
     }
 };
-
-} // namespace std
 
 // compile time tests =============================================================================================== //
 

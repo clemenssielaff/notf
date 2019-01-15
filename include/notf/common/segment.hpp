@@ -186,8 +186,12 @@ struct Segment3 : public Segment<detail::Vector3<Element>> {
 /// @param os       Output stream, implicitly passed with the << operator.
 /// @param segment  Segment to print.
 /// @return Output stream for further output.
-inline std::ostream& operator<<(std::ostream& out, const Segment2f& segment) { return out << fmt::format("{}", segment); }
-inline std::ostream& operator<<(std::ostream& out, const Segment3f& segment) { return out << fmt::format("{}", segment); }
+inline std::ostream& operator<<(std::ostream& out, const Segment2f& segment) {
+    return out << fmt::format("{}", segment);
+}
+inline std::ostream& operator<<(std::ostream& out, const Segment3f& segment) {
+    return out << fmt::format("{}", segment);
+}
 
 NOTF_CLOSE_NAMESPACE
 
@@ -231,17 +235,13 @@ struct formatter<notf::detail::Segment3<Element>> {
 
 // std::hash ======================================================================================================== //
 
-namespace std {
-
 /// std::hash specialization for Segment.
 template<typename VECTOR>
-struct hash<notf::detail::Segment<VECTOR>> {
+struct std::hash<notf::detail::Segment<VECTOR>> {
     size_t operator()(const notf::detail::Segment<VECTOR>& segment) const {
         return notf::hash(static_cast<size_t>(notf::detail::HashID::SEGMENT), segment.start, segment.end);
     }
 };
-
-} // namespace std
 
 // compile time tests =============================================================================================== //
 

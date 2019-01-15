@@ -11,7 +11,7 @@
 NOTF_USING_NAMESPACE;
 
 SCENARIO("Application Driver", "[app][driver]") {
-    TheApplication app(TheApplication::Arguments{});
+    TheApplication app(test_app_arguments());
     auto window1 = Window::create();
     Thread input_thread;
     input_thread.run([window = std::move(window1)]() {

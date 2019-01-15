@@ -41,7 +41,7 @@ SCENARIO("automatic registration", "[reactive][registry]") {
         auto ii_relay = std::dynamic_pointer_cast<Operator<int, int>>(any_op);
         REQUIRE(ii_relay);
 
-        REQUIRE_THROWS_AS(TheReactiveRegistry::create("definetly not an operator, I hope"), notf::OutOfBounds);
+        REQUIRE_THROWS_AS(TheReactiveRegistry::create("definetly not an operator, I hope"), notf::IndexError);
         REQUIRE_THROWS_AS(TheReactiveRegistry::create("IIRelay", 123.4), notf::ValueError);
 
         REQUIRE_THROWS_AS(TheReactiveRegistry::create("StepCounter"), notf::ValueError);

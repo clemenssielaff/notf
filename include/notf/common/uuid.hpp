@@ -148,14 +148,10 @@ std::ostream& operator<<(std::ostream& os, const Uuid& uuid);
 NOTF_CLOSE_NAMESPACE
 
 /// Hash
-namespace std {
-
 template<>
-struct hash<notf::Uuid> {
+struct std::hash<notf::Uuid> {
     constexpr size_t operator()(const notf::Uuid uuid) const noexcept {
         auto words = uuid.to_words();
         return notf::hash(words.first, words.second);
     }
 };
-
-} // namespace std

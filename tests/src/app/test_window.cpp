@@ -4,10 +4,12 @@
 #include "notf/app/event_handler.hpp"
 #include "notf/app/graph/window.hpp"
 
+#include "test/app.hpp"
+
 NOTF_USING_NAMESPACE;
 
 SCENARIO("Window", "[app][window]") {
-    TheApplication app(TheApplication::Arguments{});
+    TheApplication app(test_app_arguments());
 
     SECTION("open and close an empty window") {
         auto window = Window::create();

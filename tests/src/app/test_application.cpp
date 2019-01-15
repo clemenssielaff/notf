@@ -16,7 +16,7 @@ SCENARIO("TheApplication Singleton", "[app][application]") {
     }
 
     SECTION("a valid Application singleton") {
-        TheApplication::Arguments args;
+        TheApplication::Arguments args = test_app_arguments();
         args.start_without_windows = true;
         TheApplication app(args);
 

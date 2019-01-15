@@ -27,13 +27,19 @@ public:
     /// Application arguments.
     struct Arguments {
 
-        // main arguments -----------------------------------------------------
+        Arguments(std::string name, long argc, char** argv) : name(std::move(name)), argv(argv), argc(argc) {}
+
+        // mandatory arguments ------------------------------------------------
+
+        /// Name of the Application.
+        /// Is used for logging and for the settings file.
+        std::string const name;
 
         /// Command line arguments passed to main() by the OS.
-        char** argv = nullptr;
+        char** const argv;
 
         /// Number of strings in argv (first one is usually the name of the program).
-        long argc = -1;
+        long const argc;
 
         // flags --------------------------------------------------------------
 
@@ -107,7 +113,7 @@ public:
     ~Application();
 
     /// Application arguments as passed to the constructor.
-    Arguments& get_arguments() { return m_arguments; }
+    const Arguments& get_arguments() const { return m_arguments; }
 
     /// Starts the application's main loop.
     /// @return  The application's return value after it has finished.
@@ -143,7 +149,7 @@ private:
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// Application arguments as passed to the constructor.
-    Arguments m_arguments;
+    const Arguments m_arguments;
 
     /// The internal GLFW window managed by the Application
     /// Does not actually open a Window, only provides the shared OpenGL context.

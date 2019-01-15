@@ -474,17 +474,13 @@ struct formatter<notf::detail::Aabr<Element>> {
 
 // std::hash ======================================================================================================== //
 
-namespace std {
-
 /// std::hash specialization for Aabr.
 template<class Element>
-struct hash<notf::detail::Aabr<Element>> {
+struct std::hash<notf::detail::Aabr<Element>> {
     size_t operator()(const notf::detail::Aabr<Element>& aabr) const {
         return notf::hash(notf::to_number(notf::detail::HashID::AABR), aabr.get_hash());
     }
 };
-
-} // namespace std
 
 // compile time tests =============================================================================================== //
 

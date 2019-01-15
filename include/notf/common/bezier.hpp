@@ -121,18 +121,14 @@ struct formatter<notf::detail::Bezier<Order, Element>> {
 
 // std::hash ======================================================================================================== //
 
-namespace std {
-
 /// std::hash specialization for Bezier.
 template<size_t ORDER, typename VECTOR>
-struct hash<notf::detail::Bezier<ORDER, VECTOR>> {
+struct std::hash<notf::detail::Bezier<ORDER, VECTOR>> {
     size_t operator()(const notf::detail::Bezier<ORDER, VECTOR>& bezier) const {
         return notf::hash(static_cast<size_t>(notf::detail::HashID::BEZIER), bezier.order(), bezier.start.hash(),
                           bezier.ctrl1.hash(), bezier.ctrl2.hash(), bezier.end.hash());
     }
 };
-
-} // namespace std
 
 // compile time tests =============================================================================================== //
 

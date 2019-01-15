@@ -177,17 +177,13 @@ NOTF_CLOSE_NAMESPACE
 
 // std::hash ======================================================================================================== //
 
-namespace std {
-
 /// std::hash specialization for Vector3.
 template<class Element>
-struct hash<notf::detail::Vector3<Element>> {
+struct std::hash<notf::detail::Vector3<Element>> {
     size_t operator()(const notf::detail::Vector3<Element>& vector) const {
         return notf::hash(notf::to_number(notf::detail::HashID::VECTOR3), vector.get_hash());
     }
 };
-
-} // namespace std
 
 // formatting ======================================================================================================= //
 

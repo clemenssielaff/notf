@@ -296,7 +296,7 @@ protected:
 /// Equality comparison with another NodeHandle.
 template<class LeftType, class RightType>
 bool operator==(const NodeHandle<LeftType>& lhs, const NodeHandle<RightType>& rhs) noexcept {
-    return weak_ptr_equal(lhs.m_node, rhs.m_node);
+    return is_weak_ptr_equal(lhs.m_node, rhs.m_node);
 }
 template<class LeftType, class RightType>
 bool operator!=(const NodeHandle<LeftType>& lhs, const NodeHandle<RightType>& rhs) noexcept {
@@ -372,13 +372,9 @@ NOTF_CLOSE_NAMESPACE
 
 // std::hash specializations ======================================================================================== //
 
-namespace std {
-
 template<class NodeType>
-struct hash<notf::NodeHandle<NodeType>> {
+struct std::hash<notf::NodeHandle<NodeType>> {
     constexpr size_t operator()(const notf::NodeHandle<NodeType>& handle) const noexcept {
         return notf::hash_mix(notf::to_number(handle._get_ptr()));
     }
 };
-
-} // namespace std

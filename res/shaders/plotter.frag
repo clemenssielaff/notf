@@ -2,6 +2,24 @@
 
 precision mediump float;
 
+layout(std140) uniform hello_world_and_shit {
+    vec4 paintRot;
+    vec4 scissorRot;
+    vec2 paintTrans;
+    vec2 scissorTrans;
+    vec2 scissorExt;
+    vec2 scissorScale;
+    vec4 innerCol;
+    vec4 outerCol;
+    vec2 extent;
+    float radius;
+    float feather;
+    float strokeMult;
+    float strokeThr;
+    int type;
+    float _padding;
+};
+
 in VertexData {
     mat2x3 line_xform;
     vec2 line_size;

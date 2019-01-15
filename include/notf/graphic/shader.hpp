@@ -1,8 +1,5 @@
 #pragma once
 
-#include <string>
-#include <vector>
-
 #include "notf/meta/smart_ptr.hpp"
 #include "notf/meta/types.hpp"
 
@@ -20,7 +17,6 @@ NOTF_OPEN_NAMESPACE
 /// Represents a single stage in a ShaderProgram.
 /// Technically, OpenGL would call this a "program" containing a single "shader" - but in notf you only have shaders and
 /// piplines, so we ignore the nomenclature here.
-///
 class Shader : public std::enable_shared_from_this<Shader> {
 
     friend Accessor<Shader, detail::GraphicsSystem>;
@@ -29,23 +25,6 @@ class Shader : public std::enable_shared_from_this<Shader> {
 public:
     /// Nested `AccessFor<T>` type.
     NOTF_ACCESS_TYPE(Shader);
-
-    /// Information about a variable (attribute or uniform) of this shader.
-    struct Uniform {
-        /// Location of the variable, used to address the variable in the OpenGL shader.
-        GLint location;
-
-        /// Type of the variable.
-        /// See https://www.khronos.org/opengl/wiki/GLAPI/glGetActiveUniform#Description for details.
-        GLenum type;
-
-        /// Number of elements in the variable in units of type.
-        /// Is always >=1 and only >1 if the variable is an array.
-        GLint size;
-
-        /// The name of the variable.
-        std::string name;
-    };
 
     struct Stage {
         /// Individual Shader stages.
@@ -86,7 +65,8 @@ protected:
     /// @param id       OpenGL Shader program ID.
     /// @param stages   Program stage/s of the Shader.
     /// @param name     Name of this Shader.
-    Shader(const GLuint id, Stage::Flags stages, std::string name);
+    Shader(const GLuint id, Stage::Flags stages, std::string name)
+        : m_name(std::move(name)), m_id(id), m_stages(stages) {}
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(Shader);
@@ -108,15 +88,6 @@ public:
     /// The name of this Shader.
     const std::string& get_name() const { return m_name; }
 
-    /// All uniforms of this shader.
-    const std::vector<Uniform>& get_uniforms() const { return m_uniforms; }
-
-    /// Updates the value of a uniform in the shader.
-    /// @throws OpenGlError If the uniform cannot be found.
-    /// @throws OpenGlError If the value type and the uniform type are not compatible.
-    template<typename T>
-    void set_uniform(const std::string&, const T&);
-
 #ifdef NOTF_DEBUG
     /// Checks whether the shader can execute in the current OpenGL state.
     /// Is expensive and should only be used for debugging!
@@ -137,10 +108,6 @@ protected:
     static void _register_with_system(const ShaderPtr& shader);
 
 private:
-    /// Returns the uniform with the given name.
-    /// @throws OpenGlError If there is no uniform with the given name in this shader.
-    const Uniform& _uniform(const std::string& name) const;
-
     /// Deallocates the Shader data and invalidates the Shader.
     void _deallocate();
 
@@ -149,33 +116,12 @@ private:
     /// The name of this Shader.
     const std::string m_name;
 
-    ///  All uniforms of this shader.
-    std::vector<Uniform> m_uniforms;
-
     //// ID of the shader program.
     ShaderId m_id = 0;
 
     /// All stages contained in this Shader.
     const Stage::Flags m_stages;
 };
-
-template<>
-void Shader::set_uniform(const std::string&, const int& value);
-
-template<>
-void Shader::set_uniform(const std::string&, const unsigned int& value);
-
-template<>
-void Shader::set_uniform(const std::string&, const float& value);
-
-template<>
-void Shader::set_uniform(const std::string&, const V2f& value);
-
-template<>
-void Shader::set_uniform(const std::string&, const V4f& value);
-
-template<>
-void Shader::set_uniform(const std::string&, const M4f& value);
 
 // accessors -------------------------------------------------------------------------------------------------------- //
 
@@ -332,3 +278,13 @@ private:
 };
 
 NOTF_CLOSE_NAMESPACE
+
+// common_type ====================================================================================================== //
+
+/// std::common_type specializations for ShaderPtr subclasses.
+template<class Lhs, class Rhs>
+struct std::common_type<std::shared_ptr<Lhs>, std::shared_ptr<Rhs>> {
+    using type = std::enable_if_t< //
+        std::conjunction_v<std::is_base_of<::notf::Shader, Lhs>, std::is_base_of<::notf::Shader, Rhs>>,
+        ::notf::ShaderPtr>;
+};

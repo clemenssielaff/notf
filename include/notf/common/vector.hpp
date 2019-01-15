@@ -110,7 +110,7 @@ std::vector<T> flatten(const std::vector<std::vector<T>>& v) {
 /// @throws std::out_of_range exception if the vector is empty.
 template<class T>
 T take_back(std::vector<T>& v) {
-    if (v.empty()) { NOTF_THROW(OutOfBounds, "Cannot take last entry of an empty vector"); }
+    if (v.empty()) { NOTF_THROW(IndexError, "Cannot take last entry of an empty vector"); }
     T result = v.back();
     v.pop_back();
     return result;

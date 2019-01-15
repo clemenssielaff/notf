@@ -69,7 +69,6 @@ std::pair<GLenum, GLenum> convert_blend_mode(const BlendMode::Mode blend_mode) {
         sfactor = GL_ONE_MINUS_DST_ALPHA;
         dfactor = GL_ONE_MINUS_SRC_ALPHA;
         break;
-    default: NOTF_ASSERT(false);
     }
     return {sfactor, dfactor};
 }
@@ -103,11 +102,7 @@ GraphicsContext::GraphicsContext(valid_ptr<GLFWwindow*> window) : m_window(windo
     NOTF_CHECK_GL(glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_DONT_CARE));
     NOTF_CHECK_GL(glDisable(GL_DITHER));
 
-    // apply the default state
-    m_state = _create_state();
-    set_stencil_mask(m_state.stencil_mask, /* force = */ true);
-    set_blend_mode(m_state.blend_mode, /* force = */ true);
-    clear(m_state.clear_color, Buffer::COLOR);
+    _reset_state();
 }
 
 GraphicsContext::~GraphicsContext() {
@@ -201,13 +196,13 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot) {
 
     const auto& environment = TheGraphicsSystem::get_environment();
     if (slot >= environment.texture_slot_count) {
-        NOTF_THROW(ValueError, "Invalid texture slot: {} - largest texture slot is: {}", slot,
+        NOTF_THROW(OpenGLError, "Invalid texture slot: {} - largest texture slot is: {}", slot,
                    environment.texture_slot_count - 1);
     }
 
     if (texture == m_state.texture_slots[slot].get()) { return; }
 
-    if (!texture->is_valid()) { NOTF_THROW(ValueError, "Cannot bind invalid texture \"{}\"", texture->get_name()); }
+    if (!texture->is_valid()) { NOTF_THROW(OpenGLError, "Cannot bind invalid texture \"{}\"", texture->get_name()); }
 
     NOTF_ASSERT(is_current());
     NOTF_CHECK_GL(glActiveTexture(GL_TEXTURE0 + slot));
@@ -219,7 +214,7 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot) {
 void GraphicsContext::unbind_texture(uint slot) {
     const auto& environment = TheGraphicsSystem::get_environment();
     if (slot >= environment.texture_slot_count) {
-        NOTF_THROW(ValueError, "Invalid texture slot: {} - largest texture slot is: {}", slot,
+        NOTF_THROW(OpenGLError, "Invalid texture slot: {} - largest texture slot is: {}", slot,
                    environment.texture_slot_count - 1);
     }
 
@@ -232,19 +227,54 @@ void GraphicsContext::unbind_texture(uint slot) {
     m_state.texture_slots[slot].reset();
 }
 
-GraphicsContext::ProgramGuard GraphicsContext::bind_program(const ShaderProgramPtr& program) {
-    _bind_program(program);
-    return ProgramGuard(*this, program);
+void GraphicsContext::bind_uniform_buffer(const uint slot, const AnyUniformBufferPtr& uniform_buffer,
+                                          const size_t index) {
+    if (slot >= m_state.uniform_buffers.size()) {
+        NOTF_THROW(OpenGLError, "Cannot bind UniformBuffer \"{}\" to slot {} as the system only provides {}",
+                   uniform_buffer->get_name(), slot, m_state.uniform_buffers.size());
+    }
+
+    if (!uniform_buffer) {
+        unbind_uniform_buffer(slot);
+        return;
+    }
+
+    UniformBinding& target = m_state.uniform_buffers[slot];
+    if (uniform_buffer == target.buffer && index == target.index) {
+        return; // noop
+    }
+
+    if (index >= uniform_buffer->get_block_count()) {
+        NOTF_THROW(IndexError,
+                   "Cannot bind element at index {} of UniformBuffer \"{}\", because it only has {} elements", index,
+                   uniform_buffer->get_name(), uniform_buffer->get_block_count());
+    }
+
+    NOTF_ASSERT(is_current());
+    const GLsizeiptr block_size = narrow_cast<GLsizeiptr>(uniform_buffer->get_block_size());
+    const GLintptr buffer_offset = block_size * narrow_cast<GLsizei>(index);
+    target = UniformBinding{uniform_buffer, index};
+    NOTF_CHECK_GL(
+        glBindBufferRange(GL_UNIFORM_BUFFER, slot, uniform_buffer->get_id().value(), buffer_offset, block_size));
 }
 
-GraphicsContext::FramebufferGuard GraphicsContext::bind_framebuffer(const FrameBufferPtr& framebuffer) {
-    _bind_framebuffer(framebuffer);
-    return FramebufferGuard(*this, framebuffer);
-}
+void GraphicsContext::unbind_uniform_buffer(const uint slot, const AnyUniformBufferPtr& uniform_buffer) {
+    if (slot >= m_state.uniform_buffers.size()) {
+        NOTF_THROW(OpenGLError, "Cannot unbind UniformBuffer slot {} as the system only provides {}", slot,
+                   m_state.uniform_buffers.size());
+    }
 
-GraphicsContext::UniformBufferGuard GraphicsContext::bind_uniform_buffer(const AnyUniformBufferPtr& uniform_buffer) {
-    _bind_uniform_buffer(uniform_buffer);
-    return UniformBufferGuard(*this, uniform_buffer);
+    if (uniform_buffer && uniform_buffer != m_state.uniform_buffers[slot].buffer) {
+        NOTF_LOG_WARN("Did not find expected UniformBuffer \"{}\" to unbind from slot {}", uniform_buffer->get_name(),
+                      slot);
+        return;
+    }
+
+    if (!m_state.uniform_buffers[slot].buffer) { return; }
+
+    NOTF_ASSERT(is_current());
+    m_state.uniform_buffers[slot] = {};
+    NOTF_CHECK_GL(glBindBufferBase(GL_UNIFORM_BUFFER, slot, 0));
 }
 
 void GraphicsContext::_shutdown_once() {
@@ -271,17 +301,21 @@ void GraphicsContext::_unbind_all_textures() {
     }
 }
 
-GraphicsContext::State GraphicsContext::_create_state() const {
-    State result; // default constructed
+void GraphicsContext::_reset_state() {
+    m_state = State(); // default constructed
 
-    // query number of texture slots
+    // apply information from the environment
     const auto& environment = TheGraphicsSystem::get_environment();
-    result.texture_slots.resize(environment.texture_slot_count);
+    m_state.texture_slots.resize(environment.texture_slot_count);
+    m_state.uniform_buffers.resize(environment.uniform_buffer_count);
 
     // query current window size
-    result.render_area = Aabri(get_window_size());
+    m_state.render_area = Aabri(get_window_size());
 
-    return result;
+    // enforce the state (since we don't know the current OpenGL state)
+    set_stencil_mask(m_state.stencil_mask, /* force = */ true);
+    set_blend_mode(m_state.blend_mode, /* force = */ true);
+    clear(m_state.clear_color, Buffer::COLOR);
 }
 
 void GraphicsContext::_bind_program(const ShaderProgramPtr& program) {
@@ -292,6 +326,7 @@ void GraphicsContext::_bind_program(const ShaderProgramPtr& program) {
         NOTF_CHECK_GL(glUseProgram(0));
         NOTF_CHECK_GL(glBindProgramPipeline(program->get_id().value()));
         m_state.program = program;
+        ShaderProgram::AccessFor<GraphicsContext>::activate(*m_state.program.get());
     }
 }
 
@@ -302,6 +337,7 @@ void GraphicsContext::_unbind_program(const ShaderProgramPtr& program) {
         NOTF_ASSERT(is_current());
         NOTF_CHECK_GL(glUseProgram(0));
         NOTF_CHECK_GL(glBindProgramPipeline(0));
+        ShaderProgram::AccessFor<GraphicsContext>::deactivate(*m_state.program.get());
         m_state.program.reset();
     }
 }
@@ -325,27 +361,6 @@ void GraphicsContext::_unbind_framebuffer(const FrameBufferPtr& framebuffer) {
         m_state.framebuffer.reset();
     }
 }
-
-void GraphicsContext::_bind_uniform_buffer(const AnyUniformBufferPtr& uniform_buffer) {
-    if (!uniform_buffer) {
-        _unbind_uniform_buffer();
-    } else if (uniform_buffer != m_state.uniform_buffer) {
-        NOTF_ASSERT(is_current());
-        NOTF_CHECK_GL(glBindBuffer(GL_UNIFORM_BUFFER, uniform_buffer->get_id().value()));
-        m_state.uniform_buffer = uniform_buffer;
-    }
-}
-
-void GraphicsContext::_unbind_uniform_buffer(const AnyUniformBufferPtr& uniform_buffer) {
-    if (uniform_buffer && uniform_buffer != m_state.uniform_buffer) {
-        NOTF_LOG_CRIT("Did not find expected UniformBuffer \"{}\", ignoring call to unbind", uniform_buffer->get_id());
-    } else if (m_state.uniform_buffer) {
-        NOTF_ASSERT(is_current());
-        NOTF_CHECK_GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));
-        m_state.uniform_buffer.reset();
-    }
-}
-
 NOTF_CLOSE_NAMESPACE
 
 /* Something to think of, courtesy of the OpenGL ES book:

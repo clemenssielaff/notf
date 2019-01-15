@@ -36,7 +36,7 @@ public:
         : m_file(filename_from_path(file))
         , m_function(function)
         , m_line(line)
-        , m_message(fmt::format("({}) {}", type, message)) {}
+        , m_message(fmt::format("[{}] {} ({}:{})", type, message, m_file, m_line)) {}
 
     /// Constructor with an fmt formatted message.
     /// @param file     File containing the function throwing the error.
@@ -51,7 +51,8 @@ public:
         : m_file(filename_from_path(file))
         , m_function(function)
         , m_line(line)
-        , m_message(fmt::format(fmt::format("({}) {}", type, fmt), std::forward<Args>(args)...)) {}
+        , m_message(
+              fmt::format(fmt::format("[{}] {} ({}:{})", type, fmt, m_file, m_line), std::forward<Args>(args)...)) {}
 
     /// Destructor.
     virtual ~notf_exception() override = default;
@@ -105,8 +106,8 @@ NOTF_EXCEPTION_TYPE(LogicError);
 /// Exception type for malformed or otherwise invalid values.
 NOTF_EXCEPTION_TYPE(ValueError);
 
-/// Exception type for out of bounds errors.
-NOTF_EXCEPTION_TYPE(OutOfBounds);
+/// Exception type for out of index errors.
+NOTF_EXCEPTION_TYPE(IndexError);
 
 /// Exception type for access to invalid resources.
 NOTF_EXCEPTION_TYPE(ResourceError);

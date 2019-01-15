@@ -204,12 +204,8 @@ NOTF_CLOSE_NAMESPACE
 
 // std::hash ======================================================================================================== //
 
-namespace std {
-
 /// std::hash specialization for Font::Identifier.
 template<>
-struct hash<notf::Font::Identifier> {
+struct std::hash<notf::Font::Identifier> {
     size_t operator()(const notf::Font::Identifier& id) const { return notf::hash(id.filename, id.pixel_size); }
 };
-
-} // namespace std

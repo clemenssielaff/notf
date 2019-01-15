@@ -214,7 +214,7 @@ public:
     }
 
     /// Write-access to the vertex buffer.
-    /// Note that you need to `init()` (if it is the first time) or `update()` to apply the contents of the buffer.
+    /// Note that you need to `init()` to apply the contents of the buffer.
     std::vector<Vertex>& get_buffer() { return m_vertices; }
 
     /// Initializes the VertexArray with the current contents of `m_vertices`.
@@ -258,8 +258,8 @@ private:
             // otherwise we have to do a full update
             NOTF_CHECK_GL(glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(Vertex), &m_vertices[0],
                                        get_gl_usage(m_args.usage)));
+            m_buffer_size = m_size;
         }
-        m_buffer_size = std::max(m_buffer_size, m_size);
 
         NOTF_CHECK_GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
 

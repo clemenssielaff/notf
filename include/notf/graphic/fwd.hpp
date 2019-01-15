@@ -6,15 +6,15 @@
 
 #include "notf/graphic/opengl.hpp"
 
-// forwards ========================================================================================================= //
-
 NOTF_OPEN_NAMESPACE
+
+// forwards ========================================================================================================= //
 
 NOTF_DECLARE_SHARED_POINTERS(class, Font);
 NOTF_DECLARE_SHARED_POINTERS(class, FragmentShader);
 NOTF_DECLARE_SHARED_POINTERS(class, FrameBuffer);
 NOTF_DECLARE_SHARED_POINTERS(class, GeometryShader);
-NOTF_DECLARE_SHARED_POINTERS(class, ShaderProgram);
+
 NOTF_DECLARE_SHARED_POINTERS(class, RenderBuffer);
 NOTF_DECLARE_SHARED_POINTERS(class, Shader);
 NOTF_DECLARE_SHARED_POINTERS(class, TesselationShader);
@@ -39,6 +39,9 @@ namespace detail {
 class GraphicsSystem;
 } // namespace detail
 class TheGraphicsSystem;
+
+// shader_program.hpp ------------------------------------------------------ //
+NOTF_DECLARE_SHARED_POINTERS(class, ShaderProgram);
 
 // uniform_buffer.hpp ------------------------------------------------------ //
 namespace detail {

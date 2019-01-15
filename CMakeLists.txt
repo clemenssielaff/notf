@@ -293,6 +293,11 @@ file(GLOB_RECURSE NOTF_HEADERS
     "include/notf/*.hpp"
 )
 
+# additional markdown files for documentation
+file(GLOB_RECURSE NOTF_DOCS
+    "include/notf/*.md"
+)
+
 add_subdirectory(thirdparty)
 add_subdirectory(src)
 add_subdirectory(apps)

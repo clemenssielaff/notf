@@ -80,7 +80,7 @@ AnyNodeHandle AnyNode::get_child(const size_t index) const {
     NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
     const std::vector<AnyNodePtr>& children = _read_children();
     if (index >= children.size()) {
-        NOTF_THROW(OutOfBounds, "Cannot get child Node at index {} for Node \"{}\" with {} children", index, get_name(),
+        NOTF_THROW(IndexError, "Cannot get child Node at index {} for Node \"{}\" with {} children", index, get_name(),
                    get_child_count());
     }
     return children[index];
@@ -171,9 +171,8 @@ void AnyNode::stack_behind(const AnyNodeHandle& sibling) {
 bool AnyNode::_get_flag(const size_t index) const {
     NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
     if (index >= s_user_flag_count) {
-        NOTF_THROW(OutOfBounds,
-                   "Cannot test user flag #{} of Node {}, because Nodes only have {} user-defineable flags", index,
-                   get_name(), s_user_flag_count);
+        NOTF_THROW(IndexError, "Cannot test user flag #{} of Node {}, because Nodes only have {} user-defineable flags",
+                   index, get_name(), s_user_flag_count);
     }
     return _get_internal_flag(index + s_internal_flag_count);
 }
@@ -181,9 +180,8 @@ bool AnyNode::_get_flag(const size_t index) const {
 void AnyNode::_set_flag(const size_t index, const bool value) {
     NOTF_ASSERT(this_thread::is_the_ui_thread());
     if (index >= s_user_flag_count) {
-        NOTF_THROW(OutOfBounds,
-                   "Cannot test user flag #{} of Node {}, because Nodes only have {} user-defineable flags", index,
-                   get_name(), s_user_flag_count);
+        NOTF_THROW(IndexError, "Cannot test user flag #{} of Node {}, because Nodes only have {} user-defineable flags",
+                   index, get_name(), s_user_flag_count);
     }
     _set_internal_flag(index + s_internal_flag_count, value);
 }

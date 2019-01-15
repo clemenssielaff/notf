@@ -76,7 +76,7 @@ SCENARIO("Nodes can limit what kind of children or parent types they can have", 
 }
 
 SCENARIO("Basic Node Setup", "[app][node][property]") {
-    TheApplication app(TheApplication::Arguments{});
+    TheApplication app(test_app_arguments());
     auto root_node = TheRootNode();
     auto root_node_handle = TheGraph()->get_root_node();
 
@@ -137,7 +137,7 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
         REQUIRE(first_child->get_common_ancestor(second_child) == two_child_node);
         REQUIRE(first_child->get_common_ancestor(AnyNodeHandle()).is_expired());
 
-        REQUIRE_THROWS_AS(two_child_node->get_child(1000), OutOfBounds);
+        REQUIRE_THROWS_AS(two_child_node->get_child(1000), IndexError);
     }
 
     SECTION("Nodes can modify their hierarchy") {
@@ -205,8 +205,8 @@ SCENARIO("Basic Node Setup", "[app][node][property]") {
         node->set_flag(FIRST);
         REQUIRE(node->get_flag(FIRST));
 
-        REQUIRE_THROWS_AS(node->get_flag(OUT_OF_BOUNDS), OutOfBounds);
-        REQUIRE_THROWS_AS(node->set_flag(OUT_OF_BOUNDS), OutOfBounds);
+        REQUIRE_THROWS_AS(node->get_flag(OUT_OF_BOUNDS), IndexError);
+        REQUIRE_THROWS_AS(node->set_flag(OUT_OF_BOUNDS), IndexError);
     }
 
     //    SECTION("User definable flags are frozen with the Graph") {

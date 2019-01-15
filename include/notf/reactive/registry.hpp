@@ -112,7 +112,7 @@ public:
     /// Creates an untyped reactive operator instance from the registry.
     /// @param name             Name of the operator type.
     /// @param args             Arguments required to instantiate the operator.
-    /// @throws OutOfBounds   If the name does not identify an operator type.
+    /// @throws IndexError   If the name does not identify an operator type.
     /// @throws ValueError     If any of the arguments do not match the expected type.
     /// @returns                Untyped reactive operator.
     template<class... Args>
@@ -120,7 +120,7 @@ public:
         auto& registry = _get_registry();
         auto itr = registry.find(name);
         if (itr == registry.end()) {
-            NOTF_THROW(OutOfBounds, "No operator named \"{}\"  in the reactive registry", name);
+            NOTF_THROW(IndexError, "No operator named \"{}\"  in the reactive registry", name);
         }
         return itr->second->create(std::forward<Args>(args)...);
     }

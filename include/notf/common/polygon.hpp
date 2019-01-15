@@ -297,11 +297,9 @@ struct formatter<notf::detail::Polygon<Element>> {
 
 // std::hash ======================================================================================================== //
 
-namespace std {
-
 /// std::hash specialization for Triangle.
 template<typename REAL>
-struct hash<notf::detail::Polygon<REAL>> {
+struct std::hash<notf::detail::Polygon<REAL>> {
     size_t operator()(const notf::detail::Polygon<REAL>& polygon) const {
         auto result = notf::hash(static_cast<size_t>(notf::detail::HashID::POLYGON));
         for (const auto& vertex : polygon.vertices) {
@@ -310,5 +308,3 @@ struct hash<notf::detail::Polygon<REAL>> {
         return result;
     }
 };
-
-} // namespace std

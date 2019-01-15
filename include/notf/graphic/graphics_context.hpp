@@ -175,51 +175,6 @@ public:
         FrameBufferPtr m_previous_framebuffer;
     };
 
-    // framebuffer guard  -----------------------------------------------------
-
-    /// RAII guard to make sure that a bound UniformBuffer is always properly unbound after use.
-    /// You can nest multiple guards, each will restore the previously bound UniformBuffer.
-    class NOTF_NODISCARD UniformBufferGuard {
-        friend class GraphicsContext;
-
-        // methods ------------------------------------------------------------
-    private:
-        /// Constructor.
-        /// @param context          Context that created the guard.
-        /// @param uniform_buffer   UniformBuffer to bind and unbind.
-        UniformBufferGuard(GraphicsContext& context, const AnyUniformBufferPtr& uniform_buffer)
-            : m_context(context)
-            , m_guarded_uniform_buffer(uniform_buffer)
-            , m_previous_uniform_buffer(context.m_state.uniform_buffer) {
-            context._bind_uniform_buffer(m_guarded_uniform_buffer);
-        }
-
-    public:
-        NOTF_NO_COPY_OR_ASSIGN(UniformBufferGuard);
-        NOTF_NO_HEAP_ALLOCATION(UniformBufferGuard);
-
-        /// Explicit move constructor.
-        /// @param other    UniformBuffer to move from.
-        UniformBufferGuard(UniformBufferGuard&& other) = default;
-
-        /// Destructor.
-        ~UniformBufferGuard() {
-            m_context._unbind_uniform_buffer(m_guarded_uniform_buffer);
-            if (m_previous_uniform_buffer) { m_context._bind_uniform_buffer(m_previous_uniform_buffer); }
-        }
-
-        // fields -------------------------------------------------------------
-    private:
-        /// Context that created the guard.
-        GraphicsContext& m_context;
-
-        /// UniformBuffer to bind and unbind.
-        AnyUniformBufferPtr m_guarded_uniform_buffer;
-
-        /// Previously bound UniformBuffer, is restored on guard destruction.
-        AnyUniformBufferPtr m_previous_uniform_buffer;
-    };
-
     // vao guard  -------------------------------------------------------------
 
     // TODO: Proper VAO class.
@@ -244,37 +199,19 @@ public:
         const GLuint m_vao;
     };
 
+    // TODO: I don't like all of these *Guards anymore, because they imply that the user doesn't know the current state
+    // of the graphics pipeline and needs to restore it after each use. Instead, with a proper GraphicsSetup object, all
+    // of the binding / -rebinding and unbinding should be done declaratively
+
 private:
-    // state ------------------------------------------------------------------
-    /// Graphics state.
-    struct State {
+    /// UniformBuffers are always bound at a specific index.
+    struct UniformBinding {
+        /// Bound buffer.
+        AnyUniformBufferPtr buffer;
 
-        /// Blend mode.
-        BlendMode blend_mode = BlendMode::DEFAULT;
-
-        /// Culling.
-        CullFace cull_face = CullFace::DEFAULT;
-
-        /// Stencil mask.
-        GLuint stencil_mask = 0xffffffff;
-
-        /// Bound textures.
-        std::vector<TextureConstPtr> texture_slots = {};
-
-        /// Bound ShaderProgram.
-        ShaderProgramPtr program = {};
-
-        /// Bound Framebuffer.
-        FrameBufferPtr framebuffer = {};
-
-        /// Bound UniformBuffer
-        AnyUniformBufferPtr uniform_buffer = {};
-
-        /// Color applied when the bound framebuffer is cleared.
-        Color clear_color = Color::black();
-
-        /// On-screen AABR that is rendered into.
-        Aabri render_area;
+        /// Index at which the buffer is bound.
+        /// The byte offset into the buffer is calculated using `index * sizeof(UniformBuffer::block_t)`.
+        size_t index = 0;
     };
 
     // methods --------------------------------------------------------------------------------- //
@@ -345,31 +282,45 @@ public:
     /// Only results in an OpenGL call if the texture is not currently bound.
     /// @param texture      Texture to bind.
     /// @param slot         Texture slot to bind the texture to.
-    /// @throws ValueError  If the texture is not valid or if the slot is >= than the number of texture slots in the
+    /// @throws OpenGLError If the texture is not valid or if the slot is >= than the number of texture slots in the
     ///                     environment.
     void bind_texture(const Texture* get_texture, uint slot);
     void bind_texture(const TexturePtr& texture, uint slot) { bind_texture(texture.get(), slot); }
 
     /// Unbinds the current texture and clears the context's texture stack.
     /// @param slot         Texture slot to clear.
-    /// @throws ValueError  If slot is >= than the number of texture slots in the environment.
+    /// @throws OpenGLError If slot is >= than the number of texture slots in the environment.
     void unbind_texture(uint slot);
 
     /// Binds the given Program.
     /// @param program  ShaderProgram to bind.
     /// @returns        Guard, making sure that the ShaderProgram is properly unbound and the previous one restored
     ///                 after use.
-    ProgramGuard bind_program(const ShaderProgramPtr& program);
+    ProgramGuard bind_program(const ShaderProgramPtr& program) { return ProgramGuard(*this, program); }
 
     /// Binds the given FrameBuffer, if it is not already bound.
     /// @param framebuffer  FrameBuffer to bind.
     /// @returns Guard, making sure that the FrameBuffer is properly unbound and the previous one restored after use.
-    FramebufferGuard bind_framebuffer(const FrameBufferPtr& framebuffer);
+    FramebufferGuard bind_framebuffer(const FrameBufferPtr& framebuffer) {
+        return FramebufferGuard(*this, framebuffer);
+    }
 
-    /// Binds the given UniformBuffer, if it is not already bound.
+    // uniform buffer ---------------------------------------------------------
+
+    /// Binds the given UniformBuffer at the given slot, if it is not already bound.
+    /// @param slot             Uniform buffer binding slot.
     /// @param uniform_buffer   UniformBuffer to bind.
-    /// @returns Guard, making sure that the UniformBuffer is properly unbound and the previous one restored after use.
-    UniformBufferGuard bind_uniform_buffer(const AnyUniformBufferPtr& uniform_buffer);
+    /// @param index            Index of the UniformBuffer to bind.
+    /// @throws OpenGLError     If slot is >= the maximal number of available uniform buffer slots.
+    /// @throws IndexError      If index is >= the number of blocks in the UniformBuffer.
+    void bind_uniform_buffer(const uint slot, const AnyUniformBufferPtr& uniform_buffer, const size_t index);
+
+    /// Unbinds the current UniformBuffer from the given slot.
+    /// @param slot             Uniform buffer binding slot.
+    /// @param uniform_buffer   Only unbind the current UniformBuffer, if it is equal to the one given, noop otherwise.
+    ///                         If empty (the default), the current UniformBuffer is always unbound.
+    /// @throws OpenGLError     If slot is >= the maximal number of available uniform buffer slots.
+    void unbind_uniform_buffer(const uint slot, const AnyUniformBufferPtr& uniform_buffer = {});
 
     // methods --------------------------------------------------------------------------------- //
 protected:
@@ -397,7 +348,7 @@ private:
     void _unbind_all_textures();
 
     /// Create a new State.
-    State _create_state() const;
+    void _reset_state();
 
     // program ----------------------------------------------------------------
 
@@ -421,17 +372,6 @@ private:
     ///                     default), the current FrameBuffer is always unbound.
     void _unbind_framebuffer(const FrameBufferPtr& framebuffer = {});
 
-    // uniform buffer ---------------------------------------------------------
-
-    /// Binds the given UniformBuffer, if it is not already bound.
-    /// @param uniform_buffer   UniformBuffer to bind.
-    void _bind_uniform_buffer(const AnyUniformBufferPtr& uniform_buffer);
-
-    /// Unbinds the current UniformBuffer.
-    /// @param uniform_buffer   Only unbind the current UniformBuffer, if it is equal to the one given. If empty
-    ///                         (the default), the current UniformBuffer is always unbound.
-    void _unbind_uniform_buffer(const AnyUniformBufferPtr& uniform_buffer = {});
-
     // fields ---------------------------------------------------------------------------------- //
 protected:
     /// Flag to indicate whether the GraphicsContext has already been closed.
@@ -448,7 +388,35 @@ private:
     int m_recursion_counter = 0;
 
     /// The current state of the context.
-    State m_state;
+    struct State {
+
+        /// Blend mode.
+        BlendMode blend_mode = BlendMode::DEFAULT;
+
+        /// Culling.
+        CullFace cull_face = CullFace::DEFAULT;
+
+        /// Stencil mask.
+        GLuint stencil_mask = 0xffffffff;
+
+        /// Bound textures.
+        std::vector<TextureConstPtr> texture_slots;
+
+        /// Bound ShaderProgram.
+        ShaderProgramPtr program;
+
+        /// Bound Framebuffer.
+        FrameBufferPtr framebuffer;
+
+        /// Bound UniformBuffer
+        std::vector<UniformBinding> uniform_buffers;
+
+        /// Color applied when the bound framebuffer is cleared.
+        Color clear_color = Color::black();
+
+        /// On-screen AABR that is rendered into.
+        Aabri render_area;
+    } m_state;
 };
 
 // graphics context accessor ======================================================================================== //

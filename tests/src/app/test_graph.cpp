@@ -8,7 +8,7 @@ NOTF_USING_NAMESPACE;
 using GraphAccess = detail::Graph::AccessFor<Tester>;
 
 SCENARIO("graph", "[app][graph]") {
-    TheApplication app(TheApplication::Arguments{});
+    TheApplication app(test_app_arguments());
     auto root_node = TheRootNode();
 
     SECTION("Nodes register with the Graph on construction") {

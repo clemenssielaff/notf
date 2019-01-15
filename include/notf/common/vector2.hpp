@@ -163,10 +163,8 @@ std::ostream& operator<<(std::ostream& out, const notf::detail::Vector2<Element>
 
 NOTF_CLOSE_NAMESPACE
 
-namespace fmt {
-
 template<class Element>
-struct formatter<notf::detail::Vector2<Element>> {
+struct fmt::formatter<notf::detail::Vector2<Element>> {
     using type = notf::detail::Vector2<Element>;
 
     template<typename ParseContext>
@@ -180,21 +178,15 @@ struct formatter<notf::detail::Vector2<Element>> {
     }
 };
 
-} // namespace fmt
-
 // std::hash ======================================================================================================== //
-
-namespace std {
 
 /// std::hash specialization for Vector2.
 template<class Element>
-struct hash<notf::detail::Vector2<Element>> {
+struct std::hash<notf::detail::Vector2<Element>> {
     size_t operator()(const notf::detail::Vector2<Element>& vector) const {
         return notf::hash(notf::to_number(notf::detail::HashID::VECTOR2), vector.get_hash());
     }
 };
-
-} // namespace std
 
 // compile time tests =============================================================================================== //
 

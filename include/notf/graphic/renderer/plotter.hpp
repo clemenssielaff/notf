@@ -237,6 +237,29 @@ private:
         V2f vec2_aux1;
     };
 
+    struct ShaderVariables {
+        enum class alignas(8) Type : GLint {
+            GRADIENT = 0,
+            IMAGE = 1,
+            STENCIL = 2,
+            TEXT = 3,
+        } type;
+        float paint_2x2[4];
+        float scissor_2x2[4];
+        float paint_trans[2];
+        float scissor_trans[2];
+        float scissor_extent[2];
+        float scissor_scale[2];
+        Color inner_color;
+        Color outer_color;
+        float paint_extent[2];
+        float radius;
+        float feather;
+        float stroke_factor;
+        float stroke_threshold;
+    };
+    static_assert(sizeof(ShaderVariables) == 128);
+
     // methods --------------------------------------------------------------------------------- //
 public:
     NOTF_NO_COPY_OR_ASSIGN(Plotter);

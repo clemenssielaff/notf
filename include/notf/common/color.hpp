@@ -144,14 +144,10 @@ NOTF_CLOSE_NAMESPACE
 
 // std::hash ======================================================================================================== //
 
-namespace std {
-
 /// std::hash specialization for notf::Color.
 template<>
-struct hash<notf::Color> {
+struct std::hash<notf::Color> {
     size_t operator()(const notf::Color& color) const {
         return notf::hash(static_cast<size_t>(notf::detail::HashID::COLOR), color.r, color.g, color.b, color.a);
     }
 };
-
-} // namespace std

@@ -189,31 +189,31 @@ public:
     /// If this MsgPack contains an array, returns the `i`th element of that array.
     /// This is a convenience function, if you plan to make extensive use of the map, consider `get`ting the underlying
     /// MsgPack::Array object directly.
-    /// @param index            Index of the requested element in the array.
-    /// @throws ValueError     If the MsgPack does not contain an Array.
-    /// @throws OutOfBounds   If the index is larger than the largest index in the Array.
+    /// @param index        Index of the requested element in the array.
+    /// @throws ValueError  If the MsgPack does not contain an Array.
+    /// @throws IndexError  If the index is larger than the largest index in the Array.
     const MsgPack& operator[](const size_t index) const {
         if (!std::holds_alternative<Array>(m_value)) { NOTF_THROW(ValueError, "MsgPack object is not an Array"); }
 
         const auto& array = std::get<Array>(m_value);
         if (index < array.size()) { return array[index]; }
 
-        NOTF_THROW(OutOfBounds, "MsgPack Array has only {} elements, requested index was {}", array.size(), index);
+        NOTF_THROW(IndexError, "MsgPack Array has only {} elements, requested index was {}", array.size(), index);
     }
 
     /// If this MsgPack contains a map, returns the element matching the given string key.
     /// This is a convenience function, if you plan to make extensive use of the map, consider `get`ting the underlying
     /// MsgPack::Map object directly.
-    /// @param key              String key of the requested element in the map.
-    /// @throws ValueError     If the MsgPack does not contain an Array.
-    /// @throws OutOfBounds   If the index is larger than the largest index in the Array.
+    /// @param key          String key of the requested element in the map.
+    /// @throws ValueError  If the MsgPack does not contain an Array.
+    /// @throws IndexError  If the index is larger than the largest index in the Array.
     const MsgPack& operator[](const std::string& key) const {
         if (!std::holds_alternative<Map>(m_value)) { NOTF_THROW(ValueError, "MsgPack object is not a Map"); }
 
         const auto& map = std::get<Map>(m_value);
         if (auto it = map.find(MsgPack(key)); it != map.end()) { return it->second; }
 
-        NOTF_THROW(OutOfBounds, "MsgPack Map does not contain requested key \"{}\"", key);
+        NOTF_THROW(IndexError, "MsgPack Map does not contain requested key \"{}\"", key);
     }
 
     /// Comparison operator.
