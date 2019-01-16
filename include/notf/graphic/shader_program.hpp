@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "notf/meta/assert.hpp"
+#include "notf/meta/numeric.hpp"
 
 #include "notf/graphic/shader.hpp"
 
@@ -40,15 +41,57 @@ public:
     /// Nested `AccessFor<T>` type.
     NOTF_ACCESS_TYPE(ShaderProgram);
 
+    // uniform ----------------------------------------------------------------
+
     /// A Uniform in this ShaderProgram.
-    struct Uniform {
+    class Uniform {
+        friend ShaderProgram;
+
+        // methods --------------------------------------------------------- //
+    private:
+        Uniform(ShaderProgram& program, GLint location, Shader::Stage::Flags stages, Variable&& variable);
+
+    public:
+        /// Updates the value of a uniform in the ShaderProgram.
+        /// @throws ValueError  If the value type and the uniform type are not compatible.
+        template<typename T>
+        void set(const T& value) {
+            if (m_stages & Shader::Stage::Flag::VERTEX) {
+                m_program._set_uniform(m_program.m_vertex_shader, *this, value);
+            } else if (m_stages & Shader::Stage::Flag::GEOMETRY) {
+                m_program._set_uniform(m_program.m_geometry_shader, *this, value);
+            } else if ((m_stages & Shader::Stage::Flag::TESS_CONTROL)
+                       || (m_stages & Shader::Stage::Flag::TESS_EVALUATION)) {
+                m_program._set_uniform(m_program.m_tesselation_shader, *this, value);
+            } else if (m_stages & Shader::Stage::Flag::FRAGMENT) {
+                m_program._set_uniform(m_program.m_fragment_shader, *this, value);
+            } else {
+                NOTF_ASSERT(false);
+            }
+        }
+
+        GLint get_location() const { return m_location; }
+
+        GLenum get_type() const { return m_variable.type; }
+
+        const std::string& get_name() const { return m_variable.name; }
+
+        // fields ---------------------------------------------------------- //
+    private:
+        /// ShaderProgram owning this uniform block.
+        const ShaderProgram& m_program;
+
         /// The location of this uniform variable within the default uniform block of a ShaderProgram.
-        GLint location = -1;
+        GLint m_location = -1;
 
-        Shader::Stage::Flags stages;
+        /// Stage of the graphics pipeline that this Uniform is referenced.
+        Shader::Stage::Flags m_stages;
 
-        Variable variable;
+        /// Actual variable of the Uniform.
+        Variable m_variable;
     };
+
+    // uniform block ----------------------------------------------------------
 
     /// An UniformBlock in this ShaderProgram.
     struct UniformBlock {
@@ -56,7 +99,7 @@ public:
 
         // methods --------------------------------------------------------- //
     private:
-        UniformBlock(ShaderProgram& program, GLuint index);
+        UniformBlock(const ShaderProgram& program, const GLuint index);
 
     public:
         GLuint get_index() const { return m_index; }
@@ -67,19 +110,30 @@ public:
 
         const std::string& get_name() const { return m_name; }
 
-        AnyUniformBufferPtr get_bound_buffer() const { return m_bound_buffer.lock(); }
+        // TODO: I don't actually think I need all of this "storing OpenGL state to avoid unnecessary calls"
+        //       because binding/unbinding should happen exactly once, when a new ShaderProgram is bound
+        AnyUniformBufferPtr get_bound_buffer() const { return m_buffer.lock(); }
 
+    private:
         /// Binds this Uniform
+        /// @param context  GraphicsContext managing the binding.
         /// @param buffer   UniformBuffer to bind to.
-        void bind_to(const AnyUniformBufferPtr& buffer);
+        /// @param slot     UniformBuffer slot to bind at.
+        /// @param offset   Offset of the UniformBuffer (in blocks) to bind.
+        void _bind_to(GraphicsContext& context, const AnyUniformBufferPtr& buffer, const GLuint slot,
+                      const size_t offset);
 
         /// Unbind from the UniformBuffer, does nothing if the block isn't bound.
-        void unbind();
+        /// @param context  GraphicsContext managing the binding.
+        void _unbind(GraphicsContext& context);
 
         // fields ---------------------------------------------------------- //
     private:
         /// ShaderProgram owning this uniform block.
         const ShaderProgram& m_program;
+
+        /// Name of the uniform block.
+        const std::string m_name;
 
         /// Index of the uniform block in the Shader.
         const GLuint m_index;
@@ -90,15 +144,22 @@ public:
         /// Size of the UniformBlock in bytes.
         const GLuint m_data_size;
 
-        /// Name of the uniform block.
-        const std::string m_name;
+        /// Uniform buffer slot to which the block is currently bound.
+        GLuint m_slot = max_value<GLuint>(); // invalid default
+
+        /// Uniform buffer to which this UniformBlock is bound (can be empty).
+        AnyUniformBufferWeakPtr m_buffer;
+
+        /// Index at which the UniformBuffer is bound to the slot.
+        size_t m_offset = max_value<size_t>(); // invalid default
 
         /// All uniforms in the block.
         std::vector<Variable> m_variables;
-
-        /// Uniform buffer to which this UniformBlock is bound (can be empty).
-        AnyUniformBufferWeakPtr m_bound_buffer;
     };
+
+    static_assert(sizeof(UniformBlock) == 96);
+
+    // attribute --------------------------------------------------------------
 
     /// An Attribute in this ShaderProgram.
     using Attribute = Variable;
@@ -172,38 +233,22 @@ public:
     /// Fragment shader attached to this ShaderProgram.
     const FragmentShaderPtr& get_fragment_shader() const { return m_fragment_shader; }
 
+    /// @{
+    /// Returns the uniform with the given name.
+    /// @throws NameError   If there is no uniform with the given name in this ShaderProgram.
+    const Uniform& get_uniform(const std::string& name) const;
+    Uniform& get_uniform(const std::string& name) { return NOTF_FORWARD_CONST_AS_MUTABLE(get_uniform(name)); }
+    /// @}
+
+    /// @{
     /// Uniform block with the given name.
     /// @param name         Name of the requested UniformBlock.
-    /// @throws ValueError  If this ShaderProgram does not have a UniformBlock with the requested name.
-    UniformBlock& get_uniform_block(const std::string& name);
-
-    /// All uniforms of this ShaderProgram.
-    const std::vector<Uniform>& get_uniforms() const { return m_uniforms; }
-
-    /// All attributes of this ShaderProgram.
-    const std::vector<Attribute>& get_attributes() { return m_attributes; }
-
-    /// Updates the value of a uniform in the ShaderProgram.
-    /// @throws OpenGlError If the uniform cannot be found.
-    /// @throws OpenGlError If the value type and the uniform type are not compatible.
-    template<typename T>
-    void set_uniform(const std::string& name, const T& value) {
-        auto& uniform = _get_uniform(name);
-        ShaderPtr shader;
-        if (uniform.stages & Shader::Stage::Flag::VERTEX) {
-            shader = m_vertex_shader;
-        } else if (uniform.stages & Shader::Stage::Flag::GEOMETRY) {
-            shader = m_geometry_shader;
-        } else if ((uniform.stages & Shader::Stage::Flag::TESS_CONTROL)
-                   || (uniform.stages & Shader::Stage::Flag::TESS_EVALUATION)) {
-            _set_uniform(m_tesselation_shader, uniform, value);
-            shader = m_tesselation_shader;
-        } else if (uniform.stages & Shader::Stage::Flag::FRAGMENT) {
-            shader = m_fragment_shader;
-        }
-        NOTF_ASSERT(shader);
-        _set_uniform(shader, uniform, value);
+    /// @throws NameError   If this ShaderProgram does not have a UniformBlock with the requested name.
+    const UniformBlock& get_uniform_block(const std::string& name) const;
+    UniformBlock& get_uniform_block(const std::string& name) {
+        return NOTF_FORWARD_CONST_AS_MUTABLE(get_uniform_block(name));
     }
+    /// @}
 
 private:
     /// Create the ShaderProgram pipeline.
@@ -220,20 +265,15 @@ private:
     void _find_attributes();
 
     /// Is called when the Program is bound to the GraphicsContext.
-    void _activate();
+    void _activate(GraphicsContext& context);
 
     /// Is called when the Program is unbound from the GraphicsContext.
     void _deactivate();
 
-    /// Returns the uniform with the given name.
-    /// @throws OpenGlError If there is no uniform with the given name in this ShaderProgram.
-    Uniform& _get_uniform(const std::string& name);
-
     /// Updates the value of a uniform in the ShaderProgram.
     /// @param uniform  Uniform to change.
     /// @param value    Value to update.
-    /// @throws OpenGlError If the uniform cannot be found.
-    /// @throws OpenGlError If the value type and the uniform type are not compatible.
+    /// @throws ValueError  If the value type and the uniform type are not compatible.
     template<typename T>
     void _set_uniform(const ShaderPtr& shader, const Uniform& uniform, const T& value);
 
@@ -265,7 +305,7 @@ private:
     std::vector<UniformBlock> m_uniform_blocks;
 
     /// All attributes.
-    std::vector<Attribute> m_attributes;
+    std::vector<Attribute> m_attributes; // TODO: ShaderProgram VAO?
 
     /// ID of the OpenGL object.
     ShaderProgramId m_id = 0;
@@ -309,5 +349,13 @@ class Accessor<ShaderProgram, GraphicsContext> {
     /// Is called when the Program is unbound from the GraphicsContext.
     static void deactivate(ShaderProgram& program) { program._deactivate(); }
 };
+
+// CONTINUE HERE:
+// This is all backwards - The ShaderProgram (much like a Shader) should be something you set up once and then it's
+// basically immutable. It might make sense to change texture bindings etc. but even that can be accompilished by
+// simply having two ShaderPrograms with different Textures? ... but that would mean two actual programs on the GPU.
+// Actually ... maybe Textures and UniformBindings etc. aren't the jurisdiction of the ShaderProgram after all.
+// Instead, they should be part of a `GraphicsSetup`. A `Setup` is ingested by the Context and there you go.
+
 
 NOTF_CLOSE_NAMESPACE

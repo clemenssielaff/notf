@@ -49,7 +49,7 @@ public:
 
     /// Copy constructor from typed ID.
     template<typename... Ts>
-    constexpr IdType(const IdType<type_t, underlying_t, Ts...>& id) : m_value(id.value()) {}
+    constexpr IdType(const IdType<type_t, underlying_t, Ts...>& id) : m_value(id.get_value()) {}
 
     /// Explicit invalid Id generator.
     constexpr static IdType invalid() { return IdType(INVALID); }
@@ -58,7 +58,7 @@ public:
     constexpr static IdType first() { return IdType(INVALID + 1); }
 
     /// Identifier value of this ID.
-    constexpr const underlying_t& value() const { return m_value; }
+    constexpr const underlying_t& get_value() const { return m_value; }
 
     /// @{
     /// Equality operator.
@@ -124,7 +124,7 @@ public:
 /// @return Output stream for further output.
 template<typename Type, typename underlying_type, typename... aux>
 std::ostream& operator<<(std::ostream& out, const ::notf::IdType<Type, underlying_type, aux...>& id) {
-    return out << id.value();
+    return out << id.get_value();
 }
 
 NOTF_CLOSE_NAMESPACE
@@ -142,7 +142,7 @@ struct formatter<::notf::IdType<T, underlying_type, aux...>> {
 
     template<typename FormatContext>
     auto format(const type& id, FormatContext& ctx) {
-        return format_to(ctx.begin(), "{}", id.value());
+        return format_to(ctx.begin(), "{}", id.get_value());
     }
 };
 
@@ -154,6 +154,6 @@ struct formatter<::notf::IdType<T, underlying_type, aux...>> {
 template<typename type, typename underlying_type, typename... aux>
 struct std::hash<notf::IdType<type, underlying_type, aux...>> {
     size_t operator()(const notf::IdType<type, underlying_type, aux...>& id) const {
-        return static_cast<size_t>(id.value());
+        return static_cast<size_t>(id.get_value());
     }
 };

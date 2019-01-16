@@ -32,15 +32,15 @@ inline constexpr GLenum to_gl_type(const GLfloat&) { return GL_FLOAT; }
 
 /// The expected usage of the data.
 enum class GLUsage {
-    DYNAMIC_DRAW,
-    DYNAMIC_READ,
-    DYNAMIC_COPY,
-    STATIC_DRAW,
-    STATIC_READ,
-    STATIC_COPY,
-    STREAM_DRAW,
-    STREAM_READ,
-    STREAM_COPY,
+    DYNAMIC_DRAW, ///< Written many times, read many times by the GPU
+    DYNAMIC_READ, ///< Written many times, read many times from the application
+    DYNAMIC_COPY, ///< Written many times, read many times from the application as a source for new writes
+    STATIC_DRAW,  ///< Written once, read many times from the GPU
+    STATIC_READ,  ///< Written once, read many times from the application
+    STATIC_COPY,  ///< Written once, read many times from the application as a source for new writes
+    STREAM_DRAW,  ///< Written once, read only a few times by the GPU
+    STREAM_READ,  ///< Written once, read only a few times from the application
+    STREAM_COPY,  ///< Written once, read only a few times from the application as a source for new writes
     DEFAULT = DYNAMIC_DRAW,
 };
 /// Converts the GLUsage type into an OpenGL enum.

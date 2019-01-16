@@ -263,6 +263,16 @@ NOTF_OPEN_NAMESPACE
     if (x)                  \
         if (NOTF_GUARD(f); x)
 
+// forward const as mutable ========================================================================================= //
+
+/// Convenience macro for easy const-correctness.
+/// Example:
+///     const Foo& get_foo(size_t amount) const;
+///     Foo& get_foo(size_t amount) { return NOTF_FORWARD_CONST_AS_MUTABLE(get_foo(amount)); }
+///
+#define NOTF_FORWARD_CONST_AS_MUTABLE(function) const_cast<decltype(function)>(\
+    const_cast<std::add_pointer_t<std::add_const_t<std::remove_reference_t<decltype(*this)>>>>(this)->function)
+
 // macro overloading ================================================================================================ //
 
 /// Macro overloading for up to 16 parameters (from http://stackoverflow.com/a/30566098)

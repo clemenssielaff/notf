@@ -70,25 +70,36 @@ GraphicsSystem::Environment::Environment() {
     { // max render buffer size
         GLint max_renderbuffer_size = -1;
         NOTF_CHECK_GL(glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &max_renderbuffer_size));
-        max_render_buffer_size = narrow_cast<decltype(max_render_buffer_size)>(max_renderbuffer_size);
+        NOTF_ASSERT(max_renderbuffer_size >= 0);
+        max_render_buffer_size = static_cast<decltype(max_render_buffer_size)>(max_renderbuffer_size);
     }
 
     { // color attachment count
         GLint max_color_attachments = -1;
         NOTF_CHECK_GL(glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &max_color_attachments));
-        color_attachment_count = narrow_cast<decltype(color_attachment_count)>(max_color_attachments);
+        NOTF_ASSERT(max_color_attachments >= 0);
+        color_attachment_count = static_cast<decltype(color_attachment_count)>(max_color_attachments);
     }
 
     { // texture slot count
-        GLint max_image_units = -1;
-        NOTF_CHECK_GL(glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_image_units));
-        texture_slot_count = narrow_cast<decltype(texture_slot_count)>(max_image_units - reserved_texture_slots);
+        GLint max_texture_slots = -1;
+        NOTF_CHECK_GL(glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_texture_slots));
+        NOTF_ASSERT(max_texture_slots >= 0);
+        texture_slot_count = static_cast<decltype(texture_slot_count)>(max_texture_slots - reserved_texture_slots);
     }
 
     { // uniform buffer slot count
         GLint max_uniform_buffer_slots = -1;
         NOTF_CHECK_GL(glGetIntegerv(GL_MAX_UNIFORM_BUFFER_BINDINGS, &max_uniform_buffer_slots));
-        uniform_buffer_count = narrow_cast<decltype(uniform_buffer_count)>(max_uniform_buffer_slots);
+        NOTF_ASSERT(max_uniform_buffer_slots >= 0);
+        uniform_buffer_count = static_cast<decltype(uniform_buffer_count)>(max_uniform_buffer_slots);
+    }
+
+    { // vertex attribute count
+        GLint max_vertex_attributes = -1;
+        NOTF_CHECK_GL(glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &max_vertex_attributes));
+        NOTF_ASSERT(max_vertex_attributes >= 0);
+        vertex_attribute_count = static_cast<decltype(vertex_attribute_count)>(max_vertex_attributes);
     }
 
     { // font atlas texture slot

@@ -369,7 +369,7 @@ void Texture::fill(const Color& color) {
 
 void Texture::_deallocate() {
     if (m_id.is_valid()) {
-        NOTF_CHECK_GL(glDeleteTextures(1, &m_id.value()));
+        NOTF_CHECK_GL(glDeleteTextures(1, &m_id.get_value()));
         NOTF_LOG_TRACE("Deleted OpenGL texture with ID: {}", m_id);
         m_id = TextureId::invalid();
     }

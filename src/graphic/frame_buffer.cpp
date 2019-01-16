@@ -115,7 +115,7 @@ void RenderBuffer::_assert_depth_stencil_format(const GLenum internal_format) {
 }
 
 void RenderBuffer::_deallocate() {
-    if (m_id != 0) { NOTF_CHECK_GL(glDeleteRenderbuffers(1, &m_id.value())); }
+    if (m_id != 0) { NOTF_CHECK_GL(glDeleteRenderbuffers(1, &m_id.get_value())); }
     m_id = RenderBufferId::invalid();
 }
 
@@ -142,7 +142,7 @@ FrameBuffer::FrameBuffer(Args&& args) : m_id(0), m_args(args) {
     }
 
     // define framebuffer
-    NOTF_CHECK_GL(glBindFramebuffer(GL_FRAMEBUFFER, m_id.value()));
+    NOTF_CHECK_GL(glBindFramebuffer(GL_FRAMEBUFFER, m_id.get_value()));
 
     for (const auto& numbered_color_target : m_args.color_targets) {
         const ushort target_id = numbered_color_target.first;
@@ -151,11 +151,11 @@ FrameBuffer::FrameBuffer(Args&& args) : m_id(0), m_args(args) {
         if (std::holds_alternative<RenderBufferPtr>(color_target)) {
             if (const auto& color_buffer = std::get<RenderBufferPtr>(color_target)) {
                 NOTF_CHECK_GL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id,
-                                                        GL_RENDERBUFFER, color_buffer->get_id().value()));
+                                                        GL_RENDERBUFFER, color_buffer->get_id().get_value()));
             }
         } else if (const auto& color_texture = std::get<TexturePtr>(color_target)) {
             NOTF_CHECK_GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + target_id,
-                                                 color_texture->get_target(), color_texture->get_id().value(),
+                                                 color_texture->get_target(), color_texture->get_id().get_value(),
                                                  /* level = */ 0));
         }
     }
@@ -164,18 +164,18 @@ FrameBuffer::FrameBuffer(Args&& args) : m_id(0), m_args(args) {
     if (std::holds_alternative<RenderBufferPtr>(m_args.depth_target)) {
         if (const auto& depth_buffer = std::get<RenderBufferPtr>(m_args.depth_target)) {
             NOTF_CHECK_GL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
-                                                    depth_buffer->get_id().value()));
+                                                    depth_buffer->get_id().get_value()));
             has_depth = true;
         }
     } else if (const auto& depth_texture = std::get<TexturePtr>(m_args.depth_target)) {
         NOTF_CHECK_GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_texture->get_target(),
-                                             depth_texture->get_id().value(), /* level = */ 0));
+                                             depth_texture->get_id().get_value(), /* level = */ 0));
         has_depth = true;
     }
 
     if (m_args.stencil_target) {
         NOTF_CHECK_GL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER,
-                                                m_args.stencil_target->get_id().value()));
+                                                m_args.stencil_target->get_id().get_value()));
     }
 
     { // make sure the frame buffer is valid
@@ -238,7 +238,7 @@ void FrameBuffer::_deallocate() {
     m_args = Args{};
 
     // deallocate yourself
-    NOTF_CHECK_GL(glDeleteFramebuffers(1, &m_id.value()));
+    NOTF_CHECK_GL(glDeleteFramebuffers(1, &m_id.get_value()));
     m_id = FrameBufferId::invalid();
 }
 

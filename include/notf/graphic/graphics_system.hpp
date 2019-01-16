@@ -81,6 +81,10 @@ public:
         /// Number of uniform buffer slots, meaning the highest valid slot is uniform_buffer_count - 1.
         GLuint uniform_buffer_count;
 
+        /// Number of supported vertex attributes.
+        /// OpenGL sais there have to be at least 16.
+        GLuint vertex_attribute_count;
+
         /// Texture slot reserved for the font atlas texture.
         /// Note that this is the slot number, not the enum value corresponding to the slot.
         /// In order to get that use:

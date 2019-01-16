@@ -20,9 +20,6 @@ public:
     /// @param shader_name  Name of a fragment shader to use (file path in relation to the shader directory).
     FragmentRenderer(valid_ptr<VertexShaderPtr> vertex_shader, valid_ptr<FragmentShaderPtr> fragment_shader);
 
-    /// All uniform variables of the fragment shader.
-    const std::vector<ShaderProgram::Uniform>& get_uniforms() const { return m_program->get_uniforms(); }
-
     template<class T>
     void set_uniform(const std::string& name, T&& value) {
         m_program->set_uniform(name, std::forward<T>(value));

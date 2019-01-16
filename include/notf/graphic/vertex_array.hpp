@@ -65,7 +65,12 @@ struct AttributeTrait {
     /// Type used to store the trait value.
     using type = void; // INVALID DEFAULT
 
-    /// Whether the value type is normalized or not.
+    /// Vertex attributes are internally stored as a single-precision floating-point number before being used in a
+    /// vertex shader. If the data type indicates that the vertex attribute is not a float, then the vertex attribute
+    /// will be converted to a single-precision floating-point number before it is used in a vertex shader. The
+    /// normalized flag controls the conversion of the non-float vertex attribute data to a single precision
+    /// floating-point value. If the normalized flag is false, the vertex data are converted directly to a
+    /// floating-point value. This would be similar to casting the variable that is not a float type to float.
     /// See https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glVertexAttribPointer.xhtml
     constexpr static bool normalized = false;
 
@@ -299,10 +304,13 @@ private:
 
             // link the location in the array to the shader's attribute
             NOTF_CHECK_GL(glEnableVertexAttribArray(ATTRIBUTE::location + multi));
-            NOTF_CHECK_GL(glVertexAttribPointer(
-                ATTRIBUTE::location + multi, size, to_gl_type(typename ATTRIBUTE::type::element_t{}),
-                ATTRIBUTE::normalized, static_cast<GLsizei>(sizeof(Vertex)),
-                gl_buffer_offset(static_cast<size_t>(offset + (multi * 4 * sizeof(GLfloat))))));
+            NOTF_CHECK_GL(glVertexAttribPointer(                                                 //
+                ATTRIBUTE::location + multi,                                                     // location
+                size,                                                                            // size
+                to_gl_type(typename ATTRIBUTE::type::element_t{}),                               // type
+                ATTRIBUTE::normalized,                                                           // normalized
+                static_cast<GLsizei>(sizeof(Vertex)),                                            // stride
+                gl_buffer_offset(static_cast<size_t>(offset + (multi * 4 * sizeof(GLfloat)))))); // offset
 
             // define the attribute as an instance attribute
             if (m_args.per_instance) { NOTF_CHECK_GL(glVertexAttribDivisor(ATTRIBUTE::location + multi, 1)); }

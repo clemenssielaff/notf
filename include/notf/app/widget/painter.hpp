@@ -230,7 +230,7 @@ private:
     PathId m_current_path_id = PathId::invalid();
 
     /// Id of the next generated Path.
-    PathId::underlying_t m_next_path_id = PathId::first().value();
+    PathId::underlying_t m_next_path_id = PathId::first().get_value();
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //

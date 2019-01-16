@@ -23,6 +23,7 @@ class Window;
 class GraphicsContext {
 
     friend Accessor<GraphicsContext, Window>;
+    friend Accessor<GraphicsContext, ShaderProgram>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -305,24 +306,6 @@ public:
         return FramebufferGuard(*this, framebuffer);
     }
 
-    // uniform buffer ---------------------------------------------------------
-
-    /// Binds the given UniformBuffer at the given slot, if it is not already bound.
-    /// @param slot             Uniform buffer binding slot.
-    /// @param uniform_buffer   UniformBuffer to bind.
-    /// @param index            Index of the UniformBuffer to bind.
-    /// @throws OpenGLError     If slot is >= the maximal number of available uniform buffer slots.
-    /// @throws IndexError      If index is >= the number of blocks in the UniformBuffer.
-    void bind_uniform_buffer(const uint slot, const AnyUniformBufferPtr& uniform_buffer, const size_t index);
-
-    /// Unbinds the current UniformBuffer from the given slot.
-    /// @param slot             Uniform buffer binding slot.
-    /// @param uniform_buffer   Only unbind the current UniformBuffer, if it is equal to the one given, noop otherwise.
-    ///                         If empty (the default), the current UniformBuffer is always unbound.
-    /// @throws OpenGLError     If slot is >= the maximal number of available uniform buffer slots.
-    void unbind_uniform_buffer(const uint slot, const AnyUniformBufferPtr& uniform_buffer = {});
-
-    // methods --------------------------------------------------------------------------------- //
 protected:
     /// The GLFW window owning the associated OpenGL context.
     GLFWwindow* _get_window() const { return m_window; }
@@ -372,6 +355,21 @@ private:
     ///                     default), the current FrameBuffer is always unbound.
     void _unbind_framebuffer(const FrameBufferPtr& framebuffer = {});
 
+    // uniform buffer ---------------------------------------------------------
+
+    /// Binds the given UniformBuffer at the given slot, if it is not already bound.
+    /// @param slot             Uniform buffer binding slot.
+    /// @param uniform_buffer   UniformBuffer to bind.
+    /// @param index            Index of the UniformBuffer to bind.
+    /// @throws OpenGLError     If slot is >= the maximal number of available uniform buffer slots.
+    /// @throws IndexError      If index is >= the number of blocks in the UniformBuffer.
+    void _bind_uniform_buffer(const uint slot, const AnyUniformBufferPtr& uniform_buffer, const size_t index);
+
+    /// Unbinds the current UniformBuffer from the given slot.
+    /// @param slot             Uniform buffer binding slot.
+    /// @throws OpenGLError     If slot is >= the maximal number of available uniform buffer slots.
+    void _unbind_uniform_buffer(const uint slot);
+
     // fields ---------------------------------------------------------------------------------- //
 protected:
     /// Flag to indicate whether the GraphicsContext has already been closed.
@@ -400,7 +398,7 @@ private:
         GLuint stencil_mask = 0xffffffff;
 
         /// Bound textures.
-        std::vector<TextureConstPtr> texture_slots;
+        std::vector<TextureConstPtr> texture_slots; // TODO: this should be a std::map
 
         /// Bound ShaderProgram.
         ShaderProgramPtr program;
@@ -409,7 +407,7 @@ private:
         FrameBufferPtr framebuffer;
 
         /// Bound UniformBuffer
-        std::vector<UniformBinding> uniform_buffers;
+        std::vector<UniformBinding> uniform_buffers; // TODO: this should be a std::map
 
         /// Color applied when the bound framebuffer is cleared.
         Color clear_color = Color::black();
@@ -427,6 +425,29 @@ class Accessor<GraphicsContext, Window> {
 
     /// Shuts the GraphicsContext down for good.
     static void shutdown(GraphicsContext& context) { context._shutdown(); }
+};
+
+template<>
+class Accessor<GraphicsContext, ShaderProgram> {
+    friend class ShaderProgram;
+
+    /// Binds the given UniformBuffer at the given slot, if it is not already bound.
+    /// @param slot             Uniform buffer binding slot.
+    /// @param uniform_buffer   UniformBuffer to bind.
+    /// @param index            Index of the UniformBuffer to bind.
+    /// @throws OpenGLError     If slot is >= the maximal number of available uniform buffer slots.
+    /// @throws IndexError      If index is >= the number of blocks in the UniformBuffer.
+    static void bind_uniform_buffer(GraphicsContext& context, const uint slot,
+                                    const AnyUniformBufferPtr& uniform_buffer, const size_t index) {
+        context._bind_uniform_buffer(slot, uniform_buffer, index);
+    }
+
+    /// Unbinds the current UniformBuffer from the given slot.
+    /// @param slot             Uniform buffer binding slot.
+    /// @throws OpenGLError     If slot is >= the maximal number of available uniform buffer slots.
+    static void unbind_uniform_buffer(GraphicsContext& context, const uint slot) {
+        context._unbind_uniform_buffer(slot);
+    }
 };
 
 NOTF_CLOSE_NAMESPACE

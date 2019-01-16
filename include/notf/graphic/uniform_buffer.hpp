@@ -16,21 +16,20 @@ namespace detail {
 
 class AnyUniformBuffer {
 
-    friend Accessor<AnyUniformBuffer, ShaderProgram>;
-
     // methods --------------------------------------------------------------------------------- //
 protected:
-    /// Default constructor.
-    AnyUniformBuffer(std::string name);
+    /// Constructor.
+    /// @param name Name of this UniformBuffer.
+    AnyUniformBuffer(std::string name); // TODO: uniform buffer names (as well ass all others) should be resource-unique
 
 public:
-    /// Nested `AccessFor<T>` type.
-    NOTF_ACCESS_TYPE(AnyUniformBuffer);
-
     NOTF_NO_COPY_OR_ASSIGN(AnyUniformBuffer);
 
     /// Destructor.
     virtual ~AnyUniformBuffer();
+
+    /// Name of this UniformBuffer.
+    const std::string& get_name() const { return m_name; }
 
     /// OpenGL ID of the Uniform Buffer object.
     UniformBufferId get_id() const { return m_id; }
@@ -41,48 +40,16 @@ public:
     /// Number of blocks stored in this UniformBuffer
     virtual size_t get_block_count() const = 0;
 
-    /// Name of this UniformBuffer.
-    const std::string& get_name() const { return m_name; }
-
-    /// Slot that this uniform buffer is bound to in the GraphicsContext.
-    GLuint get_bound_slot() const { return m_bound_slot; }
-
     // fields ---------------------------------------------------------------------------------- //
-protected:
+private:
     /// Name of this UniformBuffer.
-    std::string m_name;
+    const std::string m_name;
 
     /// OpenGL ID of the managed uniform buffer object.
     UniformBufferId m_id = 0;
-
-    /// Slot that this uniform buffer is bound to in the GraphicsContext.
-    GLuint m_bound_slot = 0;
 };
 
 } // namespace detail
-
-// accessors -------------------------------------------------------------------------------------------------------- //
-
-template<>
-class Accessor<detail::AnyUniformBuffer, ShaderProgram> {
-    friend ShaderProgram;
-
-    /// Binds the UniformBuffer to the given slot.
-    /// @param buffer   UniformBuffer to bind.
-    /// @param slot     Slot to bind to.
-    static void bind(detail::AnyUniformBuffer& buffer, const GLuint slot) {
-        if (slot != buffer.m_bound_slot) {
-            NOTF_CHECK_GL(glBindBufferBase(GL_UNIFORM_BUFFER, buffer.m_bound_slot, slot));
-            buffer.m_bound_slot = slot;
-        }
-    }
-
-    /// Unbinds the UniformBuffer.
-    /// @param buffer   UniformBuffer to unbind.
-    static void unbind(detail::AnyUniformBuffer& buffer) {
-        if (buffer.m_bound_slot) { NOTF_CHECK_GL(glBindBufferBase(GL_UNIFORM_BUFFER, buffer.m_bound_slot, 0)); }
-    }
-};
 
 // uniform buffer =================================================================================================== //
 
@@ -107,33 +74,66 @@ public:
     static auto create(std::string name) { return _create_shared<UniformBuffer<Block>>(std::move(name)); }
 
     /// Size of a single Block in this UniformBuffer in bytes.
-    size_t get_block_size() const final { return sizeof(Block); }
+    size_t get_block_size() const final {
+        static const size_t block_size = static_cast<size_t>(_get_block_size());
+        return block_size;
+    }
 
     size_t get_block_count() const final { return m_buffer.size(); }
 
-    std::vector<Block>& write() { return m_buffer; }
+    std::vector<Block>& write() {
+        m_local_hash = 0;
+        // TODO: UniformBuffer::write should return a dedicated "write" object, that keeps track of changes.
+        // This way, it can determine whether the local hash needs to be re-calculated in `apply` or not (by setting
+        // `m_local_hash` to zero on each change) and we might even be able to use multiple smaller calls to
+        // `glBufferSubData` instead of a single big one, just from data we collect automatically from the writer.
+        return m_buffer;
+    }
 
     void apply() {
+        // noop if there is nothing to update
         if (m_buffer.empty()) { return; }
 
-        NOTF_CHECK_GL(glBindBuffer(GL_UNIFORM_BUFFER, m_id.value()));
+        // update the local hash on request
+        if (0 == m_local_hash) {
+            m_local_hash = hash(m_buffer);
 
-        static const GLint alignment = _get_alignment();
-        const GLsizei buffer_size = m_buffer.size() * alignment;
+            // noop if the data on the server is still current
+            if (m_local_hash == m_server_hash) { return; }
+        }
+
+        // bind and eventually unbind the uniform buffer
+        struct UniformBufferGuard {
+            UniformBufferGuard(const GLuint id) { NOTF_CHECK_GL(glBindBuffer(GL_UNIFORM_BUFFER, id)); }
+            ~UniformBufferGuard() { NOTF_CHECK_GL(glBindBuffer(GL_UNIFORM_BUFFER, 0)); }
+        };
+        NOTF_GUARD(UniformBufferGuard(get_id().get_value()));
+
+        // upload the buffer data
+        static const GLint block_size = _get_block_size();
+        const GLsizei buffer_size = m_buffer.size() * block_size;
         if (buffer_size <= m_server_size) {
             NOTF_CHECK_GL(glBufferSubData(GL_UNIFORM_BUFFER, /*offset = */ 0, buffer_size, &m_buffer.front()));
         } else {
             NOTF_CHECK_GL(glBufferData(GL_UNIFORM_BUFFER, buffer_size, &m_buffer.front(), GL_STREAM_DRAW));
             m_server_size = buffer_size;
         }
+        // TODO: It might be better to use two buffers for each UniformBuffer object.
+        // One that is currently rendered from, one that is written into. Note on the OpenGL reference:
+        // (https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glBufferSubData.xhtml)
+        //
+        //      Consider using multiple buffer objects to avoid stalling the rendering pipeline during data store
+        //      updates. If any rendering in the pipeline makes reference to data in the buffer object being updated by
+        //      glBufferSubData, especially from the specific region being updated, that rendering must drain from the
+        //      pipeline before the data store can be updated.
+        //
 
-        NOTF_CHECK_GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));
+        m_server_hash = m_local_hash;
     }
 
-    void bind_index(const GLuint index) { glBindBufferBase(GL_UNIFORM_BUFFER, index, m_id.value()); }
-
 private:
-    static GLint _get_alignment() {
+    /// Calculates the actual, aligned size of a block when stored in GPU memory.
+    static GLint _get_block_size() {
         GLint alignment;
         NOTF_CHECK_GL(glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &alignment));
         return sizeof(Block) + alignment - sizeof(Block) % alignment;
@@ -146,6 +146,10 @@ private:
 
     /// Size in bytes of the buffer allocated on the server.
     GLsizei m_server_size = 0;
+
+    size_t m_local_hash = 0;
+
+    size_t m_server_hash = 0;
 };
 
 NOTF_CLOSE_NAMESPACE

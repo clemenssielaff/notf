@@ -67,15 +67,15 @@ NOTF_OPEN_NAMESPACE
 
 // uniform block ==================================================================================================== //
 
-ShaderProgram::UniformBlock::UniformBlock(ShaderProgram& program, GLuint index)
+ShaderProgram::UniformBlock::UniformBlock(const ShaderProgram& program, const GLuint index)
     : m_program(program)
+    , m_name(get_uniform_block_name(program.get_id().get_value(), index))
     , m_index(index)
-    , m_stages(get_uniform_block_stages(m_program.get_id().value(), m_index))
-    , m_data_size(get_uniform_block_size(m_program.get_id().value(), m_index))
-    , m_name(get_uniform_block_name(m_program.get_id().value(), m_index)) {
+    , m_stages(get_uniform_block_stages(program.get_id().get_value(), index))
+    , m_data_size(get_uniform_block_size(program.get_id().get_value(), index)) {
 
     { // variables
-        GLuint shader_id = m_program.get_id().value();
+        GLuint shader_id = m_program.get_id().get_value();
         GLuint variable_count = 0;
         NOTF_CHECK_GL(glGetActiveUniformBlockiv(shader_id, index, GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS,
                                                 reinterpret_cast<GLint*>(&variable_count)));
@@ -91,35 +91,57 @@ ShaderProgram::UniformBlock::UniformBlock(ShaderProgram& program, GLuint index)
     }
 }
 
-void ShaderProgram::UniformBlock::bind_to(const AnyUniformBufferPtr& buffer) {
-    if (buffer) {
-        m_bound_buffer = buffer;
-        if (const GLuint bound_slot = buffer->get_bound_slot()) {
-            if (m_stages & Shader::Stage::VERTEX) {
-                NOTF_ASSERT(m_program.m_vertex_shader);
-                glUniformBlockBinding(m_program.m_vertex_shader->get_id().value(), m_index, bound_slot);
-            }
-            if (m_stages & Shader::Stage::FRAGMENT) {
-                NOTF_ASSERT(m_program.m_fragment_shader);
-                glUniformBlockBinding(m_program.m_fragment_shader->get_id().value(), m_index, bound_slot);
-            }
-        }
-    } else {
-        unbind();
-    }
-}
+void ShaderProgram::UniformBlock::_bind_to(GraphicsContext& context, const AnyUniformBufferPtr& buffer,
+                                           const GLuint slot, const size_t offset) {
+    if (!buffer) { return _unbind(context); }
 
-void ShaderProgram::UniformBlock::unbind() {
-    if (!is_weak_ptr_empty(m_bound_buffer)) {
-        m_bound_buffer.reset();
+    // bind this uniform block to the given slot
+    if (m_slot != slot) {
         if (m_stages & Shader::Stage::VERTEX) {
             NOTF_ASSERT(m_program.m_vertex_shader);
-            glUniformBlockBinding(m_program.m_vertex_shader->get_id().value(), m_index, 0);
+            glUniformBlockBinding(m_program.m_vertex_shader->get_id().get_value(), m_index, slot);
         }
         if (m_stages & Shader::Stage::FRAGMENT) {
             NOTF_ASSERT(m_program.m_fragment_shader);
-            glUniformBlockBinding(m_program.m_fragment_shader->get_id().value(), m_index, 0);
+            glUniformBlockBinding(m_program.m_fragment_shader->get_id().get_value(), m_index, slot);
         }
+        m_slot = slot;
+    }
+
+    // noop if everything is the same
+    else if (offset == m_offset && buffer.get() == raw_from_weak_ptr(m_buffer)) {
+        return;
+    }
+
+    // bind the given offset of the uniform buffer to the slot
+    GraphicsContext::AccessFor<ShaderProgram>::bind_uniform_buffer(context, slot, buffer, offset);
+    m_buffer = buffer;
+    m_offset = offset;
+}
+
+void ShaderProgram::UniformBlock::_unbind(GraphicsContext& context) {
+    if (!is_weak_ptr_empty(m_buffer)) {
+        // unbind the uniform buffer
+        if (const AnyUniformBufferPtr buffer = m_buffer.lock()) {
+            NOTF_ASSERT(GraphicsContext::AccessFor<ShaderProgram>::get_uniform_buffer_binding(context, m_slot).buffer
+                        == buffer);
+            GraphicsContext::AccessFor<ShaderProgram>::unbind_uniform_buffer(context, m_slot);
+        }
+
+        // unbind the uniform block
+        if (m_stages & Shader::Stage::VERTEX) {
+            NOTF_ASSERT(m_program.m_vertex_shader);
+            glUniformBlockBinding(m_program.m_vertex_shader->get_id().get_value(), m_index, 0);
+        }
+        if (m_stages & Shader::Stage::FRAGMENT) {
+            NOTF_ASSERT(m_program.m_fragment_shader);
+            glUniformBlockBinding(m_program.m_fragment_shader->get_id().get_value(), m_index, 0);
+        }
+
+        // reset all relevant fields
+        m_slot = max_value<GLuint>();
+        m_buffer.reset();
+        m_offset = max_value<size_t>();
     }
 }
 
@@ -148,9 +170,9 @@ ShaderProgram::ShaderProgram(std::string name, VertexShaderPtr vert_shader, Tess
     _find_attributes();
 }
 
-ShaderProgramPtr
-ShaderProgram::create(std::string name, VertexShaderPtr vert_shader, TesselationShaderPtr tesselation_shader,
-                      GeometryShaderPtr geometry_shader, FragmentShaderPtr frag_shader) {
+ShaderProgramPtr ShaderProgram::create(std::string name, VertexShaderPtr vert_shader,
+                                       TesselationShaderPtr tesselation_shader, GeometryShaderPtr geometry_shader,
+                                       FragmentShaderPtr frag_shader) {
     ShaderProgramPtr program = _create_shared(std::move(name), std::move(vert_shader), std::move(tesselation_shader),
                                               std::move(geometry_shader), std::move(frag_shader));
     TheGraphicsSystem::AccessFor<ShaderProgram>::register_new(program);
@@ -167,11 +189,21 @@ bool ShaderProgram::is_valid() const {
     return true;
 }
 
-ShaderProgram::UniformBlock& ShaderProgram::get_uniform_block(const std::string& name) {
+const ShaderProgram::Uniform& ShaderProgram::get_uniform(const std::string& name) const {
+    assert_is_valid(*this);
+    auto it = std::find_if(std::begin(m_uniforms), std::end(m_uniforms),
+                           [&](const Uniform& uniform) -> bool { return uniform.get_name() == name; });
+    if (it == std::end(m_uniforms)) {
+        NOTF_THROW(NameError, "No uniform named \"{}\" in ShaderProgram \"{}\"", name, m_name);
+    }
+    return *it;
+}
+
+const ShaderProgram::UniformBlock& ShaderProgram::get_uniform_block(const std::string& name) const {
     for (auto& block : m_uniform_blocks) {
         if (name == block.get_name()) { return block; }
     }
-    NOTF_THROW(ValueError, "ShaderProgram \"{}\" does not have a uniform block named \"{}\"", get_name(), name);
+    NOTF_THROW(NameError, "ShaderProgram \"{}\" does not have a uniform block named \"{}\"", get_name(), name);
 }
 
 void ShaderProgram::_link_program() {
@@ -185,7 +217,8 @@ void ShaderProgram::_link_program() {
 
     if (m_vertex_shader) {
         NOTF_ASSERT(m_vertex_shader->is_valid());
-        NOTF_CHECK_GL(glUseProgramStages(m_id.value(), GL_VERTEX_SHADER_BIT, m_vertex_shader->get_id().value()));
+        NOTF_CHECK_GL(
+            glUseProgramStages(m_id.get_value(), GL_VERTEX_SHADER_BIT, m_vertex_shader->get_id().get_value()));
 
         std::stringstream ss;
         ss << "vertex shader \"" << m_vertex_shader->get_name() << "\"";
@@ -194,8 +227,8 @@ void ShaderProgram::_link_program() {
 
     if (m_tesselation_shader) {
         NOTF_ASSERT(m_tesselation_shader->is_valid());
-        NOTF_CHECK_GL(glUseProgramStages(m_id.value(), GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT,
-                                         m_tesselation_shader->get_id().value()));
+        NOTF_CHECK_GL(glUseProgramStages(m_id.get_value(), GL_TESS_CONTROL_SHADER_BIT | GL_TESS_EVALUATION_SHADER_BIT,
+                                         m_tesselation_shader->get_id().get_value()));
 
         std::stringstream ss;
         ss << "tesselation shader \"" << m_tesselation_shader->get_name() << "\"";
@@ -204,7 +237,8 @@ void ShaderProgram::_link_program() {
 
     if (m_geometry_shader) {
         NOTF_ASSERT(m_geometry_shader->is_valid());
-        NOTF_CHECK_GL(glUseProgramStages(m_id.value(), GL_GEOMETRY_SHADER_BIT, m_geometry_shader->get_id().value()));
+        NOTF_CHECK_GL(
+            glUseProgramStages(m_id.get_value(), GL_GEOMETRY_SHADER_BIT, m_geometry_shader->get_id().get_value()));
 
         std::stringstream ss;
         ss << "geometry shader \"" << m_geometry_shader->get_name() << "\"";
@@ -213,7 +247,8 @@ void ShaderProgram::_link_program() {
 
     if (m_fragment_shader) {
         NOTF_ASSERT(m_fragment_shader->is_valid());
-        NOTF_CHECK_GL(glUseProgramStages(m_id.value(), GL_FRAGMENT_SHADER_BIT, m_fragment_shader->get_id().value()));
+        NOTF_CHECK_GL(
+            glUseProgramStages(m_id.get_value(), GL_FRAGMENT_SHADER_BIT, m_fragment_shader->get_id().get_value()));
 
         std::stringstream ss;
         ss << "fragment shader \"" << m_fragment_shader->get_name() << "\"";
@@ -221,18 +256,18 @@ void ShaderProgram::_link_program() {
     }
 
     { // validate the program once it has been created
-        NOTF_CHECK_GL(glValidateProgramPipeline(m_id.value()));
+        NOTF_CHECK_GL(glValidateProgramPipeline(m_id.get_value()));
         GLint is_valid = 0;
-        NOTF_CHECK_GL(glGetProgramPipelineiv(m_id.value(), GL_VALIDATE_STATUS, &is_valid));
+        NOTF_CHECK_GL(glGetProgramPipelineiv(m_id.get_value(), GL_VALIDATE_STATUS, &is_valid));
         if (!is_valid) {
             GLint log_length = 0;
-            glGetProgramPipelineiv(m_id.value(), GL_INFO_LOG_LENGTH, &log_length);
+            glGetProgramPipelineiv(m_id.get_value(), GL_INFO_LOG_LENGTH, &log_length);
             std::string error_message;
             if (!log_length) {
                 error_message = "Failed to validate the ShaderProgram";
             } else {
                 error_message.resize(static_cast<size_t>(log_length), '\0');
-                glGetProgramPipelineInfoLog(m_id.value(), log_length, nullptr, &error_message[0]);
+                glGetProgramPipelineInfoLog(m_id.get_value(), log_length, nullptr, &error_message[0]);
                 if (error_message.compare(0, 7, "error:\t") != 0) { // prettify the message for logging
                     error_message = error_message.substr(7, error_message.size() - 9);
                 }
@@ -260,7 +295,7 @@ void ShaderProgram::_link_program() {
 }
 
 void ShaderProgram::_find_uniform_blocks(const ShaderPtr& shader) {
-    const GLuint shader_id = shader->get_id().value();
+    const GLuint shader_id = shader->get_id().get_value();
 
     GLint block_count = 0;
     NOTF_CHECK_GL(glGetProgramiv(shader_id, GL_ACTIVE_UNIFORM_BLOCKS, &block_count));
@@ -275,7 +310,7 @@ void ShaderProgram::_find_uniform_blocks(const ShaderPtr& shader) {
 }
 
 void ShaderProgram::_find_uniforms(const ShaderPtr& shader) {
-    const GLuint shader_id = shader->get_id().value();
+    const GLuint shader_id = shader->get_id().get_value();
 
     GLint uniform_count = 0;
     { // discover uniforms
@@ -325,12 +360,7 @@ void ShaderProgram::_find_uniforms(const ShaderPtr& shader) {
             }
         } else {
             NOTF_LOG_TRACE("Found free uniform \"{}\" on Shader: \"{}\"", new_variable.name, shader->get_name());
-
-            ShaderProgram::Uniform uniform;
-            uniform.location = location;
-            uniform.stages = shader->get_stage();
-            uniform.variable = std::move(new_variable);
-
+            ShaderProgram::Uniform uniform(*this, location, shader->get_stage(), std::move(new_variable));
             m_uniforms.emplace_back(std::move(uniform));
         }
     }
@@ -338,12 +368,12 @@ void ShaderProgram::_find_uniforms(const ShaderPtr& shader) {
 
 void ShaderProgram::_find_attributes() {
     GLint attribute_count = 0;
-    NOTF_CHECK_GL(glGetProgramiv(get_id().value(), GL_ACTIVE_ATTRIBUTES, &attribute_count));
+    NOTF_CHECK_GL(glGetProgramiv(get_id().get_value(), GL_ACTIVE_ATTRIBUTES, &attribute_count));
     NOTF_ASSERT(attribute_count >= 0);
     m_attributes.reserve(static_cast<size_t>(attribute_count));
 
     GLint longest_attribute_length = 0;
-    NOTF_CHECK_GL(glGetProgramiv(get_id().value(), GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &longest_attribute_length));
+    NOTF_CHECK_GL(glGetProgramiv(get_id().get_value(), GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &longest_attribute_length));
     std::vector<GLchar> uniform_name(static_cast<GLuint>(longest_attribute_length));
 
     for (GLuint index = 0; index < static_cast<GLuint>(attribute_count); ++index) {
@@ -352,7 +382,7 @@ void ShaderProgram::_find_attributes() {
         attribute.size = 0;
 
         GLsizei name_length = 0;
-        NOTF_CHECK_GL(glGetActiveAttrib(get_id().value(), index, static_cast<GLsizei>(uniform_name.size()),
+        NOTF_CHECK_GL(glGetActiveAttrib(get_id().get_value(), index, static_cast<GLsizei>(uniform_name.size()),
                                         &name_length, &attribute.size, &attribute.type, &uniform_name[0]));
         NOTF_ASSERT(attribute.type);
         NOTF_ASSERT(attribute.size);
@@ -363,7 +393,7 @@ void ShaderProgram::_find_attributes() {
         // some variable names are pre-defined by the language and cannot be set by the user
         if (attribute.name == "gl_VertexID") { continue; }
 
-        attribute.index = static_cast<GLuint>(glGetAttribLocation(get_id().value(), attribute.name.c_str()));
+        attribute.index = static_cast<GLuint>(glGetAttribLocation(get_id().get_value(), attribute.name.c_str()));
         NOTF_ASSERT(attribute.index >= 0);
 
         NOTF_LOG_TRACE("Discovered attribute \"{}\" on ShaderProgram: \"{}\"", attribute.name, get_name());
@@ -372,7 +402,7 @@ void ShaderProgram::_find_attributes() {
     m_attributes.shrink_to_fit();
 }
 
-void ShaderProgram::_activate() {
+void ShaderProgram::_activate(GraphicsContext& context) {
     // bind all uniform buffers
     GLuint next_slot = 0;
     for (auto& block : m_uniform_blocks) {
@@ -401,20 +431,9 @@ void ShaderProgram::_deactivate() {
     }
 }
 
-ShaderProgram::Uniform& ShaderProgram::_get_uniform(const std::string& name) {
-    assert_is_valid(*this);
-
-    auto it = std::find_if(std::begin(m_uniforms), std::end(m_uniforms),
-                           [&](const Uniform& uniform) -> bool { return uniform.variable.name == name; });
-    if (it == std::end(m_uniforms)) {
-        NOTF_THROW(OpenGLError, "No uniform named \"{}\" in ShaderProgram \"{}\"", name, m_name);
-    }
-    return *it;
-}
-
 void ShaderProgram::_deallocate() {
     if (m_id) {
-        NOTF_CHECK_GL(glDeleteProgramPipelines(1, &m_id.value()));
+        NOTF_CHECK_GL(glDeleteProgramPipelines(1, &m_id.get_value()));
         NOTF_LOG_TRACE("Deleted ShaderProgram: {}", m_name);
         m_id = ShaderProgramId::invalid();
     }
@@ -423,75 +442,78 @@ void ShaderProgram::_deallocate() {
 template<>
 void ShaderProgram::_set_uniform(const ShaderPtr& shader, const Uniform& uniform, const int& value) {
     assert_is_valid(*this);
-    if (uniform.variable.type == GL_INT || uniform.variable.type == GL_SAMPLER_2D) {
-        NOTF_CHECK_GL(glProgramUniform1i(shader->get_id().value(), uniform.location, value));
+    if (uniform.get_type() == GL_INT || uniform.get_type() == GL_SAMPLER_2D) {
+        NOTF_CHECK_GL(glProgramUniform1i(shader->get_id().get_value(), uniform.get_location(), value));
     } else {
-        NOTF_THROW(OpenGLError,
+        NOTF_THROW(ValueError,
                    "Uniform \"{}\" in ShaderProgram \"{}\" of type \"{}\" is not compatible with value type \"int\"",
-                   uniform.variable.name, m_name, gl_type_name(uniform.variable.type));
+                   uniform.get_name(), m_name, gl_type_name(uniform.get_type()));
     }
 }
 
 template<>
 void ShaderProgram::_set_uniform(const ShaderPtr& shader, const Uniform& uniform, const unsigned int& value) {
     assert_is_valid(*this);
-    if (uniform.variable.type == GL_UNSIGNED_INT) {
-        NOTF_CHECK_GL(glProgramUniform1ui(shader->get_id().value(), uniform.location, value));
-    } else if (uniform.variable.type == GL_SAMPLER_2D) {
-        NOTF_CHECK_GL(glProgramUniform1i(shader->get_id().value(), uniform.location, static_cast<GLint>(value)));
+    if (uniform.get_type() == GL_UNSIGNED_INT) {
+        NOTF_CHECK_GL(glProgramUniform1ui(shader->get_id().get_value(), uniform.get_location(), value));
+    } else if (uniform.get_type() == GL_SAMPLER_2D) {
+        NOTF_CHECK_GL(
+            glProgramUniform1i(shader->get_id().get_value(), uniform.get_location(), static_cast<GLint>(value)));
     } else {
-        NOTF_THROW(OpenGLError,
+        NOTF_THROW(ValueError,
                    "Uniform \"{}\" in ShaderProgram \"{}\" of type \"{}\" is not compatible with value type \"uint\"",
-                   uniform.variable.name, m_name, gl_type_name(uniform.variable.type));
+                   uniform.get_name(), m_name, gl_type_name(uniform.get_type()));
     }
 }
 
 template<>
 void ShaderProgram::_set_uniform(const ShaderPtr& shader, const Uniform& uniform, const float& value) {
     assert_is_valid(*this);
-    if (uniform.variable.type == GL_FLOAT) {
-        NOTF_CHECK_GL(glProgramUniform1f(shader->get_id().value(), uniform.location, value));
+    if (uniform.get_type() == GL_FLOAT) {
+        NOTF_CHECK_GL(glProgramUniform1f(shader->get_id().get_value(), uniform.get_location(), value));
     } else {
-        NOTF_THROW(OpenGLError,
+        NOTF_THROW(ValueError,
                    "Uniform \"{}\" in ShaderProgram \"{}\" of type \"{}\" is not compatible with value type \"float\"",
-                   uniform.variable.name, m_name, gl_type_name(uniform.variable.type));
+                   uniform.get_name(), m_name, gl_type_name(uniform.get_type()));
     }
 }
 
 template<>
 void ShaderProgram::_set_uniform(const ShaderPtr& shader, const Uniform& uniform, const V2f& value) {
     assert_is_valid(*this);
-    if (uniform.variable.type == GL_FLOAT_VEC2) {
-        NOTF_CHECK_GL(glProgramUniform2fv(shader->get_id().value(), uniform.location, /*count*/ 1, value.as_ptr()));
+    if (uniform.get_type() == GL_FLOAT_VEC2) {
+        NOTF_CHECK_GL(
+            glProgramUniform2fv(shader->get_id().get_value(), uniform.get_location(), /*count*/ 1, value.as_ptr()));
     } else {
-        NOTF_THROW(OpenGLError,
+        NOTF_THROW(ValueError,
                    "Uniform \"{}\" in ShaderProgram \"{}\" of type \"{}\" is not compatible with value type \"V2f\"",
-                   uniform.variable.name, m_name, gl_type_name(uniform.variable.type));
+                   uniform.get_name(), m_name, gl_type_name(uniform.get_type()));
     }
 }
 
 template<>
 void ShaderProgram::_set_uniform(const ShaderPtr& shader, const Uniform& uniform, const V4f& value) {
     assert_is_valid(*this);
-    if (uniform.variable.type == GL_FLOAT_VEC4) {
-        NOTF_CHECK_GL(glProgramUniform4fv(shader->get_id().value(), uniform.location, /*count*/ 1, value.as_ptr()));
+    if (uniform.get_type() == GL_FLOAT_VEC4) {
+        NOTF_CHECK_GL(
+            glProgramUniform4fv(shader->get_id().get_value(), uniform.get_location(), /*count*/ 1, value.as_ptr()));
     } else {
-        NOTF_THROW(OpenGLError,
+        NOTF_THROW(ValueError,
                    "Uniform \"{}\" in ShaderProgram \"{}\" of type \"{}\" is not compatible with value type \"V4f\"",
-                   uniform.variable.name, m_name, gl_type_name(uniform.variable.type));
+                   uniform.get_name(), m_name, gl_type_name(uniform.get_type()));
     }
 }
 
 template<>
 void ShaderProgram::_set_uniform(const ShaderPtr& shader, const Uniform& uniform, const M4f& value) {
     assert_is_valid(*this);
-    if (uniform.variable.type == GL_FLOAT_MAT4) {
-        NOTF_CHECK_GL(glProgramUniformMatrix4fv(shader->get_id().value(), uniform.location, /*count*/ 1,
+    if (uniform.get_type() == GL_FLOAT_MAT4) {
+        NOTF_CHECK_GL(glProgramUniformMatrix4fv(shader->get_id().get_value(), uniform.get_location(), /*count*/ 1,
                                                 /*transpose*/ GL_FALSE, value.as_ptr()));
     } else {
-        NOTF_THROW(OpenGLError,
+        NOTF_THROW(ValueError,
                    "Uniform \"{}\" in ShaderProgram \"{}\" of type \"{}\" is not compatible with value type \"M4f\"",
-                   uniform.variable.name, m_name, gl_type_name(uniform.variable.type));
+                   uniform.get_name(), m_name, gl_type_name(uniform.get_type()));
     }
 }
 

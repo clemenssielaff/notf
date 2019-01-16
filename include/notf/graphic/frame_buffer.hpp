@@ -14,6 +14,12 @@ NOTF_OPEN_NAMESPACE
 // render buffer ==================================================================================================== //
 
 /// Base class for all RenderBuffers (color, depth and stencil).
+///
+/// Renderbuffer objects were introduced to OpenGL after textures and offer the advantage that it stores its data in
+/// OpenGL's native rendering format making it optimized for off-screen rendering to a framebuffer, without any
+/// conversions to texture-specific formats. However, renderbuffer objects are generally write-only, thus you cannot
+/// read from them directly, like with texture-access.
+///
 /// RenderBuffers are not managed by the GraphicsContext, but by FrameBuffers instead.
 /// However, if the underlying GraphicContext should be destroyed, all RenderBuffer objects are deallocated as well.
 class RenderBuffer {

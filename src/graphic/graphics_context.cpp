@@ -18,8 +18,9 @@
 #include "notf/graphic/texture.hpp"
 #include "notf/graphic/uniform_buffer.hpp"
 
-namespace { // anonymous
 NOTF_USING_NAMESPACE;
+
+namespace { // anonymous
 
 std::pair<GLenum, GLenum> convert_blend_mode(const BlendMode::Mode blend_mode) {
     GLenum sfactor = 0;
@@ -74,8 +75,6 @@ std::pair<GLenum, GLenum> convert_blend_mode(const BlendMode::Mode blend_mode) {
 }
 
 } // namespace
-
-NOTF_OPEN_NAMESPACE
 
 // vao guard ======================================================================================================== //
 
@@ -206,7 +205,7 @@ void GraphicsContext::bind_texture(const Texture* texture, uint slot) {
 
     NOTF_ASSERT(is_current());
     NOTF_CHECK_GL(glActiveTexture(GL_TEXTURE0 + slot));
-    NOTF_CHECK_GL(glBindTexture(GL_TEXTURE_2D, texture->get_id().value()));
+    NOTF_CHECK_GL(glBindTexture(GL_TEXTURE_2D, texture->get_id().get_value()));
 
     m_state.texture_slots[slot] = texture->shared_from_this();
 }
@@ -225,56 +224,6 @@ void GraphicsContext::unbind_texture(uint slot) {
     NOTF_CHECK_GL(glBindTexture(GL_TEXTURE_2D, 0));
 
     m_state.texture_slots[slot].reset();
-}
-
-void GraphicsContext::bind_uniform_buffer(const uint slot, const AnyUniformBufferPtr& uniform_buffer,
-                                          const size_t index) {
-    if (slot >= m_state.uniform_buffers.size()) {
-        NOTF_THROW(OpenGLError, "Cannot bind UniformBuffer \"{}\" to slot {} as the system only provides {}",
-                   uniform_buffer->get_name(), slot, m_state.uniform_buffers.size());
-    }
-
-    if (!uniform_buffer) {
-        unbind_uniform_buffer(slot);
-        return;
-    }
-
-    UniformBinding& target = m_state.uniform_buffers[slot];
-    if (uniform_buffer == target.buffer && index == target.index) {
-        return; // noop
-    }
-
-    if (index >= uniform_buffer->get_block_count()) {
-        NOTF_THROW(IndexError,
-                   "Cannot bind element at index {} of UniformBuffer \"{}\", because it only has {} elements", index,
-                   uniform_buffer->get_name(), uniform_buffer->get_block_count());
-    }
-
-    NOTF_ASSERT(is_current());
-    const GLsizeiptr block_size = narrow_cast<GLsizeiptr>(uniform_buffer->get_block_size());
-    const GLintptr buffer_offset = block_size * narrow_cast<GLsizei>(index);
-    target = UniformBinding{uniform_buffer, index};
-    NOTF_CHECK_GL(
-        glBindBufferRange(GL_UNIFORM_BUFFER, slot, uniform_buffer->get_id().value(), buffer_offset, block_size));
-}
-
-void GraphicsContext::unbind_uniform_buffer(const uint slot, const AnyUniformBufferPtr& uniform_buffer) {
-    if (slot >= m_state.uniform_buffers.size()) {
-        NOTF_THROW(OpenGLError, "Cannot unbind UniformBuffer slot {} as the system only provides {}", slot,
-                   m_state.uniform_buffers.size());
-    }
-
-    if (uniform_buffer && uniform_buffer != m_state.uniform_buffers[slot].buffer) {
-        NOTF_LOG_WARN("Did not find expected UniformBuffer \"{}\" to unbind from slot {}", uniform_buffer->get_name(),
-                      slot);
-        return;
-    }
-
-    if (!m_state.uniform_buffers[slot].buffer) { return; }
-
-    NOTF_ASSERT(is_current());
-    m_state.uniform_buffers[slot] = {};
-    NOTF_CHECK_GL(glBindBufferBase(GL_UNIFORM_BUFFER, slot, 0));
 }
 
 void GraphicsContext::_shutdown_once() {
@@ -324,7 +273,7 @@ void GraphicsContext::_bind_program(const ShaderProgramPtr& program) {
     } else if (program != m_state.program) {
         NOTF_ASSERT(is_current());
         NOTF_CHECK_GL(glUseProgram(0));
-        NOTF_CHECK_GL(glBindProgramPipeline(program->get_id().value()));
+        NOTF_CHECK_GL(glBindProgramPipeline(program->get_id().get_value()));
         m_state.program = program;
         ShaderProgram::AccessFor<GraphicsContext>::activate(*m_state.program.get());
     }
@@ -347,7 +296,7 @@ void GraphicsContext::_bind_framebuffer(const FrameBufferPtr& framebuffer) {
         _unbind_framebuffer();
     } else if (framebuffer != m_state.framebuffer) {
         NOTF_ASSERT(is_current());
-        NOTF_CHECK_GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->get_id().value()));
+        NOTF_CHECK_GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->get_id().get_value()));
         m_state.framebuffer = framebuffer;
     }
 }
@@ -361,7 +310,50 @@ void GraphicsContext::_unbind_framebuffer(const FrameBufferPtr& framebuffer) {
         m_state.framebuffer.reset();
     }
 }
-NOTF_CLOSE_NAMESPACE
+
+void GraphicsContext::_bind_uniform_buffer(const uint slot, const AnyUniformBufferPtr& uniform_buffer,
+                                           const size_t index) {
+    if (slot >= m_state.uniform_buffers.size()) {
+        NOTF_THROW(OpenGLError, "Cannot bind UniformBuffer \"{}\" to slot {} as the system only provides {}",
+                   uniform_buffer->get_name(), slot, m_state.uniform_buffers.size());
+    }
+
+    if (!uniform_buffer) {
+        _unbind_uniform_buffer(slot);
+        return;
+    }
+
+    UniformBinding& target = m_state.uniform_buffers[slot];
+    if (uniform_buffer == target.buffer && index == target.index) {
+        return; // noop
+    }
+
+    if (index >= uniform_buffer->get_block_count()) {
+        NOTF_THROW(IndexError,
+                   "Cannot bind element at index {} of UniformBuffer \"{}\", because it only has {} elements", index,
+                   uniform_buffer->get_name(), uniform_buffer->get_block_count());
+    }
+
+    NOTF_ASSERT(is_current());
+    const GLsizeiptr block_size = narrow_cast<GLsizeiptr>(uniform_buffer->get_block_size());
+    const GLintptr buffer_offset = block_size * narrow_cast<GLsizei>(index);
+    target = UniformBinding{uniform_buffer, index};
+    NOTF_CHECK_GL(
+        glBindBufferRange(GL_UNIFORM_BUFFER, slot, uniform_buffer->get_id().get_value(), buffer_offset, block_size));
+}
+
+void GraphicsContext::_unbind_uniform_buffer(const uint slot) {
+    if (slot >= m_state.uniform_buffers.size()) {
+        NOTF_THROW(OpenGLError, "Cannot unbind UniformBuffer slot {} as the system only provides {}", slot,
+                   m_state.uniform_buffers.size());
+    }
+
+    if (!m_state.uniform_buffers[slot].buffer) { return; }
+
+    NOTF_ASSERT(is_current());
+    m_state.uniform_buffers[slot] = {};
+    NOTF_CHECK_GL(glBindBufferBase(GL_UNIFORM_BUFFER, slot, 0));
+}
 
 /* Something to think of, courtesy of the OpenGL ES book:
  * What happens if we are rendering into a texture and at the same time use this texture object as a texture in a

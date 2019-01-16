@@ -224,8 +224,8 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
 
         m_program = ShaderProgram::create("Plotter", vertex_shader, tess_shader, frag_shader);
 
-        m_program->set_uniform("aa_width", static_cast<float>(sqrt(2.l) / 2.l));
-        m_program->set_uniform("font_texture", TheGraphicsSystem::get_environment().font_atlas_texture_slot);
+        m_program->get_uniform("aa_width").set(static_cast<float>(sqrt(2.l) / 2.l));
+        m_program->get_uniform("font_texture").set(TheGraphicsSystem::get_environment().font_atlas_texture_slot);
     }
 
     // vao
@@ -235,7 +235,7 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
 
     { // vertices
         VertexArrayType::Args vertex_args;
-        vertex_args.usage = GLUsage::DYNAMIC_DRAW;
+        vertex_args.usage = GLUsage::STREAM_DRAW;
         m_vertices = std::make_unique<PlotVertexArray>(std::move(vertex_args));
         static_cast<PlotVertexArray*>(m_vertices.get())->init();
     }

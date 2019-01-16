@@ -61,7 +61,7 @@ PenaltyBreakComment:                    10
 PenaltyBreakFirstLessLess:              0
 PenaltyBreakString:                     10
 PenaltyExcessCharacter:                 100
-PenaltyReturnTypeOnItsOwnLine:          5
+PenaltyReturnTypeOnItsOwnLine:          40
 PointerAlignment:                           Left
 ReflowComments:                             true
 SortIncludes:                               true

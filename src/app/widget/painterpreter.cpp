@@ -63,7 +63,7 @@ void Painterpreter::paint(const WidgetHandle& widget) {
 
                     [&](const WidgetDesign::SetPathIndexCommand& command) {
                         NOTF_ASSERT(command.index);
-                        const size_t path_index = command.index.value() - Plotter::PathId::first().value();
+                        const size_t path_index = command.index.get_value() - Plotter::PathId::first().get_value();
                         NOTF_ASSERT(path_index < m_paths.size());
                         State& state = _get_current_state();
                         state.path = m_paths[path_index];

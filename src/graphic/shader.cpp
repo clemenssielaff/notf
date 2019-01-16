@@ -256,11 +256,11 @@ bool Shader::validate_now() const {
 
     GLint status = GL_FALSE;
     GLint message_size;
-    NOTF_CHECK_GL(glValidateProgram(m_id.value()));
-    NOTF_CHECK_GL(glGetProgramiv(m_id.value(), GL_VALIDATE_STATUS, &status));
-    NOTF_CHECK_GL(glGetProgramiv(m_id.value(), GL_INFO_LOG_LENGTH, &message_size));
+    NOTF_CHECK_GL(glValidateProgram(m_id.get_value()));
+    NOTF_CHECK_GL(glGetProgramiv(m_id.get_value(), GL_VALIDATE_STATUS, &status));
+    NOTF_CHECK_GL(glGetProgramiv(m_id.get_value(), GL_INFO_LOG_LENGTH, &message_size));
     std::vector<char> message = std::vector<char>(static_cast<size_t>(message_size));
-    NOTF_CHECK_GL(glGetProgramInfoLog(m_id.value(), message_size, /*length*/ nullptr, &message[0]));
+    NOTF_CHECK_GL(glGetProgramInfoLog(m_id.get_value(), message_size, /*length*/ nullptr, &message[0]));
 
     NOTF_LOG_TRACE("Validation of Shader \"{}\" {}", m_name,
                    (status ? "succeeded" : fmt::format("failed:\n{}", message.data())));
@@ -347,8 +347,8 @@ void Shader::_register_with_system(const ShaderPtr& shader) {
 }
 
 void Shader::_deallocate() {
-    if (m_id.value()) {
-        NOTF_CHECK_GL(glDeleteProgram(m_id.value()));
+    if (m_id.get_value()) {
+        NOTF_CHECK_GL(glDeleteProgram(m_id.get_value()));
         NOTF_LOG_TRACE("Deleted Shader \"{}\"", m_name);
         m_id = ShaderId::invalid();
     }

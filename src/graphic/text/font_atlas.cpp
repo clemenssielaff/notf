@@ -117,7 +117,7 @@ FontAtlas::FontAtlas() : m_texture(nullptr), m_width(512), m_height(512), m_used
     // permanently bind the atlas texture to its slot (it is reserved and won't be rebound)
     const GLenum texture_slot = TheGraphicsSystem::get_environment().font_atlas_texture_slot;
     NOTF_CHECK_GL(glActiveTexture(GL_TEXTURE0 + texture_slot));
-    NOTF_CHECK_GL(glBindTexture(GL_TEXTURE_2D, m_texture->get_id().value()));
+    NOTF_CHECK_GL(glBindTexture(GL_TEXTURE_2D, m_texture->get_id().get_value()));
 
     // initialize
     reset();
