@@ -4,6 +4,8 @@
 #include <typeinfo>
 #include <utility>
 
+#include <array>
+
 #include "notf/meta/config.hpp"
 
 NOTF_OPEN_NAMESPACE

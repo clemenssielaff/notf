@@ -32,7 +32,7 @@ void RenderManager::RenderThread::_run() {
     WindowHandle window_handle;
     while (m_is_running) {
         { // wait until the next frame is ready
-            std::unique_lock<Mutex> lock(m_mutex);
+            std::unique_lock<std::mutex> lock(m_mutex);
             if (m_is_running) {
                 m_condition.wait(lock, [&] { return !m_dirty_windows.empty() || !m_is_running; });
             }

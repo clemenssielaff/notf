@@ -40,16 +40,17 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     common/uuid.cpp
 
     graphic/frame_buffer.cpp
-    graphic/gl_errors.cpp
-    graphic/gl_utils.cpp
     graphic/graphics_context.cpp
+    graphic/opengl.cpp
     graphic/graphics_system.cpp
-    graphic/shader_program.cpp
-    graphic/prefab_factory.cpp
+    graphic/index_buffer.cpp
+    graphic/texture.cpp
     graphic/raw_image.cpp
     graphic/shader.cpp
-    graphic/texture.cpp
+    graphic/shader_program.cpp
+#    graphic/prefab_factory.cpp
     graphic/uniform_buffer.cpp
+    graphic/vertex_buffer.cpp
 
     graphic/renderer/fragment_renderer.cpp
     graphic/renderer/plotter.cpp

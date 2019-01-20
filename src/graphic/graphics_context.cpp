@@ -10,7 +10,6 @@
 #include "notf/app/graph/window.hpp"
 
 #include "notf/graphic/frame_buffer.hpp"
-#include "notf/graphic/gl_errors.hpp"
 #include "notf/graphic/glfw.hpp"
 #include "notf/graphic/graphics_system.hpp"
 #include "notf/graphic/shader.hpp"
@@ -20,77 +19,176 @@
 
 NOTF_USING_NAMESPACE;
 
-namespace { // anonymous
+// graphics context guard =========================================================================================== //
 
-std::pair<GLenum, GLenum> convert_blend_mode(const BlendMode::Mode blend_mode) {
-    GLenum sfactor = 0;
-    GLenum dfactor = 0;
-    switch (blend_mode) {
-    case (BlendMode::SOURCE_OVER):
-        sfactor = GL_ONE;
-        dfactor = GL_ONE_MINUS_SRC_ALPHA;
-        break;
-    case (BlendMode::SOURCE_IN):
-        sfactor = GL_DST_ALPHA;
-        dfactor = GL_ZERO;
-        break;
-    case (BlendMode::SOURCE_OUT):
-        sfactor = GL_ONE_MINUS_DST_ALPHA;
-        dfactor = GL_ZERO;
-        break;
-    case (BlendMode::SOURCE_ATOP):
-        sfactor = GL_DST_ALPHA;
-        dfactor = GL_ONE_MINUS_SRC_ALPHA;
-        break;
-    case (BlendMode::DESTINATION_OVER):
-        sfactor = GL_ONE_MINUS_DST_ALPHA;
-        dfactor = GL_ONE;
-        break;
-    case (BlendMode::DESTINATION_IN):
-        sfactor = GL_ZERO;
-        dfactor = GL_SRC_ALPHA;
-        break;
-    case (BlendMode::DESTINATION_OUT):
-        sfactor = GL_ZERO;
-        dfactor = GL_ONE_MINUS_SRC_ALPHA;
-        break;
-    case (BlendMode::DESTINATION_ATOP):
-        sfactor = GL_ONE_MINUS_DST_ALPHA;
-        dfactor = GL_SRC_ALPHA;
-        break;
-    case (BlendMode::LIGHTER):
-        sfactor = GL_ONE;
-        dfactor = GL_ONE;
-        break;
-    case (BlendMode::COPY):
-        sfactor = GL_ONE;
-        dfactor = GL_ZERO;
-        break;
-    case (BlendMode::XOR):
-        sfactor = GL_ONE_MINUS_DST_ALPHA;
-        dfactor = GL_ONE_MINUS_SRC_ALPHA;
-        break;
-    }
-    return {sfactor, dfactor};
+GraphicsContext::Guard::Guard(GraphicsContext& context, std::unique_lock<RecursiveMutex>&& lock)
+    : m_context(&context), m_mutex_lock(std::move(lock)) {}
+
+GraphicsContext::Guard::~Guard() {
+    if (!m_context) { return; }
+
+    NOTF_ASSERT(m_mutex_lock.owns_lock());
+    m_mutex_lock.unlock();
+
+    const RecursiveMutex* mutex = m_mutex_lock.mutex();
+    NOTF_ASSERT(mutex);
+    if (!mutex->is_locked_by_this_thread()) { glfwMakeContextCurrent(nullptr); }
 }
 
-} // namespace
+// stencil mask ===================================================================================================== //
 
-// vao guard ======================================================================================================== //
+void GraphicsContext::_StencilMask::operator=(StencilMask mask) {
+    if (m_mask == mask) { return; }
+    m_mask = mask;
 
-GraphicsContext::VaoGuard::VaoGuard(GLuint vao) : m_vao(vao) { NOTF_CHECK_GL(glBindVertexArray(m_vao)); }
+    if (m_mask.front == m_mask.back) {
+        NOTF_CHECK_GL(glStencilMaskSeparate(to_number(CullFace::BOTH), m_mask.front));
+    } else {
+        NOTF_CHECK_GL(glStencilMaskSeparate(to_number(CullFace::FRONT), m_mask.front));
+        NOTF_CHECK_GL(glStencilMaskSeparate(to_number(CullFace::BACK), m_mask.back));
+    }
+}
 
-GraphicsContext::VaoGuard::~VaoGuard() { NOTF_CHECK_GL(glBindVertexArray(0)); }
+// current blend mode =============================================================================================== //
+
+void GraphicsContext::_BlendMode::operator=(const BlendMode mode) {
+    if (mode == m_mode) { return; }
+    m_mode = mode;
+
+    const BlendMode::OpenGLBlendMode blend_mode(m_mode);
+    NOTF_CHECK_GL(glBlendFuncSeparate(blend_mode.source_rgb, blend_mode.destination_rgb, //
+                                      blend_mode.source_alpha, blend_mode.destination_rgb));
+}
+
+// framebuffer binding ============================================================================================== //
+
+void GraphicsContext::_FrameBuffer::operator=(FrameBufferPtr framebuffer) {
+    if (m_framebuffer == framebuffer) { return; }
+    m_framebuffer = std::move(framebuffer);
+
+    if (m_framebuffer) {
+        NOTF_CHECK_GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_framebuffer->get_id().get_value()));
+    } else {
+        NOTF_CHECK_GL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    }
+}
+
+// shader program binding =========================================================================================== //
+
+void GraphicsContext::_ShaderProgram::operator=(ShaderProgramPtr program) {
+    if (m_program == program) { return; }
+    m_program = std::move(program);
+
+    NOTF_CHECK_GL(glUseProgram(0));
+    if (m_program) {
+        NOTF_CHECK_GL(glBindProgramPipeline(m_program->get_id().get_value()));
+    } else {
+        NOTF_CHECK_GL(glBindProgramPipeline(0));
+    }
+}
+
+// texture slots ==================================================================================================== //
+
+void GraphicsContext::_TextureSlots::Slot::operator=(TexturePtr texture) {
+    if (m_texture == texture) { return; }
+    m_texture = std::move(texture);
+
+    NOTF_CHECK_GL(glActiveTexture(GL_TEXTURE0 + m_index));
+    if (m_texture) {
+        NOTF_CHECK_GL(glBindTexture(GL_TEXTURE_2D, m_texture->get_id().get_value()));
+    } else {
+        NOTF_CHECK_GL(glBindTexture(GL_TEXTURE_2D, 0));
+    }
+}
+
+GraphicsContext::_TextureSlots::Slot& GraphicsContext::_TextureSlots::operator[](const GLuint index) {
+    static const GLuint slot_count = TheGraphicsSystem::get_environment().texture_slot_count;
+    if (index >= slot_count) {
+        NOTF_THROW(IndexError, "Invalid texture slot: {} - largest texture slot is: {}", index, slot_count - 1);
+    }
+    auto itr = m_slots.find(index);
+    if (itr == m_slots.end()) {
+        bool success = false;
+        std::tie(itr, success) = m_slots.emplace(std::make_pair(index, index));
+        NOTF_ASSERT(success);
+    }
+    return itr->second;
+}
+
+// uniform slots ==================================================================================================== //
+
+void GraphicsContext::_UniformSlots::Slot::BufferBinding::_set(AnyUniformBufferPtr buffer, size_t offset) {
+    if (buffer == m_buffer && offset == m_offset) { return; }
+    m_buffer = std::move(buffer);
+    m_offset = offset;
+
+    if (m_buffer) {
+        const GLsizeiptr block_size = narrow_cast<GLsizeiptr>(m_buffer->get_block_size());
+        const GLintptr buffer_offset = block_size * narrow_cast<GLsizei>(m_offset);
+        NOTF_CHECK_GL(glBindBufferRange(GL_UNIFORM_BUFFER, m_slot_index, m_buffer->get_id().get_value(), buffer_offset,
+                                        block_size));
+    } else {
+        NOTF_CHECK_GL(glBindBufferBase(GL_UNIFORM_BUFFER, m_slot_index, 0));
+    }
+}
+
+GraphicsContext::_UniformSlots::Slot::BlockBinding::BlockBinding(ShaderProgramConstPtr program,
+                                                                 const GLuint block_index, const GLuint slot_index)
+    : m_program(std::move(program)), m_block_index(block_index) {
+    const UniformBlock& block = m_program->get_uniform_block(m_block_index);
+
+    if (block.get_stages() & AnyShader::Stage::VERTEX) {
+        const VertexShaderPtr& vertex_shader = block.get_program().get_vertex_shader();
+        NOTF_ASSERT(vertex_shader);
+        m_vertex_shader_id = vertex_shader->get_id();
+    }
+    if (block.get_stages() & AnyShader::Stage::FRAGMENT) {
+        const FragmentShaderPtr& fragment_shader = block.get_program().get_fragment_shader();
+        NOTF_ASSERT(fragment_shader);
+        m_fragment_shader_id = fragment_shader->get_id();
+    }
+
+    _set(slot_index);
+}
+
+void GraphicsContext::_UniformSlots::Slot::BlockBinding::_set(const GLuint slot_index) {
+    if (m_vertex_shader_id) { glUniformBlockBinding(m_vertex_shader_id.get_value(), m_block_index, slot_index); }
+    if (m_fragment_shader_id) { glUniformBlockBinding(m_fragment_shader_id.get_value(), m_block_index, slot_index); }
+}
+
+void GraphicsContext::_UniformSlots::Slot::bind(const UniformBlock& block) {
+    ShaderProgramConstPtr program = block.get_program().shared_from_this();
+    const GLuint block_index = block.get_index();
+    for (const auto& block_binding : m_blocks) {
+        if (block_binding.m_program == program && block_binding.m_block_index == block_index) { return; }
+    }
+    m_blocks.emplace_back(std::move(program), block_index, m_buffer.m_slot_index);
+}
+
+GraphicsContext::_UniformSlots::Slot& GraphicsContext::_UniformSlots::operator[](const GLuint index) {
+    static const GLuint slot_count = TheGraphicsSystem::get_environment().uniform_slot_count;
+    if (index >= slot_count) {
+        NOTF_THROW(IndexError, "Invalid uniform slot: {} - largest uniform slot is: {}", index, slot_count - 1);
+    }
+    auto itr = m_slots.find(index);
+    if (itr == m_slots.end()) {
+        bool success = false;
+        std::tie(itr, success) = m_slots.emplace(std::make_pair(index, index));
+        NOTF_ASSERT(success);
+    }
+    return itr->second;
+}
 
 // graphics context ================================================================================================= //
 
-GraphicsContext::GraphicsContext(valid_ptr<GLFWwindow*> window) : m_window(window) {
-    ContextGuard guard(*this);
+GraphicsContext::GraphicsContext(std::string name, valid_ptr<GLFWwindow*> window)
+    : m_name(std::move(name)), m_window(window) {
+    NOTF_GUARD(make_current());
 
     { // sanity check (otherwise OpenGL may happily return `null` on all calls until something crashes later)
         const GLubyte* version;
         NOTF_CHECK_GL(version = glGetString(GL_VERSION));
-        if (!version) { NOTF_THROW(OpenGLError, "Failed to create an OpenGL context"); }
+        if (!version) { NOTF_THROW(OpenGLError, "Failed to create OpenGL context \"{}\"", m_name); }
     }
 
     // GLFW hints
@@ -100,13 +198,33 @@ GraphicsContext::GraphicsContext(valid_ptr<GLFWwindow*> window) : m_window(windo
     NOTF_CHECK_GL(glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST));
     NOTF_CHECK_GL(glHint(GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_DONT_CARE));
     NOTF_CHECK_GL(glDisable(GL_DITHER));
-
-    _reset_state();
 }
 
 GraphicsContext::~GraphicsContext() {
     NOTF_GUARD(make_current());
-    m_state = {}; // delete the state with a current OpenGL context
+
+    // shed all owning pointers from the current state
+    reset();
+
+    // deallocate and invalidate all remaining ShaderPrograms
+    for (auto itr : m_programs) {
+        if (ShaderProgramPtr program = itr.second.lock()) {
+            NOTF_LOG_WARN("Deallocating live ShaderProgram \"{}\" from GraphicsContext \"{}\"", program->get_name(),
+                          m_name);
+            ShaderProgram::AccessFor<GraphicsContext>::deallocate(*program);
+        }
+    }
+    m_programs.clear();
+
+    // deallocate and invalidate all remaining FrameBuffers
+    for (auto itr : m_framebuffers) {
+        if (FrameBufferPtr framebuffer = itr.second.lock()) {
+            NOTF_LOG_WARN("Deallocating live FrameBuffer \"{}\" from GraphicsContext \"{}\"", framebuffer->get_name(),
+                          m_name);
+            FrameBuffer::AccessFor<GraphicsContext>::deallocate(*framebuffer);
+        }
+    }
+    m_framebuffers.clear();
 }
 
 GraphicsContext& GraphicsContext::get() {
@@ -115,252 +233,125 @@ GraphicsContext& GraphicsContext::get() {
             return static_cast<Window*>(user_pointer)->get_graphics_context();
         }
     }
-    return *TheGraphicsSystem();
+    NOTF_THROW(OpenGLError, "No OpenGL context current on this thread");
 }
 
-GraphicsContext::ContextGuard GraphicsContext::make_current() {
-    GLFWwindow* glfw_window = glfwGetCurrentContext();
-    if (glfw_window && glfw_window != m_window) {
-        NOTF_THROW(OpenGLError,
-                   "Cannot make a GraphicsContext current on this thread while another one is already current");
+GraphicsContext::Guard GraphicsContext::make_current(bool assume_is_current) {
+    if (GLFWwindow* glfw_window = glfwGetCurrentContext(); glfw_window && glfw_window != m_window) {
+        NOTF_THROW(ThreadError,
+                   "Cannot make GraphicsContext \"{}\" current on this thread while another one is already current",
+                   m_name);
     }
 
-    return ContextGuard(*this);
-}
-
-Size2i GraphicsContext::get_window_size() const {
-    NOTF_ASSERT(is_current());
-    Size2i result;
-    glfwGetFramebufferSize(_get_window(), &result[0], &result[1]);
-    return result;
-}
-
-void GraphicsContext::set_stencil_mask(const GLuint mask, const bool force) {
-    if (mask == m_state.stencil_mask && !force) { return; }
-    NOTF_ASSERT(is_current());
-    m_state.stencil_mask = mask;
-    NOTF_CHECK_GL(glStencilMask(mask));
-}
-
-void GraphicsContext::set_blend_mode(const BlendMode mode, const bool force) {
-    if (mode == m_state.blend_mode && !force) { return; }
-    NOTF_ASSERT(is_current());
-    m_state.blend_mode = mode;
-
-    /// rgb
-    GLenum rgb_sfactor, rgb_dfactor;
-    std::tie(rgb_sfactor, rgb_dfactor) = convert_blend_mode(mode.rgb);
-
-    // alpha
-    GLenum alpha_sfactor, alpha_dfactor;
-    std::tie(alpha_sfactor, alpha_dfactor) = convert_blend_mode(mode.alpha);
-
-    NOTF_CHECK_GL(glBlendFuncSeparate(rgb_sfactor, rgb_dfactor, alpha_sfactor, alpha_dfactor));
-}
-
-void GraphicsContext::set_render_area(Aabri area, const bool force) {
-    if (!area.is_valid()) { NOTF_THROW(ValueError, "Cannot set to an invalid render area"); }
-    if (area != m_state.render_area || force) {
-        NOTF_ASSERT(is_current());
-        NOTF_CHECK_GL(glViewport(area.left(), area.bottom(), area.get_width(), area.get_height()));
-        m_state.render_area = std::move(area);
+    // lock the context's mutex
+    auto lock = std::unique_lock<RecursiveMutex>(m_mutex, std::defer_lock_t());
+    if (assume_is_current) {
+        if (!lock.try_lock()) {
+            NOTF_LOG_WARN("Assumption failed: GraphicsContext \"{}\" was not current when expected", m_name);
+            lock.lock();
+        }
+    } else {
+        lock.lock();
     }
+    NOTF_ASSERT(lock.owns_lock());
+
+    // make the context current if this is the first lock on this thread
+    if (m_mutex.get_recursion_counter() == 1) { glfwMakeContextCurrent(m_window); }
+    NOTF_ASSERT(glfwGetCurrentContext() == m_window);
+
+    return Guard(*this, std::move(lock));
 }
 
-void GraphicsContext::clear(Color color, const BufferFlags buffers) {
-    NOTF_ASSERT(is_current());
-    if (color != m_state.clear_color) {
-        m_state.clear_color = std::move(color);
-        NOTF_CHECK_GL(
-            glClearColor(m_state.clear_color.r, m_state.clear_color.g, m_state.clear_color.b, m_state.clear_color.a));
-    }
+//Size2i GraphicsContext::get_default_framebuffer_size() const {
+//    Size2i result;
+//    glfwGetFramebufferSize(m_window, &result[0], &result[1]);
+//    return result;
+//    // TODO: glfwGetFramebufferSize must only be called from the main thread
+//}
 
-    GLenum gl_flags = 0;
-    if (buffers & Buffer::COLOR) { gl_flags |= GL_COLOR_BUFFER_BIT; }
-    if (buffers & Buffer::DEPTH) { gl_flags |= GL_DEPTH_BUFFER_BIT; }
-    if (buffers & Buffer::STENCIL) { gl_flags |= GL_STENCIL_BUFFER_BIT; }
-    NOTF_CHECK_GL(glClear(gl_flags));
+//void GraphicsContext::set_render_area(Aabri area, const bool force) {
+//    if (!area.is_valid()) { NOTF_THROW(ValueError, "Cannot set to an invalid render area"); }
+//    if (area != m_state.render_area || force) {
+//        NOTF_ASSERT(is_current());
+//        NOTF_CHECK_GL(glViewport(area.left(), area.bottom(), area.get_width(), area.get_height()));
+//        m_state.render_area = std::move(area);
+//    }
+//}
+
+//void GraphicsContext::clear(Color color, const GLBuffers buffers) {
+//    NOTF_ASSERT(is_current());
+//    if (color != m_state.clear_color) {
+//        m_state.clear_color = std::move(color);
+//        NOTF_CHECK_GL(
+//            glClearColor(m_state.clear_color.r, m_state.clear_color.g, m_state.clear_color.b, m_state.clear_color.a));
+//    }
+
+//    GLenum gl_flags = 0;
+//    if (buffers & GLBuffer::COLOR) { gl_flags |= GL_COLOR_BUFFER_BIT; }
+//    if (buffers & GLBuffer::DEPTH) { gl_flags |= GL_DEPTH_BUFFER_BIT; }
+//    if (buffers & GLBuffer::STENCIL) { gl_flags |= GL_STENCIL_BUFFER_BIT; }
+//    NOTF_CHECK_GL(glClear(gl_flags));
+//}
+
+void GraphicsContext::begin_frame() {
+//    clear(m_state.clear_color, GLBuffer::COLOR | GLBuffer::DEPTH | GLBuffer::STENCIL);
 }
-
-// TODO: access control for begin_ and end_frame
-void GraphicsContext::begin_frame() { clear(m_state.clear_color, Buffer::COLOR | Buffer::DEPTH | Buffer::STENCIL); }
 
 void GraphicsContext::finish_frame() {
     NOTF_ASSERT(is_current());
-    glfwSwapBuffers(_get_window());
+    glfwSwapBuffers(m_window);
 }
 
-void GraphicsContext::bind_texture(const Texture* texture, uint slot) {
-    if (!texture) { return unbind_texture(slot); }
-
-    const auto& environment = TheGraphicsSystem::get_environment();
-    if (slot >= environment.texture_slot_count) {
-        NOTF_THROW(OpenGLError, "Invalid texture slot: {} - largest texture slot is: {}", slot,
-                   environment.texture_slot_count - 1);
-    }
-
-    if (texture == m_state.texture_slots[slot].get()) { return; }
-
-    if (!texture->is_valid()) { NOTF_THROW(OpenGLError, "Cannot bind invalid texture \"{}\"", texture->get_name()); }
-
-    NOTF_ASSERT(is_current());
-    NOTF_CHECK_GL(glActiveTexture(GL_TEXTURE0 + slot));
-    NOTF_CHECK_GL(glBindTexture(GL_TEXTURE_2D, texture->get_id().get_value()));
-
-    m_state.texture_slots[slot] = texture->shared_from_this();
+void GraphicsContext::reset() {
+    m_state.blend_mode = BlendMode();
+    m_state.cull_face = CullFace::DEFAULT;
+    m_state.stencil_mask = StencilMask();
+    m_state.program = nullptr;
+    m_state.framebuffer = nullptr;
+    m_state.texture_slots.clear();
+    m_state.uniform_slots.clear();
+    m_state.clear_color = Color::black();
+//    m_state.render_area = Aabri(get_window_size());
 }
 
-void GraphicsContext::unbind_texture(uint slot) {
-    const auto& environment = TheGraphicsSystem::get_environment();
-    if (slot >= environment.texture_slot_count) {
-        NOTF_THROW(OpenGLError, "Invalid texture slot: {} - largest texture slot is: {}", slot,
-                   environment.texture_slot_count - 1);
-    }
-
-    if (m_state.texture_slots.at(slot) == nullptr) { return; }
-
-    NOTF_ASSERT(is_current());
-    NOTF_CHECK_GL(glActiveTexture(GL_TEXTURE0 + slot));
-    NOTF_CHECK_GL(glBindTexture(GL_TEXTURE_2D, 0));
-
-    m_state.texture_slots[slot].reset();
-}
-
-void GraphicsContext::_shutdown_once() {
-    const auto current_guard = make_current();
-    m_state = {};
-}
-
-std::unique_lock<RecursiveMutex> GraphicsContext::_make_current() {
-    auto lock = std::unique_lock<RecursiveMutex>(m_mutex);
-    if (m_recursion_counter++ == 0) { glfwMakeContextCurrent(m_window); }
-    NOTF_ASSERT(glfwGetCurrentContext() == m_window);
-    return lock;
-}
-
-void GraphicsContext::_release_current() {
-    NOTF_ASSERT(m_mutex.is_locked_by_this_thread());
-    if (--m_recursion_counter == 0) { glfwMakeContextCurrent(nullptr); }
-}
-
-void GraphicsContext::_unbind_all_textures() {
-    const auto& environment = TheGraphicsSystem::get_environment();
-    for (uint slot = 0; slot < environment.texture_slot_count; ++slot) {
-        unbind_texture(slot);
+void GraphicsContext::_register_new(ShaderProgramPtr program) {
+    auto it = m_programs.find(program->get_id());
+    if (it == m_programs.end()) {
+        m_programs.emplace(program->get_id(), program); // insert new
+    } else if (it->second.expired()) {
+        it->second = program; // update expired
+    } else {
+        NOTF_THROW(NotUniqueError,
+                   "Failed to register a new ShaderProgram with the same ID as an existing ShaderProgram: \"{}\"",
+                   program->get_id());
     }
 }
 
-void GraphicsContext::_reset_state() {
-    m_state = State(); // default constructed
-
-    // apply information from the environment
-    const auto& environment = TheGraphicsSystem::get_environment();
-    m_state.texture_slots.resize(environment.texture_slot_count);
-    m_state.uniform_buffers.resize(environment.uniform_buffer_count);
-
-    // query current window size
-    m_state.render_area = Aabri(get_window_size());
-
-    // enforce the state (since we don't know the current OpenGL state)
-    set_stencil_mask(m_state.stencil_mask, /* force = */ true);
-    set_blend_mode(m_state.blend_mode, /* force = */ true);
-    clear(m_state.clear_color, Buffer::COLOR);
-}
-
-void GraphicsContext::_bind_program(const ShaderProgramPtr& program) {
-    if (!program) {
-        _unbind_program();
-    } else if (program != m_state.program) {
-        NOTF_ASSERT(is_current());
-        NOTF_CHECK_GL(glUseProgram(0));
-        NOTF_CHECK_GL(glBindProgramPipeline(program->get_id().get_value()));
-        m_state.program = program;
-        ShaderProgram::AccessFor<GraphicsContext>::activate(*m_state.program.get());
+void GraphicsContext::_register_new(FrameBufferPtr framebuffer) {
+    auto it = m_framebuffers.find(framebuffer->get_id());
+    if (it == m_framebuffers.end()) {
+        m_framebuffers.emplace(framebuffer->get_id(), framebuffer); // insert new
+    } else if (it->second.expired()) {
+        it->second = framebuffer; // update expired
+    } else {
+        NOTF_THROW(
+            NotUniqueError,
+            "GraphicsContext failed to register a new FrameBuffer with the same ID as an existing FrameBuffer: \"{}\"",
+            framebuffer->get_id());
     }
 }
 
-void GraphicsContext::_unbind_program(const ShaderProgramPtr& program) {
-    if (program && program != m_state.program) {
-        NOTF_LOG_CRIT("Did not find expected ShaderProgram \"{}\", ignoring call to unbind", program->get_id());
-    } else if (m_state.program) {
-        NOTF_ASSERT(is_current());
-        NOTF_CHECK_GL(glUseProgram(0));
-        NOTF_CHECK_GL(glBindProgramPipeline(0));
-        ShaderProgram::AccessFor<GraphicsContext>::deactivate(*m_state.program.get());
-        m_state.program.reset();
-    }
-}
-
-void GraphicsContext::_bind_framebuffer(const FrameBufferPtr& framebuffer) {
-    if (!framebuffer) {
-        _unbind_framebuffer();
-    } else if (framebuffer != m_state.framebuffer) {
-        NOTF_ASSERT(is_current());
-        NOTF_CHECK_GL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer->get_id().get_value()));
-        m_state.framebuffer = framebuffer;
-    }
-}
-
-void GraphicsContext::_unbind_framebuffer(const FrameBufferPtr& framebuffer) {
-    if (framebuffer && framebuffer != m_state.framebuffer) {
-        NOTF_LOG_CRIT("Did not find expected FrameBuffer \"{}\", ignoring call to unbind", framebuffer->get_id());
-    } else if (m_state.framebuffer) {
-        NOTF_ASSERT(is_current());
-        NOTF_CHECK_GL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-        m_state.framebuffer.reset();
-    }
-}
-
-void GraphicsContext::_bind_uniform_buffer(const uint slot, const AnyUniformBufferPtr& uniform_buffer,
-                                           const size_t index) {
-    if (slot >= m_state.uniform_buffers.size()) {
-        NOTF_THROW(OpenGLError, "Cannot bind UniformBuffer \"{}\" to slot {} as the system only provides {}",
-                   uniform_buffer->get_name(), slot, m_state.uniform_buffers.size());
-    }
-
-    if (!uniform_buffer) {
-        _unbind_uniform_buffer(slot);
-        return;
-    }
-
-    UniformBinding& target = m_state.uniform_buffers[slot];
-    if (uniform_buffer == target.buffer && index == target.index) {
-        return; // noop
-    }
-
-    if (index >= uniform_buffer->get_block_count()) {
-        NOTF_THROW(IndexError,
-                   "Cannot bind element at index {} of UniformBuffer \"{}\", because it only has {} elements", index,
-                   uniform_buffer->get_name(), uniform_buffer->get_block_count());
-    }
-
-    NOTF_ASSERT(is_current());
-    const GLsizeiptr block_size = narrow_cast<GLsizeiptr>(uniform_buffer->get_block_size());
-    const GLintptr buffer_offset = block_size * narrow_cast<GLsizei>(index);
-    target = UniformBinding{uniform_buffer, index};
-    NOTF_CHECK_GL(
-        glBindBufferRange(GL_UNIFORM_BUFFER, slot, uniform_buffer->get_id().get_value(), buffer_offset, block_size));
-}
-
-void GraphicsContext::_unbind_uniform_buffer(const uint slot) {
-    if (slot >= m_state.uniform_buffers.size()) {
-        NOTF_THROW(OpenGLError, "Cannot unbind UniformBuffer slot {} as the system only provides {}", slot,
-                   m_state.uniform_buffers.size());
-    }
-
-    if (!m_state.uniform_buffers[slot].buffer) { return; }
-
-    NOTF_ASSERT(is_current());
-    m_state.uniform_buffers[slot] = {};
-    NOTF_CHECK_GL(glBindBufferBase(GL_UNIFORM_BUFFER, slot, 0));
-}
+//    if (slot >= m_state.uniform_slots.size()) {
+//        NOTF_THROW(OpenGLError, "Cannot bind UniformBuffer \"{}\" to slot {} as the system only provides {}",
+//                   uniform_buffer->get_name(), slot, m_state.uniform_slots.size());
+//    }
 
 /* Something to think of, courtesy of the OpenGL ES book:
  * What happens if we are rendering into a texture and at the same time use this texture object as a texture in a
- * fragment shader? Will the OpenGL ES implementation generate an error when such a situation arises? In some cases, it
- * is possible for the OpenGL ES implementation to determine if a texture object is being used as a texture input and a
- * framebuffer attachment into which we are currently drawing. glDrawArrays and glDrawElements could then generate an
- * error. To ensure that glDrawArrays and glDrawElements can be executed as rapidly as possible, however, these checks
- * are not performed. Instead of generating an error, in this case rendering results are undefined. It is the
- * application’s responsibility to make sure that this situation does not occur.
+ * fragment shader? Will the OpenGL ES implementation generate an error when such a situation arises? In some cases,
+ * it is possible for the OpenGL ES implementation to determine if a texture object is being used as a texture input
+ * and a framebuffer attachment into which we are currently drawing. glDrawArrays and glDrawElements could then
+ * generate an error. To ensure that glDrawArrays and glDrawElements can be executed as rapidly as possible,
+ * however, these checks are not performed. Instead of generating an error, in this case rendering results are
+ * undefined. It is the application’s responsibility to make sure that this situation does not occur.
  */

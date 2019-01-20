@@ -3,8 +3,9 @@ set(CURRENT_TARGET notf-scratch)
 
 # add scratch files
 add_sources(SCRATCH_FILES ${CMAKE_CURRENT_SOURCE_DIR}
-    scratch.cpp
+#    scratch.cpp
 #    scratch2.cpp
+    scratch3.cpp
 )
 
 # declare scratch executable

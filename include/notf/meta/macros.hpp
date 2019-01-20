@@ -159,6 +159,28 @@ NOTF_OPEN_NAMESPACE
     using Alias##Ptr = std::unique_ptr<Type>;           \
     using Alias##ConstPtr = std::unique_ptr<const Type>
 
+/// Convenience macro to define shared pointer types for a given templated type with one variadic template argument.
+#define NOTF_DECLARE_SHARED_POINTERS_VAR_TEMPLATE1(Tag, Type)  \
+    template<class...>                                         \
+    Tag Type;                                                  \
+    template<class... Ts>                                      \
+    using Type##Ptr = std::shared_ptr<Type<Ts...>>;            \
+    template<class... Ts>                                      \
+    using Type##ConstPtr = std::shared_ptr<const Type<Ts...>>; \
+    template<class... Ts>                                      \
+    using Type##WeakPtr = std::weak_ptr<Type<Ts...>>;          \
+    template<class... Ts>                                      \
+    using Type##WeakConstPtr = std::weak_ptr<const Type<Ts...>>
+
+/// Convenience macro to define unique pointer types for a given templated type with one variadic template argument.
+#define NOTF_DECLARE_UNIQUE_POINTERS_VAR_TEMPLATE1(Tag, Type) \
+    template<class...>                                        \
+    Tag Type;                                                 \
+    template<class... Ts>                                     \
+    using Type##Ptr = std::unique_ptr<Type<Ts...>>;           \
+    template<class... Ts>                                     \
+    using Type##ConstPtr = std::unique_ptr<const Type<Ts...>>
+
 /// Convenience macro to define shared pointer types for a given templated type with one template argument.
 #define NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(Tag, Type)  \
     template<class>                                        \
@@ -270,8 +292,9 @@ NOTF_OPEN_NAMESPACE
 ///     const Foo& get_foo(size_t amount) const;
 ///     Foo& get_foo(size_t amount) { return NOTF_FORWARD_CONST_AS_MUTABLE(get_foo(amount)); }
 ///
-#define NOTF_FORWARD_CONST_AS_MUTABLE(function) const_cast<decltype(function)>(\
-    const_cast<std::add_pointer_t<std::add_const_t<std::remove_reference_t<decltype(*this)>>>>(this)->function)
+#define NOTF_FORWARD_CONST_AS_MUTABLE(function) \
+    const_cast<decltype(function)>(             \
+        const_cast<std::add_pointer_t<std::add_const_t<std::remove_reference_t<decltype(*this)>>>>(this)->function)
 
 // macro overloading ================================================================================================ //
 

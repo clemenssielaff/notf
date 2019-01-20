@@ -2,6 +2,17 @@
 
 precision mediump float;
 
+in VertexData {
+    mat2x3 line_xform;
+    vec2 line_size;
+    vec2 position;
+    vec2 tex_coord;
+    flat int patch_type;
+} v_in;
+
+uniform sampler2D font_texture;
+
+
 layout(std140) uniform hello_world_and_shit {
     vec4 paintRot;
     vec4 scissorRot;
@@ -20,15 +31,6 @@ layout(std140) uniform hello_world_and_shit {
     float _padding;
 };
 
-in VertexData {
-    mat2x3 line_xform;
-    vec2 line_size;
-    vec2 position;
-    vec2 tex_coord;
-    flat int patch_type;
-} v_in;
-
-uniform sampler2D font_texture;
 
 layout(location=0) out vec4 f_color;
 

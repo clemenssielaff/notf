@@ -15,14 +15,14 @@ SCENARIO("thread", "[common][thread]") {
     }
 
     SECTION("threads can only run a single function at a time") {
-        Mutex mutex;
-        ConditionVariable condition;
+        std::mutex mutex;
+        std::condition_variable condition;
         std::atomic_bool is_ready = false;
 
         Thread worker;
         worker.run([&] {
             {
-                std::unique_lock<Mutex> lock(mutex);
+                std::unique_lock<std::mutex> lock(mutex);
                 condition.wait(lock, [&] { return is_ready.load(); });
             }
         });
@@ -79,14 +79,14 @@ SCENARIO("thread", "[common][thread]") {
     }
 
     SECTION("threads can be move-assigned") {
-        Mutex mutex;
-        ConditionVariable condition;
+        std::mutex mutex;
+        std::condition_variable condition;
         std::atomic_bool is_ready = false;
 
         Thread original(Thread::Kind::RENDER);
         original.run([&] {
             {
-                std::unique_lock<Mutex> lock(mutex);
+                std::unique_lock<std::mutex> lock(mutex);
                 condition.wait(lock, [&] { return is_ready.load(); });
             }
         });

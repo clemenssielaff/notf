@@ -1,8 +1,6 @@
 #pragma once
 
-#include <string>
-
-#include "notf/meta/types.hpp"
+#include "notf/common/size2.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -24,11 +22,8 @@ public:
     /// Destructor
     ~RawImage();
 
-    /// Width of the image in pixels.
-    int get_width() const { return m_width; }
-
-    /// Height of the image in pixels.
-    int get_height() const { return m_height; }
+    /// Size of the image in pixels.
+    const Size2i& get_size() const { return m_size; }
 
     /// Number of channels per pixel.
     int get_channels() const { return m_channels; }
@@ -47,11 +42,8 @@ private:
     /// Absolute path to the file from which the image was loaded.
     const std::string m_filepath;
 
-    /// Width of the image in pixels.
-    int m_width = 0;
-
-    /// Height of the image in pixels.
-    int m_height = 0;
+    /// Size of the image in pixels.
+    Size2i m_size;
 
     /// Number of channels per pixel.
     int m_channels = 0;

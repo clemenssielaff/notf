@@ -44,25 +44,6 @@ constexpr T wrap_mod(const L n, const R M) noexcept {
     return ((n % M) + M) % M;
 }
 
-/// Returns the next interval from a given value.
-/// For example, with an interval of 60 we would get the following results:
-///     value = 0   => interval =  60
-///     value = 1   => interval =  60
-///     value = 59  => interval =  60
-///     value = 60  => interval = 120
-///     value = 61  => interval = 120
-///     ...
-template<class Value, class Interval, class T = std::common_type_t<Value, Interval>,
-         class = std::enable_if_t<std::is_integral_v<T>>>
-constexpr T next_interval(Value value, const Interval interval) noexcept {
-    if (!interval) {
-        return value;
-    } else {
-        value += interval;
-        return value - (value % interval);
-    }
-}
-
 /// Calculate the Greatest Common Divisor of two integers.
 /// The GDC is the largest positive integer that divides each of the integers
 /// @throws value_error If one or both numbers are zero.

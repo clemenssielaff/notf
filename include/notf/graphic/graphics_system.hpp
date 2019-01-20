@@ -1,7 +1,6 @@
 #pragma once
 
 #include <atomic>
-#include <unordered_map>
 
 #include "notf/meta/singleton.hpp"
 #include "notf/meta/smart_ptr.hpp"
@@ -22,7 +21,28 @@ namespace detail {
 /// Is a singleton.
 /// Unlike the GraphicsContext class in graphics/core, the GraphicsSystem is not meant for rendering, but to be
 /// used exclusively for resource management.
-class GraphicsSystem : public GraphicsContext {
+///
+/// Resource Sharing
+/// ----------------
+///
+/// OpenGL ES allows sharing of:
+///     * vertex / index / instance buffers
+///     * render buffers
+///     * uniform buffers
+///     * shader
+///     * textures
+///     * samplers
+///     * syncs
+/// These objects are managed by the GraphicsSystem, as it is the last context to go out of scope.
+///
+/// Objects which contain references to other objects (container objects) are explicitly NOT SHARED:
+///     * framebuffers
+///     * shader programs
+///     * vertex objects
+///     * queries
+///     * transform feedbacks
+///
+class GraphicsSystem {
 
     friend TheGraphicsSystem;
 
@@ -78,12 +98,15 @@ public:
         /// subtracts slots used for internal purposed (the font atlas texture, for example).
         GLuint texture_slot_count;
 
-        /// Number of uniform buffer slots, meaning the highest valid slot is uniform_buffer_count - 1.
-        GLuint uniform_buffer_count;
+        /// Number of uniform slots, meaning the highest valid slot is uniform_slot_count - 1.
+        GLuint uniform_slot_count;
 
         /// Number of supported vertex attributes.
         /// OpenGL sais there have to be at least 16.
         GLuint vertex_attribute_count;
+
+        /// Maximum number of samples that can be specified for multisampling.
+        GLint max_sample_count;
 
         /// Texture slot reserved for the font atlas texture.
         /// Note that this is the slot number, not the enum value corresponding to the slot.
@@ -108,7 +131,10 @@ public:
     GraphicsSystem(valid_ptr<GLFWwindow*> shared_window);
 
     /// Desctructor
-    ~GraphicsSystem() override;
+    ~GraphicsSystem();
+
+    /// Ensures that the
+    GraphicsContext::Guard make_current() { return m_context->make_current(); }
 
     ///@{
     /// FontManager used to render text.
@@ -116,86 +142,52 @@ public:
     const FontManager& get_font_manager() const { return *m_font_manager; }
     ///@}
 
-    // texture ----------------------------------------------------------------
-
-    /// Checks whether the GraphicsSystem contains a Texture with the given ID.
-    /// @param id   ID of the Texture.
-    bool has_texture(const TextureId& id) { return m_textures.count(id) != 0; }
-
-    /// Finds and returns a Texture by its name.
-    /// @param id               ID of the Texture.
-    /// @throws out_of_range    If a Texture with the given id does not exist.
-    TexturePtr get_texture(const TextureId& id) const;
-
-    // shader -----------------------------------------------------------------
-
-    /// Checks whether the GraphicsSystem contains a Shader with the given ID.
-    /// @param id   ID of the Shader.
-    bool has_shader(const ShaderId& id) { return m_shaders.count(id) != 0; }
-
-    /// Finds and returns a Shader by its ID.
-    /// @param id               ID of the Shader.
-    /// @throws out_of_range    If a Shader with the given id does not exist
-    ShaderPtr get_shader(const ShaderId& id) const;
-
-    // program shader ---------------------------------------------------------
-
-    /// Checks whether the GraphicsSystem contains a ProgramShader with the given ID.
-    /// @param id   ID of the ProgramShader.
-    bool has_program(const ShaderProgramId id) { return m_programs.count(id) != 0; }
-
-    /// Finds and returns a ProgramShader by its ID.
-    /// @param id           ID of the ProgramShader.
-    /// @throws OutOfRange  If a ProgramShader with the given id does not exist
-    ShaderProgramPtr get_program(const ShaderProgramId id) const;
-
-    // framebuffer ------------------------------------------------------------
-
-    /// Checks whether the GraphicsSystem contains a FrameBuffer with the given ID.
-    /// @param id   ID of the FrameBuffer.
-    bool has_framebuffer(const FrameBufferId& id) { return m_framebuffers.count(id) != 0; }
-
-    /// Finds and returns a FrameBuffer by its ID.
-    /// @param id           ID of the FrameBuffer.
-    /// @throws OutOfRange  If a FrameBuffer with the given id does not exist
-    FrameBufferPtr get_framebuffer(const FrameBufferId& id) const;
-
-private:
-    /// Method called right after initialization of the GraphicsSystem.
-    /// At this point, the global GraphicsSystem singleton is available for other classes to use.
-    void _post_initialization();
-
-    /// Shut down implementation
-    void _shutdown_once() final;
-
-    /// Registers a new Texture with the GraphicsSystem.
-    /// @param texture          New Texture to register.
-    /// @throws NotUniqueError  If another Texture with the same ID already exists.
-    void _register_new(TexturePtr texture);
-
-    /// Registers a new Shader with the GraphicsSystem.
-    /// @param shader           New Shader to register.
-    /// @throws NotUniqueError  If another Shader with the same ID already exists.
-    void _register_new(ShaderPtr shader);
-
-    /// Registers a new FrameBuffer with the GraphicsSystem.
-    /// @param framebuffer      New FrameBuffer to register.
-    /// @throws NotUniqueError  If another FrameBuffer with the same ID already exists.
-    void _register_new(FrameBufferPtr framebuffer);
-
-    /// Registers a new Program with the GraphicsSystem.
-    /// @param program          New Program to register.
-    /// @throws NotUniqueError  If another Program with the same ID already exists.
-    void _register_new(ShaderProgramPtr program);
-
     /// Call this function after the last shader has been compiled.
     /// Might cause the driver to release the resources allocated for the compiler to free up some space, but is not
     /// guaranteed to do so.
     /// If you compile a new shader after calling this function, the driver will reallocate the compiler.
     void release_shader_compiler();
 
+private:
+    /// Method called right after initialization of the GraphicsSystem.
+    /// At this point, the global GraphicsSystem singleton is available for other classes to use.
+    void _post_initialization();
+
+    /// Registers a new IndexBuffer with the GraphicsSystem.
+    /// @param index_buffer     New IndexBuffer to register.
+    /// @throws NotUniqueError  If another IndexBuffer with the same ID already exists.
+    void _register_new(AnyIndexBufferPtr index_buffer);
+
+    /// Registers a new Shader with the GraphicsSystem.
+    /// @param shader           New Shader to register.
+    /// @throws NotUniqueError  If another Shader with the same ID already exists.
+    void _register_new(AnyShaderPtr shader);
+
+    /// Registers a new UniformBuffer with the GraphicsSystem.
+    /// @param uniform_buffer     New UniformBuffer to register.
+    /// @throws NotUniqueError  If another UniformBuffer with the same ID already exists.
+    void _register_new(AnyUniformBufferPtr uniform_buffer);
+
+    /// Registers a new VertexBuffer with the GraphicsSystem.
+    /// @param vertex_buffer    New VertexBuffer to register.
+    /// @throws NotUniqueError  If another VertexBuffer with the same ID already exists.
+    void _register_new(AnyVertexBufferPtr vertex_buffer);
+
+    /// Registers a new RenderBuffer with the GraphicsSystem.
+    /// @param renderbuffer     New RenderBuffer to register.
+    /// @throws NotUniqueError  If another RenderBuffer with the same ID already exists.
+    void _register_new(RenderBufferPtr renderbuffer);
+
+    /// Registers a new Texture with the GraphicsSystem.
+    /// @param texture          New Texture to register.
+    /// @throws NotUniqueError  If another Texture with the same ID already exists.
+    void _register_new(TexturePtr texture);
+
     // fields ---------------------------------------------------------------------------------- //
 private:
+    /// Shared context for resource management.
+    GraphicsContextPtr m_context;
+
     /// The FontManager.
     FontManagerPtr m_font_manager;
 
@@ -204,19 +196,15 @@ private:
     /// All Textures managed by the GraphicsSystem.
     /// Note that the GraphicsSystem doesn't "own" the textures, they are shared pointers, but the GraphicsSystem
     /// deallocates all Textures when it is deleted.
-    std::unordered_map<TextureId, TextureWeakPtr> m_textures;
+    std::map<TextureId, TextureWeakPtr> m_textures;
 
     /// All Shaders managed by the GraphicsSystem.
     /// See `m_textures` for details on management.
-    std::unordered_map<ShaderId, ShaderWeakPtr> m_shaders;
+    std::map<ShaderId, AnyShaderWeakPtr> m_shaders;
 
-    /// All FrameBuffers managed by the GraphicsSystem.
+    /// All RenderBuffers managed by the GraphicsSystem.
     /// See `m_textures` for details on management.
-    std::unordered_map<FrameBufferId, FrameBufferWeakPtr> m_framebuffers;
-
-    /// All ShaderPrograms managed by the GraphicsSystem.
-    /// See `m_textures` for details on management.
-    std::unordered_map<ShaderProgramId, ShaderProgramWeakPtr> m_programs;
+    std::map<RenderBufferId, RenderBufferWeakPtr> m_renderbuffers;
 };
 
 } // namespace detail
@@ -225,11 +213,13 @@ private:
 
 class TheGraphicsSystem : public ScopedSingleton<detail::GraphicsSystem> {
 
+    friend Accessor<TheGraphicsSystem, AnyIndexBuffer>;
+    friend Accessor<TheGraphicsSystem, AnyShader>;
+    friend Accessor<TheGraphicsSystem, AnyUniformBuffer>;
+    friend Accessor<TheGraphicsSystem, AnyVertexBuffer>;
     friend Accessor<TheGraphicsSystem, detail::Application>;
+    friend Accessor<TheGraphicsSystem, RenderBuffer>;
     friend Accessor<TheGraphicsSystem, Texture>;
-    friend Accessor<TheGraphicsSystem, Shader>;
-    friend Accessor<TheGraphicsSystem, FrameBuffer>;
-    friend Accessor<TheGraphicsSystem, ShaderProgram>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -263,11 +253,55 @@ private:
     void _register_new(std::shared_ptr<T> sth) {
         _get()._register_new(std::move(sth));
     }
-
-    void _shutdown() { _get()._shutdown(); }
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //
+
+template<>
+class Accessor<TheGraphicsSystem, AnyIndexBuffer> {
+    friend AnyIndexBuffer;
+
+    /// Registers a new IndexBuffer.
+    /// @param index_buffer     New IndexBuffer to register.
+    /// @throws NotUniquError   If another IndexBuffer with the same ID already exists.
+    static void register_new(AnyIndexBufferPtr index_buffer) {
+        TheGraphicsSystem()._register_new(std::move(index_buffer));
+    }
+};
+
+template<>
+class Accessor<TheGraphicsSystem, AnyShader> {
+    friend AnyShader;
+
+    /// Registers a new Shader.
+    /// @param shader           New Shader to register.
+    /// @throws NotUniquError   If another Shader with the same ID already exists.
+    static void register_new(AnyShaderPtr shader) { TheGraphicsSystem()._register_new(std::move(shader)); }
+};
+
+template<>
+class Accessor<TheGraphicsSystem, AnyUniformBuffer> {
+    friend AnyUniformBuffer;
+
+    /// Registers a new UniformBuffer.
+    /// @param uniform_buffer   New UniformBuffer to register.
+    /// @throws NotUniquError   If another UniformBuffer with the same ID already exists.
+    static void register_new(AnyUniformBufferPtr uniform_buffer) {
+        TheGraphicsSystem()._register_new(std::move(uniform_buffer));
+    }
+};
+
+template<>
+class Accessor<TheGraphicsSystem, AnyVertexBuffer> {
+    friend AnyVertexBuffer;
+
+    /// Registers a new VertexBuffer.
+    /// @param vertex_buffer    New VertexBuffer to register.
+    /// @throws NotUniquError   If another VertexBuffer with the same ID already exists.
+    static void register_new(AnyVertexBufferPtr vertex_buffer) {
+        TheGraphicsSystem()._register_new(std::move(vertex_buffer));
+    }
+};
 
 template<>
 class Accessor<TheGraphicsSystem, detail::Application> {
@@ -280,43 +314,25 @@ class Accessor<TheGraphicsSystem, detail::Application> {
 };
 
 template<>
+class Accessor<TheGraphicsSystem, RenderBuffer> {
+    friend RenderBuffer;
+
+    /// Registers a new RenderBuffer.
+    /// @param renderbuffer     New RenderBuffer to register.
+    /// @throws NotUniquError   If another RenderBuffer with the same ID already exists.
+    static void register_new(RenderBufferPtr renderbuffer) {
+        TheGraphicsSystem()._register_new(std::move(renderbuffer));
+    }
+};
+
+template<>
 class Accessor<TheGraphicsSystem, Texture> {
     friend Texture;
 
     /// Registers a new Texture.
     /// @param texture          New Texture to register.
-    /// @throws internal_error  If another Texture with the same ID already exists.
+    /// @throws NotUniquError   If another Texture with the same ID already exists.
     static void register_new(TexturePtr texture) { TheGraphicsSystem()._register_new(std::move(texture)); }
-};
-
-template<>
-class Accessor<TheGraphicsSystem, Shader> {
-    friend Shader;
-
-    /// Registers a new Shader.
-    /// @param shader           New Shader to register.
-    /// @throws internal_error  If another Shader with the same ID already exists.
-    static void register_new(ShaderPtr shader) { TheGraphicsSystem()._register_new(std::move(shader)); }
-};
-
-template<>
-class Accessor<TheGraphicsSystem, FrameBuffer> {
-    friend FrameBuffer;
-
-    /// Registers a new FrameBuffer.
-    /// @param framebuffer      New FrameBuffer to register.
-    /// @throws internal_error  If another FrameBuffer with the same ID already exists.
-    static void register_new(FrameBufferPtr fbuffer) { TheGraphicsSystem()._register_new(std::move(fbuffer)); }
-};
-
-template<>
-class Accessor<TheGraphicsSystem, ShaderProgram> {
-    friend ShaderProgram;
-
-    /// Registers a new Program.
-    /// @param program          New Program to register.
-    /// @throws internal_error  If another Program with the same ID already exists.
-    static void register_new(ShaderProgramPtr program) { TheGraphicsSystem()._register_new(std::move(program)); }
 };
 
 NOTF_CLOSE_NAMESPACE

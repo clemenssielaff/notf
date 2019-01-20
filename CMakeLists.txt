@@ -243,21 +243,8 @@ set(NOTF_GLOBAL_DEFINES ${NOTF_GLOBAL_DEFINES}
 if(NOTF_CLANG)
     set(NOTF_GLOBAL_OPTIONS
 #        -Weverything
-#        -Wno-c++98-compat
-#        -Wno-c++98-compat-pedantic
-#        -Wno-unused-macros
-#        -Wno-newline-eof
-#        -Wno-exit-time-destructors
-#        -Wno-global-constructors
-#        -Wno-gnu-zero-variadic-macro-arguments
-#        -Wno-documentation
-#        -Wno-shadow
-#        -Wno-switch-enum
-#        -Wno-missing-prototypes
-#        -Wno-used-but-marked-unused
-#        -Wno-weak-vtables
-#        -Wno-padded
-#        -Wno-weak-vtables   # used everywhere and not a problem
+        -Wno-weak-vtables
+        -Wno-covered-switch-default
 
         # clang vectorization analysis
 #        -Rpass-missed=loop-vectorized

@@ -82,12 +82,12 @@
 #include "notf/common/variant.hpp"
 
 #include "notf/graphic/graphics_system.hpp"
-#include "notf/graphic/index_array.hpp"
+#include "notf/graphic/index_buffer.hpp"
 #include "notf/graphic/shader.hpp"
 #include "notf/graphic/shader_program.hpp"
 #include "notf/graphic/text/font_manager.hpp"
 #include "notf/graphic/texture.hpp"
-#include "notf/graphic/vertex_array.hpp"
+#include "notf/graphic/vertex_buffer.hpp"
 
 namespace {
 

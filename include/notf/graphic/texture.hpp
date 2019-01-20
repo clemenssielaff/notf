@@ -1,14 +1,10 @@
 #pragma once
 
-#include <memory>
-#include <string>
-#include <vector>
-
 #include "notf/meta/smart_ptr.hpp"
 
 #include "notf/common/size2.hpp"
 
-#include "notf/graphic/fwd.hpp"
+#include "notf/graphic/graphics_context.hpp"
 
 // TODO: [engine] a texture streaming method using buffers
 
@@ -16,7 +12,9 @@ NOTF_OPEN_NAMESPACE
 
 // texture ========================================================================================================== //
 
-/// Manages the loading and setup of an OpenGL texture.
+/// A texture is an OpenGL Object that contains one or more images that all have the same image format.
+/// A texture can be used in two ways: it can be the source of a texture access from a Shader, or it can be used as a
+/// render target.
 class Texture : public std::enable_shared_from_this<Texture> {
 
     friend Accessor<Texture, detail::GraphicsSystem>;
@@ -27,14 +25,14 @@ public:
     NOTF_ACCESS_TYPE(Texture);
 
     /// Texture format.
-    enum class Format : unsigned char {
+    enum class Format {
         GRAYSCALE = 1, ///< one channel per pixel (grayscale)
         RGB = 3,       ///< 3 channels per pixel (color)
         RGBA = 4,      ///< 4 channels per pixel (color + alpha)
     };
 
     /// Filter used when sampling the texture and any of its mipmaps.
-    enum class MinFilter : unsigned char {
+    enum class MinFilter {
         NEAREST,                ///< Nearest (in Manhattan distance) value to the center of the pixel
         LINEAR,                 ///< Weighted average of the four texels closest to the center of the pixel
         NEAREST_MIPMAP_NEAREST, ///< Gets the nearest texel from the closest mipmap
@@ -44,25 +42,26 @@ public:
     };
 
     /// Filter used when only sampling the highest texture level.
-    enum class MagFilter : unsigned char {
+    enum class MagFilter {
         NEAREST, ///< Nearest (in Manhattan distance) value to the center of the pixel
         LINEAR,  ///< Weighted average of the four texels closest to the center of the pixel
     };
 
     /// How a coordinate (c) outside the texture size (n) in a given direcion is handled.
-    enum class Wrap : unsigned char {
+    enum class Wrap {
         REPEAT,          ///< Only uses the fractional part of c, creating a repeating pattern (default)
-        CLAMP_TO_EDGE,   ///< Clamps c to [1/2n,  1 - 1/2n]
+        CLAMP_TO_EDGE,   ///< Clamps c to [1/2n, 1 - 1/2n]
         MIRRORED_REPEAT, ///< Like REPEAT when the integer part of c is even, 1 - frac(c) when c is odd
     };
 
     /// Codec used to store the texture in OpenGL.
-    enum class Codec : unsigned char {
+    enum class Codec {
         RAW,  ///< All image formats that are decoded into raw pixels before upload (png, jpg, almost all of them...)
         ASTC, ///< ASTC compression
     };
 
-    enum class DataType : unsigned char {
+    /// Type of the data passed into the texture.
+    enum class DataType {
         BYTE,
         UBYTE,
         SHORT,
@@ -127,6 +126,8 @@ private:
     Texture(const GLuint id, const GLenum target, std::string name, Size2i size, const Format format);
 
 public:
+    NOTF_NO_COPY_OR_ASSIGN(Texture);
+
     /// Creates an valid but transparent texture in memory.
     /// @param name         Application-unique name of the Texture.
     /// @param size         Size of the texture in pixels.
@@ -142,30 +143,28 @@ public:
     /// @return Texture instance, is empty if the texture could not be loaded.
     static TexturePtr load_image(const std::string& file_path, std::string name, const Args& args = s_default_args);
 
-    NOTF_NO_COPY_OR_ASSIGN(Texture);
-
     /// Destructor.
     ~Texture();
 
     /// The OpenGL ID of this Texture.
-    TextureId get_id() const { return m_id; }
+    TextureId get_id() const noexcept { return m_id; }
 
     /// Checks if the Texture is still valid.
     /// A Texture should always be valid - the only way to get an invalid one is to remove the GraphicsSystem while
     /// still holding on to shared pointers of a Texture that lived in the removed GraphicsSystem.
-    bool is_valid() const { return m_id.is_valid(); }
+    bool is_valid() const noexcept { return m_id.is_valid(); }
 
     /// Texture target, e.g. GL_TEXTURE_2D for standard textures.
-    GLenum get_target() const { return m_target; }
+    GLenum get_target() const noexcept { return m_target; }
 
     /// The name of this Texture.
-    const std::string& get_name() const { return m_name; }
+    const std::string& get_name() const noexcept { return m_name; }
 
     /// The size of this texture.
-    const Size2i& get_size() const { return m_size; }
+    const Size2i& get_size() const noexcept { return m_size; }
 
     /// The format of this Texture.
-    const Format& get_format() const { return m_format; }
+    const Format& get_format() const noexcept { return m_format; }
 
     /// Sets a new filter mode when the texture pixels are smaller than scren pixels.
     void set_min_filter(const MinFilter filter);
@@ -179,8 +178,10 @@ public:
     /// Sets a new vertical wrap mode.
     void set_wrap_y(const Wrap wrap);
 
-    /// Fills the Texture with a given color.
-    void fill(const Color& color);
+    /// Completely fills the Texture with a given color.
+    void flood(const Color& color);
+
+    void bind_at(GraphicsContext& context, const uint slot); // TODO: texture binding
 
 private:
     /// Deallocates the Texture data and invalidates the Texture.

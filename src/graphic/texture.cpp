@@ -1,24 +1,17 @@
 #include "notf/graphic/texture.hpp"
 
-#include <algorithm>
 #include <fstream>
-#include <iterator>
 
-#include "notf/meta/enum.hpp"
 #include "notf/meta/log.hpp"
-
-#include "notf/common/color.hpp"
-#include "notf/common/size2.hpp"
 
 #include "notf/app/resource_manager.hpp"
 
-#include "notf/graphic/gl_errors.hpp"
 #include "notf/graphic/graphics_system.hpp"
-#include "notf/graphic/opengl.hpp"
 #include "notf/graphic/raw_image.hpp"
 
-namespace { // anonymous
 NOTF_USING_NAMESPACE;
+
+namespace { // anonymous
 
 // must be zero - as seen on: https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
 static const GLint BORDER = 0;
@@ -28,9 +21,8 @@ GLint wrap_to_gl(const Texture::Wrap wrap) {
     case Texture::Wrap::REPEAT: return GL_REPEAT;
     case Texture::Wrap::CLAMP_TO_EDGE: return GL_CLAMP_TO_EDGE;
     case Texture::Wrap::MIRRORED_REPEAT: return GL_MIRRORED_REPEAT;
+    default: NOTF_ASSERT(false);
     }
-    NOTF_ASSERT(false);
-    return GL_ZERO;
 }
 
 GLint minfilter_to_gl(const Texture::MinFilter filter) {
@@ -41,18 +33,16 @@ GLint minfilter_to_gl(const Texture::MinFilter filter) {
     case Texture::MinFilter::NEAREST_MIPMAP_LINEAR: return GL_NEAREST_MIPMAP_LINEAR;
     case Texture::MinFilter::LINEAR_MIPMAP_NEAREST: return GL_LINEAR_MIPMAP_NEAREST;
     case Texture::MinFilter::LINEAR_MIPMAP_LINEAR: return GL_LINEAR_MIPMAP_LINEAR; // trilinear filtering
+    default: NOTF_ASSERT(false);
     }
-    NOTF_ASSERT(false);
-    return GL_ZERO;
 }
 
 GLint magfilter_to_gl(const Texture::MagFilter filter) {
     switch (filter) {
     case Texture::MagFilter::NEAREST: return GL_NEAREST;
     case Texture::MagFilter::LINEAR: return GL_LINEAR;
+    default: NOTF_ASSERT(false);
     }
-    NOTF_ASSERT(false);
-    return GL_ZERO;
 }
 
 GLenum datatype_to_gl(const Texture::DataType type) {
@@ -66,33 +56,30 @@ GLenum datatype_to_gl(const Texture::DataType type) {
     case Texture::DataType::HALF: return GL_HALF_FLOAT;
     case Texture::DataType::FLOAT: return GL_FLOAT;
     case Texture::DataType::USHORT_5_6_5: return GL_UNSIGNED_SHORT_5_6_5;
+    default: NOTF_ASSERT(false);
     }
-    NOTF_ASSERT(false);
-    return GL_ZERO;
 }
 
-#ifdef NOTF_DEBUG
 void assert_is_valid(const Texture& texture) {
-    if (!texture.is_valid()) {
-        NOTF_THROW(ResourceError, "Texture \"{}\" was deallocated! Has TheGraphicsSystem been deleted?",
-                   texture.get_name());
+    if constexpr (config::is_debug_build()) {
+        if (!texture.is_valid()) {
+            NOTF_THROW(ResourceError, "Texture \"{}\" was deallocated! Has TheGraphicsSystem been deleted?",
+                       texture.get_name());
+        }
+    } else {
+        // noop
     }
 }
-#else
-void assert_is_valid(const Texture&) {} // noop
-#endif
 
 void set_texture_parameter(const Texture& texture, const GLenum name, const GLint value) {
     assert_is_valid(texture);
-    GraphicsContext::get().bind_texture(&texture, 0);
+    GraphicsContext::get().bind_texture(&texture, 0); // TODO: how do we handle `GraphicsContext::get` here?
     NOTF_CHECK_GL(glTexParameteri(texture.get_target(), name, value));
 }
 
 } // namespace
 
 // texture ========================================================================================================== //
-
-NOTF_OPEN_NAMESPACE
 
 const Texture::Args Texture::s_default_args = {};
 
@@ -130,7 +117,7 @@ TexturePtr Texture::create_empty(std::string name, Size2i size, const Args& args
         break;
     }
 
-    // create the atlas texture
+    // create the empty texture
     GLuint id = 0;
     NOTF_CHECK_GL(glGenTextures(1, &id));
     NOTF_ASSERT(id);
@@ -150,7 +137,7 @@ TexturePtr Texture::create_empty(std::string name, Size2i size, const Args& args
     NOTF_CHECK_GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_to_gl(args.wrap_horizontal)));
     NOTF_CHECK_GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_to_gl(args.wrap_vertical)));
 
-    // return the loaded texture on success
+    // return the empty texture on success
     TexturePtr texture = Texture::_create_shared(id, GL_TEXTURE_2D, name, std::move(size), args.format);
     TheGraphicsSystem::AccessFor<Texture>::register_new(texture);
     ResourceManager::get_instance().get_type<Texture>().set(std::move(name), texture);
@@ -172,8 +159,7 @@ TexturePtr Texture::load_image(const std::string& file_path, std::string name, c
         RawImage image(file_path);
         if (!image) { return {}; }
 
-        image_size.width() = image.get_width();
-        image_size.height() = image.get_height();
+        image_size = image.get_size();
         image_bytes = image.get_channels();
         image_data = std::vector<uchar>(image.get_data(), image.get_data() + (image_size.get_area() * image_bytes));
 
@@ -323,7 +309,7 @@ void Texture::set_wrap_x(const Wrap wrap) { set_texture_parameter(*this, GL_TEXT
 
 void Texture::set_wrap_y(const Wrap wrap) { set_texture_parameter(*this, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap)); }
 
-void Texture::fill(const Color& color) {
+void Texture::flood(const Color& color) {
     assert_is_valid(*this);
 
     // adjust the color to the texture
@@ -368,11 +354,10 @@ void Texture::fill(const Color& color) {
 }
 
 void Texture::_deallocate() {
-    if (m_id.is_valid()) {
-        NOTF_CHECK_GL(glDeleteTextures(1, &m_id.get_value()));
-        NOTF_LOG_TRACE("Deleted OpenGL texture with ID: {}", m_id);
-        m_id = TextureId::invalid();
-    }
-}
+    if (!m_id.is_valid()) { return; }
 
-NOTF_CLOSE_NAMESPACE
+    NOTF_CHECK_GL(glDeleteTextures(1, &m_id.get_value()));
+    m_id = TextureId::invalid();
+
+    NOTF_LOG_TRACE("Deleted Texture \"{}\"", m_name);
+}

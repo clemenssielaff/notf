@@ -13,7 +13,7 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-struct ArithmeticIdentifier {
+struct ArithmeticIdentifier { // TODO: use type detectors from concepts.hpp
 
     /// Tests if a given type is an arithmetic type.
     template<class T>

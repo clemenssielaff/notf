@@ -3,65 +3,40 @@
 #include <regex>
 #include <sstream>
 
-#include "notf/meta/assert.hpp"
 #include "notf/meta/log.hpp"
 
 #include "notf/app/resource_manager.hpp"
 
-#include "notf/graphic/gl_errors.hpp"
 #include "notf/graphic/graphics_system.hpp"
 
-namespace { // anonymous
 NOTF_USING_NAMESPACE;
+
+namespace { // anonymous
 
 /// Compiles a single Shader stage from a given source.
 /// @param program_name Name of the Shader program (for error messages).
 /// @param stage        Shader stage produced by the source.
 /// @param source       Source to compile.
 /// @return OpenGL ID of the Shader stage.
-GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag stage, const char* source) {
-    static const char* vertex = "vertex";
-    static const char* tess_ctrl = "tesselation-control";
-    static const char* tess_eval = "tesselation-evaluation";
-    static const char* geometry = "geometry";
-    static const char* fragment = "fragment";
-    static const char* compute = "compute";
-
+GLuint compile_stage(const std::string& program_name, const AnyShader::Stage::Flag stage, const char* source) {
     if (!source) { return 0; }
+
+    const char* stage_name = AnyShader::Stage::get_name(stage);
 
     // create the OpenGL Shader
     GLuint shader = 0;
-    const char* stage_name = nullptr;
     switch (stage) {
-    case Shader::Stage::VERTEX:
-        shader = glCreateShader(GL_VERTEX_SHADER);
-        stage_name = vertex;
-        break;
-    case Shader::Stage::TESS_CONTROL:
-        shader = glCreateShader(GL_TESS_CONTROL_SHADER);
-        stage_name = tess_ctrl;
-        break;
-    case Shader::Stage::TESS_EVALUATION:
-        shader = glCreateShader(GL_TESS_EVALUATION_SHADER);
-        stage_name = tess_eval;
-        break;
-    case Shader::Stage::GEOMETRY:
-        shader = glCreateShader(GL_GEOMETRY_SHADER);
-        stage_name = geometry;
-        break;
-    case Shader::Stage::FRAGMENT:
-        shader = glCreateShader(GL_FRAGMENT_SHADER);
-        stage_name = fragment;
-        break;
-    case Shader::Stage::COMPUTE:
-        shader = glCreateShader(GL_COMPUTE_SHADER);
-        stage_name = compute;
-        break;
+    case AnyShader::Stage::VERTEX: shader = glCreateShader(GL_VERTEX_SHADER); break;
+    case AnyShader::Stage::TESS_CONTROL: shader = glCreateShader(GL_TESS_CONTROL_SHADER); break;
+    case AnyShader::Stage::TESS_EVALUATION: shader = glCreateShader(GL_TESS_EVALUATION_SHADER); break;
+    case AnyShader::Stage::GEOMETRY: shader = glCreateShader(GL_GEOMETRY_SHADER); break;
+    case AnyShader::Stage::FRAGMENT: shader = glCreateShader(GL_FRAGMENT_SHADER); break;
+    case AnyShader::Stage::COMPUTE: shader = glCreateShader(GL_COMPUTE_SHADER); break;
     }
-    NOTF_ASSERT(stage_name);
 
     if (!shader) {
-        NOTF_THROW(OpenGLError, "Failed to create {} Shader object for for program \"{}\"", stage_name, program_name);
+        NOTF_THROW(OpenGLError, "Failed to create OpenGL {} shader object for for Shader \"{}\"", stage_name,
+                   program_name);
     }
 
     // compile the shader
@@ -85,7 +60,7 @@ GLuint compile_stage(const std::string& program_name, const Shader::Stage::Flag 
     return shader;
 }
 
-/// Finds the index in a given GLSL source string where custom `#defines` can be injected.
+/// Finds the index in a given GLSL source string where custom `#define`s can be injected.
 size_t find_injection_index(const std::string& source) {
     static const std::regex version_regex(R"==(\n?\s*#version\s*\d{3}\s*es[ \t]*\n)==");
     static const std::regex extensions_regex(R"==(\n\s*#extension\s*\w*\s*:\s*(?:require|enable|warn|disable)\s*\n)==");
@@ -95,7 +70,7 @@ size_t find_injection_index(const std::string& source) {
     std::smatch extensions;
     std::regex_search(source, extensions, extensions_regex);
     if (!extensions.empty()) {
-        // if the Shader contains one or more #extension strings, we have to inject the #defines after those
+        // if the Shader contains one or more #extension strings, we have to inject the `#define`s after those
         injection_index = 0;
         std::string remainder;
         do {
@@ -118,10 +93,10 @@ size_t find_injection_index(const std::string& source) {
 }
 
 /// Builds a string out of Shader Definitions.
-std::string build_defines(const Shader::Defines& defines) {
+std::string parse_definitions(const AnyShader::Definitions& definitions) {
     std::stringstream ss;
-    for (const std::pair<std::string, std::string>& define : defines) {
-        ss << "#define " << define.first << " " << define.second << "\n";
+    for (const AnyShader::Definition& definition : definitions) {
+        ss << "#define " << definition.name << " " << definition.value << "\n";
     }
     return ss.str();
 }
@@ -151,8 +126,8 @@ std::string build_glsl_header() {
         if (any_extensions) { result += "\n"; }
     }
 
-    { // ... and defines last
-        bool any_defines = false;
+    { // ... and definitions last
+        bool any_definitions = false;
         if (!extensions.gpu_shader5) {
             result += "#define int8_t    int \n"
                       "#define int16_t   int \n"
@@ -198,9 +173,9 @@ std::string build_glsl_header() {
                       "#define f16vec4  vec4 \n"
                       "#define f32vec4  vec4 \n"
                       "#define f64vec4  dvec4 \n";
-            any_defines = true;
+            any_definitions = true;
         }
-        if (any_defines) { result += "\n"; }
+        if (any_definitions) { result += "\n"; }
     }
 
     result += "// ========================================================\n";
@@ -229,29 +204,25 @@ std::string inject_header(const std::string& source, const std::string& injectio
     return source.substr(0, injection_index) + injection + source.substr(injection_index, std::string::npos);
 }
 
-#ifdef NOTF_DEBUG
-void assert_is_valid(const Shader& shader) {
-    if (!shader.is_valid()) {
-        NOTF_THROW(ResourceError, "Shader \"{}\" was deallocated! Has TheGraphicsSystem been deleted?",
-                   shader.get_name());
+void assert_is_valid(const AnyShader& shader) {
+    if constexpr (config::is_debug_build()) {
+        if (!shader.is_valid()) {
+            NOTF_THROW(ResourceError, "Shader \"{}\" was deallocated! Has TheGraphicsSystem been deleted?",
+                       shader.get_name());
+        }
+    } else {
+        // noop
     }
 }
-#else
-void assert_is_valid(const Shader&) {} // noop
-#endif
 
 } // namespace
 
 // shader =========================================================================================================== //
 
-NOTF_OPEN_NAMESPACE
-
-const Shader::Defines Shader::s_no_defines = {};
-
-Shader::~Shader() { _deallocate(); }
+AnyShader::~AnyShader() { _deallocate(); }
 
 #ifdef NOTF_DEBUG
-bool Shader::validate_now() const {
+bool AnyShader::validate_now() const {
     assert_is_valid(*this);
 
     GLint status = GL_FALSE;
@@ -268,11 +239,11 @@ bool Shader::validate_now() const {
 }
 #endif
 
-GLuint Shader::_build(const std::string& name, const Args& args) {
+GLuint AnyShader::_build(const std::string& name, const Args& args) {
     if constexpr (config::is_debug_build()) { clear_gl_errors(); }
 
     // create the program
-    // We don't use `glCreateShaderProgramv` so we could pass additional pre-link parameters.
+    // We don't use `glCreateShaderProgramv` so we can pass additional pre-link parameters.
     // For details, see:
     //     https://www.khronos.org/opengl/wiki/Interface_Matching#Separate_programs
     GLuint program = glCreateProgram();
@@ -280,12 +251,12 @@ GLuint Shader::_build(const std::string& name, const Args& args) {
     NOTF_CHECK_GL(glProgramParameteri(program, GL_PROGRAM_SEPARABLE, GL_TRUE));
 
     { // create and attach the shader stages
-        GLuint vertex_stage = compile_stage(name, Shader::Stage::VERTEX, args.vertex_source);
-        GLuint tess_ctrl_stage = compile_stage(name, Shader::Stage::TESS_CONTROL, args.tess_ctrl_source);
-        GLuint tess_eval_stage = compile_stage(name, Shader::Stage::TESS_EVALUATION, args.tess_eval_source);
-        GLuint geometry_stage = compile_stage(name, Shader::Stage::GEOMETRY, args.geometry_source);
-        GLuint fragment_stage = compile_stage(name, Shader::Stage::FRAGMENT, args.fragment_source);
-        GLuint compute_stage = compile_stage(name, Shader::Stage::COMPUTE, args.compute_source);
+        GLuint vertex_stage = compile_stage(name, AnyShader::Stage::VERTEX, args.vertex_source);
+        GLuint tess_ctrl_stage = compile_stage(name, AnyShader::Stage::TESS_CONTROL, args.tess_ctrl_source);
+        GLuint tess_eval_stage = compile_stage(name, AnyShader::Stage::TESS_EVALUATION, args.tess_eval_source);
+        GLuint geometry_stage = compile_stage(name, AnyShader::Stage::GEOMETRY, args.geometry_source);
+        GLuint fragment_stage = compile_stage(name, AnyShader::Stage::FRAGMENT, args.fragment_source);
+        GLuint compute_stage = compile_stage(name, AnyShader::Stage::COMPUTE, args.compute_source);
 
         if (vertex_stage) { NOTF_CHECK_GL(glAttachShader(program, vertex_stage)); }
         if (tess_ctrl_stage) { NOTF_CHECK_GL(glAttachShader(program, tess_ctrl_stage)); }
@@ -341,28 +312,29 @@ GLuint Shader::_build(const std::string& name, const Args& args) {
     return program;
 }
 
-void Shader::_register_with_system(const ShaderPtr& shader) {
+void AnyShader::_register_with_system(const AnyShaderPtr& shader) {
     NOTF_ASSERT(shader && shader->is_valid());
-    TheGraphicsSystem::AccessFor<Shader>::register_new(shader);
+    TheGraphicsSystem::AccessFor<AnyShader>::register_new(shader);
 }
 
-void Shader::_deallocate() {
-    if (m_id.get_value()) {
-        NOTF_CHECK_GL(glDeleteProgram(m_id.get_value()));
-        NOTF_LOG_TRACE("Deleted Shader \"{}\"", m_name);
-        m_id = ShaderId::invalid();
-    }
+void AnyShader::_deallocate() {
+    if (!m_id.get_value()) { return; }
+
+    NOTF_CHECK_GL(glDeleteProgram(m_id.get_value()));
+    m_id = ShaderId::invalid();
+
+    NOTF_LOG_TRACE("Deleted Shader \"{}\"", m_name);
 }
 
 // vertex shader ==================================================================================================== //
 
-VertexShaderPtr VertexShader::create(std::string name, const std::string& string, const Defines& defines) {
-    std::string source = inject_header(string, glsl_header() + build_defines(defines));
+VertexShaderPtr VertexShader::create(std::string name, const std::string& string, const Definitions& definitions) {
+    std::string source = inject_header(string, glsl_header() + parse_definitions(definitions));
 
     Args args;
     args.vertex_source = source.c_str();
 
-    VertexShaderPtr shader = _create_shared(Shader::_build(name, args), name, std::move(source));
+    VertexShaderPtr shader = _create_shared(AnyShader::_build(name, args), name, std::move(source));
     _register_with_system(shader);
     ResourceManager::get_instance().get_type<VertexShader>().set(std::move(name), shader);
     return shader;
@@ -371,8 +343,8 @@ VertexShaderPtr VertexShader::create(std::string name, const std::string& string
 // tesselation shader =============================================================================================== //
 
 TesselationShaderPtr TesselationShader::create(const std::string& name, const std::string& control_string,
-                                               const std::string& evaluation_string, const Defines& defines) {
-    const std::string injection_string = glsl_header() + build_defines(defines);
+                                               const std::string& evaluation_string, const Definitions& definitions) {
+    const std::string injection_string = glsl_header() + parse_definitions(definitions);
     const std::string modified_control_source = inject_header(control_string, injection_string);
     const std::string modified_evaluation_source = inject_header(evaluation_string, injection_string);
 
@@ -380,8 +352,8 @@ TesselationShaderPtr TesselationShader::create(const std::string& name, const st
     args.tess_ctrl_source = modified_control_source.c_str();
     args.tess_eval_source = modified_evaluation_source.c_str();
 
-    TesselationShaderPtr shader = _create_shared(Shader::_build(name, args), name, std::move(modified_control_source),
-                                                 std::move(modified_evaluation_source));
+    TesselationShaderPtr shader = _create_shared(
+        AnyShader::_build(name, args), name, std::move(modified_control_source), std::move(modified_evaluation_source));
     _register_with_system(shader);
     ResourceManager::get_instance().get_type<TesselationShader>().set(std::move(name), shader);
     return shader;
@@ -389,13 +361,13 @@ TesselationShaderPtr TesselationShader::create(const std::string& name, const st
 
 // geometry shader ================================================================================================== //
 
-GeometryShaderPtr GeometryShader::create(std::string name, const std::string& string, const Defines& defines) {
-    std::string source = inject_header(string, glsl_header() + build_defines(defines));
+GeometryShaderPtr GeometryShader::create(std::string name, const std::string& string, const Definitions& definitions) {
+    std::string source = inject_header(string, glsl_header() + parse_definitions(definitions));
 
     Args args;
     args.geometry_source = source.c_str();
 
-    GeometryShaderPtr shader = _create_shared(Shader::_build(name, args), name, std::move(source));
+    GeometryShaderPtr shader = _create_shared(AnyShader::_build(name, args), name, std::move(source));
     _register_with_system(shader);
     ResourceManager::get_instance().get_type<GeometryShader>().set(std::move(name), shader);
     return shader;
@@ -403,16 +375,14 @@ GeometryShaderPtr GeometryShader::create(std::string name, const std::string& st
 
 // fragment shader ================================================================================================== //
 
-FragmentShaderPtr FragmentShader::create(std::string name, const std::string& string, const Defines& defines) {
-    std::string source = inject_header(string, glsl_header() + build_defines(defines));
+FragmentShaderPtr FragmentShader::create(std::string name, const std::string& string, const Definitions& definitions) {
+    std::string source = inject_header(string, glsl_header() + parse_definitions(definitions));
 
     Args args;
     args.fragment_source = source.c_str();
 
-    FragmentShaderPtr shader = _create_shared(Shader::_build(name, args), name, std::move(source));
+    FragmentShaderPtr shader = _create_shared(AnyShader::_build(name, args), name, std::move(source));
     _register_with_system(shader);
     ResourceManager::get_instance().get_type<FragmentShader>().set(std::move(name), shader);
     return shader;
 }
-
-NOTF_CLOSE_NAMESPACE

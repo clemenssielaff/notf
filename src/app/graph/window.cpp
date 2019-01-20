@@ -73,7 +73,7 @@ Window::Window(valid_ptr<AnyNode*> parent, valid_ptr<GLFWwindow*> window, Argume
                                         NOTF_LOG_TRACE("Started closing Window \"{}\"", get<title>());
                                         this->remove();
                                     }));
-    NOTF_LOG_INFO("Created Window \"{}\" using OpenGl version: {}", get<title>(), glGetString(GL_VERSION));
+    NOTF_LOG_INFO("Created Window \"{}\" using OpenGL version: {}", get<title>(), glGetString(GL_VERSION));
 
     // finally, register with the application
     TheApplication::AccessFor<Window>::register_window(m_glfw_window);

@@ -1,12 +1,13 @@
 #include "notf/graphic/graphics_system.hpp"
 
+#include <algorithm>
+
 #include "notf/meta/exception.hpp"
 #include "notf/meta/log.hpp"
 
 #include "notf/app/resource_manager.hpp"
 
 #include "notf/graphic/frame_buffer.hpp"
-#include "notf/graphic/gl_errors.hpp"
 #include "notf/graphic/glfw.hpp"
 #include "notf/graphic/opengl.hpp"
 #include "notf/graphic/shader.hpp"
@@ -17,14 +18,13 @@
 namespace {
 NOTF_USING_NAMESPACE;
 
-/// The GraphicsSystem is the first GraphicsContext to be initialized, but it derives from GraphicsContext.
-/// Therefore, in order to have this method executed BEFORE the GraphicsContext constructor, it is injected into the
-/// call.
+/// The GraphicsSystem owns the first GraphicsContext to be initialized.
+/// In order to have this method executed BEFORE the GraphicsContext constructor, it is injected into the call.
 valid_ptr<GLFWwindow*> load_gl_functions(valid_ptr<GLFWwindow*> window) {
-    struct TinyContextGuard {
-        TinyContextGuard(GLFWwindow* window) { glfwMakeContextCurrent(window); }
-        ~TinyContextGuard() { glfwMakeContextCurrent(nullptr); }
-    } context_guard(window);
+    struct ContextGuard {
+        ContextGuard(GLFWwindow* window) { glfwMakeContextCurrent(window); }
+        ~ContextGuard() { glfwMakeContextCurrent(nullptr); }
+    } guard(window);
 
     if (!gladLoadGLES2Loader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
         NOTF_THROW(OpenGLError, "gladLoadGLES2Loader failed");
@@ -82,24 +82,35 @@ GraphicsSystem::Environment::Environment() {
     }
 
     { // texture slot count
-        GLint max_texture_slots = -1;
-        NOTF_CHECK_GL(glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_texture_slots));
-        NOTF_ASSERT(max_texture_slots >= 0);
-        texture_slot_count = static_cast<decltype(texture_slot_count)>(max_texture_slots - reserved_texture_slots);
+        GLint max_combined_texture_image_units = -1;
+        NOTF_CHECK_GL(glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_combined_texture_image_units));
+        NOTF_ASSERT(max_combined_texture_image_units >= 0);
+        texture_slot_count
+            = static_cast<decltype(texture_slot_count)>(max_combined_texture_image_units - reserved_texture_slots);
     }
 
     { // uniform buffer slot count
-        GLint max_uniform_buffer_slots = -1;
-        NOTF_CHECK_GL(glGetIntegerv(GL_MAX_UNIFORM_BUFFER_BINDINGS, &max_uniform_buffer_slots));
-        NOTF_ASSERT(max_uniform_buffer_slots >= 0);
-        uniform_buffer_count = static_cast<decltype(uniform_buffer_count)>(max_uniform_buffer_slots);
+        GLint max_uniform_buffer_bindings = -1;
+        NOTF_CHECK_GL(glGetIntegerv(GL_MAX_UNIFORM_BUFFER_BINDINGS, &max_uniform_buffer_bindings));
+        NOTF_ASSERT(max_uniform_buffer_bindings >= 0);
+        uniform_slot_count = static_cast<decltype(uniform_slot_count)>(max_uniform_buffer_bindings);
     }
 
     { // vertex attribute count
-        GLint max_vertex_attributes = -1;
-        NOTF_CHECK_GL(glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &max_vertex_attributes));
-        NOTF_ASSERT(max_vertex_attributes >= 0);
-        vertex_attribute_count = static_cast<decltype(vertex_attribute_count)>(max_vertex_attributes);
+        GLint max_vertex_attribs = -1;
+        NOTF_CHECK_GL(glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &max_vertex_attribs));
+        NOTF_ASSERT(max_vertex_attribs >= 0);
+        vertex_attribute_count = static_cast<decltype(vertex_attribute_count)>(max_vertex_attribs);
+    }
+
+    { // vertex attribute count
+        GLint max_samples = -1;
+        NOTF_CHECK_GL(glGetIntegerv(GL_MAX_SAMPLES, &max_samples));
+        NOTF_ASSERT(max_samples >= 0);
+        if (max_samples > 0) {
+            --max_samples; // in OpenGL "max" means one too many
+        }
+        max_sample_count = static_cast<decltype(max_sample_count)>(max_samples);
     }
 
     { // font atlas texture slot
@@ -120,49 +131,11 @@ const GraphicsSystem::Environment& GraphicsSystem::_get_environment() {
 }
 
 GraphicsSystem::GraphicsSystem(valid_ptr<GLFWwindow*> shared_window)
-    : GraphicsContext(load_gl_functions(shared_window)) {}
+    : m_context(std::make_unique<GraphicsContext>(load_gl_functions(shared_window))) {}
 
-GraphicsSystem::~GraphicsSystem() { _shutdown(); }
+GraphicsSystem::~GraphicsSystem() {
 
-TexturePtr GraphicsSystem::get_texture(const TextureId& id) const {
-    auto it = m_textures.find(id);
-    if (it == m_textures.end()) {
-        NOTF_THROW(IndexError, "The GraphicsSystem does not contain a Texture with ID \"{}\"", id);
-    }
-    return it->second.lock();
-}
-
-ShaderPtr GraphicsSystem::get_shader(const ShaderId& id) const {
-    auto it = m_shaders.find(id);
-    if (it == m_shaders.end()) {
-        NOTF_THROW(IndexError, "The GraphicsSystem does not contain a Shader with ID \"{}\"", id);
-    }
-    return it->second.lock();
-}
-
-ShaderProgramPtr GraphicsSystem::get_program(const ShaderProgramId id) const {
-    auto it = m_programs.find(id);
-    if (it == m_programs.end()) {
-        NOTF_THROW(IndexError, "The GraphicsSystem does not contain a ShaderProgram with ID \"{}\"", id);
-    }
-    return it->second.lock();
-}
-
-FrameBufferPtr GraphicsSystem::get_framebuffer(const FrameBufferId& id) const {
-    auto it = m_framebuffers.find(id);
-    if (it == m_framebuffers.end()) {
-        NOTF_THROW(IndexError, "The GraphicsSystem does not contain a FrameBuffer with ID \"{}\"", id);
-    }
-    return it->second.lock();
-}
-
-void GraphicsSystem::_post_initialization() { m_font_manager = FontManager::create(); }
-
-void GraphicsSystem::_shutdown_once() {
-    const auto current_guard = make_current();
-
-    // shed the GraphicsContext state
-    GraphicsContext::_shutdown_once();
+    NOTF_GUARD(m_context->make_current());
 
     // destroy the font manager
     m_font_manager.reset();
@@ -181,31 +154,26 @@ void GraphicsSystem::_shutdown_once() {
 
     // deallocate and invalidate all remaining Shaders
     for (auto itr : m_shaders) {
-        if (ShaderPtr shader = itr.second.lock()) {
+        if (AnyShaderPtr shader = itr.second.lock()) {
             NOTF_LOG_WARN("Deallocating live Shader \"{}\"", shader->get_name());
-            Shader::AccessFor<GraphicsSystem>::deallocate(*shader);
+            AnyShader::AccessFor<GraphicsSystem>::deallocate(*shader);
         }
     }
     m_shaders.clear();
 
-    // deallocate and invalidate all remaining FrameBuffers
-    for (auto itr : m_framebuffers) {
-        if (FrameBufferPtr framebuffer = itr.second.lock()) {
-            NOTF_LOG_WARN("Deallocating live FrameBuffer \"{}\"", framebuffer->get_id());
-            FrameBuffer::AccessFor<GraphicsSystem>::deallocate(*framebuffer);
+    // deallocate and invalidate all remaining RenderBuffers
+    for (auto itr : m_renderbuffers) {
+        if (RenderBufferPtr renderbuffer = itr.second.lock()) {
+            NOTF_LOG_WARN("Deallocating live RenderBuffer \"{}\"", renderbuffer->get_name());
+            RenderBuffer::AccessFor<GraphicsSystem>::deallocate(*renderbuffer);
         }
     }
-    m_framebuffers.clear();
-
-    // deallocate and invalidate all remaining ShaderPrograms
-    for (auto itr : m_programs) {
-        if (ShaderProgramPtr program = itr.second.lock()) {
-            NOTF_LOG_WARN("Deallocating live ShaderProgram \"{}\"", program->get_id());
-            ShaderProgram::AccessFor<GraphicsSystem>::deallocate(*program);
-        }
-    }
-    m_framebuffers.clear();
+    m_renderbuffers.clear();
 }
+
+void GraphicsSystem::release_shader_compiler() { NOTF_CHECK_GL(glReleaseShaderCompiler()); }
+
+void GraphicsSystem::_post_initialization() { m_font_manager = FontManager::create(); }
 
 void GraphicsSystem::_register_new(TexturePtr texture) {
     auto it = m_textures.find(texture->get_id());
@@ -219,7 +187,7 @@ void GraphicsSystem::_register_new(TexturePtr texture) {
     }
 }
 
-void GraphicsSystem::_register_new(ShaderPtr shader) {
+void GraphicsSystem::_register_new(AnyShaderPtr shader) {
     auto it = m_shaders.find(shader->get_id());
     if (it == m_shaders.end()) {
         m_shaders.emplace(shader->get_id(), shader); // insert new
@@ -231,33 +199,18 @@ void GraphicsSystem::_register_new(ShaderPtr shader) {
     }
 }
 
-void GraphicsSystem::_register_new(FrameBufferPtr framebuffer) {
-    auto it = m_framebuffers.find(framebuffer->get_id());
-    if (it == m_framebuffers.end()) {
-        m_framebuffers.emplace(framebuffer->get_id(), framebuffer); // insert new
+void GraphicsSystem::_register_new(RenderBufferPtr renderbuffer) {
+    auto it = m_renderbuffers.find(renderbuffer->get_id());
+    if (it == m_renderbuffers.end()) {
+        m_renderbuffers.emplace(renderbuffer->get_id(), renderbuffer); // insert new
     } else if (it->second.expired()) {
-        it->second = framebuffer; // update expired
+        it->second = renderbuffer; // update expired
     } else {
         NOTF_THROW(NotUniqueError,
-                   "Failed to register a new Framebuffer with the same ID as an existing Framebuffer: \"{}\"",
-                   framebuffer->get_id());
+                   "Failed to register a new RenderBuffer with the same ID as an existing RenderBuffer: \"{}\"",
+                   renderbuffer->get_id());
     }
 }
-
-void GraphicsSystem::_register_new(ShaderProgramPtr program) {
-    auto it = m_programs.find(program->get_id());
-    if (it == m_programs.end()) {
-        m_programs.emplace(program->get_id(), program); // insert new
-    } else if (it->second.expired()) {
-        it->second = program; // update expired
-    } else {
-        NOTF_THROW(NotUniqueError,
-                   "Failed to register a new ShaderProgram with the same ID as an existing ShaderProgram: \"{}\"",
-                   program->get_id());
-    }
-}
-
-void GraphicsSystem::release_shader_compiler() { NOTF_CHECK_GL(glReleaseShaderCompiler()); }
 
 } // namespace detail
 

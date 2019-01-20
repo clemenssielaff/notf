@@ -41,6 +41,12 @@ constexpr Out lowest_bits(T number, const uint count) {
     return number & (exp<T>(2, count) - 1);
 }
 
+/// Returns an integral value with all bits set to one.
+template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+constexpr T all_bits_one() {
+    return ~T(0);
+}
+
 // bit casting ====================================================================================================== //
 
 /// Like `bit_cast` but without any safe guards.

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "notf/meta/exception.hpp"
+#include "notf/meta/types.hpp"
 
 #include "notf/common/fwd.hpp"
 
@@ -199,10 +200,10 @@ void move_behind_of(std::vector<T>& vector, const size_t moved_index, const size
 }
 
 /// Checks if a vector contains a given value.
-/// @param value    Value to search for.
-template<class T, class V>
-bool contains(const std::vector<T>& vector, V&& value) {
-    return std::find(vector.begin(), vector.end(), std::forward<V>(value)) != vector.end();
+/// @param value    Value to test for.
+template<class T>
+bool contains(const std::vector<T>& vector, const identity_t<T>& value) {
+    return std::find(vector.begin(), vector.end(), value) != vector.end();
 }
 
 /// Calls the given function on each valid element and removes the rest.

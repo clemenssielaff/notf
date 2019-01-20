@@ -327,10 +327,10 @@ private:
     ShaderProgramPtr m_program;
 
     /// Patch vertices.
-    VertexArrayTypePtr m_vertices;
+    AnyVertexBufferPtr m_vertices;
 
     /// Index of the vertices.
-    IndexArrayTypePtr m_indices;
+    AnyIndexBufferPtr m_indices;
 
     /// Draw Calls.
     std::vector<DrawCall> m_drawcalls;

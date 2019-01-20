@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "notf/meta/smart_ptr.hpp"
 #include "notf/meta/types.hpp"
 
@@ -9,22 +11,23 @@
 
 NOTF_OPEN_NAMESPACE
 
-// shader =========================================================================================================== //
+// any shader ======================================================================================================= //
 
-/// Manages the loading and compilation of an OpenGL shader.
+/// Manages the loading and compilation of a single OpenGL shader.
 ///
-/// Shader baseclass.
-/// Represents a single stage in a ShaderProgram.
-/// Technically, OpenGL would call this a "program" containing a single "shader" - but in notf you only have shaders and
-/// piplines, so we ignore the nomenclature here.
-class Shader : public std::enable_shared_from_this<Shader> {
+/// We use `ShaderProgram` as a synonym for an OpenGL "program pipeline", which are multiple "shader programs" (which we
+/// simply call "Shader") linked into a single entity.
+///
+/// Shaders are shared among all GraphicContexts and managed through `shared_ptr`s. When TheGraphicSystem goes out of
+/// scope, all Shaders will be deallocated. Trying to modify a deallocated Shader will throw an exception.
+class AnyShader {
 
-    friend Accessor<Shader, detail::GraphicsSystem>;
+    friend Accessor<AnyShader, detail::GraphicsSystem>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Nested `AccessFor<T>` type.
-    NOTF_ACCESS_TYPE(Shader);
+    NOTF_ACCESS_TYPE(AnyShader);
 
     struct Stage {
         /// Individual Shader stages.
@@ -38,16 +41,35 @@ public:
             COMPUTE = 1u << 5,         ///< Compute shader (not a stage in the program).
         };
 
+        /// Human-readable name of the given Stage.
+        static const char* get_name(Flag stage) {
+            switch (stage) {
+            case VERTEX: return "vertex";
+            case TESS_CONTROL: return "tesselation-control";
+            case TESS_EVALUATION: return "tesselation-evaluation";
+            case GEOMETRY: return "geometry";
+            case FRAGMENT: return "fragment";
+            case COMPUTE: return "compute";
+            }
+        }
+
         /// Combination of Shader stages.
         using Flags = std::underlying_type_t<Flag>;
     };
 
-    /// Defines additional defines to inject into the GLSL code.
-    using Defines = std::vector<std::pair<std::string, std::string>>;
+    /// Additional definitions injected into the GLSL Shader code in the form `#define name value;`
+    struct Definition {
+        /// Name of the definition.
+        std::string name;
+
+        /// Value of the definition.
+        std::string value;
+    };
+    using Definitions = std::vector<Definition>;
 
 protected:
     /// Empty Defines used as default argument.
-    static const Defines s_no_defines;
+    static inline const Definitions s_no_definitions = {};
 
     /// Construction arguments.
     struct Args {
@@ -65,14 +87,14 @@ protected:
     /// @param id       OpenGL Shader program ID.
     /// @param stages   Program stage/s of the Shader.
     /// @param name     Name of this Shader.
-    Shader(const GLuint id, Stage::Flags stages, std::string name)
+    AnyShader(const GLuint id, Stage::Flags stages, std::string name)
         : m_name(std::move(name)), m_id(id), m_stages(stages) {}
 
 public:
-    NOTF_NO_COPY_OR_ASSIGN(Shader);
+    NOTF_NO_COPY_OR_ASSIGN(AnyShader);
 
     /// Destructor
-    virtual ~Shader();
+    virtual ~AnyShader();
 
     /// The OpenGL ID of the Shader program.
     ShaderId get_id() const { return m_id; }
@@ -104,8 +126,8 @@ protected:
 
     /// Registers the given Shader with the GraphicsSystem.
     /// @param shader           Shader to register.
-    /// @throws internal_error  If another Shader with the same ID already exists.
-    static void _register_with_system(const ShaderPtr& shader);
+    /// @throws NotUniquError   If another Shader with the same ID already exists.
+    static void _register_with_system(const AnyShaderPtr& shader);
 
 private:
     /// Deallocates the Shader data and invalidates the Shader.
@@ -126,17 +148,17 @@ private:
 // accessors -------------------------------------------------------------------------------------------------------- //
 
 template<>
-class Accessor<Shader, detail::GraphicsSystem> {
+class Accessor<AnyShader, detail::GraphicsSystem> {
     friend detail::GraphicsSystem;
 
     /// Deallocates the Shader data and invalidates the Shader.
-    static void deallocate(Shader& shader) { shader._deallocate(); }
+    static void deallocate(AnyShader& shader) { shader._deallocate(); }
 };
 
 // vertex shader ==================================================================================================== //
 
 /// Vertex Shader.
-class VertexShader : public Shader {
+class VertexShader : public AnyShader {
 
     // methods --------------------------------------------------------------------------------- //
 private:
@@ -147,15 +169,16 @@ private:
     /// @param name     Human readable name of the Shader.
     /// @param string   Source string of the Shader.
     VertexShader(const GLuint program, std::string name, std::string string)
-        : Shader(program, Stage::VERTEX, std::move(name)), m_source(std::move(string)) {}
+        : AnyShader(program, Stage::VERTEX, std::move(name)), m_source(std::move(string)) {}
 
 public:
     /// Factory.
-    /// @param name             Human readable name of the Shader.
-    /// @param string           Vertex shader source string.
-    /// @param defines          Additional definitions to inject into the shader code.
-    /// @throws internal_error  If another Shader with the same ID already exists.
-    static VertexShaderPtr create(std::string name, const std::string& string, const Defines& defines = s_no_defines);
+    /// @param name         Human readable name of the Shader.
+    /// @param string       Vertex shader source string.
+    /// @param definitions  Additional definitions to inject into the shader code.
+    /// @throws OpenGLError If the OpenGL shader program could not be created or linked.
+    static VertexShaderPtr create(std::string name, const std::string& string,
+                                  const Definitions& definitions = s_no_definitions);
 
     /// The vertex shader source code.
     const std::string& get_source() const { return m_source; }
@@ -169,7 +192,7 @@ private:
 // tesselation shader =============================================================================================== //
 
 /// Tesselation Shader.
-class TesselationShader : public Shader {
+class TesselationShader : public AnyShader {
 
     // methods --------------------------------------------------------------------------------- //
 private:
@@ -182,7 +205,7 @@ private:
     /// @param evaluation_string    Tesselation evaluation shader source string.
     TesselationShader(const GLuint program, std::string name, const std::string& control_string,
                       const std::string& evaluation_string)
-        : Shader(program, Stage::TESS_CONTROL | Stage::TESS_EVALUATION, std::move(name))
+        : AnyShader(program, Stage::TESS_CONTROL | Stage::TESS_EVALUATION, std::move(name))
         , m_control_source(std::move(control_string))
         , m_evaluation_source(std::move(evaluation_string)) {}
 
@@ -191,10 +214,11 @@ public:
     /// @param name                 Human readable name of the Shader.
     /// @param control_string       Tesselation control shader source string.
     /// @param evaluation_string    Tesselation evaluation shader source string.
-    /// @param defines              Additional definitions to inject into the shader code.
-    /// @throws internal_error      If another Shader with the same ID already exists.
+    /// @param definitions          Additional definitions to inject into the shader code.
+    /// @throws OpenGLError         If the OpenGL shader program could not be created or linked.
     static TesselationShaderPtr create(const std::string& name, const std::string& control_string,
-                                       const std::string& evaluation_string, const Defines& defines = s_no_defines);
+                                       const std::string& evaluation_string,
+                                       const Definitions& definitions = s_no_definitions);
 
     /// The teselation control shader source code.
     const std::string& get_control_source() const { return m_control_source; }
@@ -214,7 +238,7 @@ private:
 // geometry shader ================================================================================================== //
 
 /// Geometry Shader.
-class GeometryShader : public Shader {
+class GeometryShader : public AnyShader {
 
     // methods --------------------------------------------------------------------------------- //
 private:
@@ -225,15 +249,16 @@ private:
     /// @param name     Human readable name of the Shader.
     /// @param string   Source string of the Shader.
     GeometryShader(const GLuint program, std::string name, std::string string)
-        : Shader(program, Stage::GEOMETRY, std::move(name)), m_source(std::move(string)) {}
+        : AnyShader(program, Stage::GEOMETRY, std::move(name)), m_source(std::move(string)) {}
 
 public:
     /// Factory.
-    /// @param name             Human readable name of the Shader.
-    /// @param string           Geometry shader source string.
-    /// @param defines          Additional definitions to inject into the shader code.
-    /// @throws internal_error  If another Shader with the same ID already exists.
-    static GeometryShaderPtr create(std::string name, const std::string& string, const Defines& defines = s_no_defines);
+    /// @param name         Human readable name of the Shader.
+    /// @param string       Geometry shader source string.
+    /// @param definitions  Additional definitions to inject into the shader code.
+    /// @throws OpenGLError If the OpenGL shader program could not be created or linked.
+    static GeometryShaderPtr create(std::string name, const std::string& string,
+                                    const Definitions& definitions = s_no_definitions);
 
     /// The geometry shader source code.
     const std::string& get_source() const { return m_source; }
@@ -247,7 +272,7 @@ private:
 // fragment shader ================================================================================================== //
 
 /// Fragment Shader.
-class FragmentShader : public Shader {
+class FragmentShader : public AnyShader {
 
     // methods --------------------------------------------------------------------------------- //
 private:
@@ -258,15 +283,16 @@ private:
     /// @param name     Human readable name of the Shader.
     /// @param string   Source string of the Shader.
     FragmentShader(const GLuint program, std::string name, std::string string)
-        : Shader(program, Stage::FRAGMENT, std::move(name)), m_source(std::move(string)) {}
+        : AnyShader(program, Stage::FRAGMENT, std::move(name)), m_source(std::move(string)) {}
 
 public:
     /// Factory.
-    /// @param name             Human readable name of the Shader.
-    /// @param string           Fragment shader source string.
-    /// @param defines          Additional definitions to inject into the shader code.
-    /// @throws internal_error  If another Shader with the same ID already exists.
-    static FragmentShaderPtr create(std::string name, const std::string& string, const Defines& defines = s_no_defines);
+    /// @param name         Human readable name of the Shader.
+    /// @param string       Fragment shader source string.
+    /// @param definitions  Additional definitions to inject into the shader code.
+    /// @throws OpenGLError If the OpenGL shader program could not be created or linked.
+    static FragmentShaderPtr create(std::string name, const std::string& string,
+                                    const Definitions& definitions = s_no_definitions);
 
     /// The fragment shader source code.
     const std::string& get_source() const { return m_source; }
@@ -281,10 +307,25 @@ NOTF_CLOSE_NAMESPACE
 
 // common_type ====================================================================================================== //
 
+// clang-format off
+
+/// @{
 /// std::common_type specializations for ShaderPtr subclasses.
-template<class Lhs, class Rhs>
-struct std::common_type<std::shared_ptr<Lhs>, std::shared_ptr<Rhs>> {
-    using type = std::enable_if_t< //
-        std::conjunction_v<std::is_base_of<::notf::Shader, Lhs>, std::is_base_of<::notf::Shader, Rhs>>,
-        ::notf::ShaderPtr>;
-};
+template<> struct std::common_type<::notf::VertexShaderPtr, ::notf::TesselationShaderPtr> { using type = ::notf::AnyShaderPtr; };
+template<> struct std::common_type<::notf::VertexShaderPtr, ::notf::GeometryShaderPtr> { using type = ::notf::AnyShaderPtr; };
+template<> struct std::common_type<::notf::VertexShaderPtr, ::notf::FragmentShaderPtr> { using type = ::notf::AnyShaderPtr; };
+
+template<> struct std::common_type<::notf::TesselationShaderPtr, ::notf::VertexShaderPtr> { using type = ::notf::AnyShaderPtr; };
+template<> struct std::common_type<::notf::TesselationShaderPtr, ::notf::GeometryShaderPtr> { using type = ::notf::AnyShaderPtr; };
+template<> struct std::common_type<::notf::TesselationShaderPtr, ::notf::FragmentShaderPtr> { using type = ::notf::AnyShaderPtr; };
+
+template<> struct std::common_type<::notf::GeometryShaderPtr, ::notf::VertexShaderPtr> { using type = ::notf::AnyShaderPtr; };
+template<> struct std::common_type<::notf::GeometryShaderPtr, ::notf::TesselationShaderPtr> { using type = ::notf::AnyShaderPtr; };
+template<> struct std::common_type<::notf::GeometryShaderPtr, ::notf::FragmentShaderPtr> { using type = ::notf::AnyShaderPtr; };
+
+template<> struct std::common_type<::notf::FragmentShaderPtr, ::notf::VertexShaderPtr> { using type = ::notf::AnyShaderPtr; };
+template<> struct std::common_type<::notf::FragmentShaderPtr, ::notf::TesselationShaderPtr> { using type = ::notf::AnyShaderPtr; };
+template<> struct std::common_type<::notf::FragmentShaderPtr, ::notf::GeometryShaderPtr> { using type = ::notf::AnyShaderPtr; };
+/// @}
+
+// clang-format on

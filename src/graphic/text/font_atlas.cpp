@@ -11,7 +11,6 @@
 #include "notf/common/size2.hpp"
 #include "notf/common/vector.hpp"
 
-#include "notf/graphic/gl_errors.hpp"
 #include "notf/graphic/graphics_system.hpp"
 #include "notf/graphic/opengl.hpp"
 #include "notf/graphic/texture.hpp"
@@ -143,7 +142,7 @@ void FontAtlas::reset() {
     m_used_area = 0;
 
     // fill the atlas with transparency
-    m_texture->fill(Color::transparent());
+    m_texture->flood(Color::transparent());
 }
 
 Glyph::Rect FontAtlas::insert_rect(const coord_t width, const coord_t height) {

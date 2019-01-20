@@ -48,8 +48,8 @@ SCENARIO("TheApplication Singleton", "[app][application]") {
             size_t counter = 0;
             Thread other_thread;
             other_thread.run([&counter] {
-                Mutex mutex;
-                ConditionVariable variable;
+                std::mutex mutex;
+                std::condition_variable variable;
                 bool is_ready = false;
 
                 TheApplication()->schedule([&mutex, &variable, &is_ready, &counter]() {

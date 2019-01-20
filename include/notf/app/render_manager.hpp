@@ -51,10 +51,10 @@ private:
         Thread m_thread;
 
         /// Mutex guarding the RenderThread's state.
-        Mutex m_mutex;
+        std::mutex m_mutex;
 
         /// Condition variable to wait for.
-        ConditionVariable m_condition;
+        std::condition_variable m_condition;
 
         /// Windows that need to be re-rendered.
         std::deque<WindowHandle> m_dirty_windows;

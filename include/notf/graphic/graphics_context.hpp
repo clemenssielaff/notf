@@ -1,28 +1,29 @@
 #pragma once
 
+#include <map>
+#include <optional>
 #include <vector>
 
-#include "notf/meta/exception.hpp"
-#include "notf/meta/pointer.hpp"
+#include "notf/meta/smart_ptr.hpp"
 
 #include "notf/common/aabr.hpp"
 #include "notf/common/color.hpp"
 #include "notf/common/mutex.hpp"
 
 #include "notf/graphic/fwd.hpp"
-#include "notf/graphic/gl_modes.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-class Window;
-
 // graphics context ================================================================================================= //
 
-/// The GraphicsContext is an abstraction of the OpenGL graphics context.
-/// It is the object owning all NoTF graphics objects like shaders and textures.
+/// The GraphicsContext is an abstraction of an OpenGL context.
+/// It represents the OpenGL state machine and is used primarily by other classes in the `graphics` module.
+///
+/// The internal design of the GraphicsContext is a collection of hidden classes, each representing one aspect of the
+/// OpenGL state machine.
 class GraphicsContext {
 
-    friend Accessor<GraphicsContext, Window>;
+    friend Accessor<GraphicsContext, FrameBuffer>;
     friend Accessor<GraphicsContext, ShaderProgram>;
 
     // types ----------------------------------------------------------------------------------- //
@@ -30,189 +31,427 @@ public:
     /// Nested `AccessFor<T>` type.
     NOTF_ACCESS_TYPE(GraphicsContext);
 
-    /// Buffers to clear in a call to `clear`.
-    enum Buffer : unsigned char {
-        COLOR = 1u << 1,  //< Color buffer
-        DEPTH = 1u << 2,  //< Depth buffer
-        STENCIL = 1u << 3 //< Stencil buffer
-    };
-    using BufferFlags = std::underlying_type<Buffer>::type;
-
-    // context guard  ---------------------------------------------------------
+    // guard  -----------------------------------------------------------------
 
     /// Guard that makes sure that an OpenGL context is properly made current and released on a thread.
     /// Blocks until the context is free to be aquired by this thread.
-    struct NOTF_NODISCARD ContextGuard {
+    struct NOTF_NODISCARD Guard {
         friend class GraphicsContext;
 
-        // methods ------------------------------------------------------------
+        // methods --------------------------------------------------------- //
     private:
-        /// Constructor.
-        /// @param context   GraphicsContext that created the guard.
-        ContextGuard(GraphicsContext& context) : m_context(&context) { m_mutex_lock = m_context->_make_current(); }
+        /// Value constructor.
+        /// @param context  GraphicsContext that created the guard.
+        /// @param lock     Lock owning the GraphicsContext's recursive mutex.
+        Guard(GraphicsContext& context, std::unique_lock<RecursiveMutex>&& lock);
 
     public:
-        NOTF_NO_COPY_OR_ASSIGN(ContextGuard);
-        NOTF_NO_HEAP_ALLOCATION(ContextGuard);
+        NOTF_NO_COPY_OR_ASSIGN(Guard);
 
         /// Default (empty) constructor.
-        ContextGuard() = default;
+        Guard() = default;
 
         /// Move Constructor.
         /// @param other        CurrentGuard to move from.
         /// @throws ThreadError When you try to move an active guard accross thread boundaries.
-        ContextGuard(ContextGuard&& other) {
+        Guard(Guard&& other) {
             if (other.m_thread_id != m_thread_id) {
-                NOTF_THROW(ThreadError, "Cannot move a \"ContextGuard\" accross thread boundaries");
+                NOTF_THROW(ThreadError, "Cannot move a \"GraphicsContext::Guard\" accross thread boundaries");
             }
             m_context = other.m_context;
             m_mutex_lock = std::move(other.m_mutex_lock);
-
             other.m_context = nullptr;
         }
 
         /// Destructor.
-        ~ContextGuard() {
-            if (m_context) { m_context->_release_current(); }
-        }
+        ~Guard();
 
-        // fields -------------------------------------------------------------
+        // fields ---------------------------------------------------------- //
     private:
-        /// GraphicsContext that created the guard.
+        /// Id of the thread on which the guard was created.
+        const std::thread::id m_thread_id = std::this_thread::get_id();
+
+        /// GraphicsContext that created the guard (empty if default constructed).
         GraphicsContext* m_context = nullptr;
 
         /// Mutex lock.
         std::unique_lock<RecursiveMutex> m_mutex_lock;
-
-        /// Id of the thread in which the context is current.
-        const std::thread::id m_thread_id = std::this_thread::get_id();
     };
-
-    // program guard  ---------------------------------------------------------
-
-    /// RAII guard to make sure that a bound ShaderProgram is always properly unbound after use.
-    /// You can nest multiple guards, each will restore the previously bound ShaderProgram.
-    class NOTF_NODISCARD ProgramGuard {
-        friend class GraphicsContext;
-
-        // methods ------------------------------------------------------------
-    private:
-        /// Constructor.
-        /// @param context  Context that created the guard.
-        /// @param program  ShaderProgram to bind and unbind.
-        ProgramGuard(GraphicsContext& context, const ShaderProgramPtr& program)
-            : m_context(context), m_guarded_program(program), m_previous_program(context.m_state.program) {
-            context._bind_program(m_guarded_program);
-        }
-
-    public:
-        NOTF_NO_COPY_OR_ASSIGN(ProgramGuard);
-        NOTF_NO_HEAP_ALLOCATION(ProgramGuard);
-
-        /// Explicit move Constructor.
-        /// @param other    ProgramGuard to move from.
-        ProgramGuard(ProgramGuard&& other) = default;
-
-        /// Destructor.
-        ~ProgramGuard() {
-            m_context._unbind_program(m_guarded_program);
-            if (m_previous_program) { m_context._bind_program(m_previous_program); }
-        }
-
-        // fields -------------------------------------------------------------
-    private:
-        /// Context that created the guard.
-        GraphicsContext& m_context;
-
-        /// ShaderProgram to bind and unbind.
-        ShaderProgramPtr m_guarded_program;
-
-        /// Previously bound ShaderProgram, is restored on guard destruction.
-        ShaderProgramPtr m_previous_program;
-    };
-
-    // framebuffer guard  -----------------------------------------------------
-
-    /// RAII guard to make sure that a bound FrameBuffer is always properly unbound after use.
-    /// You can nest multiple guards, each will restore the previously bound FrameBuffer.
-    class NOTF_NODISCARD FramebufferGuard {
-        friend class GraphicsContext;
-
-        // methods ------------------------------------------------------------
-    private:
-        /// Constructor.
-        /// @param context      Context that created the guard.
-        /// @param framebuffer  FrameBuffer to bind and unbind.
-        FramebufferGuard(GraphicsContext& context, const FrameBufferPtr& framebuffer)
-            : m_context(context)
-            , m_guarded_framebuffer(framebuffer)
-            , m_previous_framebuffer(context.m_state.framebuffer) {
-            context._bind_framebuffer(m_guarded_framebuffer);
-        }
-
-    public:
-        NOTF_NO_COPY_OR_ASSIGN(FramebufferGuard);
-        NOTF_NO_HEAP_ALLOCATION(FramebufferGuard);
-
-        /// Explicit move Constructor.
-        /// @param other    Framebuffer to move from.
-        FramebufferGuard(FramebufferGuard&& other) = default;
-
-        /// Destructor.
-        ~FramebufferGuard() {
-            m_context._unbind_framebuffer(m_guarded_framebuffer);
-            if (m_previous_framebuffer) { m_context._bind_framebuffer(m_previous_framebuffer); }
-        }
-
-        // fields -------------------------------------------------------------
-    private:
-        /// Context that created the guard.
-        GraphicsContext& m_context;
-
-        /// FrameBuffer to bind and unbind.
-        FrameBufferPtr m_guarded_framebuffer;
-
-        /// Previously bound FrameBuffer, is restored on guard destruction.
-        FrameBufferPtr m_previous_framebuffer;
-    };
-
-    // vao guard  -------------------------------------------------------------
-
-    // TODO: Proper VAO class.
-    // Right now I bind a VAO without the context but others only with one / also VAOs cannot be shared, so they should
-    // keep a reference to their context around to check when a context tries to make them current.
-
-    /// RAII guard for vector array object bindings.
-    class NOTF_NODISCARD VaoGuard final {
-
-        // methods ------------------------------------------------------------
-    public:
-        /// Constructor.
-        /// @param vao  Vertex array object ID.
-        VaoGuard(GLuint vao);
-
-        /// Destructor.
-        ~VaoGuard();
-
-        // fields -------------------------------------------------------------
-    private:
-        /// Vertex array object ID.
-        const GLuint m_vao;
-    };
-
-    // TODO: I don't like all of these *Guards anymore, because they imply that the user doesn't know the current state
-    // of the graphics pipeline and needs to restore it after each use. Instead, with a proper GraphicsSetup object, all
-    // of the binding / -rebinding and unbinding should be done declaratively
 
 private:
-    /// UniformBuffers are always bound at a specific index.
-    struct UniformBinding {
-        /// Bound buffer.
-        AnyUniformBufferPtr buffer;
+    // stencil mask -----------------------------------------------------------
 
-        /// Index at which the buffer is bound.
-        /// The byte offset into the buffer is calculated using `index * sizeof(UniformBuffer::block_t)`.
-        size_t index = 0;
+    struct _StencilMask {
+        NOTF_NO_COPY_OR_ASSIGN(_StencilMask);
+
+        /// Default constructor.
+        _StencilMask() = default;
+
+        /// Assignment operator.
+        /// @param mask     New stencil mask.
+        void operator=(StencilMask mask);
+
+        /// Current stencil mask.
+        operator StencilMask() const { return m_mask; }
+
+        /// Comparison operator.
+        bool operator==(const GLuint& other) const { return m_mask == other; }
+
+        // fields ---------------------------------------------------------- //
+    private:
+        /// Value of the stencil mask.
+        StencilMask m_mask;
+    };
+
+    // blend mode -------------------------------------------------------------
+
+    struct _BlendMode {
+        NOTF_NO_COPY_OR_ASSIGN(_BlendMode);
+
+        /// Default constructor.
+        _BlendMode() = default;
+
+        /// Assignment operator.
+        /// @param mode New blend mode.
+        void operator=(const BlendMode mode);
+
+        /// Current BlendMode.
+        operator BlendMode() const { return m_mode; }
+
+        /// Comparison operator.
+        bool operator==(const BlendMode& other) const { return m_mode == other; }
+
+        // fields ---------------------------------------------------------- //
+    private:
+        /// Current BlendMode.
+        BlendMode m_mode;
+    };
+
+    // framebuffer binding ----------------------------------------------------
+
+    struct _FrameBuffer {
+        NOTF_NO_COPY_OR_ASSIGN(_FrameBuffer);
+
+        /// Default Constructor.
+        _FrameBuffer() = default;
+
+        /// Destructor.
+        ~_FrameBuffer() { operator=(nullptr); }
+
+        /// Assignment operator.
+        /// @param framebuffer  New FrameBuffer to bind.
+        void operator=(FrameBufferPtr framebuffer);
+
+        /// Currently bound FrameBuffer (can be empty).
+        operator FrameBufferPtr() const { return m_framebuffer; }
+
+        /// @{
+        /// Comparison operators.
+        bool operator==(const FrameBuffer* framebuffer) const { return m_framebuffer.get() == framebuffer; }
+        bool operator==(const FrameBuffer& framebuffer) const { return operator==(&framebuffer); }
+        bool operator==(const FrameBufferPtr& framebuffer) const { return operator==(framebuffer.get()); }
+        /// @}
+
+        // fields ---------------------------------------------------------- //
+    private:
+        /// Currently bound FrameBuffer (can be empty).
+        FrameBufferPtr m_framebuffer;
+    };
+
+    // shader program binding -------------------------------------------------
+
+    struct _ShaderProgram {
+        NOTF_NO_COPY_OR_ASSIGN(_ShaderProgram);
+
+        /// Default Constructor.
+        _ShaderProgram() = default;
+
+        /// Destructor.
+        ~_ShaderProgram() { operator=(nullptr); }
+
+        /// Assignment operator.
+        /// @param program  New ShaderProgram to bind.
+        void operator=(ShaderProgramPtr program);
+
+        /// Currently bound ShaderProgram (can be empty).
+        operator ShaderProgramPtr() const { return m_program; }
+
+        /// @{
+        /// Comparison operators.
+        bool operator==(const ShaderProgram* program) const { return m_program.get() == program; }
+        bool operator==(const ShaderProgram& program) const { return operator==(&program); }
+        bool operator==(const ShaderProgramPtr& program) const { return operator==(program.get()); }
+        /// @}
+
+        // fields ---------------------------------------------------------- //
+    private:
+        /// Bound ShaderProgram.
+        ShaderProgramPtr m_program;
+    };
+
+    // texture slots ----------------------------------------------------------
+
+    /// All Texture slots of the GraphicsContext's state.
+    struct _TextureSlots {
+
+        // types ----------------------------------------------------------- //
+    private:
+        struct Slot {
+            NOTF_NO_COPY_OR_ASSIGN(Slot);
+
+            /// Constructor.
+            /// @param slot     Slot index.
+            Slot(const GLuint index) : m_index(index) {}
+
+            /// Destructor.
+            ~Slot() { operator=(nullptr); }
+
+            /// Assignment operator.
+            /// @param texture  New Texture to bind.
+            void operator=(TexturePtr texture);
+
+            /// Currently bound Texture (can be empty).
+            operator TexturePtr() const { return m_texture; }
+
+            /// @{
+            /// Comparison operators.
+            bool operator==(const Texture* texture) const { return m_texture.get() == texture; }
+            bool operator==(const Texture& texture) const { return operator==(&texture); }
+            bool operator==(const TexturePtr& texture) const { return operator==(texture.get()); }
+            /// @}
+
+            // fields ------------------------------------------------------ //
+        private:
+            /// Texture bound to the slot.
+            TexturePtr m_texture;
+
+            /// Slot index.
+            const GLuint m_index;
+        };
+
+        // methods --------------------------------------------------------- //
+    public:
+        NOTF_NO_COPY_OR_ASSIGN(_TextureSlots);
+
+        /// Default Constructor.
+        _TextureSlots() = default;
+
+        /// TextureSlot access operator.
+        /// @param index        Index of the requested slot.
+        /// @throws IndexError  If the given slot index is >= the number of texture slots provided by the sytem.
+        Slot& operator[](const GLuint index);
+
+        /// Remove all texture bindings.
+        void clear() { m_slots.clear(); }
+
+        // fields ---------------------------------------------------------- //
+    private:
+        /// All texture slots.
+        std::map<GLuint, Slot> m_slots;
+    };
+
+    // uniform slots -----------------------------------------------------------
+
+    struct _UniformSlots {
+
+        // types ----------------------------------------------------------- //
+    private:
+        /// A GraphicsContext provides `GL_MAX_UNIFORM_BUFFER_BINDINGS` UniformSlots that can be bound to by a single
+        /// UniformBuffer providing and multiple UniformBlocks receiving data.
+        struct Slot {
+
+            // types ------------------------------------------------------- //
+        private:
+            /// Every UniformSlot is bound by 0-1 UniformBuffer object.
+            class BufferBinding {
+                friend Slot;
+
+                // methods ------------------------------------------------- //
+            private:
+                /// Constructor.
+                /// @param slot     Slot index.
+                BufferBinding(const GLuint slot_index) : m_slot_index(slot_index) {}
+
+            public:
+                /// Destructor.
+                ~BufferBinding() { _set(nullptr); }
+
+                /// Bound UniformBuffer.
+                const AnyUniformBufferPtr& get_buffer() const { return m_buffer; }
+
+                /// Offset at which the buffer is bound in blocks.
+                /// Calculate the offset in bytes using `offset * sizeof(UniformBuffer::block_t)`.
+                size_t get_offset() const { return m_offset; }
+
+            private:
+                /// Sets the UniformBuffer and offset stored in this binding.
+                /// If another buffer is already bound, it will be replaced.
+                /// If the same buffer is bound at another index, this call will re-bind the buffer at the new index.
+                /// @param buffer   New UniformBuffer to bind.
+                /// @param offset   Offset at which the buffer is bound in blocks.
+                void _set(AnyUniformBufferPtr buffer, size_t offset = 0);
+
+                // fields -------------------------------------------------- //
+            private:
+                /// Bound UniformBuffer.
+                AnyUniformBufferPtr m_buffer;
+
+                /// Offset at which the buffer is bound in blocks.
+                /// Calculate the offset in bytes using `offset * sizeof(UniformBuffer::block_t)`.
+                size_t m_offset;
+
+                /// Slot index.
+                GLuint m_slot_index;
+            };
+
+            /// Every UniformSlot can be bound to by 0-n UniformBlocks.
+            struct BlockBinding {
+                friend Slot;
+
+                // methods ------------------------------------------------- //
+            private:
+                /// Constructor.
+                /// @param slot     Slot index.
+                BlockBinding(ShaderProgramConstPtr program, const GLuint block_index, const GLuint slot_index);
+
+            public:
+                /// Destructor.
+                ~BlockBinding() { _set(0); }
+
+                /// ShaderProgram containing the bound UniformBlock.
+                const ShaderProgramConstPtr& get_program() const { return m_program; }
+
+                /// Index of the UniformBlock in the ShaderProgram.
+                size_t get_block_index() const { return m_block_index; }
+
+            private:
+                /// Updates the block binding, is called from both the constructor and destructor.
+                void _set(const GLuint slot_index);
+
+                // fields -------------------------------------------------- //
+            private:
+                /// ShaderProgram containing the bound UniformBlock.
+                ShaderProgramConstPtr m_program;
+
+                /// Index of the UniformBlock in the ShaderProgram.
+                GLuint m_block_index;
+
+                /// ShaderID of the VertexShader referred to by the bound UniformBlock.
+                ShaderId m_vertex_shader_id = ShaderId::invalid();
+
+                /// ShaderID of the FragmentShader referred to by the bound UniformBlock.
+                ShaderId m_fragment_shader_id = ShaderId::invalid();
+            };
+
+            using UniformBlock = detail::UniformBlock;
+
+            // methods ----------------------------------------------------- //
+        public:
+            NOTF_NO_COPY_OR_ASSIGN(Slot);
+
+            /// Constructor.
+            /// @param slot     Slot index.
+            Slot(const GLuint index) : m_buffer(index) {}
+
+            /// Destructor.
+            ~Slot() { clear(); }
+
+            /// Assignment operator for UniformBuffers.
+            /// @param buffer   New UniformBuffer to bind.
+            void operator=(AnyUniformBufferPtr buffer) { bind(std::move(buffer)); }
+
+            /// Currently bound UniformBuffer (can be empty).
+            const BufferBinding& get_buffer_binding() const { return m_buffer; }
+
+            /// Returns all UniformBlock bindings.
+            const std::vector<const BlockBinding>& get_block_bindings() const { return m_blocks; }
+
+            /// Removes all bindings from this UniformSlot.
+            void clear() {
+                remove_buffer();
+                remove_blocks();
+            }
+
+            /// Remove the bound UniformBuffer from this slot. Does nothing if no buffer is bound.
+            void remove_buffer() { m_buffer._set({}, 0); }
+
+            /// Remove the bound UniformBlock/s from this slot. Does nothing if no blocks are bound.
+            void remove_blocks() { m_blocks.clear(); }
+
+            /// Bind a new UniformBuffer to this slot at the given index.
+            /// If another buffer is already bound, it will be replaced.
+            /// If the same buffer is bound at another index, this call will re-bind the buffer at the new index.
+            /// @param buffer   Buffer to bind.
+            /// @param index    Index in the UniformBuffer at which to bind (in blocks).
+            void bind(AnyUniformBufferPtr buffer, size_t offset = 0) { m_buffer._set(std::move(buffer), offset); }
+
+            /// Binds a new UniformBlock to this slot.
+            /// If the same block is already bound, this does nothing.
+            /// Other bound blocks are not affected.
+            /// @param block    New UniformBlock to bind.
+            void bind(const UniformBlock& block);
+
+            // fields ------------------------------------------------------ //
+        private:
+            /// Bound UniformBuffer.
+            BufferBinding m_buffer;
+
+            /// Bound UniformBlocks.
+            std::vector<const BlockBinding> m_blocks;
+        };
+
+        // methods --------------------------------------------------------- //
+    public:
+        NOTF_NO_COPY_OR_ASSIGN(_UniformSlots);
+
+        /// Default Constructor.
+        _UniformSlots() = default;
+
+        /// UniformSlot access operator.
+        /// @param index        Index of the requested slot.
+        /// @throws IndexError  If the given slot index is >= the number of uniform slots provided by the sytem.
+        Slot& operator[](const GLuint index);
+
+        /// Remove all texture bindings.
+        void clear() { m_slots.clear(); }
+
+        // fields ---------------------------------------------------------- //
+    private:
+        /// All uniform slots.
+        std::map<GLuint, Slot> m_slots;
+    };
+
+    // state ------------------------------------------------------------------
+
+    /// The combined, current State of the GraphicsContext.
+    struct State {
+
+        /// Blend mode.
+        _BlendMode blend_mode;
+
+        /// Culling.
+        CullFace cull_face = CullFace::DEFAULT;
+
+        /// Stencil mask.
+        _StencilMask stencil_mask;
+
+        /// Bound ShaderProgram.
+        _ShaderProgram program;
+
+        /// Bound Framebuffer.
+        _FrameBuffer framebuffer;
+
+        /// Bound textures.
+        _TextureSlots texture_slots;
+
+        /// Bound UniformBuffer
+        _UniformSlots uniform_slots;
+
+        /// Color applied at the beginning of the frame when the default framebuffer is cleared.
+        Color clear_color = Color::black();
+
+        /// On-screen AABR that is rendered into.
+        Aabri render_area;
     };
 
     // methods --------------------------------------------------------------------------------- //
@@ -220,58 +459,50 @@ public:
     NOTF_NO_COPY_OR_ASSIGN(GraphicsContext);
 
     /// Constructor.
-    /// @param window           GLFW window displaying the contents of this context.
-    /// @throws runtime_error   If the given window is invalid.
-    /// @throws runtime_error   If another current OpenGL context exits.
-    GraphicsContext(valid_ptr<GLFWwindow*> window);
+    /// @param name         Human-readable name of this GraphicsContext. Should be unique, but doesn't have to be.
+    /// @param window       GLFW window displaying the contents of this context.
+    /// @throws OpenGLError If the window failed to create an OpenGL context.
+    GraphicsContext(std::string name, valid_ptr<GLFWwindow*> window);
 
     /// Destructor.
-    virtual ~GraphicsContext();
+    ~GraphicsContext();
 
-    /// Returns the GraphicsContext current on this thread or the Graphics System.
+    /// Returns the GraphicsContext current on this thread.
+    /// @throws OpenGLError If no context is current on this thread.
     static GraphicsContext& get();
+
+    /// Human-readable name of this GraphicsContext.
+    const std::string& get_name() const { return m_name; }
+
+    /// Tests if the GraphicsContext is current on this thread.
+    bool is_current() const { return m_mutex.is_locked_by_this_thread(); }
+
+    /// Tests whether two GraphicsContexts are the same.
+    bool operator==(const GraphicsContext& other) const { return m_window == other.m_window; }
 
     /// Makes the GraphicsContext current on this thread.
     /// Blocks until the GraphicsContext's mutex is free.
+    /// @param assume_is_current    If set to true, assume that the context is already current and log a warning if you
+    ///                             need to block.
     /// @throws ThreadError If another context is already current on this thread.
-    ContextGuard make_current();
+    Guard make_current(bool assume_is_current = true);
 
-#ifdef NOTF_DEBUG
-    /// Tests if the GraphicsContext is current on this thread.
-    bool is_current() const { return m_mutex.is_locked_by_this_thread(); }
-#endif
+    //    /// Returns the size of the context's default FrameBuffer in pixels.
+    //    /// The default FrameBuffer is provided by the OS and represents the renderable area of the application's
+    //    window.
+    //    /// As such, we can only render to it but not modify it in any other way.
+    //    Size2i get_default_framebuffer_size() const;
 
-    /// Tests whether two GraphicsContexts are the same.
-    bool operator==(const GraphicsContext& other) const { return _get_window() == other._get_window(); }
+    //    /// Define a new area that is rendered into.
+    //    /// @param offset   New area.
+    //    /// @param force    Ignore the current state and always make the OpenGL call.
+    //    /// @throws ValueError  If the given area is invalid.
+    //    void set_render_area(Aabri area, const bool force = false);
 
-    /// Returns the size of the context's window in pixels.
-    /// Note that this might not be the current render size. For example, if you are currently rendering into a
-    /// FrameBuffer that has a color texture of size 128x128, the window size is most likely much larger than that.
-    Size2i get_window_size() const;
-
-    /// Area that is rendered into.
-    const Aabri& get_render_area() const { return m_state.render_area; }
-
-    /// Applies the given stencil mask.
-    /// @param mask     Mask to apply.
-    /// @param force    Ignore the current state and always make the OpenGL call.
-    void set_stencil_mask(const GLuint mask, const bool force = false);
-
-    /// Applies the given blend mode to OpenGL.
-    /// @param mode     Blend mode to apply.
-    /// @param force    Ignore the current state and always make the OpenGL call.
-    void set_blend_mode(const BlendMode mode, const bool force = false);
-
-    /// Define a new area that is rendered into.
-    /// @param offset   New area.
-    /// @param force    Ignore the current state and always make the OpenGL call.
-    /// @throws ValueError  If the given area is invalid.
-    void set_render_area(Aabri area, const bool force = false);
-
-    /// Sets the new clear color.
-    /// @param color    Color to apply.
-    /// @param buffers  Buffers to clear.
-    void clear(Color color, const BufferFlags buffers = Buffer::COLOR);
+    //    /// Sets the new clear color.
+    //    /// @param color    Color to apply.
+    //    /// @param buffers  Buffers to clear.
+    //    void clear(Color color, const GLBuffers buffers = GLBuffer::COLOR);
 
     /// Begins the render of a frame.
     void begin_frame();
@@ -279,174 +510,91 @@ public:
     /// Finishes the render of a frame.
     void finish_frame();
 
-    /// Binds the given texture at the given texture slot.
-    /// Only results in an OpenGL call if the texture is not currently bound.
-    /// @param texture      Texture to bind.
-    /// @param slot         Texture slot to bind the texture to.
-    /// @throws OpenGLError If the texture is not valid or if the slot is >= than the number of texture slots in the
-    ///                     environment.
-    void bind_texture(const Texture* get_texture, uint slot);
-    void bind_texture(const TexturePtr& texture, uint slot) { bind_texture(texture.get(), slot); }
-
-    /// Unbinds the current texture and clears the context's texture stack.
-    /// @param slot         Texture slot to clear.
-    /// @throws OpenGLError If slot is >= than the number of texture slots in the environment.
-    void unbind_texture(uint slot);
-
-    /// Binds the given Program.
-    /// @param program  ShaderProgram to bind.
-    /// @returns        Guard, making sure that the ShaderProgram is properly unbound and the previous one restored
-    ///                 after use.
-    ProgramGuard bind_program(const ShaderProgramPtr& program) { return ProgramGuard(*this, program); }
-
-    /// Binds the given FrameBuffer, if it is not already bound.
-    /// @param framebuffer  FrameBuffer to bind.
-    /// @returns Guard, making sure that the FrameBuffer is properly unbound and the previous one restored after use.
-    FramebufferGuard bind_framebuffer(const FrameBufferPtr& framebuffer) {
-        return FramebufferGuard(*this, framebuffer);
+    /// @{
+    /// Access to the GraphicsContext's state.
+    /// @throws OpenGLError If the context is not current.
+    const State* operator->() const {
+        if (!is_current()) {
+            NOTF_THROW(OpenGLError, "Cannot access a GraphicsContext's state without the context being current");
+        }
+        return &m_state;
     }
+    State* operator->() { return NOTF_FORWARD_CONST_AS_MUTABLE(operator->()); }
+    /// @}
 
-protected:
-    /// The GLFW window owning the associated OpenGL context.
-    GLFWwindow* _get_window() const { return m_window; }
-
-    /// Shuts the GraphicsContext down for good.
-    void _shutdown() {
-        std::call_once(m_was_closed, [&] { _shutdown_once(); });
-    }
-
-    /// Shut down implementation
-    virtual void _shutdown_once();
+    /// Reset the GraphicsContext state.
+    void reset();
 
 private:
-    /// Makes the GraphicsSystem's OpenGL context current on the current thread.
-    /// Does nothing if the context is already current.
-    /// @returns Mutex lock.
-    std::unique_lock<RecursiveMutex> _make_current();
+    /// Registers a new FrameBuffer with this GraphicsContext.
+    /// @param framebuffer     New FrameBuffer to register.
+    /// @throws NotUniqueError  If another FrameBuffer with the same ID already exists.
+    void _register_new(FrameBufferPtr framebuffer);
 
-    /// Decreases the recursion count of this the GraphicsSystem's context.
-    void _release_current();
-
-    /// Unbinds bound texures from all slots.
-    void _unbind_all_textures();
-
-    /// Create a new State.
-    void _reset_state();
-
-    // program ----------------------------------------------------------------
-
-    /// Binds the given ShaderProgram, if it is not already bound.
-    /// @param program  ShaderProgram to bind.
-    void _bind_program(const ShaderProgramPtr& program);
-
-    /// Unbinds the current ShaderProgram.
-    /// @param program  Only unbind the current ShaderProgram, if it is equal to the one given. If empty (the default),
-    ///                 the current ShaderProgram is always unbound.
-    void _unbind_program(const ShaderProgramPtr& program = {});
-
-    // framebuffer ------------------------------------------------------------
-
-    /// Binds the given FrameBuffer, if it is not already bound.
-    /// @param framebuffer  FrameBuffer to bind.
-    void _bind_framebuffer(const FrameBufferPtr& framebuffer);
-
-    /// Unbinds the current FrameBuffer.
-    /// @param framebuffer  Only unbind the current FrameBuffer, if it is equal to the one given. If empty (the
-    ///                     default), the current FrameBuffer is always unbound.
-    void _unbind_framebuffer(const FrameBufferPtr& framebuffer = {});
-
-    // uniform buffer ---------------------------------------------------------
-
-    /// Binds the given UniformBuffer at the given slot, if it is not already bound.
-    /// @param slot             Uniform buffer binding slot.
-    /// @param uniform_buffer   UniformBuffer to bind.
-    /// @param index            Index of the UniformBuffer to bind.
-    /// @throws OpenGLError     If slot is >= the maximal number of available uniform buffer slots.
-    /// @throws IndexError      If index is >= the number of blocks in the UniformBuffer.
-    void _bind_uniform_buffer(const uint slot, const AnyUniformBufferPtr& uniform_buffer, const size_t index);
-
-    /// Unbinds the current UniformBuffer from the given slot.
-    /// @param slot             Uniform buffer binding slot.
-    /// @throws OpenGLError     If slot is >= the maximal number of available uniform buffer slots.
-    void _unbind_uniform_buffer(const uint slot);
+    /// Registers a new Program this the GraphicsContext.
+    /// @param program          New Program to register.
+    /// @throws NotUniqueError  If another Program with the same ID already exists.
+    void _register_new(ShaderProgramPtr program);
 
     // fields ---------------------------------------------------------------------------------- //
-protected:
-    /// Flag to indicate whether the GraphicsContext has already been closed.
-    std::once_flag m_was_closed;
-
 private:
+    /// Human-readable name of this GraphicsContext.
+    std::string m_name;
+
     /// The GLFW window owning the associated OpenGL context.
     GLFWwindow* m_window;
 
     /// Mutex to make sure that only one thread is accessing the GraphicsSystem's OpenGL context at any time.
     RecursiveMutex m_mutex;
 
-    /// Number of times the mutex was locked.
-    int m_recursion_counter = 0;
-
     /// The current state of the context.
-    struct State {
+    State m_state;
 
-        /// Blend mode.
-        BlendMode blend_mode = BlendMode::DEFAULT;
+    /// Every OpenGL context has an implicit "default framebuffer" that is supplied by the OS and represents the area
+    /// of the window that the context can draw into.
+    /// The GraphicsContext has no control over the size or format of the default buffer, nor are we able to bind any
+    /// RenderBuffer or textures to it, but it can be modified like any other FrameBuffer.
+    FrameBufferPtr m_default_framebuffer;
+    // TODO: for now, I have removed all functions related to the default FrameBuffer from the GraphicsContext
+    //       ... clearly, we need them somewhere, preferably in the FrameBuffer class, but since it's not building right
+    //       now, I don't want to just assume how things would work
 
-        /// Culling.
-        CullFace cull_face = CullFace::DEFAULT;
+    // resources --------------------------------------------------------------
 
-        /// Stencil mask.
-        GLuint stencil_mask = 0xffffffff;
+    /// All FrameBuffers managed by this GraphicsContext.
+    /// See TheGraphicsSystem for details on resource management.
+    std::map<FrameBufferId, FrameBufferWeakPtr> m_framebuffers;
 
-        /// Bound textures.
-        std::vector<TextureConstPtr> texture_slots; // TODO: this should be a std::map
-
-        /// Bound ShaderProgram.
-        ShaderProgramPtr program;
-
-        /// Bound Framebuffer.
-        FrameBufferPtr framebuffer;
-
-        /// Bound UniformBuffer
-        std::vector<UniformBinding> uniform_buffers; // TODO: this should be a std::map
-
-        /// Color applied when the bound framebuffer is cleared.
-        Color clear_color = Color::black();
-
-        /// On-screen AABR that is rendered into.
-        Aabri render_area;
-    } m_state;
+    /// All ShaderPrograms managed by this GraphicsContext.
+    /// See TheGraphicsSystem for details on resource management.
+    std::map<ShaderProgramId, ShaderProgramWeakPtr> m_programs;
 };
 
 // graphics context accessor ======================================================================================== //
 
 template<>
-class Accessor<GraphicsContext, Window> {
-    friend class Window;
+class Accessor<GraphicsContext, FrameBuffer> {
+    friend FrameBuffer;
 
-    /// Shuts the GraphicsContext down for good.
-    static void shutdown(GraphicsContext& context) { context._shutdown(); }
+    /// Registers a new FrameBuffer.
+    /// @param context          GraphicsContext to access.
+    /// @param framebuffer     New FrameBuffer to register.
+    /// @throws internal_error  If another FrameBuffer with the same ID already exists.
+    static void register_new(GraphicsContext& context, FrameBufferPtr framebuffer) {
+        context._register_new(std::move(framebuffer));
+    }
 };
 
 template<>
 class Accessor<GraphicsContext, ShaderProgram> {
-    friend class ShaderProgram;
+    friend ShaderProgram;
 
-    /// Binds the given UniformBuffer at the given slot, if it is not already bound.
-    /// @param slot             Uniform buffer binding slot.
-    /// @param uniform_buffer   UniformBuffer to bind.
-    /// @param index            Index of the UniformBuffer to bind.
-    /// @throws OpenGLError     If slot is >= the maximal number of available uniform buffer slots.
-    /// @throws IndexError      If index is >= the number of blocks in the UniformBuffer.
-    static void bind_uniform_buffer(GraphicsContext& context, const uint slot,
-                                    const AnyUniformBufferPtr& uniform_buffer, const size_t index) {
-        context._bind_uniform_buffer(slot, uniform_buffer, index);
-    }
-
-    /// Unbinds the current UniformBuffer from the given slot.
-    /// @param slot             Uniform buffer binding slot.
-    /// @throws OpenGLError     If slot is >= the maximal number of available uniform buffer slots.
-    static void unbind_uniform_buffer(GraphicsContext& context, const uint slot) {
-        context._unbind_uniform_buffer(slot);
+    /// Registers a new Program.
+    /// @param context          GraphicsContext to access.
+    /// @param program          New Program to register.
+    /// @throws internal_error  If another Program with the same ID already exists.
+    static void register_new(GraphicsContext& context, ShaderProgramPtr program) {
+        context._register_new(std::move(program));
     }
 };
 
