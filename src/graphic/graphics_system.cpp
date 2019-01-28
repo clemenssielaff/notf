@@ -5,6 +5,7 @@
 #include "notf/meta/exception.hpp"
 #include "notf/meta/log.hpp"
 
+#include "notf/app/graph/window.hpp" // TODO: try to move graph includes out of graphics
 #include "notf/app/resource_manager.hpp"
 
 #include "notf/graphic/frame_buffer.hpp"
@@ -169,6 +170,15 @@ GraphicsSystem::~GraphicsSystem() {
         }
     }
     m_renderbuffers.clear();
+}
+
+GraphicsContext& GraphicsSystem::get_any_context() {
+    if (GLFWwindow* glfw_window = glfwGetCurrentContext()) {
+        if (void* user_pointer = glfwGetWindowUserPointer(glfw_window)) {
+            return static_cast<Window*>(user_pointer)->get_graphics_context();
+        }
+    }
+    return get_internal_context();
 }
 
 void GraphicsSystem::release_shader_compiler() { NOTF_CHECK_GL(glReleaseShaderCompiler()); }

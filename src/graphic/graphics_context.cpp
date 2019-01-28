@@ -73,6 +73,36 @@ void GraphicsContext::_FrameBuffer::operator=(FrameBufferPtr framebuffer) {
     }
 }
 
+Size2i GraphicsContext::_FrameBuffer::get_size() const {
+    Size2i result;
+    glfwGetFramebufferSize(m_context.m_window, &result[0], &result[1]);
+    // TODO: glfwGetFramebufferSize must only be called from the main thread
+    //       - or even better: the framebuffer size is actively updated with events, pushed rather than pulled
+    return result;
+}
+
+void GraphicsContext::_FrameBuffer::set_render_area(Aabri area, const bool force) {
+    if (!area.is_valid()) { NOTF_THROW(ValueError, "Cannot set to an invalid render area"); }
+    if (area != m_context.m_state._render_area || force) {
+        NOTF_CHECK_GL(glViewport(area.left(), area.bottom(), area.get_width(), area.get_height()));
+        m_context.m_state._render_area = std::move(area);
+    }
+}
+
+void GraphicsContext::_FrameBuffer::clear(Color color, const GLBuffers buffers) {
+    if (color != m_context.m_state._clear_color) {
+        Color& clear_color = m_context.m_state._clear_color;
+        clear_color = std::move(color);
+        NOTF_CHECK_GL(glClearColor(clear_color.r, clear_color.g, clear_color.b, clear_color.a));
+    }
+
+    GLenum gl_flags = 0;
+    if (buffers & GLBuffer::COLOR) { gl_flags |= GL_COLOR_BUFFER_BIT; }
+    if (buffers & GLBuffer::DEPTH) { gl_flags |= GL_DEPTH_BUFFER_BIT; }
+    if (buffers & GLBuffer::STENCIL) { gl_flags |= GL_STENCIL_BUFFER_BIT; }
+    NOTF_CHECK_GL(glClear(gl_flags));
+}
+
 // shader program binding =========================================================================================== //
 
 void GraphicsContext::_ShaderProgram::operator=(ShaderProgramPtr program) {
@@ -182,7 +212,7 @@ GraphicsContext::_UniformSlots::Slot& GraphicsContext::_UniformSlots::operator[]
 // graphics context ================================================================================================= //
 
 GraphicsContext::GraphicsContext(std::string name, valid_ptr<GLFWwindow*> window)
-    : m_name(std::move(name)), m_window(window) {
+    : m_name(std::move(name)), m_window(window), m_state(*this) {
     NOTF_GUARD(make_current());
 
     { // sanity check (otherwise OpenGL may happily return `null` on all calls until something crashes later)
@@ -227,15 +257,6 @@ GraphicsContext::~GraphicsContext() {
     m_framebuffers.clear();
 }
 
-GraphicsContext& GraphicsContext::get() {
-    if (GLFWwindow* glfw_window = glfwGetCurrentContext()) {
-        if (void* user_pointer = glfwGetWindowUserPointer(glfw_window)) {
-            return static_cast<Window*>(user_pointer)->get_graphics_context();
-        }
-    }
-    NOTF_THROW(OpenGLError, "No OpenGL context current on this thread");
-}
-
 GraphicsContext::Guard GraphicsContext::make_current(bool assume_is_current) {
     if (GLFWwindow* glfw_window = glfwGetCurrentContext(); glfw_window && glfw_window != m_window) {
         NOTF_THROW(ThreadError,
@@ -262,39 +283,8 @@ GraphicsContext::Guard GraphicsContext::make_current(bool assume_is_current) {
     return Guard(*this, std::move(lock));
 }
 
-//Size2i GraphicsContext::get_default_framebuffer_size() const {
-//    Size2i result;
-//    glfwGetFramebufferSize(m_window, &result[0], &result[1]);
-//    return result;
-//    // TODO: glfwGetFramebufferSize must only be called from the main thread
-//}
-
-//void GraphicsContext::set_render_area(Aabri area, const bool force) {
-//    if (!area.is_valid()) { NOTF_THROW(ValueError, "Cannot set to an invalid render area"); }
-//    if (area != m_state.render_area || force) {
-//        NOTF_ASSERT(is_current());
-//        NOTF_CHECK_GL(glViewport(area.left(), area.bottom(), area.get_width(), area.get_height()));
-//        m_state.render_area = std::move(area);
-//    }
-//}
-
-//void GraphicsContext::clear(Color color, const GLBuffers buffers) {
-//    NOTF_ASSERT(is_current());
-//    if (color != m_state.clear_color) {
-//        m_state.clear_color = std::move(color);
-//        NOTF_CHECK_GL(
-//            glClearColor(m_state.clear_color.r, m_state.clear_color.g, m_state.clear_color.b, m_state.clear_color.a));
-//    }
-
-//    GLenum gl_flags = 0;
-//    if (buffers & GLBuffer::COLOR) { gl_flags |= GL_COLOR_BUFFER_BIT; }
-//    if (buffers & GLBuffer::DEPTH) { gl_flags |= GL_DEPTH_BUFFER_BIT; }
-//    if (buffers & GLBuffer::STENCIL) { gl_flags |= GL_STENCIL_BUFFER_BIT; }
-//    NOTF_CHECK_GL(glClear(gl_flags));
-//}
-
 void GraphicsContext::begin_frame() {
-//    clear(m_state.clear_color, GLBuffer::COLOR | GLBuffer::DEPTH | GLBuffer::STENCIL);
+    m_state.framebuffer.clear(m_state._clear_color, GLBuffer::COLOR | GLBuffer::DEPTH | GLBuffer::STENCIL);
 }
 
 void GraphicsContext::finish_frame() {
@@ -310,8 +300,8 @@ void GraphicsContext::reset() {
     m_state.framebuffer = nullptr;
     m_state.texture_slots.clear();
     m_state.uniform_slots.clear();
-    m_state.clear_color = Color::black();
-//    m_state.render_area = Aabri(get_window_size());
+    m_state._clear_color = Color::black();
+    m_state.framebuffer.set_render_area(m_state.framebuffer.get_size());
 }
 
 void GraphicsContext::_register_new(ShaderProgramPtr program) {
@@ -340,11 +330,6 @@ void GraphicsContext::_register_new(FrameBufferPtr framebuffer) {
             framebuffer->get_id());
     }
 }
-
-//    if (slot >= m_state.uniform_slots.size()) {
-//        NOTF_THROW(OpenGLError, "Cannot bind UniformBuffer \"{}\" to slot {} as the system only provides {}",
-//                   uniform_buffer->get_name(), slot, m_state.uniform_slots.size());
-//    }
 
 /* Something to think of, courtesy of the OpenGL ES book:
  * What happens if we are rendering into a texture and at the same time use this texture object as a texture in a

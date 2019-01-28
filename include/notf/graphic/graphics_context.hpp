@@ -129,11 +129,15 @@ private:
 
     // framebuffer binding ----------------------------------------------------
 
+    /// Generic "framebuffer" state.
+    /// Either forwards to the OpenGL context's default framebuffer or a custom one, if one is bound.
+    /// The default FrameBuffer is provided by the OS and represents the renderable area of the application's
+    /// window. As such, we can only render to it but not modify it in any other way.
     struct _FrameBuffer {
         NOTF_NO_COPY_OR_ASSIGN(_FrameBuffer);
 
         /// Default Constructor.
-        _FrameBuffer() = default;
+        _FrameBuffer(GraphicsContext& context) : m_context(context) {}
 
         /// Destructor.
         ~_FrameBuffer() { operator=(nullptr); }
@@ -152,8 +156,25 @@ private:
         bool operator==(const FrameBufferPtr& framebuffer) const { return operator==(framebuffer.get()); }
         /// @}
 
+        /// Returns the size of the FrameBuffer in pixels.
+        Size2i get_size() const;
+
+        /// Define a new area that is rendered into.
+        /// @param offset   New area.
+        /// @param force    Ignore the current state and always make the OpenGL call.
+        /// @throws ValueError  If the given area is invalid.
+        void set_render_area(Aabri area, const bool force = false);
+
+        /// Sets the new clear color.
+        /// @param color    Color to apply.
+        /// @param buffers  Buffers to clear.
+        void clear(Color color, const GLBuffers buffers = GLBuffer::COLOR);
+
         // fields ---------------------------------------------------------- //
     private:
+        /// GraphicsContext providing the state containing this binding.
+        GraphicsContext& m_context;
+
         /// Currently bound FrameBuffer (can be empty).
         FrameBufferPtr m_framebuffer;
     };
@@ -426,6 +447,15 @@ private:
     /// The combined, current State of the GraphicsContext.
     struct State {
 
+        // methods ------------------------------------------------------------
+    private:
+        friend GraphicsContext;
+
+        /// Constructor.
+        State(GraphicsContext& context) : framebuffer(context) {}
+
+        // fields -------------------------------------------------------------
+    public:
         /// Blend mode.
         _BlendMode blend_mode;
 
@@ -447,11 +477,14 @@ private:
         /// Bound UniformBuffer
         _UniformSlots uniform_slots;
 
+    private:
+        friend _FrameBuffer;
+
         /// Color applied at the beginning of the frame when the default framebuffer is cleared.
-        Color clear_color = Color::black();
+        Color _clear_color = Color::black();
 
         /// On-screen AABR that is rendered into.
-        Aabri render_area;
+        Aabri _render_area;
     };
 
     // methods --------------------------------------------------------------------------------- //
@@ -466,10 +499,6 @@ public:
 
     /// Destructor.
     ~GraphicsContext();
-
-    /// Returns the GraphicsContext current on this thread.
-    /// @throws OpenGLError If no context is current on this thread.
-    static GraphicsContext& get();
 
     /// Human-readable name of this GraphicsContext.
     const std::string& get_name() const { return m_name; }
@@ -486,23 +515,6 @@ public:
     ///                             need to block.
     /// @throws ThreadError If another context is already current on this thread.
     Guard make_current(bool assume_is_current = true);
-
-    //    /// Returns the size of the context's default FrameBuffer in pixels.
-    //    /// The default FrameBuffer is provided by the OS and represents the renderable area of the application's
-    //    window.
-    //    /// As such, we can only render to it but not modify it in any other way.
-    //    Size2i get_default_framebuffer_size() const;
-
-    //    /// Define a new area that is rendered into.
-    //    /// @param offset   New area.
-    //    /// @param force    Ignore the current state and always make the OpenGL call.
-    //    /// @throws ValueError  If the given area is invalid.
-    //    void set_render_area(Aabri area, const bool force = false);
-
-    //    /// Sets the new clear color.
-    //    /// @param color    Color to apply.
-    //    /// @param buffers  Buffers to clear.
-    //    void clear(Color color, const GLBuffers buffers = GLBuffer::COLOR);
 
     /// Begins the render of a frame.
     void begin_frame();
@@ -549,15 +561,6 @@ private:
 
     /// The current state of the context.
     State m_state;
-
-    /// Every OpenGL context has an implicit "default framebuffer" that is supplied by the OS and represents the area
-    /// of the window that the context can draw into.
-    /// The GraphicsContext has no control over the size or format of the default buffer, nor are we able to bind any
-    /// RenderBuffer or textures to it, but it can be modified like any other FrameBuffer.
-    FrameBufferPtr m_default_framebuffer;
-    // TODO: for now, I have removed all functions related to the default FrameBuffer from the GraphicsContext
-    //       ... clearly, we need them somewhere, preferably in the FrameBuffer class, but since it's not building right
-    //       now, I don't want to just assume how things would work
 
     // resources --------------------------------------------------------------
 

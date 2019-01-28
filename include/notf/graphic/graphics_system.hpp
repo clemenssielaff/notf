@@ -133,9 +133,13 @@ public:
     /// Desctructor
     ~GraphicsSystem();
 
-    /// Ensures that the
-    GraphicsContext::Guard make_current() { return m_context->make_current(); }
+    /// The internal GraphicsContext.
+    /// The GraphicsContext internal to the GraphicsSystem is the only GraphicsContext without a Window.
+    GraphicsContext& get_internal_context() { return *m_context; }
 
+    /// If a GraphicsContext is already current, it is returned.
+    /// If no GraphicsContext is current, the internal one is returned.
+    GraphicsContext& get_any_context();
     ///@{
     /// FontManager used to render text.
     FontManager& get_font_manager() { return *m_font_manager; }

@@ -73,6 +73,9 @@ void assert_is_valid(const Texture& texture) {
 
 void set_texture_parameter(const Texture& texture, const GLenum name, const GLint value) {
     assert_is_valid(texture);
+    GraphicsContext& context = TheGraphicsSystem()->get_any_context();
+    NOTF_GUARD(context.make_current());
+    context.
     GraphicsContext::get().bind_texture(&texture, 0); // TODO: how do we handle `GraphicsContext::get` here?
     NOTF_CHECK_GL(glTexParameteri(texture.get_target(), name, value));
 }
