@@ -3,6 +3,8 @@
 #include "notf/meta/numeric.hpp"
 #include "notf/meta/smart_ptr.hpp"
 
+#include "notf/common/vector.hpp"
+
 #include "notf/graphic/opengl.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -144,7 +146,7 @@ public:
 
         // update the local hash on request
         if (0 == m_local_hash) {
-//            m_local_hash = hash(m_buffer); // TODO:NOW hash index buffer
+            m_local_hash = hash(m_buffer);
 
             // noop if the data on the server is still current
             if (m_local_hash == m_server_hash) { return; }

@@ -693,7 +693,7 @@ private:
     }
 
     /// Calculates the combined hash value of all Properties.
-    size_t _calculate_property_hash(size_t result = detail::version_hash()) const override {
+    size_t _calculate_property_hash(size_t result = detail::versioned_base_hash()) const override {
         for_each(
             m_widget_properties, [](auto& property, size_t& out) { hash_combine(out, property->get()); }, result);
         return AnyWidget::_calculate_property_hash(result);

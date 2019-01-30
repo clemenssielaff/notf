@@ -4,7 +4,7 @@
 #include <tuple>
 #include <variant>
 
-#include "notf/meta/types.hpp"
+#include "notf/meta/hash.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -298,3 +298,24 @@ static_assert(std::is_same_v<tuple_element_t<-2, std::tuple<float, int, bool>>, 
 static_assert(std::is_same_v<tuple_element_t<-3, std::tuple<float, int, bool>>, float>);
 
 NOTF_CLOSE_NAMESPACE
+
+// std::hash ======================================================================================================== //
+
+/// std::hash specialization for std::tuple<Ts...>.
+template<class... Ts>
+struct std::hash<std::tuple<Ts...>> {
+    constexpr size_t operator()(const std::tuple<Ts...>& tuple) const {
+        std::size_t result = notf::detail::versioned_base_hash();
+        _apply_hash_recursively(tuple, result);
+        return result;
+    }
+
+private:
+    template<size_t I=0>
+    constexpr void _apply_hash_recursively(const std::tuple<Ts...>& tuple, size_t& result) const {
+        if constexpr(I < sizeof... (Ts)){
+            notf::hash_combine(result, std::get<I>(tuple));
+            _apply_hash_recursively<I+1>(tuple, result);
+        }
+    }
+};

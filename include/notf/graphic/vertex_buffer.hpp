@@ -263,7 +263,7 @@ public:
 
         // update the local hash on request
         if (0 == m_local_hash) {
-//            m_local_hash = hash(m_buffer); // TODO:NOW hash vertex buffer
+            m_local_hash = hash(m_buffer);
 
             // noop if the data on the server is still current
             if (m_local_hash == m_server_hash) { return; }

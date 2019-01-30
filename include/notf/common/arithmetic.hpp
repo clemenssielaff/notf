@@ -226,7 +226,7 @@ public:
 
     /// Calculates and returns the hash of this value.
     constexpr size_t get_hash() const noexcept {
-        std::size_t result = version_hash();
+        std::size_t result = versioned_base_hash();
         for (size_t i = 0; i < get_dimensions(); ++i) {
             notf::hash_combine(result, data[i]);
         }

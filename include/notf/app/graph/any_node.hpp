@@ -557,7 +557,7 @@ private:
     virtual AnySignalPtr _get_signal_impl(const std::string& /*name*/) const = 0;
 
     /// Calculates the combined hash value of all Properties.
-    virtual size_t _calculate_property_hash(size_t result = detail::version_hash()) const = 0;
+    virtual size_t _calculate_property_hash(size_t result = detail::versioned_base_hash()) const = 0;
 
     /// Removes all modified data from all Properties.
     virtual void _clear_modified_properties() = 0;

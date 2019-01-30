@@ -14,7 +14,7 @@ namespace detail {
 
 /// Changing this value will cause new hashes of the same value (calculated with notf::hash) to differ.
 /// This way, we can differentiate between hashes of the same value that were generated with different versions of notf.
-constexpr inline size_t version_hash() noexcept { return config::version_major(); }
+constexpr inline size_t versioned_base_hash() noexcept { return config::version_major(); }
 
 /// see http://stackoverflow.com/a/4948967
 template<class T>
@@ -98,7 +98,7 @@ constexpr void hash_combine(std::size_t& seed, Arg&& value, Rest&&... rest) noex
 /// All passed values must be hashable using std::hash.
 template<typename... Values>
 constexpr size_t hash(Values&&... values) noexcept {
-    std::size_t result = detail::version_hash();
+    std::size_t result = detail::versioned_base_hash();
     hash_combine(result, std::forward<Values>(values)...);
     return result;
 }

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "notf/meta/exception.hpp"
+#include "notf/meta/hash.hpp"
 #include "notf/meta/types.hpp"
 
 #include "notf/common/fwd.hpp"
@@ -263,3 +264,17 @@ detail::reversion_wrapper<T> reverse(T&& iterable) {
 }
 
 NOTF_CLOSE_NAMESPACE
+
+// std::hash ======================================================================================================== //
+
+/// std::hash specialization for notf::Claim::Stretch.
+template<class T>
+struct std::hash<std::vector<T>> {
+    size_t operator()(const std::vector<T>& vector) const {
+        std::size_t result = notf::detail::versioned_base_hash();
+        for(const auto& element : vector){
+            notf::hash_combine(result, element);
+        }
+        return result;
+    }
+};
