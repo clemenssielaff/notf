@@ -11,8 +11,8 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-WidgetVisualizer::WidgetVisualizer(GraphicsContext& context)
-    : Visualizer(), m_painterpreter(std::make_unique<Painterpreter>(context)) {}
+WidgetVisualizer::WidgetVisualizer(const Window &window)
+    : Visualizer(window), m_painterpreter(std::make_unique<Painterpreter>(window.get_graphics_context())) {}
 
 WidgetVisualizer::~WidgetVisualizer() = default;
 

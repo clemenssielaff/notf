@@ -144,7 +144,7 @@ RenderBuffer::~RenderBuffer() { _deallocate(); }
 void RenderBuffer::_deallocate() {
     if (!m_id.is_valid()) { return; }
 
-    NOTF_GUARD(TheGraphicsSystem()->make_current());
+    NOTF_GUARD(TheGraphicsSystem()->get_any_context().make_current());
 
     // deallocate the renderbuffer
     NOTF_CHECK_GL(glDeleteRenderbuffers(1, &m_id.get_value()));

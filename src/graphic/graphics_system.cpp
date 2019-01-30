@@ -132,7 +132,7 @@ const GraphicsSystem::Environment& GraphicsSystem::_get_environment() {
 }
 
 GraphicsSystem::GraphicsSystem(valid_ptr<GLFWwindow*> shared_window)
-    : m_context(std::make_unique<GraphicsContext>(load_gl_functions(shared_window))) {}
+    : m_context(std::make_unique<GraphicsContext>("Internal GraphicsContext", load_gl_functions(shared_window))) {}
 
 GraphicsSystem::~GraphicsSystem() {
 

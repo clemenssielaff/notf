@@ -50,7 +50,7 @@ Window::Window(valid_ptr<AnyNode*> parent, valid_ptr<GLFWwindow*> window, Argume
     if (settings.state != State::FULLSCREEN && settings.is_visible) { glfwShowWindow(m_glfw_window); }
 
     // create the graphics context
-    m_graphics_context = std::make_unique<GraphicsContext>(m_glfw_window);
+    m_graphics_context = std::make_unique<GraphicsContext>(settings.title, m_glfw_window);
     NOTF_GUARD(m_graphics_context->make_current());
 
     // store settings in properties

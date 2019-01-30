@@ -25,6 +25,7 @@ class GraphicsContext {
 
     friend Accessor<GraphicsContext, FrameBuffer>;
     friend Accessor<GraphicsContext, ShaderProgram>;
+    friend Accessor<GraphicsContext, Texture>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -158,6 +159,9 @@ private:
 
         /// Returns the size of the FrameBuffer in pixels.
         Size2i get_size() const;
+
+        /// Area of the FrameBuffer that is currently being rendered into.
+        const Aabri& get_render_area() const;
 
         /// Define a new area that is rendered into.
         /// @param offset   New area.
@@ -599,6 +603,24 @@ class Accessor<GraphicsContext, ShaderProgram> {
     static void register_new(GraphicsContext& context, ShaderProgramPtr program) {
         context._register_new(std::move(program));
     }
+};
+
+template<>
+class Accessor<GraphicsContext, Texture> {
+    friend Texture;
+
+    /// Ensures that the given Texture is active.
+    /// For that, we first check if the Texture is bound to any texture slot in this context.
+    /// If it is, that slot is made active. If it isn't, we need to bind it to a slot before it can be made active.
+    /// For that, the context tries to find a slot that is either empty, whose Texture has expired or one that was
+    /// implicitly bound. "Implicitly bound" means, that the user did not *explicitly* bind the texture to that slot,
+    /// but it was instead bound by a function like this one. We assume, that implicit bindings are temporary in nature
+    /// and can be rebound without violating user expectation.
+    /// If all texture slots are explicitly bound to by the user and all of the bound textures are still valid, there's
+    /// nothing we can do but throw an exception.
+    /// @param context          GraphicsContext to access.
+    /// @param program          New Program to register.
+    static void make_active(GraphicsContext& context, Texture* texture);
 };
 
 NOTF_CLOSE_NAMESPACE

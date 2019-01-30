@@ -73,13 +73,13 @@ public:
         ~Plate();
 
         /// The FrameBuffer of this target.
-        const FrameBufferPtr& framebuffer() const { return m_framebuffer; }
+        const FrameBufferPtr& get_framebuffer() const { return m_framebuffer; }
 
         /// Returns the texture of this target.
-        const TexturePtr& texture() const;
+        const TexturePtr& get_texture() const;
 
         /// Visualizer that draws into the target.
-        const Visualizer& visualizer() const { return *m_visualizer; }
+        const Visualizer& get_visualizer() const { return *m_visualizer; }
 
         /// Whether the target is dirty or not.
         bool is_dirty() const { return m_is_dirty; }
@@ -105,12 +105,19 @@ public:
 
     // methods --------------------------------------------------------------------------------- //
 public:
+    /// Constructor.
+    /// @param window   Window to visualize into.
+    Visualizer(const Window& window);
+
     /// Destructor.
     virtual ~Visualizer();
 
     /// Subclass-defined visualization implementation.
     /// @param scene    Scene to visualize.
     virtual void visualize(valid_ptr<Scene*> scene) const = 0;
+
+    /// GraphicsContext of the Window to visualize into.
+    GraphicsContext& get_context() const { return m_context; }
 
     // TODO: second Visualizer::visualize overload taking a Plate as argument to render into
 
@@ -119,6 +126,11 @@ private:
     /// The default implementation does nothing, it is the subclass' responsibility to add *all* of its dependencies.
     /// @param dependencies     [out] Dependencies to add yours to.
     virtual void _collect_dependencies(std::vector<Plate*>& /*dependencies*/) const {}
+
+    // fields ---------------------------------------------------------------------------------- //
+private:
+    /// GraphicsContext of the Window to visualize into.
+    GraphicsContext& m_context;
 };
 
 NOTF_CLOSE_NAMESPACE

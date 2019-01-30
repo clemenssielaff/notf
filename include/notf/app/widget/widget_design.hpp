@@ -8,7 +8,6 @@
 #include "notf/common/bezier.hpp"
 #include "notf/common/polygon.hpp"
 
-#include "notf/graphic/gl_modes.hpp"
 #include "notf/graphic/renderer/plotter.hpp"
 
 #include "notf/app/fwd.hpp"

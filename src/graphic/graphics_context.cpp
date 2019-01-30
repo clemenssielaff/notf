@@ -81,6 +81,8 @@ Size2i GraphicsContext::_FrameBuffer::get_size() const {
     return result;
 }
 
+const Aabri& GraphicsContext::_FrameBuffer::get_render_area() const { return m_context.m_state._render_area; }
+
 void GraphicsContext::_FrameBuffer::set_render_area(Aabri area, const bool force) {
     if (!area.is_valid()) { NOTF_THROW(ValueError, "Cannot set to an invalid render area"); }
     if (area != m_context.m_state._render_area || force) {
@@ -192,7 +194,7 @@ void GraphicsContext::_UniformSlots::Slot::bind(const UniformBlock& block) {
     for (const auto& block_binding : m_blocks) {
         if (block_binding.m_program == program && block_binding.m_block_index == block_index) { return; }
     }
-    m_blocks.emplace_back(std::move(program), block_index, m_buffer.m_slot_index);
+    m_blocks.emplace_back(BlockBinding{std::move(program), block_index, m_buffer.m_slot_index});
 }
 
 GraphicsContext::_UniformSlots::Slot& GraphicsContext::_UniformSlots::operator[](const GLuint index) {
@@ -329,6 +331,12 @@ void GraphicsContext::_register_new(FrameBufferPtr framebuffer) {
             "GraphicsContext failed to register a new FrameBuffer with the same ID as an existing FrameBuffer: \"{}\"",
             framebuffer->get_id());
     }
+}
+
+// graphics context accessor ======================================================================================== //
+
+void Accessor<GraphicsContext, Texture>::make_active(GraphicsContext& context, Texture* texture) {
+    // TODO:NOW implement implicit/explicit texture slot assignment as described in the docstring of this method
 }
 
 /* Something to think of, courtesy of the OpenGL ES book:

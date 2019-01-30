@@ -116,7 +116,7 @@ constexpr auto vertex_buffer_policy_factory(const std::tuple<Ts...>&) {
 }
 
 template<class Tuple, size_t... Index>
-constexpr auto _extract_attribute_policy_types_impl(const Tuple&) {
+constexpr auto _extract_attribute_policy_types_impl(const Tuple&, std::index_sequence<Index...>) {
     return std::tuple<typename std::tuple_element_t<Index, Tuple>::type...>();
 }
 
@@ -240,7 +240,7 @@ public:
     /// @throws OpenGLError     If the VBO could not be allocated.
     /// @throws ResourceError   If another VertexBuffer with the same name already exist.
     static VertexBufferPtr<AttributePolicies...> create(std::string name, Args args) {
-        auto result = _create_shared<VertexBuffer>(std::move(name), std::move(args));
+        auto result = _create_shared(std::move(name), std::move(args));
         _register_ressource(result);
         return result;
     }
@@ -263,7 +263,7 @@ public:
 
         // update the local hash on request
         if (0 == m_local_hash) {
-            m_local_hash = hash(m_buffer);
+//            m_local_hash = hash(m_buffer); // TODO:NOW hash vertex buffer
 
             // noop if the data on the server is still current
             if (m_local_hash == m_server_hash) { return; }

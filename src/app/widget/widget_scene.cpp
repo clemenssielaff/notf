@@ -2,23 +2,15 @@
 
 #include "notf/app/graph/window.hpp"
 
-namespace {
 NOTF_USING_NAMESPACE;
-
-GraphicsContext& get_graphics_context(AnyNode* node) {
-    Window* window = dynamic_cast<Window*>(node);
-    NOTF_ASSERT(window);
-    return window->get_graphics_context();
-}
-
-} // namespace
-
-NOTF_OPEN_NAMESPACE
 
 // widget scene ===================================================================================================== //
 
-WidgetScene::WidgetScene(valid_ptr<AnyNode*> parent)
-    : Scene(parent, std::make_unique<WidgetVisualizer>(get_graphics_context(parent))) {
+WidgetScene::WidgetScene(valid_ptr<AnyNode*> parent) : Scene(parent) {
+
+    Window* window = _get_first_ancestor<Window>(); // TODO: hack (see comment below `set_visualizer`)
+    NOTF_ASSERT(window);
+    set_visualizer(std::make_unique<WidgetVisualizer>(*window));
 
     // update the clipping rect whenever the Scene area changes
     _set_property_callback<area>([this](Aabri& aabr) {
@@ -26,5 +18,3 @@ WidgetScene::WidgetScene(valid_ptr<AnyNode*> parent)
         return true;
     });
 }
-
-NOTF_CLOSE_NAMESPACE

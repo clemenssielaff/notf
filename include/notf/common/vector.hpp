@@ -200,10 +200,19 @@ void move_behind_of(std::vector<T>& vector, const size_t moved_index, const size
 }
 
 /// Checks if a vector contains a given value.
+/// @param vector   Vector to test.
 /// @param value    Value to test for.
 template<class T>
 bool contains(const std::vector<T>& vector, const identity_t<T>& value) {
     return std::find(vector.begin(), vector.end(), value) != vector.end();
+}
+
+/// Checks if any element in the vector fulfills a given predicate.
+/// @param vector       Vector to test.
+/// @param predicate    Predicate to test each element with.
+template<class T, class Predicate>
+bool contains_if(const std::vector<T>& vector, Predicate predicate) {
+    return std::find_if(vector.begin(), vector.end(), std::forward<Predicate>(predicate)) != vector.end();
 }
 
 /// Calls the given function on each valid element and removes the rest.

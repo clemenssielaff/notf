@@ -98,7 +98,7 @@ bool AnyNode::is_in_back() const {
 
 bool AnyNode::is_before(const AnyNodeHandle& sibling) const {
     NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
-    if (const AnyNodeConstPtr sibling_ptr = AnyNodeHandle::AccessFor<AnyNode>::get_node_ptr(sibling);
+    if (const AnyNodePtr sibling_ptr = AnyNodeHandle::AccessFor<AnyNode>::get_node_ptr(sibling);
         (sibling_ptr != nullptr) && (sibling_ptr->_get_parent() == _get_parent()) && (sibling_ptr.get() != this)) {
         for (const AnyNodePtr& other : _read_siblings()) {
             if (other == sibling_ptr) { return true; }
@@ -113,7 +113,7 @@ bool AnyNode::is_before(const AnyNodeHandle& sibling) const {
 
 bool AnyNode::is_behind(const AnyNodeHandle& sibling) const {
     NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
-    if (const AnyNodeConstPtr sibling_ptr = AnyNodeHandle::AccessFor<AnyNode>::get_node_ptr(sibling);
+    if (const AnyNodePtr sibling_ptr = AnyNodeHandle::AccessFor<AnyNode>::get_node_ptr(sibling);
         (sibling_ptr != nullptr) && (sibling_ptr->_get_parent() == _get_parent()) && (sibling_ptr.get() != this)) {
         for (const AnyNodePtr& other : _read_siblings()) {
             if (other == sibling_ptr) { return false; }
@@ -322,7 +322,7 @@ std::vector<AnyNodePtr>& AnyNode::_write_children() {
 
 const std::vector<AnyNodePtr>& AnyNode::_read_siblings() const {
     const std::vector<AnyNodePtr>& siblings = _get_parent()->_read_children();
-    NOTF_ASSERT(contains(siblings, shared_from_this()));
+    NOTF_ASSERT(contains_if(siblings, [this](const AnyNodePtr& sibling) -> bool { return sibling.get() == this; }));
     return siblings;
 }
 

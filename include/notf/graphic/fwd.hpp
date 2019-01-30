@@ -11,7 +11,6 @@
 NOTF_OPEN_NAMESPACE
 
 // NOTF_DECLARE_SHARED_POINTERS(class, FragmentRenderer);
-// NOTF_DECLARE_SHARED_POINTERS(class, Plotter);
 
 // template<typename>
 // class PrefabType;
@@ -70,6 +69,10 @@ NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, UniformBuffer);
 
 NOTF_DECLARE_SHARED_POINTERS(class, AnyVertexBuffer);
 NOTF_DECLARE_SHARED_POINTERS_VAR_TEMPLATE1(class, VertexBuffer);
+
+// renderer/plotter.hpp ---------------------------------------------------- //
+
+NOTF_DECLARE_SHARED_POINTERS(class, Plotter);
 
 // text/font.hpp ----------------------------------------------------------- //
 

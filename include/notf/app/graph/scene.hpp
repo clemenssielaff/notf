@@ -61,8 +61,21 @@ public:
 public:
     /// Constructor, constructs a full-screen, visible Scene.
     /// @param parent   Parent of this Node.
-    /// @param visualizer   Visualizer that draws the Scene.
-    Scene(valid_ptr<AnyNode*> parent, VisualizerPtr visualizer);
+    Scene(valid_ptr<AnyNode*> parent);
+
+    /// Destructor.
+    ~Scene();
+
+    /// (Re-)Defines the Visualizer to use for drawing this Scene.
+    void set_visualizer(VisualizerPtr visualizer);
+    // TODO:NOW this is a hacky workaround at best. Since we can re-parent Nodes, a Scene requires a Visualizer
+    // and the visualizer instance in turn relies on a single Window, we need some way to make sure that the
+    // Scene re-creates its Visualizer, should it (or any of its parents) move to another window.
+    // One way to deal with this would be to forbid reparenting of Scenes ... but that would mean also forbidding to
+    // reparent any Node that could in turn parent a scene ... so basically getting rid of re-parenting completely.
+    // Or The Scene (or any Node?) gets a virtual `_on_reparented()` method that gets called whenever the node is
+    // reparented, and then the Scene would recreate a new Visualizer, maybe using a virtual factory on the old
+    // instance?
 
     /// Whether the Scene is the direct child of a Window Node (a "Window Scene") or nested within another Scene.
     bool is_window_scene() const;

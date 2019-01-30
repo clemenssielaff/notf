@@ -64,7 +64,7 @@ public:
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// ShaderProgram owning this uniform block.
-    const ShaderProgram& m_program;
+    ShaderProgram& m_program;
 
     /// The location of this uniform variable within the default uniform block of a ShaderProgram.
     GLint m_location;
@@ -112,7 +112,7 @@ public:
     // fields ---------------------------------------------------------- //
 private:
     /// ShaderProgram owning this UniformBlock.
-    const ShaderProgram& m_program;
+    ShaderProgram& m_program;
 
     /// Name of the UniformBlock.
     const std::string m_name;
@@ -143,6 +143,7 @@ private:
 /// exception.
 class ShaderProgram : public std::enable_shared_from_this<ShaderProgram> {
 
+    friend detail::Uniform;
     friend Accessor<ShaderProgram, GraphicsContext>;
 
     // types ----------------------------------------------------------------------------------- //

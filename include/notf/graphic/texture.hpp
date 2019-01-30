@@ -184,6 +184,11 @@ public:
     void bind_at(GraphicsContext& context, const uint slot); // TODO: texture binding
 
 private:
+    /// Convenience method used to set all sorts of texture-related paramters.
+    /// @param name     Parameter to set.
+    /// @param value    New parameter value.
+    void _set_parameter(const GLenum name, const GLint value);
+
     /// Deallocates the Texture data and invalidates the Texture.
     void _deallocate();
 

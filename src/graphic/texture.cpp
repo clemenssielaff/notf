@@ -71,15 +71,6 @@ void assert_is_valid(const Texture& texture) {
     }
 }
 
-void set_texture_parameter(const Texture& texture, const GLenum name, const GLint value) {
-    assert_is_valid(texture);
-    GraphicsContext& context = TheGraphicsSystem()->get_any_context();
-    NOTF_GUARD(context.make_current());
-    context.
-    GraphicsContext::get().bind_texture(&texture, 0); // TODO: how do we handle `GraphicsContext::get` here?
-    NOTF_CHECK_GL(glTexParameteri(texture.get_target(), name, value));
-}
-
 } // namespace
 
 // texture ========================================================================================================== //
@@ -300,17 +291,13 @@ TexturePtr Texture::load_image(const std::string& file_path, std::string name, c
 
 Texture::~Texture() { _deallocate(); }
 
-void Texture::set_min_filter(const MinFilter filter) {
-    set_texture_parameter(*this, GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter));
-}
+void Texture::set_min_filter(const MinFilter filter) { _set_parameter(GL_TEXTURE_MIN_FILTER, minfilter_to_gl(filter)); }
 
-void Texture::set_mag_filter(const MagFilter filter) {
-    set_texture_parameter(*this, GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter));
-}
+void Texture::set_mag_filter(const MagFilter filter) { _set_parameter(GL_TEXTURE_MAG_FILTER, magfilter_to_gl(filter)); }
 
-void Texture::set_wrap_x(const Wrap wrap) { set_texture_parameter(*this, GL_TEXTURE_WRAP_S, wrap_to_gl(wrap)); }
+void Texture::set_wrap_x(const Wrap wrap) { _set_parameter(GL_TEXTURE_WRAP_S, wrap_to_gl(wrap)); }
 
-void Texture::set_wrap_y(const Wrap wrap) { set_texture_parameter(*this, GL_TEXTURE_WRAP_T, wrap_to_gl(wrap)); }
+void Texture::set_wrap_y(const Wrap wrap) { _set_parameter(GL_TEXTURE_WRAP_T, wrap_to_gl(wrap)); }
 
 void Texture::flood(const Color& color) {
     assert_is_valid(*this);
@@ -354,6 +341,12 @@ void Texture::flood(const Color& color) {
         NOTF_CHECK_GL(glTexImage2D(m_target, 0, GL_RGBA, m_size.width(), m_size.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE,
                                    &buffer[0]));
     }
+}
+
+void Texture::_set_parameter(const GLenum name, const GLint value) {
+    assert_is_valid(*this);
+    GraphicsContext::AccessFor<Texture>::make_active(TheGraphicsSystem()->get_any_context(), this);
+    NOTF_CHECK_GL(glTexParameteri(get_target(), name, value));
 }
 
 void Texture::_deallocate() {

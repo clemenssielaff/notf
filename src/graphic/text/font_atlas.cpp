@@ -105,7 +105,7 @@ FontAtlas::FontAtlas() : m_texture(nullptr), m_width(512), m_height(512), m_used
     Texture::Args tex_args;
     tex_args.format = Texture::Format::GRAYSCALE;
 
-    const auto current_guard = TheGraphicsSystem()->make_current();
+    NOTF_GUARD(TheGraphicsSystem()->get_any_context().make_current());
 
     m_texture = Texture::create_empty("__notf_font_atlas", Size2i(m_width, m_height), tex_args);
     m_texture->set_wrap_x(Texture::Wrap::CLAMP_TO_EDGE);
@@ -216,7 +216,8 @@ std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<FitReques
 void FontAtlas::fill_rect(const Glyph::Rect& rect, const uchar* data) {
     if (rect.height == 0 || rect.width == 0 || !data) { return; }
 
-    const auto current_guard = GraphicsContext::get().make_current();
+    NOTF_GUARD(TheGraphicsSystem()->get_any_context().make_current());
+
     NOTF_CHECK_GL(glActiveTexture(GL_TEXTURE0 + TheGraphicsSystem::get_environment().font_atlas_texture_slot));
     NOTF_CHECK_GL(glPixelStorei(GL_UNPACK_ROW_LENGTH, rect.width));
     NOTF_CHECK_GL(glTexSubImage2D(GL_TEXTURE_2D, /* level = */ 0, rect.x, rect.y, rect.width, rect.height, GL_RED,

@@ -287,6 +287,13 @@ protected:
     }
     const Interface* _get_interface() const { return reinterpret_cast<Interface*>(_get_node().get()); }
 
+    /// Allows each NodeHandle subclass to steal the Node of any other Handle.
+    /// @param handle   Handle to steal from, becomes invalid after this method returned.
+    template<class T>
+    static std::weak_ptr<T> _steal_node(NodeHandle<T>&& handle) {
+        return std::move(handle.m_node);
+    }
+
     // fields ---------------------------------------------------------------------------------- //
 protected:
     /// The handled Node, non owning.

@@ -116,7 +116,7 @@ BlendMode::OpenGLBlendMode::OpenGLBlendMode(const BlendMode& mode) : OpenGLBlend
 
 // data usage ======================================================================================================= //
 
-GLenum get_gl_usage(const GLUsage usage) {
+GLenum notf::get_gl_usage(const GLUsage usage) {
     switch (usage) {
     case GLUsage::DYNAMIC_DRAW: return GL_DYNAMIC_DRAW;
     case GLUsage::DYNAMIC_READ: return GL_DYNAMIC_READ;
@@ -132,7 +132,7 @@ GLenum get_gl_usage(const GLUsage usage) {
 
 // data types ======================================================================================================= //
 
-const char* get_gl_type_name(GLenum type) {
+const char* notf::get_gl_type_name(GLenum type) {
     static const char* name_of_float = "float";
     static const char* name_of_vec2 = "vec2";
     static const char* name_of_vec3 = "vec3";
@@ -254,7 +254,7 @@ const char* get_gl_type_name(GLenum type) {
 
 // opengl error handling ============================================================================================ //
 
-namespace detail {
+namespace notf::detail {
 
 void check_gl_error(uint line, const char* file) {
     if (glfwGetCurrentContext() == nullptr) { NOTF_THROW(OpenGLError, "No OpenGL context current on this thread"); }
@@ -267,7 +267,7 @@ void check_gl_error(uint line, const char* file) {
 
 } // namespace detail
 
-void clear_gl_errors() {
+void notf::clear_gl_errors() {
     if constexpr (config::is_debug_build()) {
         while (glGetError() != GL_NO_ERROR) {};
     }

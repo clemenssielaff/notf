@@ -8,7 +8,6 @@
 #include "notf/common/circle.hpp"
 #include "notf/common/vector2.hpp"
 
-#include "notf/graphic/gl_modes.hpp"
 #include "notf/graphic/renderer/plotter.hpp"
 
 #include "notf/app/fwd.hpp"

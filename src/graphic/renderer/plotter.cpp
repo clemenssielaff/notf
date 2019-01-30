@@ -93,38 +93,37 @@ namespace {
 
 NOTF_USING_NAMESPACE;
 
-struct VertexPos : public AttributeTrait {
-    NOTF_UNUSED constexpr static uint location = 0;
-    using type = V2f;
-    using kind = AttributeKind::Position;
-};
-
-struct LeftCtrlPos : public AttributeTrait {
-    NOTF_UNUSED constexpr static uint location = 1;
+struct VertexPos {
+    constexpr static GLuint location = 0;
     using type = V2f;
 };
 
-struct RightCtrlPos : public AttributeTrait {
-    NOTF_UNUSED constexpr static uint location = 2;
+struct LeftCtrlPos {
+    constexpr static uint location = 1;
     using type = V2f;
 };
 
-using PlotVertexArray = VertexArray<VertexPos, LeftCtrlPos, RightCtrlPos>;
-using PlotIndexArray = IndexArray<GLuint>;
+struct RightCtrlPos {
+    constexpr static uint location = 2;
+    using type = V2f;
+};
+
+using PlotVertexArray = VertexBuffer<VertexPos, LeftCtrlPos, RightCtrlPos>;
+using PlotIndexArray = IndexBuffer<GLuint>;
 
 const GLenum g_index_type = to_gl_type(PlotIndexArray::index_t{});
 
-void set_pos(PlotVertexArray::Vertex& vertex, V2f pos) { std::get<0>(vertex) = std::move(pos); }
-void set_first_ctrl(PlotVertexArray::Vertex& vertex, V2f pos) { std::get<1>(vertex) = std::move(pos); }
-void set_second_ctrl(PlotVertexArray::Vertex& vertex, V2f pos) { std::get<2>(vertex) = std::move(pos); }
+void set_pos(PlotVertexArray::vertex_t& vertex, V2f pos) { std::get<0>(vertex) = std::move(pos); }
+void set_first_ctrl(PlotVertexArray::vertex_t& vertex, V2f pos) { std::get<1>(vertex) = std::move(pos); }
+void set_second_ctrl(PlotVertexArray::vertex_t& vertex, V2f pos) { std::get<2>(vertex) = std::move(pos); }
 
-void set_modified_first_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier2f::Segment& left_segment) {
+void set_modified_first_ctrl(PlotVertexArray::vertex_t& vertex, const CubicBezier2f::Segment& left_segment) {
     const V2f delta = left_segment.ctrl2 - left_segment.end;
     set_first_ctrl(vertex, delta.is_zero() ? -(left_segment.get_tangent(1).normalize()) :
                                              delta.get_normalized() * (delta.get_magnitude() + 1));
 }
 
-void set_modified_second_ctrl(PlotVertexArray::Vertex& vertex, const CubicBezier2f::Segment& right_segment) {
+void set_modified_second_ctrl(PlotVertexArray::vertex_t& vertex, const CubicBezier2f::Segment& right_segment) {
     const V2f delta = right_segment.ctrl1 - right_segment.start;
     set_second_ctrl(vertex, delta.is_zero() ? right_segment.get_tangent(0).normalize() :
                                               delta.get_normalized() * (delta.get_magnitude() + 1));
@@ -222,7 +221,7 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
         const std::string frag_src = load_file("/home/clemens/code/notf/res/shaders/plotter.frag");
         FragmentShaderPtr frag_shader = FragmentShader::create("plotter.frag", frag_src);
 
-        m_program = ShaderProgram::create("Plotter", vertex_shader, tess_shader, frag_shader);
+        m_program = ShaderProgram::create(m_context, "Plotter", vertex_shader, tess_shader, frag_shader);
 
         m_program->get_uniform("aa_width").set(static_cast<float>(sqrt(2.l) / 2.l));
         m_program->get_uniform("font_texture").set(TheGraphicsSystem::get_environment().font_atlas_texture_slot);
@@ -231,18 +230,23 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
     // vao
     NOTF_CHECK_GL(glGenVertexArrays(1, &m_vao_id));
     if (!m_vao_id) { NOTF_THROW(OpenGLError, "Failed to allocate the Plotter VAO"); }
-    NOTF_GUARD(GraphicsContext::VaoGuard(m_vao_id));
+    //    NOTF_GUARD(GraphicsContext::VaoGuard(m_vao_id)); TODO:NOW GraphicsContext->vao
 
     { // vertices
-        VertexArrayType::Args vertex_args;
+        AnyVertexBuffer::Args vertex_args;
         vertex_args.usage = GLUsage::STREAM_DRAW;
-        m_vertices = std::make_unique<PlotVertexArray>(std::move(vertex_args));
-        static_cast<PlotVertexArray*>(m_vertices.get())->init();
+        m_vertices = PlotVertexArray::create("PlotterVertexBuffer", std::move(vertex_args));
+        static_cast<PlotVertexArray*>(m_vertices.get())->apply();
     }
 
-    // indices
-    m_indices = std::make_unique<PlotIndexArray>();
-    static_cast<PlotIndexArray*>(m_indices.get())->init();
+    { // indices
+        AnyIndexBuffer::Args index_args;
+        index_args.usage = GLUsage::STREAM_DRAW;
+        m_indices = PlotIndexArray::create("PlotterIndexBuffer", std::move(index_args));
+        static_cast<PlotIndexArray*>(m_indices.get())->apply();
+    }
+
+    // TODO: maybe naming everything (like "PlotterVertexBuffer") is a bad idea
 }
 
 Plotter::~Plotter() {
@@ -254,8 +258,8 @@ Plotter::~Plotter() {
 }
 
 Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {
-    std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer();
-    std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->buffer();
+    std::vector<PlotVertexArray::vertex_t>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->write();
+    std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->write();
 
     // path
     PathPtr path = Path::_create_shared();
@@ -290,7 +294,7 @@ Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {
 
         { // first vertex
             const CubicBezier2f::Segment& first_segment = spline.segments.front();
-            PlotVertexArray::Vertex vertex;
+            PlotVertexArray::vertex_t vertex;
             set_pos(vertex, first_segment.start);
             set_first_ctrl(vertex, V2f::zero());
             set_modified_second_ctrl(vertex, first_segment);
@@ -301,7 +305,7 @@ Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {
         for (size_t i = 0; i < spline.segments.size() - 1; ++i) {
             const CubicBezier2f::Segment& left_segment = spline.segments[i];
             const CubicBezier2f::Segment& right_segment = spline.segments[i + 1];
-            PlotVertexArray::Vertex vertex;
+            PlotVertexArray::vertex_t vertex;
             set_pos(vertex, left_segment.end);
             set_modified_first_ctrl(vertex, left_segment);
             set_modified_second_ctrl(vertex, right_segment);
@@ -310,7 +314,7 @@ Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {
 
         { // last vertex
             const CubicBezier2f::Segment& last_segment = spline.segments.back();
-            PlotVertexArray::Vertex vertex;
+            PlotVertexArray::vertex_t vertex;
             set_pos(vertex, last_segment.end);
             set_modified_first_ctrl(vertex, last_segment);
             set_second_ctrl(vertex, V2f::zero());
@@ -322,8 +326,8 @@ Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {
 }
 
 Plotter::PathPtr Plotter::add(const Polygonf& polygon) {
-    std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer();
-    std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->buffer();
+    std::vector<PlotVertexArray::vertex_t>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->write();
+    std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->write();
 
     // path
     PathPtr path = Path::_create_shared();
@@ -353,7 +357,7 @@ Plotter::PathPtr Plotter::add(const Polygonf& polygon) {
     // vertices
     vertices.reserve(vertices.size() + polygon.get_vertex_count());
     for (const V2f& point : polygon.get_vertices()) {
-        PlotVertexArray::Vertex vertex;
+        PlotVertexArray::vertex_t vertex;
         set_pos(vertex, point);
         set_first_ctrl(vertex, V2f::zero());
         set_second_ctrl(vertex, V2f::zero());
@@ -364,8 +368,8 @@ Plotter::PathPtr Plotter::add(const Polygonf& polygon) {
 }
 
 void Plotter::write(const std::string& text, TextInfo info) {
-    std::vector<PlotVertexArray::Vertex>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer();
-    std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->buffer();
+    std::vector<PlotVertexArray::vertex_t>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->write();
+    std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->write();
 
     const size_t index_offset = indices.size();
     const GLuint first_index = narrow_cast<GLuint>(vertices.size());
@@ -398,7 +402,7 @@ void Plotter::write(const std::string& text, TextInfo info) {
                 const V2f uv = V2f{glyph.rect.x, glyph.rect.y};
 
                 // create the vertex
-                PlotVertexArray::Vertex vertex;
+                PlotVertexArray::vertex_t vertex;
                 set_pos(vertex, uv);
                 set_first_ctrl(vertex, quad.get_bottom_left());
                 set_second_ctrl(vertex, quad.get_top_right());
@@ -447,10 +451,10 @@ void Plotter::fill(valid_ptr<PathPtr> path, FillInfo info) {
 void Plotter::swap_buffers() {
     NOTF_ASSERT(m_context.is_current());
 
-    const auto vao_guard = GraphicsContext::VaoGuard(m_vao_id);
+    //    const auto vao_guard = GraphicsContext::VaoGuard(m_vao_id); TODO:NOW GraphicsContext->vao
 
-    static_cast<PlotVertexArray*>(m_vertices.get())->init();
-    static_cast<PlotIndexArray*>(m_indices.get())->init();
+    static_cast<PlotVertexArray*>(m_vertices.get())->apply();
+    static_cast<PlotIndexArray*>(m_indices.get())->apply();
 
     // TODO: combine batches with same type & info -- that's what batches are there for
     std::swap(m_drawcalls, m_drawcall_buffer);
@@ -460,15 +464,17 @@ void Plotter::swap_buffers() {
 void Plotter::clear() {
     NOTF_ASSERT(m_context.is_current());
 
-    static_cast<PlotVertexArray*>(m_vertices.get())->get_buffer().clear();
-    static_cast<PlotIndexArray*>(m_indices.get())->buffer().clear();
+    static_cast<PlotVertexArray*>(m_vertices.get())->write().clear();
+    static_cast<PlotIndexArray*>(m_indices.get())->write().clear();
     m_drawcall_buffer.clear();
 }
 
 void Plotter::render() const {
     NOTF_ASSERT(m_context.is_current());
     if (m_indices->is_empty()) { return; }
-    const auto vao_guard = GraphicsContext::VaoGuard(m_vao_id);
+
+    //    const auto vao_guard = GraphicsContext::VaoGuard(m_vao_id); TODO:NOW GraphicsContext->vao
+    m_context->program = m_program;
 
     NOTF_CHECK_GL(glEnable(GL_CULL_FACE));
     NOTF_CHECK_GL(glCullFace(GL_BACK));
@@ -476,24 +482,23 @@ void Plotter::render() const {
     NOTF_CHECK_GL(glEnable(GL_BLEND));
     NOTF_CHECK_GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-    NOTF_GUARD(m_context.bind_program(m_program));
-
     // screen size
-    const Aabri& render_area = m_context.get_render_area();
+    const Aabri& render_area = m_context->framebuffer.get_render_area();
     if (m_state.screen_size != render_area.get_size()) {
         m_state.screen_size = render_area.get_size();
-        m_program->set_uniform("projection", M4f::orthographic(0, m_state.screen_size.width(), 0,
-                                                               m_state.screen_size.height(), 0, 2));
+        m_program->get_uniform("projection")
+            .set(M4f::orthographic(0, m_state.screen_size.width(), 0, m_state.screen_size.height(), 0, 2));
     }
 
     // perform the render calls
     for (const DrawCall& drawcall : m_drawcalls) {
-        std::visit(overloaded{
-                       [&](const StrokeInfo& stroke) { _render_line(stroke); },
-                       [&](const FillInfo& shape) { _render_shape(shape); },
-                       [&](const TextInfo& text) { _render_text(text); },
-                   },
-                   drawcall);
+        std::visit(
+            overloaded{
+                [&](const StrokeInfo& stroke) { _render_line(stroke); },
+                [&](const FillInfo& shape) { _render_shape(shape); },
+                [&](const TextInfo& text) { _render_text(text); },
+            },
+            drawcall);
     }
 }
 
@@ -506,13 +511,13 @@ void Plotter::_render_line(const StrokeInfo& stroke) const {
 
     // patch type
     if (m_state.patch_type != PatchType::STROKE) {
-        m_program->set_uniform("patch_type", to_number(PatchType::STROKE));
+        m_program->get_uniform("patch_type").set(to_number(PatchType::STROKE));
         m_state.patch_type = PatchType::STROKE;
     }
 
     // stroke width
     if (abs(m_state.stroke_width - stroke.width) > precision_high<float>()) {
-        m_program->set_uniform("stroke_width", stroke.width);
+        m_program->get_uniform("stroke_width").set(stroke.width);
         m_state.stroke_width = stroke.width;
     }
 
@@ -531,12 +536,12 @@ void Plotter::_render_shape(const FillInfo& shape) const {
     // patch type
     if (shape.path->is_convex) {
         if (m_state.patch_type != PatchType::CONVEX) {
-            m_program->set_uniform("patch_type", to_number(PatchType::CONVEX));
+            m_program->get_uniform("patch_type").set(to_number(PatchType::CONVEX));
             m_state.patch_type = PatchType::CONVEX;
         }
     } else {
         if (m_state.patch_type != PatchType::CONCAVE) {
-            m_program->set_uniform("patch_type", to_number(PatchType::CONCAVE));
+            m_program->get_uniform("patch_type").set(to_number(PatchType::CONCAVE));
             m_state.patch_type = PatchType::CONCAVE;
         }
     }
@@ -546,7 +551,7 @@ void Plotter::_render_shape(const FillInfo& shape) const {
         // with a purely convex polygon, we can safely put the base vertex into the center of the polygon as it
         // will always be inside and it should never fall onto an existing vertex
         // this way, we can use antialiasing at the outer edge
-        m_program->set_uniform("vec2_aux1", shape.path->center);
+        m_program->get_uniform("vec2_aux1").set(shape.path->center);
         m_state.vec2_aux1 = shape.path->center;
     }
 
@@ -596,7 +601,7 @@ void Plotter::_render_text(const TextInfo& text) const {
 
     // patch type
     if (m_state.patch_type != PatchType::TEXT) {
-        m_program->set_uniform("patch_type", to_number(PatchType::TEXT));
+        m_program->get_uniform("patch_type").set(to_number(PatchType::TEXT));
         m_state.patch_type = PatchType::TEXT;
     }
 
@@ -606,7 +611,7 @@ void Plotter::_render_text(const TextInfo& text) const {
     // atlas size
     const V2f atlas_size_vec{atlas_size.width(), atlas_size.height()};
     if (!atlas_size_vec.is_approx(m_state.vec2_aux1)) {
-        m_program->set_uniform("vec2_aux1", atlas_size_vec);
+        m_program->get_uniform("vec2_aux1").set(atlas_size_vec);
         m_state.vec2_aux1 = atlas_size_vec;
     }
 

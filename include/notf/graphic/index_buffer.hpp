@@ -70,6 +70,9 @@ public:
     /// OpenGL handle of the index buffer.
     IndexBufferId get_id() const { return m_id; }
 
+    /// Checks if there are any indices stored in this Buffer.
+    virtual bool is_empty() const = 0;
+
 protected:
     /// Registers a new IndexBuffer with the ResourceManager.
     static void _register_ressource(AnyIndexBufferPtr index_buffer);
@@ -115,10 +118,13 @@ public:
     /// @throws OpenGLError     If the EAB could not be allocated.
     /// @throws ResourceError   If another IndexBuffer with the same name already exist.
     static IndexBufferPtr<IndexType> create(std::string name, Args args) {
-        auto result = _create_shared<VertexBuffer>(std::move(name), std::move(args));
+        auto result = _create_shared(std::move(name), std::move(args));
         _register_ressource(result);
         return result;
     }
+
+    /// Checks if there are any indices stored in this Buffer.
+    bool is_empty() const final { return m_buffer.empty(); }
 
     /// Write-access to the index buffer.
     std::vector<index_t>& write() {
@@ -138,7 +144,7 @@ public:
 
         // update the local hash on request
         if (0 == m_local_hash) {
-            m_local_hash = hash(m_buffer);
+//            m_local_hash = hash(m_buffer); // TODO:NOW hash index buffer
 
             // noop if the data on the server is still current
             if (m_local_hash == m_server_hash) { return; }
