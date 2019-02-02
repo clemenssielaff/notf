@@ -5,7 +5,7 @@
 
 #include "notf/common/arithmetic.hpp"
 
-#include "notf/graphic/fwd.hpp"
+#include "notf/graphic/opengl_buffer.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -130,67 +130,22 @@ constexpr auto extract_attribute_policy_types(const std::tuple<Ts...>& tuple) {
 
 // any vertex buffer ================================================================================================ //
 
-/// Base class for all VertexBuffers.
-/// See `VertexBuffer` for implementation details.
-class AnyVertexBuffer {
+struct AnyVertexBuffer {
 
-    // types ----------------------------------------------------------------------------------- //
-public:
     /// Whether attributes in this buffer are applied to each vertex or instance.
     enum class Application {
         PER_VERTEX,
         PER_INSTANCE,
     };
 
-    /// Arguments for the vertex array.
-    struct Args {
-        /// The expected usage of the data.
-        GLUsage usage = GLUsage::STATIC_DRAW;
-
-        /// Whether attributes in this buffer are applied to each vertex or instance.
-        Application application = Application::PER_VERTEX;
-    };
-
-    // methods --------------------------------------------------------------------------------- //
-protected:
-    /// Constructor.
-    /// @param name         Name of this VertexBuffer.
-    /// @param args         Arguments used to initialize this VertexBuffer.
-    /// @throws OpenGLError If the VBO could not be allocated.
-    AnyVertexBuffer(std::string name, Args args);
-
-public:
-    NOTF_NO_COPY_OR_ASSIGN(AnyVertexBuffer);
-
-    /// Destructor.
-    virtual ~AnyVertexBuffer();
-
-    /// Name of this VertexBuffer.
-    const std::string& get_name() const { return m_name; }
-
-    /// OpenGL handle of the vertex buffer.
-    VertexBufferId get_id() const { return m_id; }
-
-    /// Whether attributes in this buffer are applied to each vertex or instance.
-    Application get_application() const { return m_args.application; }
-
-protected:
-    /// Registers a new VertexBuffer with the ResourceManager.
-    static void _register_ressource(AnyVertexBufferPtr vertex_buffer);
-
-    // fields ---------------------------------------------------------------------------------- //
-protected:
-    /// Arguments used to initialize this VertexBuffer.
-    const Args m_args;
-
-    /// Name of this VertexBuffer.
-    std::string m_name;
-
-    /// OpenGL ID of the managed vertex buffer object.
-    VertexBufferId m_id = VertexBufferId::invalid();
+    /// The expected usage of the data stored in this buffer.
+    using UsageHint = typename detail::AnyOpenGLBuffer::UsageHint;
 };
 
 // vertex buffer ==================================================================================================== //
+
+/// VertexBuffer ID type.
+using VertexBufferId = detail::OpenGLBufferType<detail::AnyOpenGLBuffer::Type::VERTEX>;
 
 /// Example usage:
 ///
@@ -204,100 +159,53 @@ protected:
 ///         constexpr static GLuint location = 1;
 ///         constexpr static bool is_normalized = true;
 ///     };
-///     using MyVertexBuffer = VertexBuffer<PositionAttribute, AlphaAttribute>;
+///     auto MyVertexBuffer = create_vertex_buffer<PositionAttribute, AlphaAttribute>("my_buffer");
 ///
 /// VertexBuffer are shared among all GraphicContexts and managed through `shared_ptr`s. When TheGraphicSystem goes
 /// out of scope, all VertexBuffer will be deallocated. Trying to modify a deallocated VertexBuffer will throw an
 /// exception.
-template<class... AttributePolicies>
-class VertexBuffer : public AnyVertexBuffer {
+template<class AttributePolicies, class Vertex>
+class VertexBuffer : public AnyVertexBuffer, //
+                     public OpenGLBuffer<detail::AnyOpenGLBuffer::Type::VERTEX, Vertex> {
 
     // types ----------------------------------------------------------------------------------- //
 public:
-    /// All AttributePolicies as passed by the user.
-    using user_policies = std::tuple<AttributePolicies...>;
+    /// Base OpenGLBuffer class.
+    using super_t = OpenGLBuffer<detail::AnyOpenGLBuffer::Type::VERTEX, Vertex>;
 
     /// All validated Attribute policies.
-    using policies = decltype(detail::vertex_buffer_policy_factory(user_policies()));
+    using policies = AttributePolicies;
 
-    /// A tuple containing one entry for each Attribute type in order.
-    using vertex_t = decltype(detail::extract_attribute_policy_types(policies{}));
+    /// A tuple containing one entry for each Attribute policy in order.
+    using vertex_t = Vertex;
 
     // methods --------------------------------------------------------------------------------- //
 private:
     NOTF_CREATE_SMART_FACTORIES(VertexBuffer);
 
     /// Constructor.
-    /// @param name         Name of this VertexBuffer.
-    /// @param args         Arguments used to initialize this VertexBuffer.
-    /// @throws OpenGLError If the VBO could not be allocated.
-    VertexBuffer(std::string name, Args args) : AnyVertexBuffer(std::move(name), std::move(args)) {}
+    /// @param name         Human-readable name of this OpenGLBuffer.
+    /// @param application  Whether attributes in this buffer are applied to each vertex or instance.
+    /// @param usage_hint   The expected usage of the data stored in this buffer.
+    /// @throws OpenGLError If the buffer could not be allocated.
+    VertexBuffer(std::string name, const Application application, const UsageHint usage_hint)
+        : super_t(std::move(name), usage_hint), m_application(application) {}
 
 public:
     /// Factory.
-    /// @param name             Name of this VertexBuffer.
-    /// @param args             Arguments used to initialize this VertexBuffer.
-    /// @throws OpenGLError     If the VBO could not be allocated.
-    /// @throws ResourceError   If another VertexBuffer with the same name already exist.
-    static VertexBufferPtr<AttributePolicies...> create(std::string name, Args args) {
-        auto result = _create_shared(std::move(name), std::move(args));
-        _register_ressource(result);
-        return result;
-    }
-
-    /// Write-access to the vertex buffer.
-    std::vector<vertex_t>& write() {
-        m_local_hash = 0;
-        // TODO: VertexBuffer::write should return a dedicated "write" object, that keeps track of changes.
-        // This way, it can determine whether the local hash needs to be re-calculated in `apply` or not (by setting
-        // `m_local_hash` to zero on each change) and we might even be able to use multiple smaller calls to
-        // `glBufferSubData` instead of a single big one, just from data we collect automatically from the writer.
-        return m_buffer;
-    }
-
-    /// Updates the server data with the client's.
-    /// If no change occured or the client's data is empty, this method is a noop.
-    void apply() {
-        // noop if there is nothing to update
-        if (m_buffer.empty()) { return; }
-
-        // update the local hash on request
-        if (0 == m_local_hash) {
-            m_local_hash = hash(m_buffer);
-
-            // noop if the data on the server is still current
-            if (m_local_hash == m_server_hash) { return; }
-        }
-
-        // bind and eventually unbind the vertex buffer
-        struct VertexBufferGuard {
-            VertexBufferGuard(const GLuint id) { NOTF_CHECK_GL(glBindBuffer(GL_ARRAY_BUFFER, id)); }
-            ~VertexBufferGuard() { NOTF_CHECK_GL(glBindBuffer(GL_ARRAY_BUFFER, 0)); }
-        };
-        NOTF_GUARD(VertexBufferGuard(get_id().get_value()));
-
-        // upload the buffer data
-        const GLsizei buffer_size = m_buffer.size() * sizeof(vertex_t);
-        if (buffer_size <= m_server_size) {
-            NOTF_CHECK_GL(glBufferSubData(GL_ARRAY_BUFFER, /*offset = */ 0, buffer_size, &m_buffer.front()));
-        } else {
-            NOTF_CHECK_GL(glBufferData(GL_ARRAY_BUFFER, buffer_size, &m_buffer.front(), get_gl_usage(m_args.usage)));
-            m_server_size = buffer_size;
-        }
-        // TODO: It might be better to use two buffers for each VertexBuffer object.
-        // One that is currently rendered from, one that is written into. Note on the OpenGL reference:
-        // (https://www.khronos.org/registry/OpenGL-Refpages/es3/html/glBufferSubData.xhtml)
-        //
-        //      Consider using multiple buffer objects to avoid stalling the rendering pipeline during data store
-        //      updates. If any rendering in the pipeline makes reference to data in the buffer object being updated by
-        //      glBufferSubData, especially from the specific region being updated, that rendering must drain from the
-        //      pipeline before the data store can be updated.
-        //
-
-        m_server_hash = m_local_hash;
+    /// @param name         Name of this VertexBuffer.
+    /// @param application  Whether attributes in this buffer are applied to each vertex or instance.
+    /// @param args         Arguments used to initialize this VertexBuffer.
+    /// @throws OpenGLError If the VBO could not be allocated.
+    static auto create(std::string name, const Application application, const UsageHint usage_hint) {
+        return _create_shared(std::move(name), application, usage_hint);
     }
 
 private:
+    using super_t::_get_handle;
+
+    // TODO: attribute definition should happen INSIDE a VertexArrayObject
+
     /// Define all Attributes.
     /// This method should only be called from a VertexObject because it requires a bound VAO.
     /// @throws OpenGLError If no VAO is currently bound.
@@ -306,30 +214,28 @@ private:
             GLint current_vao = 0;
             NOTF_CHECK_GL(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
             if (!current_vao) {
-                NOTF_THROW(OpenGLError, "Cannot initialize a VertexBuffer without a bound VertexObject");
+                NOTF_THROW(OpenGLError, "Cannot initialize a VertexBuffer without an active VertexObject");
             }
         }
 
         // bind, but do not unbind the vertex buffer, we expect the VAO to take care of that after it has unbound itself
-        NOTF_CHECK_GL(glBindBuffer(GL_ARRAY_BUFFER, m_id.get_value()));
+        NOTF_CHECK_GL(glBindBuffer(GL_ARRAY_BUFFER, _get_handle()));
 
         // define all attributes
         _define_attribute<0>();
     }
 
-    // TODO: attribute definition should happen INSIDE a VertexObject
-
     /// Define a single Attribute in the buffer.
     template<size_t Index>
     void _define_attribute() {
-        if constexpr (Index < std::tuple_size_v<policies>) {
+        if constexpr (Index < std::tuple_size_v<vertex_t>) {
             using AttributePolicy = std::tuple_element<Index, policies>;
             using ValueType = typename AttributePolicy::type;
             using ElementType = typename AttributePolicy::element_t;
-            constexpr GLuint attribute_location = AttributePolicy::location;
-            constexpr bool attribute_is_normalized = AttributePolicy::is_normalized;
+            constexpr GLuint attr_location = AttributePolicy::location;
+            constexpr bool attr_is_normalized = AttributePolicy::is_normalized;
 
-            // we cannot be certain that the std library implementation places tuple fields in memory in order,
+            // we cannot be certain that the std library implementation places tuple fields into memory in order,
             // therefore we have to discover the memory offset for ourselves
             static constexpr vertex_t test_vertex;
             const std::uintptr_t memory_offset = to_number(&std::get<Index>(test_vertex)) - to_number(&test_vertex);
@@ -338,25 +244,24 @@ private:
             // not all value types fit into a single OpenGL ES attribute which is 4 floats wide,
             // larger types are stored in consecutive attribute locations
             static_assert(sizeof(ValueType) % sizeof(GLfloat) == 0);
-            const uint attribute_width = sizeof(ValueType) / sizeof(GLfloat);
-            for (uint attribute_offset = 0, last = (attribute_width + 3) / 4; attribute_offset < last;
-                 ++attribute_offset) {
-                const auto buffer_offset = gl_buffer_offset(memory_offset + (attribute_offset * 4 * sizeof(GLfloat)));
+            const uint attr_width = sizeof(ValueType) / sizeof(GLfloat);
+            for (uint attr_offset = 0, last = (attr_width + 3) / 4; attr_offset < last; ++attr_offset) {
+                const auto buffer_offset = gl_buffer_offset(memory_offset + (attr_offset * 4 * sizeof(GLfloat)));
 
                 // link a location in the buffer to an attribute slot
-                NOTF_CHECK_GL(glEnableVertexAttribArray(attribute_location + attribute_offset));
-                NOTF_CHECK_GL(glVertexAttribPointer(                  //
-                    attribute_location + attribute_offset,            // location
-                    min(4, attribute_width - (attribute_offset * 4)), // size
-                    to_gl_type(ElementType()),                        // type
-                    attribute_is_normalized,                          // normalized
-                    static_cast<GLsizei>(sizeof(vertex_t)),           // stride
-                    buffer_offset                                     // offset
+                NOTF_CHECK_GL(glEnableVertexAttribArray(attr_location + attr_offset));
+                NOTF_CHECK_GL(glVertexAttribPointer(        //
+                    attr_location + attr_offset,            // location
+                    min(4, attr_width - (attr_offset * 4)), // size
+                    to_gl_type(ElementType()),              // type
+                    attr_is_normalized,                     // normalized
+                    static_cast<GLsizei>(sizeof(vertex_t)), // stride
+                    buffer_offset                           // offset
                     ));
 
                 // if this buffer is applied per instance, let OpenGL know
-                if (m_args.application == Application::PER_INSTANCE) {
-                    NOTF_CHECK_GL(glVertexAttribDivisor(attribute_location + attribute_offset, 1));
+                if (m_application == Application::PER_INSTANCE) {
+                    NOTF_CHECK_GL(glVertexAttribDivisor(attr_location + attr_offset, 1));
                 }
             }
 
@@ -367,25 +272,28 @@ private:
 
     // fields ---------------------------------------------------------------------------------- //
 private:
-    /// Vertices stored in the buffer.
-    std::vector<vertex_t> m_buffer;
-
-    /// Size in bytes of the buffer allocated on the server.
-    GLsizei m_server_size = 0;
-
-    /// Hash of the current data held by the application.
-    size_t m_local_hash = 0;
-
-    /// Hash of the data that was last uploaded to the GPU.
-    size_t m_server_hash = 0;
+    const Application m_application;
 };
+
+/// VertexBuffer factory.
+/// @param name         Human-readable name of this OpenGLBuffer.
+/// @param application  Whether attributes in this buffer are applied to each vertex or instance.
+/// @param usage_hint   The expected usage of the data stored in this buffer.
+/// @throws OpenGLError If the buffer could not be allocated.
+template<class... AttributePolicies>
+auto create_vertex_buffer(std::string name, const AnyVertexBuffer::Application application,
+                          const AnyVertexBuffer::UsageHint usage_hint) {
+    using attribute_policies = decltype(detail::vertex_buffer_policy_factory(std::tuple<AttributePolicies...>{}));
+    using vertex_t = decltype(detail::extract_attribute_policy_types(attribute_policies{}));
+    return VertexBuffer<attribute_policies, vertex_t>::create(std::move(name), application, usage_hint);
+}
 
 NOTF_CLOSE_NAMESPACE
 
 // common_type ====================================================================================================== //
 
 /// std::common_type specializations for AnyVertexBufferPtr subclasses.
-template<class... Lhs, class... Rhs>
-struct std::common_type<::notf::VertexBuffer<Lhs...>, ::notf::VertexBufferPtr<Rhs...>> {
-    using type = ::notf::AnyVertexBufferPtr;
-};
+// template<class... Lhs, class... Rhs>
+// struct std::common_type<::notf::VertexBuffer<Lhs...>, ::notf::VertexBufferPtr<Rhs...>> {
+//    using type = ::notf::AnyVertexBufferPtr;
+//};

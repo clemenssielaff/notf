@@ -166,7 +166,6 @@ static GLFWbool parseMapping(_GLFWmapping* mapping, const char* string)
 
     while (*c)
     {
-        // TODO: Implement output modifiers
         if (*c == '+' || *c == '-')
             return GLFW_FALSE;
 

@@ -36,8 +36,8 @@ class TheGraphicsSystem;
 
 // index_buffer.hpp -------------------------------------------------------- //
 
-NOTF_DECLARE_SHARED_POINTERS(class, AnyIndexBuffer);
-NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, IndexBuffer);
+//NOTF_DECLARE_SHARED_POINTERS(class, AnyIndexBuffer);
+//NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, IndexBuffer);
 
 // shader.hpp -------------------------------------------------------------- //
 
@@ -62,13 +62,12 @@ NOTF_DECLARE_SHARED_POINTERS(class, Texture);
 
 // uniform_buffer.hpp ------------------------------------------------------ //
 
-NOTF_DECLARE_SHARED_POINTERS(class, AnyUniformBuffer);
-NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, UniformBuffer);
+//NOTF_DECLARE_SHARED_POINTERS(class, AnyUniformBuffer);
+//NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, UniformBuffer);
 
 // vertex_buffer.hpp ------------------------------------------------------- //
 
-NOTF_DECLARE_SHARED_POINTERS(class, AnyVertexBuffer);
-NOTF_DECLARE_SHARED_POINTERS_VAR_TEMPLATE1(class, VertexBuffer);
+//NOTF_DECLARE_SHARED_POINTERS_VAR_TEMPLATE(class, VertexBuffer);
 
 // renderer/plotter.hpp ---------------------------------------------------- //
 
@@ -96,21 +95,5 @@ using FrameBufferId = IdType<FrameBuffer, GLuint>;
 using ShaderId = IdType<AnyShader, GLuint>;
 using TextureId = IdType<Texture, GLuint>;
 using ShaderProgramId = IdType<ShaderProgram, GLuint>;
-using UniformBufferId = IdType<AnyUniformBuffer, GLuint>;
-using VertexBufferId = IdType<AnyVertexBuffer, GLuint>;
-using IndexBufferId = IdType<AnyIndexBuffer, GLuint>;
 
 NOTF_CLOSE_NAMESPACE
-
-
-//left to do:
-//    -----------
-//    texture.cpp
-//        should a texture always bind the grahicssystem when you want to change a paramter?
-//    not really, it should only do that if no GraphicsContext is current
-//        plotter.cpp
-//            all broken
-//                graphicsystem
-//                    no errors, but not overworked
-//        fwd
-//            cleanup

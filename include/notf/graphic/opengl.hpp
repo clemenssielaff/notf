@@ -166,25 +166,6 @@ public:
     GLuint back = all_bits_one<GLuint>();
 };
 
-// data usage ======================================================================================================= //
-
-/// The expected usage of the data.
-enum class GLUsage {
-    DYNAMIC_DRAW, ///< Written many times, read many times by the GPU (default)
-    DYNAMIC_READ, ///< Written many times, read many times from the application
-    DYNAMIC_COPY, ///< Written many times, read many times from the application as a source for new writes
-    STATIC_DRAW,  ///< Written once, read many times from the GPU
-    STATIC_READ,  ///< Written once, read many times from the application
-    STATIC_COPY,  ///< Written once, read many times from the application as a source for new writes
-    STREAM_DRAW,  ///< Written once, read only a few times by the GPU
-    STREAM_READ,  ///< Written once, read only a few times from the application
-    STREAM_COPY,  ///< Written once, read only a few times from the application as a source for new writes
-    DEFAULT = DYNAMIC_DRAW,
-};
-
-/// Converts the GLUsage type into an OpenGL enum.
-GLenum get_gl_usage(const GLUsage usage);
-
 // gl utils ========================================================================================================= //
 
 /// Calculate a GLvoid buffer offset.

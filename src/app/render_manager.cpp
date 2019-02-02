@@ -46,6 +46,12 @@ void RenderManager::RenderThread::_run() {
         // thread is allowed to access mutable methods on a handle
         const WindowHandle& window = window_handle;
 
+        // TODO: Improve Render target ordering
+        // when topological sorting, sort all free nodes into "level" buckets and sort them in a way that minimizes
+        // state changes locally. The point is, the problem is NP complete or whatever, so we won't solve it or the
+        // solution will take more time that in saves. Settle for something quick that improves the solution instead of
+        // brute-forcing the optimal one.
+
         { // render the window
             GraphicsContext& context = window->get_graphics_context();
             NOTF_GUARD(context.make_current());

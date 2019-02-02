@@ -114,22 +114,6 @@ std::tuple<GLenum, GLenum, GLenum, GLenum> convert_blend_mode(const BlendMode& m
 
 BlendMode::OpenGLBlendMode::OpenGLBlendMode(const BlendMode& mode) : OpenGLBlendMode(convert_blend_mode(mode)) {}
 
-// data usage ======================================================================================================= //
-
-GLenum notf::get_gl_usage(const GLUsage usage) {
-    switch (usage) {
-    case GLUsage::DYNAMIC_DRAW: return GL_DYNAMIC_DRAW;
-    case GLUsage::DYNAMIC_READ: return GL_DYNAMIC_READ;
-    case GLUsage::DYNAMIC_COPY: return GL_DYNAMIC_COPY;
-    case GLUsage::STATIC_DRAW: return GL_STATIC_DRAW;
-    case GLUsage::STATIC_READ: return GL_STATIC_READ;
-    case GLUsage::STATIC_COPY: return GL_STATIC_COPY;
-    case GLUsage::STREAM_DRAW: return GL_STREAM_DRAW;
-    case GLUsage::STREAM_READ: return GL_STREAM_READ;
-    case GLUsage::STREAM_COPY: return GL_STREAM_COPY;
-    }
-}
-
 // data types ======================================================================================================= //
 
 const char* notf::get_gl_type_name(GLenum type) {
