@@ -1,22 +1,26 @@
 #pragma once
 
 #include "notf/meta/id.hpp"
+#include "notf/meta/types.hpp"
 
 #include "notf/common/fwd.hpp"
 
-#include "notf/graphic/opengl.hpp"
-
-// forwards ========================================================================================================= //
-
 NOTF_OPEN_NAMESPACE
 
-// NOTF_DECLARE_SHARED_POINTERS(class, FragmentRenderer);
+// opengl buffer types ============================================================================================== //
 
-// template<typename>
-// class PrefabType;
+namespace detail {
 
-// template<typename>
-// class PrefabFactory;
+/// OpenGL buffer type.
+enum class OpenGLBufferType : uchar {
+    VERTEX,
+    INDEX,
+    UNIFORM,
+};
+
+} // namespace detail
+
+// forwards ========================================================================================================= //
 
 // frame_buffer.hpp -------------------------------------------------------- //
 
@@ -34,10 +38,18 @@ class GraphicsSystem;
 } // namespace detail
 class TheGraphicsSystem;
 
+// opengl_buffer.hpp ------------------------------------------------------- //
+
+namespace detail {
+template<detail::OpenGLBufferType>
+class TypedOpenGLBuffer;
+} // namespace detail
+
 // index_buffer.hpp -------------------------------------------------------- //
 
-//NOTF_DECLARE_SHARED_POINTERS(class, AnyIndexBuffer);
-//NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, IndexBuffer);
+using AnyIndexBuffer = detail::TypedOpenGLBuffer<detail::OpenGLBufferType::INDEX>;
+NOTF_DECLARE_SHARED_POINTERS_ONLY(AnyIndexBuffer);
+NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, IndexBuffer);
 
 // shader.hpp -------------------------------------------------------------- //
 
@@ -60,14 +72,21 @@ class UniformBlock;
 } // namespace detail
 NOTF_DECLARE_SHARED_POINTERS(class, Texture);
 
+// vertex_object.hpp ------------------------------------------------------- //
+
+NOTF_DECLARE_SHARED_POINTERS(class, VertexObject);
+
 // uniform_buffer.hpp ------------------------------------------------------ //
 
-//NOTF_DECLARE_SHARED_POINTERS(class, AnyUniformBuffer);
-//NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, UniformBuffer);
+using AnyUniformBuffer = detail::TypedOpenGLBuffer<detail::OpenGLBufferType::UNIFORM>;
+NOTF_DECLARE_SHARED_POINTERS_ONLY(AnyUniformBuffer);
+NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, UniformBuffer);
 
 // vertex_buffer.hpp ------------------------------------------------------- //
 
-//NOTF_DECLARE_SHARED_POINTERS_VAR_TEMPLATE(class, VertexBuffer);
+using AnyVertexBuffer = detail::TypedOpenGLBuffer<detail::OpenGLBufferType::VERTEX>;
+NOTF_DECLARE_SHARED_POINTERS_ONLY(AnyVertexBuffer);
+NOTF_DECLARE_SHARED_POINTERS_TEMPLATE2(class, VertexBuffer);
 
 // renderer/plotter.hpp ---------------------------------------------------- //
 
@@ -90,10 +109,14 @@ struct GLFWwindow;
 
 NOTF_OPEN_NAMESPACE
 
-using RenderBufferId = IdType<RenderBuffer, GLuint>;
-using FrameBufferId = IdType<FrameBuffer, GLuint>;
-using ShaderId = IdType<AnyShader, GLuint>;
-using TextureId = IdType<Texture, GLuint>;
-using ShaderProgramId = IdType<ShaderProgram, GLuint>;
+using RenderBufferId = IdType<RenderBuffer, uint>;
+using FrameBufferId = IdType<FrameBuffer, uint>;
+using ShaderId = IdType<AnyShader, uint>;
+using TextureId = IdType<Texture, uint>;
+using ShaderProgramId = IdType<ShaderProgram, uint>;
+using VertexBufferId = IdType<AnyVertexBuffer, uint>;
+using IndexBufferId = IdType<AnyIndexBuffer, uint>;
+using UniformBufferId = IdType<AnyUniformBuffer, uint>;
+using VertexObjectId = IdType<VertexObject, uint>;
 
 NOTF_CLOSE_NAMESPACE

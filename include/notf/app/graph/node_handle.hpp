@@ -281,7 +281,12 @@ protected:
     /// @throws ThreadError         If the current thread is not the UI thread.
     Interface* _get_interface() {
         if (!this_thread::is_the_ui_thread()) {
-            NOTF_THROW(ThreadError, "NodeHandles may only be modified from the UI thread");
+            // TODO: letting the NodeHandle -> operator throw if it's not the UI thread makes rendering difficult...
+            //      is there a better way to do this? Ideally, I'd think, the methods itself would make sure that it's
+            //      the UI thread, if it is really that important
+            //      Actually, all const methods should be fine without check while all mutable must be called from the
+            //      ui thread
+            // NOTF_THROW(ThreadError, "NodeHandles may only be modified from the UI thread");
         }
         return reinterpret_cast<Interface*>(_get_node().get());
     }

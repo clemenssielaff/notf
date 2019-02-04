@@ -93,9 +93,9 @@ private:
         const CubicBezier2f spline({CubicBezier2f::Segment::line(-half_line, half_line)});
 
         // draw a background
-        painter.set_fill(Color(1, 0, 0));
-        painter.set_path(convert_to<Polygonf>(Aabrf(-half_length, -half_length, half_length * 2, half_length * 2)));
-        painter.fill();
+//        painter.set_fill(Color(1, 0, 0));
+//        painter.set_path(convert_to<Polygonf>(Aabrf(-half_length, -half_length, half_length * 2, half_length * 2)));
+//        painter.fill();
 
         // draw the rotating line
         painter.set_stroke_width(1.f);

@@ -10,7 +10,7 @@
 #include "notf/common/color.hpp"
 #include "notf/common/mutex.hpp"
 
-#include "notf/graphic/fwd.hpp"
+#include "notf/graphic/opengl.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -212,6 +212,37 @@ private:
     private:
         /// Bound ShaderProgram.
         ShaderProgramPtr m_program;
+    };
+
+    // vertex object binding --------------------------------------------------
+
+    struct _VertexObject {
+        NOTF_NO_COPY_OR_ASSIGN(_VertexObject);
+
+        /// Default Constructor.
+        _VertexObject() = default;
+
+        /// Destructor.
+        ~_VertexObject() { operator=(nullptr); }
+
+        /// Assignment operator.
+        /// @param vertex_object    New VertexObject to bind.
+        void operator=(VertexObjectPtr vertex_object);
+
+        /// Currently bound VertexObject (can be empty).
+        operator VertexObjectPtr() const { return m_vertex_object; }
+
+        /// @{
+        /// Comparison operators.
+        bool operator==(const VertexObject* vertex_object) const { return m_vertex_object.get() == vertex_object; }
+        bool operator==(const VertexObject& vertex_object) const { return operator==(&vertex_object); }
+        bool operator==(const VertexObjectPtr& vertex_object) const { return operator==(vertex_object.get()); }
+        /// @}
+
+        // fields ---------------------------------------------------------- //
+    private:
+        /// Bound VertexObject.
+        VertexObjectPtr m_vertex_object;
     };
 
     // texture slots ----------------------------------------------------------
@@ -471,6 +502,9 @@ private:
 
         /// Bound ShaderProgram.
         _ShaderProgram program;
+
+        /// Bound VertexObject.
+        _VertexObject vertex_object;
 
         /// Bound Framebuffer.
         _FrameBuffer framebuffer;

@@ -16,6 +16,7 @@
 #include "notf/graphic/shader_program.hpp"
 #include "notf/graphic/texture.hpp"
 #include "notf/graphic/uniform_buffer.hpp"
+#include "notf/graphic/vertex_object.hpp"
 
 NOTF_USING_NAMESPACE;
 
@@ -119,6 +120,19 @@ void GraphicsContext::_ShaderProgram::operator=(ShaderProgramPtr program) {
     }
 }
 
+// vertex object binding ============================================================================================ //
+
+void GraphicsContext::_VertexObject::operator=(VertexObjectPtr vertex_object) {
+    if (m_vertex_object == vertex_object) { return; }
+    m_vertex_object = std::move(vertex_object);
+
+    if (m_vertex_object) {
+        NOTF_CHECK_GL(glBindVertexArray(m_vertex_object->get_id().get_value()));
+    } else {
+        NOTF_CHECK_GL(glBindVertexArray(0));
+    }
+}
+
 // texture slots ==================================================================================================== //
 
 void GraphicsContext::_TextureSlots::Slot::operator=(TexturePtr texture) {
@@ -155,7 +169,7 @@ void GraphicsContext::_UniformSlots::Slot::BufferBinding::_set(AnyUniformBufferP
     m_offset = offset;
 
     if (m_buffer) {
-        const GLsizeiptr block_size = narrow_cast<GLsizeiptr>(m_buffer->get_block_size());
+        const GLsizeiptr block_size = narrow_cast<GLsizeiptr>(m_buffer->get_element_size());
         const GLintptr buffer_offset = block_size * narrow_cast<GLsizei>(m_offset);
         NOTF_CHECK_GL(glBindBufferRange(GL_UNIFORM_BUFFER, m_slot_index, m_buffer->get_id().get_value(), buffer_offset,
                                         block_size));
@@ -299,6 +313,7 @@ void GraphicsContext::reset() {
     m_state.cull_face = CullFace::DEFAULT;
     m_state.stencil_mask = StencilMask();
     m_state.program = nullptr;
+    m_state.vertex_object = nullptr;
     m_state.framebuffer = nullptr;
     m_state.texture_slots.clear();
     m_state.uniform_slots.clear();

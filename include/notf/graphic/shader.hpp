@@ -5,7 +5,7 @@
 #include "notf/meta/smart_ptr.hpp"
 #include "notf/meta/types.hpp"
 
-#include "notf/graphic/fwd.hpp"
+#include "notf/graphic/opengl.hpp"
 
 // TODO: cache compiled shader binaries next to their text files (like python?)
 

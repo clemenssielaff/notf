@@ -30,8 +30,7 @@ class AttributePolicyFactory {
                     static_assert(always_false_v<Policy>,
                                   "The size of an Attribute value type must be divisible by `sizeof(GLfloat)`");
                 } else {
-                    // success
-                    return declval<typename Policy::type>();
+                    return declval<ValueType>(); // success
                 }
             }
         }
@@ -52,7 +51,7 @@ class AttributePolicyFactory {
     NOTF_CREATE_FIELD_DETECTOR(is_normalized);
     static constexpr auto create_is_normalized() {
         if constexpr (has_is_normalized_v<Policy>) {
-            if constexpr ((std::is_convertible_v<decltype(Policy::is_normalized), bool>)) {
+            if constexpr (std::is_convertible_v<decltype(Policy::is_normalized), bool>) {
                 return static_cast<bool>(Policy::is_normalized);
             } else {
                 static_assert(
@@ -128,24 +127,7 @@ constexpr auto extract_attribute_policy_types(const std::tuple<Ts...>& tuple) {
 
 } // namespace detail
 
-// any vertex buffer ================================================================================================ //
-
-struct AnyVertexBuffer {
-
-    /// Whether attributes in this buffer are applied to each vertex or instance.
-    enum class Application {
-        PER_VERTEX,
-        PER_INSTANCE,
-    };
-
-    /// The expected usage of the data stored in this buffer.
-    using UsageHint = typename detail::AnyOpenGLBuffer::UsageHint;
-};
-
 // vertex buffer ==================================================================================================== //
-
-/// VertexBuffer ID type.
-using VertexBufferId = detail::OpenGLBufferType<detail::AnyOpenGLBuffer::Type::VERTEX>;
 
 /// Example usage:
 ///
@@ -165,13 +147,12 @@ using VertexBufferId = detail::OpenGLBufferType<detail::AnyOpenGLBuffer::Type::V
 /// out of scope, all VertexBuffer will be deallocated. Trying to modify a deallocated VertexBuffer will throw an
 /// exception.
 template<class AttributePolicies, class Vertex>
-class VertexBuffer : public AnyVertexBuffer, //
-                     public OpenGLBuffer<detail::AnyOpenGLBuffer::Type::VERTEX, Vertex> {
+class VertexBuffer : public OpenGLBuffer<detail::OpenGLBufferType::VERTEX, Vertex> {
 
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Base OpenGLBuffer class.
-    using super_t = OpenGLBuffer<detail::AnyOpenGLBuffer::Type::VERTEX, Vertex>;
+    using super_t = OpenGLBuffer<detail::OpenGLBufferType::VERTEX, Vertex>;
 
     /// All validated Attribute policies.
     using policies = AttributePolicies;
@@ -179,38 +160,39 @@ public:
     /// A tuple containing one entry for each Attribute policy in order.
     using vertex_t = Vertex;
 
+    /// The expected usage of the data stored in this buffer.
+    using UsageHint = typename detail::AnyOpenGLBuffer::UsageHint;
+
     // methods --------------------------------------------------------------------------------- //
 private:
     NOTF_CREATE_SMART_FACTORIES(VertexBuffer);
 
     /// Constructor.
-    /// @param name         Human-readable name of this OpenGLBuffer.
-    /// @param application  Whether attributes in this buffer are applied to each vertex or instance.
-    /// @param usage_hint   The expected usage of the data stored in this buffer.
-    /// @throws OpenGLError If the buffer could not be allocated.
-    VertexBuffer(std::string name, const Application application, const UsageHint usage_hint)
-        : super_t(std::move(name), usage_hint), m_application(application) {}
+    /// @param name                    Human-readable name of this OpenGLBuffer.
+    /// @param usage_hint              The expected usage of the data stored in this buffer.
+    /// @param is_instance_attribute   Whether the data held in this buffer is applied per vertex (false -> the default)
+    ///                                or per instance (true).
+    /// @throws OpenGLError            If the buffer could not be allocated.
+    VertexBuffer(std::string name, const UsageHint usage_hint, const bool is_instance_attribute)
+        : super_t(std::move(name), usage_hint), m_is_instance_attribute(is_instance_attribute) {}
 
 public:
     /// Factory.
-    /// @param name         Name of this VertexBuffer.
-    /// @param application  Whether attributes in this buffer are applied to each vertex or instance.
-    /// @param args         Arguments used to initialize this VertexBuffer.
-    /// @throws OpenGLError If the VBO could not be allocated.
-    static auto create(std::string name, const Application application, const UsageHint usage_hint) {
-        return _create_shared(std::move(name), application, usage_hint);
+    /// @param name                    Human-readable name of this OpenGLBuffer.
+    /// @param usage_hint              The expected usage of the data stored in this buffer.
+    /// @param is_instance_attribute   Whether the data held in this buffer is applied per vertex (false -> the default)
+    ///                                or per instance (true).
+    /// @throws OpenGLError            If the buffer could not be allocated.
+    static auto create(std::string name, const UsageHint usage_hint = UsageHint::DEFAULT,
+                       const bool is_instance_attribute = false) {
+        return _create_shared(std::move(name), usage_hint, is_instance_attribute);
     }
 
-private:
-    using super_t::_get_handle;
+    /// Performs additional initialization of the buffer, should the type require it.
+    void initialize() final {
+        if (this->_is_initialized()) { return; }
 
-    // TODO: attribute definition should happen INSIDE a VertexArrayObject
-
-    /// Define all Attributes.
-    /// This method should only be called from a VertexObject because it requires a bound VAO.
-    /// @throws OpenGLError If no VAO is currently bound.
-    void _define_attributes() const {
-        { // make sure there is a bound VertexObject
+        if constexpr (config::is_debug_build()) { // make sure there is a bound VertexObject
             GLint current_vao = 0;
             NOTF_CHECK_GL(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
             if (!current_vao) {
@@ -218,18 +200,18 @@ private:
             }
         }
 
-        // bind, but do not unbind the vertex buffer, we expect the VAO to take care of that after it has unbound itself
-        NOTF_CHECK_GL(glBindBuffer(GL_ARRAY_BUFFER, _get_handle()));
+        NOTF_CHECK_GL(glBindBuffer(GL_ARRAY_BUFFER, this->_get_handle()));
+        _define_attributes();
 
-        // define all attributes
-        _define_attribute<0>();
+        detail::AnyOpenGLBuffer::initialize();
     }
 
+private:
     /// Define a single Attribute in the buffer.
-    template<size_t Index>
-    void _define_attribute() {
+    template<size_t Index = 0>
+    void _define_attributes() const {
         if constexpr (Index < std::tuple_size_v<vertex_t>) {
-            using AttributePolicy = std::tuple_element<Index, policies>;
+            using AttributePolicy = std::tuple_element_t<Index, policies>;
             using ValueType = typename AttributePolicy::type;
             using ElementType = typename AttributePolicy::element_t;
             constexpr GLuint attr_location = AttributePolicy::location;
@@ -260,40 +242,46 @@ private:
                     ));
 
                 // if this buffer is applied per instance, let OpenGL know
-                if (m_application == Application::PER_INSTANCE) {
-                    NOTF_CHECK_GL(glVertexAttribDivisor(attr_location + attr_offset, 1));
-                }
+                if (m_is_instance_attribute) { NOTF_CHECK_GL(glVertexAttribDivisor(attr_location + attr_offset, 1)); }
             }
 
             // define remaining attributes
-            _define_attribute<Index + 1>();
+            _define_attributes<Index + 1>();
         }
     }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
-    const Application m_application;
+    /// Whether the data held in this buffer is applied per vertex (false -> the default) or per instance (true).
+    const bool m_is_instance_attribute;
 };
 
 /// VertexBuffer factory.
-/// @param name         Human-readable name of this OpenGLBuffer.
-/// @param application  Whether attributes in this buffer are applied to each vertex or instance.
-/// @param usage_hint   The expected usage of the data stored in this buffer.
-/// @throws OpenGLError If the buffer could not be allocated.
+/// @param name                    Human-readable name of this OpenGLBuffer.
+/// @param usage_hint              The expected usage of the data stored in this buffer.
+/// @param is_instance_attribute   Whether the data held in this buffer is applied per vertex (false -> the default)
+///                                or per instance (true).
+/// @throws OpenGLError            If the buffer could not be allocated.
 template<class... AttributePolicies>
-auto create_vertex_buffer(std::string name, const AnyVertexBuffer::Application application,
-                          const AnyVertexBuffer::UsageHint usage_hint) {
+auto make_vertex_buffer(std::string name,
+                        const AnyVertexBuffer::UsageHint usage_hint = AnyVertexBuffer::UsageHint::DEFAULT,
+                        const bool is_instance_attribute = false) {
     using attribute_policies = decltype(detail::vertex_buffer_policy_factory(std::tuple<AttributePolicies...>{}));
     using vertex_t = decltype(detail::extract_attribute_policy_types(attribute_policies{}));
-    return VertexBuffer<attribute_policies, vertex_t>::create(std::move(name), application, usage_hint);
+    return VertexBuffer<attribute_policies, vertex_t>::create(std::move(name), usage_hint, is_instance_attribute);
 }
+
+/// VertexBuffer type produced by `make_vertex_buffer` with the given template arguments.
+template<class... AttributePolicies>
+using vertex_buffer_t = typename decltype(make_vertex_buffer<AttributePolicies...>(""))::element_type;
 
 NOTF_CLOSE_NAMESPACE
 
 // common_type ====================================================================================================== //
 
 /// std::common_type specializations for AnyVertexBufferPtr subclasses.
-// template<class... Lhs, class... Rhs>
-// struct std::common_type<::notf::VertexBuffer<Lhs...>, ::notf::VertexBufferPtr<Rhs...>> {
-//    using type = ::notf::AnyVertexBufferPtr;
-//};
+template<class LeftAttrs, class LeftVertex, class RightAttrs, class RightVertex>
+struct std::common_type<::notf::VertexBufferPtr<LeftAttrs, LeftVertex>,
+                        ::notf::VertexBufferPtr<RightAttrs, RightVertex>> {
+    using type = ::notf::AnyVertexBufferPtr;
+};

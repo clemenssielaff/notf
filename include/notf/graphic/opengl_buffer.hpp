@@ -1,6 +1,6 @@
 #pragma once
 
-#include "notf/graphic/fwd.hpp"
+#include "notf/graphic/opengl.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -13,11 +13,7 @@ class AnyOpenGLBuffer {
     // types ----------------------------------------------------------------------------------- //
 public:
     /// OpenGL buffer type.
-    enum class Type : GLushort {
-        VERTEX,
-        INDEX,
-        UNIFORM,
-    };
+    using Type = detail::OpenGLBufferType;
 
     /// The expected usage of the data stored in this buffer.
     enum class UsageHint : GLushort {
@@ -37,16 +33,19 @@ public:
 protected:
     /// Constructor.
     /// @param name         Human-readable name of this OpenGLBuffer.
-    /// @param buffer_type  OpenGL buffer type.
     /// @param usage_hint   The expected usage of the data stored in this buffer.
+    /// @param buffer_type  OpenGL buffer type.
     /// @throws OpenGLError If the buffer could not be allocated.
-    AnyOpenGLBuffer(std::string name, const Type buffer_type, const UsageHint usage_hint);
+    AnyOpenGLBuffer(std::string name, const UsageHint usage_hint, const Type buffer_type);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(AnyOpenGLBuffer);
 
     /// Destructor.
     virtual ~AnyOpenGLBuffer();
+
+    /// Performs additional initialization of the buffer, should the type require it.
+    virtual void initialize() { m_is_initialized = true; }
 
     /// Name of this OpenGLBuffer.
     const std::string& get_name() const { return m_name; }
@@ -74,6 +73,9 @@ protected:
     /// Numeric OpenGL handle of this buffer.
     GLuint _get_handle() const { return m_handle; }
 
+    /// Whether or not `_initialize` has been called or not.
+    bool _is_initialized() const { return m_is_initialized; }
+
     /// Produces the name of a buffer type from its OpenGL enum value.
     /// @param buffer_type  Buffer type to convert.
     /// @returns            Name of the buffer type or nullptr on error.
@@ -97,31 +99,59 @@ private:
     /// Numeric OpenGL handle of this buffer.
     GLuint m_handle = 0;
 
-    /// OpenGL buffer type.
-    const Type m_type;
-
     /// The expected usage of the data stored in this buffer.
     UsageHint m_usage = UsageHint::DEFAULT;
+
+    /// Whether or not `_initialize` has been called or not.
+    bool m_is_initialized = false;
+
+    /// OpenGL buffer type.
+    const Type m_type;
 };
 
-/// Type used to identify the IdType of a given AnyOpenGLBuffer type.
-template<AnyOpenGLBuffer::Type Type>
-struct OpenGLBufferType;
+// typed opengl buffer ============================================================================================== //
+
+/// Typed but virtual OpenGL Buffer type.
+template<detail::OpenGLBufferType t_buffer_type>
+class TypedOpenGLBuffer : public AnyOpenGLBuffer {
+
+
+    // types ----------------------------------------------------------------------------------- //
+public:
+    /// ID type used to identify this OpenGL buffer.
+    using id_t = IdType<detail::TypedOpenGLBuffer<t_buffer_type>, GLuint>;
+
+    // methods --------------------------------------------------------------------------------- //
+protected:
+    /// Constructor.
+    /// @param name         Human-readable name of this OpenGLBuffer.
+    /// @param usage_hint   The expected usage of the data stored in this buffer.
+    /// @throws OpenGLError If the buffer could not be allocated.
+    TypedOpenGLBuffer(std::string name, const UsageHint usage_hint)
+        : AnyOpenGLBuffer(std::move(name), usage_hint, t_buffer_type) {}
+
+public:
+    /// Typed ID of this buffer.
+    id_t get_id() const { return this->_get_handle(); }
+};
 
 } // namespace detail
 
 // opengl buffer ==================================================================================================== //
 
-template<detail::AnyOpenGLBuffer::Type buffer_type, class Data>
-class OpenGLBuffer : public detail::AnyOpenGLBuffer {
+template<detail::OpenGLBufferType t_buffer_type, class Data>
+class OpenGLBuffer : public detail::TypedOpenGLBuffer<t_buffer_type> {
 
     // types ----------------------------------------------------------------------------------- //
 public:
-    /// ID type used to identify this OpenGL buffer.
-    using id_t = IdType<detail::OpenGLBufferType<buffer_type>, GLuint>;
-
     /// Type of data stored in this OpenGL buffer.
     using data_t = Data;
+
+    /// OpenGL buffer type.
+    using Type = typename detail::OpenGLBufferType;
+
+    /// The expected usage of the data stored in this buffer.
+    using UsageHint = typename detail::AnyOpenGLBuffer::UsageHint;
 
     // methods --------------------------------------------------------------------------------- //
 protected:
@@ -130,12 +160,9 @@ protected:
     /// @param usage_hint   The expected usage of the data stored in this buffer.
     /// @throws OpenGLError If the buffer could not be allocated.
     OpenGLBuffer(std::string name, const UsageHint usage_hint = UsageHint::DEFAULT)
-        : detail::AnyOpenGLBuffer(std::move(name), buffer_type, usage_hint) {}
+        : detail::TypedOpenGLBuffer<t_buffer_type>(std::move(name), usage_hint) {}
 
 public:
-    /// Typed ID of this buffer.
-    id_t get_id() const { return _get_handle(); }
-
     /// Checks if there is any data stored in this buffer.
     bool is_empty() const final { return m_buffer.empty(); }
 
@@ -143,7 +170,7 @@ public:
     size_t get_element_count() const final { return m_buffer.size(); }
 
     /// Size of an element in this buffer (including padding) in bytes.
-    size_t get_element_size() const override { return sizeof (data_t); }
+    size_t get_element_size() const override { return sizeof(data_t); }
 
     /// Write-access to the data stored in this buffer.
     auto& write() {
@@ -167,14 +194,14 @@ public:
         if (m_local_hash == m_server_hash) { return; }
 
         // bind and eventually unbind the index buffer
-        const GLenum gl_type = _to_gl_type(get_type());
+        const GLenum gl_type = this->_to_gl_type(this->get_type());
         struct BufferGuard {
             BufferGuard(const OpenGLBuffer& buffer) {
-                const OpenGLBuffer::Type type = buffer.get_type();
+                const Type type = buffer.get_type();
                 // vertex- and index-buffers should be part of a VertexObject (VAO) that takes care of un/binding
                 if (type != OpenGLBuffer::Type::VERTEX && //
                     type != OpenGLBuffer::Type::INDEX) {
-                    m_type = _to_gl_type(type);
+                    m_type = buffer._to_gl_type(type);
                     NOTF_CHECK_GL(glBindBuffer(m_type, buffer._get_handle()));
                 }
             }
@@ -190,7 +217,8 @@ public:
         if (buffer_size <= m_server_size) {
             NOTF_CHECK_GL(glBufferSubData(gl_type, /*offset = */ 0, buffer_size, &m_buffer.front()));
         } else {
-            NOTF_CHECK_GL(glBufferData(gl_type, buffer_size, &m_buffer.front(), _to_gl_usage(get_usage_hint())));
+            NOTF_CHECK_GL(
+                glBufferData(gl_type, buffer_size, &m_buffer.front(), this->_to_gl_usage(this->get_usage_hint())));
             m_server_size = buffer_size;
         }
         m_server_hash = m_local_hash;

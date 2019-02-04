@@ -48,6 +48,7 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     graphic/shader.cpp
     graphic/shader_program.cpp
     graphic/texture.cpp
+    graphic/vertex_object.cpp
 #    graphic/prefab_factory.cpp
 
     graphic/renderer/fragment_renderer.cpp

@@ -6,31 +6,22 @@
 
 NOTF_OPEN_NAMESPACE
 
-// any index buffer ================================================================================================= //
-
-struct AnyIndexBuffer {
-
-    /// The expected usage of the data stored in this buffer.
-    using UsageHint = typename detail::AnyOpenGLBuffer::UsageHint;
-};
-
 // index buffer ===================================================================================================== //
-
-/// IndexBuffer ID type.
-using IndexBufferId = detail::OpenGLBufferType<detail::AnyOpenGLBuffer::Type::INDEX>;
 
 /// Abstraction of an OpenGL index buffer.
 template<class IndexType>
-class IndexBuffer : public AnyIndexBuffer, //
-                    public OpenGLBuffer<detail::AnyOpenGLBuffer::Type::INDEX, IndexType> {
+class IndexBuffer : public OpenGLBuffer<detail::OpenGLBufferType::INDEX, IndexType> {
 
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Base OpenGLBuffer class.
-    using super_t = OpenGLBuffer<detail::AnyOpenGLBuffer::Type::INDEX, IndexType>;
+    using super_t = OpenGLBuffer<detail::OpenGLBufferType::INDEX, IndexType>;
 
     /// Value type of the indices.
     using index_t = IndexType;
+
+    /// The expected usage of the data stored in this buffer.
+    using UsageHint = typename detail::AnyOpenGLBuffer::UsageHint;
 
     // methods --------------------------------------------------------------------------------- //
 private:
@@ -41,6 +32,23 @@ private:
     /// @param usage_hint   The expected usage of the data stored in this buffer.
     /// @throws OpenGLError If the buffer could not be allocated.
     IndexBuffer(std::string name, const UsageHint usage_hint) : super_t(std::move(name), usage_hint) {}
+
+    /// Performs additional initialization of the buffer, should the type require it.
+    void initialize() final {
+        if (this->_is_initialized()) { return; }
+
+        if constexpr (config::is_debug_build()) { // make sure there is a bound VertexObject
+            GLint current_vao = 0;
+            NOTF_CHECK_GL(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
+            if (!current_vao) {
+                NOTF_THROW(OpenGLError, "Cannot initialize an IndexBuffer without an active VertexObject");
+            }
+        }
+
+        NOTF_CHECK_GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->_get_handle()));
+
+        detail::AnyOpenGLBuffer::initialize();
+    }
 
 public:
     /// Factory.
@@ -57,17 +65,21 @@ public:
 /// @param usage_hint   The expected usage of the data stored in this buffer.
 /// @throws OpenGLError If the buffer could not be allocated.
 template<class IndexType = GLuint>
-auto create_index_buffer(std::string name,
-                         const AnyIndexBuffer::UsageHint usage_hint = AnyIndexBuffer::UsageHint::DEFAULT) {
+auto make_index_buffer(std::string name,
+                       const AnyIndexBuffer::UsageHint usage_hint = AnyIndexBuffer::UsageHint::DEFAULT) {
     return IndexBuffer<IndexType>::create(std::move(name), usage_hint);
 }
+
+/// IndexBuffer type produced by `make_index_buffer` with the given template arguments.
+template<class IndexType>
+using index_buffer_t = typename decltype(make_index_buffer<IndexType>(""))::element_type;
 
 NOTF_CLOSE_NAMESPACE
 
 // common_type ====================================================================================================== //
 
-/// std::common_type specializations for AnyUniformBufferPtr subclasses.
-// template<class Lhs, class Rhs>
-// struct std::common_type<::notf::UniformBufferPtr<Lhs>, ::notf::UniformBufferPtr<Rhs>> {
-//    using type = ::notf::AnyUniformBufferPtr;
-//};
+/// std::common_type specializations for AnyIndexBufferPtr subclasses.
+template<class Lhs, class Rhs>
+struct std::common_type<::notf::IndexBufferPtr<Lhs>, ::notf::IndexBufferPtr<Rhs>> {
+    using type = ::notf::AnyIndexBufferPtr;
+};

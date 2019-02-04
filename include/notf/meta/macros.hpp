@@ -133,6 +133,14 @@ NOTF_OPEN_NAMESPACE
 
 // forwards ========================================================================================================= //
 
+// TODO: these NOTF_DECLARE_* macros are getting ridiculous
+
+#define NOTF_DECLARE_SHARED_POINTERS_ONLY(Type)         \
+    using Type##Ptr = std::shared_ptr<Type>;            \
+    using Type##ConstPtr = std::shared_ptr<const Type>; \
+    using Type##WeakPtr = std::weak_ptr<Type>;          \
+    using Type##WeakConstPtr = std::weak_ptr<const Type>
+
 /// Convenience macro to define shared pointer types for a given type.
 #define NOTF_DECLARE_SHARED_POINTERS(Tag, Type)         \
     Tag Type;                                           \
@@ -273,17 +281,6 @@ NOTF_OPEN_NAMESPACE
 
 /// Uniquely named RAII guard object.
 #define NOTF_GUARD(f) const auto NOTF_DEFER(NOTF_CONCAT, __notf__guard_, __COUNTER__) = f
-
-/// Define a guard object for a nested scope that is only aquired, if a given tests succeeds.
-/// This macro simplifies double-checked locking, where we first test whether a condition is met before attempting to
-/// lock a mutex. Note that this is only safe, if `x` is an atomic operation and `f` is used to initialize a mutex.
-/// Example:
-///     NOTF_GUARD_IF(m_atomic_bool, std::lock_guard(m_mutex)) {
-///         ... // code here is only executed if m_atomic_bool is false and the mutex is locked
-///     }
-#define NOTF_GUARD_IF(x, f) \
-    if (x)                  \
-        if (NOTF_GUARD(f); x)
 
 // forward const as mutable ========================================================================================= //
 

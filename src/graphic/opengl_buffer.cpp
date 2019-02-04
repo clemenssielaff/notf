@@ -8,8 +8,8 @@ NOTF_USING_NAMESPACE;
 
 namespace notf::detail {
 
-AnyOpenGLBuffer::AnyOpenGLBuffer(std::string name, const Type buffer_type, const UsageHint usage_hint)
-    : m_name(std::move(name)), m_type(buffer_type), m_usage(usage_hint) {
+AnyOpenGLBuffer::AnyOpenGLBuffer(std::string name, const UsageHint usage_hint, const Type buffer_type)
+    : m_name(std::move(name)), m_usage(usage_hint), m_type(buffer_type) {
 
     NOTF_CHECK_GL(glGenBuffers(1, &m_handle));
 

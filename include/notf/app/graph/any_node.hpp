@@ -346,9 +346,11 @@ public:
     /// @returns    Typed handle of the first ancestor with the requested type, can be empty if none was found.
     template<class T, typename = std::enable_if_t<std::is_base_of<AnyNode, T>::value>>
     NodeHandle<T> get_first_ancestor() const {
-        NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
-        if (T* node = _get_first_ancestor<T>()) { return std::static_pointer_cast<T>(node->shared_from_this()); }
-        return {};
+        if (T* node = _get_first_ancestor<T>()) {
+            return std::static_pointer_cast<T>(node->shared_from_this());
+        } else {
+            return {};
+        }
     }
 
     /// The number of direct children of this Node.
@@ -481,16 +483,10 @@ protected: // for all subclasses
     /// @returns    Raw pointer to the first ancestor of this Node of a specific type, is nullptr if none was found.
     template<class T, typename = std::enable_if_t<std::is_base_of<AnyNode, T>::value>>
     T* _get_first_ancestor() const {
-        AnyNode* current = _get_parent();
-        for (AnyNode* next = current->_get_parent(); current != next; current = next, next = next->_get_parent()) {
-            if constexpr (!std::is_same_v<T, RootNode>) {
-                if (auto* result = dynamic_cast<T*>(next)) { return result; }
-            }
-        }
-        if constexpr (std::is_same_v<T, RootNode>) {
-            return static_cast<T*>(current);
-        } else {
-            return nullptr;
+        for (AnyNode *current = const_cast<AnyNode*>(this), *next = nullptr;; current = next) {
+            if (T* result = dynamic_cast<T*>(current)) { return result; }
+            next = current->_get_parent();
+            if (next == current) { return nullptr; }
         }
     }
 

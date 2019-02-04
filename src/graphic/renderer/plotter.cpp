@@ -80,6 +80,7 @@
 #include "notf/common/polygon.hpp"
 #include "notf/common/utf8.hpp"
 #include "notf/common/variant.hpp"
+#include "notf/common/vector.hpp"
 
 #include "notf/graphic/graphics_system.hpp"
 #include "notf/graphic/index_buffer.hpp"
@@ -88,42 +89,43 @@
 #include "notf/graphic/text/font_manager.hpp"
 #include "notf/graphic/texture.hpp"
 #include "notf/graphic/vertex_buffer.hpp"
+#include "notf/graphic/vertex_object.hpp"
 
 namespace {
 
 NOTF_USING_NAMESPACE;
 
 struct VertexPos {
-    constexpr static GLuint location = 0;
+    NOTF_UNUSED constexpr static GLuint location = 0;
     using type = V2f;
 };
 
 struct LeftCtrlPos {
-    constexpr static uint location = 1;
+    NOTF_UNUSED constexpr static uint location = 1;
     using type = V2f;
 };
 
 struct RightCtrlPos {
-    constexpr static uint location = 2;
+    NOTF_UNUSED constexpr static uint location = 2;
     using type = V2f;
 };
 
-using PlotVertexArray = VertexBuffer<VertexPos, LeftCtrlPos, RightCtrlPos>;
-using PlotIndexArray = IndexBuffer<GLuint>;
+using PlotterVertexBuffer = vertex_buffer_t<VertexPos, LeftCtrlPos, RightCtrlPos>;
+using PlotterIndexBuffer = IndexBuffer<GLuint>;
 
-const GLenum g_index_type = to_gl_type(PlotIndexArray::index_t{});
+const GLenum g_index_type = to_gl_type(PlotterIndexBuffer::index_t{});
 
-void set_pos(PlotVertexArray::vertex_t& vertex, V2f pos) { std::get<0>(vertex) = std::move(pos); }
-void set_first_ctrl(PlotVertexArray::vertex_t& vertex, V2f pos) { std::get<1>(vertex) = std::move(pos); }
-void set_second_ctrl(PlotVertexArray::vertex_t& vertex, V2f pos) { std::get<2>(vertex) = std::move(pos); }
+void set_pos(PlotterVertexBuffer::vertex_t& vertex, V2f pos) { std::get<0>(vertex) = std::move(pos); }
+void set_first_ctrl(PlotterVertexBuffer::vertex_t& vertex, V2f pos) { std::get<1>(vertex) = std::move(pos); }
+void set_second_ctrl(PlotterVertexBuffer::vertex_t& vertex, V2f pos) { std::get<2>(vertex) = std::move(pos); }
 
-void set_modified_first_ctrl(PlotVertexArray::vertex_t& vertex, const CubicBezier2f::Segment& left_segment) {
+void set_modified_first_ctrl(PlotterVertexBuffer::vertex_t& vertex, const CubicBezier2f::Segment& left_segment) {
     const V2f delta = left_segment.ctrl2 - left_segment.end;
     set_first_ctrl(vertex, delta.is_zero() ? -(left_segment.get_tangent(1).normalize()) :
                                              delta.get_normalized() * (delta.get_magnitude() + 1));
 }
 
-void set_modified_second_ctrl(PlotVertexArray::vertex_t& vertex, const CubicBezier2f::Segment& right_segment) {
+void set_modified_second_ctrl(PlotterVertexBuffer::vertex_t& vertex, const CubicBezier2f::Segment& right_segment) {
     const V2f delta = right_segment.ctrl1 - right_segment.start;
     set_second_ctrl(vertex, delta.is_zero() ? right_segment.get_tangent(0).normalize() :
                                               delta.get_normalized() * (delta.get_magnitude() + 1));
@@ -227,39 +229,25 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
         m_program->get_uniform("font_texture").set(TheGraphicsSystem::get_environment().font_atlas_texture_slot);
     }
 
-    // vao
-    NOTF_CHECK_GL(glGenVertexArrays(1, &m_vao_id));
-    if (!m_vao_id) { NOTF_THROW(OpenGLError, "Failed to allocate the Plotter VAO"); }
-    //    NOTF_GUARD(GraphicsContext::VaoGuard(m_vao_id)); TODO:NOW GraphicsContext->vao
-
-    { // vertices
-        AnyVertexBuffer::Args vertex_args;
-        vertex_args.usage = GLUsage::STREAM_DRAW;
-        m_vertices = PlotVertexArray::create("PlotterVertexBuffer", std::move(vertex_args));
-        static_cast<PlotVertexArray*>(m_vertices.get())->apply();
-    }
-
-    { // indices
-        AnyIndexBuffer::Args index_args;
-        index_args.usage = GLUsage::STREAM_DRAW;
-        m_indices = PlotIndexArray::create("PlotterIndexBuffer", std::move(index_args));
-        static_cast<PlotIndexArray*>(m_indices.get())->apply();
-    }
-
+    // vertex object
+    m_vertex_object = VertexObject::create(
+        "PlotterVertexObject",
+        PlotterVertexBuffer::create("PlotterVertexBuffer", PlotterVertexBuffer::UsageHint::STREAM_DRAW),
+        PlotterIndexBuffer::create("PlotterIndexBuffer", PlotterIndexBuffer::UsageHint::STREAM_DRAW));
     // TODO: maybe naming everything (like "PlotterVertexBuffer") is a bad idea
+    //       ... then again, it isn't if we need some identifier to get them out of a "resource manager (-like)" storage
 }
 
 Plotter::~Plotter() {
     NOTF_GUARD(m_context.make_current());
-    NOTF_CHECK_GL(glDeleteVertexArrays(1, &m_vao_id));
-    m_indices.reset();
-    m_vertices.reset();
+    m_vertex_object.reset();
     m_program.reset();
 }
 
 Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {
-    std::vector<PlotVertexArray::vertex_t>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->write();
-    std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->write();
+    std::vector<PlotterVertexBuffer::vertex_t>& vertices
+        = static_cast<PlotterVertexBuffer*>(m_vertex_object->get_vertices().get())->write();
+    std::vector<GLuint>& indices = static_cast<PlotterIndexBuffer*>(m_vertex_object->get_indices().get())->write();
 
     // path
     PathPtr path = Path::_create_shared();
@@ -294,7 +282,7 @@ Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {
 
         { // first vertex
             const CubicBezier2f::Segment& first_segment = spline.segments.front();
-            PlotVertexArray::vertex_t vertex;
+            PlotterVertexBuffer::vertex_t vertex;
             set_pos(vertex, first_segment.start);
             set_first_ctrl(vertex, V2f::zero());
             set_modified_second_ctrl(vertex, first_segment);
@@ -305,7 +293,7 @@ Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {
         for (size_t i = 0; i < spline.segments.size() - 1; ++i) {
             const CubicBezier2f::Segment& left_segment = spline.segments[i];
             const CubicBezier2f::Segment& right_segment = spline.segments[i + 1];
-            PlotVertexArray::vertex_t vertex;
+            PlotterVertexBuffer::vertex_t vertex;
             set_pos(vertex, left_segment.end);
             set_modified_first_ctrl(vertex, left_segment);
             set_modified_second_ctrl(vertex, right_segment);
@@ -314,7 +302,7 @@ Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {
 
         { // last vertex
             const CubicBezier2f::Segment& last_segment = spline.segments.back();
-            PlotVertexArray::vertex_t vertex;
+            PlotterVertexBuffer::vertex_t vertex;
             set_pos(vertex, last_segment.end);
             set_modified_first_ctrl(vertex, last_segment);
             set_second_ctrl(vertex, V2f::zero());
@@ -326,8 +314,9 @@ Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {
 }
 
 Plotter::PathPtr Plotter::add(const Polygonf& polygon) {
-    std::vector<PlotVertexArray::vertex_t>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->write();
-    std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->write();
+    std::vector<PlotterVertexBuffer::vertex_t>& vertices
+        = static_cast<PlotterVertexBuffer*>(m_vertex_object->get_vertices().get())->write();
+    std::vector<GLuint>& indices = static_cast<PlotterIndexBuffer*>(m_vertex_object->get_indices().get())->write();
 
     // path
     PathPtr path = Path::_create_shared();
@@ -357,7 +346,7 @@ Plotter::PathPtr Plotter::add(const Polygonf& polygon) {
     // vertices
     vertices.reserve(vertices.size() + polygon.get_vertex_count());
     for (const V2f& point : polygon.get_vertices()) {
-        PlotVertexArray::vertex_t vertex;
+        PlotterVertexBuffer::vertex_t vertex;
         set_pos(vertex, point);
         set_first_ctrl(vertex, V2f::zero());
         set_second_ctrl(vertex, V2f::zero());
@@ -368,8 +357,9 @@ Plotter::PathPtr Plotter::add(const Polygonf& polygon) {
 }
 
 void Plotter::write(const std::string& text, TextInfo info) {
-    std::vector<PlotVertexArray::vertex_t>& vertices = static_cast<PlotVertexArray*>(m_vertices.get())->write();
-    std::vector<GLuint>& indices = static_cast<PlotIndexArray*>(m_indices.get())->write();
+    std::vector<PlotterVertexBuffer::vertex_t>& vertices
+        = static_cast<PlotterVertexBuffer*>(m_vertex_object->get_vertices().get())->write();
+    std::vector<GLuint>& indices = static_cast<PlotterIndexBuffer*>(m_vertex_object->get_indices().get())->write();
 
     const size_t index_offset = indices.size();
     const GLuint first_index = narrow_cast<GLuint>(vertices.size());
@@ -402,7 +392,7 @@ void Plotter::write(const std::string& text, TextInfo info) {
                 const V2f uv = V2f{glyph.rect.x, glyph.rect.y};
 
                 // create the vertex
-                PlotVertexArray::vertex_t vertex;
+                PlotterVertexBuffer::vertex_t vertex;
                 set_pos(vertex, uv);
                 set_first_ctrl(vertex, quad.get_bottom_left());
                 set_second_ctrl(vertex, quad.get_top_right());
@@ -450,11 +440,10 @@ void Plotter::fill(valid_ptr<PathPtr> path, FillInfo info) {
 
 void Plotter::swap_buffers() {
     NOTF_ASSERT(m_context.is_current());
+    m_context->vertex_object = m_vertex_object;
 
-    //    const auto vao_guard = GraphicsContext::VaoGuard(m_vao_id); TODO:NOW GraphicsContext->vao
-
-    static_cast<PlotVertexArray*>(m_vertices.get())->apply();
-    static_cast<PlotIndexArray*>(m_indices.get())->apply();
+    static_cast<PlotterVertexBuffer*>(m_vertex_object->get_vertices().get())->upload();
+    static_cast<PlotterIndexBuffer*>(m_vertex_object->get_indices().get())->upload();
 
     // TODO: combine batches with same type & info -- that's what batches are there for
     std::swap(m_drawcalls, m_drawcall_buffer);
@@ -464,16 +453,16 @@ void Plotter::swap_buffers() {
 void Plotter::clear() {
     NOTF_ASSERT(m_context.is_current());
 
-    static_cast<PlotVertexArray*>(m_vertices.get())->write().clear();
-    static_cast<PlotIndexArray*>(m_indices.get())->write().clear();
+    static_cast<PlotterVertexBuffer*>(m_vertex_object->get_vertices().get())->write().clear();
+    static_cast<PlotterIndexBuffer*>(m_vertex_object->get_indices().get())->write().clear();
     m_drawcall_buffer.clear();
 }
 
 void Plotter::render() const {
-    NOTF_ASSERT(m_context.is_current());
-    if (m_indices->is_empty()) { return; }
+    if (m_vertex_object->get_indices()->is_empty()) { return; }
 
-    //    const auto vao_guard = GraphicsContext::VaoGuard(m_vao_id); TODO:NOW GraphicsContext->vao
+    NOTF_ASSERT(m_context.is_current());
+    m_context->vertex_object = m_vertex_object;
     m_context->program = m_program;
 
     NOTF_CHECK_GL(glEnable(GL_CULL_FACE));
@@ -492,13 +481,12 @@ void Plotter::render() const {
 
     // perform the render calls
     for (const DrawCall& drawcall : m_drawcalls) {
-        std::visit(
-            overloaded{
-                [&](const StrokeInfo& stroke) { _render_line(stroke); },
-                [&](const FillInfo& shape) { _render_shape(shape); },
-                [&](const TextInfo& text) { _render_text(text); },
-            },
-            drawcall);
+        std::visit(overloaded{
+                       [&](const StrokeInfo& stroke) { _render_line(stroke); },
+                       [&](const FillInfo& shape) { _render_shape(shape); },
+                       [&](const TextInfo& text) { _render_text(text); },
+                   },
+                   drawcall);
     }
 }
 
@@ -522,7 +510,7 @@ void Plotter::_render_line(const StrokeInfo& stroke) const {
     }
 
     NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(stroke.path->size), g_index_type,
-                                 gl_buffer_offset(stroke.path->offset * sizeof(PlotIndexArray::index_t))));
+                                 gl_buffer_offset(stroke.path->offset * sizeof(PlotterIndexBuffer::index_t))));
 }
 
 void Plotter::_render_shape(const FillInfo& shape) const {
@@ -557,7 +545,7 @@ void Plotter::_render_shape(const FillInfo& shape) const {
 
     if (shape.path->is_convex) {
         NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(shape.path->size), g_index_type,
-                                     gl_buffer_offset(shape.path->offset * sizeof(PlotIndexArray::index_t))));
+                                     gl_buffer_offset(shape.path->offset * sizeof(PlotterIndexBuffer::index_t))));
     }
 
     // concave
@@ -574,7 +562,7 @@ void Plotter::_render_shape(const FillInfo& shape) const {
         NOTF_CHECK_GL(glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR_WRAP));
         NOTF_CHECK_GL(glDisable(GL_CULL_FACE));
         NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(shape.path->size), g_index_type,
-                                     gl_buffer_offset(shape.path->offset * sizeof(PlotIndexArray::index_t))));
+                                     gl_buffer_offset(shape.path->offset * sizeof(PlotterIndexBuffer::index_t))));
         NOTF_CHECK_GL(glEnable(GL_CULL_FACE));
 
         NOTF_CHECK_GL(glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)); // re-enable color
@@ -585,7 +573,7 @@ void Plotter::_render_shape(const FillInfo& shape) const {
 
         // render colors here, same area as before if you don't want to clear the stencil buffer every time
         NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(shape.path->size), g_index_type,
-                                     gl_buffer_offset(shape.path->offset * sizeof(PlotIndexArray::index_t))));
+                                     gl_buffer_offset(shape.path->offset * sizeof(PlotterIndexBuffer::index_t))));
 
         NOTF_CHECK_GL(glDisable(GL_STENCIL_TEST));
     }
@@ -616,7 +604,7 @@ void Plotter::_render_text(const TextInfo& text) const {
     }
 
     NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(text.path->size), g_index_type,
-                                 gl_buffer_offset(text.path->offset * sizeof(PlotIndexArray::index_t))));
+                                 gl_buffer_offset(text.path->offset * sizeof(PlotterIndexBuffer::index_t))));
 }
 
 NOTF_CLOSE_NAMESPACE

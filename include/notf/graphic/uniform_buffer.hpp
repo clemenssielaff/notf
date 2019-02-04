@@ -7,31 +7,22 @@
 
 NOTF_OPEN_NAMESPACE
 
-// any uniform buffer =============================================================================================== //
-
-struct AnyUniformBuffer {
-
-    /// The expected usage of the data stored in this buffer.
-    using UsageHint = typename detail::AnyOpenGLBuffer::UsageHint;
-};
-
 // uniform buffer =================================================================================================== //
-
-/// UniformBuffer ID type.
-using UniformBufferId = detail::OpenGLBufferType<detail::AnyOpenGLBuffer::Type::UNIFORM>;
 
 /// Abstraction of an OpenGL uniform buffer.
 template<class Block>
-class UniformBuffer : public AnyUniformBuffer, //
-                      public OpenGLBuffer<detail::AnyOpenGLBuffer::Type::UNIFORM, Block> {
+class UniformBuffer : public OpenGLBuffer<detail::OpenGLBufferType::UNIFORM, Block> {
 
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Base OpenGLBuffer class.
-    using super_t = OpenGLBuffer<detail::AnyOpenGLBuffer::Type::UNIFORM, Block>;
+    using super_t = OpenGLBuffer<detail::OpenGLBufferType::UNIFORM, Block>;
 
     /// Type of UniformBlock stored in the UniformBuffer.
     using block_t = Block;
+
+    /// The expected usage of the data stored in this buffer.
+    using UsageHint = typename detail::AnyOpenGLBuffer::UsageHint;
 
     // methods --------------------------------------------------------------------------------- //
 private:
@@ -43,13 +34,12 @@ private:
     /// @throws OpenGLError If the buffer could not be allocated.
     UniformBuffer(std::string name, const UsageHint usage_hint) : super_t(std::move(name), usage_hint) {}
 
-
 public:
     /// Factory.
     /// @param name         Human-readable name of this OpenGLBuffer.
     /// @param usage_hint   The expected usage of the data stored in this buffer.
     /// @throws OpenGLError If the buffer could not be allocated.
-    static auto create(std::string name, const UsageHint usage_hint) {
+    static AnyUniformBufferPtr create(std::string name, const UsageHint usage_hint) {
         return _create_shared(std::move(name), std::move(usage_hint));
     }
 
@@ -69,22 +59,26 @@ private:
     }
 };
 
-/// IndexBuffer factory.
+/// UniformBuffer factory.
 /// @param name         Human-readable name of this OpenGLBuffer.
 /// @param usage_hint   The expected usage of the data stored in this buffer.
 /// @throws OpenGLError If the buffer could not be allocated.
 template<class Block>
-auto create_uniform_buffer(std::string name,
+auto make_uniform_buffer(std::string name,
                          const AnyUniformBuffer::UsageHint usage_hint = AnyUniformBuffer::UsageHint::DEFAULT) {
     return UniformBuffer<Block>::create(std::move(name), usage_hint);
 }
+
+/// UniformBuffer type produced by `make_uniform_buffer` with the given template arguments.
+template<class Block>
+using uniform_buffer_t = typename decltype(make_uniform_buffer<Block>(""))::element_type;
 
 NOTF_CLOSE_NAMESPACE
 
 // common_type ====================================================================================================== //
 
 /// std::common_type specializations for AnyUniformBufferPtr subclasses.
-// template<class Lhs, class Rhs>
-// struct std::common_type<::notf::UniformBufferPtr<Lhs>, ::notf::UniformBufferPtr<Rhs>> {
-//    using type = ::notf::AnyUniformBufferPtr;
-//};
+template<class Lhs, class Rhs>
+struct std::common_type<::notf::UniformBufferPtr<Lhs>, ::notf::UniformBufferPtr<Rhs>> {
+    using type = ::notf::AnyUniformBufferPtr;
+};

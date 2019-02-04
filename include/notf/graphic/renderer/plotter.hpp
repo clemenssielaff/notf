@@ -12,7 +12,7 @@
 #include "notf/common/matrix3.hpp"
 #include "notf/common/vector2.hpp"
 
-#include "notf/graphic/fwd.hpp"
+#include "notf/graphic/opengl.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -114,8 +114,8 @@ public:
         static Paint box_gradient(const V2f& center, const Size2f& extend, float radius, float feather,
                                   Color inner_color, Color outer_color);
 
-        static Paint
-        texture_pattern(const V2f& origin, const Size2f& extend, TexturePtr texture, float angle, float alpha);
+        static Paint texture_pattern(const V2f& origin, const Size2f& extend, TexturePtr texture, float angle,
+                                     float alpha);
 
         /// Turns the Paint into a single solid color.
         void set_color(Color color) {
@@ -326,20 +326,14 @@ private:
     /// Shader Program used to render the strokes, shapes and glyphs.
     ShaderProgramPtr m_program;
 
-    /// Patch vertices.
-    AnyVertexBufferPtr m_vertices;
-
-    /// Index of the vertices.
-    AnyIndexBufferPtr m_indices;
+    /// Internal vertex object to store plotted vertices.
+    VertexObjectPtr m_vertex_object;
 
     /// Draw Calls.
     std::vector<DrawCall> m_drawcalls;
 
     /// Buffer for new Draw Calls.
     std::vector<DrawCall> m_drawcall_buffer;
-
-    /// OpenGL handle of the internal vertex array object.
-    GLuint m_vao_id = 0;
 
     /// State of the Plotter pipeline.
     mutable State m_state;

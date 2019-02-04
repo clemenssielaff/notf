@@ -7,7 +7,7 @@
 
 #include "notf/common/size2.hpp"
 
-#include "notf/graphic/fwd.hpp"
+#include "notf/graphic/opengl.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -224,7 +224,6 @@ private:
 
     /// Arguments passed to this FrameBuffer.
     Args m_args;
-
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //

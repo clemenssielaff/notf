@@ -8,6 +8,16 @@
 
 NOTF_OPEN_NAMESPACE
 
+// is tuple ========================================================================================================= //
+
+/// Template struct to test whether a given type is a tuple or not.
+template<class T>
+struct is_tuple : std::false_type {};
+template<class... Ts>
+struct is_tuple<std::tuple<Ts...>> : std::true_type {};
+template<class T>
+static constexpr bool is_tuple_v = is_tuple<T>::value;
+
 // flatten tuple ==================================================================================================== //
 
 // template definition
@@ -235,8 +245,8 @@ struct visit_at_impl<0> {
     static constexpr void visit(const Tuple&, const size_t, Function, Args&&...) noexcept {}
 
     template<class Result, class Tuple, class Function, class... Args>
-    static constexpr Result
-    visit(const Tuple&, const size_t, Function, Args&&...) noexcept(std::is_nothrow_default_constructible_v<Result>) {
+    static constexpr Result visit(const Tuple&, const size_t, Function,
+                                  Args&&...) noexcept(std::is_nothrow_default_constructible_v<Result>) {
         static_assert(std::is_default_constructible_v<Result>,
                       "Explicit return type of visit_at method must be default-constructible");
         return {};
@@ -311,11 +321,11 @@ struct std::hash<std::tuple<Ts...>> {
     }
 
 private:
-    template<size_t I=0>
+    template<size_t I = 0>
     constexpr void _apply_hash_recursively(const std::tuple<Ts...>& tuple, size_t& result) const {
-        if constexpr(I < sizeof... (Ts)){
+        if constexpr (I < sizeof...(Ts)) {
             notf::hash_combine(result, std::get<I>(tuple));
-            _apply_hash_recursively<I+1>(tuple, result);
+            _apply_hash_recursively<I + 1>(tuple, result);
         }
     }
 };
