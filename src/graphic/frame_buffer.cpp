@@ -167,9 +167,8 @@ void FrameBuffer::Args::set_color_target(const ushort id, ColorTarget target) {
 
 // frame buffer ===================================================================================================== //
 
-FrameBuffer::FrameBuffer(GraphicsContext& context, std::string name, Args args, bool is_default)
-    : m_context(context), m_name(std::move(name)), m_is_default(is_default), m_args(std::move(args)) {
-    if (m_is_default) { return; }
+FrameBuffer::FrameBuffer(GraphicsContext& context, std::string name, Args args)
+    : m_context(context), m_name(std::move(name)), m_args(std::move(args)) {
     _validate_arguments();
 
     NOTF_GUARD(m_context.make_current());
@@ -246,16 +245,6 @@ FrameBufferPtr FrameBuffer::create(GraphicsContext& context, std::string name, A
     GraphicsContext::AccessFor<FrameBuffer>::register_new(context, framebuffer);
     ResourceManager::get_instance().get_type<FrameBuffer>().set(std::move(name), framebuffer);
     return framebuffer;
-}
-
-FrameBuffer::~FrameBuffer() { _deallocate(); }
-
-bool FrameBuffer::is_valid() const {
-    if (m_is_default) {
-        return true;
-    } else {
-        return m_id.is_valid();
-    }
 }
 
 const TexturePtr& FrameBuffer::get_color_texture(const ushort id) {
@@ -382,10 +371,4 @@ void FrameBuffer::_validate_arguments() const {
                                    "packing both depth and stencil into one value");
         }
     }
-}
-
-// accessors -------------------------------------------------------------------------------------------------------- //
-
-FrameBufferPtr Accessor<FrameBuffer, GraphicsContext>::create_default(GraphicsContext& context) {
-    return FrameBuffer::_create_shared(context, context.get_name(), FrameBuffer::Args{}, /*is_default = */ true);
 }

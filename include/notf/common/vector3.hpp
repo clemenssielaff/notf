@@ -217,10 +217,10 @@ std::ostream& operator<<(std::ostream& out, const notf::detail::Vector3<Element>
 
 // compile time tests =============================================================================================== //
 
-static_assert(std::is_pod_v<notf::V3f>);
-static_assert(std::is_pod_v<notf::V3d>);
-static_assert(std::is_pod_v<notf::V3i>);
-static_assert(std::is_pod_v<notf::V3s>);
+static_assert(notf::is_pod_v<notf::V3f>);
+static_assert(notf::is_pod_v<notf::V3d>);
+static_assert(notf::is_pod_v<notf::V3i>);
+static_assert(notf::is_pod_v<notf::V3s>);
 
 static_assert(sizeof(notf::V3f) == sizeof(float) * 3);
 static_assert(sizeof(notf::V3d) == sizeof(double) * 3);

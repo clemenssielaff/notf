@@ -190,10 +190,10 @@ struct std::hash<notf::detail::Vector2<Element>> {
 
 // compile time tests =============================================================================================== //
 
-static_assert(std::is_pod_v<notf::V2f>);
-static_assert(std::is_pod_v<notf::V2d>);
-static_assert(std::is_pod_v<notf::V2i>);
-static_assert(std::is_pod_v<notf::V2s>);
+static_assert(notf::is_pod_v<notf::V2f>);
+static_assert(notf::is_pod_v<notf::V2d>);
+static_assert(notf::is_pod_v<notf::V2i>);
+static_assert(notf::is_pod_v<notf::V2s>);
 
 static_assert(sizeof(notf::V2f) == sizeof(float) * 2);
 static_assert(sizeof(notf::V2d) == sizeof(double) * 2);

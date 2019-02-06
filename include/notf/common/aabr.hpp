@@ -484,10 +484,10 @@ struct std::hash<notf::detail::Aabr<Element>> {
 
 // compile time tests =============================================================================================== //
 
-static_assert(std::is_pod_v<notf::Aabrf>);
-static_assert(std::is_pod_v<notf::Aabrd>);
-static_assert(std::is_pod_v<notf::Aabri>);
-static_assert(std::is_pod_v<notf::Aabrs>);
+static_assert(notf::is_pod_v<notf::Aabrf>);
+static_assert(notf::is_pod_v<notf::Aabrd>);
+static_assert(notf::is_pod_v<notf::Aabri>);
+static_assert(notf::is_pod_v<notf::Aabrs>);
 
 static_assert(sizeof(notf::Aabrf) == sizeof(float) * 4);
 static_assert(sizeof(notf::Aabrd) == sizeof(double) * 4);

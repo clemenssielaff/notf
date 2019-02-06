@@ -65,6 +65,10 @@ void GraphicsContext::_BlendMode::operator=(const BlendMode mode) {
 
 void GraphicsContext::_FrameBuffer::operator=(FrameBufferPtr framebuffer) {
     if (m_framebuffer == framebuffer) { return; }
+    if (framebuffer
+        && FrameBuffer::AccessFor<GraphicsContext>::get_graphics_context(*framebuffer.get()) != &m_context) {
+        NOTF_THROW(ValueError, "GraphicsContext of the FrameBuffer does not match.");
+    }
     m_framebuffer = std::move(framebuffer);
 
     if (m_framebuffer) {
@@ -110,6 +114,10 @@ void GraphicsContext::_FrameBuffer::clear(Color color, const GLBuffers buffers) 
 
 void GraphicsContext::_ShaderProgram::operator=(ShaderProgramPtr program) {
     if (m_program == program) { return; }
+    if (program && ShaderProgram::AccessFor<GraphicsContext>::get_graphics_context(*program.get()) != &m_context) {
+        NOTF_THROW(ValueError, "GraphicsContext of the ShaderProgram does not match.");
+    }
+
     m_program = std::move(program);
 
     NOTF_CHECK_GL(glUseProgram(0));
@@ -124,6 +132,10 @@ void GraphicsContext::_ShaderProgram::operator=(ShaderProgramPtr program) {
 
 void GraphicsContext::_VertexObject::operator=(VertexObjectPtr vertex_object) {
     if (m_vertex_object == vertex_object) { return; }
+    if (vertex_object
+        && VertexObject::AccessFor<GraphicsContext>::get_graphics_context(*vertex_object.get()) != &m_context) {
+        NOTF_THROW(ValueError, "GraphicsContext of the VertexObject does not match.");
+    }
     m_vertex_object = std::move(vertex_object);
 
     if (m_vertex_object) {
@@ -271,6 +283,16 @@ GraphicsContext::~GraphicsContext() {
         }
     }
     m_framebuffers.clear();
+
+    // deallocate and invalidate all remaining VertexObjects
+    for (auto itr : m_vertex_objects) {
+        if (VertexObjectPtr vertex_object = itr.second.lock()) {
+            NOTF_LOG_WARN("Deallocating live VertexObject \"{}\" from GraphicsContext \"{}\"",
+                          vertex_object->get_name(), m_name);
+            VertexObject::AccessFor<GraphicsContext>::deallocate(*vertex_object);
+        }
+    }
+    m_vertex_objects.clear();
 }
 
 GraphicsContext::Guard GraphicsContext::make_current(bool assume_is_current) {
@@ -348,10 +370,18 @@ void GraphicsContext::_register_new(FrameBufferPtr framebuffer) {
     }
 }
 
-// graphics context accessor ======================================================================================== //
-
-void Accessor<GraphicsContext, Texture>::make_active(GraphicsContext& context, Texture* texture) {
-    // TODO:NOW implement implicit/explicit texture slot assignment as described in the docstring of this method
+void GraphicsContext::_register_new(VertexObjectPtr vertex_object) {
+    auto it = m_vertex_objects.find(vertex_object->get_id());
+    if (it == m_vertex_objects.end()) {
+        m_vertex_objects.emplace(vertex_object->get_id(), vertex_object); // insert new
+    } else if (it->second.expired()) {
+        it->second = vertex_object; // update expired
+    } else {
+        NOTF_THROW(
+            NotUniqueError,
+            "GraphicsContext failed to register a new VertexObject with the same ID as an existing VertexObject: \"{}\"",
+            vertex_object->get_id());
+    }
 }
 
 /* Something to think of, courtesy of the OpenGL ES book:

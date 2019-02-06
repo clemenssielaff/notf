@@ -345,7 +345,8 @@ void Texture::flood(const Color& color) {
 
 void Texture::_set_parameter(const GLenum name, const GLint value) {
     assert_is_valid(*this);
-    GraphicsContext::AccessFor<Texture>::make_active(TheGraphicsSystem()->get_any_context(), this);
+    //    GraphicsContext::AccessFor<Texture>::make_active(TheGraphicsSystem()->get_any_context(), this);
+    // TODO: Texture::_set_paramter using sampler
     NOTF_CHECK_GL(glTexParameteri(get_target(), name, value));
 }
 

@@ -122,7 +122,7 @@ Window::~Window() {
 
     // unregister from the application and event handling
     try {
-        TheApplication::AccessFor<Window>::unregister_window(m_glfw_window); // TODO: rename to destroy_glfw_window
+        TheApplication::AccessFor<Window>::destroy_glfw_window(m_glfw_window);
     }
     catch (const SingletonError&) {
         // If the Application was never started, all Window objects is destroyed when TheApplication singleton goes out

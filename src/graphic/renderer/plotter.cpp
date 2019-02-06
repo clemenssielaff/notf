@@ -231,7 +231,7 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
 
     // vertex object
     m_vertex_object = VertexObject::create(
-        "PlotterVertexObject",
+        m_context, "PlotterVertexObject",
         PlotterVertexBuffer::create("PlotterVertexBuffer", PlotterVertexBuffer::UsageHint::STREAM_DRAW),
         PlotterIndexBuffer::create("PlotterIndexBuffer", PlotterIndexBuffer::UsageHint::STREAM_DRAW));
     // TODO: maybe naming everything (like "PlotterVertexBuffer") is a bad idea

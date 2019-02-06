@@ -166,10 +166,9 @@ private:
     /// @param context          GraphicsContext managing this FrameBuffer.
     /// @param name             Proposed name of this FrameBuffer.
     /// @param args             Frame buffer arguments.
-    /// @param is_default       Is set only for the special "DefaultFramebuffer" inherent in each GraphicsContext.
     /// @throws ValueError      If the arguments fail to validate.
     /// @throws OpenGLError     If the RenderBuffer could not be allocated.
-    FrameBuffer(GraphicsContext& context, std::string name, Args args, bool is_default = false);
+    FrameBuffer(GraphicsContext& context, std::string name, Args args);
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(FrameBuffer);
@@ -182,12 +181,12 @@ public:
     static FrameBufferPtr create(GraphicsContext& context, std::string name, Args args);
 
     /// Destructor.
-    ~FrameBuffer();
+    ~FrameBuffer() { _deallocate(); }
 
     /// Checks if the FrameBuffer is valid.
     /// If the GraphicsContext managing this FrameBuffer is destroyed while there is still one or more`shared_ptr`s to
-    /// this FrameBuffer, the FrameBuffer will become invalid and all attempts of modification will throw an exception.
-    bool is_valid() const;
+    /// this FrameBuffer, the FrameBuffer will become invalid and all attempts of modification will throw.
+    bool is_valid() const { return m_id.is_valid(); }
 
     /// Name of this FrameBuffer under which it is acessible from the ResourceManager.
     const std::string& get_name() const { return m_name; }
@@ -219,9 +218,6 @@ private:
     /// OpenGL ID of the FrameBuffer.
     FrameBufferId m_id = FrameBufferId::invalid();
 
-    /// Whether this is the GraphicsContext's default FrameBuffer
-    bool m_is_default;
-
     /// Arguments passed to this FrameBuffer.
     Args m_args;
 };
@@ -230,7 +226,7 @@ private:
 
 template<>
 class Accessor<RenderBuffer, detail::GraphicsSystem> {
-    friend class detail::GraphicsSystem;
+    friend detail::GraphicsSystem;
 
     /// Deallocates the RenderBuffer data and invalidates the RenderBuffer.
     static void deallocate(RenderBuffer& renderbuffer) { renderbuffer._deallocate(); }
@@ -240,8 +236,8 @@ template<>
 class Accessor<FrameBuffer, GraphicsContext> {
     friend GraphicsContext;
 
-    /// Creates the default FrameBuffer for the given GraphicsContext.
-    static FrameBufferPtr create_default(GraphicsContext& context);
+    /// GraphicsContext managing this Framebuffer.
+    static const GraphicsContext* get_graphics_context(FrameBuffer& framebuffer) { return &framebuffer.m_context; }
 
     /// Deallocates the framebuffer data and invalidates the Framebuffer.
     static void deallocate(FrameBuffer& framebuffer) { framebuffer._deallocate(); }

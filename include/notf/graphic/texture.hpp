@@ -181,8 +181,6 @@ public:
     /// Completely fills the Texture with a given color.
     void flood(const Color& color);
 
-    void bind_at(GraphicsContext& context, const uint slot); // TODO: texture binding
-
 private:
     /// Convenience method used to set all sorts of texture-related paramters.
     /// @param name     Parameter to set.

@@ -25,6 +25,7 @@ class GraphicsContext {
 
     friend Accessor<GraphicsContext, FrameBuffer>;
     friend Accessor<GraphicsContext, ShaderProgram>;
+    friend Accessor<GraphicsContext, VertexObject>;
     friend Accessor<GraphicsContext, Texture>;
 
     // types ----------------------------------------------------------------------------------- //
@@ -137,7 +138,8 @@ private:
     struct _FrameBuffer {
         NOTF_NO_COPY_OR_ASSIGN(_FrameBuffer);
 
-        /// Default Constructor.
+        /// Constructor.
+        /// @param context  GraphicsContext providing the state containing this binding.
         _FrameBuffer(GraphicsContext& context) : m_context(context) {}
 
         /// Destructor.
@@ -145,6 +147,7 @@ private:
 
         /// Assignment operator.
         /// @param framebuffer  New FrameBuffer to bind.
+        /// @throws ValueError  If the GraphicsContext of the FrameBuffer does not match.
         void operator=(FrameBufferPtr framebuffer);
 
         /// Currently bound FrameBuffer (can be empty).
@@ -188,14 +191,16 @@ private:
     struct _ShaderProgram {
         NOTF_NO_COPY_OR_ASSIGN(_ShaderProgram);
 
-        /// Default Constructor.
-        _ShaderProgram() = default;
+        /// Constructor.
+        /// @param context  GraphicsContext providing the state containing this binding.
+        _ShaderProgram(GraphicsContext& context) : m_context(context) {}
 
         /// Destructor.
         ~_ShaderProgram() { operator=(nullptr); }
 
         /// Assignment operator.
-        /// @param program  New ShaderProgram to bind.
+        /// @param program      New ShaderProgram to bind.
+        /// @throws ValueError  If the GraphicsContext of the FrameBuffer does not match.
         void operator=(ShaderProgramPtr program);
 
         /// Currently bound ShaderProgram (can be empty).
@@ -210,6 +215,9 @@ private:
 
         // fields ---------------------------------------------------------- //
     private:
+        /// GraphicsContext providing the state containing this binding.
+        GraphicsContext& m_context;
+
         /// Bound ShaderProgram.
         ShaderProgramPtr m_program;
     };
@@ -219,14 +227,16 @@ private:
     struct _VertexObject {
         NOTF_NO_COPY_OR_ASSIGN(_VertexObject);
 
-        /// Default Constructor.
-        _VertexObject() = default;
+        /// Constructor.
+        /// @param context  GraphicsContext providing the state containing this binding.
+        _VertexObject(GraphicsContext& context) : m_context(context) {}
 
         /// Destructor.
         ~_VertexObject() { operator=(nullptr); }
 
         /// Assignment operator.
         /// @param vertex_object    New VertexObject to bind.
+        /// @throws ValueError      If the GraphicsContext of the FrameBuffer does not match.
         void operator=(VertexObjectPtr vertex_object);
 
         /// Currently bound VertexObject (can be empty).
@@ -241,6 +251,9 @@ private:
 
         // fields ---------------------------------------------------------- //
     private:
+        /// GraphicsContext providing the state containing this binding.
+        GraphicsContext& m_context;
+
         /// Bound VertexObject.
         VertexObjectPtr m_vertex_object;
     };
@@ -487,7 +500,7 @@ private:
         friend GraphicsContext;
 
         /// Constructor.
-        State(GraphicsContext& context) : framebuffer(context) {}
+        State(GraphicsContext& context) : framebuffer(context), program(context), vertex_object(context) {}
 
         // fields -------------------------------------------------------------
     public:
@@ -500,14 +513,14 @@ private:
         /// Stencil mask.
         _StencilMask stencil_mask;
 
+        /// Bound Framebuffer.
+        _FrameBuffer framebuffer;
+
         /// Bound ShaderProgram.
         _ShaderProgram program;
 
         /// Bound VertexObject.
         _VertexObject vertex_object;
-
-        /// Bound Framebuffer.
-        _FrameBuffer framebuffer;
 
         /// Bound textures.
         _TextureSlots texture_slots;
@@ -586,6 +599,11 @@ private:
     /// @throws NotUniqueError  If another Program with the same ID already exists.
     void _register_new(ShaderProgramPtr program);
 
+    /// Registers a new VertexObjecs this the GraphicsContext.
+    /// @param vertex_object    New VertexObjecs to register.
+    /// @throws NotUniqueError  If another VertexObjecs with the same ID already exists.
+    void _register_new(VertexObjectPtr vertex_object);
+
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// Human-readable name of this GraphicsContext.
@@ -609,6 +627,10 @@ private:
     /// All ShaderPrograms managed by this GraphicsContext.
     /// See TheGraphicsSystem for details on resource management.
     std::map<ShaderProgramId, ShaderProgramWeakPtr> m_programs;
+
+    /// All VertexObjecs managed by this GraphicsContext.
+    /// See TheGraphicsSystem for details on resource management.
+    std::map<VertexObjectId, VertexObjectWeakPtr> m_vertex_objects;
 };
 
 // graphics context accessor ======================================================================================== //
@@ -640,21 +662,16 @@ class Accessor<GraphicsContext, ShaderProgram> {
 };
 
 template<>
-class Accessor<GraphicsContext, Texture> {
-    friend Texture;
+class Accessor<GraphicsContext, VertexObject> {
+    friend VertexObject;
 
-    /// Ensures that the given Texture is active.
-    /// For that, we first check if the Texture is bound to any texture slot in this context.
-    /// If it is, that slot is made active. If it isn't, we need to bind it to a slot before it can be made active.
-    /// For that, the context tries to find a slot that is either empty, whose Texture has expired or one that was
-    /// implicitly bound. "Implicitly bound" means, that the user did not *explicitly* bind the texture to that slot,
-    /// but it was instead bound by a function like this one. We assume, that implicit bindings are temporary in nature
-    /// and can be rebound without violating user expectation.
-    /// If all texture slots are explicitly bound to by the user and all of the bound textures are still valid, there's
-    /// nothing we can do but throw an exception.
+    /// Registers a new VertexObject.
     /// @param context          GraphicsContext to access.
-    /// @param program          New Program to register.
-    static void make_active(GraphicsContext& context, Texture* texture);
+    /// @param vertex_object    New VertexObject to register.
+    /// @throws internal_error  If another Program with the same ID already exists.
+    static void register_new(GraphicsContext& context, VertexObjectPtr vertex_object) {
+        context._register_new(std::move(vertex_object));
+    }
 };
 
 NOTF_CLOSE_NAMESPACE

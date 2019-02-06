@@ -202,7 +202,7 @@ void Application::_register_window(GLFWwindow* window) {
     });
 }
 
-void Application::_unregister_window(GLFWwindow* window) {
+void Application::_destroy_glfw_window(GLFWwindow* window) {
     schedule([this, window]() {
         auto itr = std::find_if(m_windows->begin(), m_windows->end(),
                                 [window](const detail::GlfwWindowPtr& stored) { return stored.get() == window; });

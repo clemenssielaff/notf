@@ -141,7 +141,7 @@ private:
     void _register_window(GLFWwindow* window);
 
     /// Unregisters an existing Window from this Application.
-    void _unregister_window(GLFWwindow* window);
+    void _destroy_glfw_window(GLFWwindow* window);
 
     /// Destroys all Managers held by the Application.
     void _clear_managers();
@@ -223,9 +223,9 @@ private:
     }
 
     /// Unregisters an existing Window from this Application.
-    void _unregister_window(GLFWwindow* window) {
+    void _destroy_glfw_window(GLFWwindow* window) {
         NOTF_ASSERT(_is_this_the_ui_thread());
-        _get()._unregister_window(window);
+        _get()._destroy_glfw_window(window);
     }
 
     /// Tests if the calling thread is the notf "UI-thread".
@@ -250,7 +250,7 @@ class Accessor<TheApplication, Window> {
     static void register_window(GLFWwindow* window) { TheApplication()._register_window(window); }
 
     /// Unregisters an existing Window from this Application.
-    static void unregister_window(GLFWwindow* window) { TheApplication()._unregister_window(window); }
+    static void destroy_glfw_window(GLFWwindow* window) { TheApplication()._destroy_glfw_window(window); }
 
     /// The internal GLFW window managed by the Application holding the shared context.
     static GLFWwindow* get_shared_context() { return TheApplication()._get_shared_context(); }

@@ -122,10 +122,10 @@ struct std::hash<notf::detail::Size2<Element>> {
 
 // compile time tests =============================================================================================== //
 
-static_assert(std::is_pod_v<notf::Size2f>);
-static_assert(std::is_pod_v<notf::Size2d>);
-static_assert(std::is_pod_v<notf::Size2i>);
-static_assert(std::is_pod_v<notf::Size2s>);
+static_assert(notf::is_pod_v<notf::Size2f>);
+static_assert(notf::is_pod_v<notf::Size2d>);
+static_assert(notf::is_pod_v<notf::Size2i>);
+static_assert(notf::is_pod_v<notf::Size2s>);
 
 static_assert(sizeof(notf::Size2f) == sizeof(float) * 2);
 static_assert(sizeof(notf::Size2d) == sizeof(double) * 2);

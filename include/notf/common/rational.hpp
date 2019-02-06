@@ -433,8 +433,8 @@ std::ostream& operator<<(std::ostream& out, const notf::detail::Rational<Integer
 
 // compile time tests =============================================================================================== //
 
-static_assert(std::is_pod_v<notf::Ratioi>);
-static_assert(std::is_pod_v<notf::Ratios>);
+static_assert(notf::is_pod_v<notf::Ratioi>);
+static_assert(notf::is_pod_v<notf::Ratios>);
 
 static_assert(sizeof(notf::Ratioi) == sizeof(int) * 2);
 static_assert(sizeof(notf::Ratios) == sizeof(short) * 2);

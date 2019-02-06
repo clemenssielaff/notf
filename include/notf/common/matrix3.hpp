@@ -284,8 +284,8 @@ struct std::hash<notf::detail::Matrix3<Element>> {
 
 // compile time tests =============================================================================================== //
 
-static_assert(std::is_pod_v<notf::M3f>);
-static_assert(std::is_pod_v<notf::M3d>);
+static_assert(notf::is_pod_v<notf::M3f>);
+static_assert(notf::is_pod_v<notf::M3d>);
 
 static_assert(sizeof(notf::M3f) == sizeof(float) * 6);
 static_assert(sizeof(notf::M3d) == sizeof(double) * 6);

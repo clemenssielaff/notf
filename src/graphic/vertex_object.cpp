@@ -2,14 +2,19 @@
 
 #include "notf/meta/log.hpp"
 
+#include "notf/graphic/graphics_context.hpp"
 #include "notf/graphic/vertex_buffer.hpp"
 
 NOTF_USING_NAMESPACE;
 
 // vertex object ==================================================================================================== //
 
-VertexObject::VertexObject(std::string name, AnyVertexBufferPtr vertex_buffer, AnyIndexBufferPtr index_buffer)
-    : m_name(std::move(name)), m_vertex_buffer(std::move(vertex_buffer)), m_index_buffer(std::move(index_buffer)) {
+VertexObject::VertexObject(GraphicsContext& context, std::string name, AnyVertexBufferPtr vertex_buffer,
+                           AnyIndexBufferPtr index_buffer)
+    : m_context(context)
+    , m_name(std::move(name))
+    , m_vertex_buffer(std::move(vertex_buffer))
+    , m_index_buffer(std::move(index_buffer)) {
 
     // check arguments
     if (!m_vertex_buffer) { NOTF_THROW(ValueError, "Cannot construct a VertexObject with an invalid VertexBuffer"); }
@@ -31,8 +36,18 @@ VertexObject::VertexObject(std::string name, AnyVertexBufferPtr vertex_buffer, A
     m_index_buffer->initialize();
 }
 
-VertexObject::~VertexObject() {
+VertexObjectPtr VertexObject::create(GraphicsContext& context, std::string name, AnyVertexBufferPtr vertex_buffer,
+                                     AnyIndexBufferPtr index_buffer) {
+    VertexObjectPtr vertex_object
+        = _create_shared(context, std::move(name), std::move(vertex_buffer), std::move(index_buffer));
+    GraphicsContext::AccessFor<VertexObject>::register_new(context, vertex_object);
+    return vertex_object;
+}
+
+void VertexObject::_deallocate() {
     if (!m_id.is_valid()) { return; }
+
+    NOTF_GUARD(m_context.make_current());
 
     m_index_buffer.reset();
     m_vertex_buffer.reset();

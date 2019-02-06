@@ -198,7 +198,14 @@ static constexpr bool is_derived_from_one_of_v = std::disjunction_v<std::is_base
 template<class T, class U>
 struct is_same_signedness : public std::integral_constant<bool, std::is_signed_v<T> == std::is_signed_v<U>> {};
 template<class T, class U>
-using is_same_signedness_v = typename is_same_signedness<T, U>::value;
+static constexpr bool is_same_signedness_v = is_same_signedness<T, U>::value;
+
+/// Compile-time check whether T is both trivial and standard-layout.
+template<class T>
+struct is_pod
+    : public std::integral_constant<bool, std::conjunction_v<std::is_trivial<T>, std::is_standard_layout<T>>> {};
+template<class T>
+static constexpr bool is_pod_v = is_pod<T>::value;
 
 // accessors ======================================================================================================== //
 

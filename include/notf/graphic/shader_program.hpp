@@ -344,6 +344,9 @@ template<>
 class Accessor<ShaderProgram, GraphicsContext> {
     friend GraphicsContext;
 
+    /// GraphicsContext managing the given ShaderProgram.
+    static const GraphicsContext* get_graphics_context(ShaderProgram& program) { return &program.m_context; }
+
     /// Deallocates the Program.
     static void deallocate(ShaderProgram& program) { program._deallocate(); }
 };
