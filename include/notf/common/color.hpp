@@ -54,17 +54,16 @@ public:
     /// @param a     Alpha in the range [0, 1]
     static Color from_hsl(const float h, const float s, const float l, const float a = 1);
 
-    /// Transparency.
+    /// @{
+    /// Colors.
     static Color transparent() { return Color(0., 0., 0., 0.); }
-
-    /// Black
     static Color black() { return Color(0., 0., 0., 1.); }
-
-    /// White
     static Color white() { return Color(1., 1., 1., 1.); }
-
-    /// White
     static Color grey() { return Color(0.5, 0.5, 0.5, 1.); }
+    static Color red() { return Color(1., 0., 0., 1.); }
+    static Color green() { return Color(0., 1., 0., 1.); }
+    static Color blue() { return Color(0., 0., 1., 1.); }
+    /// @}
 
     // inspection -------------------------------------------------------------
 

@@ -39,7 +39,7 @@ public:
     /// @param name         Human-readable name of this OpenGLBuffer.
     /// @param usage_hint   The expected usage of the data stored in this buffer.
     /// @throws OpenGLError If the buffer could not be allocated.
-    static AnyUniformBufferPtr create(std::string name, const UsageHint usage_hint) {
+    static UniformBufferPtr<Block> create(std::string name, const UsageHint usage_hint) {
         return _create_shared(std::move(name), std::move(usage_hint));
     }
 

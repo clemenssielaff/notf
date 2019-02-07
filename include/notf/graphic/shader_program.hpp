@@ -87,8 +87,9 @@ class UniformBlock {
 private:
     /// Constructor.
     /// @param program  ShaderProgram managing this UniformBlock.
+    /// @param shader   Shader containing the UniformBlock.
     /// @param index    Index of the UniformBlock in the Shader.
-    UniformBlock(ShaderProgram& program, const GLuint index);
+    UniformBlock(const ShaderProgram &program, const AnyShaderPtr& shader, const GLuint index);
 
 public:
     /// Name of the UniformBlock.
@@ -112,7 +113,7 @@ public:
     // fields ---------------------------------------------------------- //
 private:
     /// ShaderProgram owning this UniformBlock.
-    ShaderProgram& m_program;
+    const ShaderProgram& m_program;
 
     /// Name of the UniformBlock.
     const std::string m_name;

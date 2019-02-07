@@ -31,6 +31,9 @@ void Graph::NodeRegistry::add(AnyNodeHandle node) {
 }
 
 void Graph::NodeRegistry::remove(const Uuid uuid) {
+    if(!this_thread::is_the_ui_thread()){
+        auto whatsgoingonhere = uuid.to_string(); // TODO: I had a shutdown crash here once...
+    }
     NOTF_ASSERT(this_thread::is_the_ui_thread());
     NOTF_GUARD(std::lock_guard(m_mutex));
     if (auto iter = m_registry.find(uuid); iter != m_registry.end()) { m_registry.erase(iter); }

@@ -120,7 +120,7 @@ public:
         /// Turns the Paint into a single solid color.
         void set_color(Color color) {
             xform = M3f::identity();
-            radius = 0;
+            gradient_radius = 0;
             feather = 1;
             inner_color = std::move(color);
             outer_color = inner_color;
@@ -129,18 +129,18 @@ public:
         /// Equality comparison operator.
         /// @param other    Paint to compare against.
         bool operator==(const Paint& other) const noexcept {
-            return texture != other.texture                    //
-                   && is_approx(radius, other.radius)          //
-                   && is_approx(feather, other.feather)        //
-                   && extent.is_approx(other.extent)           //
-                   && xform.is_approx(other.xform)             //
-                   && outer_color.is_approx(other.outer_color) //
+            return texture == other.texture                             //
+                   && is_approx(gradient_radius, other.gradient_radius) //
+                   && is_approx(feather, other.feather)                 //
+                   && extent.is_approx(other.extent)                    //
+                   && xform.is_approx(other.xform)                      //
+                   && outer_color.is_approx(other.outer_color)          //
                    && inner_color.is_approx(other.inner_color);
         }
 
         /// Inequality operator
         /// @param other    Paint to compare against.
-        constexpr bool operator!=(const Paint& other) const noexcept { return !(*this == other); }
+        constexpr bool operator!=(const Paint& other) const noexcept { return !operator==(other); }
 
         // fields -------------------------------------------------------------
     public:
@@ -159,10 +159,90 @@ public:
         /// Extend of the Paint.
         Size2f extent = Size2f::zero();
 
-        float radius = 0;
+        float gradient_radius = 0;
 
         float feather = 1;
     };
+
+    /// Clipping, is a rotated rectangle that limits the plotted area.
+    struct Clipping {
+        M3f xform = M3f::identity();
+        Size2f size = Size2f::invalid(); // TODO test clipping
+    };
+
+    /// For details on uniform buffer struct size and alignment issues see Sub-section 2.15.3.1.2 in:
+    /// https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_uniform_buffer_object.txt
+    struct FragmentPaint {
+
+        // types ----------------------------------------------------------------------------------- //
+    public:
+        enum class Type : GLint {
+            GRADIENT = 0,
+            IMAGE = 1,
+            STENCIL = 2,
+            TEXT = 3,
+        };
+
+        // methods --------------------------------------------------------------------------------- //
+    public:
+        FragmentPaint(const Paint& paint, const Clipping& clipping, const float stroke_width, const Type type) {
+            // paint
+            const M3f paint_xform = paint.xform.inverse();
+            paint_rotation[0] = paint_xform[0][0];
+            paint_rotation[1] = paint_xform[0][1];
+            paint_rotation[2] = paint_xform[1][0];
+            paint_rotation[3] = paint_xform[1][1];
+            paint_translation[0] = paint_xform[2][0];
+            paint_translation[1] = paint_xform[2][1];
+            paint_size[0] = paint.extent.width();
+            paint_size[1] = paint.extent.height();
+
+            // clipping
+            if (clipping.size.is_valid()) {
+                clip_rotation[0] = clipping.xform[0][0];
+                clip_rotation[1] = clipping.xform[0][1];
+                clip_rotation[2] = clipping.xform[1][0];
+                clip_rotation[3] = clipping.xform[1][1];
+                clip_translation[0] = clipping.xform[2][0];
+                clip_translation[1] = clipping.xform[2][1];
+                clip_size[0] = clipping.size.width() / 2;
+                clip_size[1] = clipping.size.height() / 2;
+            }
+
+            // color
+            inner_color = paint.inner_color.premultiplied();
+            outer_color = paint.outer_color.premultiplied();
+
+            // type
+            if (type == Type::GRADIENT && paint.texture) {
+                this->type = Type::IMAGE; // TODO: why does a texture alone make an IMAGE type paint?
+            } else {
+                this->type = type;
+            }
+
+            this->stroke_width = stroke_width;
+            gradient_radius = paint.gradient_radius;
+            feather = paint.feather;
+        }
+
+        FragmentPaint(const Plotter::Paint& paint, const Type type = Type::GRADIENT)
+            : FragmentPaint(paint, {}, 0, type) {}
+
+        // fields ---------------------------------------------------------------------------------- //
+    public:                                          // offset in basic machine units
+        std::array<float, 4> paint_rotation = {};    //  0 (size = 4)
+        std::array<float, 2> paint_translation = {}; //  4 (size = 2)
+        std::array<float, 2> paint_size = {};        //  6 (size = 2)
+        std::array<float, 4> clip_rotation = {};     //  8 (size = 4)
+        std::array<float, 2> clip_translation = {};  // 12 (size = 2)
+        std::array<float, 2> clip_size = {1, 1};     // 14 (size = 2)
+        Color inner_color = Color::transparent();    // 16 (size = 4)
+        Color outer_color = Color::transparent();    // 20 (size = 4) TODO Color could be a float[3]
+        Type type;                                   // 24 (size = 1)
+        float stroke_width;                          // 25 (size = 1)
+        float gradient_radius = 0;                   // 26 (size = 1)
+        float feather = 0;                           // 27 (size = 1)
+    };                                               // total size is: 28
 
     /// Information necessary to draw a predefined stroke.
     struct StrokeInfo {
@@ -237,29 +317,6 @@ private:
         V2f vec2_aux1;
     };
 
-    struct ShaderVariables {
-        enum class alignas(8) Type : GLint {
-            GRADIENT = 0,
-            IMAGE = 1,
-            STENCIL = 2,
-            TEXT = 3,
-        } type;
-        float paint_2x2[4];
-        float scissor_2x2[4];
-        float paint_trans[2];
-        float scissor_trans[2];
-        float scissor_extent[2];
-        float scissor_scale[2];
-        Color inner_color;
-        Color outer_color;
-        float paint_extent[2];
-        float radius;
-        float feather;
-        float stroke_factor;
-        float stroke_threshold;
-    };
-    static_assert(sizeof(ShaderVariables) == 128);
-
     // methods --------------------------------------------------------------------------------- //
 public:
     NOTF_NO_COPY_OR_ASSIGN(Plotter);
@@ -328,6 +385,9 @@ private:
 
     /// Internal vertex object to store plotted vertices.
     VertexObjectPtr m_vertex_object;
+
+    /// Uniform buffer containing plotter paint values.
+    UniformBufferPtr<FragmentPaint> m_uniform_buffer;
 
     /// Draw Calls.
     std::vector<DrawCall> m_drawcalls;

@@ -452,13 +452,15 @@ private:
             /// If the same buffer is bound at another index, this call will re-bind the buffer at the new index.
             /// @param buffer   Buffer to bind.
             /// @param index    Index in the UniformBuffer at which to bind (in blocks).
-            void bind(AnyUniformBufferPtr buffer, size_t offset = 0) { m_buffer._set(std::move(buffer), offset); }
+            void bind_buffer(AnyUniformBufferPtr buffer, size_t offset = 0) {
+                m_buffer._set(std::move(buffer), offset);
+            }
 
             /// Binds a new UniformBlock to this slot.
             /// If the same block is already bound, this does nothing.
             /// Other bound blocks are not affected.
             /// @param block    New UniformBlock to bind.
-            void bind(const UniformBlock& block);
+            void bind_block(const UniformBlock& block);
 
             // fields ------------------------------------------------------ //
         private:

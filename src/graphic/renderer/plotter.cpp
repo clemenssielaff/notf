@@ -88,12 +88,13 @@
 #include "notf/graphic/shader_program.hpp"
 #include "notf/graphic/text/font_manager.hpp"
 #include "notf/graphic/texture.hpp"
+#include "notf/graphic/uniform_buffer.hpp"
 #include "notf/graphic/vertex_buffer.hpp"
 #include "notf/graphic/vertex_object.hpp"
 
-namespace {
-
 NOTF_USING_NAMESPACE;
+
+namespace {
 
 struct VertexPos {
     NOTF_UNUSED constexpr static GLuint location = 0;
@@ -113,10 +114,12 @@ struct RightCtrlPos {
 using PlotterVertexBuffer = vertex_buffer_t<VertexPos, LeftCtrlPos, RightCtrlPos>;
 using PlotterIndexBuffer = IndexBuffer<GLuint>;
 
-const GLenum g_index_type = to_gl_type(PlotterIndexBuffer::index_t{});
+static constexpr GLenum g_index_type = to_gl_type(PlotterIndexBuffer::index_t{});
 
 void set_pos(PlotterVertexBuffer::vertex_t& vertex, V2f pos) { std::get<0>(vertex) = std::move(pos); }
+
 void set_first_ctrl(PlotterVertexBuffer::vertex_t& vertex, V2f pos) { std::get<1>(vertex) = std::move(pos); }
+
 void set_second_ctrl(PlotterVertexBuffer::vertex_t& vertex, V2f pos) { std::get<2>(vertex) = std::move(pos); }
 
 void set_modified_first_ctrl(PlotterVertexBuffer::vertex_t& vertex, const CubicBezier2f::Segment& left_segment) {
@@ -132,8 +135,6 @@ void set_modified_second_ctrl(PlotterVertexBuffer::vertex_t& vertex, const Cubic
 }
 
 } // namespace
-
-NOTF_OPEN_NAMESPACE
 
 // paint ============================================================================================================ //
 
@@ -158,7 +159,7 @@ Plotter::Paint Plotter::Paint::linear_gradient(const V2f& start_pos, const V2f& 
     paint.xform[1][1] = delta.y();
     paint.xform[2][0] = start_pos.x() - (delta.x() * large_number);
     paint.xform[2][1] = start_pos.y() - (delta.y() * large_number);
-    paint.radius = 0.0f;
+    paint.gradient_radius = 0.0f;
     paint.feather = max(1, mag);
     paint.extent.width() = large_number;
     paint.extent.height() = large_number + (mag / 2);
@@ -171,10 +172,10 @@ Plotter::Paint Plotter::Paint::radial_gradient(const V2f& center, const float in
                                                const Color inner_color, const Color outer_color) {
     Paint paint;
     paint.xform = M3f::translation(center);
-    paint.radius = (inner_radius + outer_radius) * 0.5f;
+    paint.gradient_radius = (inner_radius + outer_radius) * 0.5f;
     paint.feather = max(1, outer_radius - inner_radius);
-    paint.extent.width() = paint.radius;
-    paint.extent.height() = paint.radius;
+    paint.extent.width() = paint.gradient_radius;
+    paint.extent.height() = paint.gradient_radius;
     paint.inner_color = std::move(inner_color);
     paint.outer_color = std::move(outer_color);
     return paint;
@@ -184,7 +185,7 @@ Plotter::Paint Plotter::Paint::box_gradient(const V2f& center, const Size2f& ext
                                             const float feather, const Color inner_color, const Color outer_color) {
     Paint paint;
     paint.xform = M3f::translation(V2f{center.x() + extend.width() / 2, center.y() + extend.height() / 2});
-    paint.radius = radius;
+    paint.gradient_radius = radius;
     paint.feather = max(1, feather);
     paint.extent.width() = extend.width() / 2;
     paint.extent.height() = extend.height() / 2;
@@ -210,6 +211,7 @@ Plotter::Paint Plotter::Paint::texture_pattern(const V2f& origin, const Size2f& 
 // plotter ========================================================================================================== //
 
 Plotter::Plotter(GraphicsContext& context) : m_context(context) {
+    using UsageHint = PlotterVertexBuffer::UsageHint;
     NOTF_GUARD(m_context.make_current());
 
     { // pipeline
@@ -230,10 +232,17 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
     }
 
     // vertex object
-    m_vertex_object = VertexObject::create(
-        m_context, "PlotterVertexObject",
-        PlotterVertexBuffer::create("PlotterVertexBuffer", PlotterVertexBuffer::UsageHint::STREAM_DRAW),
-        PlotterIndexBuffer::create("PlotterIndexBuffer", PlotterIndexBuffer::UsageHint::STREAM_DRAW));
+    m_vertex_object = VertexObject::create(m_context, "PlotterVertexObject",
+                                           PlotterVertexBuffer::create("PlotterVertexBuffer", UsageHint::STREAM_DRAW),
+                                           PlotterIndexBuffer::create("PlotterIndexBuffer", UsageHint::STREAM_DRAW));
+
+    // uniform buffer
+    m_uniform_buffer = UniformBuffer<FragmentPaint>::create("PlotterUniformBuffer", UsageHint::STREAM_DRAW);
+    Paint paint;
+    paint.inner_color = Color::blue();
+    paint.outer_color = Color::red();
+    m_uniform_buffer->write().emplace_back(std::move(paint));
+
     // TODO: maybe naming everything (like "PlotterVertexBuffer") is a bad idea
     //       ... then again, it isn't if we need some identifier to get them out of a "resource manager (-like)" storage
 }
@@ -242,6 +251,7 @@ Plotter::~Plotter() {
     NOTF_GUARD(m_context.make_current());
     m_vertex_object.reset();
     m_program.reset();
+    m_uniform_buffer.reset();
 }
 
 Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {
@@ -440,10 +450,11 @@ void Plotter::fill(valid_ptr<PathPtr> path, FillInfo info) {
 
 void Plotter::swap_buffers() {
     NOTF_ASSERT(m_context.is_current());
-    m_context->vertex_object = m_vertex_object;
 
+    m_context->vertex_object = m_vertex_object;
     static_cast<PlotterVertexBuffer*>(m_vertex_object->get_vertices().get())->upload();
     static_cast<PlotterIndexBuffer*>(m_vertex_object->get_indices().get())->upload();
+    m_uniform_buffer->upload();
 
     // TODO: combine batches with same type & info -- that's what batches are there for
     std::swap(m_drawcalls, m_drawcall_buffer);
@@ -455,6 +466,8 @@ void Plotter::clear() {
 
     static_cast<PlotterVertexBuffer*>(m_vertex_object->get_vertices().get())->write().clear();
     static_cast<PlotterIndexBuffer*>(m_vertex_object->get_indices().get())->write().clear();
+    m_uniform_buffer->write().clear();
+
     m_drawcall_buffer.clear();
 }
 
@@ -464,6 +477,9 @@ void Plotter::render() const {
     NOTF_ASSERT(m_context.is_current());
     m_context->vertex_object = m_vertex_object;
     m_context->program = m_program;
+
+    m_context->uniform_slots[0].bind_block(m_program->get_uniform_block("PaintBlock"));
+    m_context->uniform_slots[0].bind_buffer(m_uniform_buffer, 0);
 
     NOTF_CHECK_GL(glEnable(GL_CULL_FACE));
     NOTF_CHECK_GL(glCullFace(GL_BACK));
@@ -607,4 +623,16 @@ void Plotter::_render_text(const TextInfo& text) const {
                                  gl_buffer_offset(text.path->offset * sizeof(PlotterIndexBuffer::index_t))));
 }
 
-NOTF_CLOSE_NAMESPACE
+// std::hash ======================================================================================================== //
+
+/// std::hash specialization for FragmentPaint.
+template<>
+struct ::std::hash<notf::Plotter::FragmentPaint> {
+    static_assert(sizeof(notf::Plotter::FragmentPaint) == 28 * sizeof(float));
+
+    size_t operator()(const notf::Plotter::FragmentPaint& paint) const {
+        const size_t* as_size_t = reinterpret_cast<const size_t*>(&paint);
+        const uint32_t* as_uint = reinterpret_cast<const uint32_t*>(&paint);
+        return notf::hash(as_size_t[0], as_size_t[1], as_size_t[2], as_uint[6]);
+    }
+};

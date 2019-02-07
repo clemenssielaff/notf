@@ -214,7 +214,7 @@ void GraphicsContext::_UniformSlots::Slot::BlockBinding::_set(const GLuint slot_
     if (m_fragment_shader_id) { glUniformBlockBinding(m_fragment_shader_id.get_value(), m_block_index, slot_index); }
 }
 
-void GraphicsContext::_UniformSlots::Slot::bind(const UniformBlock& block) {
+void GraphicsContext::_UniformSlots::Slot::bind_block(const UniformBlock& block) {
     ShaderProgramConstPtr program = block.get_program().shared_from_this();
     const GLuint block_index = block.get_index();
     for (const auto& block_binding : m_blocks) {

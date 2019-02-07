@@ -66,15 +66,15 @@ std::string get_uniform_block_name(const GLuint program, const GLuint block_inde
 
 namespace notf::detail {
 
-UniformBlock::UniformBlock(ShaderProgram& program, const GLuint index)
+UniformBlock::UniformBlock(const ShaderProgram& program, const AnyShaderPtr& shader, const GLuint index)
     : m_program(program)
-    , m_name(get_uniform_block_name(program.get_id().get_value(), index))
+    , m_name(get_uniform_block_name(shader->get_id().get_value(), index))
     , m_index(index)
-    , m_stages(get_uniform_block_stages(program.get_id().get_value(), index))
-    , m_data_size(get_uniform_block_size(program.get_id().get_value(), index)) {
+    , m_stages(get_uniform_block_stages(shader->get_id().get_value(), index))
+    , m_data_size(get_uniform_block_size(shader->get_id().get_value(), index)) {
 
     { // variables
-        GLuint shader_id = m_program.get_id().get_value();
+        GLuint shader_id = shader->get_id().get_value();
         GLuint variable_count = 0;
         NOTF_CHECK_GL(glGetActiveUniformBlockiv(shader_id, index, GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS,
                                                 reinterpret_cast<GLint*>(&variable_count)));
@@ -261,9 +261,9 @@ void ShaderProgram::_find_uniform_blocks(const AnyShaderPtr& shader) {
     NOTF_ASSERT(block_count >= 0);
 
     for (GLuint index = 0; index < static_cast<GLuint>(block_count); ++index) {
-        m_uniform_blocks.emplace_back(UniformBlock(*this, index));
+        m_uniform_blocks.emplace_back(UniformBlock(*this, shader, index));
         const auto& block = m_uniform_blocks.back();
-        NOTF_LOG_TRACE("Found uniform block \"{}\" on ShaderProgram: \"{}\" with {} variables", block.get_name(),
+        NOTF_LOG_TRACE("Found uniform block \"{}\" in Shader: \"{}\" with {} variables", block.get_name(),
                        shader->get_name(), block.m_variables.size());
     }
 }

@@ -109,7 +109,7 @@ private:
         /// @param args     Construction arguments pack.
         Logger(const Arguments& args) : m_console_sink(std::make_shared<decltype(m_console_sink)::element_type>()) {
             m_console_sink->set_level(static_cast<spdlog::level::level_enum>(args.console_level));
-            m_console_sink->set_pattern("%i %l: %v");
+            m_console_sink->set_pattern("%i %^%l%$: %v");
 
             if (args.file_name.empty()) {
                 m_logger = std::make_unique<decltype(m_logger)::element_type>(args.name, m_console_sink);

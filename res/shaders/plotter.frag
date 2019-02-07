@@ -6,31 +6,26 @@ in VertexData {
     mat2x3 line_xform;
     vec2 line_size;
     vec2 position;
-    vec2 tex_coord;
+    vec2 texture_coord;
     flat int patch_type;
 } v_in;
 
 uniform sampler2D font_texture;
 
-
-layout(std140) uniform hello_world_and_shit {
-    vec4 paintRot;
-    vec4 scissorRot;
-    vec2 paintTrans;
-    vec2 scissorTrans;
-    vec2 scissorExt;
-    vec2 scissorScale;
-    vec4 innerCol;
-    vec4 outerCol;
-    vec2 extent;
-    float radius;
-    float feather;
-    float strokeMult;
-    float strokeThr;
-    int type;
-    float _padding;
+layout(std140) uniform PaintBlock {
+    vec4 paint_rotation;    //  0 (size = 4)
+    vec2 paint_translation; //  4 (size = 2)
+    vec2 paint_size;        //  6 (size = 2)
+    vec4 clip_rotation;     //  8 (size = 4)
+    vec2 clip_translation;  // 12 (size = 2)
+    vec2 clip_size;         // 14 (size = 2)
+    vec4 inner_color;       // 16 (size = 4)
+    vec4 outer_color;       // 20 (size = 4)
+    int type;               // 24 (size = 1)
+    float stroke_width;     // 25 (size = 1)
+    float radius;           // 26 (size = 1)
+    float feather;          // 27 (size = 1)
 };
-
 
 layout(location=0) out vec4 f_color;
 
@@ -47,14 +42,14 @@ const int END_CAP   = 33;
 float sample_line()
 {
     // for a visual reference of the sample pattern see {notf_root}/dev/diagrams/aa_pattern.svg
-    const vec4 pattern_x = vec4(1.0, 7.0, 11.0, 15.0) / 32.0;
-    const vec4 pattern_y = vec4(5.0, 13.0, 3.0, 9.0) / 32.0;
+    const vec4 pattern_x = vec4(1., 7., 11., 15.) / 32.;
+    const vec4 pattern_y = vec4(5., 13., 3., 9.) / 32.;
     const vec4 weights = vec4(1);               // uniform weights across all sample points
     const vec2 signs[4] = vec2[4](vec2(+1, +1), // top-right quadrant
                                   vec2(+1, -1), // bottom-right quadrant
                                   vec2(-1, -1), // bottom-left quadrant
                                   vec2(-1, +1));// top-left quadrant
-    
+
     float result = 0.;
     for(int quadrant = 0; quadrant < 4; ++quadrant){
         vec4 samples_x, samples_y;
@@ -71,13 +66,51 @@ float sample_line()
     return result / 16.;
 }
 
-void main() 
+/// Signed distance to a rounded rectangle centered at the origin, used for all gradients.
+/// * Box gradients use the rounded rectangle as it is.
+/// * Circle gradients use a rounded rectangle where size = (radius, radius).
+/// * Linear gradients are set up to use only one edge of a very large rectangle.
+/// *Thanks to Mikko Mononen for the function and helpful explanation!*
+/// See https://github.com/memononen/nanovg/issues/369
+/// @param point    The distance to this point is calculated.
+/// @param size     Size of the rectangle.
+/// @param radius   Radius of the rounded corners of the rectangle.
+float get_rounded_rect_distance(vec2 point, vec2 size, float radius) {
+    vec2 inner_size = size - vec2(radius, radius);
+    vec2 delta = abs(point) - inner_size;
+    return min(max(delta.x, delta.y), 0.) + length(max(delta, 0.)) - radius;
+}
+
+/// Scissor factor from a rotated rectangle defined in the paint.
+float get_clipping_factor() {
+    mat3x2 clip_xform = mat3x2(clip_rotation, clip_translation);
+    vec2 clip = vec2(0.5, 0.5) - (abs((clip_xform * vec3(v_in.position, 1.)).xy) - clip_size);
+    return clamp(clip.x, 0., 1.) * clamp(clip.y, 0., 1.);
+}
+
+void main()
 {
+    float clipping_factor = get_clipping_factor();
+    if(clipping_factor == 0.){
+        discard;
+    }
+
     if(v_in.patch_type == TEXT){
-        f_color = vec4(1, 1, 1, texture(font_texture, v_in.tex_coord).r);
+        f_color = vec4(1, 1, 1, texture(font_texture, v_in.texture_coord).r);
     }
     else if(v_in.patch_type == STROKE){
-        f_color = vec4(1, 1, 1, sample_line());
+        float aa_factor = sample_line();
+        if(aa_factor == 0.){
+            discard;
+        }
+
+        f_color = vec4(mix(inner_color.xyz, outer_color.xyz, v_in.texture_coord.x), aa_factor);
+
+        // f_color = vec4(smoothstep(vec3(1.,0.,0.), vec3(0.,0.,1.), vec3(v_in.texture_coord.x, v_in.texture_coord.x, v_in.texture_coord.x)),
+        //                aa_factor);
+
+        // f_color = vec4(smoothstep(inner_color, outer_color, vec4(v_in.texture_coord.x)).xyz,
+        //                aa_factor);
     }
     else {
         f_color = vec4(1, 1, 1, 1);

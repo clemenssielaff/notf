@@ -26,7 +26,7 @@ out VertexData {
     mediump mat2x3 line_xform;
     mediump vec2 line_size;
     mediump vec2 position;
-    mediump vec2 tex_coord;
+    mediump vec2 texture_coord;
     mediump flat int patch_type;
 } v_out;
 
@@ -61,17 +61,17 @@ const int END_CAP   = 33;
 #define START (gl_in[0].gl_Position.xy)
 #define END   (gl_in[1].gl_Position.xy)
 
-void calculate_line() 
+void calculate_line()
 {
     vec2 delta = END - START;
     float line_length = length(delta);
     v_out.line_size.x = line_length;
-    v_out.line_size.y = stroke_width; 
+    v_out.line_size.y = stroke_width;
 
     // move the origin of the stroke to its bottom left
     vec2 along = delta / (line_length == 0.0 ? 1.0 : line_length);
     vec2 origin = START + (vec2(along.y, -along.x) * stroke_width * HALF);
-    
+
     // calculate the transformation of points in screen space to line-space
     float angle = atan(delta.y, delta.x);
     float c = cos(angle);
@@ -83,17 +83,16 @@ void calculate_line()
 
 void main()
 {
-    v_out.tex_coord.x = gl_TessCoord.x;
-    v_out.tex_coord.y = gl_TessCoord.y;
+    v_out.texture_coord = gl_TessCoord.xy;
 
     if(patch_data.type == CONVEX){
-        // v_out.tex_coord.y = aa_width == 0.0 ? 1.0 : ONE - step(0.9, gl_TessCoord.y);
+        // v_out.texture_coord.y = aa_width == 0.0 ? 1.0 : ONE - step(0.9, gl_TessCoord.y);
 
         // This always creates a triangle with zero area :/ but I hope that the GPU is quick to discard such polygons.
         // The alternative would be that I always pass 3 vertices to a patch, which would mean that I always pass an unused
         // vertex for each line segment, which might be slower
         vec2 delta = mix(END, START, gl_TessCoord.x) - base_vertex;
-        // v_out.position = fma(vec2(step(HALF, gl_TessCoord.y) * (length(delta) - (sign(v_out.tex_coord.y - HALF) * aa_width))),
+        // v_out.position = fma(vec2(step(HALF, gl_TessCoord.y) * (length(delta) - (sign(v_out.texture_coord.y - HALF) * aa_width))),
         //                      normalize(delta), base_vertex);
         v_out.position = fma(vec2(step(HALF, gl_TessCoord.y) * length(delta)), normalize(delta), base_vertex);
     }
@@ -106,7 +105,7 @@ void main()
 
     else if (patch_data.type == TEXT) {
         vec2 uv_max = START + (glyph_max_corner - glyph_min_corner);
-        v_out.tex_coord = mix(START, uv_max, vec2(gl_TessCoord.x, ONE - gl_TessCoord.y)) / atlas_size;
+        v_out.texture_coord = mix(START, uv_max, vec2(gl_TessCoord.x, ONE - gl_TessCoord.y)) / atlas_size;
         v_out.position = mix(glyph_min_corner, glyph_max_corner, gl_TessCoord.xy);
     }
 
@@ -136,7 +135,7 @@ void main()
             }
             v_out.position = START + (normal * normal_offset);
 
-            v_out.tex_coord.x = HALF;
+            v_out.texture_coord.x = HALF;
         }
 
         else if(patch_data.type == START_CAP){
@@ -147,8 +146,8 @@ void main()
                     + (normal * normal_offset);                                                 // along normal
 
             // cap texture coordinates
-            v_out.tex_coord.x = ZERO;
-            // v_out.tex_coord.y = (gl_TessCoord.x == ONE) ? v_out.tex_coord.y : ZERO;
+            v_out.texture_coord.x = ZERO;
+            // v_out.texture_coord.y = (gl_TessCoord.x == ONE) ? v_out.texture_coord.y : ZERO;
         }
 
         else if(patch_data.type == END_CAP){
@@ -159,8 +158,8 @@ void main()
                     + (normal * normal_offset);                                         // along normal
 
             // cap texture coordinates
-            v_out.tex_coord.x = ONE;
-            // v_out.tex_coord.y = gl_TessCoord.x > 0.9 ? ZERO : v_out.tex_coord.y;
+            v_out.texture_coord.x = ONE;
+            // v_out.texture_coord.y = gl_TessCoord.x > 0.9 ? ZERO : v_out.texture_coord.y;
         }
     }
 
