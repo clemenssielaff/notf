@@ -17,6 +17,8 @@ NOTF_OPEN_NAMESPACE
 
 Painterpreter::Painterpreter(GraphicsContext& context) : m_plotter(std::make_shared<Plotter>(context)) { _reset(); }
 
+void Painterpreter::start_painting() { m_plotter->clear(); }
+
 void Painterpreter::paint(const WidgetHandle& widget) {
     { // adopt the Widget's auxiliary information
         _reset();
@@ -106,12 +108,9 @@ void Painterpreter::paint(const WidgetHandle& widget) {
                 command);
         }
     }
-
-    // plot it
-    m_plotter->swap_buffers();
-    m_plotter->render();
-    _reset();
 }
+
+void Painterpreter::end_painting() { m_plotter->render(); }
 
 void Painterpreter::_reset() {
     m_states.clear();
@@ -139,13 +138,13 @@ void Painterpreter::_fill() {
     }
 
     // get the fill paint
-    Paint paint = state.stroke_paint;
+    Paint paint = state.fill_paint;
     paint.inner_color.a *= state.alpha;
     paint.outer_color.a *= state.alpha;
 
     // plot the shape
     Plotter::FillInfo fill_info;
-    m_plotter->fill(state.path, std::move(fill_info));
+    m_plotter->fill(state.path, paint, std::move(fill_info));
 }
 
 void Painterpreter::_stroke() {
@@ -177,7 +176,7 @@ void Painterpreter::_stroke() {
     // plot the stroke
     Plotter::StrokeInfo stroke_info;
     stroke_info.width = stroke_width;
-    m_plotter->stroke(state.path, std::move(stroke_info));
+    m_plotter->stroke(state.path, paint, std::move(stroke_info));
 }
 
 void Painterpreter::_write(const std::string& text) {
@@ -186,11 +185,16 @@ void Painterpreter::_write(const std::string& text) {
         return; // early out
     }
 
+    // get the text paint
+    Paint paint = state.stroke_paint;
+    paint.inner_color.a *= state.alpha;
+    paint.outer_color.a *= state.alpha;
+
     // plot the text
     Plotter::TextInfo text_info;
     text_info.font = state.font;
     text_info.translation = transform_by(V2f::zero(), state.xform);
-    m_plotter->write(text, std::move(text_info));
+    m_plotter->write(text, paint, std::move(text_info));
 }
 
 NOTF_CLOSE_NAMESPACE

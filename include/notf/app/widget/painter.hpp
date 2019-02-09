@@ -1,3 +1,28 @@
+/* Painting Widgets is arguably the most important visual task of notf. In order to maximize performance, the Widget
+ * drawing pipeline is divided into several stages, each of which helping to avoid unnecessary work.
+ *
+ * Painter
+ * Is passed in as a mutable reference to `Widget::paint`, where it modifies the...
+ *
+ * WidgetDesign
+ * A data object containing information on how to paint a Widget. Is used so that we don't have to call `Widget::paint`
+ * for every Widget, every time a new frame is drawn but only for those that actually changed visually. The WidgetDesign
+ * is basically bytecode that is eventually ingested by the...
+ *
+ * Painterpreter
+ * A play on the words "Painter" and "Interpreter". The Painterpreter takes a look at a WidgetDesign and uses it to in
+ * turn control the...
+ *
+ * Plotter
+ * The Plotter behaves very much like the `Painter`, but instead of being driven by the user (with an interface suited
+ * for human interaction) it is driven by the Painterpreter. The Plotter ingests all information necessary to draw a
+ * WidgetScene, performs some internal optimizations and eventually passes them on to the GPU for rendering.
+ *
+ *
+ *
+ *
+ *
+ */
 #pragma once
 
 #include <vector>
@@ -130,7 +155,7 @@ public:
     /// The Clipping currently applied to the Painter.
     const Clipping& get_clipping() const { return _get_current_state().clipping; }
 
-     /// Updates the Painter's Clipping.
+    /// Updates the Painter's Clipping.
     void set_clipping(Clipping clipping);
 
     /// Removes the Painter's Clipping rect.

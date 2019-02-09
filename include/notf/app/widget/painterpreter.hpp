@@ -24,8 +24,12 @@ public:
     /// @param context  GraphicsContext to operate in.
     Painterpreter(GraphicsContext& context);
 
+    void start_painting();
+
     /// Paints the Design of the given Widget.
     void paint(const WidgetHandle& widget);
+
+    void end_painting();
 
 private:
     /// Reset the internal state.

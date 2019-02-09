@@ -170,107 +170,36 @@ public:
         Size2f size = Size2f::invalid(); // TODO test clipping
     };
 
-    /// For details on uniform buffer struct size and alignment issues see Sub-section 2.15.3.1.2 in:
-    /// https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_uniform_buffer_object.txt
-    struct FragmentPaint {
-
-        // types ----------------------------------------------------------------------------------- //
-    public:
-        enum class Type : GLint {
-            GRADIENT = 0,
-            IMAGE = 1,
-            STENCIL = 2,
-            TEXT = 3,
-        };
-
-        // methods --------------------------------------------------------------------------------- //
-    public:
-        FragmentPaint(const Paint& paint, const Clipping& clipping, const float stroke_width, const Type type) {
-            // paint
-            const M3f paint_xform = paint.xform.inverse();
-            paint_rotation[0] = paint_xform[0][0];
-            paint_rotation[1] = paint_xform[0][1];
-            paint_rotation[2] = paint_xform[1][0];
-            paint_rotation[3] = paint_xform[1][1];
-            paint_translation[0] = paint_xform[2][0];
-            paint_translation[1] = paint_xform[2][1];
-            paint_size[0] = paint.extent.width();
-            paint_size[1] = paint.extent.height();
-
-            // clipping
-            if (clipping.size.is_valid()) {
-                clip_rotation[0] = clipping.xform[0][0];
-                clip_rotation[1] = clipping.xform[0][1];
-                clip_rotation[2] = clipping.xform[1][0];
-                clip_rotation[3] = clipping.xform[1][1];
-                clip_translation[0] = clipping.xform[2][0];
-                clip_translation[1] = clipping.xform[2][1];
-                clip_size[0] = clipping.size.width() / 2;
-                clip_size[1] = clipping.size.height() / 2;
-            }
-
-            // color
-            inner_color = paint.inner_color.premultiplied();
-            outer_color = paint.outer_color.premultiplied();
-
-            // type
-            if (type == Type::GRADIENT && paint.texture) {
-                this->type = Type::IMAGE; // TODO: why does a texture alone make an IMAGE type paint?
-            } else {
-                this->type = type;
-            }
-
-            this->stroke_width = stroke_width;
-            gradient_radius = paint.gradient_radius;
-            feather = paint.feather;
-        }
-
-        FragmentPaint(const Plotter::Paint& paint, const Type type = Type::GRADIENT)
-            : FragmentPaint(paint, {}, 0, type) {}
-
-        // fields ---------------------------------------------------------------------------------- //
-    public:                                          // offset in basic machine units
-        std::array<float, 4> paint_rotation = {};    //  0 (size = 4)
-        std::array<float, 2> paint_translation = {}; //  4 (size = 2)
-        std::array<float, 2> paint_size = {};        //  6 (size = 2)
-        std::array<float, 4> clip_rotation = {};     //  8 (size = 4)
-        std::array<float, 2> clip_translation = {};  // 12 (size = 2)
-        std::array<float, 2> clip_size = {1, 1};     // 14 (size = 2)
-        Color inner_color = Color::transparent();    // 16 (size = 4)
-        Color outer_color = Color::transparent();    // 20 (size = 4) TODO Color could be a float[3]
-        Type type;                                   // 24 (size = 1)
-        float stroke_width;                          // 25 (size = 1)
-        float gradient_radius = 0;                   // 26 (size = 1)
-        float feather = 0;                           // 27 (size = 1)
-    };                                               // total size is: 28
-
-    /// Information necessary to draw a predefined stroke.
-    struct StrokeInfo {
-
-        /// Transformation applied to the stroked Path.
-        M3f transform;
+private:
+    class _BaseInfo {
+        friend Plotter;
 
         /// Path to draw.
         std::shared_ptr<Path> path;
+
+        /// Index of the Paint in the UniformBuffer.
+        uint paint_index;
+    };
+
+public:
+    /// Information necessary to draw a predefined stroke.
+    struct StrokeInfo : public _BaseInfo {
+
+        /// Transformation applied to the stroked Path.
+        M3f transform;
 
         /// Width of the stroke in pixels.
         float width;
     };
 
     /// Information necessary to fill a Path.
-    struct FillInfo {
-
-        /// Path to draw.
-        std::shared_ptr<Path> path;
+    struct FillInfo : public _BaseInfo {
 
         /// Transformation applied to the filled Path.
         M3f transform;
     };
 
-    struct TextInfo {
-
-        /// Path to draw.
-        std::shared_ptr<Path> path;
+    struct TextInfo : public _BaseInfo {
 
         /// Font to draw the text in.
         FontPtr font;
@@ -296,6 +225,45 @@ private:
         // END_CAP   = 33, // internal
     };
 
+    /// For details on uniform buffer struct size and alignment issues see Sub-section 2.15.3.1.2 in:
+    /// https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_uniform_buffer_object.txt
+    struct FragmentPaint {
+
+        // types ----------------------------------------------------------------------------------- //
+    public:
+        enum class Type : GLint {
+            GRADIENT = 0,
+            IMAGE = 1,
+            STENCIL = 2,
+            TEXT = 3,
+        };
+
+        // methods --------------------------------------------------------------------------------- //
+    public:
+        /// @{
+        /// Constructor
+        FragmentPaint(const Paint& paint, const Clipping& clipping, const float stroke_width, const Type type);
+        FragmentPaint(const Plotter::Paint& paint, const Type type = Type::GRADIENT)
+            : FragmentPaint(paint, {}, 0, type) {}
+        /// @}
+
+        // fields ---------------------------------------------------------------------------------- //
+    public:                                          // offset in basic machine units
+        std::array<float, 4> paint_rotation = {};    //  0 (size = 4)
+        std::array<float, 2> paint_translation = {}; //  4 (size = 2)
+        std::array<float, 2> paint_size = {};        //  6 (size = 2)
+        std::array<float, 4> clip_rotation = {};     //  8 (size = 4)
+        std::array<float, 2> clip_translation = {};  // 12 (size = 2)
+        std::array<float, 2> clip_size = {1, 1};     // 14 (size = 2)
+        Color inner_color = Color::transparent();    // 16 (size = 4)
+        Color outer_color = Color::transparent();    // 20 (size = 4) TODO Color could be a float[3]
+        Type type;                                   // 24 (size = 1)
+        float stroke_width;                          // 25 (size = 1)
+        float gradient_radius = 0;                   // 26 (size = 1)
+        float feather = 0;                           // 27 (size = 1)
+    };                                               // total size is: 28
+    friend ::std::hash<Plotter::FragmentPaint>;
+
     /// State of the shader pipeline.
     /// The plotter keeps the state around so it doesn't make any superfluous OpenGL updates.
     /// Is initialized to all invalid values.
@@ -315,6 +283,9 @@ private:
         /// Auxiliary vector2 uniform.
         /// Used as the base vertex for shapes and the size of the font atlas for text.
         V2f vec2_aux1;
+
+        /// Index at which the uniform buffer is bound.
+        uint uniform_buffer_offset = 0;
     };
 
     // methods --------------------------------------------------------------------------------- //
@@ -341,22 +312,21 @@ public:
 
     /// Creates a stroke tracing the given Path.
     /// @param path     Path to stroke.
+    /// @param paint    Paint to use for the stroke.
     /// @param info     Information on how to draw the stroke.
-    void stroke(valid_ptr<PathPtr> path, StrokeInfo info);
+    void stroke(valid_ptr<PathPtr> path, const Paint& paint, StrokeInfo info);
 
     /// Creates a filled shape bounded by the given Path.
     /// @param path     Path to fill.
+    /// @param paint    Paint to use for the fill.
     /// @param info     Information on how to draw the shape.
-    void fill(valid_ptr<PathPtr> path, FillInfo info);
+    void fill(valid_ptr<PathPtr> path, const Paint& paint, FillInfo info);
 
     /// Adds a new line of text to render into the buffer.
     /// @param text     Text to render.
+    /// @param paint    Paint to use for the text.
     /// @param info     Information on how to render the text.
-    void write(const std::string& text, TextInfo info);
-
-    /// Replaces the current list of OpenGL draw calls with one parsed from the buffer.
-    /// Clears the buffer.
-    void swap_buffers();
+    void write(const std::string& text, const Paint& paint, TextInfo info);
 
     /// Clears the buffer without parsing it.
     void clear();
@@ -391,9 +361,6 @@ private:
 
     /// Draw Calls.
     std::vector<DrawCall> m_drawcalls;
-
-    /// Buffer for new Draw Calls.
-    std::vector<DrawCall> m_drawcall_buffer;
 
     /// State of the Plotter pipeline.
     mutable State m_state;

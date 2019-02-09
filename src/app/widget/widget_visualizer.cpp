@@ -11,7 +11,7 @@ NOTF_OPEN_NAMESPACE
 
 // ================================================================================================================== //
 
-WidgetVisualizer::WidgetVisualizer(const Window &window)
+WidgetVisualizer::WidgetVisualizer(const Window& window)
     : Visualizer(window), m_painterpreter(std::make_unique<Painterpreter>(window.get_graphics_context())) {}
 
 WidgetVisualizer::~WidgetVisualizer() = default;
@@ -26,10 +26,13 @@ void WidgetVisualizer::visualize(valid_ptr<Scene*> scene) const {
 
     AnyNode::Iterator iterator(widget_scene->get_widget());
     AnyNodeHandle node;
+
+    m_painterpreter->start_painting();
     while (iterator.next(node)) {
         const WidgetHandle widget = handle_cast<WidgetHandle>(node);
         if (widget) { m_painterpreter->paint(widget); }
     }
+    m_painterpreter->end_painting(); // TODO Painterpreter::Picture RAII instance?
 }
 
 NOTF_CLOSE_NAMESPACE

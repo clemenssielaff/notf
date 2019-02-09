@@ -58,4 +58,8 @@ GLenum AnyOpenGLBuffer::_to_gl_usage(const UsageHint usage) {
     }
 }
 
+void AnyOpenGLBuffer::_log_buffer_size(const size_t size) const {
+    NOTF_LOG_TRACE("Resizing OpenGLBuffer \"{}\" to {} bytes", m_name, size);
+}
+
 } // namespace notf::detail

@@ -92,14 +92,20 @@ private:
         const V2f half_line{half_length, half_length};
         const CubicBezier2f spline({CubicBezier2f::Segment::line(-half_line, half_line)});
 
+        painter.set_stroke_width(1.f);
+        painter.set_stroke(Color::red());
+
         // draw a background
-//        painter.set_fill(Color(1, 0, 0));
 //        painter.set_path(convert_to<Polygonf>(Aabrf(-half_length, -half_length, half_length * 2, half_length * 2)));
-//        painter.fill();
+//        painter.stroke();
 
         // draw the rotating line
-        painter.set_stroke_width(1.f);
         painter.set_path(spline);
+//        painter.stroke();
+
+        const CubicBezier2f spline2({CubicBezier2f::Segment::line(-half_line-100, half_line)});
+
+        painter.translate(400, 0);
         painter.stroke();
     }
     void _relayout() override {}

@@ -60,7 +60,7 @@ public:
     virtual bool is_empty() const = 0;
 
     /// Number of elements stored in this buffer.
-    virtual size_t get_element_count() const = 0;
+    virtual uint get_element_count() const = 0;
 
     /// Size of an element in this buffer (including padding) in bytes.
     virtual size_t get_element_size() const = 0;
@@ -91,6 +91,10 @@ protected:
     /// @returns        OpenGL enum value.
     static GLenum _to_gl_usage(const UsageHint usage);
 
+    /// Prints a log message informing about the size of the buffer after a resize.
+    /// @param size New size of the buffer.
+    void _log_buffer_size(const size_t size) const;
+
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// Human-readable name of this OpenGLBuffer.
@@ -114,7 +118,6 @@ private:
 /// Typed but virtual OpenGL Buffer type.
 template<detail::OpenGLBufferType t_buffer_type>
 class TypedOpenGLBuffer : public AnyOpenGLBuffer {
-
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -167,7 +170,7 @@ public:
     bool is_empty() const final { return m_buffer.empty(); }
 
     /// Number of elements stored in this buffer.
-    size_t get_element_count() const final { return m_buffer.size(); }
+    uint get_element_count() const final { return narrow_cast<uint>(m_buffer.size()); }
 
     /// Size of an element in this buffer (including padding) in bytes.
     size_t get_element_size() const override { return sizeof(data_t); }
@@ -179,6 +182,11 @@ public:
         // This way, it can determine whether the local hash needs to be re-calculated in `upload` or not (by setting
         // `m_local_hash` to zero on each change) and we might even be able to use multiple smaller calls to
         // `glBufferSubData` instead of a single big one, just from data we collect automatically from the writer.
+        //
+        // The write object should take the written data (either as object or as ptr+size) and return the location in
+        // the buffer into which it was written. This way, we can optimize internally, for example by seeing if the
+        // object is already in the buffer and if so, just returning the offset to the existing object instead of
+        // inserting a new one
         return m_buffer;
     }
 
@@ -220,6 +228,7 @@ public:
             NOTF_CHECK_GL(
                 glBufferData(gl_type, buffer_size, &m_buffer.front(), this->_to_gl_usage(this->get_usage_hint())));
             m_server_size = buffer_size;
+            this->_log_buffer_size(buffer_size);
         }
         m_server_hash = m_local_hash;
 

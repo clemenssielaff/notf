@@ -208,6 +208,49 @@ Plotter::Paint Plotter::Paint::texture_pattern(const V2f& origin, const Size2f& 
     return paint;
 }
 
+// fragment paint =================================================================================================== //
+
+Plotter::FragmentPaint::FragmentPaint(const Paint& paint, const Clipping& clipping, const float stroke_width,
+                                      const Type type) {
+    // paint
+    const M3f paint_xform = paint.xform.inverse();
+    paint_rotation[0] = paint_xform[0][0];
+    paint_rotation[1] = paint_xform[0][1];
+    paint_rotation[2] = paint_xform[1][0];
+    paint_rotation[3] = paint_xform[1][1];
+    paint_translation[0] = paint_xform[2][0];
+    paint_translation[1] = paint_xform[2][1];
+    paint_size[0] = paint.extent.width();
+    paint_size[1] = paint.extent.height();
+
+    // clipping
+    if (clipping.size.is_valid()) {
+        clip_rotation[0] = clipping.xform[0][0];
+        clip_rotation[1] = clipping.xform[0][1];
+        clip_rotation[2] = clipping.xform[1][0];
+        clip_rotation[3] = clipping.xform[1][1];
+        clip_translation[0] = clipping.xform[2][0];
+        clip_translation[1] = clipping.xform[2][1];
+        clip_size[0] = clipping.size.width() / 2;
+        clip_size[1] = clipping.size.height() / 2;
+    }
+
+    // color
+    inner_color = paint.inner_color.premultiplied();
+    outer_color = paint.outer_color.premultiplied();
+
+    // type
+    if (type == Type::GRADIENT && paint.texture) {
+        this->type = Type::IMAGE; // TODO: why does a texture alone make an IMAGE type paint?
+    } else {
+        this->type = type;
+    }
+
+    this->stroke_width = stroke_width;
+    gradient_radius = paint.gradient_radius;
+    feather = paint.feather;
+}
+
 // plotter ========================================================================================================== //
 
 Plotter::Plotter(GraphicsContext& context) : m_context(context) {
@@ -238,10 +281,6 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
 
     // uniform buffer
     m_uniform_buffer = UniformBuffer<FragmentPaint>::create("PlotterUniformBuffer", UsageHint::STREAM_DRAW);
-    Paint paint;
-    paint.inner_color = Color::blue();
-    paint.outer_color = Color::red();
-    m_uniform_buffer->write().emplace_back(std::move(paint));
 
     // TODO: maybe naming everything (like "PlotterVertexBuffer") is a bad idea
     //       ... then again, it isn't if we need some identifier to get them out of a "resource manager (-like)" storage
@@ -366,7 +405,42 @@ Plotter::PathPtr Plotter::add(const Polygonf& polygon) {
     return path;
 }
 
-void Plotter::write(const std::string& text, TextInfo info) {
+void Plotter::stroke(valid_ptr<PathPtr> path, const Paint& paint, StrokeInfo info) {
+    if (path->size == 0 || info.width <= 0.f) {
+        return; // early out
+    }
+
+    // a line must be at least a pixel wide to be drawn, to emulate thinner lines lower the alpha
+    info.width = max(1, info.width);
+
+    // store the path
+    info.path = std::move(path);
+
+    // upload the paint and store the index
+    info.paint_index = m_uniform_buffer->get_element_count();
+    m_uniform_buffer->write().emplace_back(paint);
+
+    // store the resulting draw call
+    m_drawcalls.emplace_back(DrawCall{std::move(info)});
+}
+
+void Plotter::fill(valid_ptr<PathPtr> path, const Paint& paint, FillInfo info) {
+    if (path->size == 0) {
+        return; // early out
+    }
+
+    // store the path
+    info.path = std::move(path);
+
+    // upload the paint and store the index
+    info.paint_index = m_uniform_buffer->get_element_count();
+    m_uniform_buffer->write().emplace_back(paint);
+
+    // store the resulting draw call
+    m_drawcalls.emplace_back(DrawCall{std::move(info)});
+}
+
+void Plotter::write(const std::string& text, const Paint& paint, TextInfo info) {
     std::vector<PlotterVertexBuffer::vertex_t>& vertices
         = static_cast<PlotterVertexBuffer*>(m_vertex_object->get_vertices().get())->write();
     std::vector<GLuint>& indices = static_cast<PlotterIndexBuffer*>(m_vertex_object->get_indices().get())->write();
@@ -421,44 +495,18 @@ void Plotter::write(const std::string& text, TextInfo info) {
         indices.emplace_back(i);
     }
 
-    // draw call
+    // store the path
     info.path = Path::_create_shared();
     info.path->offset = narrow_cast<uint>(index_offset);
     info.path->size = narrow_cast<int>(indices.size() - index_offset);
-    m_drawcall_buffer.emplace_back(DrawCall{std::move(info)});
-}
 
-void Plotter::stroke(valid_ptr<PathPtr> path, StrokeInfo info) {
-    if (path->size == 0 || info.width <= 0.f) {
-        return; // early out
-    }
+    // upload the paint and store the index
+    info.paint_index = m_uniform_buffer->get_element_count();
+    m_uniform_buffer->write().emplace_back(paint);
+    // TODO: don't create a new paint entry in the uniform buffer if a similar one already exists
 
-    // a line must be at least a pixel wide to be drawn, to emulate thinner lines lower the alpha
-    info.width = max(1, info.width);
-
-    info.path = std::move(path);
-    m_drawcall_buffer.emplace_back(DrawCall{std::move(info)});
-}
-
-void Plotter::fill(valid_ptr<PathPtr> path, FillInfo info) {
-    if (path->size == 0) {
-        return; // early out
-    }
-    info.path = std::move(path);
-    m_drawcall_buffer.emplace_back(DrawCall{std::move(info)});
-}
-
-void Plotter::swap_buffers() {
-    NOTF_ASSERT(m_context.is_current());
-
-    m_context->vertex_object = m_vertex_object;
-    static_cast<PlotterVertexBuffer*>(m_vertex_object->get_vertices().get())->upload();
-    static_cast<PlotterIndexBuffer*>(m_vertex_object->get_indices().get())->upload();
-    m_uniform_buffer->upload();
-
-    // TODO: combine batches with same type & info -- that's what batches are there for
-    std::swap(m_drawcalls, m_drawcall_buffer);
-    m_drawcall_buffer.clear();
+    // store the resulting draw call
+    m_drawcalls.emplace_back(DrawCall{std::move(info)});
 }
 
 void Plotter::clear() {
@@ -468,7 +516,7 @@ void Plotter::clear() {
     static_cast<PlotterIndexBuffer*>(m_vertex_object->get_indices().get())->write().clear();
     m_uniform_buffer->write().clear();
 
-    m_drawcall_buffer.clear();
+    m_drawcalls.clear();
 }
 
 void Plotter::render() const {
@@ -479,7 +527,10 @@ void Plotter::render() const {
     m_context->program = m_program;
 
     m_context->uniform_slots[0].bind_block(m_program->get_uniform_block("PaintBlock"));
-    m_context->uniform_slots[0].bind_buffer(m_uniform_buffer, 0);
+
+    static_cast<PlotterVertexBuffer*>(m_vertex_object->get_vertices().get())->upload();
+    static_cast<PlotterIndexBuffer*>(m_vertex_object->get_indices().get())->upload();
+    m_uniform_buffer->upload();
 
     NOTF_CHECK_GL(glEnable(GL_CULL_FACE));
     NOTF_CHECK_GL(glCullFace(GL_BACK));
@@ -525,6 +576,9 @@ void Plotter::_render_line(const StrokeInfo& stroke) const {
         m_state.stroke_width = stroke.width;
     }
 
+    // paint uniform block
+    m_context->uniform_slots[0].bind_buffer(m_uniform_buffer, stroke.paint_index);
+
     NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(stroke.path->size), g_index_type,
                                  gl_buffer_offset(stroke.path->offset * sizeof(PlotterIndexBuffer::index_t))));
 }
@@ -558,6 +612,9 @@ void Plotter::_render_shape(const FillInfo& shape) const {
         m_program->get_uniform("vec2_aux1").set(shape.path->center);
         m_state.vec2_aux1 = shape.path->center;
     }
+
+    // paint uniform block
+    m_context->uniform_slots[0].bind_buffer(m_uniform_buffer, shape.paint_index);
 
     if (shape.path->is_convex) {
         NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(shape.path->size), g_index_type,
@@ -618,6 +675,9 @@ void Plotter::_render_text(const TextInfo& text) const {
         m_program->get_uniform("vec2_aux1").set(atlas_size_vec);
         m_state.vec2_aux1 = atlas_size_vec;
     }
+
+    // paint uniform block
+    m_context->uniform_slots[0].bind_buffer(m_uniform_buffer, text.paint_index);
 
     NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(text.path->size), g_index_type,
                                  gl_buffer_offset(text.path->offset * sizeof(PlotterIndexBuffer::index_t))));
