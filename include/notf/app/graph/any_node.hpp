@@ -483,7 +483,7 @@ protected: // for all subclasses
     /// @returns    Raw pointer to the first ancestor of this Node of a specific type, is nullptr if none was found.
     template<class T, typename = std::enable_if_t<std::is_base_of<AnyNode, T>::value>>
     T* _get_first_ancestor() const {
-        for (AnyNode *current = const_cast<AnyNode*>(this), *next = nullptr;; current = next) {
+        for (AnyNode *current = const_cast<AnyNode*>(_get_parent()), *next = nullptr;; current = next) {
             if (T* result = dynamic_cast<T*>(current)) { return result; }
             next = current->_get_parent();
             if (next == current) { return nullptr; }

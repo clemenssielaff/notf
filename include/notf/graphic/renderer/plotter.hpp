@@ -10,11 +10,49 @@
 #include "notf/common/aabr.hpp"
 #include "notf/common/color.hpp"
 #include "notf/common/matrix3.hpp"
-#include "notf/common/vector2.hpp"
+#include "notf/common/smoothstep.hpp"
 
-#include "notf/graphic/opengl.hpp"
+#include "notf/graphic/vertex_object.hpp"
 
 NOTF_OPEN_NAMESPACE
+
+// paint ============================================================================================================ //
+
+namespace detail {
+
+// struct GradientPaint {
+//    enum class Kind {
+//        LINEAR,
+//        CIRCLE,
+//        BOX,
+//        RING,
+//    };
+
+//    Color first_color;
+//    Color second_color;
+//    V2f first_pos;
+//    V2f second_pos;
+//    Smoothstepf gradient_ramp;
+//    Kind gradient_kind;
+
+//    // [0, 1] moves the start towards the end, [-1, 0] moves the end towards the start. Ramp in between.
+//    float edge_offset;
+//};
+
+// struct Paint {
+
+//    Color first_color;
+//    Color second_color;
+
+//    uint texture_unit;
+//    float texture_alpha;
+//    Size2f texture_size;
+
+//    /// Base transformation of the Paint's texture
+//    M3f xform;
+//};
+
+} // namespace detail
 
 // plotter ========================================================================================================== //
 
@@ -171,6 +209,21 @@ public:
     };
 
 private:
+    struct VertexPos {
+        NOTF_UNUSED constexpr static GLuint location = 0;
+        using type = V2f;
+    };
+
+    struct LeftCtrlPos {
+        NOTF_UNUSED constexpr static uint location = 1;
+        using type = V2f;
+    };
+
+    struct RightCtrlPos {
+        NOTF_UNUSED constexpr static uint location = 2;
+        using type = V2f;
+    };
+
     class _BaseInfo {
         friend Plotter;
 
@@ -182,6 +235,12 @@ private:
     };
 
 public:
+    using IndexBuffer = IndexBuffer<GLuint>;
+    using IndexBufferPtr = std::shared_ptr<IndexBuffer>;
+
+    using VertexBuffer = vertex_buffer_t<VertexPos, LeftCtrlPos, RightCtrlPos>;
+    using VertexBufferPtr = std::shared_ptr<VertexBuffer>;
+
     /// Information necessary to draw a predefined stroke.
     struct StrokeInfo : public _BaseInfo {
 
@@ -352,6 +411,10 @@ private:
 
     /// Shader Program used to render the strokes, shapes and glyphs.
     ShaderProgramPtr m_program;
+
+    VertexBufferPtr m_vertex_buffer;
+
+    IndexBufferPtr m_index_buffer;
 
     /// Internal vertex object to store plotted vertices.
     VertexObjectPtr m_vertex_object;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "notf/common/vector.hpp"
+
 #include "notf/graphic/opengl.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -44,9 +46,6 @@ public:
     /// Destructor.
     virtual ~AnyOpenGLBuffer();
 
-    /// Performs additional initialization of the buffer, should the type require it.
-    virtual void initialize() { m_is_initialized = true; }
-
     /// Name of this OpenGLBuffer.
     const std::string& get_name() const { return m_name; }
 
@@ -72,9 +71,6 @@ public:
 protected:
     /// Numeric OpenGL handle of this buffer.
     GLuint _get_handle() const { return m_handle; }
-
-    /// Whether or not `_initialize` has been called or not.
-    bool _is_initialized() const { return m_is_initialized; }
 
     /// Produces the name of a buffer type from its OpenGL enum value.
     /// @param buffer_type  Buffer type to convert.
@@ -105,9 +101,6 @@ private:
 
     /// The expected usage of the data stored in this buffer.
     UsageHint m_usage = UsageHint::DEFAULT;
-
-    /// Whether or not `_initialize` has been called or not.
-    bool m_is_initialized = false;
 
     /// OpenGL buffer type.
     const Type m_type;

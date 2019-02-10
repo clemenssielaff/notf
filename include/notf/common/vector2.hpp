@@ -27,7 +27,8 @@ public:
 
     /// Forwarding constructor.
     template<class... Args>
-    constexpr Vector2(Args&&... args) : super_t(std::forward<Args>(args)...) {}
+    constexpr Vector2(Args&&... args) noexcept(noexcept(super_t(std::forward<Args>(args)...)))
+        : super_t(std::forward<Args>(args)...) {}
 
     /// Unit vector along the X-axis.
     static constexpr Vector2 x_axis() { return Vector2(1, 0); }

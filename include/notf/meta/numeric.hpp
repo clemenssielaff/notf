@@ -17,7 +17,7 @@ constexpr T&& min(T&& val) noexcept {
     return std::forward<T>(val);
 }
 template<class L, class R, class... Tail, class T = std::common_type_t<L, R>>
-constexpr T min(L&& lhs, R&& rhs, Tail&&... tail) noexcept {
+constexpr T min(L lhs, R rhs, Tail&&... tail) noexcept {
     const T rest = min(rhs, std::forward<Tail>(tail)...);
     return rest < static_cast<T>(lhs) ? rest : static_cast<T>(lhs); // returns lhs if both are equal
 }
@@ -28,15 +28,15 @@ constexpr T&& max(T&& val) noexcept {
     return std::forward<T>(val);
 }
 template<class L, class R, class... Tail, class T = std::common_type_t<L, R>>
-constexpr T max(L&& lhs, R&& rhs, Tail&&... tail) noexcept {
+constexpr T max(L lhs, R rhs, Tail&&... tail) noexcept {
     const T rest = max(static_cast<T>(rhs), std::forward<Tail>(tail)...);
     return rest > static_cast<T>(lhs) ? rest : static_cast<T>(lhs); // returns lhs if both are equal
 }
 
 /// Clamps an input value to a given range.
-template<class T, class Min, class Max>
-constexpr T clamp(const T value, const Min min, const Max max) noexcept {
-    return notf::max(static_cast<T>(min), notf::min(static_cast<T>(max), value));
+template<class T>
+constexpr T clamp(const T value, const identity_t<T> min = 0, const identity_t<T> max = 1) noexcept {
+    return notf::max(min, notf::min(max, value));
 }
 
 /// Calculates number^exponent.

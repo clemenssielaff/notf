@@ -33,6 +33,7 @@ const char* AnyOpenGLBuffer::_to_type_name(const Type buffer_type) {
     case Type::VERTEX: return "VertexBuffer";
     case Type::INDEX: return "IndexBuffer";
     case Type::UNIFORM: return "UniformBuffer";
+    case Type::DRAWCALL: return "DrawCall";
     }
 }
 
@@ -41,6 +42,7 @@ GLenum AnyOpenGLBuffer::_to_gl_type(const Type buffer_type) {
     case Type::VERTEX: return GL_ARRAY_BUFFER;
     case Type::INDEX: return GL_ELEMENT_ARRAY_BUFFER;
     case Type::UNIFORM: return GL_UNIFORM_BUFFER;
+    case Type::DRAWCALL: return GL_DRAW_INDIRECT_BUFFER;
     }
 }
 

@@ -70,8 +70,8 @@ constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_zero(const T va
     return std::fpclassify(value) == FP_ZERO;
 }
 template<class T>
-constexpr std::enable_if_t<std::is_floating_point_v<T>, bool>
-is_zero(const T value, const identity_t<T> epsilon) noexcept {
+constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_zero(const T value,
+                                                                      const identity_t<T> epsilon) noexcept {
     return abs(value) < epsilon;
 }
 /// @}
@@ -145,6 +145,21 @@ inline double fast_inv_sqrt(double number) noexcept {
     return number * (1.5 - (temp * number * number));
 }
 /// @}
+
+/// Smoothstep function as implemented in GLSL.
+/// From https://en.wikipedia.org/wiki/Smoothstep
+template<class T>
+T smoothstep(T x, const T lower_bound = 0, const T upper_bound = 1) {
+    x = clamp((x - lower_bound) / (upper_bound - lower_bound), 0, 1);
+    return x * x * (3 - 2 * x);
+}
+
+/// More expensive smoothstep function, but with zero 1st- and 2nd-order derivates at x=0 and x=1.
+template<class T>
+T smootherstep(T x, const T lower_bound = 0, const T upper_bound = 1) {
+    x = clamp((x - lower_bound) / (upper_bound - lower_bound), 0, 1);
+    return x * x * x * (x * (x * 6 - 15) + 10);
+}
 
 // approx =========================================================================================================== //
 

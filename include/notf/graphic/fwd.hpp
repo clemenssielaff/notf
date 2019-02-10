@@ -16,6 +16,7 @@ enum class OpenGLBufferType : uchar {
     VERTEX,
     INDEX,
     UNIFORM,
+    DRAWCALL,
 };
 
 } // namespace detail

@@ -21,7 +21,7 @@ SCENARIO("exception", "[meta][exception]") {
             throwing_with_msg();
         }
         catch (const LogicError& error) {
-            REQUIRE(std::string(error.what()) == std::string("(LogicError) this is a great message"));
+            REQUIRE(std::string(error.what()) == std::string("[LogicError] this is a great message (test_exception.cpp:12)"));
         }
     }
 

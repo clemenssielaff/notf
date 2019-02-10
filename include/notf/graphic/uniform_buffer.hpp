@@ -15,14 +15,15 @@ class UniformBuffer : public OpenGLBuffer<detail::OpenGLBufferType::UNIFORM, Blo
 
     // types ----------------------------------------------------------------------------------- //
 public:
-    /// Base OpenGLBuffer class.
-    using super_t = OpenGLBuffer<detail::OpenGLBufferType::UNIFORM, Block>;
-
     /// Type of UniformBlock stored in the UniformBuffer.
     using block_t = Block;
 
     /// The expected usage of the data stored in this buffer.
     using UsageHint = typename detail::AnyOpenGLBuffer::UsageHint;
+
+private:
+    /// Base OpenGLBuffer class.
+    using super_t = OpenGLBuffer<detail::OpenGLBufferType::UNIFORM, Block>;
 
     // methods --------------------------------------------------------------------------------- //
 private:
