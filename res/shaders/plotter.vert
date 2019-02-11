@@ -5,6 +5,7 @@ precision highp float;
 layout(location = 0) in vec2 a_position;
 layout(location = 1) in vec2 a_first_ctrl;
 layout(location = 2) in vec2 a_second_ctrl;
+layout(location = 3) in mat2x3 a_instance_xform;
 
 out VertexData {
     vec2 first_ctrl;
@@ -28,7 +29,10 @@ void main(){
     //    +=====+=====+=====+=
     // origin
     //
-    gl_Position = vec4(a_position.xy - vec2(0.5, 0.5), 0.0, 0.0);
+    mat2x3 blub = mat2x3(1., 0., 0.,
+                         0., 1., 0.);
+    vec2 position = vec3(a_position.xy - vec2(0.5, 0.5), 1.0) * blub;
+    gl_Position = vec4(position, 0.0, 1.0);
 
     // pass attributes into block
     v_out.first_ctrl = a_first_ctrl;

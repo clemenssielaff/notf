@@ -261,7 +261,7 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
     m_vertex_buffer = VertexBuffer::create("VertexBuffer", UsageHint::STREAM_DRAW);
     m_index_buffer = IndexBuffer::create("PlotterIndexBuffer", UsageHint::STREAM_DRAW);
     m_vertex_object = VertexObject::create(m_context, "PlotterVertexObject");
-    m_vertex_object->bind(m_vertex_buffer);
+    m_vertex_object->bind(m_vertex_buffer, 0, 1, 2);
     m_vertex_object->bind(m_index_buffer);
 
     // uniform buffer

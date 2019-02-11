@@ -291,6 +291,23 @@ constexpr size_t get_first_index() noexcept {
     }
 }
 
+// make n-tuple ===================================================================================================== //
+
+namespace detail {
+
+template<class T, size_t... I>
+auto make_n_tuple_impl(std::index_sequence<I...>) {
+    return std::tuple<identity_index_t<T, I>...>{};
+}
+
+} // namespace detail
+
+/// Tuple type made up of N Ts.
+template<class T, size_t N, class Indices = std::make_index_sequence<N>>
+using make_n_tuple_t = decltype(detail::make_n_tuple_impl<T>(Indices{}));
+
+static_assert(std::is_same_v<make_n_tuple_t<int, 4>, std::tuple<int, int, int, int>>);
+
 // static tests ===================================================================================================== //
 
 static_assert(

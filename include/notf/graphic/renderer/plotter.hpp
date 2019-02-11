@@ -210,18 +210,19 @@ public:
 
 private:
     struct VertexPos {
-        NOTF_UNUSED constexpr static GLuint location = 0;
         using type = V2f;
     };
 
     struct LeftCtrlPos {
-        NOTF_UNUSED constexpr static uint location = 1;
         using type = V2f;
     };
 
     struct RightCtrlPos {
-        NOTF_UNUSED constexpr static uint location = 2;
         using type = V2f;
+    };
+
+    struct InstanceXform {
+        using type = M3f;
     };
 
     class _BaseInfo {

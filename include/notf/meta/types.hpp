@@ -110,6 +110,15 @@ struct identity {
 template<class T>
 using identity_t = typename identity<T>::type;
 
+/// Like identity, but with an additional index.
+/// Use to convert an index from a std::index_sequence into T.
+template<class T, size_t>
+struct identity_index {
+    using type = T;
+};
+template<class T, size_t I>
+using identity_index_t = typename identity_index<T, I>::type;
+
 /// The `always_false` trait will always evaluate to `false` when used in a static_assert.
 /// This way you can define error overloads that differ by type only:
 ///
@@ -193,6 +202,14 @@ static constexpr bool is_one_of_v = std::disjunction_v<std::is_same<T, Ts>...>;
 /// Checks if T is derived from any of the variadic types.
 template<class T, class... Ts>
 static constexpr bool is_derived_from_one_of_v = std::disjunction_v<std::is_base_of<Ts, T>...>;
+
+/// Checks if all Ts are the same type as T.
+template<class T, class... Ts>
+static constexpr bool all_of_type = std::conjunction_v<std::is_same<T, Ts>...>;
+
+/// Checks if all Ts are convertible to T.
+template<class T, class... Ts>
+static constexpr bool all_convertible_to = std::conjunction_v<std::is_convertible<T, Ts>...>;
 
 /// Compile-time check whether two types are both signed / both unsigned.
 template<class T, class U>

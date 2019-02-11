@@ -37,18 +37,6 @@ class AttributePolicyFactory {
         }
     }
 
-    NOTF_CREATE_FIELD_DETECTOR(location);
-    static constexpr auto create_location() {
-        if constexpr (std::conjunction_v<has_location<Policy>, //
-                                         std::is_convertible<decltype(Policy::location), GLuint>>) {
-            return static_cast<GLuint>(Policy::location);
-        } else {
-            static_assert(always_false_v<Policy>,
-                          "An AttributePolicy must contain a the location of the attribute as field "
-                          "`constexpr static GLuint location = <location>;`");
-        }
-    }
-
     NOTF_CREATE_FIELD_DETECTOR(is_normalized);
     static constexpr auto create_is_normalized() {
         if constexpr (has_is_normalized_v<Policy>) {
@@ -92,9 +80,6 @@ public:
         /// This type does not have to be provided by the user as it is automatically detected by the factory.
         using element_t = std::decay_t<decltype(create_element_t())>;
 
-        /// Location of the attribute in the shader.
-        constexpr static GLuint location = create_location();
-
         /// Vertex attributes are internally stored as a single-precision floating-point number before being used in a
         /// vertex shader. If the data type indicates that the vertex attribute is not a float, then the vertex
         /// attribute will be converted to a single-precision floating-point number before it is used in a vertex
@@ -134,12 +119,10 @@ constexpr auto extract_attribute_policy_types(const std::tuple<Ts...>& tuple) {
 ///
 ///     struct PositionAttribute {
 ///         using type = V2f;
-///         constexpr static GLuint location = 0;
 ///         constexpr static bool is_normalized = false;
 ///     };
 ///     struct AlphaAttribute {
 ///         using type = int;
-///         constexpr static GLuint location = 1;
 ///         constexpr static bool is_normalized = true;
 ///     };
 ///     auto MyVertexBuffer = create_vertex_buffer<PositionAttribute, AlphaAttribute>("my_buffer");
@@ -165,6 +148,9 @@ public:
 
     /// The expected usage of the data stored in this buffer.
     using UsageHint = typename detail::AnyOpenGLBuffer::UsageHint;
+
+    /// Tuple containing an attribute location each.
+    using AttributeLocations = make_n_tuple_t<uint, std::tuple_size_v<vertex_t>>;
 
 private:
     /// Base OpenGLBuffer class.
@@ -198,7 +184,7 @@ public:
 private:
     /// Binds the VertexBuffer to the bound VertexObject.
     /// @throws OpenGLError If no VAO is bound.
-    void _bind_to_vao() {
+    void _bind_to_vao(const AttributeLocations& locations) {
         { // make sure there is a bound VertexObject
             GLint current_vao = 0;
             NOTF_CHECK_GL(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao));
@@ -207,17 +193,17 @@ private:
             }
         }
         NOTF_CHECK_GL(glBindBuffer(GL_ARRAY_BUFFER, this->_get_handle()));
-        _define_attributes();
+        _define_attributes(locations);
     }
 
     /// Define a single Attribute in the buffer.
     template<size_t Index = 0>
-    void _define_attributes() const {
+    void _define_attributes(const AttributeLocations& locations) const {
         if constexpr (Index < std::tuple_size_v<vertex_t>) {
             using AttributePolicy = std::tuple_element_t<Index, policies>;
             using ValueType = typename AttributePolicy::type;
             using ElementType = typename AttributePolicy::element_t;
-            constexpr GLuint attr_location = AttributePolicy::location;
+            const GLuint attr_location = std::get<Index>(locations);
             constexpr bool attr_is_normalized = AttributePolicy::is_normalized;
 
             // we cannot be certain that the std library implementation places tuple fields into memory in order,
@@ -230,26 +216,36 @@ private:
             // larger types are stored in consecutive attribute locations
             static_assert(sizeof(ValueType) % sizeof(GLfloat) == 0);
             const uint attr_width = sizeof(ValueType) / sizeof(GLfloat);
-            for (uint attr_offset = 0, last = (attr_width + 3) / 4; attr_offset < last; ++attr_offset) {
-                const auto buffer_offset = gl_buffer_offset(memory_offset + (attr_offset * 4 * sizeof(GLfloat)));
+            const uint location_width = (attr_width + 3) / 4;
+            if constexpr (Index < std::tuple_size_v<AttributeLocations> - 1) {
+                const GLuint next_requested_location = std::get<Index + 1>(locations);
+                if (next_requested_location < (attr_location + location_width)) {
+                    NOTF_THROW(ValueError,
+                               "Attribute type \"{}\" requires {} attribute locations, but was given only {}",
+                               type_name<ValueType>(), location_width, next_requested_location - attr_location);
+                }
+            }
+
+            for (uint location_offset = 0; location_offset < location_width; ++location_offset) {
+                const auto buffer_offset = gl_buffer_offset(memory_offset + (location_offset * 4 * sizeof(GLfloat)));
 
                 // link a location in the buffer to an attribute slot
-                NOTF_CHECK_GL(glEnableVertexAttribArray(attr_location + attr_offset));
-                NOTF_CHECK_GL(glVertexAttribPointer(        //
-                    attr_location + attr_offset,            // location
-                    min(4, attr_width - (attr_offset * 4)), // size
-                    to_gl_type(ElementType()),              // type
-                    attr_is_normalized,                     // normalized
-                    static_cast<GLsizei>(sizeof(vertex_t)), // stride
-                    buffer_offset                           // offset
+                NOTF_CHECK_GL(glEnableVertexAttribArray(attr_location + location_offset));
+                NOTF_CHECK_GL(glVertexAttribPointer(            //
+                    attr_location + location_offset,            // location
+                    min(4, attr_width - (location_offset * 4)), // size
+                    to_gl_type(ElementType()),                  // type
+                    attr_is_normalized,                         // normalized
+                    static_cast<GLsizei>(sizeof(vertex_t)),     // stride
+                    buffer_offset                               // offset
                     ));
 
                 // if this buffer is applied per instance, let OpenGL know
-                if (m_is_per_instance) { NOTF_CHECK_GL(glVertexAttribDivisor(attr_location + attr_offset, 1)); }
+                if (m_is_per_instance) { NOTF_CHECK_GL(glVertexAttribDivisor(attr_location + location_offset, 1)); }
             }
 
             // define remaining attributes
-            _define_attributes<Index + 1>();
+            _define_attributes<Index + 1>(locations);
         }
     }
 
@@ -285,8 +281,14 @@ class Accessor<VertexBuffer<AttributePolicies, Vertex>, VertexObject> {
     friend VertexObject;
 
     /// Binds the VertexBuffer to the bound VertexObject.
+    /// @param buffer   VertexBuffer to bind.
+    /// @param indices  One index per attribute at which the attribute should be bound.
     /// @throws OpenGLError If no VAO is bound.
-    static void bind_to_vao(VertexBuffer<AttributePolicies, Vertex>& buffer) { buffer._bind_to_vao(); }
+    template<class... Indices, class = std::enable_if_t<all(sizeof...(Indices) == std::tuple_size_v<Vertex>, //
+                                                            all_convertible_to<uint, Indices...>)>>
+    static void bind_to_vao(VertexBuffer<AttributePolicies, Vertex>& buffer, Indices... indices) {
+        buffer._bind_to_vao(std::make_tuple(narrow_cast<uint>(indices)...));
+    }
 };
 
 NOTF_CLOSE_NAMESPACE

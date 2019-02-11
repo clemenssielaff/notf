@@ -66,13 +66,15 @@ public:
 
     /// Bind a new VertexBuffer to this VertexObject.
     /// @param vertex_buffer VertexBuffer to bind.
-    template<class AttributePolicies, class Vertex>
-    void bind(VertexBufferPtr<AttributePolicies, Vertex> vertex_buffer) {
+    template<class AttributePolicies, class Vertex, class... Indices,
+             class = std::enable_if_t<all(sizeof...(Indices) == std::tuple_size_v<Vertex>, //
+                                          all_convertible_to<uint, Indices...>)>>
+    void bind(VertexBufferPtr<AttributePolicies, Vertex> vertex_buffer, Indices... indices) {
         if (!vertex_buffer) { return; }
         {
             NOTF_GUARD(VaoGuard(m_id.get_value()));
             VertexBuffer<AttributePolicies, Vertex>::template AccessFor<VertexObject>::bind_to_vao(
-                *vertex_buffer.get());
+                *vertex_buffer.get(), std::forward<Indices>(indices)...);
         }
         m_vertex_buffers.emplace_back(std::move(vertex_buffer));
     }
