@@ -1,6 +1,6 @@
 /// The Plotter uses OpenGL shader tesselation for most of the primitive construction, it only passes the bare minimum
-/// of information on to the GPU. There are however a few things to consider when transforming a Bezier curve into the
-/// Plotter GPU representation.
+/// of information on to the GPU required to tesselate a cubic bezier spline. There are however a few things to consider
+/// when transforming a Bezier curve into the Plotter GPU representation.
 ///
 /// The shader takes a patch that is made up of two vertices v1 and v2.
 /// Each vertex has 3 attributes:
@@ -57,8 +57,8 @@
 /// Text
 /// ====
 ///
-/// We should be able to render a glyph using a single vertex, because we have 6 vertex attributes available to us,
-/// and we should always have a 1:1 correspondence from screen to texture pixels:
+/// It is possible to render a glyph using a single vertex with the given 6 vertex attributes available, because there
+/// is a 1:1 correspondence from screen to texture pixels:
 ///
 /// 0           | Screen position of the glyph's lower left corner
 /// 1           |
@@ -67,29 +67,20 @@
 /// 4   | Height and with of the glyph in pixels, used both for defining the position of the glyph's upper right corner
 /// 5   | as well as its texture coordinate
 ///
-/// Glyphs require Font Atlas size as input (maybe where the shape gets the center vertex?)
-///
+/// In order for Glyphs to render, the Shader requires the FontAtlas size, which is passed in to the same uniform as is
+/// used as the "center" vertex for shapes.
 
 #include "notf/graphic/renderer/plotter.hpp"
 
-#include "notf/meta/log.hpp"
-
-#include "notf/common/bezier.hpp"
 #include "notf/common/filesystem.hpp"
-#include "notf/common/matrix4.hpp"
-#include "notf/common/polygon.hpp"
-#include "notf/common/utf8.hpp"
-#include "notf/common/variant.hpp"
+#include "notf/common/geo/bezier.hpp"
+#include "notf/common/geo/polygon.hpp"
 
 #include "notf/graphic/graphics_system.hpp"
-#include "notf/graphic/index_buffer.hpp"
-#include "notf/graphic/shader.hpp"
 #include "notf/graphic/shader_program.hpp"
 #include "notf/graphic/text/font_manager.hpp"
 #include "notf/graphic/texture.hpp"
 #include "notf/graphic/uniform_buffer.hpp"
-#include "notf/graphic/vertex_buffer.hpp"
-#include "notf/graphic/vertex_object.hpp"
 
 NOTF_USING_NAMESPACE;
 
@@ -99,11 +90,19 @@ using UsageHint = notf::detail::AnyOpenGLBuffer::UsageHint;
 
 static constexpr GLenum g_index_type = to_gl_type(Plotter::IndexBuffer::index_t{});
 
+/// simple convenience methods to make the code more readable
+
 void set_pos(Plotter::VertexBuffer::vertex_t& vertex, V2f pos) { std::get<0>(vertex) = std::move(pos); }
 
 void set_first_ctrl(Plotter::VertexBuffer::vertex_t& vertex, V2f pos) { std::get<1>(vertex) = std::move(pos); }
 
 void set_second_ctrl(Plotter::VertexBuffer::vertex_t& vertex, V2f pos) { std::get<2>(vertex) = std::move(pos); }
+
+/// The `set_modified_...~ methods modify the given ctrl point so we can be certain that is stores the outgoing tangent
+/// of the vertex. For that, we get the tangent either from the ctrl point itself (if the distance to the vertex > 0) or
+/// by calculating the tangent from the spline at the vertex. The control point is then moved onto the tangent,
+/// one unit further away from the vertex than originally. If we encounter a ctrl point in the shader that is of unit
+/// length, we know that in reality it was positioned on the vertex itself and still get the vertex tangent.
 
 void set_modified_first_ctrl(Plotter::VertexBuffer::vertex_t& vertex, const CubicBezier2f::Segment& left_segment) {
     const V2f delta = left_segment.ctrl2 - left_segment.end;
@@ -224,7 +223,7 @@ Plotter::FragmentPaint::FragmentPaint(const Paint& paint, const Clipping& clippi
 
     // type
     if (type == Type::GRADIENT && paint.texture) {
-        this->type = Type::IMAGE; // TODO: why does a texture alone make an IMAGE type paint?
+        this->type = Type::IMAGE;
     } else {
         this->type = type;
     }
@@ -240,7 +239,7 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
 
     NOTF_GUARD(m_context.make_current());
 
-    { // pipeline
+    { // program
         const std::string vertex_src = load_file("/home/clemens/code/notf/res/shaders/plotter.vert");
         VertexShaderPtr vertex_shader = VertexShader::create("plotter.vert", vertex_src);
 
@@ -257,34 +256,44 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
         m_program->get_uniform("font_texture").set(TheGraphicsSystem::get_environment().font_atlas_texture_slot);
     }
 
-    // vertex object
-    m_vertex_buffer = VertexBuffer::create("VertexBuffer", UsageHint::STREAM_DRAW);
-    m_index_buffer = IndexBuffer::create("PlotterIndexBuffer", UsageHint::STREAM_DRAW);
-    m_vertex_object = VertexObject::create(m_context, "PlotterVertexObject");
-    m_vertex_object->bind(m_vertex_buffer, 0, 1, 2);
-    m_vertex_object->bind(m_index_buffer);
+    { // vertex object
+        m_vertex_buffer = VertexBuffer::create("PlotterVertexBuffer", UsageHint::STREAM_DRAW);
+        m_index_buffer = IndexBuffer::create("PlotterIndexBuffer", UsageHint::STREAM_DRAW);
+        m_instance_buffer
+            = InstanceBuffer::create("PlotterInstanceBuffer", UsageHint::STREAM_DRAW, /*is_per_instance= */ true);
+        m_vertex_object = VertexObject::create(m_context, "PlotterVertexObject");
+        m_vertex_object->bind(m_vertex_buffer, 0, 1, 2);
+        m_vertex_object->bind(m_index_buffer);
+        m_vertex_object->bind(m_instance_buffer, 3);
+    }
 
-    // uniform buffer
-    m_uniform_buffer = UniformBuffer<FragmentPaint>::create("PlotterUniformBuffer", UsageHint::STREAM_DRAW);
+    { // uniform buffers
+        m_paint_buffer = UniformBuffer<FragmentPaint>::create("PlotterPaintBuffer", UsageHint::STREAM_DRAW);
+        m_clipping_buffer = UniformBuffer<Clipping>::create("PlotterClippingBuffer", UsageHint::STREAM_DRAW);
+    }
 }
 
 Plotter::~Plotter() {
     NOTF_GUARD(m_context.make_current());
-    m_vertex_object.reset();
     m_program.reset();
-    m_uniform_buffer.reset();
+    m_vertex_buffer.reset();
+    m_index_buffer.reset();
+    m_instance_buffer.reset();
+    m_vertex_object.reset();
+    m_paint_buffer.reset();
+    m_clipping_buffer.reset();
 }
 
-Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {
+void Plotter::set_shape(const CubicBezier2f& spline) {
     std::vector<VertexBuffer::vertex_t>& vertices = m_vertex_buffer->write();
     std::vector<GLuint>& indices = m_index_buffer->write();
 
     // path
-    PathPtr path = Path::_create_shared();
-    path->offset = narrow_cast<uint>(indices.size());
-    path->center = V2f::zero(); // TODO: extract more Plotter::Path information from bezier splines
-    path->is_convex = false;    //
-    path->is_closed = spline.segments.front().start.is_approx(spline.segments.back().end);
+    Path path;
+    path.offset = narrow_cast<uint>(indices.size());
+    path.center = V2f::zero(); // TODO: extract more Plotter::Path information from bezier splines
+    path.is_convex = false;    //
+    path.is_closed = spline.segments.front().start.is_approx(spline.segments.back().end);
 
     { // update indices
         indices.reserve(indices.size() + (spline.segments.size() * 4) + 2);
@@ -305,7 +314,7 @@ Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {
             indices.emplace_back(index);
         }
     }
-    path->size = narrow_cast<int>(indices.size() - path->offset);
+    path.size = narrow_cast<int>(indices.size() - path.offset);
 
     { // vertices
         vertices.reserve(vertices.size() + spline.segments.size() + 1);
@@ -339,20 +348,19 @@ Plotter::PathPtr Plotter::add(const CubicBezier2f& spline) {
             vertices.emplace_back(std::move(vertex));
         }
     }
-
-    return path;
 }
 
-Plotter::PathPtr Plotter::add(const Polygonf& polygon) {
+void Plotter::set_shape(const Polygonf& polygon) {
+
     std::vector<VertexBuffer::vertex_t>& vertices = m_vertex_buffer->write();
     std::vector<GLuint>& indices = m_index_buffer->write();
 
     // path
-    PathPtr path = Path::_create_shared();
-    path->offset = narrow_cast<uint>(indices.size());
-    path->center = polygon.get_center();
-    path->is_convex = polygon.is_convex();
-    path->is_closed = true;
+    Path path;
+    path.offset = narrow_cast<uint>(indices.size());
+    path.center = polygon.get_center();
+    path.is_convex = polygon.is_convex();
+    path.is_closed = true;
 
     { // update indices
         indices.reserve(indices.size() + (polygon.get_vertex_count() * 2));
@@ -370,7 +378,7 @@ Plotter::PathPtr Plotter::add(const Polygonf& polygon) {
         indices.emplace_back(next_index);
         indices.emplace_back(first_index);
     }
-    path->size = narrow_cast<int>(indices.size() - path->offset);
+    path.size = narrow_cast<int>(indices.size() - path.offset);
 
     // vertices
     vertices.reserve(vertices.size() + polygon.get_vertex_count());
@@ -381,9 +389,71 @@ Plotter::PathPtr Plotter::add(const Polygonf& polygon) {
         set_second_ctrl(vertex, V2f::zero());
         vertices.emplace_back(std::move(vertex));
     }
-
-    return path;
 }
+
+void Plotter::set_paint(const Paint& paint) {}
+
+void Plotter::set_xform(M3f xform) {}
+
+void Plotter::fill() {}
+
+void Plotter::stroke() {}
+
+void Plotter::write(std::string_view text) {}
+
+void Plotter::reset() {
+    NOTF_ASSERT(m_context.is_current());
+
+    m_vertex_buffer->write().clear();
+    m_index_buffer->write().clear();
+    m_instance_buffer->write().clear();
+    m_paint_buffer->write().clear();
+    m_clipping_buffer->write().clear();
+
+    m_paths.clear();
+    m_drawcalls.clear();
+
+    m_state = {};
+}
+
+void Plotter::render() const {}
+
+void Plotter::_fill(const FillCall& call) {}
+
+void Plotter::_stroke(const StrokeCall& call) {}
+
+void Plotter::_write(const WriteCall& call) {}
+
+// std::hash ======================================================================================================== //
+
+/// std::hash specialization for Clipping.
+template<>
+struct ::std::hash<notf::Plotter::Clipping> {
+    size_t operator()(const notf::Plotter::Clipping& clipping) const {
+        return notf::hash(clipping.xform, clipping.size);
+    }
+};
+
+/// std::hash specialization for FragmentPaint.
+template<>
+struct ::std::hash<notf::Plotter::FragmentPaint> {
+    static_assert(sizeof(notf::Plotter::FragmentPaint) == 28 * sizeof(float));
+
+    size_t operator()(const notf::Plotter::FragmentPaint& paint) const {
+        const size_t* as_size_t = reinterpret_cast<const size_t*>(&paint);
+        const uint32_t* as_uint = reinterpret_cast<const uint32_t*>(&paint);
+        return notf::hash(as_size_t[0], as_size_t[1], as_size_t[2], as_uint[6]);
+    }
+};
+
+/*
+
+#include "notf/meta/log.hpp"
+
+#include "notf/common/matrix4.hpp"
+#include "notf/common/utf8.hpp"
+#include "notf/common/variant.hpp"
+
 
 void Plotter::stroke(valid_ptr<PathPtr> path, const Paint& paint, StrokeInfo info) {
     if (path->size == 0 || info.width <= 0.f) {
@@ -488,15 +558,6 @@ void Plotter::write(const std::string& text, const Paint& paint, TextInfo info) 
     m_drawcalls.emplace_back(DrawCall{std::move(info)});
 }
 
-void Plotter::clear() {
-    NOTF_ASSERT(m_context.is_current());
-
-    m_vertex_buffer->write().clear();
-    m_index_buffer->write().clear();
-    m_uniform_buffer->write().clear();
-
-    m_drawcalls.clear();
-}
 
 void Plotter::render() const {
     if (m_index_buffer->is_empty()) { return; }
@@ -621,7 +682,7 @@ void Plotter::_render_shape(const FillInfo& shape) const {
         NOTF_CHECK_GL(glStencilFunc(GL_NOTEQUAL, 0x00, 0xff));          // only write to pixels that are inside the
                                                                         // polygon
         NOTF_CHECK_GL(glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO)); // reset the stencil buffer (is a lot faster than
-                                                               // clearing it at the start)
+                                                                        // clearing it at the start)
 
         // render colors here, same area as before if you don't want to clear the stencil buffer every time
         NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(shape.path->size), g_index_type,
@@ -631,7 +692,7 @@ void Plotter::_render_shape(const FillInfo& shape) const {
     }
 }
 
-void Plotter::_render_text(const TextInfo& text) const {
+void Plotter::_write(const WriteCall& call) {
 
     // patch vertices
     if (m_state.patch_vertices != 1) {
@@ -645,33 +706,33 @@ void Plotter::_render_text(const TextInfo& text) const {
         m_state.patch_type = PatchType::TEXT;
     }
 
-    const TexturePtr font_atlas = TheGraphicsSystem()->get_font_manager().get_atlas_texture();
-    const Size2i& atlas_size = font_atlas->get_size();
-
-    // atlas size
-    const V2f atlas_size_vec{atlas_size.width(), atlas_size.height()};
-    if (!atlas_size_vec.is_approx(m_state.vec2_aux1)) {
-        m_program->get_uniform("vec2_aux1").set(atlas_size_vec);
-        m_state.vec2_aux1 = atlas_size_vec;
+    { // atlas size
+        const Size2i& atlas_size = TheGraphicsSystem()->get_font_manager().get_atlas_texture()->get_size();
+        const V2f atlas_size_vec{atlas_size.width(), atlas_size.height()};
+        if (!atlas_size_vec.is_approx(m_state.vec2_aux1)) {
+            m_program->get_uniform("vec2_aux1").set(atlas_size_vec);
+            m_state.vec2_aux1 = atlas_size_vec;
+        }
     }
 
-    // paint uniform block
-    m_context->uniform_slots[0].bind_buffer(m_uniform_buffer, text.paint_index);
+    // uniform blocks
+    if (call.paint_index != m_state.paint_index) {
+        m_context->uniform_slots[0].bind_buffer(m_paint_buffer, call.paint_index);
+        m_state.paint_index = call.paint_index;
+    }
+    if (call.clip_index != m_state.clip_index) {
+        m_context->uniform_slots[1].bind_buffer(m_clipping_buffer, call.clip_index);
+        m_state.clip_index = call.clip_index;
+    }
 
-    NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(text.path->size), g_index_type,
-                                 gl_buffer_offset(text.path->offset * sizeof(IndexBuffer::index_t))));
+    { // draw
+        NOTF_ASSERT(call.path_index < m_paths.size());
+        const Path& path = m_paths[call.path_index];
+        NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
+                                     gl_buffer_offset(path.offset * sizeof(IndexBuffer::index_t))));
+    }
 }
 
-// std::hash ======================================================================================================== //
 
-/// std::hash specialization for FragmentPaint.
-template<>
-struct ::std::hash<notf::Plotter::FragmentPaint> {
-    static_assert(sizeof(notf::Plotter::FragmentPaint) == 28 * sizeof(float));
 
-    size_t operator()(const notf::Plotter::FragmentPaint& paint) const {
-        const size_t* as_size_t = reinterpret_cast<const size_t*>(&paint);
-        const uint32_t* as_uint = reinterpret_cast<const uint32_t*>(&paint);
-        return notf::hash(as_size_t[0], as_size_t[1], as_size_t[2], as_uint[6]);
-    }
-};
+*/

@@ -1,4 +1,4 @@
-#include "notf/common/polygon.hpp"
+#include "notf/common/geo/polygon.hpp"
 
 NOTF_OPEN_NAMESPACE
 

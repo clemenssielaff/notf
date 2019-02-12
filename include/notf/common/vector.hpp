@@ -233,6 +233,19 @@ void iterate_and_clean(std::vector<T>& vector, P&& predicate, F&& functor) {
     if (gap != vector.size()) { vector.erase(iterator_at(vector, gap), vector.end()); }
 }
 
+/// Removes consecutive equal elements from the vector in place.
+/// The remaining elements remains are moved to the front while their order remains unchanged.
+/// If the vector was modified, you might want to call `shrink_to_fit`, unless you plan on adding new elements.
+/// @param vector   Vector to modify.
+/// @returns        True if the vector was modified.
+template<class T>
+bool remove_consecutive_equal(std::vector<T>& vector) {
+    const size_t old_size = vector.size();
+    const auto last = std::unique(vector.begin(), vector.end());
+    vector.erase(last, vector.end());
+    return vector.size() != old_size;
+}
+
 // reverse iteration ================================================================================================ //
 
 namespace detail {
@@ -272,7 +285,7 @@ template<class T>
 struct std::hash<std::vector<T>> {
     size_t operator()(const std::vector<T>& vector) const {
         std::size_t result = notf::detail::versioned_base_hash();
-        for(const auto& element : vector){
+        for (const auto& element : vector) {
             notf::hash_combine(result, element);
         }
         return result;

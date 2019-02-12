@@ -1,4 +1,4 @@
-#include "notf/app/widget/widget_design.hpp"
+#include "notf/graphic/plotter/design.hpp"
 
 NOTF_OPEN_NAMESPACE
 

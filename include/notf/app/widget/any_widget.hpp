@@ -2,9 +2,10 @@
 
 #include "notf/meta/pointer.hpp"
 
+#include "notf/graphic/plotter/design.hpp"
+
 #include "notf/app/graph/node.hpp"
 #include "notf/app/widget/widget_claim.hpp"
-#include "notf/app/widget/widget_design.hpp"
 
 NOTF_OPEN_NAMESPACE
 

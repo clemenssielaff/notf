@@ -21,10 +21,7 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/graph/window.cpp
 
     app/widget/any_widget.cpp
-    app/widget/painter.cpp
-    app/widget/painterpreter.cpp
     app/widget/widget_claim.cpp
-    app/widget/widget_design.cpp
     app/widget/widget_scene.cpp
     app/widget/widget_visualizer.cpp
 
@@ -33,11 +30,12 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     common/matrix3.cpp
     common/mnemonic.cpp
     common/msgpack.cpp
-    common/polygon.cpp
-    common/segment.cpp
     common/string.cpp
     common/thread_pool.cpp
     common/uuid.cpp
+
+    common/geo/polygon.cpp
+    common/geo/segment.cpp
 
     graphic/frame_buffer.cpp
     graphic/graphics_context.cpp
@@ -50,6 +48,10 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     graphic/texture.cpp
     graphic/vertex_object.cpp
 #    graphic/prefab_factory.cpp
+
+    graphic/plotter/design.cpp
+    graphic/plotter/painter.cpp
+    graphic/plotter/painterpreter.cpp
 
     graphic/renderer/fragment_renderer.cpp
     graphic/renderer/plotter.cpp

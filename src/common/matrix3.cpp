@@ -1,8 +1,8 @@
 #include "notf/common/matrix3.hpp"
 
-#include "notf/common/aabr.hpp"
-#include "notf/common/bezier.hpp"
-#include "notf/common/polygon.hpp"
+#include "notf/common/geo/aabr.hpp"
+#include "notf/common/geo/bezier.hpp"
+#include "notf/common/geo/polygon.hpp"
 
 // helper =========================================================================================================== //
 

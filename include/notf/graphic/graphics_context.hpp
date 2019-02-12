@@ -6,7 +6,7 @@
 
 #include "notf/meta/smart_ptr.hpp"
 
-#include "notf/common/aabr.hpp"
+#include "notf/common/geo/aabr.hpp"
 #include "notf/common/color.hpp"
 #include "notf/common/mutex.hpp"
 

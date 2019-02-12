@@ -1,10 +1,10 @@
-#include "notf/app/widget/painter.hpp"
+#include "notf/graphic/plotter/painter.hpp"
 
 #include "notf/meta/log.hpp"
 
-#include "notf/common/segment.hpp"
+#include "notf/common/geo/segment.hpp"
 
-#include "notf/app/widget/widget_design.hpp"
+#include "notf/graphic/plotter/design.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -12,29 +12,29 @@ NOTF_OPEN_NAMESPACE
 
 Painter::Painter(WidgetDesign& design) : m_design(design) { m_design.reset(); }
 
-Painter::PathId Painter::set_path(Polygonf polygon) {
-    // TODO: make sure that this turns into a `set_path_index` command should the path already exist on the painter
-    m_design.add_command<WidgetDesign::SetPolygonPathCommand>(std::move(polygon));
-    m_current_path_id = m_next_path_id++;
-    return m_current_path_id;
-}
+//Painter::PathId Painter::set_path(Polygonf polygon) {
+//    // TODO: make sure that this turns into a `set_path_index` command should the path already exist on the painter
+//    m_design.add_command<WidgetDesign::SetPolygonPathCommand>(std::move(polygon));
+//    m_current_path_id = m_next_path_id++;
+//    return m_current_path_id;
+//}
 
-Painter::PathId Painter::set_path(CubicBezier2f spline) {
-    m_design.add_command<WidgetDesign::SetSplinePathCommand>(std::move(spline));
-    m_current_path_id = m_next_path_id++;
-    return m_current_path_id;
-}
+//Painter::PathId Painter::set_path(CubicBezier2f spline) {
+//    m_design.add_command<WidgetDesign::SetSplinePathCommand>(std::move(spline));
+//    m_current_path_id = m_next_path_id++;
+//    return m_current_path_id;
+//}
 
-Painter::PathId Painter::set_path(PathId id) {
-    if (id >= m_next_path_id) {
-        // no change if the given ID is invalid
-        NOTF_LOG_WARN("Path ID \"{}\" is not a valid Path - using current one instead", id);
-    } else {
-        m_design.add_command<WidgetDesign::SetPathIndexCommand>(id);
-        m_current_path_id = id;
-    }
-    return m_current_path_id;
-}
+//Painter::PathId Painter::set_path(PathId id) {
+//    if (id >= m_next_path_id) {
+//        // no change if the given ID is invalid
+//        NOTF_LOG_WARN("Path ID \"{}\" is not a valid Path - using current one instead", id);
+//    } else {
+//        m_design.add_command<WidgetDesign::SetPathIndexCommand>(id);
+//        m_current_path_id = id;
+//    }
+//    return m_current_path_id;
+//}
 
 void Painter::set_font(FontPtr font) {
     State& current_state = _get_current_state();
@@ -122,7 +122,7 @@ void Painter::set_alpha(const float alpha) {
     }
 }
 
-void Painter::set_line_cap(const Paint::LineCap cap) {
+void Painter::set_line_cap(const LineCap cap) {
     State& current_state = _get_current_state();
     if (current_state.line_cap != cap) {
         current_state.line_cap = cap;
@@ -130,7 +130,7 @@ void Painter::set_line_cap(const Paint::LineCap cap) {
     }
 }
 
-void Painter::set_line_join(const Paint::LineJoin join) {
+void Painter::set_line_join(const LineJoin join) {
     State& current_state = _get_current_state();
     if (current_state.line_join != join) {
         current_state.line_join = join;

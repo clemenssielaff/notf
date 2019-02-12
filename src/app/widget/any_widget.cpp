@@ -1,7 +1,8 @@
 #include "notf/app/widget/any_widget.hpp"
 
-#include "notf/app/widget/clipping.hpp"
-#include "notf/app/widget/painter.hpp"
+#include "notf/graphic/plotter/clipping.hpp"
+#include "notf/graphic/plotter/painter.hpp"
+
 #include "notf/app/widget/widget_scene.hpp"
 
 NOTF_OPEN_NAMESPACE

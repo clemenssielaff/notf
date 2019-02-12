@@ -25,8 +25,6 @@ struct Bezier {
 
     // types ----------------------------------------------------------------------------------- //
 
-    // TODO: Segments should share points, no need to store the start of one and the end of another
-
     struct Segment {
         // fields ------------------------------------------------------------------------------ //
         /// Start of the spline, in absolute coordinates.
@@ -41,8 +39,7 @@ struct Bezier {
         /// End of the spline, in absolute coordinates.
         vector_t end;
 
-        // TODO: proper bezier template class (dimensions & order)
-        // std::array<component_t, order() + 1> points;
+        // TODO: proper bezier template class (dimensions & order) that stores a Polygon inside
 
         // methods ----------------------------------------------------------------------------- //
         /// Default constructor.

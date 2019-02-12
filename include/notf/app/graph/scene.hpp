@@ -1,6 +1,6 @@
 #pragma once
 
-#include "notf/common/aabr.hpp"
+#include "notf/common/geo/aabr.hpp"
 
 #include "notf/app/graph/node.hpp"
 

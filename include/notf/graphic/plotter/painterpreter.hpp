@@ -1,7 +1,8 @@
 #pragma once
 
+#include "notf/graphic/plotter/painter.hpp"
+
 #include "notf/app/widget/any_widget.hpp"
-#include "notf/app/widget/painter.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -16,7 +17,7 @@ private:
 
     using Paint = Plotter::Paint;
 
-    using PathPtr = Plotter::PathPtr;
+//    using PathPtr = Plotter::PathPtr;
 
     // methods --------------------------------------------------------------------------------- //
 public:
@@ -65,7 +66,7 @@ private:
     std::vector<State> m_states;
 
     /// All Paths created by the Widget, addressable by index.
-    std::vector<valid_ptr<PathPtr>> m_paths;
+//    std::vector<valid_ptr<PathPtr>> m_paths;
 };
 
 NOTF_CLOSE_NAMESPACE

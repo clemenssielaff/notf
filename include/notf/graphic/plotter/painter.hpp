@@ -30,13 +30,13 @@
 #include "notf/meta/assert.hpp"
 #include "notf/meta/pointer.hpp"
 
-#include "notf/common/circle.hpp"
+#include "notf/common/geo/circle.hpp"
 #include "notf/common/vector2.hpp"
 
 #include "notf/graphic/renderer/plotter.hpp"
 
 #include "notf/app/fwd.hpp"
-#include "notf/app/widget/clipping.hpp"
+#include "notf/graphic/plotter/clipping.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -53,9 +53,12 @@ public:
 
     using Paint = Plotter::Paint;
 
-    using PathId = Plotter::PathId;
+//    using PathId = Plotter::PathId;
 
-    using PathPtr = Plotter::PathPtr;
+//    using PathPtr = Plotter::PathPtr;
+
+    using LineCap = Plotter::LineCap;
+    using LineJoin = Plotter::LineJoin;
 
 private:
     /// State used to contextualize paint operations.
@@ -66,7 +69,7 @@ private:
         M3f xform = M3f::identity();
 
         /// Current Path.
-        PathPtr path;
+//        PathPtr path;
 
         /// Current Font.
         FontPtr font;
@@ -83,8 +86,8 @@ private:
         float distance_tolerance = precision_low<float>();
 
         BlendMode blend_mode = BlendMode::SOURCE_OVER;
-        Paint::LineCap line_cap = Paint::LineCap::BUTT;
-        Paint::LineJoin line_join = Paint::LineJoin::MITER;
+        LineCap line_cap = LineCap::BUTT;
+        LineJoin line_join = LineJoin::MITER;
     };
 
     // methods --------------------------------------------------------------------------------- //
@@ -93,21 +96,23 @@ public:
     /// @param design   WidgetDesign to paint into (is overwritten).
     explicit Painter(WidgetDesign& design);
 
+    // TODO: explicit state handling: push/ pop/ reset (without affecting the stack)
+
     // Paths ------------------------------------------------------------------
 
-    /// Sets a new polygon as the current path.
-    /// @param polygon  Polygon replacing the current Path.
-    PathId set_path(Polygonf polygon);
+//    /// Sets a new polygon as the current path.
+//    /// @param polygon  Polygon replacing the current Path.
+//    PathId set_path(Polygonf polygon);
 
-    /// Sets a new spline as the current path.
-    /// @param spline   Spline replacing the current Path.
-    PathId set_path(CubicBezier2f spline);
+//    /// Sets a new spline as the current path.
+//    /// @param spline   Spline replacing the current Path.
+//    PathId set_path(CubicBezier2f spline);
 
-    /// Makes a previously existing Path current again.
-    /// If the given PathId does not represent an existing Path, this method has no effect.
-    /// @param id   New current Path.
-    /// @returns    Id of the current Path after this function has run.
-    PathId set_path(PathId id);
+//    /// Makes a previously existing Path current again.
+//    /// If the given PathId does not represent an existing Path, this method has no effect.
+//    /// @param id   New current Path.
+//    /// @returns    Id of the current Path after this function has run.
+//    PathId set_path(PathId id);
 
     // Text -------------------------------------------------------------------
 
@@ -150,6 +155,16 @@ public:
     /// Rotates the current state the given amount of radians in a counter-clockwise direction.
     void rotate(const float angle);
 
+
+//    // Skews the current coordinate system along X axis. Angle is specified in radians.
+//    void nvgSkewX(NVGcontext* ctx, float angle);
+
+//    // Skews the current coordinate system along Y axis. Angle is specified in radians.
+//    void nvgSkewY(NVGcontext* ctx, float angle);
+
+//    // Scales the current coordinate system.
+//    void nvgScale(NVGcontext* ctx, float x, float y);
+
     // Clipping ---------------------------------------------------------------
 
     /// The Clipping currently applied to the Painter.
@@ -188,18 +203,20 @@ public:
     // Line Cap ---------------------------------------------------------------
 
     /// The Painter's line cap.
-    Paint::LineCap get_line_cap() const { return _get_current_state().line_cap; }
+    LineCap get_line_cap() const { return _get_current_state().line_cap; }
 
     /// Sets the Painter's line cap.
-    void set_line_cap(const Paint::LineCap cap);
+    void set_line_cap(const LineCap cap);
 
     // Line Join --------------------------------------------------------------
 
     /// The Painter's line join.
-    Paint::LineJoin get_line_join() const { return _get_current_state().line_join; }
+    LineJoin get_line_join() const { return _get_current_state().line_join; }
 
     /// Sets the Painter's line join.
-    void set_line_join(const Paint::LineJoin join);
+    void set_line_join(const LineJoin join);
+
+    // TODO: get/set miter limit
 
     // Fill Paint -------------------------------------------------------------
 
@@ -251,10 +268,10 @@ private:
     WidgetDesign& m_design;
 
     /// Id of the current Path.
-    PathId m_current_path_id = PathId::invalid();
+//    PathId m_current_path_id = PathId::invalid();
 
-    /// Id of the next generated Path.
-    PathId::underlying_t m_next_path_id = PathId::first().get_value();
+//    /// Id of the next generated Path.
+//    PathId::underlying_t m_next_path_id = PathId::first().get_value();
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //

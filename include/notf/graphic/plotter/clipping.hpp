@@ -1,8 +1,8 @@
 #pragma once
 
-#include "notf/common/aabr.hpp"
+#include "notf/common/geo/aabr.hpp"
+#include "notf/common/geo/polygon.hpp"
 #include "notf/common/matrix3.hpp"
-#include "notf/common/polygon.hpp"
 
 NOTF_OPEN_NAMESPACE
 

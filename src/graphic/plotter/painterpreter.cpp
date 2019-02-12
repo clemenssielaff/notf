@@ -1,8 +1,8 @@
-#include "notf/app/widget/painterpreter.hpp"
+#include "notf/graphic/plotter/painterpreter.hpp"
 
 #include "notf/meta/log.hpp"
 
-#include "notf/common/bezier.hpp"
+#include "notf/common/geo/bezier.hpp"
 #include "notf/common/variant.hpp"
 #include "notf/common/vector.hpp"
 
@@ -17,7 +17,7 @@ NOTF_OPEN_NAMESPACE
 
 Painterpreter::Painterpreter(GraphicsContext& context) : m_plotter(std::make_shared<Plotter>(context)) { _reset(); }
 
-void Painterpreter::start_painting() { m_plotter->clear(); }
+void Painterpreter::start_painting() { m_plotter->reset(); }
 
 void Painterpreter::paint(const WidgetHandle& widget) {
     { // adopt the Widget's auxiliary information
@@ -52,24 +52,24 @@ void Painterpreter::paint(const WidgetHandle& widget) {
                     },
 
                     [&](const WidgetDesign::SetPolygonPathCommand& command) {
-                        State& state = _get_current_state();
-                        state.path = m_plotter->add(transform_by(command.data->polygon, state.xform));
-                        m_paths.emplace_back(state.path);
+                        //                        State& state = _get_current_state();
+                        //                        state.path = m_plotter->add(transform_by(command.data->polygon,
+                        //                        state.xform)); m_paths.emplace_back(state.path);
                     },
 
                     [&](const WidgetDesign::SetSplinePathCommand& command) {
-                        State& state = _get_current_state();
-                        state.path = m_plotter->add(transform_by(command.data->spline, state.xform));
-                        m_paths.emplace_back(state.path);
+                        //                        State& state = _get_current_state();
+                        //                        state.path = m_plotter->add(transform_by(command.data->spline,
+                        //                        state.xform)); m_paths.emplace_back(state.path);
                     },
 
-                    [&](const WidgetDesign::SetPathIndexCommand& command) {
-                        NOTF_ASSERT(command.index);
-                        const size_t path_index = command.index.get_value() - Plotter::PathId::first().get_value();
-                        NOTF_ASSERT(path_index < m_paths.size());
-                        State& state = _get_current_state();
-                        state.path = m_paths[path_index];
-                    },
+                    //                    [&](const WidgetDesign::SetPathIndexCommand& command) {
+                    //                        NOTF_ASSERT(command.index);
+                    //                        const size_t path_index = command.index.get_value() -
+                    //                        Plotter::PathId::first().get_value(); NOTF_ASSERT(path_index <
+                    //                        m_paths.size()); State& state = _get_current_state(); state.path =
+                    //                        m_paths[path_index];
+                    //                    },
 
                     [&](const WidgetDesign::WriteCommand& command) { _write(command.data->text); },
 
@@ -116,7 +116,7 @@ void Painterpreter::_reset() {
     m_states.clear();
     m_states.emplace_back(); // always have at least one state
 
-    m_paths.clear();
+    //    m_paths.clear();
 }
 
 Painterpreter::State& Painterpreter::_get_current_state() {
@@ -133,9 +133,9 @@ void Painterpreter::_pop_state() {
 
 void Painterpreter::_fill() {
     const State& state = _get_current_state();
-    if (!state.path || is_approx(state.alpha, 0)) {
-        return; // early out
-    }
+    //    if (!state.path || is_approx(state.alpha, 0)) {
+    //        return; // early out
+    //    }
 
     // get the fill paint
     Paint paint = state.fill_paint;
@@ -143,15 +143,15 @@ void Painterpreter::_fill() {
     paint.outer_color.a *= state.alpha;
 
     // plot the shape
-    Plotter::FillInfo fill_info;
-    m_plotter->fill(state.path, paint, std::move(fill_info));
+    //    Plotter::FillInfo fill_info;
+    //    m_plotter->fill(state.path, paint, std::move(fill_info));
 }
 
 void Painterpreter::_stroke() {
     const State& state = _get_current_state();
-    if (!state.path || state.stroke_width <= 0 || is_approx(state.alpha, 0)) {
-        return; // early out
-    }
+    //    if (!state.path || state.stroke_width <= 0 || is_approx(state.alpha, 0)) {
+    //        return; // early out
+    //    }
 
     // get the stroke paint
     Paint paint = state.stroke_paint;
@@ -174,9 +174,9 @@ void Painterpreter::_stroke() {
     }
 
     // plot the stroke
-    Plotter::StrokeInfo stroke_info;
-    stroke_info.width = stroke_width;
-    m_plotter->stroke(state.path, paint, std::move(stroke_info));
+    //    Plotter::StrokeInfo stroke_info;
+    //    stroke_info.width = stroke_width;
+    //    m_plotter->stroke(state.path, paint, std::move(stroke_info));
 }
 
 void Painterpreter::_write(const std::string& text) {
@@ -191,10 +191,10 @@ void Painterpreter::_write(const std::string& text) {
     paint.outer_color.a *= state.alpha;
 
     // plot the text
-    Plotter::TextInfo text_info;
-    text_info.font = state.font;
-    text_info.translation = transform_by(V2f::zero(), state.xform);
-    m_plotter->write(text, paint, std::move(text_info));
+    //    Plotter::TextInfo text_info;
+    //    text_info.font = state.font;
+    //    text_info.translation = transform_by(V2f::zero(), state.xform);
+    //    m_plotter->write(text, paint, std::move(text_info));
 }
 
 NOTF_CLOSE_NAMESPACE

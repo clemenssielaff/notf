@@ -1,8 +1,9 @@
 #pragma once
 
+#include "notf/graphic/plotter/clipping.hpp"
+
 #include "notf/app/graph/scene.hpp"
 #include "notf/app/widget/any_widget.hpp"
-#include "notf/app/widget/clipping.hpp"
 #include "notf/app/widget/widget_visualizer.hpp"
 
 NOTF_OPEN_NAMESPACE

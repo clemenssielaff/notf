@@ -1,4 +1,4 @@
-#include "notf/common/segment.hpp"
+#include "notf/common/geo/segment.hpp"
 
 NOTF_OPEN_NAMESPACE
 

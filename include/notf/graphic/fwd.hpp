@@ -46,6 +46,11 @@ template<detail::OpenGLBufferType>
 class TypedOpenGLBuffer;
 } // namespace detail
 
+// drawcall_buffer.hpp ----------------------------------------------------- //
+
+using DrawCallBuffer = detail::TypedOpenGLBuffer<detail::OpenGLBufferType::DRAWCALL>;
+NOTF_DECLARE_SHARED_POINTERS_ONLY(DrawCallBuffer);
+
 // index_buffer.hpp -------------------------------------------------------- //
 
 using AnyIndexBuffer = detail::TypedOpenGLBuffer<detail::OpenGLBufferType::INDEX>;
@@ -100,6 +105,9 @@ NOTF_DECLARE_SHARED_POINTERS(class, Font);
 // text/font_manager.hpp --------------------------------------------------- //
 
 NOTF_DECLARE_UNIQUE_POINTERS(class, FontManager);
+
+// TODO DELETE
+class Painterpreter;
 
 NOTF_CLOSE_NAMESPACE
 

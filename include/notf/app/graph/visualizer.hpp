@@ -4,7 +4,7 @@
 
 #include "notf/meta/smart_ptr.hpp"
 
-#include "notf/common/size2.hpp"
+#include "notf/common/geo/size2.hpp"
 
 #include "notf/app/fwd.hpp"
 

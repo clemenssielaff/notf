@@ -5,13 +5,12 @@
 
 #include "notf/meta/smart_ptr.hpp"
 
-#include "notf/common/bezier.hpp"
-#include "notf/common/polygon.hpp"
+#include "notf/common/geo/bezier.hpp"
+#include "notf/common/geo/polygon.hpp"
 
+#include "notf/graphic/fwd.hpp"
+#include "notf/graphic/plotter/clipping.hpp"
 #include "notf/graphic/renderer/plotter.hpp"
-
-#include "notf/app/fwd.hpp"
-#include "notf/app/widget/clipping.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -51,8 +50,11 @@ public:
     /// Paint to use in the next fill / stroke / write.
     using Paint = Plotter::Paint;
 
+    using LineCap = Plotter::LineCap;
+    using LineJoin = Plotter::LineJoin;
+
     /// Id identifying a Path in the Design.
-    using PathId = Plotter::PathId;
+    //    using PathId = Plotter::PathId;
 
     // commands ---------------------------------------------------------------
 public:
@@ -101,10 +103,10 @@ public:
         std::unique_ptr<Data> data;
     };
 
-    /// Make an existing Path current.
-    struct SetPathIndexCommand {
-        PathId index;
-    };
+    //    /// Make an existing Path current.
+    //    struct SetPathIndexCommand {
+    //        PathId index;
+    //    };
 
     /// Writes the given text on screen using the current Path transform at the baseline start point.
     struct WriteCommand {
@@ -159,16 +161,17 @@ public:
 
     /// Update the LineCap.
     struct SetLineCapCommand {
-        Paint::LineCap cap;
+        LineCap cap;
     };
 
     /// Update the LineJoin.
     struct SetLineJoinCommand {
-        Paint::LineJoin join;
+        LineJoin join;
     };
 
     using Command = std::variant<PushStateCommand, PopStateCommand, SetTransformationCommand, SetStrokeWidthCommand,
-                                 SetFontCommand, SetPolygonPathCommand, SetSplinePathCommand, SetPathIndexCommand,
+                                 SetFontCommand, SetPolygonPathCommand, SetSplinePathCommand,
+                                 // SetPathIndexCommand,
                                  WriteCommand, FillCommand, StrokeCommand, NoopCommand, SetClippingCommand,
                                  SetFillPaintCommand, SetStrokePaintCommand, SetBlendModeCommand, SetAlphaCommand,
                                  SetLineCapCommand, SetLineJoinCommand>;

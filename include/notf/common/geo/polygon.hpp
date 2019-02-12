@@ -6,7 +6,8 @@
 
 #include "notf/meta/exception.hpp"
 
-#include "notf/common/segment.hpp"
+#include "notf/common/geo/segment.hpp"
+#include "notf/common/vector.hpp"
 #include "notf/common/vector2.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -63,13 +64,13 @@ public:
     /// @param other    Polygon to move.
     Polygon& operator=(Polygon&& other) {
         m_vertices = std::move(other.m_vertices);
-        other.m_vertices = {};
+        other.m_vertices.clear(); // (from reference:) "[other] is left in an unspecified but valid state."
         return *this;
     }
 
     /// Checks whether the Polygon has any vertices or not.
-    bool is_empty() const { return m_vertices.empty(); }
-    operator bool() const { return !is_empty(); }
+    bool is_empty() const noexcept { return m_vertices.empty(); }
+    operator bool() const noexcept { return !is_empty(); }
 
     /// Vertices of this Polygon.
     const std::vector<vector_t>& get_vertices() const { return m_vertices; }
@@ -118,10 +119,7 @@ public:
     /// @param point    Point to check.
     bool contains(const vector_t& point) const {
         // create a line segment from the point to some point on the outside of the polygon
-        const Segment2<element_t> line(
-            point, vector_t(1, 1)
-                       + *(std::max_element(std::begin(m_vertices), std::end(m_vertices),
-                                            [](const auto& lhs, const auto& rhs) { return lhs.x() < rhs.x(); })));
+        const Segment2<element_t> line(point, _get_point_outside());
 
         // find the index of the first vertex that does not fall on the line
         size_t index = 0;
@@ -178,6 +176,12 @@ public:
     /// Checks if this Polygon is concave.
     bool is_concave() const { return !is_convex(); }
 
+    /// Equality operator.
+    bool operator==(const Polygon& other) const { return m_vertices == other.m_vertices; }
+
+    /// Inequality operator.
+    bool operator!=(const Polygon& other) const { return m_vertices != other.m_vertices; }
+
     /// Tests whether this Polygon is vertex-wise approximate to another.
     /// @param other    Other Polygon to test against.
     /// @param epsilon  Largest ignored difference.
@@ -190,44 +194,27 @@ public:
     }
 
 private:
+    /// Returns a point that is guaranteed outside of the Polygon.
+    vector_t _get_point_outside() const { return m_vertices.front() + vector_t{-1, 0}; }
+
     /// Enforces the construction of a simple Polygon with unique vertices.
-    /// @param vertices Vertices from which to construct the Polygon.
+    /// @param vertices     Vertices from which to construct the Polygon.
     /// @throws LogicError  If the Polygon does not contain at least 3 unique vertices.
-    ///                     If two non-consecutive vertices share the same position.
     ///                     If two edges of the Polygon intersect.
     static std::vector<vector_t> _prepare_vertices(std::vector<vector_t>&& vertices) {
-        { // merge non-unique vertices (consecutive vertices that share the same position)
-            size_t first_non_unique = vertices.size();
-            for (size_t i = 1; i < vertices.size(); ++i) {
-                if (vertices[i].is_approx(vertices[i - 1])) {
-                    first_non_unique = i;
-                    break;
-                }
-            }
-            if (first_non_unique != vertices.size()) {
-                std::vector<vector_t> unique_vertices;
-                unique_vertices.reserve(vertices.size() - 1);
 
-                unique_vertices.insert(std::end(unique_vertices), std::cbegin(vertices),
-                                       std::cbegin(vertices) + first_non_unique);
-
-                for (size_t i = first_non_unique + 1; i < vertices.size(); ++i) {
-                    if (!vertices[i].is_approx(vertices[i - 1])) { unique_vertices.emplace_back(vertices[i]); }
-                }
-
-                std::swap(vertices, unique_vertices);
-            }
-        }
+        // merge non-unique vertices (consecutive vertices that share the same position)
+        remove_consecutive_equal(vertices);
+        if (vertices.front() == vertices.back()) { vertices.pop_back(); }
+        if (vertices.size() < 3) { NOTF_THROW(LogicError, "A Polygon must contain at least 3 unique vertices"); }
         vertices.shrink_to_fit();
 
-        if (vertices.size() < 3) { NOTF_THROW(LogicError, "A Polygon must contain at least 3 unique vertices"); }
-
-        for (size_t i = 0; i < vertices.size(); ++i) {
-            for (size_t j = i + 1; j < vertices.size(); ++j) {
-                if (vertices[i].is_approx(vertices[j])) {
-                    NOTF_THROW(LogicError, "Vertices in a Polygon must not share positions");
-                }
-            }
+        { // move the vertex with the smallest x-coordinate to the front of the vector
+          // this allows two similar polygons to be compared and we know that `m_vertices[0].x - n` is definetly outside
+          // of the Polygon for all n
+            auto min_x = std::min_element(vertices.begin(), vertices.end(),
+                                          [](const vector_t& a, const vector_t& b) { return a.x() < b.x(); });
+            std::rotate(vertices.begin(), min_x, vertices.end());
         }
 
         // TODO: this seems broken

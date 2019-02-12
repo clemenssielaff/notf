@@ -1,7 +1,7 @@
 #include <string>
 #include <vector>
 
-#include "notf/common/aabr.hpp"
+#include "notf/common/geo/aabr.hpp"
 #include "notf/common/utf8.hpp"
 
 #include "notf/graphic/fwd.hpp"

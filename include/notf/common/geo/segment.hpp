@@ -2,8 +2,8 @@
 
 #include <iosfwd>
 
-#include "notf/common/aabr.hpp"
-#include "notf/common/triangle.hpp"
+#include "notf/common/geo/aabr.hpp"
+#include "notf/common/geo/triangle.hpp"
 #include "notf/common/vector2.hpp"
 #include "notf/common/vector3.hpp"
 

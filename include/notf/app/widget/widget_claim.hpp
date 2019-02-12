@@ -2,8 +2,8 @@
 
 #include "notf/meta/real.hpp"
 
+#include "notf/common/geo/size2.hpp"
 #include "notf/common/rational.hpp"
-#include "notf/common/size2.hpp"
 
 NOTF_OPEN_NAMESPACE
 

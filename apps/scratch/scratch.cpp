@@ -9,6 +9,8 @@
 #include "notf/reactive/subscriber.hpp"
 #include "notf/reactive/trigger.hpp"
 
+#include "notf/graphic/plotter/painter.hpp"
+
 #include "notf/app/application.hpp"
 #include "notf/app/driver.hpp"
 #include "notf/app/event_handler.hpp"
@@ -16,7 +18,6 @@
 #include "notf/app/graph/window.hpp"
 #include "notf/app/timer_pool.hpp"
 
-#include "notf/app/widget/painter.hpp"
 #include "notf/app/widget/widget.hpp"
 #include "notf/app/widget/widget_scene.hpp"
 
@@ -96,14 +97,14 @@ private:
         painter.set_stroke(Color::red());
 
         // draw a background
-//        painter.set_path(convert_to<Polygonf>(Aabrf(-half_length, -half_length, half_length * 2, half_length * 2)));
-//        painter.stroke();
+        //        painter.set_path(convert_to<Polygonf>(Aabrf(-half_length, -half_length, half_length * 2, half_length *
+        //        2))); painter.stroke();
 
         // draw the rotating line
-        painter.set_path(spline);
-//        painter.stroke();
+        //        painter.set_path(spline);
+        //        painter.stroke();
 
-        const CubicBezier2f spline2({CubicBezier2f::Segment::line(-half_line-100, half_line)});
+        const CubicBezier2f spline2({CubicBezier2f::Segment::line(-half_line - 100, half_line)});
 
         painter.translate(400, 0);
         painter.stroke();

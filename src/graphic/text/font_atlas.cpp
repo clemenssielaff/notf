@@ -8,7 +8,7 @@
 #include "notf/meta/real.hpp"
 
 #include "notf/common/color.hpp"
-#include "notf/common/size2.hpp"
+#include "notf/common/geo/size2.hpp"
 #include "notf/common/vector.hpp"
 
 #include "notf/graphic/graphics_system.hpp"
