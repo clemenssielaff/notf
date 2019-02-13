@@ -19,7 +19,7 @@ class AttributePolicyFactory {
 
     NOTF_CREATE_TYPE_DETECTOR(type);
     static constexpr auto create_type() {
-        if constexpr (!has_type_v<Policy>) {
+        if constexpr (!_has_type_v<Policy>) {
             static_assert(always_false_v<Policy>,
                           "An AttributePolicy must define the Attribute value type `using type = <type>;`");
         } else {
@@ -39,7 +39,7 @@ class AttributePolicyFactory {
 
     NOTF_CREATE_FIELD_DETECTOR(is_normalized);
     static constexpr auto create_is_normalized() {
-        if constexpr (has_is_normalized_v<Policy>) {
+        if constexpr (_has_is_normalized_v<Policy>) {
             if constexpr (std::is_convertible_v<decltype(Policy::is_normalized), bool>) {
                 return static_cast<bool>(Policy::is_normalized);
             } else {
@@ -55,7 +55,7 @@ class AttributePolicyFactory {
     }
 
     static constexpr auto create_element_t() {
-        if constexpr (has_type_v<Policy>) {
+        if constexpr (_has_type_v<Policy>) {
             using ValueType = typename Policy::type;
             if constexpr (is_arithmetic_type<ValueType>) {
                 return declval<typename ValueType::element_t>();

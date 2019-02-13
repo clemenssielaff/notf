@@ -15,7 +15,7 @@ class WidgetPolicyFactory { // TODO: check that all names are unique and don't c
 
     NOTF_CREATE_TYPE_DETECTOR(properties);
     static constexpr auto create_properties() {
-        if constexpr (has_properties_v<Policy>) {
+        if constexpr (_has_properties_v<Policy>) {
             return declval<typename instantiate_unique<Property, typename Policy::properties>::type>();
         } else {
             return std::tuple<>();
@@ -24,7 +24,7 @@ class WidgetPolicyFactory { // TODO: check that all names are unique and don't c
 
     NOTF_CREATE_TYPE_DETECTOR(slots);
     static constexpr auto create_slots() {
-        if constexpr (has_slots_v<Policy>) {
+        if constexpr (_has_slots_v<Policy>) {
             return declval<typename instantiate_unique<Slot, typename Policy::slots>::type>();
         } else {
             return std::tuple<>();
@@ -33,7 +33,7 @@ class WidgetPolicyFactory { // TODO: check that all names are unique and don't c
 
     NOTF_CREATE_TYPE_DETECTOR(signals);
     static constexpr auto create_signals() {
-        if constexpr (has_signals_v<Policy>) {
+        if constexpr (_has_signals_v<Policy>) {
             return declval<typename instantiate_shared<Signal, typename Policy::signals>::type>();
         } else {
             return std::tuple<>();
@@ -41,7 +41,7 @@ class WidgetPolicyFactory { // TODO: check that all names are unique and don't c
     }
 
     NOTF_CREATE_TYPE_DETECTOR(states);
-    static_assert(has_states_v<Policy>, "Widgets require at least one State");
+    static_assert(_has_states_v<Policy>, "Widgets require at least one State");
 
 public:
     /// Policy Type.
@@ -70,7 +70,7 @@ struct StateIdentifier {
     /// Tests if a given user defined State type is compatible to another with a given Node type.
     template<class UserState, class NodeType>
     static constexpr auto is_compatible() {
-        if constexpr (!has_this_t<UserState>() || !has_node_t<UserState>()) {
+        if constexpr (!_has_this_t<UserState>() || !_has_node_t<UserState>()) {
             return std::false_type{}; // not a state
         } else {
             return std::conjunction<
@@ -85,7 +85,7 @@ struct StateIdentifier {
         static_assert(std::is_convertible_v<UserState*, State<typename UserState::this_t, typename UserState::node_t>*>,
                       "User State is not a valid subclass of State");
 
-        static_assert(has_name<UserState>(),
+        static_assert(_has_name<UserState>(),
                       "State subclasses must have a unique name, stored as `static constexpr ConstString name`");
         static_assert(std::is_same_v<decltype(UserState::name), const ConstString>,
                       "State subclasses must have a unique name, stored as `static constexpr ConstString name`");

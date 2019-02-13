@@ -103,10 +103,10 @@ template<class Policy>
 class SlotPolicyFactory {
 
     NOTF_CREATE_TYPE_DETECTOR(value_t);
-    static_assert(has_value_t_v<Policy>, "A SlotPolicy must contain the type of Slot as type `value_t`");
+    static_assert(_has_value_t_v<Policy>, "A SlotPolicy must contain the type of Slot as type `value_t`");
 
     NOTF_CREATE_FIELD_DETECTOR(name);
-    static_assert(has_name_v<Policy>, "A SlotPolicy must contain the name of the Slot as `static constexpr name`");
+    static_assert(_has_name_v<Policy>, "A SlotPolicy must contain the name of the Slot as `static constexpr name`");
     static_assert(std::is_same_v<decltype(Policy::name), const ConstString>,
                   "The name of a SlotPolicy must be of type `ConstString`");
 

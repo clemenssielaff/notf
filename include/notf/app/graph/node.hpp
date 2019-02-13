@@ -28,7 +28,7 @@ class NodePolicyFactory { // TODO: (NodePolicyFactory) check that all names are 
 
     NOTF_CREATE_TYPE_DETECTOR(properties);
     static constexpr auto create_properties() {
-        if constexpr (has_properties_v<Policy>) {
+        if constexpr (_has_properties_v<Policy>) {
             return declval<typename instantiate_unique<Property, typename Policy::properties>::type>();
         } else {
             return std::tuple<>();
@@ -37,7 +37,7 @@ class NodePolicyFactory { // TODO: (NodePolicyFactory) check that all names are 
 
     NOTF_CREATE_TYPE_DETECTOR(slots);
     static constexpr auto create_slots() {
-        if constexpr (has_slots_v<Policy>) {
+        if constexpr (_has_slots_v<Policy>) {
             return declval<typename instantiate_unique<Slot, typename Policy::slots>::type>();
         } else {
             return std::tuple<>();
@@ -46,7 +46,7 @@ class NodePolicyFactory { // TODO: (NodePolicyFactory) check that all names are 
 
     NOTF_CREATE_TYPE_DETECTOR(signals);
     static constexpr auto create_signals() {
-        if constexpr (has_signals_v<Policy>) {
+        if constexpr (_has_signals_v<Policy>) {
             return declval<typename instantiate_shared<Signal, typename Policy::signals>::type>();
         } else {
             return std::tuple<>();

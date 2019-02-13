@@ -243,10 +243,10 @@ template<class Policy>
 class PropertyPolicyFactory {
 
     NOTF_CREATE_TYPE_DETECTOR(value_t);
-    static_assert(has_value_t_v<Policy>, "A PropertyPolicy must contain the type of Property as type `value_t`");
+    static_assert(_has_value_t_v<Policy>, "A PropertyPolicy must contain the type of Property as type `value_t`");
 
     NOTF_CREATE_FIELD_DETECTOR(name);
-    static_assert(has_name_v<Policy>,
+    static_assert(_has_name_v<Policy>,
                   "A PropertyPolicy must contain the name of the Property as `static constexpr name`");
     static_assert(std::is_same_v<decltype(Policy::name), const ConstString>,
                   "The name of a PropertyPolicy must be of type `ConstString`");
@@ -255,7 +255,7 @@ class PropertyPolicyFactory {
 
     NOTF_CREATE_FIELD_DETECTOR(visibility);
     static constexpr AnyProperty::Visibility create_visibility() {
-        if constexpr (has_visibility_v<Policy>) {
+        if constexpr (_has_visibility_v<Policy>) {
             static_assert(std::is_same_v<decltype(Policy::visibility), const AnyProperty::Visibility>,
                           "The visibility of a PropertyPolicy must be of type `AnyProperty::Visibility`");
             return Policy::visibility;
@@ -277,7 +277,7 @@ public:
         /// Default value, either explicitly given by the user Policy or defaulted.
         /// Is a method, because not all types can be stored as a constexpr value.
         static value_t get_default_value() {
-            if constexpr (has_default_value_v<Policy>) {
+            if constexpr (_has_default_value_v<Policy>) {
                 static_assert(std::is_convertible_v<decltype(Policy::default_value), typename Policy::value_t>,
                               "The default value of a PropertyPolicy must be convertible to its type");
                 return Policy::default_value; // explicit default value

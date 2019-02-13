@@ -54,10 +54,10 @@ template<class Policy>
 class SignalPolicyFactory {
 
     NOTF_CREATE_TYPE_DETECTOR(value_t);
-    static_assert(has_value_t_v<Policy>, "A SignalPolicy must contain the type of Signal as type `value_t`");
+    static_assert(_has_value_t_v<Policy>, "A SignalPolicy must contain the type of Signal as type `value_t`");
 
     NOTF_CREATE_FIELD_DETECTOR(name);
-    static_assert(has_name_v<Policy>, "A SignalPolicy must contain the name of the Signal as `static constexpr name`");
+    static_assert(_has_name_v<Policy>, "A SignalPolicy must contain the name of the Signal as `static constexpr name`");
     static_assert(std::is_same_v<decltype(Policy::name), const ConstString>,
                   "The name of a SignalPolicy must be of type `ConstString`");
 

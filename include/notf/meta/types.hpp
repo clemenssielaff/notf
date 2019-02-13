@@ -119,6 +119,12 @@ struct identity_index {
 template<class T, size_t I>
 using identity_index_t = typename identity_index<T, I>::type;
 
+/// Produces the given value, no matter what index is given as the second template argument.
+template<class T, size_t = 0>
+constexpr T identity_func(const T& value) {
+    return value;
+}
+
 /// The `always_false` trait will always evaluate to `false` when used in a static_assert.
 /// This way you can define error overloads that differ by type only:
 ///

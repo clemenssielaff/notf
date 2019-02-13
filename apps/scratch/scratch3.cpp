@@ -1,83 +1,92 @@
-#include <exception>
 #include <iostream>
-#include <map>
 
-struct Context {
+#include <array>
+
+#include "notf/meta/array.hpp"
+#include "notf/meta/concept.hpp"
+#include "notf/meta/macros.hpp"
+
+NOTF_USING_NAMESPACE;
+
+static_assert(make_array_of<3>(34)[0] == 34);
+static_assert(make_array_of<3>(34)[1] == 34);
+static_assert(make_array_of<3>(34)[2] == 34);
+
+struct AnyArithmetic {};
+
+template<class Derived, class Component, size_t Dimensions>
+struct Arithmetic : public AnyArithmetic {
+
+    static_assert(Dimensions > 0, "Cannot define a zero-dimensional arithmetic type");
+    static_assert(std::disjunction_v<std::is_arithmetic<Component>, std::is_base_of<AnyArithmetic, Component>>,
+                  "Component type must be either a scalar or a subclass of Arithmetic");
+
+    // helper ---------------------------------------------------------------------------------- //
 private:
-    class State {
-
-    private:
-        struct _BlendMode {
-            _BlendMode() { std::cout << "Created BlendMode with value " << value << std::endl; }
-            void operator=(const int new_value) {
-                if (new_value != value) {
-                    value = new_value;
-                    std::cout << "Changed BlendMode to " << value << std::endl;
-                }
-            }
-            operator int() const { return value; }
-
-        private:
-            int value = 0;
+    struct _detail {
+        template<class T, class = void>
+        struct produce_element {
+            using type = T;
         };
-
-        struct _TextureSlot {
-            _TextureSlot(const int index) : index(index) {
-                std::cout << "Created Texture slot " << index << " with value " << value << std::endl;
-            }
-            void operator=(const int new_value) {
-                if (new_value != value) {
-                    value = new_value;
-                    std::cout << "Changed TextureSlot " << index << " to " << value << std::endl;
-                }
-            }
-            operator int() const { return value; }
-
-        private:
-            const int index;
-            int value = 0;
+        template<class T>
+        struct produce_element<T, std::void_t<typename T::element_t>> {
+            using type = typename T::element_t;
         };
-
-        struct _TextureSlots {
-
-            _TextureSlot& operator[](const int index) {
-                if (index >= 10) { throw std::out_of_range("Texture slot is out of range (>= 10)"); }
-                auto itr = slots.find(index);
-                if (itr == slots.end()) { std::tie(itr, std::ignore) = slots.emplace(std::make_pair(index, index)); }
-                return itr->second;
-            }
-
-        private:
-            std::map<int, _TextureSlot> slots;
-        };
-
-    public:
-        _BlendMode blend_mode;
-        _TextureSlots texture_slots;
-
     };
 
-    State state;
-
+    // types ----------------------------------------------------------------------------------- //
 public:
-    State* operator->() { return &state; }
-};
+    using component_t = Component;
 
-int main() {
-    Context context;
-    context->blend_mode = 2;
-    context->blend_mode = 5;
-    context->blend_mode = 5;
-    std::cout << "Current BlendMode is " << context->blend_mode;
+    using element_t = typename _detail::template produce_element<component_t>::type;
 
-    context->texture_slots[2] = 3;
-    context->texture_slots[2] = 8;
-    context->texture_slots[8] = 0;
-    try {
-        context->texture_slots[11] = 0;
-    } catch (const std::out_of_range&) {
-        std::cout << "Caught out of range error" << std::endl;
+    using Data = std::array<component_t, Dimensions>;
+
+private:
+    using derived_t = Derived;
+
+    // methods --------------------------------------------------------------------------------- //
+public:
+    /// Default constructor.
+    constexpr Arithmetic() noexcept = default;
+
+    /// Value constructor.
+    /// @param data Raw data for this arithmetic type.
+    constexpr Arithmetic(Data data) noexcept : data(std::move(data)) {}
+
+    static constexpr size_t get_dimensions() { return Dimensions; }
+
+    static constexpr size_t get_size() {
+        if constexpr (std::is_arithmetic_v<component_t>) {
+            return get_dimensions();
+        } else {
+            return get_dimensions() * component_t::get_size();
+        }
     }
 
+    constexpr static derived_t all(const element_t& value) {
+        if constexpr (std::is_arithmetic_v<component_t>) {
+            return {make_array_of<get_dimensions()>(value)};
+        } else {
+            return {make_array_of<get_dimensions()>(component_t::all(value))};
+        }
+    }
 
-}
+    constexpr static derived_t zero() { return {Data{}}; }
+
+    // fields ---------------------------------------------------------------------------------- //
+public:
+    /// Value data array.
+    Data data;
+};
+
+struct V2 : public Arithmetic<V2, int, 2> {};
+struct M2x3 : public Arithmetic<M2x3, V2, 3> {};
+
+static_assert(V2::zero().data[1] == 0);
+static_assert(std::is_same_v<V2::element_t, int>);
+static_assert(std::is_same_v<M2x3::element_t, int>);
+static_assert(V2::get_size() == 2);
+static_assert(M2x3::get_size() == 6);
+
+int main() { return 0; }

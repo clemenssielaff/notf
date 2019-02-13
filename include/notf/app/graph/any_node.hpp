@@ -28,20 +28,20 @@ struct GraphVerifier {
         }
 
         // if A has a list of explicitly allowed child types, B must be in it
-        if constexpr (has_allowed_child_types<A>::value) {
+        if constexpr (_has_allowed_child_types<A>::value) {
             if (!is_derived_from_one_of_tuple_v<B, typename A::allowed_child_types>) { return false; }
         }
         // ... otherwise, if A has a list of explicitly forbidden child types, B must NOT be in it
-        else if constexpr (has_forbidden_child_types<A>::value) {
+        else if constexpr (_has_forbidden_child_types<A>::value) {
             if (is_derived_from_one_of_tuple_v<B, typename A::forbidden_child_types>) { return false; }
         }
 
         // if B has a list of explicitly allowed parent types, A must be in it
-        if constexpr (has_allowed_parent_types<B>::value) {
+        if constexpr (_has_allowed_parent_types<B>::value) {
             if (!is_derived_from_one_of_tuple_v<A, typename B::allowed_parent_types>) { return false; }
         }
         // ... otherwise, if B has a list of explicitly forbidden parent types, A must NOT be in it
-        else if constexpr (has_forbidden_parent_types<B>::value) {
+        else if constexpr (_has_forbidden_parent_types<B>::value) {
             if (is_derived_from_one_of_tuple_v<A, typename B::forbidden_parent_types>) { return false; }
         }
 
