@@ -195,7 +195,7 @@ Plotter::Paint Plotter::Paint::texture_pattern(const V2f& origin, const Size2f& 
 Plotter::FragmentPaint::FragmentPaint(const Paint& paint, const Clipping& clipping, const float stroke_width,
                                       const Type type) {
     // paint
-    const M3f paint_xform = paint.xform.inverse();
+    const M3f paint_xform = paint.xform.get_inverse();
     paint_rotation[0] = paint_xform[0][0];
     paint_rotation[1] = paint_xform[0][1];
     paint_rotation[2] = paint_xform[1][0];

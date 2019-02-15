@@ -2,9 +2,9 @@
 
 #include "notf/meta/smart_ptr.hpp"
 
-#include "notf/common/rational.hpp"
 #include "notf/common/geo/size2.hpp"
-#include "notf/common/vector2.hpp"
+#include "notf/common/geo/vector2.hpp"
+#include "notf/common/rational.hpp"
 
 #include "notf/graphic/graphics_context.hpp"
 

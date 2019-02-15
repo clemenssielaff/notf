@@ -1,6 +1,6 @@
 #pragma once
 
-#include "notf/common/arithmetic.hpp"
+#include "notf/common/geo/arithmetic.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -10,34 +10,25 @@ namespace detail {
 
 /// Two-dimensional size.
 template<class Element>
-struct Size2 : public Arithmetic<Size2<Element>, Element, Element, 2> {
+struct Size2 : public Arithmetic<Size2<Element>, Element, 2> {
 
     // types ----------------------------------------------------------------------------------- //
-public:
+private:
     /// Base class.
-    using super_t = Arithmetic<Size2<Element>, Element, Element, 2>;
+    using super_t = Arithmetic<Size2<Element>, Element, 2>;
 
+public:
     /// Scalar type used by this size type.
     using element_t = Element;
 
     // methods --------------------------------------------------------------------------------- //
 public:
-    /// Default (non-initializing) constructor..
-    Size2() = default;
+    /// Default (non-initializing) constructor.
+    constexpr Size2() noexcept = default;
 
     /// Forwarding constructor.
     template<class... Args>
-    constexpr Size2(Args&&... args) : super_t(std::forward<Args>(args)...) {}
-
-    /// Creates and returns an invalid Size2 instance.
-    constexpr static Size2 invalid() { return {-1, -1}; }
-
-    /// Creates and returns zero Size2 instance.
-    constexpr static Size2 zero() { return {0, 0}; }
-
-    /// The "most wrong" Size2 (maximal negative area).
-    /// Is useful as the starting point for defining the union of multiple Size2.
-    constexpr static Size2 wrongest() { return {min_value<element_t>(), min_value<element_t>()}; }
+    constexpr Size2(Args&&... args) noexcept : super_t{std::forward<Args>(args)...} {}
 
     /// Name of this Size2 type.
     static constexpr const char* get_name() {
@@ -52,23 +43,34 @@ public:
         }
     }
 
+    /// Creates and returns an invalid Size2 instance.
+    constexpr static Size2 invalid() noexcept { return {-1, -1}; }
+
+    /// The "most wrong" Size2 (maximal negative area).
+    /// Is useful as the starting point for defining the union of multiple Size2.
+    constexpr static Size2 wrongest() noexcept { return {min_value<element_t>(), min_value<element_t>()}; }
+
+    /// @{
     /// Width
     constexpr element_t& width() noexcept { return data[0]; }
     constexpr const element_t& width() const noexcept { return data[0]; }
+    /// @}
 
+    /// @{
     /// Height
     constexpr element_t& height() noexcept { return data[1]; }
     constexpr const element_t& height() const noexcept { return data[1]; }
+    /// @}
 
     /// Tests if this Size is valid (>=0) in both dimensions.
     constexpr bool is_valid() const noexcept { return width() >= 0 && height() >= 0; }
 
     /// Checks if the size has the same height and width.
-    constexpr bool is_square() const noexcept { return (abs(width()) - abs(height())) <= precision_high<element_t>(); }
+    constexpr bool is_square() const noexcept { return abs(width()) - abs(height()) <= precision_high<element_t>(); }
 
     /// Returns the area of a rectangle of this Size.
     /// Always returns 0, if the size is invalid.
-    constexpr element_t get_area() const noexcept { return notf::max(0, width() * height()); }
+    constexpr element_t get_area() const noexcept { return max(0, width() * height()); }
 
     // fields ---------------------------------------------------------------------------------- //
 public:

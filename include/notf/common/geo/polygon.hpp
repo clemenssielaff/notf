@@ -7,8 +7,8 @@
 #include "notf/meta/exception.hpp"
 
 #include "notf/common/geo/segment.hpp"
+#include "notf/common/geo/vector2.hpp"
 #include "notf/common/vector.hpp"
-#include "notf/common/vector2.hpp"
 
 NOTF_OPEN_NAMESPACE
 

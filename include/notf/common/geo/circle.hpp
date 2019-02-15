@@ -1,6 +1,6 @@
 #pragma once
 
-#include "notf/common/vector2.hpp"
+#include "notf/common/geo/vector2.hpp"
 
 NOTF_OPEN_NAMESPACE
 

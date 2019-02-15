@@ -27,13 +27,13 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
 
     common/color.cpp
     common/filesystem.cpp
-    common/matrix3.cpp
     common/mnemonic.cpp
     common/msgpack.cpp
     common/string.cpp
     common/thread_pool.cpp
     common/uuid.cpp
 
+    common/geo/matrix3.cpp
     common/geo/polygon.cpp
     common/geo/segment.cpp
 

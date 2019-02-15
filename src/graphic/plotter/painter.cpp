@@ -51,7 +51,7 @@ void Painter::fill() { m_design.add_command<WidgetDesign::FillCommand>(); }
 void Painter::stroke() { m_design.add_command<WidgetDesign::StrokeCommand>(); }
 
 void Painter::set_transform(const M3f& transform) {
-    if (!transform.is_identity()) {
+    if (!transform.is_approx(M3f::identity())) {
         State& current_state = _get_current_state();
         current_state.xform = transform;
         m_design.add_command<WidgetDesign::SetTransformationCommand>(current_state.xform);
@@ -60,14 +60,14 @@ void Painter::set_transform(const M3f& transform) {
 
 void Painter::reset_transform() {
     State& current_state = _get_current_state();
-    if (!current_state.xform.is_identity()) {
+    if (!current_state.xform.is_approx(M3f::identity())) {
         current_state.xform = M3f::identity();
         m_design.add_command<WidgetDesign::SetTransformationCommand>(current_state.xform);
     }
 }
 
 void Painter::transform(const M3f& transform) {
-    if (!transform.is_identity()) {
+    if (!transform.is_approx(M3f::identity())) {
         State& current_state = _get_current_state();
         current_state.xform *= transform;
         m_design.add_command<WidgetDesign::SetTransformationCommand>(current_state.xform);
@@ -85,7 +85,7 @@ void Painter::translate(const V2f& delta) {
 void Painter::rotate(const float angle) {
     if (!is_approx(angle, 0)) {
         State& current_state = _get_current_state();
-        current_state.xform.rotate(angle);
+        current_state.xform *= M3f::rotation(angle);
         m_design.add_command<WidgetDesign::SetTransformationCommand>(current_state.xform);
     }
 }

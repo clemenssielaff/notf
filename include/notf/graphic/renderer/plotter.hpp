@@ -1,7 +1,7 @@
 #pragma once
 
 #include "notf/common/color.hpp"
-#include "notf/common/matrix3.hpp"
+#include "notf/common/geo/matrix3.hpp"
 #include "notf/common/geo/size2.hpp"
 
 #include "notf/graphic/vertex_object.hpp"

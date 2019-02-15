@@ -1,6 +1,6 @@
 #pragma once
 
-#include "notf/common/arithmetic_vector.hpp"
+#include "notf/common/geo/arithmetic.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -9,7 +9,7 @@ NOTF_OPEN_NAMESPACE
 namespace detail {
 
 /// 4-dimensional mathematical vector containing real numbers.
-template<typename Element>
+template<class Element>
 struct Vector4 : public ArithmeticVector<Vector4<Element>, Element, 4> {
 
     // types --------------------------------------------------------------------------------- //

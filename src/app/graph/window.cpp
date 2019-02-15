@@ -260,7 +260,7 @@ bool Window::_on_state_change(Arguments::State& new_state) {
 
 bool Window::_on_size_change(Size2i& new_size) {
     // size must always be valid
-    new_size.max(Size2i::zero());
+    new_size = new_size.get_max(Size2i::zero());
 
     if (get<state>() == State::WINDOWED) {
         Size2i old_size;
@@ -276,7 +276,7 @@ bool Window::_on_size_change(Size2i& new_size) {
 }
 
 bool Window::_on_resolution_change(Size2i& new_resolution) {
-    new_resolution.max(Size2i::zero());
+    new_resolution = new_resolution.get_max(Size2i::zero());
 
     if (get<state>() == State::FULLSCREEN) {
         glfwSetWindowSize(m_glfw_window, new_resolution.width(), new_resolution.height());

@@ -4,8 +4,8 @@
 
 #include "notf/meta/log.hpp"
 
-#include "notf/common/matrix4.hpp"
-#include "notf/common/vector4.hpp"
+#include "notf/common/geo/matrix4.hpp"
+#include "notf/common/geo/vector4.hpp"
 
 #include "notf/app/resource_manager.hpp"
 

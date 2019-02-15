@@ -20,12 +20,6 @@ using Aabrd = detail::Aabr<double>;
 using Aabri = detail::Aabr<int>;
 using Aabrs = detail::Aabr<short>;
 
-// arithmetic.hpp
-namespace detail {
-template<class, class, class, size_t>
-struct Arithmetic;
-} // namespace detail
-
 // color.hpp
 struct Color;
 

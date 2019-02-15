@@ -31,7 +31,7 @@
 #include "notf/meta/pointer.hpp"
 
 #include "notf/common/geo/circle.hpp"
-#include "notf/common/vector2.hpp"
+#include "notf/common/geo/vector2.hpp"
 
 #include "notf/graphic/renderer/plotter.hpp"
 

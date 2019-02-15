@@ -4,7 +4,7 @@
 #include "notf/meta/smart_ptr.hpp"
 #include "notf/meta/tuple.hpp"
 
-#include "notf/common/arithmetic.hpp"
+#include "notf/common/geo/arithmetic.hpp"
 
 #include "notf/graphic/opengl_buffer.hpp"
 
@@ -54,10 +54,11 @@ class AttributePolicyFactory {
         }
     }
 
+    NOTF_CREATE_TYPE_DETECTOR(element_t);
     static constexpr auto create_element_t() {
         if constexpr (_has_type_v<Policy>) {
             using ValueType = typename Policy::type;
-            if constexpr (is_arithmetic_type<ValueType>) {
+            if constexpr (_has_element_t_v<ValueType>) {
                 return declval<typename ValueType::element_t>();
             } else if constexpr (std::is_arithmetic_v<ValueType>) {
                 return declval<ValueType>();

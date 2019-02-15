@@ -161,7 +161,7 @@ void Painterpreter::_stroke() {
     // create a sane stroke width
     float stroke_width;
     {
-        const float scale = (state.xform.scale_x() + state.xform.scale_y()) / 2;
+        const float scale = state.xform.get_scale_factor();
         stroke_width = max(state.stroke_width * scale, 0);
         if (stroke_width < 1) {
             // if the stroke width is less than pixel size, use alpha to emulate coverage.

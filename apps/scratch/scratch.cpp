@@ -104,7 +104,7 @@ private:
         //        painter.set_path(spline);
         //        painter.stroke();
 
-        const CubicBezier2f spline2({CubicBezier2f::Segment::line(-half_line - 100, half_line)});
+        const CubicBezier2f spline2({CubicBezier2f::Segment::line(-half_line - V2f{100.f, 0}, half_line)});
 
         painter.translate(400, 0);
         painter.stroke();

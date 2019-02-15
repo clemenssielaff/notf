@@ -4,8 +4,8 @@
 
 #include "notf/common/geo/aabr.hpp"
 #include "notf/common/geo/triangle.hpp"
-#include "notf/common/vector2.hpp"
-#include "notf/common/vector3.hpp"
+#include "notf/common/geo/vector2.hpp"
+#include "notf/common/geo/vector3.hpp"
 
 NOTF_OPEN_NAMESPACE
 

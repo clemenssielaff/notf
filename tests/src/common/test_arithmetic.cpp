@@ -1,6 +1,6 @@
 #include "catch2/catch.hpp"
 
-#include "notf/common/arithmetic.hpp"
+#include "notf/common/geo/arithmetic.hpp"
 
 NOTF_USING_NAMESPACE;
 

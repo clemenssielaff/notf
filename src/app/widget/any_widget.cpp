@@ -54,7 +54,7 @@ M3f AnyWidget::get_xform_to(WidgetHandle target) const {
         }
         target_branch *= itr->get_xform<Space::PARENT>();
     }
-    target_branch.inverse();
+    target_branch = target_branch.get_inverse();
 
     source_branch *= target_branch;
     return source_branch;

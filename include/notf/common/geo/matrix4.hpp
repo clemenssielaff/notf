@@ -1,6 +1,6 @@
 #pragma once
 
-#include "notf/common/vector4.hpp"
+#include "notf/common/geo/vector4.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -19,13 +19,14 @@ namespace detail {
 /// compatiblity with OpenGL.
 
 template<typename Element>
-struct Matrix4 : public Arithmetic<Matrix4<Element>, Element, Vector4<Element>, 4> {
+struct Matrix4 : public Arithmetic<Matrix4<Element>, Vector4<Element>, 4> {
 
     // types ----------------------------------------------------------------------------------- //
-public:
+private:
     /// Base class.
-    using super_t = Arithmetic<Matrix4<Element>, Element, Vector4<Element>, 4>;
+    using super_t = Arithmetic<Matrix4<Element>, Vector4<Element>, 4>;
 
+public:
     /// Scalar type used by this arithmetic type.
     using element_t = typename super_t::element_t;
 

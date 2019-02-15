@@ -28,7 +28,6 @@ constexpr T phi() noexcept {
 
 // operations ======================================================================================================= //
 
-using std::abs;
 using std::cos;
 using std::fmod;
 using std::pow;
@@ -36,6 +35,38 @@ using std::roundf;
 using std::sin;
 using std::sqrt;
 using std::tan;
+
+/// @{
+/// Fast trigonometric function approximations for small angles.
+/// Thresholds are set at 1% relative error, as described here:
+/// https://en.wikipedia.org/wiki/Small-angle_approximation#Error_of_the_approximations
+template<class T>
+T fast_cos(const T& radians) {
+    if (radians < 0.664) {
+        return T(1) - (radians * radians) / T(2);
+    } else {
+        return cos(radians);
+    }
+}
+
+template<class T>
+T fast_sin(const T& radians) {
+    if (radians < 0.24) {
+        return radians;
+    } else {
+        return sin(radians);
+    }
+}
+
+template<class T>
+T fast_tan(const T& radians) {
+    if (radians < 0.176) {
+        return radians;
+    } else {
+        return tan(radians);
+    }
+}
+/// @}
 
 /// Tests whether a given value is NAN.
 template<class T>
@@ -159,6 +190,20 @@ template<class T>
 T smootherstep(T x, const T lower_bound = 0, const T upper_bound = 1) {
     x = clamp((x - lower_bound) / (upper_bound - lower_bound), 0, 1);
     return x * x * x * (x * (x * 6 - 15) + 10);
+}
+
+/// Linear interpolation between two arithmetic values.
+/// @param from    Left value, full weight at blend <= 0.
+/// @param to      Right value, full weight at blend >= 1.
+/// @param blend   Blend value, clamped to range [0, 1].
+template<class T, class R>
+constexpr T lerp(const T& from, const T& to, const R& blend) noexcept {
+    if (blend <= 0) {
+        return from;
+    } else if (blend >= 1) {
+        return to;
+    }
+    return ((to - from) *= blend) += from;
 }
 
 // approx =========================================================================================================== //

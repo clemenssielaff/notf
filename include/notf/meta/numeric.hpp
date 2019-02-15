@@ -11,6 +11,12 @@ NOTF_OPEN_NAMESPACE
 
 // operations ======================================================================================================= //
 
+/// Absolute value.
+template<class T>
+constexpr T abs(T val) noexcept {
+    return val >= 0 ? val : -val;
+}
+
 /// Variadic min using auto type deduction.
 template<class T>
 constexpr T&& min(T&& val) noexcept {

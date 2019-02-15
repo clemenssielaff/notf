@@ -1,7 +1,7 @@
 #pragma once
 
 #include "notf/common/geo/size2.hpp"
-#include "notf/common/vector2.hpp"
+#include "notf/common/geo/vector2.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -14,60 +14,68 @@ namespace detail {
 /// While this does mean that you need to change four instead of two values for repositioning the Aabr, other
 /// calculations (like intersections) are faster; and they are usually more relevant.
 template<class Element>
-struct Aabr : public Arithmetic<Aabr<Element>, Element, Vector2<Element>, 2> {
+struct Aabr : public Arithmetic<Aabr<Element>, Vector2<Element>, 2> {
 
     // types ----------------------------------------------------------------------------------- //
-public:
+private:
     /// Base class.
-    using super_t = Arithmetic<Aabr<Element>, Element, Vector2<Element>, 2>;
+    using super_t = Arithmetic<Aabr<Element>, Vector2<Element>, 2>;
 
+public:
     /// Scalar type used by this arithmetic type.
     using element_t = typename super_t::element_t;
 
     /// Component type used by this arithmetic type.
     using component_t = typename super_t::component_t;
 
+    /// Data holder.
+    using Data = typename super_t::Data;
+
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default constructor.
     constexpr Aabr() noexcept = default;
+
+    /// Value constructor.
+    /// @param data Raw data for this arithmetic type.
+    constexpr Aabr(Data data) noexcept : super_t(std::move(data)) {}
 
     /// Constructs an Aabr of the given width and height, with the bottom-left corner at the given coordinates.
     /// @param x         X-coordinate of the bottom-left corner.
     /// @param y         Y-coordinate of the bottom-left corner.
     /// @param width     Width of the Aabr.
     /// @param height    Height of the Aabr.
-    constexpr Aabr(const element_t x, const element_t y, const element_t width, const element_t height)
+    constexpr Aabr(const element_t x, const element_t y, const element_t width, const element_t height) noexcept
         : super_t(component_t(x, y), component_t(x + width, y + height)) {}
 
     /// Constructs an Aabr of the given width and height, with the bottom-left corner at `position`.
     /// @param position  Position of the Aabr's bottom-left corner.
     /// @param width     Width of the Aabr.
     /// @param height    Height of the Aabr.
-    constexpr Aabr(const component_t position, const element_t width, const element_t height)
+    constexpr Aabr(const component_t position, const element_t width, const element_t height) noexcept
         : super_t(position, position + component_t(width, height)) {}
 
     /// Constructs an Aabr of the given size with the bottom-left corner at `position`.
     /// @param position  Position of the Aabr's bottom-left corner.
     /// @param size      Size of the Aabr.
-    constexpr Aabr(const component_t& position, const Size2<element_t>& size)
+    constexpr Aabr(const component_t& position, const Size2<element_t>& size) noexcept
         : super_t(position, component_t(position.x() + size.width(), position.y() + size.height)) {}
 
     /// Constructs an Aabr of the given size with the bottom-left corner at zero.
     /// @param size  Size of the Aabr.
-    constexpr Aabr(const Size2<element_t>& size)
+    constexpr Aabr(const Size2<element_t>& size) noexcept
         : super_t(component_t(0, 0), component_t(size.width(), size.height())) {}
 
     /// Constructs an Aabr of this element type from any other Aabr type.
     /// @param other    Aabr to copy from.
     template<class T>
-    constexpr Aabr(const Aabr<T>& other) : Aabr(other.left(), other.bottom(), other.right(), other.top()) {}
+    constexpr Aabr(const Aabr<T>& other) noexcept : Aabr(other.left(), other.bottom(), other.right(), other.top()) {}
 
     /// Constructs the Aabr from two of its corners.
     /// The corners don't need to be specific, the constructor figures out how to construct an Aabr from them.
     /// @param a    One corner point of the Aabr.
     /// @param b    Opposite corner point of the Aabr.
-    constexpr Aabr(const component_t& a, const component_t& b) {
+    constexpr Aabr(const component_t& a, const component_t& b) noexcept {
         if (a.x() < b.x()) {
             if (a.y() < b.y()) {
                 data[0] = a;
@@ -88,7 +96,7 @@ public:
     }
 
     /// The largest representable Aabr.
-    constexpr static Aabr huge() {
+    constexpr static Aabr largest() noexcept {
         Aabr result{};
         result[0] = component_t::all(min_value<element_t>());
         result[1] = component_t::all(max_value<element_t>());
@@ -97,7 +105,7 @@ public:
 
     /// The "most wrong" Aabr (maximal negative area).
     /// Is useful as the starting point for defining an Aabr from a set of points.
-    constexpr static Aabr wrongest() {
+    constexpr static Aabr wrongest() noexcept {
         Aabr result{};
         result[0] = component_t::all(max_value<element_t>());
         result[1] = component_t::all(min_value<element_t>());
@@ -105,7 +113,7 @@ public:
     }
 
     /// Returns an Aabr of a given size, with zero in the center.
-    constexpr static Aabr centered(const Size2<element_t>& size) {
+    constexpr static Aabr centered(const Size2<element_t>& size) noexcept {
         const element_t half_width = size.width / 2;
         const element_t half_height = size.height / 2;
         Aabr result{};
@@ -127,18 +135,22 @@ public:
         }
     }
 
+    /// @{
     /// X-coordinate of the left edge of this Aabr.
     constexpr element_t& left() noexcept { return data[0].x(); }
     constexpr const element_t& left() const noexcept { return data[0].x(); }
 
+    /// @{
     /// X-coordinate of the right edge of this Aabr.
     constexpr element_t& right() noexcept { return data[1].x(); }
     constexpr const element_t& right() const noexcept { return data[1].x(); }
 
+    /// @{
     /// Y-coordinate of the top edge of this Aabr.
     constexpr element_t& top() noexcept { return data[1].y(); }
     constexpr const element_t& top() const noexcept { return data[1].y(); }
 
+    /// @{
     /// Y-coordinate of the bottom edge of this Aabr.
     constexpr element_t& bottom() noexcept { return data[0].y(); }
     constexpr const element_t& bottom() const noexcept { return data[0].y(); }
@@ -377,6 +389,7 @@ public:
     /// @param amount    Number of units to move each edge.
     constexpr Aabr& shrink(const element_t amount) noexcept { return grow(-amount); }
 
+    /// @{
     /// Returns a shrunken copy of this Aabr.
     constexpr Aabr get_shrunken(const element_t amount) const& noexcept {
         Aabr result(*this);
@@ -385,6 +398,7 @@ public:
     }
     constexpr Aabr& get_shrunken(const element_t amount) && noexcept { return shrink(amount); }
 
+    /// @{
     /// Intersection of this Aabr with `other` in-place.
     /// Intersecting with another Aabr that does not intersect results in the zero Aabr.
     constexpr Aabr& intersect(const Aabr& other) noexcept {
@@ -397,6 +411,7 @@ public:
     }
     constexpr Aabr operator&=(const Aabr& other) noexcept { return intersect(other); }
 
+    /// @{
     /// Intersection of this Aabr with `other`.
     /// Intersecting with another Aabr that does not intersect results in the zero Aabr.
     /// @return  The intersection Aabr.
@@ -411,6 +426,7 @@ public:
     constexpr Aabr operator&(const Aabr& other) const& noexcept { return get_intersection(other); }
     constexpr Aabr& operator&(const Aabr& other) && noexcept { return intersect(other); }
 
+    /// @{
     /// Creates the union of this Aabr with `other` in-place.
     Aabr& unite(const Aabr& other) {
         left() = left() < other.left() ? left() : other.left();
@@ -421,6 +437,7 @@ public:
     }
     Aabr& operator|=(const Aabr& other) { return unite(other); }
 
+    /// @{
     /// Creates the union of this Aabr with `other`.
     Aabr get_union(const Aabr& other) const& {
         return Aabr(component_t{left() < other.left() ? left() : other.left(),

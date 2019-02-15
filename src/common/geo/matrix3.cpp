@@ -1,4 +1,4 @@
-#include "notf/common/matrix3.hpp"
+#include "notf/common/geo/matrix3.hpp"
 
 #include "notf/common/geo/aabr.hpp"
 #include "notf/common/geo/bezier.hpp"
@@ -11,8 +11,8 @@ NOTF_USING_NAMESPACE;
 
 /// Generic Vector2 transformation.
 template<class Vector2Element, class MatrixElement>
-constexpr detail::Vector2<Vector2Element>
-do_transform(const detail::Vector2<Vector2Element>& vector, const detail::Matrix3<MatrixElement>& matrix) noexcept {
+constexpr detail::Vector2<Vector2Element> do_transform(const detail::Vector2<Vector2Element>& vector,
+                                                       const detail::Matrix3<MatrixElement>& matrix) noexcept {
     return {
         matrix.data[0][0] * vector[0] + matrix.data[1][0] * vector[1] + matrix.data[2][0],
         matrix.data[0][1] * vector[0] + matrix.data[1][1] * vector[1] + matrix.data[2][1],
@@ -21,8 +21,8 @@ do_transform(const detail::Vector2<Vector2Element>& vector, const detail::Matrix
 
 /// Generic Aabr transformation.
 template<class AabrElement, class MatrixElement>
-constexpr detail::Aabr<AabrElement>
-do_transform(const detail::Aabr<AabrElement>& aabr, const detail::Matrix3<MatrixElement>& matrix) noexcept {
+constexpr detail::Aabr<AabrElement> do_transform(const detail::Aabr<AabrElement>& aabr,
+                                                 const detail::Matrix3<MatrixElement>& matrix) noexcept {
 
     detail::Vector2<AabrElement> d0(aabr.left(), aabr.bottom());
     detail::Vector2<AabrElement> d1(aabr.right(), aabr.top());
@@ -43,8 +43,8 @@ do_transform(const detail::Aabr<AabrElement>& aabr, const detail::Matrix3<Matrix
 
 /// Generic Polygon transformation.
 template<class PolygonElement, class MatrixElement>
-constexpr detail::Polygon<PolygonElement>
-do_transform(const detail::Polygon<PolygonElement>& polygon, const detail::Matrix3<MatrixElement>& matrix) noexcept {
+constexpr detail::Polygon<PolygonElement> do_transform(const detail::Polygon<PolygonElement>& polygon,
+                                                       const detail::Matrix3<MatrixElement>& matrix) noexcept {
     using vertex_t = typename detail::Polygon<PolygonElement>::vector_t;
 
     std::vector<vertex_t> vertices;
@@ -70,8 +70,7 @@ constexpr detail::Bezier<Order, BezierElement> do_transform(const detail::Bezier
     for (const segment_t& segment : spline.segments) {
         segments.emplace_back(point_t(do_transform(segment.start, matrix)),
                               point_t(do_transform(segment.ctrl1, matrix)),
-                              point_t(do_transform(segment.ctrl2, matrix)),
-                              point_t(do_transform(segment.end, matrix)));
+                              point_t(do_transform(segment.ctrl2, matrix)), point_t(do_transform(segment.end, matrix)));
     }
     return detail::Bezier<Order, BezierElement>(std::move(segments));
 }

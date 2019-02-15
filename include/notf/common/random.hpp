@@ -2,7 +2,7 @@
 
 #include "randutils/randutils.hpp"
 
-#include "notf/common/arithmetic.hpp"
+#include "notf/common/geo/arithmetic.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -15,9 +15,8 @@ T random(const T min = 0, const T max = 1) {
 }
 
 /// Returns a random arithmetic value.
-template<class T>
-std::enable_if_t<detail::is_arithmetic_type<T>, T>
-random(const typename T::element_t min = 0, const typename T::element_t max = 1) {
+template<class T, class = typename T::element_t>
+T random(const typename T::element_t min = 0, const typename T::element_t max = 1) {
     T result;
     for (size_t dim = 0; dim < T::get_dimensions(); ++dim) {
         result.data[dim] = random<typename T::component_t>(min, max);
@@ -49,6 +48,14 @@ T random(const size_t length, const std::string_view pool) {
 template<class T = double>
 std::enable_if_t<std::is_floating_point_v<T>, T> random_radian() {
     return random<T>(-pi<T>(), pi<T>());
+}
+
+/// Randomly calls one of the given lambdas.
+/// All lambdas have to return void and take no arguments.
+template<class... Lambdas>
+constexpr void random_call(Lambdas... lambdas) {
+    constexpr std::array<std::function<void()>, sizeof...(Lambdas)> all_lambdas{lambdas...};
+    all_lambdas[random<size_t>(0, sizeof...(Lambdas) - 1)]();
 }
 
 NOTF_CLOSE_NAMESPACE
