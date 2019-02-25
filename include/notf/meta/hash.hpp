@@ -45,7 +45,8 @@ enum class HashID : size_t {
     CIRCLE,
     TRIANGLE,
     SEGMENT,
-    POLYGON,
+    POLYLINE,
+    PATH2,
 };
 
 } // namespace detail

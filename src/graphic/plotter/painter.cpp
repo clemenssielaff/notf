@@ -1,165 +1,123 @@
 #include "notf/graphic/plotter/painter.hpp"
 
-#include "notf/meta/log.hpp"
-
-#include "notf/common/geo/segment.hpp"
-
 #include "notf/graphic/plotter/design.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 // painter ========================================================================================================== //
 
-Painter::Painter(WidgetDesign& design) : m_design(design) { m_design.reset(); }
+Painter::Painter(PlotterDesign& design) : m_design(design) { m_design.reset(); }
 
-//Painter::PathId Painter::set_path(Polygonf polygon) {
-//    // TODO: make sure that this turns into a `set_path_index` command should the path already exist on the painter
-//    m_design.add_command<WidgetDesign::SetPolygonPathCommand>(std::move(polygon));
-//    m_current_path_id = m_next_path_id++;
-//    return m_current_path_id;
-//}
+void Painter::push_state() {
+    NOTF_ASSERT(!m_states.empty());
+    m_states.emplace_back(_get_state());
+    m_design.add_command<PlotterDesign::PushState>();
+}
 
-//Painter::PathId Painter::set_path(CubicBezier2f spline) {
-//    m_design.add_command<WidgetDesign::SetSplinePathCommand>(std::move(spline));
-//    m_current_path_id = m_next_path_id++;
-//    return m_current_path_id;
-//}
+void Painter::pop_state() {
+    NOTF_ASSERT(!m_states.empty());
+    if (m_states.size() == 1) {
+        reset_state();
+    } else {
+        m_design.add_command<PlotterDesign::PopState>();
+        m_states.pop_back();
+    }
+}
 
-//Painter::PathId Painter::set_path(PathId id) {
-//    if (id >= m_next_path_id) {
-//        // no change if the given ID is invalid
-//        NOTF_LOG_WARN("Path ID \"{}\" is not a valid Path - using current one instead", id);
-//    } else {
-//        m_design.add_command<WidgetDesign::SetPathIndexCommand>(id);
-//        m_current_path_id = id;
-//    }
-//    return m_current_path_id;
-//}
+void Painter::reset_state() {
+    const static State default_state = {};
+    m_states.back() = default_state;
+    m_design.add_command<PlotterDesign::ResetState>();
+}
+
+void Painter::set_path(Path2 path) {
+    auto& state = _get_state();
+    if (path != state.path) {
+        state.path = std::move(path);
+        m_design.add_command<PlotterDesign::SetPath>(state.path);
+    }
+}
 
 void Painter::set_font(FontPtr font) {
-    State& current_state = _get_current_state();
-    if (font && current_state.font != font) {
-        current_state.font = font;
-        m_design.add_command<WidgetDesign::SetFontCommand>(std::move(font));
+    auto& state = _get_state();
+    if (font != state.font) {
+        state.font = std::move(font);
+        m_design.add_command<PlotterDesign::SetFont>(state.font);
     }
 }
 
-void Painter::write(std::string text) { m_design.add_command<WidgetDesign::WriteCommand>(std::move(text)); }
-
-void Painter::fill() { m_design.add_command<WidgetDesign::FillCommand>(); }
-
-void Painter::stroke() { m_design.add_command<WidgetDesign::StrokeCommand>(); }
-
-void Painter::set_transform(const M3f& transform) {
-    if (!transform.is_approx(M3f::identity())) {
-        State& current_state = _get_current_state();
-        current_state.xform = transform;
-        m_design.add_command<WidgetDesign::SetTransformationCommand>(current_state.xform);
+void Painter::set_paint(Paint paint) {
+    auto& state = _get_state();
+    if (paint != state.paint) {
+        state.paint = std::move(paint);
+        m_design.add_command<PlotterDesign::SetPaint>(state.paint);
     }
 }
 
-void Painter::reset_transform() {
-    State& current_state = _get_current_state();
-    if (!current_state.xform.is_approx(M3f::identity())) {
-        current_state.xform = M3f::identity();
-        m_design.add_command<WidgetDesign::SetTransformationCommand>(current_state.xform);
+void Painter::set_stencil(Path2 stencil) {
+    auto& state = _get_state();
+    if (stencil != state.stencil) {
+        state.stencil = std::move(stencil);
+        m_design.add_command<PlotterDesign::SetStencil>(state.stencil);
     }
 }
 
-void Painter::transform(const M3f& transform) {
-    if (!transform.is_approx(M3f::identity())) {
-        State& current_state = _get_current_state();
-        current_state.xform *= transform;
-        m_design.add_command<WidgetDesign::SetTransformationCommand>(current_state.xform);
+void Painter::set_transform(const M3f& xform) {
+    auto& state = _get_state();
+    if (xform != state.xform) {
+        state.xform = std::move(xform);
+        m_design.add_command<PlotterDesign::SetXform>(state.xform);
     }
 }
 
-void Painter::translate(const V2f& delta) {
-    if (delta.get_magnitude_sq() > precision_low<float>()) {
-        State& current_state = _get_current_state();
-        current_state.xform.translate(delta);
-        m_design.add_command<WidgetDesign::SetTransformationCommand>(current_state.xform);
-    }
+Painter& Painter::operator*=(const M3f& xform) {
+    _get_state().xform *= xform;
+    return *this;
 }
 
-void Painter::rotate(const float angle) {
-    if (!is_approx(angle, 0)) {
-        State& current_state = _get_current_state();
-        current_state.xform *= M3f::rotation(angle);
-        m_design.add_command<WidgetDesign::SetTransformationCommand>(current_state.xform);
-    }
-}
+void Painter::fill() { m_design.add_command<PlotterDesign::Fill>(); }
 
-void Painter::set_clipping(Clipping clipping) {
-    State& current_state = _get_current_state();
-    if (current_state.clipping != clipping) {
-        current_state.clipping = std::move(clipping);
-        m_design.add_command<WidgetDesign::SetClippingCommand>(current_state.clipping);
-    }
-}
+void Painter::stroke() { m_design.add_command<PlotterDesign::Stroke>(); }
 
-void Painter::remove_clipping() {
-    State& current_state = _get_current_state();
-    if (current_state.clipping != Clipping()) {
-        current_state.clipping = Clipping();
-        m_design.add_command<WidgetDesign::SetClippingCommand>(current_state.clipping);
-    }
-}
+void Painter::write(std::string text) { m_design.add_command<PlotterDesign::Write>(std::move(text)); }
 
 void Painter::set_blend_mode(const BlendMode mode) {
-    State& current_state = _get_current_state();
-    if (current_state.blend_mode != mode) {
-        current_state.blend_mode = mode;
-        m_design.add_command<WidgetDesign::SetBlendModeCommand>(current_state.blend_mode);
+    auto& state = _get_state();
+    if (mode != state.blend_mode) {
+        state.blend_mode = mode;
+        m_design.add_command<PlotterDesign::SetBlendMode>(mode);
     }
 }
 
 void Painter::set_alpha(const float alpha) {
-    State& current_state = _get_current_state();
-    if (!is_approx(current_state.alpha, alpha)) {
-        current_state.alpha = alpha;
-        m_design.add_command<WidgetDesign::SetAlphaCommand>(current_state.alpha);
+    auto& state = _get_state();
+    if (!is_approx(alpha, state.alpha)) {
+        state.alpha = alpha;
+        m_design.add_command<PlotterDesign::SetAlpha>(alpha);
     }
 }
 
 void Painter::set_line_cap(const LineCap cap) {
-    State& current_state = _get_current_state();
-    if (current_state.line_cap != cap) {
-        current_state.line_cap = cap;
-        m_design.add_command<WidgetDesign::SetLineCapCommand>(current_state.line_cap);
+    auto& state = _get_state();
+    if (cap != state.line_cap) {
+        state.line_cap = cap;
+        m_design.add_command<PlotterDesign::SetLineCap>(cap);
     }
 }
 
 void Painter::set_line_join(const LineJoin join) {
-    State& current_state = _get_current_state();
-    if (current_state.line_join != join) {
-        current_state.line_join = join;
-        m_design.add_command<WidgetDesign::SetLineJoinCommand>(current_state.line_join);
+    auto& state = _get_state();
+    if (join != state.line_join) {
+        state.line_join = join;
+        m_design.add_command<PlotterDesign::SetLineJoin>(join);
     }
 }
 
-void Painter::set_fill(Paint paint) {
-    State& current_state = _get_current_state();
-    if (current_state.fill_paint != paint) {
-        current_state.fill_paint = std::move(paint);
-        m_design.add_command<WidgetDesign::SetFillPaintCommand>(current_state.fill_paint);
-    }
-}
-
-void Painter::set_stroke(Paint paint) {
-    State& current_state = _get_current_state();
-    if (current_state.stroke_paint != paint) {
-        current_state.stroke_paint = std::move(paint);
-        m_design.add_command<WidgetDesign::SetStrokePaintCommand>(current_state.stroke_paint);
-    }
-}
-
-void Painter::set_stroke_width(float width) {
-    width = max(0, width);
-    State& current_state = _get_current_state();
-    if (!is_approx(current_state.stroke_width, width)) {
-        current_state.stroke_width = width;
-        m_design.add_command<WidgetDesign::SetStrokeWidthCommand>(current_state.stroke_width);
+void Painter::set_stroke_width(const float stroke_width) {
+    auto& state = _get_state();
+    if (!is_approx(stroke_width, state.stroke_width)) {
+        state.stroke_width = stroke_width;
+        m_design.add_command<PlotterDesign::SetStrokeWidth>(stroke_width);
     }
 }
 

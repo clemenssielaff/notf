@@ -94,9 +94,13 @@ using AnyVertexBuffer = detail::TypedOpenGLBuffer<detail::OpenGLBufferType::VERT
 NOTF_DECLARE_SHARED_POINTERS_ONLY(AnyVertexBuffer);
 NOTF_DECLARE_SHARED_POINTERS_TEMPLATE2(class, VertexBuffer);
 
-// renderer/plotter.hpp ---------------------------------------------------- //
+// plotter/plotter.hpp ----------------------------------------------------- //
 
 NOTF_DECLARE_SHARED_POINTERS(class, Plotter);
+
+// plotter/design.hpp ------------------------------------------------------ //
+
+class PlotterDesign;
 
 // text/font.hpp ----------------------------------------------------------- //
 
@@ -106,8 +110,6 @@ NOTF_DECLARE_SHARED_POINTERS(class, Font);
 
 NOTF_DECLARE_UNIQUE_POINTERS(class, FontManager);
 
-// TODO DELETE
-class Painterpreter;
 
 NOTF_CLOSE_NAMESPACE
 

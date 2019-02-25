@@ -24,8 +24,8 @@ public:
 
     // fields ---------------------------------------------------------------------------------- //
 private:
-    /// Painterpreter to use for visualization.
-    PainterpreterPtr m_painterpreter;
+    /// Plotter to use for visualization.
+    PlotterPtr m_plotter;
 };
 
 NOTF_CLOSE_NAMESPACE

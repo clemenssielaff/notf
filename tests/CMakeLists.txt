@@ -19,9 +19,10 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src
     common/test_any.cpp
     common/test_arithmetic.cpp
     common/test_mutex.cpp
-    common/test_polygon.cpp
+    common/test_polyline.cpp
     common/test_msgpack.cpp
     common/test_random.cpp
+    common/test_path2.cpp
     common/test_string.cpp
     common/test_string_view.cpp
     common/test_thread.cpp

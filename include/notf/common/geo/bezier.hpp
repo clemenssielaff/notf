@@ -2,7 +2,10 @@
 
 #include <vector>
 
-#include "notf/common/geo/vector2.hpp"
+#include "notf/meta/hash.hpp"
+#include "notf/meta/integer.hpp"
+
+#include "notf/common/fwd.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -10,111 +13,92 @@ namespace detail {
 
 // bezier =========================================================================================================== //
 
-/// Bezier spline.
-template<size_t ORDER, class VECTOR>
-struct Bezier {
-
-    /// Vector type.
-    using vector_t = VECTOR;
-
-    /// Element type.
-    using element_t = typename VECTOR::element_t;
-
-    /// Order of this Bezier spline.
-    static constexpr size_t order() { return ORDER; }
+/// 1 dimensional Bezier segment.
+/// Used as a building block for the PolyBezier spline.
+template<size_t Order, class Element>
+class Bezier {
 
     // types ----------------------------------------------------------------------------------- //
-
-    struct Segment {
-        // fields ------------------------------------------------------------------------------ //
-        /// Start of the spline, in absolute coordinates.
-        vector_t start;
-
-        /// First control point, in absolute coordinates.
-        vector_t ctrl1;
-
-        /// Second control point, in absolute coordinates.
-        vector_t ctrl2;
-
-        /// End of the spline, in absolute coordinates.
-        vector_t end;
-
-        // TODO: proper bezier template class (dimensions & order) that stores a Polygon inside
-
-        // methods ----------------------------------------------------------------------------- //
-        /// Default constructor.
-        Segment() = default;
-
-        /// Element-wise constructor.
-        /// @param start    Start of the spline, in absolute coordinates.
-        /// @param ctrl1    First control point, in absolute coordinates.
-        /// @param ctrl2    Second control point, in absolute coordinates.
-        /// @param end      End of the spline, in absolute coordinates.
-        Segment(vector_t a, vector_t b, vector_t c, vector_t d)
-            : start(std::move(a)), ctrl1(std::move(b)), ctrl2(std::move(c)), end(std::move(d)) {}
-
-        /// Straight line.
-        /// @param start    Start of the spline, in absolute coordinates.
-        /// @param end      End of the spline, in absolute coordinates.
-        static Segment line(const vector_t a, vector_t d) {
-            const vector_t delta_thirds = (d - a) * (1. / 3.);
-            return Segment(a, a + delta_thirds, a + (delta_thirds * 2), std::move(d));
-        }
-
-        vector_t get_tangent(element_t t) const {
-            // the tangent at the very extremes 0 and 1 may not be defined
-            static const element_t epsilon = precision_low<element_t>();
-            t = clamp(t, epsilon, 1 - epsilon);
-
-            const element_t ti = 1 - t;
-            return ((ctrl1 - start) * (3 * ti * ti)) + ((ctrl2 - ctrl1) * (6 * ti * t)) + ((end - ctrl2) * (3 * t * t));
-        }
-    };
-
-    // methods --------------------------------------------------------------------------------- //
 public:
-    Bezier() = default;
+    /// Element type.
+    using element_t = Element;
 
-    Bezier(std::vector<Segment> segments) : segments(std::move(segments)) {}
+private:
+    /// Data held by this Bezier segment.
+    using weights_t = std::array<element_t, Order + 1>;
+
+    // helper ---------------------------------------------------------------------------------- //
+private:
+    /// Actual bezier interpolation.
+    /// Might look a bit overcomplicated, but produces the same assembly code for a bezier<3> as the
+    /// "extremely-optimized version" from https://pomax.github.io/bezierinfo/#control
+    /// (see https://godbolt.org/z/HbOyKJ for a comparison)
+    template<size_t... I>
+    constexpr auto _interpolate_impl(const element_t t, std::index_sequence<I...>) const {
+        constexpr const std::array<element_t, Order + 1> binomials = pascal_triangle_row<Order, element_t>();
+        const std::array<element_t, Order + 1> ts = power_list<Order + 1>(t);
+        const std::array<element_t, Order + 1> its = power_list<Order + 1>(1 - t);
+        auto lambda = [&](const ulong i) { return binomials[i] * m_weights[i] * ts[i] * its[Order - i]; };
+        return sum(lambda(I)...);
+    }
+
+public:
+    /// Default constructor.
+    constexpr Bezier() noexcept = default;
+
+    /// Value constructor.
+    /// @param data Data making up the Bezier.
+    constexpr Bezier(const weights_t& data) noexcept : m_weights(data) {}
+
+    /// Value constructor.
+    /// @param start    Start weight point of the Bezier, determines the data type.
+    /// @param tail     All remaining weights.
+    template<class T, class... Ts,
+             class = std::enable_if_t<all(sizeof...(Ts) == Order,  //
+                                          std::is_arithmetic_v<T>, //
+                                          all_convertible_to<T, Ts...>)>>
+    constexpr Bezier(T start, Ts... tail) : m_weights({start, tail...}) {}
+
+    /// Straight line with constant interpolation speed.
+    /// @param start    Start weight.
+    /// @param end      End weight.
+    constexpr static Bezier line(const element_t& start, const element_t& end) {
+        const element_t delta = end - start;
+        weights_t data{};
+        for (size_t i = 0; i < Order + 1; ++i) {
+            data[i] = (element_t(i) / element_t(Order)) * delta;
+        }
+        return Bezier(std::move(data));
+    }
+
+    /// Order of this Bezier spline.
+    static constexpr size_t get_order() noexcept { return Order; }
+
+    /// Bezier interpolation at position `t`.
+    /// A bezier is most useful in [0, 1] but may be sampled outside that interval as well.
+    /// @param t    Position to evaluate.
+    constexpr element_t interpolate(const element_t& t) const {
+        return _interpolate_impl(t, std::make_index_sequence<Order + 1>{});
+    }
+
+    /// The derivate bezier, can be used to calculate the tangent.
+    constexpr std::enable_if_t<(Order > 0), Bezier<Order - 1, element_t>> get_derivate() const {
+        std::array<element_t, Order - 1> deriv_weights;
+        for (ulong k = 0; k < Order; ++k) {
+            deriv_weights[k] = Order * (deriv_weights[k + 1] - deriv_weights[k]);
+        }
+        return Bezier<Order - 1, element_t>(std::move(deriv_weights));
+    }
 
     // fields ---------------------------------------------------------------------------------- //
 public:
-    std::vector<Segment> segments;
+    /// Bezier weights.
+    weights_t m_weights;
 };
 
 } // namespace detail
 
-// formatting ======================================================================================================= //
-
-/// Prints the contents of a Bezier spline into a std::ostream.
-/// @param os       Output stream, implicitly passed with the << operator.
-/// @param bezier   Bezier spline to print.
-/// @return Output stream for further output.
-inline std::ostream& operator<<(std::ostream& out, const CubicBezier2f& bezier) {
-    return out;
-} // << fmt::format("{}", bezier); }
-
 NOTF_CLOSE_NAMESPACE
-
-namespace fmt {
-
-template<size_t Order, class Element>
-struct formatter<notf::detail::Bezier<Order, Element>> {
-    using type = notf::detail::Bezier<Order, Element>;
-
-    template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx) {
-        return ctx.begin();
-    }
-
-    template<typename FormatContext>
-    auto format(const type& bezier, FormatContext& ctx) {
-        //        return format_to(ctx.begin(), "{}({}, {})", type::get_name(), aabr[0], aabr[1]);
-        // TODO: bezier printing
-    }
-};
-
-} // namespace fmt
 
 // std::hash ======================================================================================================== //
 
@@ -129,8 +113,5 @@ struct std::hash<notf::detail::Bezier<ORDER, VECTOR>> {
 
 // compile time tests =============================================================================================== //
 
-static_assert(sizeof(notf::CubicBezier2f::Segment) == sizeof(notf::V2f) * 4,
-              "This compiler seems to inject padding bits into the notf::Bezier2f memory layout. "
-              "You may be able to use compiler-specific #pragmas to enforce a contiguous memory layout.");
-static_assert(std::is_pod<notf::CubicBezier2f::Segment>::value,
-              "This compiler does not recognize notf::Bezier2f as a POD.");
+static_assert(sizeof(notf::CubicBezierf) == sizeof(float) * 4);
+static_assert(notf::is_pod_v<notf::CubicBezierf>);

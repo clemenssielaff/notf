@@ -94,10 +94,10 @@ using Size2s = detail::Size2<short>;
 // bezier.hpp
 namespace detail {
 template<size_t, class>
-struct Bezier;
+class Bezier;
 }
-using CubicBezier2f = detail::Bezier<3, V2f>;
-using CubicBezier2d = detail::Bezier<3, V2d>;
+using CubicBezierf = detail::Bezier<3, float>;
+using CubicBezierd = detail::Bezier<3, double>;
 
 // circle.hpp
 namespace detail {
@@ -106,12 +106,20 @@ struct Circle;
 }
 using Circlef = detail::Circle<float>;
 
-// polygon.hpp
+// polyline.hpp
 namespace detail {
 template<class>
-class Polygon;
+class Polyline;
 }
-using Polygonf = detail::Polygon<float>;
+using Polylinef = detail::Polyline<float>;
+
+// polybezier.hpp
+namespace detail {
+template<size_t, class>
+class PolyBezier;
+}
+using CubicPolyBezier2f = detail::PolyBezier<3, V2f>;
+using CubicPolyBezier2d = detail::PolyBezier<3, V2d>;
 
 // segment.hpp
 namespace detail {
@@ -129,6 +137,9 @@ template<class>
 struct Triangle;
 }
 using Trianglef = detail::Triangle<float>;
+
+// path2.hpp
+NOTF_DECLARE_SHARED_POINTERS(class, Path2);
 
 // free templates =================================================================================================== //
 

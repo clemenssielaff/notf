@@ -437,7 +437,7 @@ public:
         result.normalize();
         return result;
     }
-    actual_t&& get_normalized() && noexcept { return normalize(); }
+    actual_t& get_normalized() && noexcept { return normalize(); }
     /// @}
 
     // geometric --------------------------------------------------------------

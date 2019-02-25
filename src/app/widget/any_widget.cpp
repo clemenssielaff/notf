@@ -1,6 +1,5 @@
 #include "notf/app/widget/any_widget.hpp"
 
-#include "notf/graphic/plotter/clipping.hpp"
 #include "notf/graphic/plotter/painter.hpp"
 
 #include "notf/app/widget/widget_scene.hpp"
@@ -19,7 +18,7 @@ AnyWidget::AnyWidget(valid_ptr<AnyNode*> parent) : super_t(parent) {
     //    connect_signal(m_visibility.get_signal(), &Widget::_relayout_upwards);
 }
 
-const Clipping& AnyWidget::get_clipping_rect() const {
+const Aabrf& AnyWidget::get_clipping_rect() const {
     if (AnyWidget* parent = dynamic_cast<AnyWidget*>(AnyNode::AccessFor<AnyWidget>::get_parent(*this))) {
         return parent->get_clipping_rect();
     } else {
@@ -114,12 +113,9 @@ Aabrf AnyWidget::_calculate_content_aabr() const {
     return result;
 }
 
-const WidgetDesign& AnyWidget::_get_design() {
-    if (m_design.is_empty()) {
-        Painter painter(m_design);
-        _paint(painter);
-        if (m_design.is_empty()) { m_design.add_command<WidgetDesign::NoopCommand>(); }
-    }
+const PlotterDesign& AnyWidget::_get_design() {
+    Painter painter(m_design);
+    _paint(painter); // TODO: minimize widget redesign
     return m_design;
 }
 

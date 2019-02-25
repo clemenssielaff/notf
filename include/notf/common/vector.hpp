@@ -66,16 +66,18 @@ T& create_back(std::vector<T>& target, Args&&... args) {
 
 /// Extends a vector with another one of the same type.
 /// From https://stackoverflow.com/a/41079085
-template<class T>
-std::vector<T>& extend(std::vector<T>& vector, const std::vector<T>& extension) {
+template<class T, template<class> class Container>
+std::vector<T>& extend(std::vector<T>& vector, const Container<T>& extension) {
+    vector.reserve(vector.size() + extension.size());
     vector.insert(std::end(vector), std::cbegin(extension), std::cend(extension));
     return vector;
 }
-template<class T>
-std::vector<T>& extend(std::vector<T>& vector, std::vector<T>&& extension) {
+template<class T, template<class> class Container>
+std::vector<T>& extend(std::vector<T>& vector, Container<T>&& extension) {
     if (vector.empty()) {
         vector = std::move(extension);
     } else {
+        vector.reserve(vector.size() + extension.size());
         std::move(std::begin(extension), std::end(extension), std::back_inserter(vector));
         extension.clear();
     }

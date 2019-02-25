@@ -20,7 +20,7 @@ struct BlendMode {
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Blend mode, can be set for RGB and the alpha channel separately.
-    enum Mode : GLubyte {
+    enum Mode : uchar {
         SOURCE_OVER,      ///< Display the source image wherever the source image is opaque, the destination image
                           /// elsewhere (most common mode).
         SOURCE_IN,        ///< Display the source image where the both are opaque, transparency elsewhere.

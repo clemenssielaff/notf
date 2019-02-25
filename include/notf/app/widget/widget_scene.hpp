@@ -1,7 +1,5 @@
 #pragma once
 
-#include "notf/graphic/plotter/clipping.hpp"
-
 #include "notf/app/graph/scene.hpp"
 #include "notf/app/widget/any_widget.hpp"
 #include "notf/app/widget/widget_visualizer.hpp"
@@ -40,7 +38,7 @@ public:
     AnyNodeHandle get_widget() const { return m_root_widget; }
 
     /// Outermost clipping rect, encompasses the entire Scene.
-    const Clipping& get_clipping_rect() const { return m_clipping; }
+    const Aabrf& get_clipping_rect() const { return m_clipping; }
 
     // fields ------------------------------------------------------------------------------------------------------- //
 private:
@@ -48,7 +46,7 @@ private:
     WidgetHandle m_root_widget;
 
     /// Outermost clipping rect, encompasses the entire Scene.
-    Clipping m_clipping;
+    Aabrf m_clipping;
 };
 
 // widget scene handle ============================================================================================== //

@@ -18,20 +18,27 @@ constexpr long double largest_supported_diagonale() { return 11585.2375029603946
 
 } // namespace detail
 
-template<typename Real>
+template<class Real>
 constexpr Real lowest_tested() {
     return static_cast<Real>(-detail::largest_supported_diagonale());
 }
 
-template<typename Real>
+template<class Real>
 constexpr Real highest_tested() {
     return static_cast<Real>(detail::largest_supported_diagonale());
 }
 
 /// Random number around zero in the range of a size what we'd expect to see as a monitor resolution.
-template<typename Real>
-inline Real random_tested() {
-    return random<Real>(lowest_tested<Real>(), highest_tested<Real>());
+template<class T, class = std::enable_if_t<std::is_arithmetic_v<T>>>
+T random_tested() {
+    return random<T>(lowest_tested<T>(), highest_tested<T>());
+}
+
+/// Returns a random arithmetic value.
+template<class T>
+auto random_tested() -> decltype(typename T::element_t{}, T{}) {
+    using Element = typename T::element_t;
+    return random<T>(lowest_tested<Element>(), highest_tested<Element>());
 }
 
 /// Generates a std::thread::id, even though its constructor is private.

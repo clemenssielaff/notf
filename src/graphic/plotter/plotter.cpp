@@ -70,13 +70,17 @@
 /// In order for Glyphs to render, the Shader requires the FontAtlas size, which is passed in to the same uniform as is
 /// used as the "center" vertex for shapes.
 
-#include "notf/graphic/renderer/plotter.hpp"
+#include "notf/graphic/plotter/plotter.hpp"
+
+#include "notf/meta/log.hpp"
 
 #include "notf/common/filesystem.hpp"
 #include "notf/common/geo/bezier.hpp"
-#include "notf/common/geo/polygon.hpp"
+#include "notf/common/geo/matrix4.hpp"
+#include "notf/common/geo/polyline.hpp"
 
 #include "notf/graphic/graphics_system.hpp"
+#include "notf/graphic/plotter/design.hpp"
 #include "notf/graphic/shader_program.hpp"
 #include "notf/graphic/text/font_manager.hpp"
 #include "notf/graphic/texture.hpp"
@@ -89,32 +93,6 @@ namespace {
 using UsageHint = notf::detail::AnyOpenGLBuffer::UsageHint;
 
 static constexpr GLenum g_index_type = to_gl_type(Plotter::IndexBuffer::index_t{});
-
-/// simple convenience methods to make the code more readable
-
-void set_pos(Plotter::VertexBuffer::vertex_t& vertex, V2f pos) { std::get<0>(vertex) = std::move(pos); }
-
-void set_first_ctrl(Plotter::VertexBuffer::vertex_t& vertex, V2f pos) { std::get<1>(vertex) = std::move(pos); }
-
-void set_second_ctrl(Plotter::VertexBuffer::vertex_t& vertex, V2f pos) { std::get<2>(vertex) = std::move(pos); }
-
-/// The `set_modified_...~ methods modify the given ctrl point so we can be certain that is stores the outgoing tangent
-/// of the vertex. For that, we get the tangent either from the ctrl point itself (if the distance to the vertex > 0) or
-/// by calculating the tangent from the spline at the vertex. The control point is then moved onto the tangent,
-/// one unit further away from the vertex than originally. If we encounter a ctrl point in the shader that is of unit
-/// length, we know that in reality it was positioned on the vertex itself and still get the vertex tangent.
-
-void set_modified_first_ctrl(Plotter::VertexBuffer::vertex_t& vertex, const CubicBezier2f::Segment& left_segment) {
-    const V2f delta = left_segment.ctrl2 - left_segment.end;
-    set_first_ctrl(vertex, delta.is_zero() ? -(left_segment.get_tangent(1).normalize()) :
-                                             delta.get_normalized() * (delta.get_magnitude() + 1));
-}
-
-void set_modified_second_ctrl(Plotter::VertexBuffer::vertex_t& vertex, const CubicBezier2f::Segment& right_segment) {
-    const V2f delta = right_segment.ctrl1 - right_segment.start;
-    set_second_ctrl(vertex, delta.is_zero() ? right_segment.get_tangent(0).normalize() :
-                                              delta.get_normalized() * (delta.get_magnitude() + 1));
-}
 
 } // namespace
 
@@ -190,9 +168,35 @@ Plotter::Paint Plotter::Paint::texture_pattern(const V2f& origin, const Size2f& 
     return paint;
 }
 
+// path ============================================================================================================= //
+
+//void Plotter::Path::Vertex::set_left_ctrl(const CubicBezier2f::Segment& spline)
+//{
+//    V2f delta = spline.ctrl2 - spline.end;
+//    const float mag_sq = delta.get_magnitude_sq();
+//    if (is_zero(mag_sq, precision_high<float>())) {
+//        set_left_ctrl(-(spline.get_tangent(1).normalize()));
+//    } else {
+//        set_left_ctrl(delta *= 1 + (1 / sqrt(mag_sq)));
+//    }
+//}
+
+//void Plotter::Path::Vertex::set_right_ctrl(const CubicBezier2f::Segment& spline) {
+//    V2f delta = spline.ctrl1 - spline.start;
+//    const float mag_sq = delta.get_magnitude_sq();
+//    if (is_zero(mag_sq, precision_high<float>())) {
+//        set_left_ctrl(spline.get_tangent(0).normalize());
+//    } else {
+//        set_left_ctrl(delta *= 1 + (1 / sqrt(mag_sq)));
+//    }
+//}
+
+// make sure that the Vertex class does not add to the memory requirement
+static_assert(sizeof(Plotter::Path::Vertex) == sizeof(float) * 6);
+
 // fragment paint =================================================================================================== //
 
-Plotter::FragmentPaint::FragmentPaint(const Paint& paint, const Clipping& clipping, const float stroke_width,
+Plotter::FragmentPaint::FragmentPaint(const Paint& paint, const Path2& stencil, const float stroke_width,
                                       const Type type) {
     // paint
     const M3f paint_xform = paint.xform.get_inverse();
@@ -205,16 +209,16 @@ Plotter::FragmentPaint::FragmentPaint(const Paint& paint, const Clipping& clippi
     paint_size[0] = paint.extent.width();
     paint_size[1] = paint.extent.height();
 
-    // clipping
-    if (clipping.size.is_valid()) {
-        clip_rotation[0] = clipping.xform[0][0];
-        clip_rotation[1] = clipping.xform[0][1];
-        clip_rotation[2] = clipping.xform[1][0];
-        clip_rotation[3] = clipping.xform[1][1];
-        clip_translation[0] = clipping.xform[2][0];
-        clip_translation[1] = clipping.xform[2][1];
-        clip_size[0] = clipping.size.width() / 2;
-        clip_size[1] = clipping.size.height() / 2;
+    // stencil
+    if (!stencil.is_empty()) {
+        clip_rotation[0] = stencil.get_xform()[0][0];
+        clip_rotation[1] = stencil.get_xform()[0][1];
+        clip_rotation[2] = stencil.get_xform()[1][0];
+        clip_rotation[3] = stencil.get_xform()[1][1];
+        clip_translation[0] = stencil.get_xform()[2][0];
+        clip_translation[1] = stencil.get_xform()[2][1];
+        clip_size[0] = static_cast<float>(stencil.get_size().width() / 2);
+        clip_size[1] = static_cast<float>(stencil.get_size().height() / 2);
     }
 
     // color
@@ -269,7 +273,6 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
 
     { // uniform buffers
         m_paint_buffer = UniformBuffer<FragmentPaint>::create("PlotterPaintBuffer", UsageHint::STREAM_DRAW);
-        m_clipping_buffer = UniformBuffer<Clipping>::create("PlotterClippingBuffer", UsageHint::STREAM_DRAW);
     }
 }
 
@@ -281,158 +284,257 @@ Plotter::~Plotter() {
     m_instance_buffer.reset();
     m_vertex_object.reset();
     m_paint_buffer.reset();
-    m_clipping_buffer.reset();
 }
 
-void Plotter::set_shape(const CubicBezier2f& spline) {
-    std::vector<VertexBuffer::vertex_t>& vertices = m_vertex_buffer->write();
-    std::vector<GLuint>& indices = m_index_buffer->write();
-
-    // path
-    Path path;
-    path.offset = narrow_cast<uint>(indices.size());
-    path.center = V2f::zero(); // TODO: extract more Plotter::Path information from bezier splines
-    path.is_convex = false;    //
-    path.is_closed = spline.segments.front().start.is_approx(spline.segments.back().end);
-
-    { // update indices
-        indices.reserve(indices.size() + (spline.segments.size() * 4) + 2);
-
-        GLuint index = narrow_cast<GLuint>(vertices.size());
-
-        // start cap
-        indices.emplace_back(index);
-        indices.emplace_back(index);
-
-        for (size_t i = 0; i < spline.segments.size(); ++i) {
-            // segment
-            indices.emplace_back(index);
-            indices.emplace_back(++index);
-
-            // joint / end cap
-            indices.emplace_back(index);
-            indices.emplace_back(index);
-        }
-    }
-    path.size = narrow_cast<int>(indices.size() - path.offset);
-
-    { // vertices
-        vertices.reserve(vertices.size() + spline.segments.size() + 1);
-
-        { // first vertex
-            const CubicBezier2f::Segment& first_segment = spline.segments.front();
-            VertexBuffer::vertex_t vertex;
-            set_pos(vertex, first_segment.start);
-            set_first_ctrl(vertex, V2f::zero());
-            set_modified_second_ctrl(vertex, first_segment);
-            vertices.emplace_back(std::move(vertex));
-        }
-
-        // middle vertices
-        for (size_t i = 0; i < spline.segments.size() - 1; ++i) {
-            const CubicBezier2f::Segment& left_segment = spline.segments[i];
-            const CubicBezier2f::Segment& right_segment = spline.segments[i + 1];
-            VertexBuffer::vertex_t vertex;
-            set_pos(vertex, left_segment.end);
-            set_modified_first_ctrl(vertex, left_segment);
-            set_modified_second_ctrl(vertex, right_segment);
-            vertices.emplace_back(std::move(vertex));
-        }
-
-        { // last vertex
-            const CubicBezier2f::Segment& last_segment = spline.segments.back();
-            VertexBuffer::vertex_t vertex;
-            set_pos(vertex, last_segment.end);
-            set_modified_first_ctrl(vertex, last_segment);
-            set_second_ctrl(vertex, V2f::zero());
-            vertices.emplace_back(std::move(vertex));
-        }
-    }
-}
-
-void Plotter::set_shape(const Polygonf& polygon) {
-
-    std::vector<VertexBuffer::vertex_t>& vertices = m_vertex_buffer->write();
-    std::vector<GLuint>& indices = m_index_buffer->write();
-
-    // path
-    Path path;
-    path.offset = narrow_cast<uint>(indices.size());
-    path.center = polygon.get_center();
-    path.is_convex = polygon.is_convex();
-    path.is_closed = true;
-
-    { // update indices
-        indices.reserve(indices.size() + (polygon.get_vertex_count() * 2));
-
-        const GLuint first_index = narrow_cast<GLuint>(vertices.size());
-        GLuint next_index = first_index;
-
-        for (size_t i = 0; i < polygon.get_vertex_count() - 1; ++i) {
-            // first -> (n-1) segment
-            indices.emplace_back(next_index++);
-            indices.emplace_back(next_index);
-        }
-
-        // last segment
-        indices.emplace_back(next_index);
-        indices.emplace_back(first_index);
-    }
-    path.size = narrow_cast<int>(indices.size() - path.offset);
-
-    // vertices
-    vertices.reserve(vertices.size() + polygon.get_vertex_count());
-    for (const V2f& point : polygon.get_vertices()) {
-        VertexBuffer::vertex_t vertex;
-        set_pos(vertex, point);
-        set_first_ctrl(vertex, V2f::zero());
-        set_second_ctrl(vertex, V2f::zero());
-        vertices.emplace_back(std::move(vertex));
-    }
-}
-
-void Plotter::set_paint(const Paint& paint) {}
-
-void Plotter::set_xform(M3f xform) {}
-
-void Plotter::fill() {}
-
-void Plotter::stroke() {}
-
-void Plotter::write(std::string_view text) {}
-
-void Plotter::reset() {
+void Plotter::start_parsing() {
     NOTF_ASSERT(m_context.is_current());
 
     m_vertex_buffer->write().clear();
     m_index_buffer->write().clear();
     m_instance_buffer->write().clear();
     m_paint_buffer->write().clear();
-    m_clipping_buffer->write().clear();
 
     m_paths.clear();
     m_drawcalls.clear();
 
-    m_state = {};
+    m_states.clear();
+    m_server_state = {};
 }
 
-void Plotter::render() const {}
+void Plotter::parse(const PlotterDesign& design) {
+    { // TODO adopt the Widget's auxiliary information
+        m_states.clear();
+        m_states.emplace_back();
 
-void Plotter::_fill(const FillCall& call) {}
+        //        m_state.xform = widget->get_xform<AnyWidget::Space::WINDOW>();
+        //        _get_current_state().stencil = widget->get_clipping_rect();
+    }
 
-void Plotter::_stroke(const StrokeCall& call) {}
+    { // parse the commands
+        const std::vector<PlotterDesign::Command>& buffer = design.get_buffer();
+        for (const PlotterDesign::Command& command : buffer) {
+            std::visit(
+                overloaded{
+                    [&](const PlotterDesign::ResetState&) { m_states = {}; },
+                    [&](const PlotterDesign::PushState&) { /*TODO*/ }, [&](const PlotterDesign::PopState&) { /*TODO*/ },
+                    [&](const PlotterDesign::SetXform& cmd) { _get_state().xform = cmd.data->transformation; },
+                    [&](const PlotterDesign::SetPaint& cmd) { _get_state().paint = cmd.data->paint; },
+                    [&](const PlotterDesign::SetPath& cmd) { _get_state().path = cmd.data->path; },
+                    [&](const PlotterDesign::SetStencil& cmd) { _get_state().stencil = cmd.data->path; },
+                    [&](const PlotterDesign::SetFont& cmd) { _get_state().font = cmd.data->font; },
+                    [&](const PlotterDesign::SetAlpha& cmd) { _get_state().alpha = cmd.alpha; },
+                    [&](const PlotterDesign::SetStrokeWidth& cmd) { _get_state().stroke_width = cmd.stroke_width; },
+                    [&](const PlotterDesign::SetBlendMode& cmd) { _get_state().blend_mode = cmd.mode; },
+                    [&](const PlotterDesign::SetLineCap& cmd) { _get_state().line_cap = cmd.cap; },
+                    [&](const PlotterDesign::SetLineJoin& cmd) { _get_state().line_join = cmd.join; },
+                    [&](const PlotterDesign::Fill&) { _store_fill(); },
+                    [&](const PlotterDesign::Stroke&) { _store_stroke(); },
+                    [&](const PlotterDesign::Write& cmd) { _store_write(cmd.data->text); }},
+                command);
+        }
+    }
+}
 
-void Plotter::_write(const WriteCall& call) {}
+void Plotter::finish_parsing() {
+    if (m_index_buffer->is_empty()) { return; }
+
+    NOTF_ASSERT(m_context.is_current());
+    m_context->vertex_object = m_vertex_object;
+    m_context->program = m_program;
+
+    m_context->uniform_slots[0].bind_block(m_program->get_uniform_block("PaintBlock"));
+
+    m_vertex_buffer->upload();
+    m_index_buffer->upload();
+    m_instance_buffer->upload();
+    m_paint_buffer->upload();
+
+    NOTF_CHECK_GL(glEnable(GL_CULL_FACE));
+    NOTF_CHECK_GL(glCullFace(GL_BACK));
+    NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, m_server_state.patch_vertices));
+    NOTF_CHECK_GL(glEnable(GL_BLEND));
+    NOTF_CHECK_GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+
+    // screen size
+    const Aabri& render_area = m_context->framebuffer.get_render_area();
+    if (m_server_state.screen_size != render_area.get_size()) {
+        m_server_state.screen_size = render_area.get_size();
+        m_program->get_uniform("projection")
+            .set(M4f::orthographic( //
+                0, m_server_state.screen_size.width(), 0, m_server_state.screen_size.height(), 0, 2));
+    }
+
+    // perform the render calls
+    for (const _DrawCall& drawcall : m_drawcalls) {
+        std::visit(overloaded{
+                       [&](const _FillCall& call) { _render_fill(call); },
+                       [&](const _StrokeCall& call) { _render_stroke(call); },
+                       [&](const _WriteCall& call) { _render_text(call); },
+                   },
+                   drawcall);
+    }
+}
+
+void Plotter::_store_fill() {}
+
+void Plotter::_store_stroke() {
+    NOTF_ASSERT(!_get_state().path.is_empty());
+
+    std::vector<VertexBuffer::vertex_t>& vertices = m_vertex_buffer->write();
+    std::vector<GLuint>& indices = m_index_buffer->write();
+
+//    // path
+//    _Path path;
+//    path.offset = narrow_cast<uint>(indices.size());
+//    path.center = polygon.get_center();
+//    path.is_convex = polygon.is_convex();
+//    path.is_closed = true;
+
+//    { // update indices
+//        indices.reserve(indices.size() + (polygon.get_size() * 2));
+
+//        const GLuint first_index = narrow_cast<GLuint>(vertices.size());
+//        GLuint next_index = first_index;
+
+//        for (size_t i = 0; i < polygon.get_size() - 1; ++i) {
+//            // first -> (n-1) segment
+//            indices.emplace_back(next_index++);
+//            indices.emplace_back(next_index);
+//        }
+
+//        // last segment
+//        indices.emplace_back(next_index);
+//        indices.emplace_back(first_index);
+//    }
+//    path.size = narrow_cast<int>(indices.size() - path.offset);
+
+//    // vertices
+//    vertices.reserve(vertices.size() + polygon.get_size());
+//    for (const V2f& point : polygon.get_vertices()) {
+//        VertexBuffer::vertex_t vertex;
+//        set_pos(vertex, point);
+//        set_first_ctrl(vertex, V2f::zero());
+//        set_second_ctrl(vertex, V2f::zero());
+//        vertices.emplace_back(std::move(vertex));
+//    }
+}
+
+void Plotter::_store_write(std::string text) {}
+
+void Plotter::_render_fill(const _FillCall& call) {}
+
+void Plotter::_render_stroke(const _StrokeCall& call) {}
+
+void Plotter::_render_text(const _WriteCall& call) {}
+
+// void Plotter::set_shape(const CubicBezier2f& spline) {
+//    std::vector<VertexBuffer::vertex_t>& vertices = m_vertex_buffer->write();
+//    std::vector<GLuint>& indices = m_index_buffer->write();
+
+//    // path
+//    _Path path;
+//    path.offset = narrow_cast<uint>(indices.size());
+//    path.center = V2f::zero(); // TODO: extract more Plotter::Path information from bezier splines
+//    path.is_convex = false;    //
+//    path.is_closed = spline.segments.front().start.is_approx(spline.segments.back().end);
+
+//    { // update indices
+//        indices.reserve(indices.size() + (spline.segments.size() * 4) + 2);
+
+//        GLuint index = narrow_cast<GLuint>(vertices.size());
+
+//        // start cap
+//        indices.emplace_back(index);
+//        indices.emplace_back(index);
+
+//        for (size_t i = 0; i < spline.segments.size(); ++i) {
+//            // segment
+//            indices.emplace_back(index);
+//            indices.emplace_back(++index);
+
+//            // joint / end cap
+//            indices.emplace_back(index);
+//            indices.emplace_back(index);
+//        }
+//    }
+//    path.size = narrow_cast<int>(indices.size() - path.offset);
+
+//    { // vertices
+//        vertices.reserve(vertices.size() + spline.segments.size() + 1);
+
+//        { // first vertex
+//            const CubicBezier2f::Segment& first_segment = spline.segments.front();
+//            VertexBuffer::vertex_t vertex;
+//            set_pos(vertex, first_segment.start);
+//            set_first_ctrl(vertex, V2f::zero());
+//            set_modified_second_ctrl(vertex, first_segment);
+//            vertices.emplace_back(std::move(vertex));
+//        }
+
+//        // middle vertices
+//        for (size_t i = 0; i < spline.segments.size() - 1; ++i) {
+//            const CubicBezier2f::Segment& left_segment = spline.segments[i];
+//            const CubicBezier2f::Segment& right_segment = spline.segments[i + 1];
+//            VertexBuffer::vertex_t vertex;
+//            set_pos(vertex, left_segment.end);
+//            set_modified_first_ctrl(vertex, left_segment);
+//            set_modified_second_ctrl(vertex, right_segment);
+//            vertices.emplace_back(std::move(vertex));
+//        }
+
+//        { // last vertex
+//            const CubicBezier2f::Segment& last_segment = spline.segments.back();
+//            VertexBuffer::vertex_t vertex;
+//            set_pos(vertex, last_segment.end);
+//            set_modified_first_ctrl(vertex, last_segment);
+//            set_second_ctrl(vertex, V2f::zero());
+//            vertices.emplace_back(std::move(vertex));
+//        }
+//    }
+//}
+
+// void Plotter::set_shape(const Polygonf& polygon) {
+
+//    std::vector<VertexBuffer::vertex_t>& vertices = m_vertex_buffer->write();
+//    std::vector<GLuint>& indices = m_index_buffer->write();
+
+//    // path
+//    _Path path;
+//    path.offset = narrow_cast<uint>(indices.size());
+//    path.center = polygon.get_center();
+//    path.is_convex = polygon.is_convex();
+//    path.is_closed = true;
+
+//    { // update indices
+//        indices.reserve(indices.size() + (polygon.get_size() * 2));
+
+//        const GLuint first_index = narrow_cast<GLuint>(vertices.size());
+//        GLuint next_index = first_index;
+
+//        for (size_t i = 0; i < polygon.get_size() - 1; ++i) {
+//            // first -> (n-1) segment
+//            indices.emplace_back(next_index++);
+//            indices.emplace_back(next_index);
+//        }
+
+//        // last segment
+//        indices.emplace_back(next_index);
+//        indices.emplace_back(first_index);
+//    }
+//    path.size = narrow_cast<int>(indices.size() - path.offset);
+
+//    // vertices
+//    vertices.reserve(vertices.size() + polygon.get_size());
+//    for (const V2f& point : polygon.get_vertices()) {
+//        VertexBuffer::vertex_t vertex;
+//        set_pos(vertex, point);
+//        set_first_ctrl(vertex, V2f::zero());
+//        set_second_ctrl(vertex, V2f::zero());
+//        vertices.emplace_back(std::move(vertex));
+//    }
+//}
 
 // std::hash ======================================================================================================== //
-
-/// std::hash specialization for Clipping.
-template<>
-struct ::std::hash<notf::Plotter::Clipping> {
-    size_t operator()(const notf::Plotter::Clipping& clipping) const {
-        return notf::hash(clipping.xform, clipping.size);
-    }
-};
 
 /// std::hash specialization for FragmentPaint.
 template<>
@@ -558,44 +660,6 @@ void Plotter::write(const std::string& text, const Paint& paint, TextInfo info) 
     m_drawcalls.emplace_back(DrawCall{std::move(info)});
 }
 
-
-void Plotter::render() const {
-    if (m_index_buffer->is_empty()) { return; }
-
-    NOTF_ASSERT(m_context.is_current());
-    m_context->vertex_object = m_vertex_object;
-    m_context->program = m_program;
-
-    m_context->uniform_slots[0].bind_block(m_program->get_uniform_block("PaintBlock"));
-
-    m_vertex_buffer->upload();
-    m_index_buffer->upload();
-    m_uniform_buffer->upload();
-
-    NOTF_CHECK_GL(glEnable(GL_CULL_FACE));
-    NOTF_CHECK_GL(glCullFace(GL_BACK));
-    NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, m_state.patch_vertices));
-    NOTF_CHECK_GL(glEnable(GL_BLEND));
-    NOTF_CHECK_GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-
-    // screen size
-    const Aabri& render_area = m_context->framebuffer.get_render_area();
-    if (m_state.screen_size != render_area.get_size()) {
-        m_state.screen_size = render_area.get_size();
-        m_program->get_uniform("projection")
-            .set(M4f::orthographic(0, m_state.screen_size.width(), 0, m_state.screen_size.height(), 0, 2));
-    }
-
-    // perform the render calls
-    for (const DrawCall& drawcall : m_drawcalls) {
-        std::visit(overloaded{
-                       [&](const StrokeInfo& stroke) { _render_line(stroke); },
-                       [&](const FillInfo& shape) { _render_shape(shape); },
-                       [&](const TextInfo& text) { _render_text(text); },
-                   },
-                   drawcall);
-    }
-}
 
 void Plotter::_render_line(const StrokeInfo& stroke) const {
     // patch vertices
@@ -736,3 +800,69 @@ void Plotter::_write(const WriteCall& call) {
 
 
 */
+
+//    void Painterpreter::_fill() {
+//    const State& state = _get_current_state();
+//    //    if (!state.path || is_approx(state.alpha, 0)) {
+//    //        return; // early out
+//    //    }
+
+//    // get the fill paint
+//    Paint paint = state.fill_paint;
+//    paint.inner_color.a *= state.alpha;
+//    paint.outer_color.a *= state.alpha;
+
+//    // plot the shape
+//    //    Plotter::FillInfo fill_info;
+//    //    m_plotter->fill(state.path, paint, std::move(fill_info));
+//}
+
+// void Painterpreter::_stroke() {
+//    const State& state = _get_current_state();
+//    //    if (!state.path || state.stroke_width <= 0 || is_approx(state.alpha, 0)) {
+//    //        return; // early out
+//    //    }
+
+//    // get the stroke paint
+//    Paint paint = state.stroke_paint;
+//    paint.inner_color.a *= state.alpha;
+//    paint.outer_color.a *= state.alpha;
+
+//    // create a sane stroke width
+//    float stroke_width;
+//    {
+//        const float scale = state.xform.get_scale_factor();
+//        stroke_width = max(state.stroke_width * scale, 0);
+//        if (stroke_width < 1) {
+//            // if the stroke width is less than pixel size, use alpha to emulate coverage.
+//            const float alpha = clamp(stroke_width, 0.0f, 1.0f);
+//            const float alpha_squared = alpha * alpha; // since coverage is area, scale by alpha*alpha
+//            paint.inner_color.a *= alpha_squared;
+//            paint.outer_color.a *= alpha_squared;
+//            stroke_width = 1;
+//        }
+//    }
+
+//    // plot the stroke
+//    //    Plotter::StrokeInfo stroke_info;
+//    //    stroke_info.width = stroke_width;
+//    //    m_plotter->stroke(state.path, paint, std::move(stroke_info));
+//}
+
+// void Painterpreter::_write(const std::string& text) {
+//    const State& state = _get_current_state();
+//    if (!state.font || is_approx(state.alpha, 0)) {
+//        return; // early out
+//    }
+
+//    // get the text paint
+//    Paint paint = state.stroke_paint;
+//    paint.inner_color.a *= state.alpha;
+//    paint.outer_color.a *= state.alpha;
+
+//    // plot the text
+//    //    Plotter::TextInfo text_info;
+//    //    text_info.font = state.font;
+//    //    text_info.translation = transform_by(V2f::zero(), state.xform);
+//    //    m_plotter->write(text, paint, std::move(text_info));
+//}

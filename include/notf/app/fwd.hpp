@@ -118,15 +118,6 @@ class WindowHandle;
 class AnyWidget;
 class WidgetHandle;
 
-// widget/clipping.hpp
-class Clipping;
-
-// widget/painter.hpp
-class Painter;
-
-// widget/widget_design.hpp.hpp
-class WidgetDesign;
-
 // widget/widget.hpp
 template<class, class>
 class State;
@@ -135,9 +126,8 @@ class State;
 class WidgetScene;
 class WidgetSceneHandle;
 
-
-// widget/painterpreter.hpp
-NOTF_DECLARE_UNIQUE_POINTERS(class, Painterpreter);
+// widget/widget_visualizer.hpp
+class WidgetVisualizer;
 
 // exceptions ======================================================================================================= //
 

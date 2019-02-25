@@ -34,7 +34,8 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     common/uuid.cpp
 
     common/geo/matrix3.cpp
-    common/geo/polygon.cpp
+    common/geo/path2.cpp
+    common/geo/polyline.cpp
     common/geo/segment.cpp
 
     graphic/frame_buffer.cpp
@@ -51,10 +52,9 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
 
     graphic/plotter/design.cpp
     graphic/plotter/painter.cpp
-    graphic/plotter/painterpreter.cpp
+    graphic/plotter/plotter.cpp
 
     graphic/renderer/fragment_renderer.cpp
-    graphic/renderer/plotter.cpp
 
     graphic/text/font.cpp
     graphic/text/font_atlas.cpp

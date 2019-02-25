@@ -3,6 +3,7 @@
 #include <limits>
 #include <utility>
 
+#include "notf/meta/array.hpp"
 #include "notf/meta/config.hpp"
 #include "notf/meta/exception.hpp"
 #include "notf/meta/types.hpp"
@@ -56,6 +57,13 @@ constexpr Out exp(T&& number, uint exponent) noexcept {
     return result;
 }
 
+/// Produces the sum of all given arguments.
+/// In a template function, this might well produce less assembly than a loop.
+template<class... Ts>
+constexpr auto sum(Ts&&... ts) {
+    return (std::forward<Ts>(ts) + ...);
+}
+
 // limits =========================================================================================================== //
 
 /// Highest value representable with the given type.
@@ -99,6 +107,20 @@ constexpr std::enable_if_t<std::is_floating_point_v<T>, T> precision_high() noex
 template<class T>
 constexpr std::enable_if_t<std::is_integral_v<T>, T> precision_high() noexcept {
     return 0; // integers have no leeway
+}
+
+// power list ======================================================================================================= //
+
+/// Returns the first N powers of the given base value.
+/// Given `x` returns an array {1, x, x^2, x^3, ..., x^N}
+template<ulong N, class T, class = std::enable_if_t<std::is_arithmetic_v<T>>>
+constexpr std::array<T, N> power_list(const T& x) noexcept {
+    T result[N]{};
+    result[0] = 1;
+    for (ulong i = 1; i < N; ++i) {
+        result[i] = result[i - 1] * x;
+    }
+    return to_array(result);
 }
 
 // narrow cast ====================================================================================================== //

@@ -15,8 +15,9 @@ T random(const T min = 0, const T max = 1) {
 }
 
 /// Returns a random arithmetic value.
-template<class T, class = typename T::element_t>
-T random(const typename T::element_t min = 0, const typename T::element_t max = 1) {
+template<class T>
+auto random(const typename T::element_t min = 0, const typename T::element_t max = 1)
+    -> decltype(typename T::element_t{}, T{}) {
     T result;
     for (size_t dim = 0; dim < T::get_dimensions(); ++dim) {
         result.data[dim] = random<typename T::component_t>(min, max);

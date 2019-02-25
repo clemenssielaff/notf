@@ -125,11 +125,11 @@ public:
 
     /// @{
     /// A non-uniform shear matrix.
-    /// See https://en.wikipedia.org/wiki/Transformation_matrix#Shearing
-    /// @param x    X distance of the shear.
-    /// @param y    Y distance of the shear.
+    /// See https://en.wikipedia.org/wiki/Shear_mapping#Horizontal_and_vertical_shear_of_the_plane
+    /// @param x    Horizontal shear factor (angle in radians).
+    /// @param y    Vertical shear factor (angle in radians).
     static constexpr Matrix3 shear(const element_t x, const element_t y) noexcept {
-        return {component_t{1, y}, component_t{x, 1}, component_t{0, 0}};
+        return {component_t{1, tan(y)}, component_t{tan(x), 1}, component_t{0, 0}};
     }
     static constexpr Matrix3 shear(const component_t& vec) noexcept { return shear(vec[0], vec[1]); }
     /// @}
@@ -172,7 +172,7 @@ public:
         return {component_t{cos, sin}, component_t{sin, -cos}, component_t{0, 0}};
     }
 
-    /// A 2D transformation preserves the area of a polygon if its determinant is +/-1.
+    /// A 2D transformation preserves the area if its determinant is +/-1.
     constexpr element_t get_scale_factor() const noexcept {
         return sqrt(data[0].get_magnitude_sq() * data[1].get_magnitude_sq());
     }
@@ -259,6 +259,33 @@ public:
 
 } // namespace detail
 
+/// Applies the right-hand side matrix transformation to the left-hand side vector and returns the result.
+///
+/// Note that in mathematical notation, the matrix would be on the right of the vector.
+/// However, since matrices usually represent transformations and the order of transformations in mathematical notation
+/// runs counterintuitive to the order as written in code (A*B*C would mean that marix `C` is transformed first by `B`
+/// and then by `C`), we flip the order of arguments. This way, `v*A*B*C` means (vector `v` transformed first by `A`,
+/// then by `B` and eventually by `C`).
+///
+/// Inputs:
+///     lhs = |a|, rhs = |p r t|
+///           |b|        |q s u|
+///           |1|        |0 0 1| // last row is implicit
+/// Operation:
+///           |a
+///           |b
+///           |1   with  x = p*a + r*b + t
+///     ------+--        y = q*a + s*b + u
+///     p r t |x
+///     q s u |y
+///     0 0 1 |1
+///
+template<class Element>
+detail::Vector2<Element> operator*(const detail::Vector2<Element>& lhs, const detail::Matrix3<Element>& rhs) {
+    return {rhs[0][0] * lhs[0] + rhs[1][0] * lhs[1] + rhs[2][0], //
+            rhs[0][1] * lhs[0] + rhs[1][1] * lhs[1] + rhs[2][1]};
+}
+
 // transformations ================================================================================================== //
 // clang-format off
 
@@ -276,15 +303,15 @@ template<> Aabrd transform_by<Aabrd, M3f>(const Aabrd&, const M3f&);
 template<> Aabrf transform_by<Aabrf, M3d>(const Aabrf&, const M3d&);
 template<> Aabrd transform_by<Aabrd, M3d>(const Aabrd&, const M3d&);
 
-// polygon * m3
-template<> Polygonf transform_by<Polygonf, M3f>(const Polygonf&, const M3f&);
+// polyline * m3
+template<> Polylinef transform_by<Polylinef, M3f>(const Polylinef&, const M3f&);
 
 // bezier * m3
-template<> CubicBezier2f transform_by<CubicBezier2f, M3f>(const CubicBezier2f&, const M3f&);
-template<> CubicBezier2d transform_by<CubicBezier2d, M3f>(const CubicBezier2d&, const M3f&);
+template<> CubicPolyBezier2f transform_by<CubicPolyBezier2f, M3f>(const CubicPolyBezier2f&, const M3f&);
+template<> CubicPolyBezier2d transform_by<CubicPolyBezier2d, M3f>(const CubicPolyBezier2d&, const M3f&);
 
-template<> CubicBezier2f transform_by<CubicBezier2f, M3d>(const CubicBezier2f&, const M3d&);
-template<> CubicBezier2d transform_by<CubicBezier2d, M3d>(const CubicBezier2d&, const M3d&);
+template<> CubicPolyBezier2f transform_by<CubicPolyBezier2f, M3d>(const CubicPolyBezier2f&, const M3d&);
+template<> CubicPolyBezier2d transform_by<CubicPolyBezier2d, M3d>(const CubicPolyBezier2d&, const M3d&);
 
 // clang-format on
 // formatting ======================================================================================================= //

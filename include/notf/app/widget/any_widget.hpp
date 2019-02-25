@@ -3,6 +3,7 @@
 #include "notf/meta/pointer.hpp"
 
 #include "notf/graphic/plotter/design.hpp"
+#include "notf/graphic/plotter/painter.hpp"
 
 #include "notf/app/graph/node.hpp"
 #include "notf/app/widget/widget_claim.hpp"
@@ -146,7 +147,7 @@ public:
     /// The Clipping rect of this Widget.
     /// Most Widgets will forward the Clipping of their parent (which is the default), but some will introduce their own
     /// Clipping rects.
-    virtual const Clipping& get_clipping_rect() const;
+    virtual const Aabrf& get_clipping_rect() const; // TODO: Do we need Widget::Clipping? or similar?
 
     /// Calculates a transformation from this to another Widget.
     /// @param target    Widget into which to transform.
@@ -212,7 +213,7 @@ private:
     virtual WidgetClaim _calculate_claim() const { return m_claim; }
 
     /// Updates (if necessary) and returns the Design of this Widget.
-    const WidgetDesign& _get_design();
+    const PlotterDesign& _get_design();
 
     /// Calculates the transformation of this Widget relative to its Window.
     void _get_window_xform(M3f& result) const;
@@ -220,7 +221,7 @@ private:
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// Design of this Widget.
-    WidgetDesign m_design;
+    PlotterDesign m_design;
 
     /// The Claim of a Widget determines how much space it receives in the parent Layout.
     /// Claim values are in untransformed local space.
@@ -289,8 +290,8 @@ struct NodeHandleInterface<AnyWidget> : public NodeHandleBaseInterface<AnyWidget
 
 class WidgetHandle : public NodeHandle<AnyWidget> {
 
-    friend Accessor<WidgetHandle, Painterpreter>;
     friend Accessor<WidgetHandle, AnyWidget>;
+    friend Accessor<WidgetHandle, WidgetVisualizer>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -310,7 +311,7 @@ private:
     AnyWidget* _get_widget() { return _get_node().get(); }
 
     /// Updates (if necessary) and returns the Design of this Widget.
-    const WidgetDesign& _get_design() const { return _get_node()->_get_design(); }
+    const PlotterDesign& _get_design() const { return _get_node()->_get_design(); }
 };
 
 // widget handle accessors ========================================================================================== //
@@ -324,11 +325,11 @@ class Accessor<WidgetHandle, AnyWidget> {
 };
 
 template<>
-class Accessor<WidgetHandle, Painterpreter> {
-    friend Painterpreter;
+class Accessor<WidgetHandle, WidgetVisualizer> {
+    friend WidgetVisualizer;
 
     /// Updates (if necessary) and returns the Design of this Widget.
-    static const WidgetDesign& get_design(const WidgetHandle& widget) { return widget._get_design(); }
+    static const PlotterDesign& get_design(WidgetHandle& widget) { return widget._get_design(); }
 };
 
 NOTF_CLOSE_NAMESPACE
