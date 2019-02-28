@@ -70,7 +70,4 @@ private:
 
 } // namespace detail
 
-using Smoothstepf = detail::Smoothstep<float>;
-using Smoothstepd = detail::Smoothstep<double>;
-
 NOTF_CLOSE_NAMESPACE

@@ -1,165 +1,104 @@
 #pragma once
 
-#include "notf/meta/hash.hpp"
+#include "notf/meta/smart_ptr.hpp"
 
-#include "notf/common/geo/aabr.hpp"
-#include "notf/common/geo/matrix3.hpp"
-#include "notf/common/geo/size2.hpp"
-#include "notf/common/vector.hpp"
+#include "notf/common/geo/polybezier.hpp"
 
 NOTF_OPEN_NAMESPACE
 
-/// A Path is a unified representation of a 2D line.
-/// Contains of sub-paths.
-/// Each sub-path can be closed or open, going clock- or counterclockwise.
-/// Internally, a Path is always stored as a cubic bezier spline, even if it only consists of straight lines.
-/// A path is normalized so that two paths can be compared equal, even if they are rotated or mirrored.
-/// They are not optimized for fast computation (like line intersection etc.) but serve as an interface to user
-/// constructed lines and shapes.
-/// Paths can be created from other geometrical constructs like circles, rects or polygons, or via the "PathPainter" (or
-/// whatever) that behaves like an HTML5 canvas painter.
-/// Are immutable.
-/// Are usually stored alongside a 2D transformation.
+// path2 ============================================================================================================ //
+
+/// A Path is a collection of immutable 2D Polybeziers that can be used as a resource in an application.
+/// It has to be immutable because once created, it must be able to be passed around in a multithreaded enviroment
+/// without the need for locks and checks.
+/// Paths can be created from other geometrical constructs like circles, rects or polygons, or via the "Path2::Drawer"
+/// that behaves like an HTML5 canvas painter.
+/// A Path2 consists of 0-n "subpaths", each one a two-dimensional cubic
+/// Polybezier that is either closed or open, in a clock- or counterclockwise orientation.
 class Path2 {
 
-    template<class>
-    friend struct std::hash;
+    // TODO: HTML5-like Path2::Drawer factory class
 
     // types ----------------------------------------------------------------------------------- //
 private:
-    struct Path {
-        struct Vertex {
-            Vertex(V2d pos) : pos(pos) {}
+    /// Struct storing additional information about each subpath for easy access.
+    struct SubPath {
 
-            V2d pos;
-            V2d left_tangent = V2d::zero();
-            V2d right_tangent = V2d::zero();
-            double left_distance = 0;
-            double right_distance = 0;
-        };
+        // methods ------------------------------------------------------------
 
-        struct Subpath {
-            size_t first_index;
-            size_t size;
-            bool is_closed = true;
-            bool is_convex = true;
-        };
+        /// Constructor.
+        /// @param path Subpath.
+        SubPath(CubicPolyBezier2f path);
 
-        void add_subpath(std::initializer_list<Vertex>&& vertices);
-        template<class... Ts>
-        void add_subpath(Ts&&... args) {
-            add_subpath({std::forward<Ts>(args)...});
-        }
+        // fields -------------------------------------------------------------
 
-        bool is_empty() { return m_vertices.empty(); }
+        /// Subpath,
+        CubicPolyBezier2f path;
 
-        size_t get_hash();
+        /// Center position of all vertices of this Path.
+        V2f center;
 
-        Aabrd get_aabr() const {
-            Aabrd result = Aabrd::wrongest();
-            for (const Vertex& vertex : m_vertices) {
-                result.grow_to(vertex.pos);
-                result.grow_to(vertex.pos + vertex.left_tangent * vertex.left_distance);
-                result.grow_to(vertex.pos + vertex.right_tangent * vertex.right_distance);
-            }
-            return result;
-        }
+        /// Whether this Path is convex or concave.
+        bool is_convex;
 
-    private:
-        std::vector<Vertex> m_vertices;
-        std::vector<Subpath> m_subpaths;
+        /// Whether this Path is closed or not.
+        bool is_closed;
     };
-    using PathPtr = std::shared_ptr<Path>;
-
-public:
-    /// Winding direction of subpath.
-    enum class Winding {
-        CCW,
-        CW,
-        COUNTERCLOCKWISE = CCW,
-        CLOCKWISE = CW,
-        SOLID = CCW,
-        HOLE = CW,
-    };
-
-    //    class Drawer {
-
-    //        // Moves the starting point of a new sub-path to the (x, y) coordinates.
-    //        void start_path();
-
-    //        // Causes the point of the pen to move back to the start of the current sub-path. It tries to draw a
-    //        straight
-    //        // line from the current point to the start. If the shape has already been closed or has only one point,
-    //        this
-    //        // function does nothing.
-    //        void close_path();
-
-    //        // Sets the winding of the current sub-path.
-    //        void set_winding();
-
-    //        // Connects the last point in the subpath to the (x, y) coordinates with a straight line.
-    //        void line_to();
-
-    //        // Adds a cubic Bézier curve to the path. It requires three points. The first two points are control
-    //        points and
-    //        // the third one is the end point. The starting point is the last point in the current path, which can be
-    //        // changed using moveTo() before creating the Bézier curve.
-    //        void bezier_curve_to();
-
-    //        // Adds a quadratic Bézier curve to the current path.
-    //        void quadratic_curve_to();
-
-    //        // Adds a circular arc to the path with the given control points and radius, connected to the previous
-    //        point by
-    //        // a straight line.
-    //        // Creates new circle arc shaped sub-path. The arc center is at cx,cy, the arc radius is r,
-    //        // and the arc is drawn from angle a0 to a1, and swept in direction dir (NVG_CCW, or NVG_CW).
-    //        // Angles are specified in radians.
-    //        void arc_to();
-    //    };
 
     // methods --------------------------------------------------------------------------------- //
 private:
-    Path2(PathPtr path) : m_path(std::move(path)) {}
+    NOTF_CREATE_SMART_FACTORIES(Path2);
+
+    /// Value constructor.
+    Path2(std::vector<CubicPolyBezier2f> subpaths);
 
 public:
-    // Path2D constructor. Creates a new Path2D object.
-    Path2() = default;
+    /// Single Path constructor.
+    /// @parm path  Single subpath.
+    Path2(CubicPolyBezier2f path) : Path2(std::vector<CubicPolyBezier2f>{std::move(path)}) {}
 
-    static Path2 rect();
+    /// Rectangle.
+    static Path2Ptr rect(const Aabrf& aabr);
+    // TODO: other primitive Path2 shapes (rounded rect, ellipse etc.).
 
-    bool is_empty() const { return m_path->is_empty(); }
+    /// Whether or not this Path2 contains any subpaths.
+    bool is_empty() const { return m_subpaths.empty(); }
 
-    const M3d& get_xform() const { return m_xform; }
+    /// Read access to all subpaths.
+    const std::vector<const SubPath>& get_subpaths() const { return m_subpaths; }
 
-    Aabrd get_aabr() const { return m_path->get_aabr(); }
+    /// The total number of vertices in all subpaths.
+    size_t get_vertex_count() const {
+        size_t result = 0;
+        for (const auto& subpath : m_subpaths) {
+            result += subpath.path.get_hull().get_size();
+        }
+        return result;
+    }
+    /// The center of all vertices in all subpaths.
+    V2f get_center() const {
+        if (is_empty()) { return V2f::zero(); }
+        V2f center = m_subpaths.front().center;
+        for (size_t i = 1; i < m_subpaths.size(); ++i) {
+            center += m_subpaths[i].center;
+        }
+        center *= 1 / static_cast<float>(m_subpaths.size());
+        return center;
+    }
 
-    Size2d get_size() const { return m_path->get_aabr().get_size(); }
-
-    bool operator==(const Path2& other) { return other.m_path == m_path && other.m_xform == m_xform; }
-    bool operator!=(const Path2& other) { return other.m_path != m_path || other.m_xform != m_xform; }
-
-    //    // Creates new rectangle shaped sub-path.
-    //    void nvgRect(NVGcontext* ctx, float x, float y, float w, float h);
-
-    //    // Creates new rounded rectangle shaped sub-path.
-    //    void nvgRoundedRect(NVGcontext* ctx, float x, float y, float w, float h, float r);
-
-    //    // Creates new rounded rectangle shaped sub-path with varying radii for each corner.
-    //    void nvgRoundedRectVarying(NVGcontext* ctx, float x, float y, float w, float h, float radTopLeft, float
-    //    radTopRight, float radBottomRight, float radBottomLeft);
-
-    //    // Creates new ellipse shaped sub-path.
-    //    void nvgEllipse(NVGcontext* ctx, float cx, float cy, float rx, float ry);
-
-    //    // Creates new circle shaped sub-path.
-    //    void nvgCircle(NVGcontext* ctx, float cx, float cy, float r);
+    /// A Path is considered convex if all of its subpaths are convex.
+    bool is_convex() const {
+        bool result = true;
+        for (size_t i = 1; result && i < m_subpaths.size(); ++i) {
+            result &= m_subpaths[i].is_convex;
+        }
+        return result;
+    }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
-    PathPtr m_path;
-
-    M3d m_xform = M3d::identity();
+    /// All subpaths making up this Path2.
+    std::vector<const SubPath> m_subpaths;
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -30,7 +30,7 @@ void Painter::reset_state() {
     m_design.add_command<PlotterDesign::ResetState>();
 }
 
-void Painter::set_path(Path2 path) {
+void Painter::set_path(Path2Ptr path) {
     auto& state = _get_state();
     if (path != state.path) {
         state.path = std::move(path);
@@ -54,11 +54,11 @@ void Painter::set_paint(Paint paint) {
     }
 }
 
-void Painter::set_stencil(Path2 stencil) {
+void Painter::set_clip(Aabrf clip) {
     auto& state = _get_state();
-    if (stencil != state.stencil) {
-        state.stencil = std::move(stencil);
-        m_design.add_command<PlotterDesign::SetStencil>(state.stencil);
+    if (clip != state.clip) {
+        state.clip = std::move(clip);
+        m_design.add_command<PlotterDesign::SetClip>(state.clip);
     }
 }
 

@@ -10,10 +10,10 @@
 ///
 /// When drawing the spline from a patch of two vertices, only the middle 4 attributes are used:
 ///
-///     v1.a1       is the start point of the bezier spline.
-///     v1 + v1.a3  is the first control point
-///     v2 + v2.a2  is the second control point
-///     v2.a1       is the end point
+///     v1.a1           is the start point of the bezier spline.
+///     v1.a1 + v1.a3   is the first control point
+///     v2.a1 + v2.a2   is the second control point
+///     v2.a1           is the end point
 ///
 /// (*)
 /// For the correct calculation of caps and joints, we need the tangent directions at each vertex.
@@ -78,6 +78,7 @@
 #include "notf/common/geo/bezier.hpp"
 #include "notf/common/geo/matrix4.hpp"
 #include "notf/common/geo/polyline.hpp"
+#include "notf/common/utf8.hpp"
 
 #include "notf/graphic/graphics_system.hpp"
 #include "notf/graphic/plotter/design.hpp"
@@ -88,11 +89,60 @@
 
 NOTF_USING_NAMESPACE;
 
+// TODO: I should yet be able to exactly determine the area of a pixel filled with a line!
+//       1. transform the pixel so the line goes along the x-axis
+//       2. we need to calculate the area of a 6-sided polygon, where 2 sides are allowed to have a length of zero
+//          This assumes we don't have a line that is shorter than a pixel wide.
+//          If the pixel is completely within the line, we have a 4-sided square, if one or two of the lines edges
+//          intersect the pixel, one or two of the corners are flattened.
+//          Since the pixel is already rotated, both edges of the line are either vertical or horizontal
+
 namespace {
 
 using UsageHint = notf::detail::AnyOpenGLBuffer::UsageHint;
+using Vertex = Plotter::VertexBuffer::vertex_t;
 
 static constexpr GLenum g_index_type = to_gl_type(Plotter::IndexBuffer::index_t{});
+
+// vertex =========================================================================================================== //
+
+void set_pos(Vertex& vertex, V2f pos) { std::get<0>(vertex) = std::move(pos); }
+
+void set_left_ctrl(Vertex& vertex, V2f pos) { std::get<1>(vertex) = std::move(pos); }
+
+void set_right_ctrl(Vertex& vertex, V2f pos) { std::get<2>(vertex) = std::move(pos); }
+
+/// Sets the first control point from a spline.
+/// We might have to modify the given ctrl point so we can be certain that is stores the outgoing tangent
+/// of the vertex. For that, we get the tangent either from the ctrl point itself (if the distance to the
+/// vertex > 0) or by calculating the tangent from the spline at the vertex. The control point is then moved
+/// onto the tangent, one unit further away from the vertex than originally. If we encounter a ctrl point in
+/// the shader that is of unit length, we know that in reality it was positioned on the vertex itself and
+/// still get the vertex tangent.
+/// @param spline   Spline on the left of the vertex position.
+// void set_left_ctrl(const CubicBezier2f::Segment& spline)
+//{
+//    V2f delta = spline.ctrl2 - spline.end;
+//    const float mag_sq = delta.get_magnitude_sq();
+//    if (is_zero(mag_sq, precision_high<float>())) {
+//        set_left_ctrl(-(spline.get_tangent(1).normalize()));
+//    } else {
+//        set_left_ctrl(delta *= 1 + (1 / sqrt(mag_sq)));
+//    }
+//}
+
+/// Sets the second control point from a spline.
+/// See `set_ctrl1` on why this method is needed.
+/// @param spline   Spline on the right of the vertex position.
+// void Plotter::Path::Vertex::set_right_ctrl(const CubicBezier2f::Segment& spline) {
+//    V2f delta = spline.ctrl1 - spline.start;
+//    const float mag_sq = delta.get_magnitude_sq();
+//    if (is_zero(mag_sq, precision_high<float>())) {
+//        set_left_ctrl(spline.get_tangent(0).normalize());
+//    } else {
+//        set_left_ctrl(delta *= 1 + (1 / sqrt(mag_sq)));
+//    }
+//}
 
 } // namespace
 
@@ -168,35 +218,9 @@ Plotter::Paint Plotter::Paint::texture_pattern(const V2f& origin, const Size2f& 
     return paint;
 }
 
-// path ============================================================================================================= //
-
-//void Plotter::Path::Vertex::set_left_ctrl(const CubicBezier2f::Segment& spline)
-//{
-//    V2f delta = spline.ctrl2 - spline.end;
-//    const float mag_sq = delta.get_magnitude_sq();
-//    if (is_zero(mag_sq, precision_high<float>())) {
-//        set_left_ctrl(-(spline.get_tangent(1).normalize()));
-//    } else {
-//        set_left_ctrl(delta *= 1 + (1 / sqrt(mag_sq)));
-//    }
-//}
-
-//void Plotter::Path::Vertex::set_right_ctrl(const CubicBezier2f::Segment& spline) {
-//    V2f delta = spline.ctrl1 - spline.start;
-//    const float mag_sq = delta.get_magnitude_sq();
-//    if (is_zero(mag_sq, precision_high<float>())) {
-//        set_left_ctrl(spline.get_tangent(0).normalize());
-//    } else {
-//        set_left_ctrl(delta *= 1 + (1 / sqrt(mag_sq)));
-//    }
-//}
-
-// make sure that the Vertex class does not add to the memory requirement
-static_assert(sizeof(Plotter::Path::Vertex) == sizeof(float) * 6);
-
 // fragment paint =================================================================================================== //
 
-Plotter::FragmentPaint::FragmentPaint(const Paint& paint, const Path2& stencil, const float stroke_width,
+Plotter::FragmentPaint::FragmentPaint(const Paint& paint, const Path2Ptr& stencil, const float stroke_width,
                                       const Type type) {
     // paint
     const M3f paint_xform = paint.xform.get_inverse();
@@ -210,16 +234,16 @@ Plotter::FragmentPaint::FragmentPaint(const Paint& paint, const Path2& stencil, 
     paint_size[1] = paint.extent.height();
 
     // stencil
-    if (!stencil.is_empty()) {
-        clip_rotation[0] = stencil.get_xform()[0][0];
-        clip_rotation[1] = stencil.get_xform()[0][1];
-        clip_rotation[2] = stencil.get_xform()[1][0];
-        clip_rotation[3] = stencil.get_xform()[1][1];
-        clip_translation[0] = stencil.get_xform()[2][0];
-        clip_translation[1] = stencil.get_xform()[2][1];
-        clip_size[0] = static_cast<float>(stencil.get_size().width() / 2);
-        clip_size[1] = static_cast<float>(stencil.get_size().height() / 2);
-    }
+    //    if (!stencil.is_empty()) {
+    //        clip_rotation[0] = stencil.get_xform()[0][0];
+    //        clip_rotation[1] = stencil.get_xform()[0][1];
+    //        clip_rotation[2] = stencil.get_xform()[1][0];
+    //        clip_rotation[3] = stencil.get_xform()[1][1];
+    //        clip_translation[0] = stencil.get_xform()[2][0];
+    //        clip_translation[1] = stencil.get_xform()[2][1];
+    //        clip_size[0] = static_cast<float>(stencil.get_size().width() / 2);
+    //        clip_size[1] = static_cast<float>(stencil.get_size().height() / 2);
+    //    }
 
     // color
     inner_color = paint.inner_color.premultiplied();
@@ -263,12 +287,12 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
     { // vertex object
         m_vertex_buffer = VertexBuffer::create("PlotterVertexBuffer", UsageHint::STREAM_DRAW);
         m_index_buffer = IndexBuffer::create("PlotterIndexBuffer", UsageHint::STREAM_DRAW);
-        m_instance_buffer
-            = InstanceBuffer::create("PlotterInstanceBuffer", UsageHint::STREAM_DRAW, /*is_per_instance= */ true);
+        m_xform_buffer
+            = XformBuffer::create("PlotterInstanceBuffer", UsageHint::STREAM_DRAW, /*is_per_instance= */ true);
         m_vertex_object = VertexObject::create(m_context, "PlotterVertexObject");
         m_vertex_object->bind(m_vertex_buffer, 0, 1, 2);
         m_vertex_object->bind(m_index_buffer);
-        m_vertex_object->bind(m_instance_buffer, 3);
+        m_vertex_object->bind(m_xform_buffer, 3);
     }
 
     { // uniform buffers
@@ -277,78 +301,97 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
 }
 
 Plotter::~Plotter() {
-    NOTF_GUARD(m_context.make_current());
-    m_program.reset();
-    m_vertex_buffer.reset();
-    m_index_buffer.reset();
-    m_instance_buffer.reset();
-    m_vertex_object.reset();
-    m_paint_buffer.reset();
+    NOTF_ASSERT(m_context.is_current()); // make sure the context is current when the Plotter is deletec
 }
 
 void Plotter::start_parsing() {
     NOTF_ASSERT(m_context.is_current());
 
+    // clear server-side buffers
     m_vertex_buffer->write().clear();
     m_index_buffer->write().clear();
-    m_instance_buffer->write().clear();
+    m_xform_buffer->write().clear();
     m_paint_buffer->write().clear();
+    // TODO: instead of clearing all plotter buffers each frame, anticipate paths
+    //       In order to do that, keep a set of all paths around hat that have been drawn the last frame and if they are
+    //       drawn again the next time, increase a counter. After a certain number of frames that drew a path, move the
+    //       path into the front of the buffer and don't delete them during frames. Then, after a path hasn't been drawn
+    //       for another number of frames, remove the path again. Ideally, we would be able to stack paths that are
+    //       used more often earlier in the buffer than those that regularly move in and out of the buffer.
 
+    // reset the plotter state
     m_paths.clear();
+    m_path_lookup.clear();
+    m_clips.clear();
     m_drawcalls.clear();
-
     m_states.clear();
     m_server_state = {};
+
+    // TODO: mutable paths
+    //       Immutable paths are great for shapes and icons etc. But there are two other kind of paths that would be
+    //       nice to have in order to get maximum performance. Maybe they should be their own classes, maybe they should
+    //       be some sort of variant (managed via a shared_ptr like the current Path2), we'll see.
+    //       * The first type would be a mutable path, with a fixed number of vertices. Like an audio waveform or that
+    //         example graph from the nanovg application. It would be wasteful to allocate a completely new vector each
+    //         frame, but with the current Path2 we cannot modify the existing vertices one created. This type would
+    //         re-use the client-side memory but still be threadsafe when read from the render thread. A block of server
+    //         memory reserved for these kinds of paths would be updated not once but many times, each time with a very
+    //         small update only. This can happen in parallel because we know the location of each path.
+    //       * The second type is a straight-up mutable path, throwaway paths. Is there anything we can do then just to
+    //         create new Path2Ptrs each time?
 }
 
-void Plotter::parse(const PlotterDesign& design) {
-    { // TODO adopt the Widget's auxiliary information
-        m_states.clear();
-        m_states.emplace_back();
+void Plotter::parse(const PlotterDesign& design, const M3f& xform, const Aabrf& clip) {
+    // reset the state stack for each design
+    m_states.clear();
+    m_states.emplace_back();
 
-        //        m_state.xform = widget->get_xform<AnyWidget::Space::WINDOW>();
-        //        _get_current_state().stencil = widget->get_clipping_rect();
-    }
+    // adopt the Design's auxiliary information
+    _get_state().xform = xform;
+    _get_state().clip = clip;
 
-    { // parse the commands
-        const std::vector<PlotterDesign::Command>& buffer = design.get_buffer();
-        for (const PlotterDesign::Command& command : buffer) {
-            std::visit(
-                overloaded{
-                    [&](const PlotterDesign::ResetState&) { m_states = {}; },
-                    [&](const PlotterDesign::PushState&) { /*TODO*/ }, [&](const PlotterDesign::PopState&) { /*TODO*/ },
-                    [&](const PlotterDesign::SetXform& cmd) { _get_state().xform = cmd.data->transformation; },
-                    [&](const PlotterDesign::SetPaint& cmd) { _get_state().paint = cmd.data->paint; },
-                    [&](const PlotterDesign::SetPath& cmd) { _get_state().path = cmd.data->path; },
-                    [&](const PlotterDesign::SetStencil& cmd) { _get_state().stencil = cmd.data->path; },
-                    [&](const PlotterDesign::SetFont& cmd) { _get_state().font = cmd.data->font; },
-                    [&](const PlotterDesign::SetAlpha& cmd) { _get_state().alpha = cmd.alpha; },
-                    [&](const PlotterDesign::SetStrokeWidth& cmd) { _get_state().stroke_width = cmd.stroke_width; },
-                    [&](const PlotterDesign::SetBlendMode& cmd) { _get_state().blend_mode = cmd.mode; },
-                    [&](const PlotterDesign::SetLineCap& cmd) { _get_state().line_cap = cmd.cap; },
-                    [&](const PlotterDesign::SetLineJoin& cmd) { _get_state().line_join = cmd.join; },
-                    [&](const PlotterDesign::Fill&) { _store_fill(); },
-                    [&](const PlotterDesign::Stroke&) { _store_stroke(); },
-                    [&](const PlotterDesign::Write& cmd) { _store_write(cmd.data->text); }},
-                command);
-        }
+    // parse the commands
+    for (const PlotterDesign::Command& command : design.get_buffer()) {
+        std::visit(
+            overloaded{[&](const PlotterDesign::ResetState&) { _get_state() = {}; },
+                       [&](const PlotterDesign::PushState&) { m_states.emplace_back(m_states.back()); },
+                       [&](const PlotterDesign::PopState&) { _pop_state(); },
+                       [&](const PlotterDesign::SetXform& cmd) { _get_state().xform = cmd.data->transformation; },
+                       [&](const PlotterDesign::SetPaint& cmd) { _get_state().paint = cmd.data->paint; },
+                       [&](const PlotterDesign::SetPath& cmd) { _get_state().path = cmd.data->path; },
+                       [&](const PlotterDesign::SetClip& cmd) { _get_state().clip = cmd.data->clip; },
+                       [&](const PlotterDesign::SetFont& cmd) { _get_state().font = cmd.data->font; },
+                       [&](const PlotterDesign::SetAlpha& cmd) { _get_state().alpha = cmd.alpha; },
+                       [&](const PlotterDesign::SetStrokeWidth& cmd) { _get_state().stroke_width = cmd.stroke_width; },
+                       [&](const PlotterDesign::SetBlendMode& cmd) { _get_state().blend_mode = cmd.mode; },
+                       [&](const PlotterDesign::SetLineCap& cmd) { _get_state().line_cap = cmd.cap; },
+                       [&](const PlotterDesign::SetLineJoin& cmd) { _get_state().line_join = cmd.join; },
+                       [&](const PlotterDesign::Fill&) { _store_fill_call(); },
+                       [&](const PlotterDesign::Stroke&) { _store_stroke_call(); },
+                       [&](const PlotterDesign::Write& cmd) { _store_write_call(cmd.data->text); }},
+            command);
     }
 }
 
 void Plotter::finish_parsing() {
+    // early return if nothing was stored
     if (m_index_buffer->is_empty()) { return; }
 
+    // set up the graphics context
     NOTF_ASSERT(m_context.is_current());
     m_context->vertex_object = m_vertex_object;
     m_context->program = m_program;
-
     m_context->uniform_slots[0].bind_block(m_program->get_uniform_block("PaintBlock"));
+    m_context->uniform_slots[0].bind_buffer(m_paint_buffer);
+    m_server_state.paint_index = 0;
 
+    // upload the buffers
     m_vertex_buffer->upload();
     m_index_buffer->upload();
-    m_instance_buffer->upload();
+    m_xform_buffer->upload();
     m_paint_buffer->upload();
 
+    // reset the internal state
     NOTF_CHECK_GL(glEnable(GL_CULL_FACE));
     NOTF_CHECK_GL(glCullFace(GL_BACK));
     NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, m_server_state.patch_vertices));
@@ -365,7 +408,7 @@ void Plotter::finish_parsing() {
     }
 
     // perform the render calls
-    for (const _DrawCall& drawcall : m_drawcalls) {
+    for (const DrawCall& drawcall : m_drawcalls) {
         std::visit(overloaded{
                        [&](const _FillCall& call) { _render_fill(call); },
                        [&](const _StrokeCall& call) { _render_stroke(call); },
@@ -375,164 +418,296 @@ void Plotter::finish_parsing() {
     }
 }
 
-void Plotter::_store_fill() {}
-
-void Plotter::_store_stroke() {
-    NOTF_ASSERT(!_get_state().path.is_empty());
+uint Plotter::_store_path(const Path2Ptr& path) {
+    // return the index of an existing path
+    if (auto itr = m_path_lookup.find(path); itr != m_path_lookup.end()) { return itr->second; }
 
     std::vector<VertexBuffer::vertex_t>& vertices = m_vertex_buffer->write();
     std::vector<GLuint>& indices = m_index_buffer->write();
 
-//    // path
-//    _Path path;
-//    path.offset = narrow_cast<uint>(indices.size());
-//    path.center = polygon.get_center();
-//    path.is_convex = polygon.is_convex();
-//    path.is_closed = true;
+    // create the new path
+    Path new_path;
+    new_path.vertex_offset = narrow_cast<int>(vertices.size());
+    new_path.index_offset = narrow_cast<uint>(indices.size());
+    new_path.center = path->get_center();
+    new_path.is_convex = path->is_convex();
 
-//    { // update indices
-//        indices.reserve(indices.size() + (polygon.get_size() * 2));
+    // store new vertices in the vertex- and index buffer
+    for (const auto& subpath : path->get_subpaths()) {
+        const size_t hull_size = subpath.path.get_hull().get_size();
+        if (hull_size == 0) { continue; }
 
-//        const GLuint first_index = narrow_cast<GLuint>(vertices.size());
-//        GLuint next_index = first_index;
+        { // create indices
+            const size_t segment_count = (hull_size - 1) / 3;
+            indices.reserve(indices.size() + (segment_count * 4) + (subpath.is_closed ? 0 : 2));
 
-//        for (size_t i = 0; i < polygon.get_size() - 1; ++i) {
-//            // first -> (n-1) segment
-//            indices.emplace_back(next_index++);
-//            indices.emplace_back(next_index);
-//        }
+            uint index = 0; // TODO: or should this be: narrow_cast<GLuint>(vertices.size());
 
-//        // last segment
-//        indices.emplace_back(next_index);
-//        indices.emplace_back(first_index);
-//    }
-//    path.size = narrow_cast<int>(indices.size() - path.offset);
+            // start cap
+            indices.emplace_back(index);
+            indices.emplace_back(index);
 
-//    // vertices
-//    vertices.reserve(vertices.size() + polygon.get_size());
-//    for (const V2f& point : polygon.get_vertices()) {
-//        VertexBuffer::vertex_t vertex;
-//        set_pos(vertex, point);
-//        set_first_ctrl(vertex, V2f::zero());
-//        set_second_ctrl(vertex, V2f::zero());
-//        vertices.emplace_back(std::move(vertex));
-//    }
+            for (size_t i = 0; i < segment_count; ++i) {
+                // segment
+                indices.emplace_back(index);
+                indices.emplace_back(++index);
+
+                // joint / end cap
+                indices.emplace_back(index);
+                indices.emplace_back(index);
+            }
+        }
+
+        // create vertices
+        if (subpath.is_closed) {
+            //    // calculate tangents for straight edges
+            //    for (size_t i = subpath.first_index + 1; i < subpath.first_index + subpath.size; ++i) {
+            //        Vertex& last_vertex = m_vertices[i - 1];
+            //        Vertex& current_vertex = m_vertices[i];
+            //        if (last_vertex.right_tangent.is_zero()) {
+            //            last_vertex.right_tangent = (current_vertex.pos - last_vertex.pos).normalize();
+            //        }
+            //        if (current_vertex.left_tangent.is_zero()) {
+            //            current_vertex.left_tangent = (last_vertex.pos - current_vertex.pos).normalize();
+            //        }
+            //    }
+
+            //    // if the subpath is closed, we don't need to store the last vertex
+            //    // just get its tangent and pop it
+            //    if (subpath.is_closed) {
+            //        Vertex first_vertex = m_vertices[subpath.first_index];
+            //        Vertex last_vertex = m_vertices[subpath.first_index + subpath.size - 1];
+            //        first_vertex.left_tangent = last_vertex.left_tangent;
+            //        subpath.size -= 1;
+            //        m_vertices.pop_back();
+            //    }
+        } else { // subpath is open
+                 //            vertices.reserve(vertices.size() + spline.segments.size() + 1);
+
+            //            { // first vertex
+            //                const CubicBezier2f::Segment& first_segment = spline.segments.front();
+            //                VertexBuffer::vertex_t vertex;
+            //                set_pos(vertex, first_segment.start);
+            //                set_first_ctrl(vertex, V2f::zero());
+            //                set_modified_second_ctrl(vertex, first_segment);
+            //                vertices.emplace_back(std::move(vertex));
+            //            }
+
+            //            // middle vertices
+            //            for (size_t i = 0; i < spline.segments.size() - 1; ++i) {
+            //                const CubicBezier2f::Segment& left_segment = spline.segments[i];
+            //                const CubicBezier2f::Segment& right_segment = spline.segments[i + 1];
+            //                VertexBuffer::vertex_t vertex;
+            //                set_pos(vertex, left_segment.end);
+            //                set_modified_first_ctrl(vertex, left_segment);
+            //                set_modified_second_ctrl(vertex, right_segment);
+            //                vertices.emplace_back(std::move(vertex));
+            //            }
+
+            //            { // last vertex
+            //                const CubicBezier2f::Segment& last_segment = spline.segments.back();
+            //                VertexBuffer::vertex_t vertex;
+            //                set_pos(vertex, last_segment.end);
+            //                set_modified_first_ctrl(vertex, last_segment);
+            //                set_second_ctrl(vertex, V2f::zero());
+            //                vertices.emplace_back(std::move(vertex));
+            //            }
+        }
+    }
+    new_path.size = narrow_cast<int>(indices.size() - new_path.index_offset);
+
+    // store the path and keep the `shared_ptr` around for easy lookup in the future
+    const uint index = narrow_cast<uint>(m_paths.size());
+    m_path_lookup.emplace(path, index);
+    m_paths.emplace_back(std::move(new_path));
+    return index;
 }
 
-void Plotter::_store_write(std::string text) {}
+void Plotter::_store_call_base(_CallBase& call) {
+    const PainterState& state = _get_state();
+    call.alpha = clamp(state.alpha, 0, 1);
+    call.blend_mode = state.blend_mode;
+
+    { // store xform
+        auto& xform_buffer = m_xform_buffer->write();
+        if (xform_buffer.empty() || state.xform != std::get<0>(xform_buffer.back())) {
+            xform_buffer.emplace_back(state.xform);
+        }
+        NOTF_ASSERT(!xform_buffer.empty());
+        call.xform = narrow_cast<uint>(xform_buffer.size() - 1);
+    }
+
+    { // store paint
+        auto& paint_buffer = m_paint_buffer->write();
+        if (paint_buffer.empty() || true) { // || state.paint != paint_buffer.back()){
+                                            // TODO squash similar paints or even index them like paths?
+            Paint paint = state.paint;
+            paint.inner_color.a *= state.alpha;
+            paint.outer_color.a *= state.alpha;
+            paint_buffer.emplace_back(state.paint);
+        }
+        NOTF_ASSERT(!paint_buffer.empty());
+        call.paint = narrow_cast<uint>(paint_buffer.size() - 1);
+    }
+
+    { // store clip
+        if (m_clips.empty() || state.clip != m_clips.back()) { m_clips.emplace_back(state.clip); }
+        NOTF_ASSERT(!m_clips.empty());
+        call.clip = narrow_cast<uint>(m_clips.size() - 1);
+    }
+}
+
+void Plotter::_store_fill_call() {
+    // early out, if the call would have no visible effect
+    const PainterState& state = _get_state();
+    if (state.path->is_empty()                                               // no path
+        || is_zero(state.alpha, precision_low<float>())                      // transparent
+        || is_zero(state.xform.get_determinant(), precision_low<float>())) { // xforms maps to zero area
+        return;
+    }
+
+    // store call
+    _FillCall call;
+    _store_call_base(call);
+    call.path = _store_path(state.path);
+    m_drawcalls.emplace_back(std::move(call));
+}
+
+void Plotter::_store_stroke_call() {
+    // early out, if the call would have no visible effect
+    const PainterState& state = _get_state();
+    if (state.path->is_empty()                                               // no path
+        || is_zero(state.stroke_width, precision_low<float>())               // zero width
+        || is_zero(state.alpha, precision_low<float>())                      // transparent
+        || is_zero(state.xform.get_determinant(), precision_low<float>())) { // xforms maps to zero area
+        return;
+    }
+
+    _StrokeCall call;
+    _store_call_base(call);
+    call.path = _store_path(state.path);
+    call.cap = state.line_cap;
+    call.join = state.line_join;
+    { // stroke width
+        const float stroke_width = abs(state.stroke_width * state.xform.get_scale_factor());
+        // a line must be at least a pixel wide to be drawn, we emulate thinner lines using the alpha
+        call.width = max(1, stroke_width);
+        if (state.stroke_width < 1) { call.alpha *= stroke_width; }
+    }
+    m_drawcalls.emplace_back(std::move(call));
+}
+
+void Plotter::_store_write_call(std::string text) {
+    // early out, if the call would have no visible effect
+    const PainterState& state = _get_state();
+    if (text.empty()                                                         // no text
+        || is_zero(state.alpha, precision_low<float>())                      // transparent
+        || is_zero(state.xform.get_determinant(), precision_low<float>())) { // xforms maps to zero area
+        return;
+    }
+    if (!state.font) {
+        NOTF_LOG_WARN("Cannot render a text without a font"); // TODO Plotter default font?
+        return;
+    }
+
+    std::vector<VertexBuffer::vertex_t>& vertices = m_vertex_buffer->write();
+    std::vector<GLuint>& indices = m_index_buffer->write();
+
+    // create the new path
+    Path new_path;
+    new_path.vertex_offset = narrow_cast<int>(vertices.size());
+    new_path.index_offset = narrow_cast<uint>(indices.size());
+
+    { // vertices
+        const Utf8 utf8_text(text);
+
+        // make sure that text is always rendered on the pixel grid, not between pixels
+        const V2f position = V2f::zero() * state.xform;
+        Glyph::coord_t x = static_cast<Glyph::coord_t>(roundf(position.x()));
+        Glyph::coord_t y = static_cast<Glyph::coord_t>(roundf(position.y()));
+        // TODO Glyphs cannot be rotated, sheared or otherwise transformed, only translated
+        //      In order to change this, I suspect that we should signed-distance font rendering? Or maybe have two
+        //      different kinds of glyph rendering?
+
+        for (const auto character : utf8_text) {
+            const Glyph& glyph = state.font->get_glyph(static_cast<codepoint_t>(character));
+
+            // skip glyphs without pixels
+            if (!glyph.rect.width || !glyph.rect.height) { continue; }
+
+            // quad which renders the glyph
+            const Aabrf quad((x + glyph.left), (y - glyph.rect.height + glyph.top), //
+                             glyph.rect.width, glyph.rect.height);
+
+            // uv coordinates of the glyph - must be divided by the size of the font texture!
+            const V2f uv = V2f{glyph.rect.x, glyph.rect.y};
+
+            // create the vertex
+            Vertex vertex;
+            set_pos(vertex, uv);
+            set_left_ctrl(vertex, quad.get_bottom_left());
+            set_right_ctrl(vertex, quad.get_top_right());
+            vertices.emplace_back(std::move(vertex));
+
+            // advance to the next character position
+            x += glyph.advance_x;
+            y += glyph.advance_y;
+        }
+    }
+
+    // indices
+    indices.reserve(indices.size() + (vertices.size() - static_cast<uint>(new_path.vertex_offset)));
+    for (GLuint i = static_cast<uint>(new_path.vertex_offset), end = narrow_cast<GLuint>(vertices.size()); i < end;
+         ++i) {
+        indices.emplace_back(i);
+    }
+    new_path.size = narrow_cast<int>(indices.size() - new_path.index_offset);
+
+    // store the path (is interpreted as glyph positions when rendered)
+    const uint path_index = narrow_cast<uint>(m_paths.size());
+    m_paths.emplace_back(std::move(new_path));
+
+    // store call
+    _WriteCall call;
+    _store_call_base(call);
+    call.path = path_index;
+    m_drawcalls.emplace_back(std::move(call));
+}
 
 void Plotter::_render_fill(const _FillCall& call) {}
 
-void Plotter::_render_stroke(const _StrokeCall& call) {}
+void Plotter::_render_stroke(const _StrokeCall& stroke) {
+    // patch vertices
+    if (m_server_state.patch_vertices != 2) {
+        m_server_state.patch_vertices = 2;
+        NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, 2));
+    }
+
+    // patch type
+    if (m_server_state.patch_type != PatchType::STROKE) {
+        m_program->get_uniform("patch_type").set(to_number(PatchType::STROKE));
+        m_server_state.patch_type = PatchType::STROKE;
+    }
+
+    // stroke width
+    if (abs(m_server_state.stroke_width - stroke.width) > precision_high<float>()) {
+        m_program->get_uniform("stroke_width").set(stroke.width);
+        m_server_state.stroke_width = stroke.width;
+    }
+
+    // paint uniform block
+    m_context->uniform_slots[0].bind_buffer(m_paint_buffer, stroke.paint);
+
+    // draw it
+    NOTF_ASSERT(stroke.path < m_paths.size());
+    const Path& path = m_paths[stroke.path];
+    NOTF_CHECK_GL(glDrawElementsBaseVertex(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
+                                           gl_buffer_offset(path.index_offset * sizeof(IndexBuffer::index_t)),
+                                           path.vertex_offset));
+    // TODO use glDrawElementsIndirect with an indirect command buffer?
+}
 
 void Plotter::_render_text(const _WriteCall& call) {}
-
-// void Plotter::set_shape(const CubicBezier2f& spline) {
-//    std::vector<VertexBuffer::vertex_t>& vertices = m_vertex_buffer->write();
-//    std::vector<GLuint>& indices = m_index_buffer->write();
-
-//    // path
-//    _Path path;
-//    path.offset = narrow_cast<uint>(indices.size());
-//    path.center = V2f::zero(); // TODO: extract more Plotter::Path information from bezier splines
-//    path.is_convex = false;    //
-//    path.is_closed = spline.segments.front().start.is_approx(spline.segments.back().end);
-
-//    { // update indices
-//        indices.reserve(indices.size() + (spline.segments.size() * 4) + 2);
-
-//        GLuint index = narrow_cast<GLuint>(vertices.size());
-
-//        // start cap
-//        indices.emplace_back(index);
-//        indices.emplace_back(index);
-
-//        for (size_t i = 0; i < spline.segments.size(); ++i) {
-//            // segment
-//            indices.emplace_back(index);
-//            indices.emplace_back(++index);
-
-//            // joint / end cap
-//            indices.emplace_back(index);
-//            indices.emplace_back(index);
-//        }
-//    }
-//    path.size = narrow_cast<int>(indices.size() - path.offset);
-
-//    { // vertices
-//        vertices.reserve(vertices.size() + spline.segments.size() + 1);
-
-//        { // first vertex
-//            const CubicBezier2f::Segment& first_segment = spline.segments.front();
-//            VertexBuffer::vertex_t vertex;
-//            set_pos(vertex, first_segment.start);
-//            set_first_ctrl(vertex, V2f::zero());
-//            set_modified_second_ctrl(vertex, first_segment);
-//            vertices.emplace_back(std::move(vertex));
-//        }
-
-//        // middle vertices
-//        for (size_t i = 0; i < spline.segments.size() - 1; ++i) {
-//            const CubicBezier2f::Segment& left_segment = spline.segments[i];
-//            const CubicBezier2f::Segment& right_segment = spline.segments[i + 1];
-//            VertexBuffer::vertex_t vertex;
-//            set_pos(vertex, left_segment.end);
-//            set_modified_first_ctrl(vertex, left_segment);
-//            set_modified_second_ctrl(vertex, right_segment);
-//            vertices.emplace_back(std::move(vertex));
-//        }
-
-//        { // last vertex
-//            const CubicBezier2f::Segment& last_segment = spline.segments.back();
-//            VertexBuffer::vertex_t vertex;
-//            set_pos(vertex, last_segment.end);
-//            set_modified_first_ctrl(vertex, last_segment);
-//            set_second_ctrl(vertex, V2f::zero());
-//            vertices.emplace_back(std::move(vertex));
-//        }
-//    }
-//}
-
-// void Plotter::set_shape(const Polygonf& polygon) {
-
-//    std::vector<VertexBuffer::vertex_t>& vertices = m_vertex_buffer->write();
-//    std::vector<GLuint>& indices = m_index_buffer->write();
-
-//    // path
-//    _Path path;
-//    path.offset = narrow_cast<uint>(indices.size());
-//    path.center = polygon.get_center();
-//    path.is_convex = polygon.is_convex();
-//    path.is_closed = true;
-
-//    { // update indices
-//        indices.reserve(indices.size() + (polygon.get_size() * 2));
-
-//        const GLuint first_index = narrow_cast<GLuint>(vertices.size());
-//        GLuint next_index = first_index;
-
-//        for (size_t i = 0; i < polygon.get_size() - 1; ++i) {
-//            // first -> (n-1) segment
-//            indices.emplace_back(next_index++);
-//            indices.emplace_back(next_index);
-//        }
-
-//        // last segment
-//        indices.emplace_back(next_index);
-//        indices.emplace_back(first_index);
-//    }
-//    path.size = narrow_cast<int>(indices.size() - path.offset);
-
-//    // vertices
-//    vertices.reserve(vertices.size() + polygon.get_size());
-//    for (const V2f& point : polygon.get_vertices()) {
-//        VertexBuffer::vertex_t vertex;
-//        set_pos(vertex, point);
-//        set_first_ctrl(vertex, V2f::zero());
-//        set_second_ctrl(vertex, V2f::zero());
-//        vertices.emplace_back(std::move(vertex));
-//    }
-//}
 
 // std::hash ======================================================================================================== //
 
@@ -549,144 +724,6 @@ struct ::std::hash<notf::Plotter::FragmentPaint> {
 };
 
 /*
-
-#include "notf/meta/log.hpp"
-
-#include "notf/common/matrix4.hpp"
-#include "notf/common/utf8.hpp"
-#include "notf/common/variant.hpp"
-
-
-void Plotter::stroke(valid_ptr<PathPtr> path, const Paint& paint, StrokeInfo info) {
-    if (path->size == 0 || info.width <= 0.f) {
-        return; // early out
-    }
-
-    // a line must be at least a pixel wide to be drawn, to emulate thinner lines lower the alpha
-    info.width = max(1, info.width);
-
-    // store the path
-    info.path = std::move(path);
-
-    // upload the paint and store the index
-    info.paint_index = m_uniform_buffer->get_element_count();
-    m_uniform_buffer->write().emplace_back(paint);
-
-    // store the resulting draw call
-    m_drawcalls.emplace_back(DrawCall{std::move(info)});
-}
-
-void Plotter::fill(valid_ptr<PathPtr> path, const Paint& paint, FillInfo info) {
-    if (path->size == 0) {
-        return; // early out
-    }
-
-    // store the path
-    info.path = std::move(path);
-
-    // upload the paint and store the index
-    info.paint_index = m_uniform_buffer->get_element_count();
-    m_uniform_buffer->write().emplace_back(paint);
-
-    // store the resulting draw call
-    m_drawcalls.emplace_back(DrawCall{std::move(info)});
-}
-
-void Plotter::write(const std::string& text, const Paint& paint, TextInfo info) {
-    std::vector<VertexBuffer::vertex_t>& vertices = m_vertex_buffer->write();
-    std::vector<GLuint>& indices = m_index_buffer->write();
-
-    const size_t index_offset = indices.size();
-    const GLuint first_index = narrow_cast<GLuint>(vertices.size());
-
-    if (!info.font) {
-        NOTF_LOG_WARN("Cannot add text without a font");
-        return;
-    }
-
-    { // vertices
-        const Utf8 utf8_text(text);
-
-        // make sure that text is always rendered on the pixel grid, not between pixels
-        const V2f& translation = info.translation;
-        Glyph::coord_t x = static_cast<Glyph::coord_t>(roundf(translation.x()));
-        Glyph::coord_t y = static_cast<Glyph::coord_t>(roundf(translation.y()));
-
-        for (const auto character : utf8_text) {
-            const Glyph& glyph = info.font->glyph(static_cast<codepoint_t>(character));
-
-            if (!glyph.rect.width || !glyph.rect.height) {
-                // skip glyphs without pixels
-            } else {
-
-                // quad which renders the glyph
-                const Aabrf quad((x + glyph.left), (y - glyph.rect.height + glyph.top), glyph.rect.width,
-                                 glyph.rect.height);
-
-                // uv coordinates of the glyph - must be divided by the size of the font texture!
-                const V2f uv = V2f{glyph.rect.x, glyph.rect.y};
-
-                // create the vertex
-                VertexBuffer::vertex_t vertex;
-                set_pos(vertex, uv);
-                set_first_ctrl(vertex, quad.get_bottom_left());
-                set_second_ctrl(vertex, quad.get_top_right());
-                vertices.emplace_back(std::move(vertex));
-            }
-
-            // advance to the next character position
-            x += glyph.advance_x;
-            y += glyph.advance_y;
-        }
-    }
-
-    // indices
-    indices.reserve(indices.size() + (vertices.size() - first_index));
-    for (GLuint i = first_index, end = narrow_cast<GLuint>(vertices.size()); i < end; ++i) {
-        indices.emplace_back(i);
-    }
-
-    // store the path
-    info.path = Path::_create_shared();
-    info.path->offset = narrow_cast<uint>(index_offset);
-    info.path->size = narrow_cast<int>(indices.size() - index_offset);
-
-    // upload the paint and store the index
-    info.paint_index = m_uniform_buffer->get_element_count();
-    m_uniform_buffer->write().emplace_back(paint);
-    // TODO: don't create a new paint entry in the uniform buffer if a similar one already exists
-
-    // store the resulting draw call
-    m_drawcalls.emplace_back(DrawCall{std::move(info)});
-}
-
-
-void Plotter::_render_line(const StrokeInfo& stroke) const {
-    // patch vertices
-    if (m_state.patch_vertices != 2) {
-        m_state.patch_vertices = 2;
-        NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, 2));
-    }
-
-    // patch type
-    if (m_state.patch_type != PatchType::STROKE) {
-        m_program->get_uniform("patch_type").set(to_number(PatchType::STROKE));
-        m_state.patch_type = PatchType::STROKE;
-    }
-
-    // stroke width
-    if (abs(m_state.stroke_width - stroke.width) > precision_high<float>()) {
-        m_program->get_uniform("stroke_width").set(stroke.width);
-        m_state.stroke_width = stroke.width;
-    }
-
-    // paint uniform block
-    m_context->uniform_slots[0].bind_buffer(m_uniform_buffer, stroke.paint_index);
-
-    NOTF_CHECK_GL(glDrawElements(GL_PATCHES, static_cast<GLsizei>(stroke.path->size), g_index_type,
-                                 gl_buffer_offset(stroke.path->offset * sizeof(IndexBuffer::index_t))));
-}
-
 void Plotter::_render_shape(const FillInfo& shape) const {
 
     // patch vertices
@@ -796,73 +833,4 @@ void Plotter::_write(const WriteCall& call) {
                                      gl_buffer_offset(path.offset * sizeof(IndexBuffer::index_t))));
     }
 }
-
-
-
 */
-
-//    void Painterpreter::_fill() {
-//    const State& state = _get_current_state();
-//    //    if (!state.path || is_approx(state.alpha, 0)) {
-//    //        return; // early out
-//    //    }
-
-//    // get the fill paint
-//    Paint paint = state.fill_paint;
-//    paint.inner_color.a *= state.alpha;
-//    paint.outer_color.a *= state.alpha;
-
-//    // plot the shape
-//    //    Plotter::FillInfo fill_info;
-//    //    m_plotter->fill(state.path, paint, std::move(fill_info));
-//}
-
-// void Painterpreter::_stroke() {
-//    const State& state = _get_current_state();
-//    //    if (!state.path || state.stroke_width <= 0 || is_approx(state.alpha, 0)) {
-//    //        return; // early out
-//    //    }
-
-//    // get the stroke paint
-//    Paint paint = state.stroke_paint;
-//    paint.inner_color.a *= state.alpha;
-//    paint.outer_color.a *= state.alpha;
-
-//    // create a sane stroke width
-//    float stroke_width;
-//    {
-//        const float scale = state.xform.get_scale_factor();
-//        stroke_width = max(state.stroke_width * scale, 0);
-//        if (stroke_width < 1) {
-//            // if the stroke width is less than pixel size, use alpha to emulate coverage.
-//            const float alpha = clamp(stroke_width, 0.0f, 1.0f);
-//            const float alpha_squared = alpha * alpha; // since coverage is area, scale by alpha*alpha
-//            paint.inner_color.a *= alpha_squared;
-//            paint.outer_color.a *= alpha_squared;
-//            stroke_width = 1;
-//        }
-//    }
-
-//    // plot the stroke
-//    //    Plotter::StrokeInfo stroke_info;
-//    //    stroke_info.width = stroke_width;
-//    //    m_plotter->stroke(state.path, paint, std::move(stroke_info));
-//}
-
-// void Painterpreter::_write(const std::string& text) {
-//    const State& state = _get_current_state();
-//    if (!state.font || is_approx(state.alpha, 0)) {
-//        return; // early out
-//    }
-
-//    // get the text paint
-//    Paint paint = state.stroke_paint;
-//    paint.inner_color.a *= state.alpha;
-//    paint.outer_color.a *= state.alpha;
-
-//    // plot the text
-//    //    Plotter::TextInfo text_info;
-//    //    text_info.font = state.font;
-//    //    text_info.translation = transform_by(V2f::zero(), state.xform);
-//    //    m_plotter->write(text, paint, std::move(text_info));
-//}

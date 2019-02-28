@@ -11,7 +11,7 @@ Aabri text_aabr(const FontPtr& font, const std::string& text) {
     Aabri::element_t advance = 0;
     const utf8_string utf8_text(text);
     for (const auto character : utf8_text) {
-        const Glyph& glyph = font->glyph(static_cast<codepoint_t>(character));
+        const Glyph& glyph = font->get_glyph(static_cast<codepoint_t>(character));
 
         result.bottom() = min(result.bottom(), glyph.rect.height - glyph.top);
         result.top() = max(result.top(), glyph.top);
@@ -33,7 +33,7 @@ std::vector<std::string::const_iterator> break_text(const int width, const FontP
     const utf8_string utf8_text(text);
     for (auto it = std::begin(utf8_text) + static_cast<std::string::difference_type>(first); it != std::end(utf8_text);
          ++it) {
-        const Glyph& glyph = font->glyph(static_cast<codepoint_t>(*it));
+        const Glyph& glyph = font->get_glyph(static_cast<codepoint_t>(*it));
 
         if (delimiter == 0 || *it == delimiter) {
             auto one_step_further = it; // include the delimiter

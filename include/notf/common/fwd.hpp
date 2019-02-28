@@ -141,6 +141,14 @@ using Trianglef = detail::Triangle<float>;
 // path2.hpp
 NOTF_DECLARE_SHARED_POINTERS(class, Path2);
 
+// smoothstep.hpp
+namespace detail {
+template<class>
+class Smoothstep;
+}
+using Smoothstepf = detail::Smoothstep<float>;
+using Smoothstepd = detail::Smoothstep<double>;
+
 // free templates =================================================================================================== //
 
 /// Conversion template declaration.

@@ -115,8 +115,11 @@ WindowHandle Window::create(Arguments settings) {
 }
 
 Window::~Window() {
-    // destroy all children (including those stored in the modified data) while the GraphicsContext is still alive
-    AnyNode::AccessFor<Window>::remove_children_now(this);
+    { // destroy all children (including those stored in the modified data)
+      // while the GraphicsContext is still alive and current
+        NOTF_GUARD(m_graphics_context->make_current());
+        AnyNode::AccessFor<Window>::remove_children_now(this);
+    }
 
     m_graphics_context.reset(); // destroy while glfw window is still alive
 

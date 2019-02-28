@@ -33,12 +33,30 @@ public:
     constexpr Polyline() noexcept = default;
 
     /// Value constructor.
-    /// @param vertices Vertices from which to construct the Polyline.
-    Polyline(std::vector<vector_t> vertices) noexcept : m_vertices(std::move(vertices)) {}
+    /// @param vertices     Vertices from which to construct the Polyline.
+    /// @param is_closed    True if the Polyline should be closed even though the last vertex does not match the first.
+    Polyline(std::vector<vector_t> vertices, Tristate is_closed = Tristate::Default) noexcept
+        : m_vertices(std::move(vertices))
+        , m_is_closed((is_closed == Tristate::True)
+                      || (m_vertices.empty() ? false : m_vertices.front().is_approx(m_vertices.back()))) {}
+
+    /// @{
+    /// Variadic Constructor taking an arbitrary number of vertices.
+    /// @param vertices All vertices that make up the Polyline.
+    Polyline(std::initializer_list<vector_t>&& vertices)
+        : Polyline(std::vector<vector_t>(std::make_move_iterator(vertices.begin()),
+                                         std::make_move_iterator(vertices.end()))) {}
+    template<class... Ts>
+    Polyline(Ts&&... args) : Polyline({std::forward<Ts>(args)...}) {}
+    /// @}
+
+    /// Copy Constructor.
+    /// @param other    Polyline to copy from.
+    Polyline(const Polyline& other) = default; // required because we have a custom move-constructor
 
     /// Move Constructor.
     /// @param other    Polyline to move from.
-    Polyline(Polyline&& other) : m_vertices(std::move(other.m_vertices)) {
+    Polyline(Polyline&& other) : m_vertices(std::move(other.m_vertices)), m_is_closed(other.m_is_closed) {
         other.m_vertices.clear(); // (from reference:) "[other] is left in an unspecified but valid state."
     }
 
@@ -47,6 +65,7 @@ public:
     Polyline& operator=(Polyline&& other) {
         m_vertices = std::move(other.m_vertices);
         other.m_vertices.clear();
+        m_is_closed = other.m_is_closed;
         return *this;
     }
 
@@ -62,6 +81,10 @@ public:
 
     /// Returns the number of vertices in this Polyline.
     size_t get_size() const noexcept { return m_vertices.size(); }
+
+    /// Whether or not this Polyline is closed.
+    /// Note that a Polyline with only one or no vertex may still be "closed"
+    bool is_closed() const noexcept { return m_is_closed; }
 
     /// The center point of the Polyline.
     /// If the Polyline is empty, the zero vector is returned.
@@ -159,6 +182,9 @@ public:
 
     /// Checks if this Polyline is convex.
     bool is_convex() const {
+        // lines are neither convex or concave, but since a convex Polyline is easier to deal with, we say they are
+        if (m_vertices.size() < 3) { return true; }
+
         // find the first non-zero triangle
         size_t index = 2;
         while (index < m_vertices.size()
@@ -186,6 +212,7 @@ public:
     bool operator!=(const Polyline& other) const { return m_vertices != other.m_vertices; }
 
     /// Tests whether this Polyline is vertex-wise approximate to another.
+    /// If you want to know if two Polylines are visually approximate, you'll have to optimize both first.
     /// @param other    Other Polyline to test against.
     /// @param epsilon  Largest ignored difference.
     bool is_approx(const Polyline& other, const element_t epsilon = precision_high<element_t>()) const noexcept {
@@ -196,44 +223,29 @@ public:
         return true;
     }
 
-private:
-    /// Enforces the construction of a simple Polyline with unique vertices.
-    /// @param vertices     Vertices from which to construct the Polyline.
-    /// @throws LogicError  If the Polyline does not contain at least 3 unique vertices.
-    ///                     If two edges of the Polyline intersect.
-    //    static std::vector<vector_t> _prepare_vertices(std::vector<vector_t>&& vertices) {
+    /// Remove all vertices that do not add additional corners to the PolyLine.
+    void optimize() {
+        // merge non-unique vertices (consecutive vertices that share the same position)
+        remove_consecutive_equal(m_vertices);
 
-    //        // merge non-unique vertices (consecutive vertices that share the same position)
-    //        remove_consecutive_equal(vertices);
-    //        if (vertices.front() == vertices.back()) { vertices.pop_back(); }
-    //        if (vertices.size() < 3) { NOTF_THROW(LogicError, "A Polyline must contain at least 3 unique vertices"); }
-    //        vertices.shrink_to_fit();
+        // do not store an explicit last vertex if the PolyLine is closed anyway
+        if (m_is_closed && (m_vertices.empty() ? false : m_vertices.front().is_approx(m_vertices.back()))) {
+            m_vertices.pop_back();
+        }
 
-    //        { // move the vertex with the smallest x-coordinate to the front of the vector
-    //          // this allows two similar polylines to be compared and we know that `m_vertices[0].x - n` is definetly
-    //          // outside of the Polyline for all n
-    //            auto min_x = std::min_element(vertices.begin(), vertices.end(),
-    //                                          [](const vector_t& a, const vector_t& b) { return a.x() < b.x(); });
-    //            std::rotate(vertices.begin(), min_x, vertices.end());
-    //        }
+        // TODO Polyline::optimize() should remove vertices if they are on the line from last to next as well
 
-    //        // TODO: this seems broken, also restore the whole function as an `optimize` function.
-    //        //        for (size_t i = 1; i < vertices.size(); ++i) {
-    //        //            for (size_t j = i + 1; j < vertices.size(); ++j) {
-    //        //                if (Segment2<element_t>(vertices[i - 1], vertices[i])
-    //        //                        .intersects(Segment2<element_t>(vertices[j - 1], vertices[j]))) {
-    //        //                    NOTF_THROW(LogicError, "Segments in a Polyline may not intersect");
-    //        //                }
-    //        //            }
-    //        //        }
-
-    //        return vertices;
-    //    }
+        // may conserve some memory
+        m_vertices.shrink_to_fit();
+    }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// Vertices of this Polyline.
     std::vector<vector_t> m_vertices;
+
+    /// A closed Polyline has an implicit edge from the last to the first vertex.
+    bool m_is_closed;
 };
 
 } // namespace detail
@@ -276,7 +288,7 @@ struct formatter<notf::detail::Polyline<Element>> {
     template<typename FormatContext>
     auto format(const type& polyline, FormatContext& ctx) {
         //        return format_to(ctx.begin(), "{}({}, {})", type::get_name(), aabr[0], aabr[1]);
-        // TODO: polyline fmt formatting
+        // TODO: polyline fmt formatting (also print if polyline is closed)
     }
 };
 

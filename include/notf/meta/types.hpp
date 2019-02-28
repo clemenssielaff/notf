@@ -69,11 +69,18 @@ struct None {
     bool operator<(const None&) const { return false; }
 };
 
-/// Explicit All type, similar to None by while None denotes "no data", All says "there is a single piece of data, but I
-/// don't care about the type (and am probably going to ignore it)". Used in reactive subscribers, for example.
+/// Explicit All type, similar to None, but while None denotes "no data" All says "there is a single piece of data, but
+/// I don't care about the type (and am probably going to ignore it)". Used in reactive subscribers, for example.
 struct All {
     bool operator==(const All&) const { return true; }
     bool operator<(const All&) const { return false; }
+};
+
+/// Sometimes we want an "explicit" yes or no or an implicit "default".
+enum class Tristate {
+    Default = -1,
+    False = 0,
+    True = 1,
 };
 
 /// Type template to ensure that a template argument does not participate in type deduction.

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_map>
+
 #include "notf/common/color.hpp"
 #include "notf/common/geo/aabr.hpp"
 #include "notf/common/geo/matrix3.hpp"
@@ -34,7 +36,7 @@ private:
         using type = V2f;
     };
 
-    struct _InstanceXformAttribute {
+    struct _XformAttribute {
         using type = M3f;
     };
 
@@ -50,8 +52,8 @@ public:
     using IndexBufferPtr = std::shared_ptr<IndexBuffer>;
 
     /// OpenGL buffer holding per-instance 2D transformations.
-    using InstanceBuffer = vertex_buffer_t<_InstanceXformAttribute>;
-    using InstanceBufferPtr = std::shared_ptr<InstanceBuffer>;
+    using XformBuffer = vertex_buffer_t<_XformAttribute>;
+    using XformBufferPtr = std::shared_ptr<XformBuffer>;
 
     // paint ------------------------------------------------------------------
 
@@ -127,45 +129,6 @@ public:
         float feather = 1;
     };
 
-    // path -------------------------------------------------------------------
-
-    /// 2D Path as held by a PlotterDesign.
-    struct Path {
-        struct Vertex {
-            void set_pos(V2f pos) { std::get<0>(m_vertex) = std::move(pos); }
-
-            void set_left_ctrl(V2f pos) { std::get<1>(m_vertex) = std::move(pos); }
-
-            void set_right_ctrl(V2f pos) { std::get<2>(m_vertex) = std::move(pos); }
-
-            /// Sets the first control point from a spline.
-            /// We might have to modify the given ctrl point so we can be certain that is stores the outgoing tangent
-            /// of the vertex. For that, we get the tangent either from the ctrl point itself (if the distance to the
-            /// vertex > 0) or by calculating the tangent from the spline at the vertex. The control point is then moved
-            /// onto the tangent, one unit further away from the vertex than originally. If we encounter a ctrl point in
-            /// the shader that is of unit length, we know that in reality it was positioned on the vertex itself and
-            /// still get the vertex tangent.
-            /// @param spline   Spline on the left of the vertex position.
-//            void set_left_ctrl(const CubicBezier2f::Segment& spline);
-
-            /// Sets the second control point from a spline.
-            /// See `set_ctrl1` on why this method is needed.
-            /// @param spline   Spline on the right of the vertex position.
-//            void set_right_ctrl(const CubicBezier2f::Segment& spline);
-
-            // fields ---------------------------------------------------------
-        private:
-            VertexBuffer::vertex_t m_vertex;
-        };
-
-
-        // fields -------------------------------------------------------------
-    private:
-        std::vector<Vertex> m_vertices;
-        size_t m_hash = 0;
-        M3f m_xform = M3f::identity();
-    };
-
     // enums ------------------------------------------------------------------
 
     /// Type of cap used at the end of a painted line.
@@ -189,20 +152,17 @@ public:
     /// State used to contextualize paint operations.
     struct PainterState {
 
-        /// Transformation of the Painter.
-        M3f xform = M3f::identity();
-
-        /// Paint used for painting.
-        Paint paint = Color(255, 255, 255);
-
         /// Current Shape;
-        Path2 path;
-
-        /// Stencil
-        Path2 stencil;
+        Path2Ptr path;
 
         /// Current Font.
         FontPtr font;
+
+        /// Transformation of the Painter.
+        M3f xform = M3f::identity();
+
+        /// Clipping rect (in painter space).
+        Aabrf clip;
 
         /// Global alpha of the painter, is multiplied on top of the Paint's alpha.
         float alpha = 1;
@@ -218,7 +178,11 @@ public:
 
         /// How different line segments are connected.
         LineJoin line_join = LineJoin::MITER;
+
+        /// Paint used for painting.
+        Paint paint = Color(255, 255, 255);
     };
+    static_assert(sizeof(PainterState) == 176);
 
 private:
     /// Type of the patch to draw.
@@ -233,7 +197,7 @@ private:
     };
 
     /// The current State of the Plotter. Is used to diff against the target state.
-    struct _InternalState : public PainterState {
+    struct InternalState : public PainterState {
         /// Screen size.
         Size2i screen_size = Size2i::zero();
 
@@ -249,118 +213,72 @@ private:
 
         /// Index at which the paint buffer is bound.
         uint paint_index = 0;
-
-        /// Index at which the clipping buffer is bound.
-        uint clip_index = 0;
     };
 
     /// A Path identifies a range in the Plotters buffer and associates it with additional information.
-    struct _Path {
+    struct Path {
 
-        /// Offset into the Plotter's index buffer where this Path's indices begin.
-        uint offset = 0;
+        /// Offset into the Plotter's vertex buffer.
+        /// Is signed because OpenGL does some arithmetic with it and wants to know if it overflowed.
+        int vertex_offset;
+
+        /// Offset into the Plotter's index buffer.
+        uint index_offset;
 
         /// Size of this Path in the Plotter's index buffer.
-        int size = 0;
+        int size;
 
-        /// Center of this Path.
-        V2f center = V2f::zero();
+        /// Center of this Path in local space.
+        V2f center;
 
         /// Whether this Path is convex or concave.
-        bool is_convex = true;
-
-        /// Whether this Path is closed or not.
-        bool is_closed = true;
+        bool is_convex;
     };
 
     // draw calls -------------------------------------------------------------
 
-    struct _FillCall {
+    struct _CallBase {
 
-        /// Index of the Path to draw.
+        /// Index in `m_paths` of the Path to draw.
         uint path;
 
-        /// Index of the 2D transformation to apply to the path.
-        uint path_xform;
+        /// Index in `m_xform_buffer` of the 2D transformation to apply to the path.
+        uint xform;
 
-        /// Index of the Stencil to draw.
-        uint stencil;
-
-        /// Index of the 2D transformation to apply to the stencil.
-        uint stencil_xform;
-
-        /// Index of the Paint in the UniformBuffer.
+        /// Index of the FragmentPaint in `m_paint_buffer`.
         uint paint;
+
+        /// Index in `m_clips` of the Clip to apply to this call.
+        uint clip;
 
         /// Global alpha of the painter, is multiplied on top of the Paint's alpha.
         float alpha;
-
-        /// Winding order of the drawn shape.
-        Orientation winding;
 
         /// How the paint is blended with the existing image underneath.
         BlendMode blend_mode;
     };
-    static_assert(sizeof(_FillCall) == 28);
 
-    struct _StrokeCall {
+    struct _FillCall : public _CallBase {};
+    struct _WriteCall : public _CallBase {};
 
-        /// Index of the Path to draw.
-        uint path;
-
-        /// Index of the 2D transformation to apply to the path.
-        uint path_xform;
-
-        /// Index of the Stencil to draw.
-        uint stencil;
-
-        /// Index of the 2D transformation to apply to the stencil.
-        uint stencil_xform;
-
-        /// Index of the Paint in the UniformBuffer.
-        uint paint;
-
-        /// Global alpha of the painter, is multiplied on top of the Paint's alpha.
-        float alpha;
-
-        /// Width of the stroke in pixels.
-        float width;
-
-        /// How the paint is blended with the existing image underneath.
-        BlendMode blend_mode;
+    struct _StrokeCall : public _CallBase {
 
         /// Shape at the end of a line.
         LineCap cap = LineCap::_CURRENT;
 
         /// How different line segments are connected.
         LineJoin join = LineJoin::_CURRENT;
+
+        /// Width of the stroke in pixels.
+        float width;
     };
-    static_assert(sizeof(_StrokeCall) == 32);
 
-    struct _WriteCall {
+    using DrawCall = std::variant<_StrokeCall, _FillCall, _WriteCall>;
 
-        /// Index of the Path to draw.
-        uint path;
-
-        /// Index of the Stencil to draw.
-        uint stencil;
-
-        /// Index of the 2D transformation to apply to the stencil.
-        uint stencil_xform;
-
-        /// Index of the Paint in the UniformBuffer.
-        uint paint;
-
-        /// Global alpha of the painter, is multiplied on top of the Paint's alpha.
-        float alpha;
-
-        /// How the paint is blended with the existing image underneath.
-        BlendMode blend_mode;
-    };
+    static_assert(sizeof(_FillCall) == 24);
     static_assert(sizeof(_WriteCall) == 24);
-
-    using _DrawCall = std::variant<_StrokeCall, _FillCall, _WriteCall>;
-    static_assert(sizeof(_DrawCall) == 36);
+    static_assert(sizeof(_StrokeCall) == 28);
+    static_assert(sizeof(DrawCall) == 32);
 
     // fragment paint ---------------------------------------------------------
 
@@ -381,7 +299,7 @@ private:
     public:
         /// @{
         /// Constructor
-        FragmentPaint(const Paint& paint, const Path2& stencil, const float stroke_width, const Type type);
+        FragmentPaint(const Paint& paint, const Path2Ptr& stencil, const float stroke_width, const Type type);
         FragmentPaint(const Paint& paint, const Type type = Type::GRADIENT) : FragmentPaint(paint, {}, 0, type) {}
         /// @}
 
@@ -394,7 +312,7 @@ private:
         std::array<float, 2> clip_translation = {};  // 12 (size = 2)
         std::array<float, 2> clip_size = {1, 1};     // 14 (size = 2)
         Color inner_color = Color::transparent();    // 16 (size = 4)
-        Color outer_color = Color::transparent();    // 20 (size = 4) TODO Color could be a float[3]
+        Color outer_color = Color::transparent();    // 20 (size = 4)
         Type type;                                   // 24 (size = 1)
         float stroke_width;                          // 25 (size = 1)
         float gradient_radius = 0;                   // 26 (size = 1)
@@ -414,11 +332,17 @@ public:
     /// Destructor.
     ~Plotter();
 
+    /// Restores the Plotter into a neutral state before parsing any designs.
     void start_parsing();
 
     /// Paints the Design of the given Widget.
-    void parse(const PlotterDesign& design);
+    /// @param design   Design to parse.
+    /// @param xform    Base transformation.
+    /// @param clip     Clipping Aabr, in space transformed by `xform`.
+    void parse(const PlotterDesign& design, const M3f& xform = M3f::identity(), const Aabrf& clip = Aabrf::wrongest());
 
+    /// Call after parsing the last design.
+    /// Uploads all buffers to the GPU and enqueues all draw calls
     void finish_parsing();
 
 private:
@@ -429,14 +353,29 @@ private:
     }
     PainterState& _get_state() { return NOTF_FORWARD_CONST_AS_MUTABLE(_get_state()); }
 
+    /// Pops the current PainterState from the stack.
+    void _pop_state() {
+        if (m_states.size() > 1) {
+            m_states.pop_back();
+        } else {
+            _get_state() = {};
+        }
+    }
+
+    /// Stores a path or returns the index of an existing path.
+    uint _store_path(const Path2Ptr& path);
+
+    /// Stores all basic call information in the passed call.
+    void _store_call_base(_CallBase& call);
+
     /// Store a new fill call.
-    void _store_fill();
+    void _store_fill_call();
 
     /// Store a new stroke call.
-    void _store_stroke();
+    void _store_stroke_call();
 
     /// Store a new write call.
-    void _store_write(std::string text);
+    void _store_write_call(std::string text);
 
     /// Fill implementation.
     void _render_fill(const _FillCall& call);
@@ -462,8 +401,8 @@ private:
     /// Indices into the vertex buffer.
     IndexBufferPtr m_index_buffer;
 
-    /// Buffer containing instance transformations.
-    InstanceBufferPtr m_instance_buffer;
+    /// Buffer containing per-instance transformations.
+    XformBufferPtr m_xform_buffer;
 
     /// Internal vertex object managing attribute- and buffer bindings.
     VertexObjectPtr m_vertex_object;
@@ -471,18 +410,25 @@ private:
     /// Uniform buffer containing the paint uniform blocks.
     UniformBufferPtr<FragmentPaint> m_paint_buffer;
 
-    /// All paths.
-    std::vector<_Path> m_paths;
+    /// All paths, referenced by the drawcalls.
+    std::vector<Path> m_paths;
+
+    /// Quick map from an existing Path to an index in `m_paths`.
+    std::unordered_map<Path2Ptr, uint> m_path_lookup;
+
+    /// Clips, referenced by the drawcalls
+    std::vector<Aabrf> m_clips;
 
     /// Draw Calls.
-    std::vector<_DrawCall> m_drawcalls;
+    std::vector<DrawCall> m_drawcalls;
 
     /// State of the next draw call.
     /// Is controlled by a parsed Design and can cheaply be updated as no OpenGL calls are made until the next stroke,
     /// fill or write-call at which the current state is matched against the server state.
     std::vector<PainterState> m_states;
 
-    _InternalState m_server_state;
+    /// Actual GPU state.
+    InternalState m_server_state;
 };
 
 NOTF_CLOSE_NAMESPACE

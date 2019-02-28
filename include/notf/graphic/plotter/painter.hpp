@@ -53,11 +53,11 @@ public:
     // setup ------------------------------------------------------------------
 
     /// Current Path to fill / stroke.
-    const Path2& get_path() const { return _get_state().path; }
+    const Path2Ptr& get_path() const { return _get_state().path; }
 
     /// Sets a new Path to fill / stroke.
     /// @param path New path.
-    void set_path(Path2 path);
+    void set_path(Path2Ptr path);
 
     /// Current Font used for writing.
     const FontPtr& get_font() const { return _get_state().font; }
@@ -72,14 +72,14 @@ public:
     /// Changes the current Paint.
     void set_paint(Paint paint);
 
-    /// The stencil currently applied to the Painter.
-    const Path2& get_stencil() const { return _get_state().stencil; }
+    /// The clip currently applied to the Painter.
+    const Aabrf& get_clip() const { return _get_state().clip; }
 
-    /// Updates the Painter's stencil.
-    void set_stencil(Path2 stencil);
+    /// Updates the Painter's clip.
+    void set_clip(Aabrf clip);
 
-    /// Removes the Painter's stencil.
-    void remove_stencil() { set_stencil({}); }
+    /// Removes the Painter's clip.
+    void remove_clip() { set_clip({}); }
 
     // transformation ---------------------------------------------------------
 

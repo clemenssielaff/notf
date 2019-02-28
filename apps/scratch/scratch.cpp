@@ -4,6 +4,8 @@
 #include "notf/meta/time.hpp"
 
 #include "notf/common/geo/bezier.hpp"
+#include "notf/common/geo/path2.hpp"
+#include "notf/common/geo/polybezier.hpp"
 #include "notf/common/thread.hpp"
 
 #include "notf/reactive/publisher.hpp"
@@ -89,17 +91,17 @@ private:
     }
 
     void _paint(Painter& painter) const override {
-//        NOTF_LOG_TRACE("Called paint");
+        //        NOTF_LOG_TRACE("Called paint");
         const float half_length = get<super_prop>() * 100.f;
         const V2f half_line{half_length, half_length};
-        const CubicBezier2f spline({CubicBezier2f::Segment::line(-half_line, half_line)});
+        const Path2 spline(Polylinef{-half_line, half_line});
 
         painter.set_stroke_width(1.f);
         painter.set_paint(Color::red());
 
         // draw a background
-        //        painter.set_path(convert_to<Polylinef>(Aabrf(-half_length, -half_length, half_length * 2, half_length *
-        //        2))); painter.stroke();
+        //        painter.set_path(convert_to<Polylinef>(Aabrf(-half_length, -half_length, half_length * 2, half_length
+        //        * 2))); painter.stroke();
 
         // draw the rotating line
         //        painter.set_path(spline);
@@ -107,10 +109,9 @@ private:
 
         //        const CubicBezier2f spline2({CubicBezier2f::Segment::line(-half_line - V2f{100.f, 0}, half_line)});
 
-        painter.set_path(Path2::rect()); // TODO: test only
-
-        painter *= M3f::translation(400, 0);
-        painter.stroke();
+        //        painter.set_path(Path2::rect());
+        //        painter *= M3f::translation(400, 0);
+        //        painter.stroke();
     }
     void _relayout() override {}
     void _get_widgets_at(const V2f&, std::vector<WidgetHandle>&) const override {}

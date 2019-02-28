@@ -153,7 +153,7 @@ public:
     bool is_valid() const { return m_face; }
 
     /// Returns the requested Glyph, or an invalid Glyph if the given codepoint is not known.
-    const Glyph& glyph(const codepoint_t codepoint) const;
+    const Glyph& get_glyph(const codepoint_t codepoint) const;
 
     /// Font base size in pixels.
     pixel_size_t pixel_size() const { return m_identifier.pixel_size; }

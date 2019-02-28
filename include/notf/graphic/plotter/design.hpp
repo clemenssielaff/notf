@@ -37,14 +37,14 @@ public:
 
     struct SetPath {
         struct Data {
-            Path2 path;
+            Path2Ptr path;
         };
         std::unique_ptr<Data> data;
     };
 
-    struct SetStencil {
+    struct SetClip {
         struct Data {
-            Path2 path;
+            Aabrf clip;
         };
         std::unique_ptr<Data> data;
     };
@@ -87,7 +87,7 @@ public:
         std::unique_ptr<Data> data;
     };
 
-    using Command = std::variant<ResetState, PushState, PopState, SetXform, SetPaint, SetPath, SetStencil, SetFont,
+    using Command = std::variant<ResetState, PushState, PopState, SetXform, SetPaint, SetPath, SetClip, SetFont,
                                  SetAlpha, SetStrokeWidth, SetBlendMode, SetLineCap, SetLineJoin, Fill, Stroke, Write>;
 
 private:

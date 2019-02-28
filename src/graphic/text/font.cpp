@@ -104,7 +104,7 @@ FontPtr Font::load(FontManager& font_manager, const std::string& filename, const
     return font;
 }
 
-const Glyph& Font::glyph(const codepoint_t codepoint) const {
+const Glyph& Font::get_glyph(const codepoint_t codepoint) const {
     const auto& it = m_glyphs.find(codepoint);
     if (it != std::end(m_glyphs)) {
         return it->second;
