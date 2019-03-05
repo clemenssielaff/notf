@@ -27,6 +27,15 @@
 ///     else:
 ///         ax' = T * (||ax - a1|| + 1)     (whereby T = |ax - a1|)
 ///
+/// Lines
+/// -----
+///
+/// Lines have two extensions: width and length. The width is simply the line width, meaning the center of the line is
+/// always 0.5*line_width from its lengthwise side. The length of a line from pixel (0,0) to (5,0) with a line_width of
+/// 1 is actually 6, this is because we calculate the start- and end point of the line on the center of the pixel,
+/// meaning that pixel (0,0) and (5,0) would only be half activated, if the line did not extend for another half its
+/// width to the left and right.
+///
 /// Caps
 /// ----
 ///
@@ -106,43 +115,55 @@ static constexpr GLenum g_index_type = to_gl_type(Plotter::IndexBuffer::index_t{
 
 // vertex =========================================================================================================== //
 
+/// Sets the position of a Vertex.
+/// @param vertex   Vertex to modify.
+/// @param pos      Position in global coordinates.
 void set_pos(Vertex& vertex, V2f pos) { std::get<0>(vertex) = std::move(pos); }
 
+/// Sets the control point on the left of the Vertex.
+/// @param vertex   Vertex to modify.
+/// @param pos      Position in global coordinates.
 void set_left_ctrl(Vertex& vertex, V2f pos) { std::get<1>(vertex) = std::move(pos); }
 
+/// Sets the control point on the right of the Vertex.
+/// @param vertex   Vertex to modify.
+/// @param pos      Position in global coordinates.
 void set_right_ctrl(Vertex& vertex, V2f pos) { std::get<2>(vertex) = std::move(pos); }
 
-/// Sets the first control point from a spline.
+/// Sets the control point on the left of the Vertex from a spline.
 /// We might have to modify the given ctrl point so we can be certain that is stores the outgoing tangent
 /// of the vertex. For that, we get the tangent either from the ctrl point itself (if the distance to the
 /// vertex > 0) or by calculating the tangent from the spline at the vertex. The control point is then moved
 /// onto the tangent, one unit further away from the vertex than originally. If we encounter a ctrl point in
 /// the shader that is of unit length, we know that in reality it was positioned on the vertex itself and
 /// still get the vertex tangent.
-/// @param spline   Spline on the left of the vertex position.
-// void set_left_ctrl(const CubicBezier2f::Segment& spline)
-//{
-//    V2f delta = spline.ctrl2 - spline.end;
-//    const float mag_sq = delta.get_magnitude_sq();
-//    if (is_zero(mag_sq, precision_high<float>())) {
-//        set_left_ctrl(-(spline.get_tangent(1).normalize()));
-//    } else {
-//        set_left_ctrl(delta *= 1 + (1 / sqrt(mag_sq)));
-//    }
-//}
+/// @param vertex   Vertex to modify.
+/// @param bezier   Bezier segment on the right of the vertex position.
+void set_left_ctrl(Vertex& vertex, const CubicBezier2f bezier) {
+    V2f delta = bezier.get_vertex(2) - bezier.get_vertex(3);
+    const float mag_sq = delta.get_magnitude_sq();
+    if (is_zero(mag_sq, precision_high<float>())) {
+        const SquareBezier2f derivate = bezier.get_derivate();
+        set_left_ctrl(vertex, -derivate.interpolate(0).normalize());
+    } else {
+        set_left_ctrl(vertex, delta *= 1 + (1 / sqrt(mag_sq)));
+    }
+}
 
 /// Sets the second control point from a spline.
 /// See `set_ctrl1` on why this method is needed.
-/// @param spline   Spline on the right of the vertex position.
-// void Plotter::Path::Vertex::set_right_ctrl(const CubicBezier2f::Segment& spline) {
-//    V2f delta = spline.ctrl1 - spline.start;
-//    const float mag_sq = delta.get_magnitude_sq();
-//    if (is_zero(mag_sq, precision_high<float>())) {
-//        set_left_ctrl(spline.get_tangent(0).normalize());
-//    } else {
-//        set_left_ctrl(delta *= 1 + (1 / sqrt(mag_sq)));
-//    }
-//}
+/// @param vertex   Vertex to modify.
+/// @param bezier   Bezier segment on the right of the vertex position.
+void set_right_ctrl(Vertex& vertex, const CubicBezier2f bezier) {
+    V2f delta = bezier.get_vertex(1) - bezier.get_vertex(0);
+    const float mag_sq = delta.get_magnitude_sq();
+    if (is_zero(mag_sq, precision_high<float>())) {
+        const SquareBezier2f derivate = bezier.get_derivate();
+        set_right_ctrl(vertex, derivate.interpolate(0).normalize());
+    } else {
+        set_right_ctrl(vertex, delta *= 1 + (1 / sqrt(mag_sq)));
+    }
+}
 
 } // namespace
 
@@ -290,9 +311,9 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
         m_xform_buffer
             = XformBuffer::create("PlotterInstanceBuffer", UsageHint::STREAM_DRAW, /*is_per_instance= */ true);
         m_vertex_object = VertexObject::create(m_context, "PlotterVertexObject");
+        m_vertex_object->bind(m_xform_buffer, 3);
         m_vertex_object->bind(m_vertex_buffer, 0, 1, 2);
         m_vertex_object->bind(m_index_buffer);
-        m_vertex_object->bind(m_xform_buffer, 3);
     }
 
     { // uniform buffers
@@ -325,7 +346,6 @@ void Plotter::start_parsing() {
     m_clips.clear();
     m_drawcalls.clear();
     m_states.clear();
-    m_server_state = {};
 
     // TODO: mutable paths
     //       Immutable paths are great for shapes and icons etc. But there are two other kind of paths that would be
@@ -394,7 +414,6 @@ void Plotter::finish_parsing() {
     // reset the internal state
     NOTF_CHECK_GL(glEnable(GL_CULL_FACE));
     NOTF_CHECK_GL(glCullFace(GL_BACK));
-    NOTF_CHECK_GL(glPatchParameteri(GL_PATCH_VERTICES, m_server_state.patch_vertices));
     NOTF_CHECK_GL(glEnable(GL_BLEND));
     NOTF_CHECK_GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
@@ -434,87 +453,102 @@ uint Plotter::_store_path(const Path2Ptr& path) {
 
     // store new vertices in the vertex- and index buffer
     for (const auto& subpath : path->get_subpaths()) {
-        const size_t hull_size = subpath.path.get_hull().get_size();
-        if (hull_size == 0) { continue; }
+        if (subpath.segment_count == 0) { continue; }
 
         { // create indices
-            const size_t segment_count = (hull_size - 1) / 3;
-            indices.reserve(indices.size() + (segment_count * 4) + (subpath.is_closed ? 0 : 2));
-
             uint index = 0; // TODO: or should this be: narrow_cast<GLuint>(vertices.size());
+            const uint last_index = subpath.segment_count - (subpath.is_closed ? 0 : 1);
+            const size_t expected_size = indices.size() + (subpath.segment_count * 4) + (subpath.is_closed ? 0 : 2);
+            indices.reserve(expected_size);
 
-            // start cap
-            indices.emplace_back(index);
-            indices.emplace_back(index);
+            for (size_t i = 0; i < last_index; ++i) {
+                // next joint / start cap
+//                indices.emplace_back(index);
+//                indices.emplace_back(index);
 
-            for (size_t i = 0; i < segment_count; ++i) {
-                // segment
+                // next segment
                 indices.emplace_back(index);
-                indices.emplace_back(++index);
+                index = ++index % last_index;
+                indices.emplace_back(index);
+            }
 
-                // joint / end cap
+            if (!subpath.is_closed) {
+                // end cap
                 indices.emplace_back(index);
                 indices.emplace_back(index);
             }
+
+            new_path.size = narrow_cast<int>(indices.size() - new_path.index_offset);
+//            NOTF_ASSERT(static_cast<size_t>(new_path.size) == expected_size);
+
+            // TODO: CONTINUE HERE
+            // the joints don't work, caps propably also not, simplify this function so open and closed lines share more
         }
 
         // create vertices
         if (subpath.is_closed) {
-            //    // calculate tangents for straight edges
-            //    for (size_t i = subpath.first_index + 1; i < subpath.first_index + subpath.size; ++i) {
-            //        Vertex& last_vertex = m_vertices[i - 1];
-            //        Vertex& current_vertex = m_vertices[i];
-            //        if (last_vertex.right_tangent.is_zero()) {
-            //            last_vertex.right_tangent = (current_vertex.pos - last_vertex.pos).normalize();
-            //        }
-            //        if (current_vertex.left_tangent.is_zero()) {
-            //            current_vertex.left_tangent = (last_vertex.pos - current_vertex.pos).normalize();
-            //        }
-            //    }
+            const size_t expected_size = vertices.size() + subpath.segment_count;
+            vertices.reserve(expected_size);
 
-            //    // if the subpath is closed, we don't need to store the last vertex
-            //    // just get its tangent and pop it
-            //    if (subpath.is_closed) {
-            //        Vertex first_vertex = m_vertices[subpath.first_index];
-            //        Vertex last_vertex = m_vertices[subpath.first_index + subpath.size - 1];
-            //        first_vertex.left_tangent = last_vertex.left_tangent;
-            //        subpath.size -= 1;
-            //        m_vertices.pop_back();
-            //    }
+            { // first vertex
+                CubicBezier2f left_segment = subpath.get_segment(subpath.segment_count - 1);
+                CubicBezier2f right_segment = subpath.get_segment(0);
+                VertexBuffer::vertex_t vertex;
+                set_pos(vertex, subpath.interpolate(0));
+                set_left_ctrl(vertex, std::move(left_segment));
+                set_right_ctrl(vertex, std::move(right_segment));
+                vertices.emplace_back(std::move(vertex));
+            }
+
+            // middle vertices
+            for (size_t i = 0; i < subpath.segment_count - 1; ++i) {
+                CubicBezier2f left_segment = subpath.get_segment(i);
+                CubicBezier2f right_segment = subpath.get_segment(i + 1);
+                VertexBuffer::vertex_t vertex;
+                set_pos(vertex, right_segment.get_vertex(0));
+                set_left_ctrl(vertex, std::move(left_segment));
+                set_right_ctrl(vertex, std::move(right_segment));
+                vertices.emplace_back(std::move(vertex));
+            }
+
+            NOTF_ASSERT(vertices.size() == expected_size);
+
         } else { // subpath is open
-                 //            vertices.reserve(vertices.size() + spline.segments.size() + 1);
+            const size_t expected_size = vertices.size() + subpath.segment_count + 1;
+            vertices.reserve(expected_size);
 
-            //            { // first vertex
-            //                const CubicBezier2f::Segment& first_segment = spline.segments.front();
-            //                VertexBuffer::vertex_t vertex;
-            //                set_pos(vertex, first_segment.start);
-            //                set_first_ctrl(vertex, V2f::zero());
-            //                set_modified_second_ctrl(vertex, first_segment);
-            //                vertices.emplace_back(std::move(vertex));
-            //            }
+            { // first vertex
+                CubicBezier2f right_segment = subpath.get_segment(0);
+                VertexBuffer::vertex_t vertex;
+                set_pos(vertex, subpath.interpolate(0));
+                set_left_ctrl(vertex, V2f::zero());
+                set_right_ctrl(vertex, std::move(right_segment));
+                vertices.emplace_back(std::move(vertex));
+            }
 
-            //            // middle vertices
-            //            for (size_t i = 0; i < spline.segments.size() - 1; ++i) {
-            //                const CubicBezier2f::Segment& left_segment = spline.segments[i];
-            //                const CubicBezier2f::Segment& right_segment = spline.segments[i + 1];
-            //                VertexBuffer::vertex_t vertex;
-            //                set_pos(vertex, left_segment.end);
-            //                set_modified_first_ctrl(vertex, left_segment);
-            //                set_modified_second_ctrl(vertex, right_segment);
-            //                vertices.emplace_back(std::move(vertex));
-            //            }
+            // middle vertices
+            for (size_t i = 0; i < subpath.segment_count - 1; ++i) {
+                CubicBezier2f left_segment = subpath.get_segment(i);
+                CubicBezier2f right_segment = subpath.get_segment(i + 1);
+                VertexBuffer::vertex_t vertex;
+                set_pos(vertex, right_segment.get_vertex(0));
+                set_left_ctrl(vertex, std::move(left_segment));
+                set_right_ctrl(vertex, std::move(right_segment));
+                vertices.emplace_back(std::move(vertex));
+            }
 
-            //            { // last vertex
-            //                const CubicBezier2f::Segment& last_segment = spline.segments.back();
-            //                VertexBuffer::vertex_t vertex;
-            //                set_pos(vertex, last_segment.end);
-            //                set_modified_first_ctrl(vertex, last_segment);
-            //                set_second_ctrl(vertex, V2f::zero());
-            //                vertices.emplace_back(std::move(vertex));
-            //            }
+            { // last vertex
+                CubicBezier2f left_segment = subpath.get_segment(subpath.segment_count - 1);
+                VertexBuffer::vertex_t vertex;
+                set_pos(vertex, left_segment.get_vertex(3));
+                set_left_ctrl(vertex, std::move(left_segment));
+                set_right_ctrl(vertex, V2f::zero());
+                vertices.emplace_back(std::move(vertex));
+            }
+
+            NOTF_ASSERT(vertices.size() == expected_size);
         }
     }
-    new_path.size = narrow_cast<int>(indices.size() - new_path.index_offset);
 
     // store the path and keep the `shared_ptr` around for easy lookup in the future
     const uint index = narrow_cast<uint>(m_paths.size());

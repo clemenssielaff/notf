@@ -3,9 +3,8 @@
 precision mediump float;
 
 in VertexData {
-    mat2x3 line_xform;
+    mat3x2 screen_to_line_xform;
     vec2 line_size;
-    vec2 position;
     vec2 texture_coord;
     flat int patch_type;
 } v_in;
@@ -54,8 +53,7 @@ float sample_line()
     for(int quadrant = 0; quadrant < 4; ++quadrant){
         vec4 samples_x, samples_y;
         for(int i = 0; i < 4; ++i){
-            vec2 sample_pos = vec3(
-                fma(vec2(pattern_x[i], pattern_y[i]), signs[quadrant], gl_FragCoord.xy), 1) * v_in.line_xform;
+            vec2 sample_pos = (v_in.screen_to_line_xform * vec3(fma(vec2(pattern_x[i], pattern_y[i]), signs[quadrant], gl_FragCoord.xy), 1)).xy;
             samples_x[i] = sample_pos.x;
             samples_y[i] = sample_pos.y;
         }
@@ -84,7 +82,7 @@ float get_rounded_rect_distance(vec2 point, vec2 size, float radius) {
 /// Scissor factor from a rotated rectangle defined in the paint.
 float get_clipping_factor() {
     mat3x2 clip_xform = mat3x2(clip_rotation, clip_translation);
-    vec2 clip = vec2(0.5, 0.5) - (abs((clip_xform * vec3(v_in.position, 1.)).xy) - clip_size);
+    vec2 clip = vec2(0.5, 0.5) - (abs((clip_xform * vec3(gl_FragCoord.xy, 1.)).xy) - clip_size);
     return clamp(clip.x, 0., 1.) * clamp(clip.y, 0., 1.);
 }
 
@@ -103,14 +101,7 @@ void main()
         if(aa_factor == 0.){
             discard;
         }
-
-        f_color = vec4(mix(inner_color.xyz, outer_color.xyz, v_in.texture_coord.x), aa_factor);
-
-        // f_color = vec4(smoothstep(vec3(1.,0.,0.), vec3(0.,0.,1.), vec3(v_in.texture_coord.x, v_in.texture_coord.x, v_in.texture_coord.x)),
-        //                aa_factor);
-
-        // f_color = vec4(smoothstep(inner_color, outer_color, vec4(v_in.texture_coord.x)).xyz,
-        //                aa_factor);
+        f_color = vec4(1, 1, 1, aa_factor);
     }
     else {
         f_color = vec4(1, 1, 1, 1);

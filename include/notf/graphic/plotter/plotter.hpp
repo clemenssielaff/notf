@@ -197,7 +197,24 @@ private:
     };
 
     /// The current State of the Plotter. Is used to diff against the target state.
-    struct InternalState : public PainterState {
+    /// Default initializes to all invalid values.
+    struct InternalState {
+
+        /// Global alpha of the painter, is multiplied on top of the Paint's alpha.
+        float alpha = -1;
+
+        /// Width of a stroked line.
+        float stroke_width = -1;
+
+        /// How the paint is blended with the existing image underneath.
+        BlendMode blend_mode = BlendMode::_DEFAULT;
+
+        /// Shape at the end of a line.
+        LineCap line_cap = LineCap::_CURRENT;
+
+        /// How different line segments are connected.
+        LineJoin line_join = LineJoin::_CURRENT; // TOOD: for this case I'd need an explicit _INVALID state
+
         /// Screen size.
         Size2i screen_size = Size2i::zero();
 
@@ -205,14 +222,20 @@ private:
         PatchType patch_type = static_cast<PatchType>(0);
 
         /// How many indices to feed into a patch.
-        int patch_vertices = 2;
+        int patch_vertices = -1;
 
         /// Auxiliary vector2 uniform.
         /// Used as the base vertex for shapes and the size of the font atlas for text.
-        V2f vec2_aux1;
+        V2f vec2_aux1 = V2f::zero();
 
         /// Index at which the paint buffer is bound.
         uint paint_index = 0;
+
+        /// Index at which the xform buffer is bound.
+        uint xform_index = 0;
+
+        /// Index at which the clip buffer is bound.
+        uint clip_index = 0;
     };
 
     /// A Path identifies a range in the Plotters buffer and associates it with additional information.

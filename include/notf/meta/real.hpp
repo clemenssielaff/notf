@@ -153,6 +153,18 @@ constexpr std::enable_if_t<std::is_floating_point_v<T>, T> next_after(const T va
     return std::nextafter(value, max_value<T>());
 }
 
+/// Breaks a given real number into an integral and fractional part.
+/// @param real     Real number to break.
+/// @param integer
+/// @returns        Fractional part of the given real.
+template<class I = long, class R = double,
+         class = std::enable_if_t<std::conjunction_v<std::is_floating_point<R>, std::is_integral<I>>>>
+std::pair<I, R> break_real(const R& real) {
+    double intpart;
+    R result = std::modf(real, &intpart);
+    return std::make_pair(static_cast<I>(intpart), result);
+}
+
 /// @{
 /// Fast inverse square.
 /// From https://stackoverflow.com/a/41637260/

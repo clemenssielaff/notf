@@ -60,7 +60,7 @@
 import re
 from dumper import *
 
-vector_type_regex = re.compile(r"^notf::detail::Vector(\d)<([^,]*),.*>$")
+vector_type_regex = re.compile(r"^notf::detail::Vector(\d)<([^,]*).*>$")
 
 type_dict = {
     "float": {
@@ -84,12 +84,12 @@ type_dict = {
 
 def extract_notf_vector_type(full_name):
     matches = re.match(vector_type_regex, full_name)
-    if len(matches.groups()) != 2:
-        raise ValueError()
+    if matches is None or len(matches.groups()) != 2:
+        raise ValueError("`{}` does not match the regex for notf values".format(full_name))
     dimensions, type_name = matches.groups()
 
     if type_name not in type_dict:
-        raise IndexError()
+        raise IndexError("`{}` is an unknown type name".format(type_name))
 
     return int(dimensions), type_dict[type_name]["postfix"], type_dict[type_name]["type"]
 
@@ -104,7 +104,7 @@ def format_notf_vector_unsafe(dumper, data, typename):
     # display the value
     if value_type == float:
         values = [data[index].floatingPoint() for index in range(dimensions)]
-        values_fmt = ", ".join(["{:.6f}" for _ in range(dimensions)])
+        values_fmt = ", ".join(["{:.6g}" for _ in range(dimensions)])
     elif value_type == int:
         values = [data[index].integer() for index in range(dimensions)]
         values_fmt = ", ".join(["{}" for _ in range(dimensions)])
@@ -123,8 +123,9 @@ def format_notf_vector_unsafe(dumper, data, typename):
 def format_notf_vector(dumper, data, typename):
     try:
         format_notf_vector_unsafe(dumper, data, typename)
-    except ...:
-        dumper.putValue("unknown notf value type")
+    except Exception as e:
+        dumper.putValue(str(e))
+        #dumper.putValue("unknown notf value type")
 
 
 def qdump__notf__detail__Vector2(dumper, vector):

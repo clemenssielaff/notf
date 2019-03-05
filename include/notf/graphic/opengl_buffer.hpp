@@ -31,6 +31,19 @@ public:
         DEFAULT = DYNAMIC_DRAW,
     };
 
+    /// Produces the OpenGL buffer typec corresponding to the given Type value.
+    /// @param buffer_type  Buffer type to convert.
+    /// @returns            OpenGL buffer type enum value.
+    constexpr static GLenum to_gl_type(const Type buffer_type) {
+        switch (buffer_type) {
+        case Type::VERTEX: return GL_ARRAY_BUFFER;
+        case Type::INDEX: return GL_ELEMENT_ARRAY_BUFFER;
+        case Type::UNIFORM: return GL_UNIFORM_BUFFER;
+        case Type::DRAWCALL: return GL_DRAW_INDIRECT_BUFFER;
+        }
+        NOTF_THROW(ValueError, "Unknown OpenGLBuffer type");
+    }
+
     // methods --------------------------------------------------------------------------------- //
 protected:
     /// Constructor.
@@ -76,11 +89,6 @@ protected:
     /// @param buffer_type  Buffer type to convert.
     /// @returns            Name of the buffer type or nullptr on error.
     static const char* _to_type_name(const Type buffer_type);
-
-    /// Produces the OpenGL buffer typec corresponding to the given Type value.
-    /// @param buffer_type  Buffer type to convert.
-    /// @returns            OpenGL buffer type enum value.
-    static GLenum _to_gl_type(const Type buffer_type);
 
     /// Produces the OpenGL enum value corresponding to the given usage hint.
     /// @param usage    The expected usage of the data stored in this buffer.
@@ -130,6 +138,25 @@ public:
     /// Typed ID of this buffer.
     id_t get_id() const { return this->_get_handle(); }
 };
+
+// opengl buffer guard ============================================================================================== //
+
+template<OpenGLBufferType t_buffer_type>
+struct OpenGLBufferGuard {
+    using buffer_t = TypedOpenGLBuffer<t_buffer_type>;
+    OpenGLBufferGuard(const buffer_t& buffer) { NOTF_CHECK_GL(glBindBuffer(s_type, buffer.get_id().get_value())); }
+    ~OpenGLBufferGuard();
+    static const GLenum s_type = buffer_t::to_gl_type(t_buffer_type);
+};
+
+template<OpenGLBufferType t_buffer_type>
+OpenGLBufferGuard<t_buffer_type>::~OpenGLBufferGuard() {
+    NOTF_CHECK_GL(glBindBuffer(s_type, 0));
+}
+template<>
+inline OpenGLBufferGuard<OpenGLBufferType::INDEX>::~OpenGLBufferGuard() {
+    // do not unbind index buffers
+}
 
 } // namespace detail
 
@@ -195,23 +222,8 @@ public:
         if (m_local_hash == m_server_hash) { return; }
 
         // bind and eventually unbind the index buffer
-        const GLenum gl_type = this->_to_gl_type(this->get_type());
-        struct BufferGuard {
-            BufferGuard(const OpenGLBuffer& buffer) {
-                const Type type = buffer.get_type();
-                // vertex- and index-buffers should be part of a VertexObject (VAO) that takes care of un/binding
-                if (type != OpenGLBuffer::Type::VERTEX && //
-                    type != OpenGLBuffer::Type::INDEX) {
-                    m_type = buffer._to_gl_type(type);
-                    NOTF_CHECK_GL(glBindBuffer(m_type, buffer._get_handle()));
-                }
-            }
-            ~BufferGuard() {
-                if (m_type != 0) { NOTF_CHECK_GL(glBindBuffer(m_type, 0)); }
-            }
-            GLenum m_type = 0;
-        };
-        NOTF_GUARD(BufferGuard(*this));
+        const GLenum gl_type = this->to_gl_type(this->get_type());
+        NOTF_GUARD(detail::OpenGLBufferGuard(*this));
 
         // upload the buffer data
         const GLsizei buffer_size = narrow_cast<GLsizei>(m_buffer.size() * get_element_size());

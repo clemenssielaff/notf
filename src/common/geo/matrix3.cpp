@@ -47,7 +47,7 @@ constexpr detail::Polyline<PolylineElement> do_transform(const detail::Polyline<
     using vertex_t = typename detail::Polyline<PolylineElement>::vector_t;
 
     std::vector<vertex_t> vertices;
-    vertices.reserve(Polyline.get_size());
+    vertices.reserve(Polyline.get_vertex_count());
 
     for (const auto& vertex : Polyline.get_vertices()) {
         vertices.emplace_back(do_transform(vertex, matrix));

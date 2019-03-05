@@ -5,10 +5,11 @@ NOTF_USING_NAMESPACE;
 // path2 ============================================================================================================ //
 
 Path2::SubPath::SubPath(CubicPolyBezier2f path)
-    : path(std::move(path))
-    , center(path.get_hull().get_center())
-    , is_convex(path.get_hull().is_convex())
-    , is_closed(path.get_hull().is_closed()) {}
+    : m_path(std::move(path))
+    , center(m_path.get_hull().get_center())
+    , segment_count(narrow_cast<uint>(m_path.get_segment_count()))
+    , is_convex(m_path.get_hull().is_convex())
+    , is_closed(m_path.get_hull().is_closed()) {}
 
 Path2::Path2(std::vector<CubicPolyBezier2f> subpaths) {
     // remove empty subpaths
@@ -20,7 +21,9 @@ Path2::Path2(std::vector<CubicPolyBezier2f> subpaths) {
 }
 
 Path2Ptr Path2::rect(const Aabrf& aabr) {
-    std::vector<CubicPolyBezier2f> subpaths = {Polylinef(aabr.get_bottom_left(), aabr.get_bottom_right(), //
-                                                         aabr.get_top_right(), aabr.get_top_left())};
+    auto line = Polylinef(aabr.get_bottom_left(), aabr.get_bottom_right(), //
+                          aabr.get_top_right(), aabr.get_top_left());
+    line.set_closed();
+    std::vector<CubicPolyBezier2f> subpaths = {std::move(line)};
     return _create_shared(std::move(subpaths));
 }

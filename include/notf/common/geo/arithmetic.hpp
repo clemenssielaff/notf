@@ -275,6 +275,8 @@ public:
         return result;
     }
     constexpr actual_t operator*(const element_t factor) && noexcept { return *this *= factor; }
+    friend constexpr actual_t operator*(const element_t factor, const Arithmetic& rhs) noexcept { return rhs * factor; }
+    friend constexpr actual_t operator*(const element_t factor, Arithmetic&& rhs) noexcept { return rhs * factor; }
     /// @}
 
     /// In-place multiplication of this value with a scalar.
@@ -308,8 +310,11 @@ public:
         return *static_cast<actual_t*>(this);
     }
 
+    /// @{
     /// The inverted value.
-    constexpr actual_t operator-() const noexcept { return *this * -1; }
+    constexpr actual_t operator-() const& noexcept { return *this * -1; }
+    constexpr actual_t operator-() const&& noexcept { return *this *= -1; }
+    /// @}
 
     // value arithmetic -------------------------------------------------------
 

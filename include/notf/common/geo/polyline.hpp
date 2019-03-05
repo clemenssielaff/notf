@@ -80,7 +80,7 @@ public:
     /// @}
 
     /// Returns the number of vertices in this Polyline.
-    size_t get_size() const noexcept { return m_vertices.size(); }
+    size_t get_vertex_count() const noexcept { return m_vertices.size(); }
 
     /// Whether or not this Polyline is closed.
     /// Note that a Polyline with only one or no vertex may still be "closed"
@@ -222,6 +222,9 @@ public:
         }
         return true;
     }
+
+    /// Changes whether this Polyline is closed or not.
+    void set_closed(const bool is_closed = true) { m_is_closed = is_closed; }
 
     /// Remove all vertices that do not add additional corners to the PolyLine.
     void optimize() {

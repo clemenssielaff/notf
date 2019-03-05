@@ -6,6 +6,8 @@
 
 NOTF_OPEN_NAMESPACE
 
+// TODO I wonder if Path2 should be moved to `common` or even `graphics/plotter`?
+
 // path2 ============================================================================================================ //
 
 /// A Path is a collection of immutable 2D Polybeziers that can be used as a resource in an application.
@@ -23,25 +25,42 @@ class Path2 {
 private:
     /// Struct storing additional information about each subpath for easy access.
     struct SubPath {
+        friend Path2;
 
         // methods ------------------------------------------------------------
-
+    public:
         /// Constructor.
         /// @param path Subpath.
         SubPath(CubicPolyBezier2f path);
 
+        /// Position of a vector on the PolyBezier.
+        /// The `t` argument is clamped to [0, n+1] for open hulls and [-(n+1), n+1] for closed ones, with n == number
+        /// of bezier segments. If the hull is empty, the zero vector is returned.
+        /// @param t    Position on the spline, integral part identifies the spline segment, fractional part the
+        ///             position on that spline.
+        V2f interpolate(const float t) const { return m_path.interpolate(t); }
+
+        /// Returns the Parametric Bezier with the given index.
+        /// @param index    Index, must be in the range [0, n] for open subpaths and [0, n+1] for closed subpaths, with
+        ///                 n being the number of (complete) segments.
+        CubicBezier2f get_segment(const size_t index) const { return m_path.get_segment(index); }
+
         // fields -------------------------------------------------------------
-
+    private:
         /// Subpath,
-        CubicPolyBezier2f path;
+        CubicPolyBezier2f m_path;
 
+    public:
         /// Center position of all vertices of this Path.
         V2f center;
+
+        /// Number of segments in this subpath.
+        uint segment_count;
 
         /// Whether this Path is convex or concave.
         bool is_convex;
 
-        /// Whether this Path is closed or not.
+        /// Whether this Path is closed.
         bool is_closed;
     };
 
@@ -55,7 +74,9 @@ private:
 public:
     /// Single Path constructor.
     /// @parm path  Single subpath.
-    Path2(CubicPolyBezier2f path) : Path2(std::vector<CubicPolyBezier2f>{std::move(path)}) {}
+    static Path2Ptr create(CubicPolyBezier2f path) {
+        return _create_shared(std::vector<CubicPolyBezier2f>{std::move(path)});
+    }
 
     /// Rectangle.
     static Path2Ptr rect(const Aabrf& aabr);
@@ -71,7 +92,7 @@ public:
     size_t get_vertex_count() const {
         size_t result = 0;
         for (const auto& subpath : m_subpaths) {
-            result += subpath.path.get_hull().get_size();
+            result += subpath.m_path.get_vertex_count();
         }
         return result;
     }

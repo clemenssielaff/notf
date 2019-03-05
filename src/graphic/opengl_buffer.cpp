@@ -37,15 +37,6 @@ const char* AnyOpenGLBuffer::_to_type_name(const Type buffer_type) {
     }
 }
 
-GLenum AnyOpenGLBuffer::_to_gl_type(const Type buffer_type) {
-    switch (buffer_type) {
-    case Type::VERTEX: return GL_ARRAY_BUFFER;
-    case Type::INDEX: return GL_ELEMENT_ARRAY_BUFFER;
-    case Type::UNIFORM: return GL_UNIFORM_BUFFER;
-    case Type::DRAWCALL: return GL_DRAW_INDIRECT_BUFFER;
-    }
-}
-
 GLenum AnyOpenGLBuffer::_to_gl_usage(const UsageHint usage) {
     switch (usage) {
     case UsageHint::DYNAMIC_DRAW: return GL_DYNAMIC_DRAW;

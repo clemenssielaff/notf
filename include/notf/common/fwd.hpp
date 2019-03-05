@@ -95,9 +95,17 @@ using Size2s = detail::Size2<short>;
 namespace detail {
 template<size_t, class>
 class Bezier;
-}
+template<size_t, class>
+class ParametricBezier;
+} // namespace detail
+using SquareBezierf = detail::Bezier<2, float>;
+using SquareBezierd = detail::Bezier<2, double>;
 using CubicBezierf = detail::Bezier<3, float>;
 using CubicBezierd = detail::Bezier<3, double>;
+using SquareBezier2f = detail::ParametricBezier<2, V2f>;
+using SquareBezier2d = detail::ParametricBezier<2, V2d>;
+using CubicBezier2f = detail::ParametricBezier<3, V2f>;
+using CubicBezier2d = detail::ParametricBezier<3, V2d>;
 
 // circle.hpp
 namespace detail {

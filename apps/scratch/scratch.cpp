@@ -92,20 +92,20 @@ private:
 
     void _paint(Painter& painter) const override {
         //        NOTF_LOG_TRACE("Called paint");
-        const float half_length = get<super_prop>() * 100.f;
+        const float half_length = 100.f; // * get<super_prop>();
         const V2f half_line{half_length, half_length};
-        const Path2 spline(Polylinef{-half_line, half_line});
+//        const Path2Ptr spline = Path2::create(Polylinef{-half_line, half_line});
+        const Path2Ptr spline = Path2::rect(Aabrf(20, 20, 50, 50));
 
+        // draw the rotating line
         painter.set_stroke_width(1.f);
-        painter.set_paint(Color::red());
+//        painter.set_paint(Color::red());
+        painter.set_path(spline);
+        painter.stroke();
 
         // draw a background
         //        painter.set_path(convert_to<Polylinef>(Aabrf(-half_length, -half_length, half_length * 2, half_length
         //        * 2))); painter.stroke();
-
-        // draw the rotating line
-        //        painter.set_path(spline);
-        //        painter.stroke();
 
         //        const CubicBezier2f spline2({CubicBezier2f::Segment::line(-half_line - V2f{100.f, 0}, half_line)});
 
