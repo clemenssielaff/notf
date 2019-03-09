@@ -27,15 +27,6 @@
 ///     else:
 ///         ax' = T * (||ax - a1|| + 1)     (whereby T = |ax - a1|)
 ///
-/// Lines
-/// -----
-///
-/// Lines have two extensions: width and length. The width is simply the line width, meaning the center of the line is
-/// always 0.5*line_width from its lengthwise side. The length of a line from pixel (0,0) to (5,0) with a line_width of
-/// 1 is actually 6, this is because we calculate the start- and end point of the line on the center of the pixel,
-/// meaning that pixel (0,0) and (5,0) would only be half activated, if the line did not extend for another half its
-/// width to the left and right.
-///
 /// Caps
 /// ----
 ///
@@ -385,7 +376,7 @@ void Plotter::parse(const PlotterDesign& design, const M3f& xform, const Aabrf& 
                        [&](const PlotterDesign::SetStrokeWidth& cmd) { _get_state().stroke_width = cmd.stroke_width; },
                        [&](const PlotterDesign::SetBlendMode& cmd) { _get_state().blend_mode = cmd.mode; },
                        [&](const PlotterDesign::SetLineCap& cmd) { _get_state().line_cap = cmd.cap; },
-                       [&](const PlotterDesign::SetLineJoin& cmd) { _get_state().line_join = cmd.join; },
+                       [&](const PlotterDesign::SetLineJoin& cmd) { _get_state().joint_style = cmd.join; },
                        [&](const PlotterDesign::Fill&) { _store_fill_call(); },
                        [&](const PlotterDesign::Stroke&) { _store_stroke_call(); },
                        [&](const PlotterDesign::Write& cmd) { _store_write_call(cmd.data->text); }},
@@ -456,88 +447,60 @@ uint Plotter::_store_path(const Path2Ptr& path) {
         if (subpath.segment_count == 0) { continue; }
 
         { // create indices
-            uint index = 0; // TODO: or should this be: narrow_cast<GLuint>(vertices.size());
-            const uint last_index = subpath.segment_count - (subpath.is_closed ? 0 : 1);
             const size_t expected_size = indices.size() + (subpath.segment_count * 4) + (subpath.is_closed ? 0 : 2);
             indices.reserve(expected_size);
 
-            for (size_t i = 0; i < last_index; ++i) {
-                // next joint / start cap
-//                indices.emplace_back(index);
-//                indices.emplace_back(index);
-
-                // next segment
+            const uint wrap_index = subpath.segment_count + (subpath.is_closed ? 0 : 1);
+            for (uint i = 0, index = 0; i < subpath.segment_count; ++i) {
+                // start cap / joint
                 indices.emplace_back(index);
-                index = ++index % last_index;
+                indices.emplace_back(index);
+
+                // segment
+                indices.emplace_back(index);
+                index = ++index % wrap_index;
                 indices.emplace_back(index);
             }
 
             if (!subpath.is_closed) {
                 // end cap
-                indices.emplace_back(index);
-                indices.emplace_back(index);
+                indices.emplace_back(indices.back());
+                indices.emplace_back(indices.back());
             }
 
             new_path.size = narrow_cast<int>(indices.size() - new_path.index_offset);
-//            NOTF_ASSERT(static_cast<size_t>(new_path.size) == expected_size);
-
-            // TODO: CONTINUE HERE
-            // the joints don't work, caps propably also not, simplify this function so open and closed lines share more
+            NOTF_ASSERT(indices.size() == expected_size);
         }
 
-        // create vertices
-        if (subpath.is_closed) {
-            const size_t expected_size = vertices.size() + subpath.segment_count;
+        { // create vertices
+            const size_t expected_size = vertices.size() + subpath.segment_count + (subpath.is_closed ? 0 : 1);
             vertices.reserve(expected_size);
 
             { // first vertex
-                CubicBezier2f left_segment = subpath.get_segment(subpath.segment_count - 1);
                 CubicBezier2f right_segment = subpath.get_segment(0);
                 VertexBuffer::vertex_t vertex;
-                set_pos(vertex, subpath.interpolate(0));
-                set_left_ctrl(vertex, std::move(left_segment));
+                set_pos(vertex, right_segment.get_vertex(0));
+                if (subpath.is_closed) {
+                    set_left_ctrl(vertex, subpath.get_segment(subpath.segment_count - 1));
+                } else {
+                    set_left_ctrl(vertex, V2f::zero());
+                }
                 set_right_ctrl(vertex, std::move(right_segment));
                 vertices.emplace_back(std::move(vertex));
             }
 
             // middle vertices
             for (size_t i = 0; i < subpath.segment_count - 1; ++i) {
-                CubicBezier2f left_segment = subpath.get_segment(i);
                 CubicBezier2f right_segment = subpath.get_segment(i + 1);
                 VertexBuffer::vertex_t vertex;
                 set_pos(vertex, right_segment.get_vertex(0));
-                set_left_ctrl(vertex, std::move(left_segment));
+                set_left_ctrl(vertex, subpath.get_segment(i));
                 set_right_ctrl(vertex, std::move(right_segment));
                 vertices.emplace_back(std::move(vertex));
             }
 
-            NOTF_ASSERT(vertices.size() == expected_size);
-
-        } else { // subpath is open
-            const size_t expected_size = vertices.size() + subpath.segment_count + 1;
-            vertices.reserve(expected_size);
-
-            { // first vertex
-                CubicBezier2f right_segment = subpath.get_segment(0);
-                VertexBuffer::vertex_t vertex;
-                set_pos(vertex, subpath.interpolate(0));
-                set_left_ctrl(vertex, V2f::zero());
-                set_right_ctrl(vertex, std::move(right_segment));
-                vertices.emplace_back(std::move(vertex));
-            }
-
-            // middle vertices
-            for (size_t i = 0; i < subpath.segment_count - 1; ++i) {
-                CubicBezier2f left_segment = subpath.get_segment(i);
-                CubicBezier2f right_segment = subpath.get_segment(i + 1);
-                VertexBuffer::vertex_t vertex;
-                set_pos(vertex, right_segment.get_vertex(0));
-                set_left_ctrl(vertex, std::move(left_segment));
-                set_right_ctrl(vertex, std::move(right_segment));
-                vertices.emplace_back(std::move(vertex));
-            }
-
-            { // last vertex
+            // last vertex
+            if (!subpath.is_closed) {
                 CubicBezier2f left_segment = subpath.get_segment(subpath.segment_count - 1);
                 VertexBuffer::vertex_t vertex;
                 set_pos(vertex, left_segment.get_vertex(3));
@@ -610,7 +573,7 @@ void Plotter::_store_fill_call() {
 void Plotter::_store_stroke_call() {
     // early out, if the call would have no visible effect
     const PainterState& state = _get_state();
-    if (state.path->is_empty()                                               // no path
+    if (!state.path || state.path->is_empty()                                // no path
         || is_zero(state.stroke_width, precision_low<float>())               // zero width
         || is_zero(state.alpha, precision_low<float>())                      // transparent
         || is_zero(state.xform.get_determinant(), precision_low<float>())) { // xforms maps to zero area
@@ -621,13 +584,8 @@ void Plotter::_store_stroke_call() {
     _store_call_base(call);
     call.path = _store_path(state.path);
     call.cap = state.line_cap;
-    call.join = state.line_join;
-    { // stroke width
-        const float stroke_width = abs(state.stroke_width * state.xform.get_scale_factor());
-        // a line must be at least a pixel wide to be drawn, we emulate thinner lines using the alpha
-        call.width = max(1, stroke_width);
-        if (state.stroke_width < 1) { call.alpha *= stroke_width; }
-    }
+    call.join = state.joint_style;
+    call.width = abs(state.stroke_width * state.xform.get_scale_factor());
     m_drawcalls.emplace_back(std::move(call));
 }
 
@@ -729,8 +687,14 @@ void Plotter::_render_stroke(const _StrokeCall& stroke) {
         m_server_state.stroke_width = stroke.width;
     }
 
+    // joint style
+    if (m_server_state.joint_style != stroke.join) {
+        m_program->get_uniform("joint_style").set(static_cast<int>(to_number(stroke.join)));
+        m_server_state.joint_style = stroke.join;
+    }
+
     // paint uniform block
-    m_context->uniform_slots[0].bind_buffer(m_paint_buffer, stroke.paint);
+    // m_context->uniform_slots[0].bind_buffer(m_paint_buffer, stroke.paint); // TODO: this breaks
 
     // draw it
     NOTF_ASSERT(stroke.path < m_paths.size());

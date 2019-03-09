@@ -89,7 +89,7 @@ private:
     /// @param program  ShaderProgram managing this UniformBlock.
     /// @param shader   Shader containing the UniformBlock.
     /// @param index    Index of the UniformBlock in the Shader.
-    UniformBlock(const ShaderProgram &program, const AnyShaderPtr& shader, const GLuint index);
+    UniformBlock(const ShaderProgram& program, const AnyShaderPtr& shader, const GLuint index);
 
 public:
     /// Name of the UniformBlock.
@@ -386,7 +386,7 @@ template<>
 void ShaderProgram::_set_uniform(const GLuint, const Uniform&, const int&);
 
 template<>
-void ShaderProgram::_set_uniform(const GLuint, const Uniform&, const unsigned int&);
+void ShaderProgram::_set_uniform(const GLuint, const Uniform&, const uint&);
 
 template<>
 void ShaderProgram::_set_uniform(const GLuint, const Uniform&, const float&);
@@ -399,5 +399,10 @@ void ShaderProgram::_set_uniform(const GLuint, const Uniform&, const V4f&);
 
 template<>
 void ShaderProgram::_set_uniform(const GLuint, const Uniform&, const M4f&);
+
+template<>
+inline void ShaderProgram::_set_uniform(const GLuint shader_id, const Uniform& uniform, const uchar& value) {
+    _set_uniform(shader_id, uniform, static_cast<uint>(value));
+}
 
 NOTF_CLOSE_NAMESPACE

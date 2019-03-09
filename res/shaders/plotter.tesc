@@ -14,31 +14,36 @@ in VertexData {
 uniform int patch_type;
 uniform float stroke_width;
 uniform float aa_width;
+uniform int joint_style;
 
 patch out PatchData {
-    vec2 start;
-    vec2 end;
     float ctrl1_length;
     float ctrl2_length;
     vec2 ctrl1_direction;
     vec2 ctrl2_direction;
     int type;
-} patch_data;
+} patch_out;
 
 // constant symbols
 const float ZERO = 0.0f;
 const float ONE = 1.0f;
 const float TWO = 2.0f;
 const float THREE = 3.0f;
+const float PI = 3.141592653589793238462643383279502884197169399375105820975;
 
 // patch types
 const int CONVEX    = 1;
 const int CONCAVE   = 2;
-const int STROKE    = 3;
-const int TEXT      = 4;
-const int JOINT     = 31;
-const int START_CAP = 32;
-const int END_CAP   = 33;
+const int TEXT      = 3;
+const int STROKE    = 4;
+const int JOINT     = 41;
+const int START_CAP = 42;
+const int END_CAP   = 43;
+
+// joint styles
+const int JOINT_STYLE_MITER = 1;
+const int JOINT_STYLE_ROUND = 2;
+const int JOINT_STYLE_BEVEL = 3;
 
 #define START_VERTEX (gl_in[0].gl_Position.xy)
 #define END_VERTEX   (gl_in[1].gl_Position.xy)
@@ -46,6 +51,21 @@ const int END_CAP   = 33;
 // settings
 const float tessel_x_factor = 0.0001;
 const float tessel_x_max = 64.0;
+
+/// Best fit for the following dataset:
+///     Radius | Good looking tesselation
+///     -------+--------------------------
+///        12  |  16
+///        24  |  24
+///        48  |  32
+///        96  |  64
+///       192  |  96
+///       384  | 128
+///
+/// see https://www.wolframalpha.com/input/?i=fit+((12,+16),+(24,+24),+(48,+32),+(96,+64),+(192,+96),+(384,+128))
+float radius_to_tesselation(float radius) {
+    return 8.43333 + (0.615398*radius) - (0.00079284 * radius * radius);
+}
 
 void main(){
 
@@ -57,7 +77,7 @@ void main(){
         return;
     }
 
-    patch_data.type = patch_type;
+    patch_out.type = patch_type;
 
     if(patch_type == TEXT) {
         gl_TessLevelInner[0] = ZERO;
@@ -69,29 +89,23 @@ void main(){
         gl_TessLevelOuter[3] = ONE;
 
         // this holds the position of the glyph's min and max corners
-        patch_data.ctrl1_direction = v_in[0].left_ctrl;
-        patch_data.ctrl2_direction = v_in[0].right_ctrl;
+        patch_out.ctrl1_direction = v_in[0].left_ctrl;
+        patch_out.ctrl2_direction = v_in[0].right_ctrl;
     }
 
     // branch for everything but text
     else {
         // direction of the control points from their nearest vertex
-        patch_data.ctrl1_direction = normalize(v_in[0].right_ctrl);
-        patch_data.ctrl2_direction = normalize(v_in[1].left_ctrl);
-
-        // start and end vertex are moved outwards along their tangent
-        // this is to ensure that the line is long enough to cover all pixels involved
-        float lengthwise_offset = aa_width + (stroke_width * 0.5);
-        patch_data.start = START_VERTEX - (lengthwise_offset * patch_data.ctrl1_direction);
-        patch_data.end = END_VERTEX - (lengthwise_offset * patch_data.ctrl2_direction);
+        patch_out.ctrl1_direction = normalize(v_in[0].right_ctrl);
+        patch_out.ctrl2_direction = normalize(v_in[1].left_ctrl);
 
         // ctrl point delta magnitude
-        patch_data.ctrl1_length = max(ZERO, length(v_in[0].right_ctrl) - ONE);
-        patch_data.ctrl2_length = max(ZERO, length(v_in[1].left_ctrl) - ONE);
+        patch_out.ctrl1_length = max(ZERO, length(v_in[0].right_ctrl) - ONE);
+        patch_out.ctrl2_length = max(ZERO, length(v_in[1].left_ctrl) - ONE);
 
         // bezier spline points
-        vec2 ctrl1 = START_VERTEX + (patch_data.ctrl1_direction * patch_data.ctrl1_length);
-        vec2 ctrl2 = END_VERTEX + (patch_data.ctrl2_direction * patch_data.ctrl2_length);
+        vec2 ctrl1 = START_VERTEX + (patch_out.ctrl1_direction * patch_out.ctrl1_length);
+        vec2 ctrl2 = END_VERTEX + (patch_out.ctrl2_direction * patch_out.ctrl2_length);
 
         if(patch_type == CONVEX || patch_type == CONCAVE){
             gl_TessLevelInner[0] = ZERO;
@@ -111,11 +125,25 @@ void main(){
             // segment sub-types
             if(gl_in[0].gl_Position == gl_in[1].gl_Position){
                 if (v_in[0].left_ctrl == vec2(ZERO, ZERO)){
-                    patch_data.type = START_CAP;
+                    patch_out.type = START_CAP;
+                    // if(cap_style == JOINT_STYLE_ROUND){
+                        float radius = aa_width + (stroke_width / 2.0);
+                        tessel_x = radius_to_tesselation(radius) / 2.;
+                    // }
                 } else if (v_in[1].right_ctrl == vec2(ZERO, ZERO)){
-                    patch_data.type = END_CAP;
-                } else {
-                    patch_data.type = JOINT;
+                    patch_out.type = END_CAP;
+                    // if(cap_style == JOINT_STYLE_ROUND){
+                        float radius = aa_width + (stroke_width / 2.0);
+                        tessel_x = radius_to_tesselation(radius) / 2.;
+                    // }
+                }
+                else {
+                    patch_out.type = JOINT;
+                    if(joint_style == JOINT_STYLE_ROUND){
+                        float angle = acos(dot(patch_out.ctrl1_direction, -patch_out.ctrl2_direction));
+                        float radius = aa_width + (stroke_width / 2.0);
+                        tessel_x = radius_to_tesselation(radius) * (angle / PI*2.);
+                    }
                 }
             }
 

@@ -132,7 +132,7 @@ public:
     // enums ------------------------------------------------------------------
 
     /// Type of cap used at the end of a painted line.
-    enum class LineCap : uchar {
+    enum class CapStyle : uchar {
         _CURRENT, // default value, means "use the current one"
         BUTT,
         ROUND,
@@ -140,7 +140,7 @@ public:
     };
 
     /// Type of joint beween two painted line segments.
-    enum class LineJoin : uchar {
+    enum class JointStyle : uchar {
         _CURRENT, // default value, means "use the current one"
         MITER,
         ROUND,
@@ -174,10 +174,10 @@ public:
         BlendMode blend_mode = BlendMode::SOURCE_OVER;
 
         /// Shape at the end of a line.
-        LineCap line_cap = LineCap::BUTT;
+        CapStyle line_cap = CapStyle::BUTT;
 
         /// How different line segments are connected.
-        LineJoin line_join = LineJoin::MITER;
+        JointStyle joint_style = JointStyle::MITER;
 
         /// Paint used for painting.
         Paint paint = Color(255, 255, 255);
@@ -189,11 +189,11 @@ private:
     enum PatchType : int {
         CONVEX = 1,
         CONCAVE = 2,
-        STROKE = 3,
-        TEXT = 4,
-        // JOINT     = 31, // internal
-        // START_CAP = 32, // internal
-        // END_CAP   = 33, // internal
+        TEXT = 3,
+        STROKE = 4,
+        // JOINT     = 41, // internal
+        // START_CAP = 42, // internal
+        // END_CAP   = 43, // internal
     };
 
     /// The current State of the Plotter. Is used to diff against the target state.
@@ -210,10 +210,10 @@ private:
         BlendMode blend_mode = BlendMode::_DEFAULT;
 
         /// Shape at the end of a line.
-        LineCap line_cap = LineCap::_CURRENT;
+        CapStyle line_cap = CapStyle::_CURRENT;
 
         /// How different line segments are connected.
-        LineJoin line_join = LineJoin::_CURRENT; // TOOD: for this case I'd need an explicit _INVALID state
+        JointStyle joint_style = JointStyle::_CURRENT; // TOOD: for this case I'd need an explicit _INVALID state
 
         /// Screen size.
         Size2i screen_size = Size2i::zero();
@@ -287,10 +287,10 @@ private:
     struct _StrokeCall : public _CallBase {
 
         /// Shape at the end of a line.
-        LineCap cap = LineCap::_CURRENT;
+        CapStyle cap = CapStyle::_CURRENT;
 
         /// How different line segments are connected.
-        LineJoin join = LineJoin::_CURRENT;
+        JointStyle join = JointStyle::_CURRENT;
 
         /// Width of the stroke in pixels.
         float width;

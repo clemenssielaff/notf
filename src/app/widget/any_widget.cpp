@@ -114,8 +114,10 @@ Aabrf AnyWidget::_calculate_content_aabr() const {
 }
 
 const PlotterDesign& AnyWidget::_get_design() {
-    Painter painter(m_design);
-    _paint(painter); // TODO: minimize widget redesign
+    if(m_design.is_dirty()){
+        Painter painter(m_design);
+        _paint(painter);
+    }
     return m_design;
 }
 

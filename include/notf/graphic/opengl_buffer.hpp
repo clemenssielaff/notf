@@ -219,13 +219,13 @@ public:
         if (0 == m_local_hash) { m_local_hash = hash(m_buffer); }
 
         // do nothing if the data on the server is still current
-        if (m_local_hash == m_server_hash) { return; }
+        if (m_local_hash == m_server_hash) { return; } // TODO: test only
 
         // bind and eventually unbind the index buffer
-        const GLenum gl_type = this->to_gl_type(this->get_type());
         NOTF_GUARD(detail::OpenGLBufferGuard(*this));
 
         // upload the buffer data
+        const GLenum gl_type = this->to_gl_type(this->get_type());
         const GLsizei buffer_size = narrow_cast<GLsizei>(m_buffer.size() * get_element_size());
         if (buffer_size <= m_server_size) {
             NOTF_CHECK_GL(glBufferSubData(gl_type, /*offset = */ 0, buffer_size, &m_buffer.front()));

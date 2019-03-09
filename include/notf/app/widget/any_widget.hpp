@@ -96,7 +96,7 @@ private:
         RefreshObserver(AnyWidget& widget) : m_widget(widget) {}
 
         /// Called whenever a REFRESH Property changed its value.
-        void on_next(const AnyPublisher*, ...) final { m_widget.m_design.reset(); }
+        void on_next(const AnyPublisher*, ...) final { m_widget.m_design.set_dirty(); }
 
         // fields ---------------------------------------------------------- //
     private:

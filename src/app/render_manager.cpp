@@ -10,7 +10,9 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-RenderManager::RenderThread::RenderThread() { m_thread.run(&RenderThread::_run, *this); }
+RenderManager::RenderThread::RenderThread() : m_thread(Thread::Kind::RENDER) {
+    m_thread.run(&RenderThread::_run, *this);
+}
 
 void RenderManager::RenderThread::request_redraw(std::vector<AnyNodeHandle> windows) {
     {

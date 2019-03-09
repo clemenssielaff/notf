@@ -136,15 +136,15 @@ public:
     constexpr parabezier_t get_segment(const size_t index) const {
         const auto& vertices = m_hull.get_vertices();
         const size_t start_index = index * Order;
-        const size_t last_index = vertices.size() - (is_closed() ? 0 : 1);
-        if (start_index + Order > last_index) {
+        const size_t wrap_index = vertices.size();
+        if (start_index + Order > wrap_index - (is_closed() ? 0 : 1)) {
             NOTF_THROW(LogicError, "Cannot get Bezier segment {} from a PolyBezier with only {} segments", index,
                        get_segment_count());
         }
         weights_t x, y;
         for (size_t i = 0; i <= Order; ++i) {
-            x[i] = vertices[(start_index + i) % last_index].x();
-            y[i] = vertices[(start_index + i) % last_index].y();
+            x[i] = vertices[(start_index + i) % wrap_index].x();
+            y[i] = vertices[(start_index + i) % wrap_index].y();
         }
         return typename parabezier_t::data_t{bezier_t(std::move(x)), bezier_t(std::move(y))};
     }

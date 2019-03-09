@@ -52,7 +52,7 @@ GLuint compile_stage(const std::string& program_name, const AnyShader::Stage::Fl
         std::vector<char> error_message(static_cast<size_t>(error_size));
         NOTF_CHECK_GL(glGetShaderInfoLog(shader, error_size, /*length*/ nullptr, &error_message[0]));
         NOTF_CHECK_GL(glDeleteShader(shader));
-        NOTF_THROW(OpenGLError, "Failed to compile {} stage for Shader \"{}\"\n\t{}", stage_name, program_name,
+        NOTF_THROW(OpenGLError, "Failed to compile {} stage for Shader \"{}\"\n{}", stage_name, program_name,
                    error_message.data());
     }
 
@@ -303,7 +303,7 @@ GLuint AnyShader::_build(const std::string& name, const Args& args) {
             NOTF_CHECK_GL(glGetProgramInfoLog(program, error_size, /*length*/ nullptr, &error_message[0]));
             NOTF_CHECK_GL(glDeleteProgram(program));
 
-            NOTF_THROW(OpenGLError, "Failed to link Shader \"{}\":\n", name, error_message.data());
+            NOTF_THROW(OpenGLError, "Failed to link Shader \"{}\"\n{}", name, error_message.data());
         }
     }
     NOTF_LOG_TRACE("Compiled and linked Shader \"{}\".", name);

@@ -27,8 +27,8 @@ class Painter {
     // types ----------------------------------------------------------------------------------- //
 public:
     using Paint = Plotter::Paint;
-    using LineCap = Plotter::LineCap;
-    using LineJoin = Plotter::LineJoin;
+    using CapStyle = Plotter::CapStyle;
+    using JointStyle = Plotter::JointStyle;
 
 private:
     using State = Plotter::PainterState;
@@ -38,6 +38,9 @@ public:
     /// Constructor.
     /// @param design   WidgetDesign to paint into (current Design is overwritten).
     explicit Painter(PlotterDesign& design);
+
+    /// Destructor.
+    ~Painter();
 
     /// Pushes a copy of the current state of the Painter onto the state stack.
     /// All changes made to the state from now on can be undone by popping the state stack again.
@@ -124,16 +127,16 @@ public:
     void set_alpha(const float alpha);
 
     /// The Painter's line cap.
-    LineCap get_line_cap() const { return _get_state().line_cap; }
+    CapStyle get_line_cap() const { return _get_state().line_cap; }
 
     /// Sets the Painter's line cap.
-    void set_line_cap(const LineCap cap);
+    void set_cap_style(const CapStyle cap);
 
     /// The Painter's line join.
-    LineJoin get_line_join() const { return _get_state().line_join; }
+    JointStyle get_line_join() const { return _get_state().joint_style; }
 
     /// Sets the Painter's line join.
-    void set_line_join(const LineJoin join);
+    void set_joint_style(const JointStyle join);
 
     /// The stroke width of the Painter.
     float get_stroke_width() const { return _get_state().stroke_width; }

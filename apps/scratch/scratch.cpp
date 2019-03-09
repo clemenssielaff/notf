@@ -91,16 +91,25 @@ private:
     }
 
     void _paint(Painter& painter) const override {
-        //        NOTF_LOG_TRACE("Called paint");
-        const float half_length = 100.f; // * get<super_prop>();
-        const V2f half_line{half_length, half_length};
-//        const Path2Ptr spline = Path2::create(Polylinef{-half_line, half_line});
-        const Path2Ptr spline = Path2::rect(Aabrf(20, 20, 50, 50));
+        //        const float half_length = 100.f; // * get<super_prop>();
+        //        const V2f half_line{half_length, half_length};
+        //        const Path2Ptr spline = ;
 
-        // draw the rotating line
-        painter.set_stroke_width(1.f);
-//        painter.set_paint(Color::red());
-        painter.set_path(spline);
+        // draw a rectangle
+        painter.set_stroke_width(5.f);
+        //        painter.set_paint(Color::red());
+        painter.set_path(Path2::rect(Aabrf(20, 20, 50, 50)));
+        //        painter.stroke();
+
+        // draw a complex shape
+        painter.set_joint_style(Painter::JointStyle::ROUND);
+        painter.set_path(Path2::create(Polylinef{V2f{120, 60}, V2f{160, 400},  //
+                                                 V2f{200, 120}, V2f{240, 280}, //
+                                                 V2f{280, 160}, V2f{340, 200}, //
+                                                 V2f{380, 180}, V2f{420, 190}, //
+                                                 V2f{500, 380}, V2f{350, 400}, //
+                                                 V2f{380, 320}}));
+        //        painter.set_path(Path2::rect(Aabrf(120, 120, 50, 50)));
         painter.stroke();
 
         // draw a background
