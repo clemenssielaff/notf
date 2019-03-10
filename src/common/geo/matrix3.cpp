@@ -42,8 +42,8 @@ constexpr detail::Aabr<AabrElement> do_transform(const detail::Aabr<AabrElement>
 
 /// Generic Polyline transformation.
 template<class PolylineElement, class MatrixElement>
-constexpr detail::Polyline<PolylineElement> do_transform(const detail::Polyline<PolylineElement>& Polyline,
-                                                       const detail::Matrix3<MatrixElement>& matrix) noexcept {
+detail::Polyline<PolylineElement> do_transform(const detail::Polyline<PolylineElement>& Polyline,
+                                               const detail::Matrix3<MatrixElement>& matrix) noexcept {
     using vertex_t = typename detail::Polyline<PolylineElement>::vector_t;
 
     std::vector<vertex_t> vertices;

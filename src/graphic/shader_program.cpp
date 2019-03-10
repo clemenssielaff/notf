@@ -109,12 +109,13 @@ ShaderProgram::ShaderProgram(GraphicsContext& context, std::string name, VertexS
     _link_program();
 
     // discover uniform blocks
-    for (const auto& shader : auto_list(m_vertex_shader, m_fragment_shader)) {
+    for (const auto& shader : auto_list<AnyShaderPtr>(m_vertex_shader, m_fragment_shader)) {
         if (shader) { _find_uniform_blocks(shader); }
     }
 
     // discover uniforms
-    for (const auto& shader : auto_list(m_vertex_shader, m_tesselation_shader, m_geometry_shader, m_fragment_shader)) {
+    for (const auto& shader :
+         auto_list<AnyShaderPtr>(m_vertex_shader, m_tesselation_shader, m_geometry_shader, m_fragment_shader)) {
         if (shader) { _find_uniforms(shader); }
     }
 

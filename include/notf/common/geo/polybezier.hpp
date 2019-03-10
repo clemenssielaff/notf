@@ -133,7 +133,7 @@ public:
     }
 
     /// The given segment of this PolyBezier.
-    constexpr parabezier_t get_segment(const size_t index) const {
+    parabezier_t get_segment(const size_t index) const {
         const auto& vertices = m_hull.get_vertices();
         const size_t start_index = index * Order;
         const size_t wrap_index = vertices.size();

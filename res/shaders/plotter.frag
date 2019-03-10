@@ -143,7 +143,7 @@ float half_space_coverage(vec2 point, vec2 start, vec2 direction, float half_str
 
 /// Calculates the "perfect" coverage area of the fragment by an infinite line.
 /// This method is probably (?) a lot more expensive than the sampling approach without much of a visual difference.
-//FragmentData/ I keep it as a reference and because there might be a use-case for "perfect" line anti-aliasing in the future.
+/// I keep it as a reference and because there might be a use-case for "perfect" line anti-aliasing in the future.
 /// @param coord        Coordinate to sample (typically that is going to be `gl_FragCoord.xy`).
 /// @param point        Any point on the line.
 /// @param direction    Direction of the line (normalized).
@@ -209,9 +209,6 @@ float sample_line(vec2 coord, mat3x2 xform, vec2 size, bool sample_x, bool sampl
         result += dot(step(2., samples_x + samples_y), SAMPLE_WEIGHTS);
     }
     return result / 16.;
-    // TODO: I should be able to apply the transformation once to a vec2(1, 0), rotate the result by 90deg and use that
-    //       as a basis for sample positions instead of doing 16 matrix multiplications
-    //       This way I should also be able to increase the number of samples without too much trouble
 }
 
 float sample_circle(vec2 coord, vec2 center, float radius_sq)

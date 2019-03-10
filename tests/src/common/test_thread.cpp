@@ -1,3 +1,5 @@
+#include <condition_variable>
+
 #include "catch2/catch.hpp"
 
 #include "notf/meta/time.hpp"

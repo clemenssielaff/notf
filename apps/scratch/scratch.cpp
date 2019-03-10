@@ -96,12 +96,14 @@ private:
         //        const Path2Ptr spline = ;
 
         // draw a rectangle
-        painter.set_stroke_width(5.f);
+        painter.set_stroke_width(10.f);
+        painter.set_joint_style(Painter::JointStyle::BEVEL);
         //        painter.set_paint(Color::red());
         painter.set_path(Path2::rect(Aabrf(20, 20, 50, 50)));
-        //        painter.stroke();
+                painter.stroke();
 
         // draw a complex shape
+        painter.set_stroke_width(20.f);
         painter.set_joint_style(Painter::JointStyle::ROUND);
         painter.set_path(Path2::create(Polylinef{V2f{120, 60}, V2f{160, 400},  //
                                                  V2f{200, 120}, V2f{240, 280}, //

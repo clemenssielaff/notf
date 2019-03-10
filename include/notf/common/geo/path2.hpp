@@ -86,7 +86,7 @@ public:
     bool is_empty() const { return m_subpaths.empty(); }
 
     /// Read access to all subpaths.
-    const std::vector<const SubPath>& get_subpaths() const { return m_subpaths; }
+    const std::vector<SubPath>& get_subpaths() const { return m_subpaths; }
 
     /// The total number of vertices in all subpaths.
     size_t get_vertex_count() const {
@@ -119,7 +119,7 @@ public:
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// All subpaths making up this Path2.
-    std::vector<const SubPath> m_subpaths;
+    std::vector<SubPath> m_subpaths;
 };
 
 NOTF_CLOSE_NAMESPACE

@@ -75,11 +75,3 @@ template<class Block>
 using uniform_buffer_t = typename decltype(make_uniform_buffer<Block>(""))::element_type;
 
 NOTF_CLOSE_NAMESPACE
-
-// common_type ====================================================================================================== //
-
-/// std::common_type specializations for AnyUniformBufferPtr subclasses.
-template<class Lhs, class Rhs>
-struct std::common_type<::notf::UniformBufferPtr<Lhs>, ::notf::UniformBufferPtr<Rhs>> {
-    using type = ::notf::AnyUniformBufferPtr;
-};

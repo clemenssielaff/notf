@@ -44,12 +44,12 @@ public:
     // internal buffers -------------------------------------------------------
 
     /// OpenGL buffer holding path vertices.
-    using VertexBuffer = vertex_buffer_t<_VertexPosAttribute, _LeftCtrlAttribute, _RightCtrlAttribute>;
-    using VertexBufferPtr = std::shared_ptr<VertexBuffer>;
+    using Vertices = vertex_buffer_t<_VertexPosAttribute, _LeftCtrlAttribute, _RightCtrlAttribute>;
+    using VerticesPtr = std::shared_ptr<Vertices>;
 
     /// OpenGL buffer holding path indices.
-    using IndexBuffer = IndexBuffer<GLuint>;
-    using IndexBufferPtr = std::shared_ptr<IndexBuffer>;
+    using Indices = IndexBuffer<GLuint>;
+    using IndicesPtr = std::shared_ptr<Indices>;
 
     /// OpenGL buffer holding per-instance 2D transformations.
     using XformBuffer = vertex_buffer_t<_XformAttribute>;
@@ -93,7 +93,7 @@ public:
 
         /// Equality comparison operator.
         /// @param other    Paint to compare against.
-        bool operator==(const Paint& other) const noexcept {
+        bool operator==(const Paint& other) const {
             return texture == other.texture                             //
                    && is_approx(gradient_radius, other.gradient_radius) //
                    && is_approx(feather, other.feather)                 //
@@ -105,7 +105,7 @@ public:
 
         /// Inequality operator
         /// @param other    Paint to compare against.
-        constexpr bool operator!=(const Paint& other) const noexcept { return !operator==(other); }
+        bool operator!=(const Paint& other) const { return !operator==(other); }
 
         // fields -------------------------------------------------------------
     public:
@@ -210,10 +210,10 @@ private:
         BlendMode blend_mode = BlendMode::_DEFAULT;
 
         /// Shape at the end of a line.
-        CapStyle line_cap = CapStyle::_CURRENT;
+        CapStyle cap_style = CapStyle::_CURRENT;
 
         /// How different line segments are connected.
-        JointStyle joint_style = JointStyle::_CURRENT; // TOOD: for this case I'd need an explicit _INVALID state
+        JointStyle joint_style = JointStyle::_CURRENT;
 
         /// Screen size.
         Size2i screen_size = Size2i::zero();
@@ -419,10 +419,10 @@ private:
     ShaderProgramPtr m_program;
 
     /// Buffer storing the vertices used to construct paths and glyphs.
-    VertexBufferPtr m_vertex_buffer;
+    VerticesPtr m_vertex_buffer;
 
     /// Indices into the vertex buffer.
-    IndexBufferPtr m_index_buffer;
+    IndicesPtr m_index_buffer;
 
     /// Buffer containing per-instance transformations.
     XformBufferPtr m_xform_buffer;

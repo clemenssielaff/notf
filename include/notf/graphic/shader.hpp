@@ -304,28 +304,3 @@ private:
 };
 
 NOTF_CLOSE_NAMESPACE
-
-// common_type ====================================================================================================== //
-
-// clang-format off
-
-/// @{
-/// std::common_type specializations for ShaderPtr subclasses.
-template<> struct std::common_type<::notf::VertexShaderPtr, ::notf::TesselationShaderPtr> { using type = ::notf::AnyShaderPtr; };
-template<> struct std::common_type<::notf::VertexShaderPtr, ::notf::GeometryShaderPtr> { using type = ::notf::AnyShaderPtr; };
-template<> struct std::common_type<::notf::VertexShaderPtr, ::notf::FragmentShaderPtr> { using type = ::notf::AnyShaderPtr; };
-
-template<> struct std::common_type<::notf::TesselationShaderPtr, ::notf::VertexShaderPtr> { using type = ::notf::AnyShaderPtr; };
-template<> struct std::common_type<::notf::TesselationShaderPtr, ::notf::GeometryShaderPtr> { using type = ::notf::AnyShaderPtr; };
-template<> struct std::common_type<::notf::TesselationShaderPtr, ::notf::FragmentShaderPtr> { using type = ::notf::AnyShaderPtr; };
-
-template<> struct std::common_type<::notf::GeometryShaderPtr, ::notf::VertexShaderPtr> { using type = ::notf::AnyShaderPtr; };
-template<> struct std::common_type<::notf::GeometryShaderPtr, ::notf::TesselationShaderPtr> { using type = ::notf::AnyShaderPtr; };
-template<> struct std::common_type<::notf::GeometryShaderPtr, ::notf::FragmentShaderPtr> { using type = ::notf::AnyShaderPtr; };
-
-template<> struct std::common_type<::notf::FragmentShaderPtr, ::notf::VertexShaderPtr> { using type = ::notf::AnyShaderPtr; };
-template<> struct std::common_type<::notf::FragmentShaderPtr, ::notf::TesselationShaderPtr> { using type = ::notf::AnyShaderPtr; };
-template<> struct std::common_type<::notf::FragmentShaderPtr, ::notf::GeometryShaderPtr> { using type = ::notf::AnyShaderPtr; };
-/// @}
-
-// clang-format on

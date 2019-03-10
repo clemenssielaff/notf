@@ -293,12 +293,3 @@ class Accessor<VertexBuffer<AttributePolicies, Vertex>, VertexObject> {
 };
 
 NOTF_CLOSE_NAMESPACE
-
-// common_type ====================================================================================================== //
-
-/// std::common_type specializations for AnyVertexBufferPtr subclasses.
-template<class LeftAttrs, class LeftVertex, class RightAttrs, class RightVertex>
-struct std::common_type<::notf::VertexBufferPtr<LeftAttrs, LeftVertex>,
-                        ::notf::VertexBufferPtr<RightAttrs, RightVertex>> {
-    using type = ::notf::AnyVertexBufferPtr;
-};

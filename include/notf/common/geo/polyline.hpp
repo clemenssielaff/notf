@@ -46,7 +46,7 @@ public:
     Polyline(std::initializer_list<vector_t>&& vertices)
         : Polyline(std::vector<vector_t>(std::make_move_iterator(vertices.begin()),
                                          std::make_move_iterator(vertices.end()))) {}
-    template<class... Ts>
+    template<class... Ts, class = std::enable_if_t<all_convertible_to<vector_t, Ts...>>>
     Polyline(Ts&&... args) : Polyline({std::forward<Ts>(args)...}) {}
     /// @}
 

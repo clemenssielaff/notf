@@ -89,11 +89,3 @@ class Accessor<IndexBuffer<IndexType>, VertexObject> {
 };
 
 NOTF_CLOSE_NAMESPACE
-
-// common_type ====================================================================================================== //
-
-/// std::common_type specializations for AnyIndexBufferPtr subclasses.
-template<class Lhs, class Rhs>
-struct std::common_type<::notf::IndexBufferPtr<Lhs>, ::notf::IndexBufferPtr<Rhs>> {
-    using type = ::notf::AnyIndexBufferPtr;
-};

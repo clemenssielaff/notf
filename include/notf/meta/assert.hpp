@@ -1,10 +1,6 @@
 #pragma once
 
 #include "notf/meta/macros.hpp"
-
-#ifdef NOTF_DEBUG
-
-// is only included in debug builds
 #include "notf/meta/exception.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -15,6 +11,8 @@ NOTF_OPEN_NAMESPACE
 NOTF_EXCEPTION_TYPE(AssertionError);
 
 namespace detail {
+
+#ifdef NOTF_DEBUG
 
 /// Called when an assertion with a message fails.
 /// Prints out a formatted message with information about the failure and then aborts the program.
@@ -51,7 +49,6 @@ assertion_failed(char const* expr, char const* file, char const* function, long 
     }
 }
 
-} // namespace detail
 
 /// Assertion macro that, on failure, logs the failed expression and the code location before aborting.
 #define NOTF_ASSERT(expr, ...) \
@@ -62,8 +59,6 @@ assertion_failed(char const* expr, char const* file, char const* function, long 
 /// Assertion macro like NOTF_ASSERT, but executed the expression in release builds as well
 #define NOTF_ASSERT_ALWAYS(expr, ...) NOTF_DEFER(NOTF_ASSERT, expr, ##__VA_ARGS__)
 
-NOTF_CLOSE_NAMESPACE
-
 #else
 
 /// In release mode, the notf assertion macro expands to nothing.
@@ -73,3 +68,6 @@ NOTF_CLOSE_NAMESPACE
 #define NOTF_ASSERT_ALWAYS(expr, ...) NOTF_IGNORE_VARIADIC(expr, , ##__VA_ARGS__)
 
 #endif
+
+} // namespace detail
+NOTF_CLOSE_NAMESPACE

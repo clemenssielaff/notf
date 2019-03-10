@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include "notf/meta/concept.hpp"
 
 #include "notf/common/variant.hpp"

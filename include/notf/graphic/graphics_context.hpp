@@ -427,13 +427,13 @@ private:
 
             /// Assignment operator for UniformBuffers.
             /// @param buffer   New UniformBuffer to bind.
-            void operator=(AnyUniformBufferPtr buffer) { bind(std::move(buffer)); }
+            void operator=(AnyUniformBufferPtr buffer) { bind_buffer(std::move(buffer)); }
 
             /// Currently bound UniformBuffer (can be empty).
             const BufferBinding& get_buffer_binding() const { return m_buffer; }
 
             /// Returns all UniformBlock bindings.
-            const std::vector<const BlockBinding>& get_block_bindings() const { return m_blocks; }
+            const std::vector<BlockBinding>& get_block_bindings() const { return m_blocks; }
 
             /// Removes all bindings from this UniformSlot.
             void clear() {
@@ -468,7 +468,7 @@ private:
             BufferBinding m_buffer;
 
             /// Bound UniformBlocks.
-            std::vector<const BlockBinding> m_blocks;
+            std::vector<BlockBinding> m_blocks;
         };
 
         // methods --------------------------------------------------------- //

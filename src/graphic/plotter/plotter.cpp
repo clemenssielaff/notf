@@ -100,9 +100,9 @@ NOTF_USING_NAMESPACE;
 namespace {
 
 using UsageHint = notf::detail::AnyOpenGLBuffer::UsageHint;
-using Vertex = Plotter::VertexBuffer::vertex_t;
+using Vertex = Plotter::Vertices::vertex_t;
 
-static constexpr GLenum g_index_type = to_gl_type(Plotter::IndexBuffer::index_t{});
+static constexpr GLenum g_index_type = to_gl_type(Plotter::Indices::index_t{});
 
 // vertex =========================================================================================================== //
 
@@ -297,8 +297,8 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
     }
 
     { // vertex object
-        m_vertex_buffer = VertexBuffer::create("PlotterVertexBuffer", UsageHint::STREAM_DRAW);
-        m_index_buffer = IndexBuffer::create("PlotterIndexBuffer", UsageHint::STREAM_DRAW);
+        m_vertex_buffer = Vertices::create("PlotterVertexBuffer", UsageHint::STREAM_DRAW);
+        m_index_buffer = Indices::create("PlotterIndexBuffer", UsageHint::STREAM_DRAW);
         m_xform_buffer
             = XformBuffer::create("PlotterInstanceBuffer", UsageHint::STREAM_DRAW, /*is_per_instance= */ true);
         m_vertex_object = VertexObject::create(m_context, "PlotterVertexObject");
@@ -432,7 +432,7 @@ uint Plotter::_store_path(const Path2Ptr& path) {
     // return the index of an existing path
     if (auto itr = m_path_lookup.find(path); itr != m_path_lookup.end()) { return itr->second; }
 
-    std::vector<VertexBuffer::vertex_t>& vertices = m_vertex_buffer->write();
+    std::vector<Vertex>& vertices = m_vertex_buffer->write();
     std::vector<GLuint>& indices = m_index_buffer->write();
 
     // create the new path
@@ -478,7 +478,7 @@ uint Plotter::_store_path(const Path2Ptr& path) {
 
             { // first vertex
                 CubicBezier2f right_segment = subpath.get_segment(0);
-                VertexBuffer::vertex_t vertex;
+                Vertex vertex;
                 set_pos(vertex, right_segment.get_vertex(0));
                 if (subpath.is_closed) {
                     set_left_ctrl(vertex, subpath.get_segment(subpath.segment_count - 1));
@@ -492,7 +492,7 @@ uint Plotter::_store_path(const Path2Ptr& path) {
             // middle vertices
             for (size_t i = 0; i < subpath.segment_count - 1; ++i) {
                 CubicBezier2f right_segment = subpath.get_segment(i + 1);
-                VertexBuffer::vertex_t vertex;
+                Vertex vertex;
                 set_pos(vertex, right_segment.get_vertex(0));
                 set_left_ctrl(vertex, subpath.get_segment(i));
                 set_right_ctrl(vertex, std::move(right_segment));
@@ -502,7 +502,7 @@ uint Plotter::_store_path(const Path2Ptr& path) {
             // last vertex
             if (!subpath.is_closed) {
                 CubicBezier2f left_segment = subpath.get_segment(subpath.segment_count - 1);
-                VertexBuffer::vertex_t vertex;
+                Vertex vertex;
                 set_pos(vertex, left_segment.get_vertex(3));
                 set_left_ctrl(vertex, std::move(left_segment));
                 set_right_ctrl(vertex, V2f::zero());
@@ -602,7 +602,7 @@ void Plotter::_store_write_call(std::string text) {
         return;
     }
 
-    std::vector<VertexBuffer::vertex_t>& vertices = m_vertex_buffer->write();
+    std::vector<Vertex>& vertices = m_vertex_buffer->write();
     std::vector<GLuint>& indices = m_index_buffer->write();
 
     // create the new path
@@ -700,7 +700,7 @@ void Plotter::_render_stroke(const _StrokeCall& stroke) {
     NOTF_ASSERT(stroke.path < m_paths.size());
     const Path& path = m_paths[stroke.path];
     NOTF_CHECK_GL(glDrawElementsBaseVertex(GL_PATCHES, static_cast<GLsizei>(path.size), g_index_type,
-                                           gl_buffer_offset(path.index_offset * sizeof(IndexBuffer::index_t)),
+                                           gl_buffer_offset(path.index_offset * sizeof(Indices::index_t)),
                                            path.vertex_offset));
     // TODO use glDrawElementsIndirect with an indirect command buffer?
 }
@@ -711,7 +711,7 @@ void Plotter::_render_text(const _WriteCall& call) {}
 
 /// std::hash specialization for FragmentPaint.
 template<>
-struct ::std::hash<notf::Plotter::FragmentPaint> {
+struct std::hash<notf::Plotter::FragmentPaint> {
     static_assert(sizeof(notf::Plotter::FragmentPaint) == 28 * sizeof(float));
 
     size_t operator()(const notf::Plotter::FragmentPaint& paint) const {

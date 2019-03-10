@@ -40,8 +40,8 @@ public:
         case Type::INDEX: return GL_ELEMENT_ARRAY_BUFFER;
         case Type::UNIFORM: return GL_UNIFORM_BUFFER;
         case Type::DRAWCALL: return GL_DRAW_INDIRECT_BUFFER;
+        default: NOTF_THROW(ValueError, "Unknown OpenGLBuffer type");
         }
-        NOTF_THROW(ValueError, "Unknown OpenGLBuffer type");
     }
 
     // methods --------------------------------------------------------------------------------- //
@@ -171,7 +171,7 @@ public:
     using data_t = Data;
 
     /// OpenGL buffer type.
-    using Type = typename detail::OpenGLBufferType;
+    using Type = detail::OpenGLBufferType;
 
     /// The expected usage of the data stored in this buffer.
     using UsageHint = typename detail::AnyOpenGLBuffer::UsageHint;
@@ -219,7 +219,7 @@ public:
         if (0 == m_local_hash) { m_local_hash = hash(m_buffer); }
 
         // do nothing if the data on the server is still current
-        if (m_local_hash == m_server_hash) { return; } // TODO: test only
+        if (m_local_hash == m_server_hash) { return; }
 
         // bind and eventually unbind the index buffer
         NOTF_GUARD(detail::OpenGLBufferGuard(*this));
@@ -227,7 +227,7 @@ public:
         // upload the buffer data
         const GLenum gl_type = this->to_gl_type(this->get_type());
         const GLsizei buffer_size = narrow_cast<GLsizei>(m_buffer.size() * get_element_size());
-        if (buffer_size <= m_server_size) {
+        if (buffer_size <= narrow_cast<GLsizei>(m_server_size)) {
             NOTF_CHECK_GL(glBufferSubData(gl_type, /*offset = */ 0, buffer_size, &m_buffer.front()));
         } else {
             NOTF_CHECK_GL(
