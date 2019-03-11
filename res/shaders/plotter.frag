@@ -13,6 +13,11 @@ const int JOINT     = 41;
 const int START_CAP = 42;
 const int END_CAP   = 43;
 
+// cap styles
+const int CAP_STYLE_BUTT = 1;
+const int CAP_STYLE_ROUND = 2;
+const int CAP_STYLE_SQUARE = 3;
+
 // joint styles
 const int JOINT_STYLE_MITER = 1;
 const int JOINT_STYLE_ROUND = 2;
@@ -21,8 +26,6 @@ const int JOINT_STYLE_BEVEL = 3;
 // uniforms ======================================================================================================== //
 
 uniform sampler2D font_texture;
-uniform int joint_style;
-uniform float aa_width;
 
 layout(std140) uniform PaintBlock {
     vec4 paint_rotation;    //  0 (size = 4)
@@ -286,6 +289,5 @@ void main()
         discard;
     }
 
-    color = vec3(1);
-    final_color = vec4(color, alpha * 1.0);
+    final_color = vec4(color, alpha * .5);
 }

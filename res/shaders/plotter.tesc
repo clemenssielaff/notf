@@ -15,6 +15,7 @@ uniform int patch_type;
 uniform float stroke_width;
 uniform float aa_width;
 uniform int joint_style;
+uniform int cap_style;
 
 patch out PatchData {
     float ctrl1_length;
@@ -39,6 +40,11 @@ const int STROKE    = 4;
 const int JOINT     = 41;
 const int START_CAP = 42;
 const int END_CAP   = 43;
+
+// cap styles
+const int CAP_STYLE_BUTT = 1;
+const int CAP_STYLE_ROUND = 2;
+const int CAP_STYLE_SQUARE = 3;
 
 // joint styles
 const int JOINT_STYLE_MITER = 1;
@@ -126,16 +132,16 @@ void main(){
             if(gl_in[0].gl_Position == gl_in[1].gl_Position){
                 if (v_in[0].left_ctrl == vec2(ZERO, ZERO)){
                     patch_out.type = START_CAP;
-                    // if(cap_style == JOINT_STYLE_ROUND){
+                    if(cap_style == CAP_STYLE_ROUND){
                         float radius = aa_width + (stroke_width / 2.0);
                         tessel_x = radius_to_tesselation(radius) / 2.;
-                    // }
+                    }
                 } else if (v_in[1].right_ctrl == vec2(ZERO, ZERO)){
                     patch_out.type = END_CAP;
-                    // if(cap_style == JOINT_STYLE_ROUND){
+                    if(cap_style == CAP_STYLE_ROUND){
                         float radius = aa_width + (stroke_width / 2.0);
                         tessel_x = radius_to_tesselation(radius) / 2.;
-                    // }
+                    }
                 }
                 else {
                     patch_out.type = JOINT;
@@ -149,12 +155,7 @@ void main(){
 
             // segment
             else {
-                // vec2 line = END - START;
-                // float line_dot = dot(line, line);
-                // tessel_x = min(tessel_x_max, ONE +
-                //                 floor(length(line) * tessel_x_factor *
-                //                         (length(START + line * (dot(ctrl1 - START, line) / line_dot) - ctrl1) +
-                //                             length(START + line * (dot(ctrl2 - START, line) / line_dot) - ctrl2))));
+                // TODO: do something smart here for adaptive line tesselation
                 tessel_x = 64.;
             }
 

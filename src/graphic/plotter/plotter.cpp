@@ -687,6 +687,12 @@ void Plotter::_render_stroke(const _StrokeCall& stroke) {
         m_server_state.stroke_width = stroke.width;
     }
 
+    // cap style
+    if (m_server_state.cap_style != stroke.cap) {
+        m_program->get_uniform("cap_style").set(static_cast<int>(to_number(stroke.cap)));
+        m_server_state.cap_style = stroke.cap;
+    }
+
     // joint style
     if (m_server_state.joint_style != stroke.join) {
         m_program->get_uniform("joint_style").set(static_cast<int>(to_number(stroke.join)));

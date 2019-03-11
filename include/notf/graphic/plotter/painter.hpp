@@ -130,7 +130,7 @@ public:
     CapStyle get_line_cap() const { return _get_state().line_cap; }
 
     /// Sets the Painter's line cap.
-    void set_cap_style(const CapStyle cap);
+    void set_cap_style(const CapStyle cap); // TODO: set_x for both cap and joints, overloade on argument type?
 
     /// The Painter's line join.
     JointStyle get_line_join() const { return _get_state().joint_style; }

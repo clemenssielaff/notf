@@ -31,6 +31,11 @@ const int JOINT     = 41;
 const int START_CAP = 42;
 const int END_CAP   = 43;
 
+// cap styles
+const int CAP_STYLE_BUTT = 1;
+const int CAP_STYLE_ROUND = 2;
+const int CAP_STYLE_SQUARE = 3;
+
 // joint styles
 const int JOINT_STYLE_MITER = 1;
 const int JOINT_STYLE_ROUND = 2;
@@ -45,6 +50,7 @@ uniform float stroke_width;
 uniform mat4 projection;
 uniform float aa_width;
 uniform int joint_style;
+uniform int cap_style;
 uniform vec2 vec2_aux1;
 #define base_vertex vec2_aux1
 #define atlas_size  vec2_aux1
@@ -67,7 +73,7 @@ out FragmentData {
     mediump flat vec2 line_size;
     mediump flat mat3x2 line_xform;
     mediump vec2 texture_coord;
-    mediump flat int patch_type;
+    mediump flat int patch_type; // can I re-use the same uniform
 } frag_out;
 
 // general ========================================================================================================= //
@@ -166,15 +172,19 @@ void main()
         }
 
         else if(patch_in.type == START_CAP){
-            float angle = fma(PI, gl_TessCoord.x, atan(-patch_in.ctrl1_direction.x, patch_in.ctrl1_direction.y));
-            vec2 spoke_direction = vec2(cos(angle), sin(angle));
-            vertex_pos = START_VERTEX + (spoke_direction * normal_offset);
+            if(cap_style == CAP_STYLE_ROUND || true){ // TODO: alternative caps
+                float angle = fma(PI, gl_TessCoord.x, atan(-patch_in.ctrl1_direction.x, patch_in.ctrl1_direction.y));
+                vec2 spoke_direction = vec2(cos(angle), sin(angle));
+                vertex_pos = START_VERTEX + (spoke_direction * normal_offset);
+            }
         }
 
         else if(patch_in.type == END_CAP){
-            float angle = fma(PI, gl_TessCoord.x, atan(-patch_in.ctrl2_direction.x, patch_in.ctrl2_direction.y));
-            vec2 spoke_direction = vec2(cos(angle), sin(angle));
-            vertex_pos = START_VERTEX + (spoke_direction * normal_offset);
+            if(cap_style == CAP_STYLE_ROUND || true){
+                float angle = fma(PI, gl_TessCoord.x, atan(-patch_in.ctrl2_direction.x, patch_in.ctrl2_direction.y));
+                vec2 spoke_direction = vec2(cos(angle), sin(angle));
+                vertex_pos = START_VERTEX + (spoke_direction * normal_offset);
+            }
         }
     }
 

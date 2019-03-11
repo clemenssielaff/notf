@@ -64,30 +64,33 @@ public:
 public:
     SuperWidget(valid_ptr<AnyNode*> parent) : super_t(parent) {}
 
-    ~SuperWidget() override { m_animation->stop(); }
+    ~SuperWidget() override {
+        if (m_animation) { m_animation->stop(); }
+    }
 
 private:
     void _finalize() override {
         auto raw = handle_from_this();
         NOTF_ASSERT(raw);
         auto handle = handle_cast<NodeHandle<SuperWidget>>(raw);
-        m_animation = IntervalTimer(60_fps, [handle]() mutable {
-            if (handle.is_valid()) {
-                TheEventHandler()->schedule([=]() mutable {
-                    const float time
-                        = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(get_age()).count());
-                    const float period = 10;
-                    const float t = fmod(time / (1000.f * period), 1.f);
-                    const float angle = t * pi<float>() * 2.f;
-                    if (handle.is_valid()) {
-                        auto xform = M3f::translation({200, 200}) * M3f::rotation(angle);
-                        handle->set<super_prop>(t);
-                        handle->set<offset_xform>(xform);
-                    }
-                });
-            }
-        });
-        m_animation->start();
+        //        m_animation = IntervalTimer(60_fps, [handle]() mutable {
+        //            if (handle.is_valid()) {
+        //                TheEventHandler()->schedule([=]() mutable {
+        //                    const float time
+        //                        =
+        //                        static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(get_age()).count());
+        //                    const float period = 10;
+        //                    const float t = fmod(time / (1000.f * period), 1.f);
+        //                    const float angle = t * pi<float>() * 2.f;
+        //                    if (handle.is_valid()) {
+        //                        auto xform = M3f::translation({200, 200}) * M3f::rotation(angle);
+        //                        handle->set<super_prop>(t);
+        //                        handle->set<offset_xform>(xform);
+        //                    }
+        //                });
+        //            }
+        //        });
+        //        m_animation->start();
     }
 
     void _paint(Painter& painter) const override {
@@ -100,10 +103,11 @@ private:
         painter.set_joint_style(Painter::JointStyle::BEVEL);
         //        painter.set_paint(Color::red());
         painter.set_path(Path2::rect(Aabrf(20, 20, 50, 50)));
-                painter.stroke();
+        painter.stroke();
 
         // draw a complex shape
         painter.set_stroke_width(20.f);
+        painter.set_cap_style(Painter::CapStyle::ROUND);
         painter.set_joint_style(Painter::JointStyle::ROUND);
         painter.set_path(Path2::create(Polylinef{V2f{120, 60}, V2f{160, 400},  //
                                                  V2f{200, 120}, V2f{240, 280}, //
