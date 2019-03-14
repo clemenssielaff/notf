@@ -57,11 +57,17 @@ in FragmentData {
     /// transformation of the origin from screen- to line-space
     flat mat3x2 line_xform;
 
-    /// texture coordinate of this fragment
-    vec2 texture_coord;
-
     /// type of patch creating this fragment
     flat int patch_type;
+
+    /// determines which type of cap antialiasing to use
+    flat int cap_style;
+
+    /// determines which type of joint antialiasing to use
+    flat int joint_style;
+
+    /// texture coordinate of this fragment (interpolated)
+    vec2 texture_coord;
 } frag_in;
 
 layout(location=0) out vec4 final_color;
@@ -194,7 +200,7 @@ const vec2 SAMPLE_QUADRANTS[4] = vec2[4](vec2(+1, +1),  // top-right quadrant
 /// Cheap but precise super-sampling of the fragment coverage by the rendered line.
 /// @param sample_x Whether or not to sample the start- and end- edges of the line (only true for caps).
 /// @param sample_y Whether or not to sample the sides parallel to the center line (usually true).
-float sample_line(vec2 coord, mat3x2 xform, vec2 size, bool sample_x, bool sample_y)
+float sample_line(vec2 coord, mat3x2 xform, float start_x, float end_x, float width, bool sample_x, bool sample_y)
 {
     // transform the coordinate from screen-space into line-space
     coord = (xform * vec3(coord, 1)).xy;
@@ -207,11 +213,13 @@ float sample_line(vec2 coord, mat3x2 xform, vec2 size, bool sample_x, bool sampl
             samples_x[i] = sample_coord.x;
             samples_y[i] = sample_coord.y;
         }
-        samples_x = sample_x ? (step(0., samples_x) - step(size.x, samples_x)) : vec4(1);
-        samples_y = sample_y ? (step(0., samples_y) - step(size.y, samples_y)) : vec4(1);
+        samples_x = sample_x ? (step(start_x, samples_x) - step(end_x, samples_x)) : vec4(1);
+        samples_y = sample_y ? (step(0., samples_y) - step(width, samples_y)) : vec4(1);
         result += dot(step(2., samples_x + samples_y), SAMPLE_WEIGHTS);
     }
     return result / 16.;
+    // TODO: the xform rotates the line the wrong way around, so we have to sample x from [-size, 0] instead [0, size]
+    //       no biggie, but could be nicer
 }
 
 float sample_circle(vec2 coord, vec2 center, float radius_sq)
@@ -274,7 +282,7 @@ void main()
 #ifdef SAMPLE_PERFECT
         alpha = perfect_sample(gl_FragCoord.xy, frag_in.line_origin, frag_in.line_direction, frag_in.line_size.y);
 #else
-        alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, frag_in.line_size, false, true);
+        alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, 0., -frag_in.line_size.x, frag_in.line_size.y, false, true);
 #endif
     }
     else if(frag_in.patch_type == JOINT){
@@ -283,11 +291,17 @@ void main()
     }
     else if(frag_in.patch_type == START_CAP || frag_in.patch_type == END_CAP){
         color = vec3(0, .5, 1);
-        alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, half_width * half_width);
+        if(frag_in.cap_style == CAP_STYLE_ROUND){
+            alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, half_width * half_width);
+        } else {
+            alpha = 1.0;//sample_line(gl_FragCoord.xy, frag_in.line_xform, frag_in.line_size, true, true);
+        }
     }
     if(alpha == 0.){
         discard;
     }
 
-    final_color = vec4(color, alpha * .5);
+    // color = vec3(1);
+    alpha *= .5;
+    final_color = vec4(color, alpha);
 }

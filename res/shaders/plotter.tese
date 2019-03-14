@@ -72,8 +72,10 @@ out FragmentData {
     mediump flat vec2 line_direction;
     mediump flat vec2 line_size;
     mediump flat mat3x2 line_xform;
+    mediump flat int patch_type;
+    mediump flat int cap_style;
+    mediump flat int joint_style;
     mediump vec2 texture_coord;
-    mediump flat int patch_type; // can I re-use the same uniform
 } frag_out;
 
 // general ========================================================================================================= //
@@ -102,13 +104,15 @@ void main()
     frag_out.line_origin = START_VERTEX;
     frag_out.line_direction = delta;
     frag_out.line_size = vec2(length(line_run), stroke_width);
-    frag_out.texture_coord = gl_TessCoord.xy;
     frag_out.patch_type = patch_in.type;
     frag_out.line_xform = mat3x2(
         vec2(-delta.x, delta.y),
         vec2(-delta.y, -delta.x),
         vec2(dot(delta, START_VERTEX), half_width + cross2(delta, START_VERTEX))
     );
+    frag_out.cap_style = cap_style;
+    frag_out.joint_style = joint_style;
+    frag_out.texture_coord = gl_TessCoord.xy;
 
     vec2 vertex_pos;
     if(patch_in.type == CONVEX){
@@ -156,7 +160,12 @@ void main()
             if(joint_style == JOINT_STYLE_ROUND){
                 float start_angle = atan(-patch_in.ctrl1_direction.x, patch_in.ctrl1_direction.y);
                 float end_angle = atan(patch_in.ctrl2_direction.x, -patch_in.ctrl2_direction.y);
-                float angle = mix(start_angle, end_angle, gl_TessCoord.x);
+                float angle;
+                if(abs(start_angle - end_angle) <= PI){
+                    angle = mix(start_angle, end_angle, gl_TessCoord.x);
+                } else {
+                    angle = mix(end_angle - PI, start_angle + PI, gl_TessCoord.x);
+                }
                 vec2 spoke_direction = vec2(cos(angle), sin(angle));
                 vertex_pos = START_VERTEX + (spoke_direction * normal_offset);
             }
@@ -172,7 +181,18 @@ void main()
         }
 
         else if(patch_in.type == START_CAP){
-            if(cap_style == CAP_STYLE_ROUND || true){ // TODO: alternative caps
+            if(cap_style == CAP_STYLE_SQUARE) {
+                int index = int(round(gl_TessCoord.x * 3.));
+                float factor = 1.0;
+                // if(index == 3){
+                //     factor = 5.;
+                // }
+                float angle = fma(PI, gl_TessCoord.x, atan(-patch_in.ctrl1_direction.x, patch_in.ctrl1_direction.y));
+                vec2 spoke_direction = vec2(cos(angle), sin(angle));
+                vertex_pos = START_VERTEX + (spoke_direction * normal_offset * factor);
+            }
+            else
+            { //if(cap_style == CAP_STYLE_ROUND){
                 float angle = fma(PI, gl_TessCoord.x, atan(-patch_in.ctrl1_direction.x, patch_in.ctrl1_direction.y));
                 vec2 spoke_direction = vec2(cos(angle), sin(angle));
                 vertex_pos = START_VERTEX + (spoke_direction * normal_offset);

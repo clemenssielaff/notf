@@ -136,11 +136,16 @@ void main(){
                         float radius = aa_width + (stroke_width / 2.0);
                         tessel_x = radius_to_tesselation(radius) / 2.;
                     }
+                    else { // CAP_STYLE_BUTT || CAP_STYLE_SQUARE
+                        tessel_x = 3.;
+                    }
                 } else if (v_in[1].right_ctrl == vec2(ZERO, ZERO)){
                     patch_out.type = END_CAP;
                     if(cap_style == CAP_STYLE_ROUND){
                         float radius = aa_width + (stroke_width / 2.0);
                         tessel_x = radius_to_tesselation(radius) / 2.;
+                    } else { // CAP_STYLE_BUTT || CAP_STYLE_SQUARE
+                        tessel_x = 3.;
                     }
                 }
                 else {
