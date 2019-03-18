@@ -30,6 +30,7 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     common/mnemonic.cpp
     common/msgpack.cpp
     common/string.cpp
+    common/thread.cpp
     common/thread_pool.cpp
     common/uuid.cpp
 

@@ -81,14 +81,21 @@ out FragmentData {
 // general ========================================================================================================= //
 
 /// Cross product for 2D vectors.
-float cross2(vec2 a, vec2 b)
-{
+float cross2(vec2 a, vec2 b) {
     return a.x * b.y - a.y * b.x;
 }
 
-vec2 orthogonal(vec2 vec)
-{
+/// A 2D vector 90deg rotated counter-clockwise.
+vec2 orthogonal(vec2 vec) {
     return vec.yx * vec2(-1, 1);
+}
+
+/// Calculates the point closest to `point` on the infinite line defined by `anchor` and `direction`.
+/// @param point        Point with minimal distance to the result.
+/// @param anchor       Any point on the line.
+/// @param direction    Direction of the line, must be normalized.
+vec2 closest_point_on_line(vec2 point, vec2 anchor, vec2 direction) {
+    return anchor + (direction * dot((point-anchor), direction));
 }
 
 // main ============================================================================================================ //
@@ -103,27 +110,34 @@ void main()
     frag_out.texture_coord = gl_TessCoord.xy;
 
     vec2 line_run = END_VERTEX - START_VERTEX;
-    frag_out.line_size = vec2(length(line_run), stroke_width);
+    frag_out.line_size.x = length(line_run);
 
-    vec2 delta;
     if(patch_in.type == STROKE){
-        delta = frag_out.line_size.x == 0.
-                ? patch_in.ctrl1_direction
-                : line_run / frag_out.line_size.x;
+        frag_out.line_direction = frag_out.line_size.x == 0. ? patch_in.ctrl1_direction
+                                                             : line_run / frag_out.line_size.x;
     } else if (patch_in.type == JOINT){
-        delta = -patch_in.ctrl2_direction;
+        frag_out.line_direction = normalize(patch_in.ctrl1_direction - patch_in.ctrl2_direction);
     } else if (patch_in.type == START_CAP){
-        delta = patch_in.ctrl1_direction;
+        frag_out.line_direction = patch_in.ctrl1_direction;
     } else if (patch_in.type == END_CAP){
-        delta = -patch_in.ctrl2_direction;
+        frag_out.line_direction = -patch_in.ctrl2_direction;
     }
-    frag_out.line_direction = delta;
 
     float half_width = stroke_width / 2.;
+    float line_y_offset = half_width;
+    if(patch_in.type == JOINT){
+        vec2 closest = closest_point_on_line(frag_out.line_origin,
+                                             frag_out.line_origin + patch_in.ctrl2_direction, frag_out.line_direction);
+        frag_out.line_size.y = 40.;//distance(frag_out.line_origin, closest) * 2.;
+        line_y_offset = 0.;
+    } else {
+        frag_out.line_size.y = stroke_width;
+    }
+
     frag_out.line_xform = mat3x2(
-        vec2(delta.x, -delta.y),
-        vec2(delta.y, delta.x),
-        vec2(dot(delta, -START_VERTEX), cross2(delta, -START_VERTEX) + half_width)
+        vec2(frag_out.line_direction.x, -frag_out.line_direction.y),
+        vec2(frag_out.line_direction.y,  frag_out.line_direction.x),
+        vec2(dot(frag_out.line_direction, -START_VERTEX), cross2(frag_out.line_direction, -START_VERTEX) + line_y_offset)
     );
 
     float style_offset = cap_style == CAP_STYLE_SQUARE ? half_width : 1.;
@@ -186,7 +200,7 @@ void main()
             else {
                 vec2 normal;
                 if(gl_TessCoord.x == 0.){
-                    normal = orthogonal(patch_in.ctrl1_direction);
+                    normal = orthogonal(-patch_in.ctrl1_direction);
                 } else {
                     normal = orthogonal(patch_in.ctrl2_direction);
                 }
@@ -196,27 +210,27 @@ void main()
 
         else if(patch_in.type == START_CAP){
             if(cap_style == CAP_STYLE_ROUND){
-                float angle = fma(PI, gl_TessCoord.x, atan(-delta.x, delta.y));
+                float angle = fma(PI, gl_TessCoord.x, atan(-frag_out.line_direction.x, frag_out.line_direction.y));
                 vec2 spoke_direction = vec2(cos(angle), sin(angle));
                 vertex_pos = START_VERTEX + (spoke_direction * normal_offset);
             }
             else {
                 float run_offset = (gl_TessCoord.x  == 0.) ? -style_offset : 0.;
-                vertex_pos = START_VERTEX + (run_offset * delta)                    // along
-                                          + (normal_offset * orthogonal(delta));    // normal
+                vertex_pos = START_VERTEX + (run_offset * frag_out.line_direction)                    // along
+                                          + (normal_offset * orthogonal(frag_out.line_direction));    // normal
             }
         }
 
         else if(patch_in.type == END_CAP){
             if(cap_style == CAP_STYLE_ROUND){
-                float angle = fma(PI, gl_TessCoord.x, atan(-delta.x, delta.y));
+                float angle = fma(PI, gl_TessCoord.x, atan(frag_out.line_direction.x, -frag_out.line_direction.y));
                 vec2 spoke_direction = vec2(cos(angle), sin(angle));
                 vertex_pos = START_VERTEX + (spoke_direction * normal_offset);
             }
             else {
                 float run_offset = (gl_TessCoord.x == 0.) ? 0. : style_offset;
-                vertex_pos = START_VERTEX + (run_offset * delta)                    // along
-                                          + (normal_offset * orthogonal(delta));    // normal
+                vertex_pos = START_VERTEX + (run_offset * frag_out.line_direction)                    // along
+                                          + (normal_offset * orthogonal(frag_out.line_direction));    // normal
             }
         }
     }

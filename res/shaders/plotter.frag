@@ -23,6 +23,9 @@ const int JOINT_STYLE_MITER = 1;
 const int JOINT_STYLE_ROUND = 2;
 const int JOINT_STYLE_BEVEL = 3;
 
+// readability
+const vec2 IGNORED = vec2(0);
+
 // uniforms ======================================================================================================== //
 
 uniform sampler2D font_texture;
@@ -200,7 +203,7 @@ const vec2 SAMPLE_QUADRANTS[4] = vec2[4](vec2(+1, +1),  // top-right quadrant
 /// Cheap but precise super-sampling of the fragment coverage by the rendered line.
 /// @param sample_x Whether or not to sample the start- and end- edges of the line (only true for caps).
 /// @param sample_y Whether or not to sample the sides parallel to the center line (usually true).
-float sample_line(vec2 coord, mat3x2 xform, float start_x, float end_x, float width, bool sample_x, bool sample_y)
+float sample_line(vec2 coord, mat3x2 xform, vec2 dim_x, vec2 dim_y, bool sample_x, bool sample_y)
 {
     // transform the coordinate from screen-space into line-space
     coord = (xform * vec3(coord, 1)).xy;
@@ -213,8 +216,8 @@ float sample_line(vec2 coord, mat3x2 xform, float start_x, float end_x, float wi
             samples_x[i] = sample_coord.x;
             samples_y[i] = sample_coord.y;
         }
-        samples_x = sample_x ? (step(start_x, samples_x) - step(end_x, samples_x)) : vec4(1);
-        samples_y = sample_y ? (step(0., samples_y) - step(width, samples_y)) : vec4(1);
+        samples_x = sample_x ? (step(dim_x[0], samples_x) - step(dim_x[1], samples_x)) : vec4(1);
+        samples_y = sample_y ? (step(dim_y[0], samples_y) - step(dim_y[1], samples_y)) : vec4(1);
         result += dot(step(2., samples_x + samples_y), SAMPLE_WEIGHTS);
     }
     return result / 16.;
@@ -267,6 +270,8 @@ void main()
         discard;
     }
 
+    // TODO: now that `sample_line` takes dim_x/y, the line_xform should point to the center of the line and
+    //       line_size.y should already be the half width
     float half_width = frag_in.line_size.y / 2.;
     float style_offset = frag_in.cap_style == CAP_STYLE_SQUARE ? half_width : 1.;
 
@@ -281,19 +286,23 @@ void main()
 #ifdef SAMPLE_PERFECT
         alpha = perfect_sample(gl_FragCoord.xy, frag_in.line_origin, frag_in.line_direction, frag_in.line_size.y);
 #else
-        alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, 0., frag_in.line_size.x, frag_in.line_size.y, false, true);
+        alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, IGNORED, vec2(0, frag_in.line_size.y), false, true);
 #endif
     }
     else if(frag_in.patch_type == JOINT){
         color = vec3(1, .5, 0);
-        alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, half_width * half_width);
+        if(frag_in.joint_style == JOINT_STYLE_ROUND){
+            alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, half_width * half_width);
+        } else {
+            alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, IGNORED, vec2(0, frag_in.line_size.y), false, true);
+        }
     }
     else if(frag_in.patch_type == START_CAP){
         color = vec3(0, .5, 1);
         if(frag_in.cap_style == CAP_STYLE_ROUND){
             alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, half_width * half_width);
         } else {
-            alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, -style_offset, 1., frag_in.line_size.y, true, true);
+            alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, vec2(-style_offset, 1), vec2(0, frag_in.line_size.y), true, true);
         }
     }
     else if(frag_in.patch_type == END_CAP){
@@ -301,7 +310,7 @@ void main()
         if(frag_in.cap_style == CAP_STYLE_ROUND){
             alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, half_width * half_width);
         } else {
-            alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, -1., style_offset, frag_in.line_size.y, true, true);
+            alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, vec2(-1, style_offset), vec2(0, frag_in.line_size.y), true, true);
         }
     }
     if(alpha == 0.){

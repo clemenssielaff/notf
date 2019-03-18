@@ -51,9 +51,21 @@ public:
     /// The kind of this thread.
     static auto get_kind() noexcept { return s_kind; }
 
+    /// Name of the given Thread kind.
+    constexpr static const char* get_kind_name(const Kind kind) noexcept {
+        switch (kind) {
+        case Kind::MAIN: return "Main";
+        case Kind::EVENT: return "Event";
+        case Kind::RENDER: return "Render";
+        case Kind::TIMER_POOL: return "TimerPool";
+        case Kind::WORKER: return "Worker";
+        default: return "Undefined";
+        }
+    }
+
 private:
     /// How many Threads are allowed for each kind?
-    constexpr static size_t _get_kind_limit(Kind kind) noexcept {
+    constexpr static size_t _get_kind_limit(const Kind kind) noexcept {
         switch (kind) {
         case Kind::MAIN:
         case Kind::EVENT:
@@ -158,7 +170,7 @@ public:
     /// Destructor.
     /// Blocks until the system thread has joined.
     /// Any stored exception is silently dropped.
-    ~Thread() { join(); }
+    ~Thread();
 
     /// Run a given function on this thread.
     /// Any stored exception is silently dropped.
@@ -200,6 +212,11 @@ public:
     /// Blocks until the system thread has joined.
     void join() {
         if (is_running()) { m_thread.join(); }
+    }
+
+    /// Name of the given Thread kind.
+    constexpr static const char* get_kind_name(const Kind kind) noexcept {
+        return this_thread::detail::ThreadInfo::get_kind_name(kind);
     }
 
     // fields ---------------------------------------------------------------------------------- //
