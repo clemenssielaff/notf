@@ -291,8 +291,6 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
         FragmentShaderPtr frag_shader = FragmentShader::create("plotter.frag", frag_src);
 
         m_program = ShaderProgram::create(m_context, "Plotter", vertex_shader, tess_shader, frag_shader);
-
-        m_program->get_uniform("aa_width").set(static_cast<float>(sqrt(2.l) / 2.l));
         m_program->get_uniform("font_texture").set(TheGraphicsSystem::get_environment().font_atlas_texture_slot);
     }
 

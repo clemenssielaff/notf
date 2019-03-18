@@ -29,7 +29,7 @@ void main(){
     //    +=====+=====+=====+=
     // origin
     //
-    gl_Position = vec4(a_position.xy - vec2(0.5, 0.5), 0.0, 1.0);
+    gl_Position = vec4(a_position.xy - vec2(.5), 0, 1);
 
     // pass attributes into block
     v_out.left_ctrl = a_left_ctrl;

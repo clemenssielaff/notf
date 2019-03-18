@@ -218,8 +218,6 @@ float sample_line(vec2 coord, mat3x2 xform, float start_x, float end_x, float wi
         result += dot(step(2., samples_x + samples_y), SAMPLE_WEIGHTS);
     }
     return result / 16.;
-    // TODO: the xform rotates the line the wrong way around, so we have to sample x from [-size, 0] instead [0, size]
-    //       no biggie, but could be nicer
 }
 
 float sample_circle(vec2 coord, vec2 center, float radius_sq)
@@ -270,6 +268,7 @@ void main()
     }
 
     float half_width = frag_in.line_size.y / 2.;
+    float style_offset = frag_in.cap_style == CAP_STYLE_SQUARE ? half_width : 1.;
 
     vec3 color = vec3(1);
     float alpha = 0.;
@@ -282,19 +281,27 @@ void main()
 #ifdef SAMPLE_PERFECT
         alpha = perfect_sample(gl_FragCoord.xy, frag_in.line_origin, frag_in.line_direction, frag_in.line_size.y);
 #else
-        alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, 0., -frag_in.line_size.x, frag_in.line_size.y, false, true);
+        alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, 0., frag_in.line_size.x, frag_in.line_size.y, false, true);
 #endif
     }
     else if(frag_in.patch_type == JOINT){
         color = vec3(1, .5, 0);
         alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, half_width * half_width);
     }
-    else if(frag_in.patch_type == START_CAP || frag_in.patch_type == END_CAP){
+    else if(frag_in.patch_type == START_CAP){
         color = vec3(0, .5, 1);
         if(frag_in.cap_style == CAP_STYLE_ROUND){
             alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, half_width * half_width);
         } else {
-            alpha = 1.0;//sample_line(gl_FragCoord.xy, frag_in.line_xform, frag_in.line_size, true, true);
+            alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, -style_offset, 1., frag_in.line_size.y, true, true);
+        }
+    }
+    else if(frag_in.patch_type == END_CAP){
+        color = vec3(0, .5, 1);
+        if(frag_in.cap_style == CAP_STYLE_ROUND){
+            alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, half_width * half_width);
+        } else {
+            alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, -1., style_offset, frag_in.line_size.y, true, true);
         }
     }
     if(alpha == 0.){

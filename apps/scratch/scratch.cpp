@@ -105,12 +105,12 @@ private:
 //        painter.stroke();
 
         // draw a complex shape
-        painter.set_stroke_width(100.f);
-        painter.set_cap_style(Painter::CapStyle::SQUARE);
+        painter.set_stroke_width(49.f);
+        painter.set_cap_style(Painter::CapStyle::BUTT);
         painter.set_joint_style(Painter::JointStyle::ROUND);
         painter.set_path(Path2::create(Polylinef{V2f{120, 60}, V2f{160, 400},  //
                                                  V2f{200, 120}, V2f{240, 280}, //
-                                                 V2f{280, 160}, V2f{340, 200}, //
+                                                 V2f{280, 200}, V2f{340, 200}, //
                                                  V2f{380, 180}, V2f{420, 190}, //
                                                  V2f{500, 380}, V2f{350, 400}, //
                                                  V2f{380, 320}}));

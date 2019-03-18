@@ -48,7 +48,6 @@ const int JOINT_STYLE_BEVEL = 3;
 
 uniform float stroke_width;
 uniform mat4 projection;
-uniform float aa_width;
 uniform int joint_style;
 uniform int cap_style;
 uniform vec2 vec2_aux1;
@@ -62,6 +61,7 @@ patch in PatchData {
     float ctrl2_length;
     vec2 ctrl1_direction;
     vec2 ctrl2_direction;
+    float aa_width;
     int type;
 } patch_in;
 #define glyph_min_corner (patch_in.ctrl1_direction)
@@ -95,34 +95,48 @@ vec2 orthogonal(vec2 vec)
 
 void main()
 {
-    float half_width = stroke_width / 2.;
-    vec2 line_run = END_VERTEX - START_VERTEX;
-    vec2 delta = (START_VERTEX == END_VERTEX) ? -patch_in.ctrl2_direction
-                                              : normalize(line_run);
-
     // fill fragment data
     frag_out.line_origin = START_VERTEX;
-    frag_out.line_direction = delta;
-    frag_out.line_size = vec2(length(line_run), stroke_width);
     frag_out.patch_type = patch_in.type;
-    frag_out.line_xform = mat3x2(
-        vec2(-delta.x, delta.y),
-        vec2(-delta.y, -delta.x),
-        vec2(dot(delta, START_VERTEX), half_width + cross2(delta, START_VERTEX))
-    );
     frag_out.cap_style = cap_style;
     frag_out.joint_style = joint_style;
     frag_out.texture_coord = gl_TessCoord.xy;
 
+    vec2 line_run = END_VERTEX - START_VERTEX;
+    frag_out.line_size = vec2(length(line_run), stroke_width);
+
+    vec2 delta;
+    if(patch_in.type == STROKE){
+        delta = frag_out.line_size.x == 0.
+                ? patch_in.ctrl1_direction
+                : line_run / frag_out.line_size.x;
+    } else if (patch_in.type == JOINT){
+        delta = -patch_in.ctrl2_direction;
+    } else if (patch_in.type == START_CAP){
+        delta = patch_in.ctrl1_direction;
+    } else if (patch_in.type == END_CAP){
+        delta = -patch_in.ctrl2_direction;
+    }
+    frag_out.line_direction = delta;
+
+    float half_width = stroke_width / 2.;
+    frag_out.line_xform = mat3x2(
+        vec2(delta.x, -delta.y),
+        vec2(delta.y, delta.x),
+        vec2(dot(delta, -START_VERTEX), cross2(delta, -START_VERTEX) + half_width)
+    );
+
+    float style_offset = cap_style == CAP_STYLE_SQUARE ? half_width : 1.;
+
     vec2 vertex_pos;
     if(patch_in.type == CONVEX){
-        // frag_out.texture_coord.y = aa_width == 0.0 ? 1.0 : 1. - step(0.9, gl_TessCoord.y);
+        // frag_out.texture_coord.y = patch_in.aa_width == 0.0 ? 1.0 : 1. - step(0.9, gl_TessCoord.y);
 
         // This always creates a triangle with zero area :/ but I hope that the GPU is quick to discard such polygons.
         // The alternative would be that I always pass 3 vertices to a patch, which would mean that I always pass an unused
         // vertex for each line segment, which might be slower
         vec2 delta = mix(END_VERTEX, START_VERTEX, gl_TessCoord.x) - base_vertex;
-        // vertex_pos = fma(vec2(step(.5, gl_TessCoord.y) * (length(delta) - (sign(frag_out.texture_coord.y - .5) * aa_width))),
+        // vertex_pos = fma(vec2(step(.5, gl_TessCoord.y) * (length(delta) - (sign(frag_out.texture_coord.y - .5) * patch_in.aa_width))),
         //                      normalize(delta), base_vertex);
         vertex_pos = fma(vec2(step(.5, gl_TessCoord.y) * length(delta)), normalize(delta), base_vertex);
     }
@@ -140,7 +154,7 @@ void main()
     }
 
     else { // patch_in.type is some form of line
-        float normal_offset = (aa_width + half_width) * sign(gl_TessCoord.y - .5);
+        float normal_offset = (patch_in.aa_width + half_width) * sign(gl_TessCoord.y - .5);
 
         if(patch_in.type == STROKE){
             // bezier control points
@@ -181,29 +195,28 @@ void main()
         }
 
         else if(patch_in.type == START_CAP){
-            if(cap_style == CAP_STYLE_SQUARE) {
-                int index = int(round(gl_TessCoord.x * 3.));
-                float factor = 1.0;
-                // if(index == 3){
-                //     factor = 5.;
-                // }
-                float angle = fma(PI, gl_TessCoord.x, atan(-patch_in.ctrl1_direction.x, patch_in.ctrl1_direction.y));
-                vec2 spoke_direction = vec2(cos(angle), sin(angle));
-                vertex_pos = START_VERTEX + (spoke_direction * normal_offset * factor);
-            }
-            else
-            { //if(cap_style == CAP_STYLE_ROUND){
-                float angle = fma(PI, gl_TessCoord.x, atan(-patch_in.ctrl1_direction.x, patch_in.ctrl1_direction.y));
+            if(cap_style == CAP_STYLE_ROUND){
+                float angle = fma(PI, gl_TessCoord.x, atan(-delta.x, delta.y));
                 vec2 spoke_direction = vec2(cos(angle), sin(angle));
                 vertex_pos = START_VERTEX + (spoke_direction * normal_offset);
+            }
+            else {
+                float run_offset = (gl_TessCoord.x  == 0.) ? -style_offset : 0.;
+                vertex_pos = START_VERTEX + (run_offset * delta)                    // along
+                                          + (normal_offset * orthogonal(delta));    // normal
             }
         }
 
         else if(patch_in.type == END_CAP){
-            if(cap_style == CAP_STYLE_ROUND || true){
-                float angle = fma(PI, gl_TessCoord.x, atan(-patch_in.ctrl2_direction.x, patch_in.ctrl2_direction.y));
+            if(cap_style == CAP_STYLE_ROUND){
+                float angle = fma(PI, gl_TessCoord.x, atan(-delta.x, delta.y));
                 vec2 spoke_direction = vec2(cos(angle), sin(angle));
                 vertex_pos = START_VERTEX + (spoke_direction * normal_offset);
+            }
+            else {
+                float run_offset = (gl_TessCoord.x == 0.) ? 0. : style_offset;
+                vertex_pos = START_VERTEX + (run_offset * delta)                    // along
+                                          + (normal_offset * orthogonal(delta));    // normal
             }
         }
     }
