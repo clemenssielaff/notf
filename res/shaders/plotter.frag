@@ -24,7 +24,7 @@ const int JOINT_STYLE_ROUND = 2;
 const int JOINT_STYLE_BEVEL = 3;
 
 // readability
-const vec2 IGNORED = vec2(0);
+const float IGNORED = 0.;
 
 // uniforms ======================================================================================================== //
 
@@ -54,11 +54,11 @@ in FragmentData {
     /// normalized vector in direction of the line
     flat vec2 line_direction;
 
-    /// x = line width, y = line length
-    flat vec2 line_size;
-
     /// transformation of the origin from screen- to line-space
     flat mat3x2 line_xform;
+
+    /// Distance from the center of the line to its side.
+    flat float line_half_width;
 
     /// type of patch creating this fragment
     flat int patch_type;
@@ -72,6 +72,8 @@ in FragmentData {
     /// texture coordinate of this fragment (interpolated)
     vec2 texture_coord;
 } frag_in;
+// TODO: it would be possible to combine the 3 integer enums into a single integer, but then you'd have to mod them out
+//       that could be faster or not ...
 
 layout(location=0) out vec4 final_color;
 
@@ -201,9 +203,12 @@ const vec2 SAMPLE_QUADRANTS[4] = vec2[4](vec2(+1, +1),  // top-right quadrant
                                          vec2(-1, +1)); // top-left quadrant
 
 /// Cheap but precise super-sampling of the fragment coverage by the rendered line.
-/// @param sample_x Whether or not to sample the start- and end- edges of the line (only true for caps).
-/// @param sample_y Whether or not to sample the sides parallel to the center line (usually true).
-float sample_line(vec2 coord, mat3x2 xform, vec2 dim_x, vec2 dim_y, bool sample_x, bool sample_y)
+/// @param coord        Fragment position in screen coordinates.
+/// @param xform        Transformation from screen to line-space. In line space, the center start is at the origin
+///                     and the end of the line is at position (length, 0).
+/// @param half_length  Half the length of the line segment. Ignored if zero.
+/// @param half_width   Distance from the center of the line to its side. Ignored if zero.
+float sample_line(vec2 coord, mat3x2 xform, float half_length, float half_width)
 {
     // transform the coordinate from screen-space into line-space
     coord = (xform * vec3(coord, 1)).xy;
@@ -216,8 +221,8 @@ float sample_line(vec2 coord, mat3x2 xform, vec2 dim_x, vec2 dim_y, bool sample_
             samples_x[i] = sample_coord.x;
             samples_y[i] = sample_coord.y;
         }
-        samples_x = sample_x ? (step(dim_x[0], samples_x) - step(dim_x[1], samples_x)) : vec4(1);
-        samples_y = sample_y ? (step(dim_y[0], samples_y) - step(dim_y[1], samples_y)) : vec4(1);
+        samples_x = (half_length == 0.) ? vec4(1) : (step(-half_length, samples_x) - step(half_length, samples_x));
+        samples_y = (half_width == 0.) ? vec4(1) : (step(-half_width, samples_y) - step(half_width, samples_y));
         result += dot(step(2., samples_x + samples_y), SAMPLE_WEIGHTS);
     }
     return result / 16.;
@@ -270,11 +275,6 @@ void main()
         discard;
     }
 
-    // TODO: now that `sample_line` takes dim_x/y, the line_xform should point to the center of the line and
-    //       line_size.y should already be the half width
-    float half_width = frag_in.line_size.y / 2.;
-    float style_offset = frag_in.cap_style == CAP_STYLE_SQUARE ? half_width : 1.;
-
     vec3 color = vec3(1);
     float alpha = 0.;
     if(frag_in.patch_type == TEXT){
@@ -284,33 +284,26 @@ void main()
     else if(frag_in.patch_type == STROKE){
         color = vec3(0, 1, 0);
 #ifdef SAMPLE_PERFECT
-        alpha = perfect_sample(gl_FragCoord.xy, frag_in.line_origin, frag_in.line_direction, frag_in.line_size.y);
+        alpha = perfect_sample(gl_FragCoord.xy, frag_in.line_origin, frag_in.line_direction, frag_in.line_half_width * 2.);
 #else
-        alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, IGNORED, vec2(0, frag_in.line_size.y), false, true);
+        alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, IGNORED, frag_in.line_half_width);
 #endif
     }
     else if(frag_in.patch_type == JOINT){
         color = vec3(1, .5, 0);
         if(frag_in.joint_style == JOINT_STYLE_ROUND){
-            alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, half_width * half_width);
+            alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, frag_in.line_half_width * frag_in.line_half_width);
         } else {
-            alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, IGNORED, vec2(0, frag_in.line_size.y), false, true);
+            alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, IGNORED, frag_in.line_half_width);
         }
     }
-    else if(frag_in.patch_type == START_CAP){
+    else if(frag_in.patch_type == START_CAP || frag_in.patch_type == END_CAP){
         color = vec3(0, .5, 1);
         if(frag_in.cap_style == CAP_STYLE_ROUND){
-            alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, half_width * half_width);
+            alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, frag_in.line_half_width * frag_in.line_half_width);
         } else {
-            alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, vec2(-style_offset, 1), vec2(0, frag_in.line_size.y), true, true);
-        }
-    }
-    else if(frag_in.patch_type == END_CAP){
-        color = vec3(0, .5, 1);
-        if(frag_in.cap_style == CAP_STYLE_ROUND){
-            alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, half_width * half_width);
-        } else {
-            alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, vec2(-1, style_offset), vec2(0, frag_in.line_size.y), true, true);
+            float style_offset = frag_in.cap_style == CAP_STYLE_SQUARE ? frag_in.line_half_width : 1.;
+            alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, style_offset, frag_in.line_half_width);
         }
     }
     if(alpha == 0.){

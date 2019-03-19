@@ -70,8 +70,8 @@ patch in PatchData {
 out FragmentData {
     mediump flat vec2 line_origin;
     mediump flat vec2 line_direction;
-    mediump flat vec2 line_size;
     mediump flat mat3x2 line_xform;
+    mediump flat float line_half_width;
     mediump flat int patch_type;
     mediump flat int cap_style;
     mediump flat int joint_style;
@@ -110,11 +110,13 @@ void main()
     frag_out.texture_coord = gl_TessCoord.xy;
 
     vec2 line_run = END_VERTEX - START_VERTEX;
-    frag_out.line_size.x = length(line_run);
+    float line_length = length(line_run);
+    float half_width = stroke_width / 2.;
+    float style_offset = cap_style == CAP_STYLE_SQUARE ? half_width : 1.;
 
     if(patch_in.type == STROKE){
-        frag_out.line_direction = frag_out.line_size.x == 0. ? patch_in.ctrl1_direction
-                                                             : line_run / frag_out.line_size.x;
+        frag_out.line_direction = line_length == 0. ? patch_in.ctrl1_direction
+                                                    : line_run / line_length;
     } else if (patch_in.type == JOINT){
         frag_out.line_direction = normalize(patch_in.ctrl1_direction - patch_in.ctrl2_direction);
     } else if (patch_in.type == START_CAP){
@@ -123,24 +125,20 @@ void main()
         frag_out.line_direction = -patch_in.ctrl2_direction;
     }
 
-    float half_width = stroke_width / 2.;
-    float line_y_offset = half_width;
-    if(patch_in.type == JOINT){
-        vec2 closest = closest_point_on_line(frag_out.line_origin,
-                                             frag_out.line_origin + patch_in.ctrl2_direction, frag_out.line_direction);
-        frag_out.line_size.y = 40.;//distance(frag_out.line_origin, closest) * 2.;
-        line_y_offset = 0.;
+    if(patch_in.type == JOINT && joint_style != JOINT_STYLE_ROUND){
+        frag_out.line_half_width = length(closest_point_on_line(
+                vec2(0), orthogonal(patch_in.ctrl2_direction) * half_width, frag_out.line_direction));
     } else {
-        frag_out.line_size.y = stroke_width;
+        frag_out.line_half_width = half_width;
     }
 
     frag_out.line_xform = mat3x2(
         vec2(frag_out.line_direction.x, -frag_out.line_direction.y),
         vec2(frag_out.line_direction.y,  frag_out.line_direction.x),
-        vec2(dot(frag_out.line_direction, -START_VERTEX), cross2(frag_out.line_direction, -START_VERTEX) + line_y_offset)
+        vec2(dot(frag_out.line_direction, -START_VERTEX),
+             cross2(frag_out.line_direction, -START_VERTEX))
     );
 
-    float style_offset = cap_style == CAP_STYLE_SQUARE ? half_width : 1.;
 
     vec2 vertex_pos;
     if(patch_in.type == CONVEX){
@@ -239,3 +237,4 @@ void main()
     gl_Position = projection * vec4(vertex_pos, -1, 1);
 
 }
+
