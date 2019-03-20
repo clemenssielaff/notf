@@ -150,6 +150,9 @@ void main(){
                         float angle = acos(dot(patch_out.ctrl1_direction, -patch_out.ctrl2_direction));
                         float radius = HALF_SQRT2 + (stroke_width / 2.0);
                         tessel_x = radius_to_tesselation(radius) * (angle / PI*2.);
+                    } else if (joint_style == JOINT_STYLE_MITER){
+                        tessel_x = 4.;
+                        // TODO: this could be 3 for a miter below miter distance
                     }
                 }
             }

@@ -294,7 +294,7 @@ void main()
         if(frag_in.joint_style == JOINT_STYLE_ROUND){
             alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, frag_in.line_half_width * frag_in.line_half_width);
         } else {
-            alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, IGNORED, frag_in.line_half_width);
+            alpha = 1.;//sample_line(gl_FragCoord.xy, frag_in.line_xform, IGNORED, frag_in.line_half_width);
         }
     }
     else if(frag_in.patch_type == START_CAP || frag_in.patch_type == END_CAP){

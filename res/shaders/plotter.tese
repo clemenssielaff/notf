@@ -2,7 +2,7 @@
 
 precision highp float;
 
-layout (quads, fractional_even_spacing) in;
+layout (quads, equal_spacing) in;
 
 // constants ======================================================================================================== //
 
@@ -21,6 +21,7 @@ const mat3 DERIV = mat3(
 
 /// pi, obviously
 const float PI = 3.141592653589793238462643383279502884197169399375105820975;
+const float HALF_SQRT2 = 0.707106781186547524400844362104849039284835937688474036588;
 
  // patch types
 const int CONVEX    = 1;
@@ -98,6 +99,17 @@ vec2 closest_point_on_line(vec2 point, vec2 anchor, vec2 direction) {
     return anchor + (direction * dot((point-anchor), direction));
 }
 
+vec2 intersection(vec2 a1, vec2 a2, vec2 b1, vec2 b2){
+    float det = a2.x * b2.y - b2.x * a2.y;
+    if(det == 0.){
+        return vec2(0);
+    }
+    float s = (b2.y * (b1.x - a1.x) - b2.x * (b1.y - a1.y)) / det;
+    return vec2(
+        a1.x + s * a2.x,
+        a1.y + s * a2.y);
+}
+
 // main ============================================================================================================ //
 
 void main()
@@ -112,6 +124,7 @@ void main()
     vec2 line_run = END_VERTEX - START_VERTEX;
     float line_length = length(line_run);
     float half_width = stroke_width / 2.;
+    bool is_left_turn = cross2(patch_in.ctrl1_direction, -patch_in.ctrl2_direction) < 0.;
     float style_offset = cap_style == CAP_STYLE_SQUARE ? half_width : 1.;
 
     if(patch_in.type == STROKE){
@@ -195,7 +208,49 @@ void main()
                 vec2 spoke_direction = vec2(cos(angle), sin(angle));
                 vertex_pos = START_VERTEX + (spoke_direction * normal_offset);
             }
-            else {
+            else if(joint_style == JOINT_STYLE_MITER){
+                if(gl_TessCoord.y == (is_left_turn ? 0. : 1.)){
+                    vertex_pos = START_VERTEX; // inner side
+                } else {
+                    vec2 start = START_VERTEX + (orthogonal(-patch_in.ctrl1_direction) * normal_offset);
+                    vec2 end = START_VERTEX + (orthogonal(patch_in.ctrl2_direction) * normal_offset);
+                    if(gl_TessCoord.x == 0.){
+                        vertex_pos = start;
+                    } else if(gl_TessCoord.x == 1.){
+                        vertex_pos = end;
+                    } else {
+                        float angle = acos(dot(patch_in.ctrl1_direction, patch_in.ctrl2_direction));
+
+                        vec2 direction = normalize(patch_in.ctrl1_direction + patch_in.ctrl2_direction);
+                        float distance = half_width / sin(angle / 2.);
+                        vec2 miter_point = START_VERTEX - (direction * distance);
+
+                        bool is_cut_off = distance > stroke_width * HALF_SQRT2;
+                        if(distance <= stroke_width * HALF_SQRT2){
+                            if(gl_TessCoord.x == 0.5){
+                                vertex_pos = miter_point;
+                            } else if (gl_TessCoord.x == 0.25){
+                                vertex_pos = mix(start, miter_point, .5);
+                            } else if (gl_TessCoord.x == 0.75){
+                                vertex_pos = mix(miter_point, end, .5);
+                            }
+                        } else {
+                            vec2 a = start + normalize(miter_point - start) * half_width;
+                            vec2 b = end + normalize(miter_point - end) * half_width;
+                            if(gl_TessCoord.x == 0.5){
+                                vertex_pos = mix(b, a, .5);
+                            } else if (gl_TessCoord.x == 0.25){
+                                vertex_pos = a;
+                            } else if (gl_TessCoord.x == 0.75){
+                                vertex_pos = b;
+                            }
+                        }
+                    }
+                }
+
+
+
+            } else {
                 vec2 normal;
                 if(gl_TessCoord.x == 0.){
                     normal = orthogonal(-patch_in.ctrl1_direction);
