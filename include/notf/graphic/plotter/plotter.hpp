@@ -142,9 +142,9 @@ public:
     /// Type of joint beween two painted line segments.
     enum class JointStyle : uchar {
         _CURRENT, // default value, means "use the current one"
-        MITER,
-        ROUND,
         BEVEL,
+        ROUND,
+        MITER,
     };
 
     // external draw calls ----------------------------------------------------
@@ -191,9 +191,6 @@ private:
         CONCAVE = 2,
         TEXT = 3,
         STROKE = 4,
-        // JOINT     = 41, // internal
-        // START_CAP = 42, // internal
-        // END_CAP   = 43, // internal
     };
 
     /// The current State of the Plotter. Is used to diff against the target state.

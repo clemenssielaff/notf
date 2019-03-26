@@ -126,7 +126,31 @@ private:
         // fields ---------------------------------------------------------- //
     private:
         /// Current BlendMode.
-        BlendMode m_mode;
+        BlendMode m_mode = BlendMode::OFF; // blending is disabled by default in OpenGL
+    };
+
+    // face culling -----------------------------------------------------------
+
+    struct _CullFace {
+        NOTF_NO_COPY_OR_ASSIGN(_CullFace);
+
+        /// Default constructor.
+        _CullFace() = default;
+
+        /// Assignment operator.
+        /// @param mode New cull face.
+        void operator=(const CullFace mode);
+
+        /// Current CullFace.
+        operator CullFace() const { return m_mode; }
+
+        /// Comparison operator.
+        bool operator==(const _CullFace& other) const { return m_mode == other; }
+
+        // fields ---------------------------------------------------------- //
+    private:
+        /// Current cull face.
+        CullFace m_mode = CullFace::NONE; // culling is disabled by default in OpenGL
     };
 
     // framebuffer binding ----------------------------------------------------
@@ -495,14 +519,14 @@ private:
     // state ------------------------------------------------------------------
 
     /// The combined, current State of the GraphicsContext.
-    struct State {
+    struct _State {
 
         // methods ------------------------------------------------------------
     private:
         friend GraphicsContext;
 
         /// Constructor.
-        State(GraphicsContext& context) : framebuffer(context), program(context), vertex_object(context) {}
+        _State(GraphicsContext& context) : framebuffer(context), program(context), vertex_object(context) {}
 
         // fields -------------------------------------------------------------
     public:
@@ -510,7 +534,7 @@ private:
         _BlendMode blend_mode;
 
         /// Culling.
-        CullFace cull_face = CullFace::DEFAULT;
+        _CullFace cull_face;
 
         /// Stencil mask.
         _StencilMask stencil_mask;
@@ -578,13 +602,13 @@ public:
     /// @{
     /// Access to the GraphicsContext's state.
     /// @throws OpenGLError If the context is not current.
-    const State* operator->() const {
+    const _State* operator->() const {
         if (!is_current()) {
             NOTF_THROW(OpenGLError, "Cannot access a GraphicsContext's state without the context being current");
         }
         return &m_state;
     }
-    State* operator->() { return NOTF_FORWARD_CONST_AS_MUTABLE(operator->()); }
+    _State* operator->() { return NOTF_FORWARD_CONST_AS_MUTABLE(operator->()); }
     /// @}
 
     /// Reset the GraphicsContext state.
@@ -618,7 +642,7 @@ private:
     RecursiveMutex m_mutex;
 
     /// The current state of the context.
-    State m_state;
+    _State m_state;
 
     // resources --------------------------------------------------------------
 

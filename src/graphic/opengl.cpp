@@ -51,52 +51,60 @@ constexpr const char* gl_error_string(GLenum error_code) {
     }
 }
 
+// TODO: blend modes seem to be a bit more complicated. It may be wise to NOT offer separate rgb/alpha modes and take
+//       care of that internally. For example, the "SourceOver" mode requires a fixed rgb & alpha. See:
+// https://stackoverflow.com/questions/45781683/how-to-get-correct-sourceover-alpha-compositing-in-sdl-with-opengl
 std::tuple<GLenum, GLenum, GLenum, GLenum> convert_blend_mode(const BlendMode& mode) {
     static auto get_factors = [](const BlendMode::Mode blend_mode) -> std::pair<GLenum, GLenum> {
         GLenum source_factor = 0;
         GLenum destination_factor = 0;
         switch (blend_mode) {
-        case (BlendMode::SOURCE_OVER):
+        case BlendMode::SOURCE_OVER:
             source_factor = GL_ONE;
             destination_factor = GL_ONE_MINUS_SRC_ALPHA;
             break;
-        case (BlendMode::SOURCE_IN):
+        case BlendMode::SOURCE_OVER2:
+            source_factor = GL_SRC_ALPHA;
+            destination_factor = GL_ONE_MINUS_SRC_ALPHA;
+            break;
+        case BlendMode::SOURCE_IN:
             source_factor = GL_DST_ALPHA;
             destination_factor = GL_ZERO;
             break;
-        case (BlendMode::SOURCE_OUT):
+        case BlendMode::SOURCE_OUT:
             source_factor = GL_ONE_MINUS_DST_ALPHA;
             destination_factor = GL_ZERO;
             break;
-        case (BlendMode::SOURCE_ATOP):
+        case BlendMode::SOURCE_ATOP:
             source_factor = GL_DST_ALPHA;
             destination_factor = GL_ONE_MINUS_SRC_ALPHA;
             break;
-        case (BlendMode::DESTINATION_OVER):
+        case BlendMode::DESTINATION_OVER:
             source_factor = GL_ONE_MINUS_DST_ALPHA;
             destination_factor = GL_ONE;
             break;
-        case (BlendMode::DESTINATION_IN):
+        case BlendMode::DESTINATION_IN:
             source_factor = GL_ZERO;
             destination_factor = GL_SRC_ALPHA;
             break;
-        case (BlendMode::DESTINATION_OUT):
+        case BlendMode::DESTINATION_OUT:
             source_factor = GL_ZERO;
             destination_factor = GL_ONE_MINUS_SRC_ALPHA;
             break;
-        case (BlendMode::DESTINATION_ATOP):
+        case BlendMode::DESTINATION_ATOP:
             source_factor = GL_ONE_MINUS_DST_ALPHA;
             destination_factor = GL_SRC_ALPHA;
             break;
-        case (BlendMode::LIGHTER):
+        case BlendMode::LIGHTER:
             source_factor = GL_ONE;
             destination_factor = GL_ONE;
             break;
-        case (BlendMode::COPY):
+        case BlendMode::OFF:
+        case BlendMode::COPY:
             source_factor = GL_ONE;
             destination_factor = GL_ZERO;
             break;
-        case (BlendMode::XOR):
+        case BlendMode::XOR:
             source_factor = GL_ONE_MINUS_DST_ALPHA;
             destination_factor = GL_ONE_MINUS_SRC_ALPHA;
             break;

@@ -19,13 +19,7 @@
 /// For the correct calculation of caps and joints, we need the tangent directions at each vertex.
 /// This information is easy to derive if a2 != a1 and a3 != a1. If however, one of the two control points has zero
 /// distance to the vertex, the shader would require the next patch in order to get the tangent - which doesn't work.
-/// Therefore each control point ax is modified with the following formula (with T begin the tangent normal in the
-/// direction of ax):
-///
-///     if ax - a1 == (0, 0):
-///         ax' = T
-///     else:
-///         ax' = T * (||ax - a1|| + 1)     (whereby T = |ax - a1|)
+/// Therefore we increase the magnitude of each control point by one.
 ///
 /// Caps
 /// ----
@@ -88,14 +82,6 @@
 #include "notf/graphic/uniform_buffer.hpp"
 
 NOTF_USING_NAMESPACE;
-
-// TODO: I should yet be able to exactly determine the area of a pixel filled with a line!
-//       1. transform the pixel so the line goes along the x-axis
-//       2. we need to calculate the area of a 6-sided polygon, where 2 sides are allowed to have a length of zero
-//          This assumes we don't have a line that is shorter than a pixel wide.
-//          If the pixel is completely within the line, we have a 4-sided square, if one or two of the lines edges
-//          intersect the pixel, one or two of the corners are flattened.
-//          Since the pixel is already rotated, both edges of the line are either vertical or horizontal
 
 namespace {
 
@@ -392,6 +378,8 @@ void Plotter::finish_parsing() {
     m_context->program = m_program;
     m_context->uniform_slots[0].bind_block(m_program->get_uniform_block("PaintBlock"));
     m_context->uniform_slots[0].bind_buffer(m_paint_buffer);
+    m_context->cull_face = CullFace::BACK;
+    m_context->blend_mode = BlendMode(BlendMode::SOURCE_OVER2, BlendMode::SOURCE_OVER);
     m_server_state.paint_index = 0;
 
     // upload the buffers
@@ -399,12 +387,6 @@ void Plotter::finish_parsing() {
     m_index_buffer->upload();
     m_xform_buffer->upload();
     m_paint_buffer->upload();
-
-    // reset the internal state
-    NOTF_CHECK_GL(glEnable(GL_CULL_FACE));
-    NOTF_CHECK_GL(glCullFace(GL_BACK));
-    NOTF_CHECK_GL(glEnable(GL_BLEND));
-    NOTF_CHECK_GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
     // screen size
     const Aabri& render_area = m_context->framebuffer.get_render_area();

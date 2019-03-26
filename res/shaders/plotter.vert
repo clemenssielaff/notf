@@ -10,11 +10,11 @@ layout(location = 3) in mat2x3 a_instance_xform;
 out VertexData {
     vec2 left_ctrl;
     vec2 right_ctrl;
-} v_out;
+} vec_out;
 
 void main(){
     // all plotter vertices are positioned with integer values in the center of the pixels
-    // the first visible pixel has the index 1, meaning all positions are shifted 0.5 pixels to the left and bottom
+    // the first visible pixel has the index 1, meaning all positions are shifted 0.5 pixels to the bottom and left
     //
     //   || ... | ... | ... |
     //    +-----+-----+-----+-
@@ -26,12 +26,12 @@ void main(){
     //    +-----+-----+-----+-
     //   || x=1 | x=2 | x=3 | ...
     //   || y=1 | y=1 | y=1 | ...
-    //    +=====+=====+=====+=
+    //    X=====+=====+=====+=
     // origin
     //
     gl_Position = vec4(a_position.xy - vec2(.5), 0, 1);
 
     // pass attributes into block
-    v_out.left_ctrl = a_left_ctrl;
-    v_out.right_ctrl = a_right_ctrl;
+    vec_out.left_ctrl = a_left_ctrl;
+    vec_out.right_ctrl = a_right_ctrl;
 }

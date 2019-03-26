@@ -50,15 +50,36 @@ void GraphicsContext::_StencilMask::operator=(StencilMask mask) {
     }
 }
 
-// current blend mode =============================================================================================== //
+// blend mode ======================================================================================================= //
 
 void GraphicsContext::_BlendMode::operator=(const BlendMode mode) {
     if (mode == m_mode) { return; }
+
+    if (m_mode == BlendMode::OFF) { NOTF_CHECK_GL(glEnable(GL_BLEND)); }
     m_mode = mode;
 
-    const BlendMode::OpenGLBlendMode blend_mode(m_mode);
-    NOTF_CHECK_GL(glBlendFuncSeparate(blend_mode.source_rgb, blend_mode.destination_rgb, //
-                                      blend_mode.source_alpha, blend_mode.destination_rgb));
+    if (m_mode == BlendMode::OFF) {
+        NOTF_CHECK_GL(glDisable(GL_BLEND));
+    } else {
+        const BlendMode::OpenGLBlendMode blend_mode(m_mode);
+        NOTF_CHECK_GL(glBlendFuncSeparate(blend_mode.source_rgb, blend_mode.destination_rgb, //
+                                          blend_mode.source_alpha, blend_mode.destination_alpha));
+    }
+}
+
+// face culling ===================================================================================================== //
+
+void GraphicsContext::_CullFace::operator=(const CullFace mode) {
+    if (mode == m_mode) { return; }
+
+    if (m_mode == CullFace::NONE) { NOTF_CHECK_GL(glEnable(GL_CULL_FACE)); }
+    m_mode = mode;
+
+    if (m_mode == CullFace::NONE) {
+        NOTF_CHECK_GL(glDisable(GL_CULL_FACE));
+    } else {
+        NOTF_CHECK_GL(glCullFace(to_number(m_mode)));
+    }
 }
 
 // framebuffer binding ============================================================================================== //
