@@ -1,7 +1,6 @@
 #pragma once
 
 #include "notf/app/graph/any_node.hpp"
-#include "notf/app/graph/property.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -86,19 +85,19 @@ protected:
     /// Tuple of Property types managed by this Node.
     using NodeProperties = typename node_policy_t::properties;
 
+    /// Tuple of Slot types managed by this Node.
+    using NodeSlots = typename node_policy_t::slots;
+
+    /// Tuple of Signals types managed by this Node.
+    using NodeSignals = typename node_policy_t::signals;
+
     /// Type of a specific Property of this Node.
     template<size_t I>
     using node_property_t = typename std::tuple_element_t<I, NodeProperties>::element_type;
 
-    /// Tuple of Slot types managed by this Node.
-    using NodeSlots = typename node_policy_t::slots;
-
     /// Type of a specific Slot of this Node.
     template<size_t I>
     using node_slot_t = typename std::tuple_element_t<I, NodeSlots>::element_type;
-
-    /// Tuple of Signals types managed by this Node.
-    using NodeSignals = typename node_policy_t::signals;
 
     /// Type of a specific Signal of this Node.
     template<size_t I>
@@ -179,7 +178,7 @@ protected:
 protected:
     /// Value constructor.
     /// @param parent   Parent of this Node.
-    Node(valid_ptr<AnyNode*> parent) : AnyNode(parent) {
+    explicit Node(valid_ptr<AnyNode*> parent) : AnyNode(parent) {
         // properties
         for_each(m_node_properties, [this](auto& property) {
             using property_t = typename std::decay_t<decltype(property)>::element_type;
@@ -200,9 +199,8 @@ protected:
         });
     }
 
-public:
     // properties -------------------------------------------------------------
-
+public:
     /// @{
     /// Returns the correctly typed value of a Property.
     /// @param name     Name of the requested Property.
@@ -236,7 +234,7 @@ public:
     /// @param name     Name of the requested Property.
     template<char... Cs>
     constexpr const auto& connect_property(StringType<Cs...> name) const {
-        return PropertyHandle(std::get<_get_index<NodeProperties>(name)>(m_node_properties));
+        return std::get<_get_index<NodeProperties>(name)>(m_node_properties)->get_operator();
     }
     template<const ConstString& name>
     constexpr const auto& connect_property() const {
@@ -250,7 +248,7 @@ public:
     using AnyNode::set;
 
     // signals / slots --------------------------------------------------------
-
+public:
     /// @{
     /// Manually call the requested Slot of this Node.
     /// If T is not`None`, this method takes a second argument that is passed to the Slot.
@@ -295,7 +293,7 @@ public:
     /// @param name     Name of the requested Signal.
     template<char... Cs, size_t I = _get_index<NodeSignals>(StringType<Cs...>{})>
     constexpr auto connect_signal(StringType<Cs...>) const {
-        return std::get<I>(m_node_signals);
+        return SignalHandle(std::get<I>(m_node_signals).get());
     }
     template<const ConstString& name>
     constexpr auto connect_signal() const {
@@ -307,8 +305,8 @@ public:
     using AnyNode::connect_signal;
     using AnyNode::connect_slot;
 
-protected:
     // properties -------------------------------------------------------------
+protected:
     /// @{
     /// (Re-)Defines a callback to be invoked every time the value of the Property is about to change.
     template<char... Cs, size_t I = _get_index<NodeProperties>(StringType<Cs...>{})>
@@ -325,7 +323,7 @@ protected:
     using AnyNode::_set_property_callback;
 
     // signals / slots --------------------------------------------------------
-
+protected:
     /// @{
     /// Internal access to a Slot of this Node.
     /// @param name     Name of the requested Property.
@@ -363,6 +361,7 @@ protected:
 protected: // TODO: maybe make private again and let the Widget use an Accessor instead?
     /// Implementation specific query of a Property.
     AnyProperty* _get_property_impl(const std::string& name) const override {
+        // can be accessed from both the UI and the render thread
         if (const size_t index = _get_index<NodeProperties>(hash_string(name));
             index < std::tuple_size_v<NodeProperties>) {
             return visit_at<AnyProperty*>(m_node_properties, index,
@@ -375,6 +374,7 @@ protected: // TODO: maybe make private again and let the Widget use an Accessor 
     /// Implementation specific query of a Slot, returns an empty pointer if no Slot by the given name is found.
     /// @param name     Node-unique name of the Slot.
     AnySlot* _get_slot_impl(const std::string& name) const override {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         if (const size_t index = _get_index<NodeSlots>(hash_string(name)); index < std::tuple_size_v<NodeSlots>) {
             return visit_at<AnySlot*>(m_node_slots, index, [](const auto& slot) { return slot.get(); });
         } else {
@@ -385,6 +385,7 @@ protected: // TODO: maybe make private again and let the Widget use an Accessor 
     /// Implementation specific query of a Signal, returns an empty pointer if no Signal by the given name is found.
     /// @param name     Node-unique name of the Signal.
     AnySignalPtr _get_signal_impl(const std::string& name) const override {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
         if (const size_t index = _get_index<NodeSignals>(hash_string(name)); index < std::tuple_size_v<NodeSignals>) {
             return visit_at<AnySignalPtr>(m_node_signals, index, [](const auto& signal) { return signal; });
         } else {

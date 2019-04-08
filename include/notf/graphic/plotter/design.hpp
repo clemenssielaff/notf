@@ -124,11 +124,13 @@ private:
 
     // fields ---------------------------------------------------------------------------------- //
 private:
-    /// Buffer of untyped Command instances.
-    std::vector<Command> m_buffer;
-
     /// Whether or not the Design needs to be re-parsed or not.
     std::atomic_bool m_is_dirty = false;
+    // TODO: I don't know why this would have to be atomic, also we can move it into AnyWidget and put it into the
+    //       padding introduced after the Node baseclass for zero additional space requirements
+
+    /// Buffer of untyped Command instances.
+    std::vector<Command> m_buffer;
 };
 
 // accessors ======================================================================================================== //

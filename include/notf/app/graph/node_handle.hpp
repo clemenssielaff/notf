@@ -222,7 +222,7 @@ public:
     operator AnyNodeHandle() { return AnyNodeHandle(std::static_pointer_cast<AnyNode>(m_node.lock())); }
 
     // identification ---------------------------------------------------------
-
+public:
     /// @{
     /// Checks whether the NodeHandle is still valid or not.
     /// Note that there is a non-zero chance that a Handle is expired when you use it, even if `is_expired` just
@@ -239,13 +239,15 @@ public:
     /// The Graph-unique name of this Node.
     std::string get_name() const { return _get_node()->get_name(); }
 
-    // access -----------------------------------------------------------------
+    // TODO: `get_uuid` and `get_name` shouldn't be methods on the handle, see TODO below
 
+    // access -----------------------------------------------------------------
+public:
     Interface* operator->() { return _get_interface(); }
     const Interface* operator->() const { return _get_interface(); }
 
     // comparison -------------------------------------------------------------
-
+public:
     /// GCC requires these to be instantiated outside the class
     template<class LeftType, class RightType>
     friend bool operator==(const NodeHandle<LeftType>& lhs, const NodeHandle<RightType>& rhs) noexcept;

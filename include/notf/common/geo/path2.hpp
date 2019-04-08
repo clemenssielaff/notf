@@ -46,7 +46,7 @@ private:
         CubicBezier2f get_segment(const size_t index) const { return m_path.get_segment(index); }
 
         // fields -------------------------------------------------------------
-    private:
+    public: // TODO: make private again - this is only so the Plotter can copy and transform a polybezier from a subpath
         /// Subpath,
         CubicPolyBezier2f m_path;
 

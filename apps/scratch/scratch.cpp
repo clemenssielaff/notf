@@ -73,7 +73,7 @@ private:
         auto raw = handle_from_this();
         NOTF_ASSERT(raw);
         auto handle = handle_cast<NodeHandle<SuperWidget>>(raw);
-        m_animation = IntervalTimer(60_fps, [handle]() mutable {
+        m_animation = IntervalTimer(120_fps, [handle]() mutable {
             if (handle.is_valid()) {
                 TheEventHandler()->schedule([=]() mutable {
                     const float time
@@ -82,7 +82,7 @@ private:
                     const float t = fmod(time / (1000.f * period), 1.f);
                     const float angle = t * pi<float>() * 2.f;
                     if (handle.is_valid()) {
-                        auto xform = M3f::translation({200, 200}) * M3f::rotation(angle);
+                        auto xform = (M3f::translation({320, 240}) * M3f::rotation(angle)) * M3f::translation({-320, -240});
                         handle->set<super_prop>(t);
                         handle->set<offset_xform>(xform);
                     }
@@ -93,21 +93,19 @@ private:
     }
 
     void _paint(Painter& painter) const override {
-        //        const float half_length = 100.f; // * get<super_prop>();
-        //        const V2f half_line{half_length, half_length};
-        //        const Path2Ptr spline = ;
-
-        // draw a rectangle
-//        painter.set_stroke_width(10.f);
-//        painter.set_joint_style(Painter::JointStyle::BEVEL);
-//        //        painter.set_paint(Color::red());
-//        painter.set_path(Path2::rect(Aabrf(20, 20, 50, 50)));
-//        painter.stroke();
+//        const float time
+//            = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(get_age()).count());
+//        const float period = 10;
+//        const float t = fmod(time / (1000.f * period), 1.f);
+//        const float angle = t * pi<float>() * 2.f;
+//        auto xform = (M3f::translation({320, 240}) * M3f::rotation(angle)) * M3f::translation({-320, -240});
+//        painter *= xform;
+        painter *= get<offset_xform>();
 
         // draw a complex shape
         painter.set_stroke_width(49.f);
         painter.set_cap_style(Painter::CapStyle::SQUARE);
-        painter.set_joint_style(Painter::JointStyle::MITER);
+        painter.set_joint_style(Painter::JointStyle::BEVEL);
         painter.set_path(Path2::create(Polylinef{V2f{120, 60}, V2f{160, 400},  //
                                                  V2f{200, 120}, V2f{240, 280}, //
                                                  V2f{280, 200}, V2f{340, 200}, //
@@ -127,7 +125,6 @@ private:
         //        painter *= M3f::translation(400, 0);
         //        painter.stroke();
     }
-    void _relayout() override {}
     void _get_widgets_at(const V2f&, std::vector<WidgetHandle>&) const override {}
 
 private:

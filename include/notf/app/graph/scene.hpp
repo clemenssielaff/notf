@@ -96,7 +96,6 @@ namespace detail {
 
 template<>
 struct NodeHandleInterface<Scene> : public NodeHandleBaseInterface<Scene> {
-
     using Scene::is_window_scene;
 };
 

@@ -55,6 +55,15 @@ std::string Graph::NodeRegistry::get_name(Uuid uuid) {
     }
     // if the name doesn't exist, make one up
     return set_name(uuid, number_to_mnemonic(hash(uuid), /*max_syllables=*/4));
+
+    // TODO: names and thread-safety
+    // This solution is bullshit.
+    // 1. Changes to a node name from the UI thread are seen immediately by the render thread, meaning the render thread
+    //    can see two names for the same node
+    // 2. Getting a name can (maybe) also call `set_name`, which must only be called from the UI thread...? But you
+    //    *can* (and *should* be able to) call it from the render thread as well, so what gives?
+    // Changes here will affect the Graph::NodeRegistry, methods on AnyNode and on the NodeHandle (why is `get_name` a
+    // method on NodeHandle<T>?)
 }
 
 std::string Graph::NodeRegistry::set_name(const Uuid uuid, const std::string& proposal) {
