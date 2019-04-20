@@ -356,10 +356,10 @@ public:
     void start_parsing();
 
     /// Paints the Design of the given Widget.
-    /// @param design   Design to parse.
-    /// @param xform    Base transformation.
-    /// @param clip     Clipping Aabr, in space transformed by `xform`.
-    void parse(const PlotterDesign& design, const M3f& xform = M3f::identity(), const Aabrf& clip = Aabrf::wrongest());
+    /// @param design       Design to parse.
+    /// @param base_xform   Base widget transformation.
+    /// @param clip         Clipping Aabr, in space transformed by `base_xform`.
+    void parse(const PlotterDesign& design, const M3f& base_xform, const Aabrf& clip = Aabrf::wrongest());
 
     /// Call after parsing the last design.
     /// Uploads all buffers to the GPU and enqueues all draw calls

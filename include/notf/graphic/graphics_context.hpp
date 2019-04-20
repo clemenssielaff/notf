@@ -6,8 +6,12 @@
 
 #include "notf/meta/smart_ptr.hpp"
 
-#include "notf/common/geo/aabr.hpp"
+#ifdef NOTF_DEBUG
+#include "notf/meta/time.hpp" // for stats only
+#endif
+
 #include "notf/common/color.hpp"
+#include "notf/common/geo/aabr.hpp"
 #include "notf/common/mutex.hpp"
 
 #include "notf/graphic/opengl.hpp"
@@ -657,6 +661,15 @@ private:
     /// All VertexObjecs managed by this GraphicsContext.
     /// See TheGraphicsSystem for details on resource management.
     std::map<VertexObjectId, VertexObjectWeakPtr> m_vertex_objects;
+
+    // stats ------------------------------------------------------------------
+#ifdef NOTF_DEBUG
+    /// Time at which the current frame drawing was started.
+    /// This way, we can track how long the time between `begin_` and `end_frame` is.
+    /// We will also know how long has passed since the last frame was started.
+    timepoint_t m_frame_start_time;
+
+#endif
 };
 
 // graphics context accessor ======================================================================================== //

@@ -80,22 +80,26 @@ public:
         NOTF_ASSERT(this_thread::is_the_ui_thread());
 
         // do nothing if the property value would not actually change
-        if (value == m_value) { return; }
+        if (m_modified_value) {
+            if (*m_modified_value == value) { return; }
+        } else {
+            if (m_value == value) { return; }
+        }
 
         // give the optional callback the chance to modify/veto the change
         T new_value = value;
         if (m_callback && !m_callback(new_value)) { return; }
 
         // if this is the first modification, create a modified copy
-        if (m_modified_value == nullptr) {
-            m_modified_value = std::make_unique<T>(std::move(new_value));
+        if (m_modified_value) {
+            *m_modified_value = std::move(new_value);
         } else { // if a modified value already exists, update it
-            *m_modified_value.get() = std::move(new_value);
+            m_modified_value = std::make_unique<T>(std::move(new_value));
         }
 
         // hash and publish the value
-        if (m_hash != 0) { m_hash = hash(*m_modified_value.get()); }
-        this->publish(*m_modified_value.get());
+        if (m_hash != 0) { m_hash = hash(*m_modified_value); }
+        this->publish(*m_modified_value);
     }
 
     /// Installs a (new) callback that is invoked every time the value of the PropertyOperator is about to change.
@@ -326,7 +330,7 @@ public:
 public:
     /// Constructor.
     /// @param value        Property value.
-    /// @param is_visible   Whether a change in the Property will cause the Node to redraw or not.
+    /// @param visibility   Whether a change in the Property will cause the Node to redraw or not.
     Property(value_t value = policy_t::get_default_value(), AnyProperty::Visibility visibility = policy_t::visibility)
         : TypedProperty<value_t>(std::move(value), (visibility != AnyProperty::Visibility::INVISIBILE)) {}
 

@@ -20,6 +20,9 @@
 /// Compiler features.
 #cmakedefine NOTF_COMPILER_HAS_DECLVAL
 
+// TODO: instead of having a file full of #defines, put them into the CMake file
+//       this way they are defined everywhere, even if you haven't included the meta/config file yet
+
 // notf namespace =================================================================================================== //
 
 /// Opens the notf namespace.

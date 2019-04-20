@@ -70,22 +70,19 @@ public:
 
 private:
     void _finalize() override {
-        auto raw = handle_from_this();
-        NOTF_ASSERT(raw);
-        auto handle = handle_cast<NodeHandle<SuperWidget>>(raw);
-        m_animation = IntervalTimer(120_fps, [handle]() mutable {
+
+        auto handle = handle_cast<NodeHandle<SuperWidget>>(handle_from_this());
+        NOTF_ASSERT(handle);
+
+        // update the local xform x times per seconds
+        m_animation = IntervalTimer(180_fps, [handle]() mutable {
             if (handle.is_valid()) {
-                TheEventHandler()->schedule([=]() mutable {
-                    const float time
-                        = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(get_age()).count());
+                TheEventHandler()->schedule([handle]() mutable {
                     const float period = 10;
-                    const float t = fmod(time / (1000.f * period), 1.f);
-                    const float angle = t * pi<float>() * 2.f;
-                    if (handle.is_valid()) {
-                        auto xform = (M3f::translation({320, 240}) * M3f::rotation(angle)) * M3f::translation({-320, -240});
-                        handle->set<super_prop>(t);
-                        handle->set<offset_xform>(xform);
-                    }
+                    const float time = std::chrono::duration_cast<std::chrono::milliseconds>(get_age()).count();
+                    const float angle = fmod(time / (1000.f * period), 1.f) * pi<float>() * 2.f;
+                    M3f xform = (M3f::translation({320, 240}) * M3f::rotation(angle)) * M3f::translation({-320, -240});
+                    handle->set<offset_xform>(std::move(xform));
                 });
             }
         });
@@ -93,14 +90,6 @@ private:
     }
 
     void _paint(Painter& painter) const override {
-//        const float time
-//            = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(get_age()).count());
-//        const float period = 10;
-//        const float t = fmod(time / (1000.f * period), 1.f);
-//        const float angle = t * pi<float>() * 2.f;
-//        auto xform = (M3f::translation({320, 240}) * M3f::rotation(angle)) * M3f::translation({-320, -240});
-//        painter *= xform;
-        painter *= get<offset_xform>();
 
         // draw a complex shape
         painter.set_stroke_width(49.f);
@@ -112,18 +101,7 @@ private:
                                                  V2f{380, 180}, V2f{420, 190}, //
                                                  V2f{500, 380}, V2f{350, 400}, //
                                                  V2f{380, 320}}));
-        //        painter.set_path(Path2::rect(Aabrf(120, 120, 50, 50)));
         painter.stroke();
-
-        // draw a background
-        //        painter.set_path(convert_to<Polylinef>(Aabrf(-half_length, -half_length, half_length * 2, half_length
-        //        * 2))); painter.stroke();
-
-        //        const CubicBezier2f spline2({CubicBezier2f::Segment::line(-half_line - V2f{100.f, 0}, half_line)});
-
-        //        painter.set_path(Path2::rect());
-        //        painter *= M3f::translation(400, 0);
-        //        painter.stroke();
     }
     void _get_widgets_at(const V2f&, std::vector<WidgetHandle>&) const override {}
 

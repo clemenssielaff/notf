@@ -270,13 +270,13 @@ void Plotter::start_parsing() {
     //         create new Path2Ptrs each time?
 }
 
-void Plotter::parse(const PlotterDesign& design, const M3f& xform, const Aabrf& clip) {
+void Plotter::parse(const PlotterDesign& design, const M3f& base_xform, const Aabrf& clip) {
     // reset the state stack for each design
     m_states.clear();
     m_states.emplace_back();
 
     // adopt the Design's auxiliary information
-    _get_state().xform = xform;
+    _get_state().xform = base_xform;
     _get_state().clip = clip;
 
     // parse the commands
@@ -285,7 +285,7 @@ void Plotter::parse(const PlotterDesign& design, const M3f& xform, const Aabrf& 
             overloaded{[&](const PlotterDesign::ResetState&) { _get_state() = {}; },
                        [&](const PlotterDesign::PushState&) { m_states.emplace_back(m_states.back()); },
                        [&](const PlotterDesign::PopState&) { _pop_state(); },
-                       [&](const PlotterDesign::SetXform& cmd) { _get_state().xform = cmd.data->transformation; },
+                       [&](const PlotterDesign::SetXform& cmd) { _get_state().xform = base_xform * cmd.data->xform; },
                        [&](const PlotterDesign::SetPaint& cmd) { _get_state().paint = cmd.data->paint; },
                        [&](const PlotterDesign::SetPath& cmd) { _get_state().path = cmd.data->path; },
                        [&](const PlotterDesign::SetClip& cmd) { _get_state().clip = cmd.data->clip; },

@@ -115,12 +115,20 @@ std::vector<AnyNodeHandle> Graph::synchronize() {
         return {}; // nothing changed
     }
 
-    for (auto& handle : m_dirty_nodes) {
-        if (AnyNodePtr node = AnyNodeHandle::AccessFor<Graph>::get_node_ptr(handle)) {
-            AnyNode::AccessFor<Graph>::clear_modified_data(*node);
+    { // clear all dirty nodes
+        NOTF_GUARD(std::lock_guard(m_mutex));
+        // TODO: this seems like a bad place to get the mutex
+        //       ideally, the synchronization would happen once, before a frame is drawn
+        //       the way it is set up right now, it happens once before a frame is *requested*
+        //       that might happen a lot more than the actual frame drawing
+
+        for (auto& handle : m_dirty_nodes) {
+            if (AnyNodePtr node = AnyNodeHandle::AccessFor<Graph>::get_node_ptr(handle)) {
+                AnyNode::AccessFor<Graph>::clear_modified_data(*node);
+            }
         }
+        m_dirty_nodes.clear();
     }
-    m_dirty_nodes.clear();
 
     // TODO: Actually get Windows with dirty Nodes from synchronization
     if (m_root_node->get_child_count() > 0) { return {m_root_node->get_child(0)}; }

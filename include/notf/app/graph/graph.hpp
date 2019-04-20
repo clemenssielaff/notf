@@ -131,7 +131,7 @@ public:
     // fields ---------------------------------------------------------------------------------- //
 private:
     /// Mutex used to protect the Graph.
-    RecursiveMutex m_mutex;
+    Mutex m_mutex;
 
     /// Node registry Uuid -> NodeHandle.
     NodeRegistry m_node_registry;
@@ -152,6 +152,7 @@ class TheGraph : public ScopedSingleton<detail::Graph> {
     friend Accessor<TheGraph, AnyNode>;
     friend Accessor<TheGraph, Window>;
     friend Accessor<TheGraph, detail::Application>;
+    friend Accessor<TheGraph, detail::RenderManager>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -198,6 +199,9 @@ private:
 
     /// The Root Node of the Graph as `shared_ptr`.
     static RootNodePtr _get_root_node_ptr() { return _get().m_root_node; }
+
+    /// Mutex used to protect the Graph.
+    static Mutex& _get_mutex() { return _get().m_mutex; }
 };
 
 // accessors ======================================================================================================== //
@@ -252,6 +256,14 @@ class Accessor<TheGraph, detail::Application> {
     static auto create(Args... args) {
         return TheGraph::_create_unique(TheGraph::Holder{}, std::forward<Args>(args)...);
     }
+};
+
+template<>
+class Accessor<TheGraph, detail::RenderManager> {
+    friend detail::RenderManager;
+
+    /// Mutex used to protect the Graph.
+    static Mutex& get_mutex() { return TheGraph::_get_mutex(); }
 };
 
 NOTF_CLOSE_NAMESPACE
