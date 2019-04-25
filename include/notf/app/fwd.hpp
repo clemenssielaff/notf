@@ -21,14 +21,6 @@ namespace this_thread {
 bool is_the_ui_thread();
 }
 
-// driver.hpp
-class Driver;
-namespace driver {
-namespace detail {
-struct AnyInput;
-}
-} // namespace driver
-
 // event.hpp
 NOTF_DECLARE_UNIQUE_POINTERS(class, AnyEvent);
 
@@ -111,6 +103,14 @@ using GlfwWindowPtr = std::unique_ptr<GLFWwindow, decltype(&window_deleter)>;
 } // namespace detail
 NOTF_DECLARE_SHARED_POINTERS(class, Window);
 class WindowHandle;
+
+// graph/window_driver.hpp
+class WindowDriver;
+namespace driver {
+namespace detail {
+struct AnyInput;
+}
+} // namespace driver
 
 // widget //
 

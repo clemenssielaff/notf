@@ -9,7 +9,7 @@ NOTF_OPEN_NAMESPACE
 class GlfwCallbacks {
 
     friend detail::Application;
-    friend Driver;
+    friend WindowDriver;
 
     // methods --------------------------------------------------------------------------------- //
 private:

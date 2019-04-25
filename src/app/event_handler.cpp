@@ -27,28 +27,30 @@ NOTF_OPEN_NAMESPACE
 namespace detail {
 
 EventHandler::EventHandler(const size_t buffer_size)
-    : m_event_queue(check_buffer_size(buffer_size)), m_event_handler(Thread(Thread::Kind::EVENT)) {}
+    : m_event_queue(check_buffer_size(buffer_size)), m_thread(Thread(Thread::Kind::EVENT)) {}
 
 EventHandler::~EventHandler() {
     m_event_queue.close();
-    m_event_handler.join();
+    m_thread.join();
 }
 
 void EventHandler::_start(RecursiveMutex& ui_mutex) {
-    m_event_handler.run([this, &ui_mutex] {
+    m_thread.run([this, &ui_mutex] {
         // take over as the UI thread
         std::unique_lock<RecursiveMutex> ui_lock(ui_mutex);
         NOTF_ASSERT(this_thread::is_the_ui_thread());
 
         // start the event handling loop
         Fiber event_fiber([this] {
-            size_t counter = 0;
-            double weight = 0;
             auto the_render_manager = TheRenderManager();
+
+            // render a frame on the first run through because the user will have set up a Window and Scene in `main`,
+            // before there was an event loop to handle messages
             AnyEventPtr event;
+            size_t counter = 0;
+            double weight = 1;
             fibers::channel_op_status status = fibers::channel_op_status::success;
 
-            status = m_event_queue.pop(event); // wait for the first event
             while (fibers::channel_op_status::closed != status) {
                 while (fibers::channel_op_status::success == status) {
 

@@ -15,10 +15,10 @@
 #include "notf/graphic/plotter/painter.hpp"
 
 #include "notf/app/application.hpp"
-#include "notf/app/driver.hpp"
 #include "notf/app/event_handler.hpp"
 #include "notf/app/graph/slot.hpp"
 #include "notf/app/graph/window.hpp"
+#include "notf/app/graph/window_driver.hpp"
 #include "notf/app/timer_pool.hpp"
 
 #include "notf/app/widget/widget.hpp"
@@ -28,104 +28,114 @@ NOTF_OPEN_NAMESPACE
 
 // super widget ===================================================================================================== //
 
-class SuperWidget;
+class ParentWidget;
 
-namespace super_widget {
+namespace test_widget {
 
-struct SuperProp {
+struct FloatProperty {
     using value_t = float;
-    static constexpr ConstString name = "super_prop";
+    static constexpr ConstString name = "float_property";
     static inline const value_t default_value = 1;
     static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::REFRESH;
 };
 
-struct SingleState : State<SingleState, SuperWidget> {
+struct SizeProperty {
+    using value_t = Size2f;
+    static constexpr ConstString name = "size_property";
+    static inline const value_t default_value = Size2f(50, 50);
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::REFRESH;
+};
+
+struct SingleState : State<SingleState, ParentWidget> {
     static constexpr ConstString name = "single_state";
-    explicit SingleState(SuperWidget& node) : SingleState::super_t(node) {}
+    explicit SingleState(ParentWidget& node) : SingleState::super_t(node) {}
 };
 
 struct Policy {
-    using properties = std::tuple<SuperProp>;
+    using properties = std::tuple<FloatProperty, SizeProperty>;
     using slots = std::tuple<>;
     using signals = std::tuple<>;
     using states = std::variant<SingleState>;
 };
 
-} // namespace super_widget
+} // namespace test_widget
 
-class SuperWidget : public Widget<super_widget::Policy> {
+// child widget ===================================================================================================== //
+
+class ChildWidget : public Widget<test_widget::Policy> {
 
 private:
-    using super_t = Widget<super_widget::Policy>;
+    using super_t = Widget<test_widget::Policy>;
 
 public:
-    static constexpr const ConstString& super_prop = super_widget::SuperProp::name;
+    ChildWidget(valid_ptr<AnyNode*> parent) : super_t(parent) {}
+};
+
+// parent widget ==================================================================================================== //
+
+class ParentWidget : public Widget<test_widget::Policy> {
+
+private:
+    using super_t = Widget<test_widget::Policy>;
 
 public:
-    SuperWidget(valid_ptr<AnyNode*> parent) : super_t(parent) {}
+    static constexpr const ConstString& float_property = test_widget::FloatProperty::name;
+    static constexpr const ConstString& size_property = test_widget::SizeProperty::name;
 
-    ~SuperWidget() override {
+public:
+    ParentWidget(valid_ptr<AnyNode*> parent) : super_t(parent) {}
+
+    ~ParentWidget() override {
         if (m_animation) { m_animation->stop(); }
     }
 
 private:
     void _finalize() override {
+
+        set<size_property>(Size2f(280, 200));
+        set<offset_xform>(M3f::translation(20, 20));
+
         auto raw = handle_from_this();
         NOTF_ASSERT(raw);
-        auto handle = handle_cast<NodeHandle<SuperWidget>>(raw);
-        //        m_animation = IntervalTimer(60_fps, [handle]() mutable {
-        //            if (handle.is_valid()) {
-        //                TheEventHandler()->schedule([=]() mutable {
-        //                    const float time
-        //                        =
-        //                        static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(get_age()).count());
-        //                    const float period = 10;
-        //                    const float t = fmod(time / (1000.f * period), 1.f);
-        //                    const float angle = t * pi<float>() * 2.f;
-        //                    if (handle.is_valid()) {
-        //                        auto xform = M3f::translation({200, 200}) * M3f::rotation(angle);
-        //                        handle->set<super_prop>(t);
-        //                        handle->set<offset_xform>(xform);
-        //                    }
-        //                });
-        //            }
-        //        });
-        //        m_animation->start();
+        auto handle = handle_cast<NodeHandle<ParentWidget>>(raw);
+//        m_animation = IntervalTimer(60_fps, [handle]() mutable {
+//            if (handle.is_valid()) {
+//                TheEventHandler()->schedule([=]() mutable {
+//                    const float time
+//                        = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(get_age()).count());
+//                    const float period = 10;
+//                    const float t = fmod(time / (1000.f * period), 1.f);
+//                    //                    const float angle = t * pi<float>() * 2.f;
+//                    if (handle.is_valid()) {
+//                        //                        auto xform = M3f::translation({200, 200}) * M3f::rotation(angle);
+////                        handle->set<float_property>(t);
+////                        handle->eset<offset_xform>(M3f::translation(20, 20));
+//                        // TODO: why is this required in order for the widget to be drawn at all?
+//                        //                        handle->set<offset_xform>(xform);
+//                    }
+//                });
+//            }
+//        });
+//        m_animation->start();
     }
 
     void _paint(Painter& painter) const override {
-        //        const float half_length = 100.f; // * get<super_prop>();
-        //        const V2f half_line{half_length, half_length};
-        //        const Path2Ptr spline = ;
-
         // draw a rectangle
-        painter.set_stroke_width(10.f);
+        painter.set_stroke_width(5.f);
         painter.set_joint_style(Painter::JointStyle::BEVEL);
-        //        painter.set_paint(Color::red());
-        painter.set_path(Path2::rect(Aabrf(20, 20, 50, 50)));
+        painter.set_path(Path2::rect(Aabrf(get<size_property>())));
         painter.stroke();
 
         // draw a complex shape
-        painter.set_stroke_width(20.f);
-        painter.set_cap_style(Painter::CapStyle::ROUND);
-        painter.set_joint_style(Painter::JointStyle::ROUND);
-        painter.set_path(Path2::create(Polylinef{V2f{120, 60}, V2f{160, 400},  //
-                                                 V2f{200, 120}, V2f{240, 280}, //
-                                                 V2f{280, 160}, V2f{340, 200}, //
-                                                 V2f{380, 180}, V2f{420, 190}, //
-                                                 V2f{500, 380}, V2f{350, 400}, //
-                                                 V2f{380, 320}}));
-        //        painter.set_path(Path2::rect(Aabrf(120, 120, 50, 50)));
-        painter.stroke();
-
-        // draw a background
-        //        painter.set_path(convert_to<Polylinef>(Aabrf(-half_length, -half_length, half_length * 2, half_length
-        //        * 2))); painter.stroke();
-
-        //        const CubicBezier2f spline2({CubicBezier2f::Segment::line(-half_line - V2f{100.f, 0}, half_line)});
-
-        //        painter.set_path(Path2::rect());
-        //        painter *= M3f::translation(400, 0);
+        //        painter.set_stroke_width(20.f);
+        //        painter.set_cap_style(Painter::CapStyle::ROUND);
+        //        painter.set_joint_style(Painter::JointStyle::ROUND);
+        //        painter.set_path(Path2::create(Polylinef{V2f{120, 60}, V2f{160, 400},  //
+        //                                                 V2f{200, 120}, V2f{240, 280}, //
+        //                                                 V2f{280, 160}, V2f{340, 200}, //
+        //                                                 V2f{380, 180}, V2f{420, 190}, //
+        //                                                 V2f{500, 380}, V2f{350, 400}, //
+        //                                                 V2f{380, 320}}));
         //        painter.stroke();
     }
     void _relayout() override {}
@@ -144,7 +154,7 @@ int run_main(int argc, char* argv[]) {
 
     WindowHandle window = Window::create();
     WidgetSceneHandle scene = window->set_scene<WidgetScene>();
-    scene->set_widget<SuperWidget>();
+    scene->set_widget<ParentWidget>();
 
     NOTF_ASSERT(window->get_scene());
 

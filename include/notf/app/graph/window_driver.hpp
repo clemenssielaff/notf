@@ -7,21 +7,22 @@
 
 NOTF_OPEN_NAMESPACE
 
-// driver =========================================================================================================== //
+// window driver ==================================================================================================== //
 
-/// The Application "Driver" is the point at which all events from the outside are dispatched into the Application
+/// The "Application Driver" is the point at which all events from the outside are dispatched into the Application
 /// (usually the EventHandler) to modify the Graph.
-/// Additionally, the user can create instances of the ApplicationDriver class and generate simluated events
+///
+/// Additionally, the user can create instances of the WindowDriver class and generate simluated events
 /// programatically, that are indistinguishable to real ones. This is helpful for low-level macro recording, testing
 /// and whatnot.
-class Driver {
+class WindowDriver {
 
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Constructor.
     /// @param window   Window to attach to.
     /// @throws HandleExpiredError  If the Window Handle is expired.
-    Driver(WindowHandle window);
+    WindowDriver(WindowHandle window);
 
     /// The Window this Driver is attached to.
     WindowHandle get_window() const { return m_window; }
@@ -29,13 +30,13 @@ public:
     // event handling ---------------------------------------------------------
 
     /// Ingest a single Input object.
-    Driver& operator<<(driver::detail::AnyInput&& input);
+    WindowDriver& operator<<(driver::detail::AnyInput&& input);
 
     /// Simulates a single ascii character key stroke.
-    Driver& operator<<(const char character);
+    WindowDriver& operator<<(const char character);
 
     /// Simulates a sequence of character key strokes.
-    Driver& operator<<(const char* string) {
+    WindowDriver& operator<<(const char* string) {
         while (*string != '\0') {
             operator<<(*string++);
         }
@@ -141,14 +142,14 @@ public:
 
     /// Executes the input function.
     /// @param driver   Driver handling this Input.
-    virtual void run(Driver& driver) = 0;
+    virtual void run(WindowDriver& driver) = 0;
 };
 
 } // namespace detail
 
 struct Mouse : public detail::AnyInput {
     Mouse(::notf::MouseInput::Button button, const int x = -1, const int y = -1) : m_button(button), m_pos{x, y} {}
-    void run(Driver& driver) final;
+    void run(WindowDriver& driver) final;
 
 private:
     ::notf::MouseInput::Button m_button;

@@ -5,11 +5,10 @@
 #include "notf/meta/singleton.hpp"
 #include "notf/meta/smart_ptr.hpp"
 
-#include "notf/common/fibers.hpp"
 #include "notf/common/mutex.hpp"
 #include "notf/common/thread.hpp"
 
-#include "notf/app/graph/window.hpp"
+#include "notf/app/graph/window.hpp" // TODO: I don't like that render_manager.hpp includes window.hpp
 
 NOTF_OPEN_NAMESPACE
 

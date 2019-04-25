@@ -316,7 +316,7 @@ const std::vector<AnyNodePtr>& AnyNode::_read_children() const {
 
 std::vector<AnyNodePtr>& AnyNode::_write_children() {
     NOTF_ASSERT(this_thread::is_the_ui_thread());
-    _mark_as_dirty(); // changes in the child list make this node dirty
+    _set_dirty(); // changes in the child list make this node dirty
     return *_ensure_modified_data().children;
 }
 
@@ -341,7 +341,7 @@ bool AnyNode::_get_internal_flag(const size_t index) const {
 void AnyNode::_set_internal_flag(const size_t index, const bool value) {
     NOTF_ASSERT(index < bitset_size_v<Flags>);
     NOTF_ASSERT(this_thread::is_the_ui_thread());
-    if (index != to_number(InternalFlags::DIRTY)) { _mark_as_dirty(); } // flag changes make this node dirty
+    if (index != to_number(InternalFlags::DIRTY)) { _set_dirty(); } // flag changes make this node dirty
     _ensure_modified_data().flags[index] = value;
 }
 
@@ -352,7 +352,7 @@ AnyNode::Data& AnyNode::_ensure_modified_data() {
 }
 
 void AnyNode::_mark_as_dirty() {
-    if (NOTF_UNLIKELY(!_is_finalized())) { return; }
+    if (!_is_finalized()) { return; }
     if (!_get_internal_flag(to_number(InternalFlags::DIRTY))) {
         _set_internal_flag(to_number(InternalFlags::DIRTY));
         TheGraph::AccessFor<AnyNode>::mark_dirty(weak_from_this());

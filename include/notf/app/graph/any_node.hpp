@@ -160,7 +160,7 @@ private:
         RedrawObserver(AnyNode& node) : m_node(node) {}
 
         /// Called whenever a visible Property changed its value.
-        void on_next(const AnyPublisher*, ...) final { m_node._mark_as_dirty(); }
+        void on_next(const AnyPublisher*, ...) final { m_node._set_dirty(); }
 
         // fields ---------------------------------------------------------- //
     private:
@@ -665,7 +665,7 @@ private:
     Data& _ensure_modified_data();
 
     /// Marks this Node as dirty if it is finalized.
-    void _mark_as_dirty();
+    void _set_dirty();
 
     // fields ---------------------------------------------------------------------------------- //
 private:

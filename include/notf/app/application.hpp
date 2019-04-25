@@ -14,6 +14,10 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
+/// The Application object should be created in or close to the `main()` function.
+/// If you want to schedule functions to run on the main thread, the Application can schedule them
+/// for you.
+/// The Application manages the UI thread mutex which determines which thread is the UI thread.
 class Application {
 
     friend TheApplication;
@@ -27,6 +31,10 @@ public:
     /// Application arguments.
     struct Arguments {
 
+        /// Constructor taking mandatory arguments.
+        /// @param name Name of the Application.
+        /// @param argv Command line arguments passed to main() by the OS.
+        /// @param argc Number of strings in argv (first one is usually the name of the program).
         Arguments(std::string name, long argc, char** argv) : name(std::move(name)), argv(argv), argc(argc) {}
 
         // mandatory arguments ------------------------------------------------
@@ -43,10 +51,10 @@ public:
 
         // flags --------------------------------------------------------------
 
-        /// If true, `Application::exec` will always start its main loop on , even if no Windows have been created yet.
-        /// In that case, you'll have to manually call shutdown from another thread in order to close the Application in
-        /// an orderly fashion. By default, this flag is set to false, meaning that `Application::exec` with no Windows
-        /// immediately returns without blocking.
+        /// If true, `Application::exec` will always start its main loop on `exec`, even if no Windows have been created
+        /// yet. In that case, you'll have to manually call shutdown from another thread in order to close the
+        /// Application in an orderly fashion. By default, this flag is set to false, meaning that `Application::exec`
+        /// with no Windows immediately returns without blocking.
         bool start_without_windows = false;
 
         // directories --------------------------------------------------------
@@ -86,8 +94,11 @@ private:
         CLOSED,
     };
 
-    /// Object containing functions passed to execute on the main thread.
-    struct AnyAppEvent {
+    /// Event object containin a function to execute on the main thread.
+    /// Unlike the more powerful `AnyEvent` class, this class is lightweight and only serves to build a simple queue of
+    /// functions that are executed on the main thread, one after the other until the queue is empty and new events can
+    /// be awaited.
+    struct AnyAppEvent { // TODO: use an EventHandler within application?
         virtual ~AnyAppEvent() = default;
         virtual void run() = 0;
     };
@@ -217,16 +228,10 @@ private:
     GLFWwindow* _get_shared_context() { return _get().m_shared_context.get(); }
 
     /// Registers a new Window in the Application.
-    void _register_window(GLFWwindow* window) {
-        NOTF_ASSERT(_is_this_the_ui_thread());
-        _get()._register_window(window);
-    }
+    void _register_window(GLFWwindow* window) { _get()._register_window(window); }
 
     /// Unregisters an existing Window from this Application.
-    void _destroy_glfw_window(GLFWwindow* window) {
-        NOTF_ASSERT(_is_this_the_ui_thread());
-        _get()._destroy_glfw_window(window);
-    }
+    void _destroy_glfw_window(GLFWwindow* window) { _get()._destroy_glfw_window(window); }
 
     /// Tests if the calling thread is the notf "UI-thread".
     bool _is_this_the_ui_thread() {

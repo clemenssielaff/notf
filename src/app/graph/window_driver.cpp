@@ -1,4 +1,4 @@
-#include "notf/app/driver.hpp"
+#include "notf/app/graph/window_driver.hpp"
 
 #include "notf/meta/log.hpp"
 
@@ -11,16 +11,16 @@ NOTF_OPEN_NAMESPACE
 
 // driver =========================================================================================================== //
 
-Driver::Driver(WindowHandle window) : m_window(std::move(window)) {
+WindowDriver::WindowDriver(WindowHandle window) : m_window(std::move(window)) {
     if (m_window.is_expired()) { NOTF_THROW(HandleExpiredError, "Cannot create Driver with an expired Window Handle"); }
 }
 
-Driver& Driver::operator<<(driver::detail::AnyInput&& input) {
+WindowDriver& WindowDriver::operator<<(driver::detail::AnyInput&& input) {
     input.run(*this);
     return *this;
 }
 
-Driver& Driver::operator<<(const char character) {
+WindowDriver& WindowDriver::operator<<(const char character) {
     GLFWwindow* window = m_window.get_glfw_window();
     const KeyInput key(character);
     const KeyInput::Modifier modifier = key.modifier + m_modifier;
@@ -32,12 +32,12 @@ Driver& Driver::operator<<(const char character) {
     return *this;
 }
 
-void Driver::key_stroke(KeyInput::Token key) {
+void WindowDriver::key_stroke(KeyInput::Token key) {
     key_press(key);
     key_release(key);
 }
 
-void Driver::key_press(KeyInput::Token key) {
+void WindowDriver::key_press(KeyInput::Token key) {
     if (m_pressed_keys.count(key) != 0) { NOTF_THROW(InputError, "Key {} is already pressed", to_number(key)); }
     m_pressed_keys.insert(key);
     TheApplication()->schedule([window = m_window.get_glfw_window(), key, modifier = m_modifier] {
@@ -45,7 +45,7 @@ void Driver::key_press(KeyInput::Token key) {
     });
 }
 
-void Driver::key_hold(KeyInput::Token key) {
+void WindowDriver::key_hold(KeyInput::Token key) {
     if (m_pressed_keys.count(key) == 0) {
         NOTF_THROW(InputError, "Cannot hold key {} as it is not pressed", to_number(key));
     }
@@ -54,7 +54,7 @@ void Driver::key_hold(KeyInput::Token key) {
     });
 }
 
-void Driver::key_release(KeyInput::Token key) {
+void WindowDriver::key_release(KeyInput::Token key) {
     if (m_pressed_keys.count(key) == 0) {
         NOTF_THROW(InputError, "Cannot release key {} as it is not pressed", to_number(key));
     }
@@ -64,17 +64,17 @@ void Driver::key_release(KeyInput::Token key) {
     });
 }
 
-void Driver::mouse_move(const V2d pos) {
+void WindowDriver::mouse_move(const V2d pos) {
     m_mouse_position = pos;
     GlfwCallbacks::_on_cursor_move(m_window.get_glfw_window(), pos.x(), pos.y());
 }
 
-void Driver::mouse_click(MouseInput::Button button) {
+void WindowDriver::mouse_click(MouseInput::Button button) {
     mouse_press(button);
     mouse_release(button);
 }
 
-void Driver::mouse_press(const MouseInput::Button button) {
+void WindowDriver::mouse_press(const MouseInput::Button button) {
     if (m_pressed_buttons.count(button) != 0) {
         NOTF_THROW(InputError, "Mouse button {} is already pressed", to_number(button));
     }
@@ -84,7 +84,7 @@ void Driver::mouse_press(const MouseInput::Button button) {
     });
 }
 
-void Driver::mouse_release(const MouseInput::Button button) {
+void WindowDriver::mouse_release(const MouseInput::Button button) {
     if (m_pressed_buttons.count(button) == 0) {
         NOTF_THROW(InputError, "Cannot release mouse button {} as it it not pressed", to_number(button));
     }
@@ -98,7 +98,7 @@ void Driver::mouse_release(const MouseInput::Button button) {
 
 namespace driver {
 
-void Mouse::run(Driver& driver) {
+void Mouse::run(WindowDriver& driver) {
     if (m_pos != V2d{-1, -1}) { driver.mouse_move(m_pos); }
     driver.mouse_click(m_button);
 }

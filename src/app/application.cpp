@@ -98,13 +98,17 @@ Application::~Application() {
 
 int Application::exec() {
     if (!this_thread::is_the_main_thread()) {
-        NOTF_THROW(StartupError, "You must call `Application::exec` only from the main thread");
+        NOTF_THROW(StartupError, "You must call `Application::exec` from the main thread");
     }
 
     // make sure exec is only called once
     if (State expected = State::UNSTARTED; !m_state.compare_exchange_strong(expected, State::RUNNING)) {
-        NOTF_ASSERT(expected == State::CLOSED); // RUNNING shouldn't be possible
-        NOTF_THROW(StartupError, "Cannot call `exec` on an already closed Application");
+        if (expected == State::RUNNING) {
+            NOTF_THROW(StartupError, "Cannot call `exec` on an already running Application");
+        } else {
+            NOTF_ASSERT(expected == State::CLOSED);
+            NOTF_THROW(StartupError, "Cannot call `exec` on an already closed Application");
+        }
     }
 
     if (!m_windows->empty() || get_arguments().start_without_windows) {
@@ -118,24 +122,23 @@ int Application::exec() {
         while (m_state.load() == State::RUNNING) {
 
             // wait for and execute all GLFW events
-            glfwWaitEventsTimeout(0.1 /*seconds*/);
+            glfwWaitEventsTimeout(0.01 /*seconds*/);
             // There's a bug in GLFW that causes empty events created with `glfwPostEmptyEvent` to fail to wake
             // `glfwWaitEvents`. In that case, the application hangs until some other event would wake GLWF and only
             // then proceed to handle the events scheduled to run on the main thread.
             // For details see here: https://github.com/glfw/glfw/issues/1281
             // It seems like the bug is going to be fixed soon, which is why I opt for this simple workaround of adding
             // a timeout to the wait, so that even if the race condition occurs, GLFW won't block the main thread for
-            // longer than 100ms at a time.
+            // longer than 10ms at a time.
             // Since events to run on the main thread are only needed for Window creation/removal and shutdown, the
             // effect of this workaround should be minimal.
             // Of course, once the bug is fixed, revert the line to `glfwWaitEvents()` and remove this comment.
 
-            { // see if there are any events scheduled to run on the main thread
-                while (m_event_queue.try_pop(event) == fibers::channel_op_status::success
-                       && m_state.load() == State::RUNNING) {
-                    NOTF_LOG_TRACE("Handling event scheduled on the main thread");
-                    event->run();
-                }
+            // see if there are any events scheduled to run on the main thread
+            while (m_event_queue.try_pop(event) == fibers::channel_op_status::success
+                   && m_state.load() == State::RUNNING) {
+                NOTF_LOG_TRACE("Handling event scheduled on the main thread");
+                event->run();
             }
         }
 
@@ -157,7 +160,7 @@ int Application::exec() {
 }
 
 void Application::schedule(AnyAppEventPtr&& event) {
-    if (m_state.load() != State::CLOSED) { // you can pre-schedule events prior to startup, but not after shutdown
+    if (m_state.load() != State::CLOSED) { // you can pre-schedule events before startup, but not after shutdown
         m_event_queue.push(std::move(event));
         glfwPostEmptyEvent();
     }
@@ -203,6 +206,8 @@ void Application::_register_window(GLFWwindow* window) {
 }
 
 void Application::_destroy_glfw_window(GLFWwindow* window) {
+    if (!this_thread::is_the_ui_thread()) { NOTF_THROW(ThreadError, "Windows can only be destroyed on the UI thread"); }
+
     schedule([this, window]() {
         auto itr = std::find_if(m_windows->begin(), m_windows->end(),
                                 [window](const detail::GlfwWindowPtr& stored) { return stored.get() == window; });

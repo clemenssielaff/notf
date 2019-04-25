@@ -14,6 +14,7 @@ NOTF_OPEN_NAMESPACE
 
 // any event ======================================================================================================== //
 
+/// Base class of any event that can be schedule to run on the UI thread.
 class AnyEvent {
 
     // methods --------------------------------------------------------------------------------- //
@@ -69,6 +70,10 @@ private:
 
 namespace detail {
 
+// TODO: event handler is too generic of a name.
+// In fact, you could argue that the application also contains an event handler and both do the same job. I think, we
+// need a generic "EventHandler" that can be used by Application to schedul the same `AnyEvent` subclasses like the
+// UI thread does. What I call "TheEventHandler" here should really be "TheUiThread" or something.
 class EventHandler {
 
     friend TheEventHandler;
@@ -109,7 +114,7 @@ private:
     fibers::buffered_channel<AnyEventPtr> m_event_queue;
 
     /// Event handling thread.
-    Thread m_event_handler;
+    Thread m_thread;
 };
 
 } // namespace detail

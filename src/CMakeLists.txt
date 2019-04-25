@@ -4,7 +4,6 @@ set(CURRENT_TARGET notf-core)
 # add core files
 add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/application.cpp
-    app/driver.cpp
     app/event_handler.cpp
     app/glfw_callbacks.cpp
     app/input.cpp
@@ -19,6 +18,7 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/graph/scene.cpp
     app/graph/visualizer.cpp
     app/graph/window.cpp
+    app/graph/window_driver.cpp
 
     app/widget/any_widget.cpp
     app/widget/widget_claim.cpp
