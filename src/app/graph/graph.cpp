@@ -55,6 +55,15 @@ std::string Graph::NodeRegistry::get_name(Uuid uuid) {
     }
     // if the name doesn't exist, make one up
     return set_name(uuid, number_to_mnemonic(hash(uuid), /*max_syllables=*/4));
+
+    // TODO: names and thread-safety
+    // This solution is bullshit.
+    // 1. Changes to a node name from the UI thread are seen immediately by the render thread, meaning the render thread
+    //    can see two names for the same node
+    // 2. Getting a name can (maybe) also call `set_name`, which must only be called from the UI thread...? But you
+    //    *can* (and *should* be able to) call it from the render thread as well, so what gives?
+    // Changes here will affect the Graph::NodeRegistry, methods on AnyNode and on the NodeHandle (why is `get_name` a
+    // method on NodeHandle<T>?)
 }
 
 std::string Graph::NodeRegistry::set_name(const Uuid uuid, const std::string& proposal) {
@@ -106,12 +115,20 @@ std::vector<AnyNodeHandle> Graph::synchronize() {
         return {}; // nothing changed
     }
 
-    for (auto& handle : m_dirty_nodes) {
-        if (AnyNodePtr node = AnyNodeHandle::AccessFor<Graph>::get_node_ptr(handle)) {
-            AnyNode::AccessFor<Graph>::clear_modified_data(*node);
+    { // clear all dirty nodes
+        NOTF_GUARD(std::lock_guard(m_mutex));
+        // TODO: this seems like a bad place to get the mutex
+        //       ideally, the synchronization would happen once, before a frame is drawn
+        //       the way it is set up right now, it happens once before a frame is *requested*
+        //       that might happen a lot more than the actual frame drawing
+
+        for (auto& handle : m_dirty_nodes) {
+            if (AnyNodePtr node = AnyNodeHandle::AccessFor<Graph>::get_node_ptr(handle)) {
+                AnyNode::AccessFor<Graph>::clear_modified_data(*node);
+            }
         }
+        m_dirty_nodes.clear();
     }
-    m_dirty_nodes.clear();
 
     // TODO: Actually get Windows with dirty Nodes from synchronization
     if (m_root_node->get_child_count() > 0) { return {m_root_node->get_child(0)}; }

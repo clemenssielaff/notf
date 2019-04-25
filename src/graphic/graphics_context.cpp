@@ -50,15 +50,36 @@ void GraphicsContext::_StencilMask::operator=(StencilMask mask) {
     }
 }
 
-// current blend mode =============================================================================================== //
+// blend mode ======================================================================================================= //
 
 void GraphicsContext::_BlendMode::operator=(const BlendMode mode) {
     if (mode == m_mode) { return; }
+
+    if (m_mode == BlendMode::OFF) { NOTF_CHECK_GL(glEnable(GL_BLEND)); }
     m_mode = mode;
 
-    const BlendMode::OpenGLBlendMode blend_mode(m_mode);
-    NOTF_CHECK_GL(glBlendFuncSeparate(blend_mode.source_rgb, blend_mode.destination_rgb, //
-                                      blend_mode.source_alpha, blend_mode.destination_rgb));
+    if (m_mode == BlendMode::OFF) {
+        NOTF_CHECK_GL(glDisable(GL_BLEND));
+    } else {
+        const BlendMode::OpenGLBlendMode blend_mode(m_mode);
+        NOTF_CHECK_GL(glBlendFuncSeparate(blend_mode.source_rgb, blend_mode.destination_rgb, //
+                                          blend_mode.source_alpha, blend_mode.destination_alpha));
+    }
+}
+
+// face culling ===================================================================================================== //
+
+void GraphicsContext::_CullFace::operator=(const CullFace mode) {
+    if (mode == m_mode) { return; }
+
+    if (m_mode == CullFace::NONE) { NOTF_CHECK_GL(glEnable(GL_CULL_FACE)); }
+    m_mode = mode;
+
+    if (m_mode == CullFace::NONE) {
+        NOTF_CHECK_GL(glDisable(GL_CULL_FACE));
+    } else {
+        NOTF_CHECK_GL(glCullFace(to_number(m_mode)));
+    }
 }
 
 // framebuffer binding ============================================================================================== //
@@ -250,7 +271,7 @@ GraphicsContext::GraphicsContext(std::string name, valid_ptr<GLFWwindow*> window
     }
 
     // GLFW hints
-    glfwSwapInterval(-1); // -1 in case EXT_swap_control_tear is supported
+    glfwSwapInterval(0);
 
     // OpenGL hints
     NOTF_CHECK_GL(glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST));
@@ -322,12 +343,25 @@ GraphicsContext::Guard GraphicsContext::make_current(bool assume_is_current) {
 }
 
 void GraphicsContext::begin_frame() {
+    const auto current_start_time = get_now();
+    if (const auto difference
+        = std::chrono::duration_cast<std::chrono::nanoseconds>(current_start_time - m_frame_start_time);
+        difference > 16666666ns) {
+        NOTF_LOG_WARN("Frame start difference of {}ms detected", difference.count() / 1000000.);
+    }
+    m_frame_start_time = current_start_time;
+
     m_state.framebuffer.clear(m_state._clear_color, GLBuffer::COLOR | GLBuffer::DEPTH | GLBuffer::STENCIL);
 }
 
 void GraphicsContext::finish_frame() {
     NOTF_ASSERT(is_current());
     glfwSwapBuffers(m_window);
+
+    if (const auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(get_now() - m_frame_start_time);
+        duration > 16666666ns) {
+        NOTF_LOG_WARN("Frame took {}ms to draw", duration.count() / 1000000.);
+    }
 }
 
 void GraphicsContext::reset() {

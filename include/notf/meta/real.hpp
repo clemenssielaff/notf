@@ -41,20 +41,20 @@ using std::tan;
 /// Thresholds are set at 1% relative error, as described here:
 /// https://en.wikipedia.org/wiki/Small-angle_approximation#Error_of_the_approximations
 template<class T>
+T fast_sin(const T& radians) {
+    if (radians < 0.244) {
+        return radians;
+    } else {
+        return sin(radians);
+    }
+}
+
+template<class T>
 T fast_cos(const T& radians) {
     if (radians < 0.664) {
         return T(1) - (radians * radians) / T(2);
     } else {
         return cos(radians);
-    }
-}
-
-template<class T>
-T fast_sin(const T& radians) {
-    if (radians < 0.24) {
-        return radians;
-    } else {
-        return sin(radians);
     }
 }
 

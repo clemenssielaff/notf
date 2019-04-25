@@ -35,6 +35,32 @@ std::pair<size_t, size_t> get_this_and_sibling_index(const std::vector<AnyNodePt
 
 NOTF_OPEN_NAMESPACE
 
+// any node iterator ================================================================================================ //
+
+bool AnyNode::Iterator::next(AnyNodeHandle& output_node) {
+    while (!m_iterators.empty()) {
+        Impl& it = m_iterators.back();
+        output_node = it.node;
+
+        if (it.index == it.end) {
+            m_iterators.pop_back();
+        } else {
+            const size_t child_count = output_node->get_child_count();
+            if (child_count > 0) { m_iterators.emplace_back(output_node->get_child(0), child_count); }
+        }
+        return true;
+    }
+    return false;
+}
+
+// any node data ==================================================================================================== //
+
+AnyNode::ModifiedData::ModifiedData(valid_ptr<AnyNode*> parent, const std::vector<AnyNodePtr>& children, Flags flags)
+    : parent(parent), children(std::make_unique<std::vector<AnyNodePtr>>(children)), flags(std::move(flags)) {
+    NOTF_ASSERT(this->parent);
+    NOTF_ASSERT(this->children.get());
+}
+
 // any node ========================================================================================================= //
 
 AnyNode::AnyNode(valid_ptr<AnyNode*> parent) : m_parent(raw_pointer(parent)) {
@@ -42,7 +68,9 @@ AnyNode::AnyNode(valid_ptr<AnyNode*> parent) : m_parent(raw_pointer(parent)) {
 }
 
 AnyNode::~AnyNode() {
-    // first, delete all children while their parent pointer is still valid
+    NOTF_LOG_TRACE("Removing Node {}", m_uuid.to_string());
+
+    // delete all children while their parent pointer is still valid
     m_children.clear();
     m_modified_data.reset();
 
@@ -55,8 +83,6 @@ AnyNode::~AnyNode() {
     m_redraw_observer.reset();
     NOTF_ASSERT(weak_observer.expired());
 #endif
-
-    NOTF_LOG_TRACE("Removing Node {}", m_uuid.to_string());
 }
 
 std::string AnyNode::set_name(const std::string& name) {
@@ -64,20 +90,21 @@ std::string AnyNode::set_name(const std::string& name) {
     return TheGraph::AccessFor<AnyNode>::set_name(m_uuid, name);
 }
 
-AnyNodeHandle AnyNode::get_parent() const {
-    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
-    return _get_parent()->shared_from_this();
+bool AnyNode::has_ancestor(const AnyNodeHandle& ancestor) const {
+    if (const AnyNodeConstPtr ancestor_lock = AnyNodeHandle::AccessFor<AnyNode>::get_node_ptr(ancestor)) {
+        return _has_ancestor(ancestor_lock.get());
+    } else {
+        return false;
+    }
 }
 
 AnyNodeHandle AnyNode::get_common_ancestor(const AnyNodeHandle& other) const {
-    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
     const AnyNodeConstPtr other_lock = AnyNodeHandle::AccessFor<AnyNode>::get_node_ptr(other);
-    if (other_lock == nullptr) { return {}; }
+    if (other_lock == nullptr) { NOTF_THROW(HandleExpiredError, "Node handle is expired"); }
     return const_cast<AnyNode*>(_get_common_ancestor(other_lock.get()))->shared_from_this();
 }
 
 AnyNodeHandle AnyNode::get_child(const size_t index) const {
-    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
     const std::vector<AnyNodePtr>& children = _read_children();
     if (index >= children.size()) {
         NOTF_THROW(IndexError, "Cannot get child Node at index {} for Node \"{}\" with {} children", index, get_name(),
@@ -86,18 +113,7 @@ AnyNodeHandle AnyNode::get_child(const size_t index) const {
     return children[index];
 }
 
-bool AnyNode::is_in_front() const {
-    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
-    return _read_siblings().back().get() == this;
-}
-
-bool AnyNode::is_in_back() const {
-    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
-    return _read_siblings().front().get() == this;
-}
-
 bool AnyNode::is_before(const AnyNodeHandle& sibling) const {
-    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
     if (const AnyNodePtr sibling_ptr = AnyNodeHandle::AccessFor<AnyNode>::get_node_ptr(sibling);
         (sibling_ptr != nullptr) && (sibling_ptr->_get_parent() == _get_parent()) && (sibling_ptr.get() != this)) {
         for (const AnyNodePtr& other : _read_siblings()) {
@@ -112,7 +128,6 @@ bool AnyNode::is_before(const AnyNodeHandle& sibling) const {
 }
 
 bool AnyNode::is_behind(const AnyNodeHandle& sibling) const {
-    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
     if (const AnyNodePtr sibling_ptr = AnyNodeHandle::AccessFor<AnyNode>::get_node_ptr(sibling);
         (sibling_ptr != nullptr) && (sibling_ptr->_get_parent() == _get_parent()) && (sibling_ptr.get() != this)) {
         for (const AnyNodePtr& other : _read_siblings()) {
@@ -149,9 +164,13 @@ void AnyNode::stack_back() {
 void AnyNode::stack_before(const AnyNodeHandle& sibling) {
     NOTF_ASSERT(this_thread::is_the_ui_thread());
     const AnyNodeConstPtr sibling_ptr = AnyNodeHandle::AccessFor<AnyNode>::get_node_ptr(sibling);
-    if ((sibling_ptr == nullptr) || (sibling_ptr.get() == this) || sibling_ptr->_get_parent() != _get_parent()) {
-        return;
+    if (sibling_ptr == nullptr) { NOTF_THROW(HandleExpiredError, "Node handle has expired."); }
+    if (sibling_ptr.get() == this) { return; }
+    if (sibling_ptr->_get_parent() != _get_parent()) {
+        NOTF_THROW(GraphError, "Cannot stack Node {} before {}, because they are not siblings.", get_name(),
+                   sibling.get_name());
     }
+
     std::vector<AnyNodePtr>& siblings = _get_parent()->_write_children();
     const auto [my_index, sibling_index] = get_this_and_sibling_index(siblings, this, sibling_ptr);
     move_behind_of(siblings, my_index, sibling_index);
@@ -160,8 +179,11 @@ void AnyNode::stack_before(const AnyNodeHandle& sibling) {
 void AnyNode::stack_behind(const AnyNodeHandle& sibling) {
     NOTF_ASSERT(this_thread::is_the_ui_thread());
     const AnyNodeConstPtr sibling_ptr = AnyNodeHandle::AccessFor<AnyNode>::get_node_ptr(sibling);
-    if ((sibling_ptr == nullptr) || (sibling_ptr.get() == this) || sibling_ptr->_get_parent() != _get_parent()) {
-        return;
+    if (sibling_ptr == nullptr) { NOTF_THROW(HandleExpiredError, "Node handle has expired."); }
+    if (sibling_ptr.get() == this) { return; }
+    if (sibling_ptr->_get_parent() != _get_parent()) {
+        NOTF_THROW(GraphError, "Cannot stack Node {} behind {}, because they are not siblings.", get_name(),
+                   sibling.get_name());
     }
     std::vector<AnyNodePtr>& siblings = _get_parent()->_write_children();
     const auto [my_index, sibling_index] = get_this_and_sibling_index(siblings, this, sibling_ptr);
@@ -169,7 +191,6 @@ void AnyNode::stack_behind(const AnyNodeHandle& sibling) {
 }
 
 bool AnyNode::_get_flag(const size_t index) const {
-    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
     if (index >= s_user_flag_count) {
         NOTF_THROW(IndexError, "Cannot test user flag #{} of Node {}, because Nodes only have {} user-defineable flags",
                    index, get_name(), s_user_flag_count);
@@ -187,13 +208,17 @@ void AnyNode::_set_flag(const size_t index, const bool value) {
 }
 
 void AnyNode::_remove_child(const AnyNode* child) {
+    NOTF_ASSERT(child);
     NOTF_ASSERT(this_thread::is_the_ui_thread());
 
     // do not create a modified copy for finding the child
     const std::vector<AnyNodePtr>& read_only_children = _read_children();
     auto itr = std::find_if(read_only_children.begin(), read_only_children.end(),
                             [child](const AnyNodePtr& node) { return node.get() == child; });
-    if (itr == read_only_children.end()) { return; } // not a child of this node
+    if (itr == read_only_children.end()) {
+        NOTF_LOG_WARN("Cannot node {} is not a child of node {}", child->get_name(), get_name());
+        return;
+    }
 
     // remove the child node
     const size_t child_index = static_cast<size_t>(std::distance(read_only_children.begin(), itr));
@@ -256,14 +281,13 @@ void AnyNode::_clear_modified_data() {
     _clear_modified_properties();
 }
 
-bool AnyNode::_has_ancestor(const AnyNode* const ancestor) const {
-    NOTF_ASSERT(this_thread::is_the_ui_thread()); // method is const, but not thread-safe
-    if (ancestor == nullptr) { return false; }
+bool AnyNode::_has_ancestor(const AnyNode* const node) const {
+    if (node == nullptr) { return false; }
     const AnyNode* next = _get_parent();
     for (; next != next->_get_parent(); next = next->_get_parent()) {
-        if (next == ancestor) { return true; }
+        if (next == node) { return true; }
     }
-    return next == ancestor; // true if the root node itself is the ancestor in question
+    return next == node; // true if the root node itself is the ancestor in question
 }
 
 const AnyNode* AnyNode::_get_common_ancestor(const AnyNode* const other) const {
@@ -345,13 +369,14 @@ void AnyNode::_set_internal_flag(const size_t index, const bool value) {
     _ensure_modified_data().flags[index] = value;
 }
 
-AnyNode::Data& AnyNode::_ensure_modified_data() {
+AnyNode::ModifiedData& AnyNode::_ensure_modified_data() {
     NOTF_ASSERT(this_thread::is_the_ui_thread());
-    if (m_modified_data == nullptr) { m_modified_data = std::make_unique<Data>(m_parent, m_children, m_flags); }
+    if (m_modified_data == nullptr) { m_modified_data = std::make_unique<ModifiedData>(m_parent, m_children, m_flags); }
     return *m_modified_data;
 }
 
-void AnyNode::_mark_as_dirty() {
+void AnyNode::_set_dirty() {
+    NOTF_ASSERT(this_thread::is_the_ui_thread());
     if (!_is_finalized()) { return; }
     if (!_get_internal_flag(to_number(InternalFlags::DIRTY))) {
         _set_internal_flag(to_number(InternalFlags::DIRTY));

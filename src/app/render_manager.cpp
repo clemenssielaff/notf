@@ -55,6 +55,8 @@ void RenderManager::RenderThread::_run() {
         // brute-forcing the optimal one.
 
         { // render the window
+            NOTF_GUARD(std::lock_guard(TheGraph::AccessFor<RenderManager>::get_mutex()));
+
             GraphicsContext& context = window->get_graphics_context();
             NOTF_GUARD(context.make_current());
 

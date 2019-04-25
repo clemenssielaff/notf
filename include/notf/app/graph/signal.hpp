@@ -102,7 +102,7 @@ public:
 
 // signal handle ==================================================================================================== //
 
-/// Object wrapping a weak_ptr to a Signal Publisher. Is returned by Node::connect_signal and can safely be stored &
+/// Object wrapping a weak_ptr to a Signal Publisher. Is returned by Node::connect_signal and can safely be stored and
 /// copied anywhere.
 template<class T>
 class SignalHandle {

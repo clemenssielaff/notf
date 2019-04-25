@@ -81,7 +81,11 @@ void Painter::set_transform(const M3f& xform) {
 }
 
 Painter& Painter::operator*=(const M3f& xform) {
-    _get_state().xform *= xform;
+    if(xform != M3f::identity()){
+        auto& state = _get_state();
+        state.xform *= xform;
+        PlotterDesign::AccessFor<Painter>::add_command<PlotterDesign::SetXform>(m_design, state.xform);
+    }
     return *this;
 }
 

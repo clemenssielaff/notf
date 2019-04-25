@@ -2,6 +2,8 @@
 
 #include "notf/graphic/plotter/painter.hpp"
 
+#include "notf/reactive/trigger.hpp"
+
 #include "notf/app/widget/widget_scene.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -15,17 +17,9 @@ AnyWidget::AnyWidget(valid_ptr<AnyNode*> parent) : super_t(parent) {
         value = clamp(value, 0, 1);
         return true;
     });
-    //    connect_signal(m_visibility.get_signal(), &Widget::_relayout_upwards);
-}
+    connect_property<visibility>()->subscribe(Trigger([this](const bool&) { this->_relayout_upwards(); }));
 
-const Aabrf& AnyWidget::get_clipping_rect() const {
-    if (AnyWidget* parent = dynamic_cast<AnyWidget*>(AnyNode::AccessFor<AnyWidget>::get_parent(*this))) {
-        return parent->get_clipping_rect();
-    } else {
-        WidgetScene* scene = dynamic_cast<WidgetScene*>(AnyNode::AccessFor<AnyWidget>::get_parent(*this));
-        NOTF_ASSERT(scene);
-        return scene->get_clipping_rect();
-    }
+    // TODO: always have a layout instance for a widget, maybe a StackLayout?
 }
 
 M3f AnyWidget::get_xform_to(WidgetHandle target) const {
@@ -42,7 +36,7 @@ M3f AnyWidget::get_xform_to(WidgetHandle target) const {
         if (!itr) {
             NOTF_THROW(GraphError, "Nodes \"{}\" and \"{}\" are not in the same Scene", get_name(), target.get_name());
         }
-        source_branch *= itr->get_xform<Space::PARENT>();
+        source_branch *= itr->get_xform();
     }
 
     M3f target_branch = M3f::identity();
@@ -51,7 +45,7 @@ M3f AnyWidget::get_xform_to(WidgetHandle target) const {
         if (!itr) {
             NOTF_THROW(GraphError, "Nodes \"{}\" and \"{}\" are not in the same Scene", get_name(), target.get_name());
         }
-        target_branch *= itr->get_xform<Space::PARENT>();
+        target_branch *= itr->get_xform();
     }
     target_branch = target_branch.get_inverse();
 
@@ -59,10 +53,26 @@ M3f AnyWidget::get_xform_to(WidgetHandle target) const {
     return source_branch;
 }
 
-void AnyWidget::set_grant(Size2f grant) {
-    if (grant != m_grant) {
-        m_grant = std::move(grant);
-        _relayout_downwards();
+const Aabrf& AnyWidget::get_clipping_rect() const {
+    if (AnyWidget* parent = dynamic_cast<AnyWidget*>(AnyNode::AccessFor<AnyWidget>::get_parent(*this))) {
+        return parent->get_clipping_rect();
+    } else {
+        WidgetScene* scene = dynamic_cast<WidgetScene*>(AnyNode::AccessFor<AnyWidget>::get_parent(*this));
+        NOTF_ASSERT(scene);
+        return scene->get_clipping_rect();
+    }
+}
+
+void AnyWidget::set_claim(WidgetClaim claim) {
+    m_is_claim_explicit = true;
+    _set_claim(std::move(claim));
+}
+
+void AnyWidget::unset_claim() {
+    if (m_is_claim_explicit) {
+        m_is_claim_explicit = false;
+        const auto [_, claim_list] = _get_claim_list();
+        _set_claim(m_layout->calculate_claim(claim_list));
     }
 }
 
@@ -73,48 +83,75 @@ void AnyWidget::_set_claim(WidgetClaim claim) {
     }
 }
 
-void AnyWidget::_set_child_xform(WidgetHandle& widget, M3f xform) {
-    if (AnyWidget* widget_ptr = WidgetHandle::AccessFor<AnyWidget>::get_widget(widget)) {
-        widget_ptr->m_layout_xform = std::move(xform);
+void AnyWidget::_set_grant(Size2f grant) {
+    if (grant != m_grant) {
+        m_grant = std::move(grant);
+        _relayout_downwards();
     }
+}
+
+std::pair<std::vector<AnyWidget*>, AnyWidget::Layout::ClaimList> AnyWidget::_get_claim_list() {
+    std::vector<AnyWidget*> child_widgets;
+    child_widgets.reserve(get_child_count());
+    for (size_t i = 0; i < get_child_count(); ++i) {
+        // TODO: can we make sure that widgets can only parent other widgets? Or can they in fact parent other things?
+        if (AnyWidget* child
+            = dynamic_cast<AnyWidget*>(AnyNodeHandle::AccessFor<AnyWidget>::get_node_ptr(get_child(i)).get())) {
+            child_widgets.emplace_back(child);
+        }
+    }
+
+    std::vector<const WidgetClaim*> child_claims;
+    child_claims.reserve(child_widgets.size());
+    for (AnyWidget* child : child_widgets) {
+        child_claims.push_back(&child->m_claim);
+    }
+
+    return std::make_pair(std::move(child_widgets), std::move(child_claims));
 }
 
 void AnyWidget::_relayout_upwards() {
     AnyWidget* parent = dynamic_cast<AnyWidget*>(AnyNode::AccessFor<AnyWidget>::get_parent(*this));
     if (!parent) {
-        return; // only the root Widget has no parent Widget
-    }
-
-    WidgetClaim new_parent_claim = parent->_calculate_claim();
-    if (new_parent_claim == parent->m_claim) {
-        // this Widget's Claim changed, but the parent's Claim stayed the same
-        // therefore the parent needs to re-layout its children
+        // if the parent is not a widget, this is the root widget
+        _relayout_downwards();
+    } else if (parent->m_is_claim_explicit) {
+        // if the parent's claim is explicit, it will not update its own claim and only needs to re-layout its children
         parent->_relayout_downwards();
     } else {
-        // this Widget's Claim changed, and the parent's Claim will have to change as a result
-        // therefore, the parent needs to update its Claim and continue the propagation of the change up the hierarchy
-        parent->_set_claim(std::move(new_parent_claim));
+        const auto [_, claim_list] = _get_claim_list();
+        WidgetClaim new_parent_claim = parent->get_layout().calculate_claim(claim_list);
+        if (new_parent_claim == parent->m_claim) {
+            // if the parent did not update its Claim, it needs to re-layout its children
+            parent->_relayout_downwards();
+        } else {
+            // if the parent's Claim changed as well, we need to propagate the update up the hierarchy
+            parent->_set_claim(std::move(new_parent_claim));
+        }
     }
 }
 
 void AnyWidget::_relayout_downwards() {
-    _relayout();
-    m_content_aabr = _calculate_content_aabr();
-}
+    auto [child_widgets, claim_list] = _get_claim_list();
+    const std::vector<Layout::Placement> placements = m_layout->update(claim_list, m_grant);
+    NOTF_ASSERT(placements.size() == child_widgets.size());
 
-Aabrf AnyWidget::_calculate_content_aabr() const {
-    Aabrf result = Aabrf::zero();
-    for (size_t i = 0; i < get_child_count(); ++i) {
-        if (AnyWidget* child
-            = dynamic_cast<AnyWidget*>(AnyNodeHandle::AccessFor<AnyWidget>::get_node_ptr(get_child(i)).get())) {
-            result.unite(child->get_aabr<Space::PARENT>());
-        }
+    m_children_aabr = Aabrf::zero();
+    for (size_t i = 0; i < child_widgets.size(); ++i) {
+        AnyWidget* child = child_widgets[i];
+        NOTF_ASSERT(child);
+
+        // update the child's layout placement
+        child->m_layout_xform = std::move(placements[i].xform);
+        child->_set_grant(std::move(placements[i].grant));
+
+        // update the children aabr
+        m_children_aabr.unite(transform_by(child->get_aabr(), child->get_xform()));
     }
-    return result;
 }
 
 const PlotterDesign& AnyWidget::_get_design() {
-    if(m_design.is_dirty()){
+    if (m_design.is_dirty()) {
         Painter painter(m_design);
         _paint(painter);
     }
@@ -125,14 +162,7 @@ void AnyWidget::_get_window_xform(M3f& result) const {
     if (AnyWidget* parent = dynamic_cast<AnyWidget*>(AnyNode::AccessFor<AnyWidget>::get_parent(*this))) {
         parent->_get_window_xform(result);
     }
-    result *= get_xform<Space::PARENT>();
-}
-
-template<>
-M3f AnyWidget::get_xform<AnyWidget::Space::WINDOW>() const {
-    M3f result = M3f::identity();
-    _get_window_xform(result);
-    return result;
+    result *= get_xform();
 }
 
 NOTF_CLOSE_NAMESPACE

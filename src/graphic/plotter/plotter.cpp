@@ -1,75 +1,3 @@
-/// The Plotter uses OpenGL shader tesselation for most of the primitive construction, it only passes the bare minimum
-/// of information on to the GPU required to tesselate a cubic bezier spline. There are however a few things to consider
-/// when transforming a Bezier curve into the Plotter GPU representation.
-///
-/// The shader takes a patch that is made up of two vertices v1 and v2.
-/// Each vertex has 3 attributes:
-///     a1. its position in absolute screen coordinates
-///     a2. the modified(*) position of a bezier control point to the left, in screen coordinates relative to a1.
-///     a3. the modified(*) position of a bezier control point to the right, in screen coordinates relative to a1.
-///
-/// When drawing the spline from a patch of two vertices, only the middle 4 attributes are used:
-///
-///     v1.a1           is the start point of the bezier spline.
-///     v1.a1 + v1.a3   is the first control point
-///     v2.a1 + v2.a2   is the second control point
-///     v2.a1           is the end point
-///
-/// (*)
-/// For the correct calculation of caps and joints, we need the tangent directions at each vertex.
-/// This information is easy to derive if a2 != a1 and a3 != a1. If however, one of the two control points has zero
-/// distance to the vertex, the shader would require the next patch in order to get the tangent - which doesn't work.
-/// Therefore each control point ax is modified with the following formula (with T begin the tangent normal in the
-/// direction of ax):
-///
-///     if ax - a1 == (0, 0):
-///         ax' = T
-///     else:
-///         ax' = T * (||ax - a1|| + 1)     (whereby T = |ax - a1|)
-///
-/// Caps
-/// ----
-///
-/// Without caps, lines would only be antialiased on either sides of the line, not their end points.
-/// In order to tell the shader to render a start- or end-cap, we pass two vertices with special requirements:
-///
-/// For the start cap:
-///
-///     v1.a1 == v2.a1 && v2.a2 == (0,0)
-///
-/// For the end cap:
-///
-///     v1.a1 == v2.a1 && v1.a3 == (0,0)
-///
-/// If the tangent at the cap is required, you can simply invert the tangent obtained from the other ctrl point.
-///
-/// Joints
-/// ------
-///
-/// In order to render multiple segments without a visual break, the Plotter adds intermediary joints.
-/// A joint segment also consists of two vertices but imposes additional requirements:
-///
-///     v1.a1 == v2.a1
-///
-/// This is easily accomplished by re-using indices of the existing vertices and doesn't increase the size of the
-/// vertex array.
-///
-/// Text
-/// ====
-///
-/// It is possible to render a glyph using a single vertex with the given 6 vertex attributes available, because there
-/// is a 1:1 correspondence from screen to texture pixels:
-///
-/// 0           | Screen position of the glyph's lower left corner
-/// 1           |
-/// 2       | Texture coordinate of the glyph's lower left vertex
-/// 3       |
-/// 4   | Height and with of the glyph in pixels, used both for defining the position of the glyph's upper right corner
-/// 5   | as well as its texture coordinate
-///
-/// In order for Glyphs to render, the Shader requires the FontAtlas size, which is passed in to the same uniform as is
-/// used as the "center" vertex for shapes.
-
 #include "notf/graphic/plotter/plotter.hpp"
 
 #include "notf/meta/log.hpp"
@@ -88,14 +16,6 @@
 #include "notf/graphic/uniform_buffer.hpp"
 
 NOTF_USING_NAMESPACE;
-
-// TODO: I should yet be able to exactly determine the area of a pixel filled with a line!
-//       1. transform the pixel so the line goes along the x-axis
-//       2. we need to calculate the area of a 6-sided polygon, where 2 sides are allowed to have a length of zero
-//          This assumes we don't have a line that is shorter than a pixel wide.
-//          If the pixel is completely within the line, we have a 4-sided square, if one or two of the lines edges
-//          intersect the pixel, one or two of the corners are flattened.
-//          Since the pixel is already rotated, both edges of the line are either vertical or horizontal
 
 namespace {
 
@@ -291,8 +211,6 @@ Plotter::Plotter(GraphicsContext& context) : m_context(context) {
         FragmentShaderPtr frag_shader = FragmentShader::create("plotter.frag", frag_src);
 
         m_program = ShaderProgram::create(m_context, "Plotter", vertex_shader, tess_shader, frag_shader);
-
-        m_program->get_uniform("aa_width").set(static_cast<float>(sqrt(2.l) / 2.l));
         m_program->get_uniform("font_texture").set(TheGraphicsSystem::get_environment().font_atlas_texture_slot);
     }
 
@@ -352,13 +270,13 @@ void Plotter::start_parsing() {
     //         create new Path2Ptrs each time?
 }
 
-void Plotter::parse(const PlotterDesign& design, const M3f& xform, const Aabrf& clip) {
+void Plotter::parse(const PlotterDesign& design, const M3f& base_xform, const Aabrf& clip) {
     // reset the state stack for each design
     m_states.clear();
     m_states.emplace_back();
 
     // adopt the Design's auxiliary information
-    _get_state().xform = xform;
+    _get_state().xform = base_xform;
     _get_state().clip = clip;
 
     // parse the commands
@@ -367,7 +285,7 @@ void Plotter::parse(const PlotterDesign& design, const M3f& xform, const Aabrf& 
             overloaded{[&](const PlotterDesign::ResetState&) { _get_state() = {}; },
                        [&](const PlotterDesign::PushState&) { m_states.emplace_back(m_states.back()); },
                        [&](const PlotterDesign::PopState&) { _pop_state(); },
-                       [&](const PlotterDesign::SetXform& cmd) { _get_state().xform = cmd.data->transformation; },
+                       [&](const PlotterDesign::SetXform& cmd) { _get_state().xform = base_xform * cmd.data->xform; },
                        [&](const PlotterDesign::SetPaint& cmd) { _get_state().paint = cmd.data->paint; },
                        [&](const PlotterDesign::SetPath& cmd) { _get_state().path = cmd.data->path; },
                        [&](const PlotterDesign::SetClip& cmd) { _get_state().clip = cmd.data->clip; },
@@ -394,6 +312,8 @@ void Plotter::finish_parsing() {
     m_context->program = m_program;
     m_context->uniform_slots[0].bind_block(m_program->get_uniform_block("PaintBlock"));
     m_context->uniform_slots[0].bind_buffer(m_paint_buffer);
+    m_context->cull_face = CullFace::BACK;
+    m_context->blend_mode = BlendMode(BlendMode::SOURCE_OVER2, BlendMode::SOURCE_OVER);
     m_server_state.paint_index = 0;
 
     // upload the buffers
@@ -401,12 +321,6 @@ void Plotter::finish_parsing() {
     m_index_buffer->upload();
     m_xform_buffer->upload();
     m_paint_buffer->upload();
-
-    // reset the internal state
-    NOTF_CHECK_GL(glEnable(GL_CULL_FACE));
-    NOTF_CHECK_GL(glCullFace(GL_BACK));
-    NOTF_CHECK_GL(glEnable(GL_BLEND));
-    NOTF_CHECK_GL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
     // screen size
     const Aabri& render_area = m_context->framebuffer.get_render_area();
@@ -428,12 +342,20 @@ void Plotter::finish_parsing() {
     }
 }
 
-uint Plotter::_store_path(const Path2Ptr& path) {
+uint Plotter::_store_path(const Path2Ptr& p_path) {
     // return the index of an existing path
-    if (auto itr = m_path_lookup.find(path); itr != m_path_lookup.end()) { return itr->second; }
+    if (auto itr = m_path_lookup.find(p_path); itr != m_path_lookup.end()) { return itr->second; }
 
     std::vector<Vertex>& vertices = m_vertex_buffer->write();
     std::vector<GLuint>& indices = m_index_buffer->write();
+
+    // TODO: I had the idea of storing an offset into the Path2 itself, this way we were able to use instancing
+    // more effectively (also see the xform buffer on the plotter, that is currently unused). But this idea
+    // kinda fell off the wagon and is now left in limbo. For now, we use the transformation of the state to
+    // create a tarnsformed copy of the path, which is shitty but works.
+    const M3f& xform = _get_state().xform;
+    NOTF_ASSERT(!p_path->get_subpaths().empty());
+    Path2Ptr path = Path2::create(transform_by(p_path->get_subpaths().front().m_path, xform));
 
     // create the new path
     Path new_path;
@@ -475,6 +397,8 @@ uint Plotter::_store_path(const Path2Ptr& path) {
         { // create vertices
             const size_t expected_size = vertices.size() + subpath.segment_count + (subpath.is_closed ? 0 : 1);
             vertices.reserve(expected_size);
+
+
 
             { // first vertex
                 CubicBezier2f right_segment = subpath.get_segment(0);

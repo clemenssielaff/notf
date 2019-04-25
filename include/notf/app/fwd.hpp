@@ -60,8 +60,6 @@ using AnyNodeOwner = NodeOwner<AnyNode>;
 // graph/property.hpp
 NOTF_DECLARE_SHARED_POINTERS(class, AnyProperty);
 NOTF_DECLARE_SHARED_POINTERS_TEMPLATE1(class, TypedProperty);
-
-// graph/property.hpp
 template<class>
 class Property;
 
@@ -115,7 +113,7 @@ struct AnyInput;
 // widget //
 
 // widget/any_widget.hpp
-class AnyWidget;
+NOTF_DECLARE_SHARED_POINTERS(class, AnyWidget);
 class WidgetHandle;
 
 // widget/widget.hpp

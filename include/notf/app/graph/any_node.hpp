@@ -8,7 +8,7 @@
 
 #include "notf/app/graph/graph.hpp"
 #include "notf/app/graph/node_handle.hpp"
-#include "notf/app/graph/property.hpp"
+#include "notf/app/graph/property_handle.hpp"
 #include "notf/app/graph/signal.hpp"
 #include "notf/app/graph/slot.hpp"
 
@@ -20,6 +20,7 @@ namespace detail {
 
 struct GraphVerifier {
 
+    /// Checks if node type A can be a parent of node type B
     template<class A, class B>
     static constexpr bool can_a_parent_b() noexcept {
         // both A and B must be derived from Node
@@ -68,6 +69,7 @@ private:
 /// and more convenient to use the compile-time functions that use ConstStrings or StringTypes, because the compiler can
 /// use them to infer the expected type.
 /// Using the `AnyNode` class, it is also possible to create bindings for untyped languages like Python.
+/// The set of all of a node type's Properties, Signals and Slots are called *Attributes*.
 ///
 /// The Node interface is used internally only, meaning only through Node subclasses or by other notf objects.
 /// All user-access should occur through NodeHandle instances. This way, we can rely on certain preconditions to be met
@@ -126,21 +128,7 @@ public:
         /// Finds and returns the next Node in the iteration.
         /// @param node [OUT] Next Node in the iteration.
         /// @returns    True if a new Node was found.
-        bool next(AnyNodeHandle& output_node) {
-            while (!m_iterators.empty()) {
-                Impl& it = m_iterators.back();
-                output_node = it.node;
-
-                if (it.index == it.end) {
-                    m_iterators.pop_back();
-                } else {
-                    const size_t child_count = output_node->get_child_count();
-                    if (child_count > 0) { m_iterators.emplace_back(output_node->get_child(0), child_count); }
-                }
-                return true;
-            }
-            return false;
-        }
+        bool next(AnyNodeHandle& output_node);
 
         // fields ---------------------------------------------------------- //
     private:
@@ -170,7 +158,7 @@ private:
     using RedrawObserverPtr = std::shared_ptr<RedrawObserver>;
 
     // flags ------------------------------------------------------------------
-
+private:
     /// Total bumber of flags on a Node (as many as fit into a word).
     using Flags = std::bitset<bitsizeof<size_t>()>;
 
@@ -185,23 +173,32 @@ private:
     static_assert(to_number(InternalFlags::__LAST) <= bitset_size_v<Flags>);
 
     /// Number of flags reserved for internal usage.
-    static constexpr size_t s_internal_flag_count = to_number(InternalFlags::__LAST);
+    static constexpr const size_t s_internal_flag_count = to_number(InternalFlags::__LAST);
+
+protected:
+    /// Number of user-definable flags on this system.
+    static constexpr size_t s_user_flag_count = bitset_size_v<Flags> - s_internal_flag_count;
 
     // data -------------------------------------------------------------------
-
-    /// Unlike event handling, which is concurrent but not parallel, rendering happens truly parallel to the UI thread.
-    /// If there was no synchronization between the render- and UI-thread, we could never be certain that the Graph
-    /// didn't change halfway through the rendering process, resulting in frames that depict weird half-states.
+private:
+    /// Unlike event handling, which is concurrent but not parallel, rendering really happens in parallel to the UI
+    /// thread. If there was no synchronization between the render- and UI-thread, we could never be certain that the
+    /// Graph didn't change halfway through the rendering process, resulting in frames that depict weird half-states.
     /// Therefore, all modifications on a Node are first applied to a copy of the Node's Data, while the renderer still
     /// sees the Graph as it was when it was last "synchronized".
+    ///
+    /// All modifyable data of a node is packed into a single `ModifiedData` object, instead of having individual
+    /// pointers to a potential modified copy of each value.
     /// Since it will be a lot more common for a single Node to be modified many times than it is for many Nodes to be
-    /// modified a single time, it is advantageous to have a single unused pointer to data in many Nodes and a few
-    /// unneccessary data copies on some, than it is to have many unused pointers on most Nodes.
-    struct Data {
+    /// modified a single time, it is advantageous to have a single unused pointer to a Data object in most Nodes and a
+    /// few unneccessary copies on others, than it is to have many unused pointers on most Nodes.
+    struct ModifiedData {
         /// Value Constructor.
         /// Initializes all data, so we can be sure that all of it is valid if a modified data copy exists.
-        Data(valid_ptr<AnyNode*> parent, const std::vector<AnyNodePtr>& children, Flags flags)
-            : parent(parent), children(std::make_unique<std::vector<AnyNodePtr>>(children)), flags(std::move(flags)) {}
+        /// @param parent   Modified parent of this Node, if it was moved.
+        /// @param children Modified children of this Node, should they have changed.
+        /// @param flags    Modified flags of this Node.
+        ModifiedData(valid_ptr<AnyNode*> parent, const std::vector<AnyNodePtr>& children, Flags flags);
 
         /// Modified parent of this Node, if it was moved.
         valid_ptr<AnyNode*> parent;
@@ -212,11 +209,7 @@ private:
         /// Modified flags of this Node.
         Flags flags;
     };
-    using DataPtr = std::unique_ptr<Data>;
-
-protected:
-    /// Number of user-definable flags on this system.
-    static constexpr size_t s_user_flag_count = bitset_size_v<Flags> - s_internal_flag_count;
+    using ModifiedDataPtr = std::unique_ptr<ModifiedData>;
 
     // methods --------------------------------------------------------------------------------- //
 protected:
@@ -231,7 +224,7 @@ public:
     virtual ~AnyNode();
 
     // identification ---------------------------------------------------------
-
+public:
     /// Uuid of this Node.
     Uuid get_uuid() const noexcept { return m_uuid; }
 
@@ -250,7 +243,7 @@ public:
     AnyNodeHandle handle_from_this() { return weak_from_this(); }
 
     // properties -------------------------------------------------------------
-
+public:
     /// The value of a Property of this Node.
     /// @param name     Node-unique name of the Property.
     /// @returns        The value of the Property.
@@ -281,7 +274,7 @@ public:
     }
 
     // signals / slots --------------------------------------------------------
-
+public:
     /// @{
     /// Manually call the requested Slot of this Node.
     /// If T is not`None`, this method takes a second argument that is passed to the Slot.
@@ -320,26 +313,21 @@ public:
     }
 
     // hierarchy --------------------------------------------------------------
-
+public:
     /// The parent of this Node.
-    AnyNodeHandle get_parent() const;
+    AnyNodeHandle get_parent() const { return _get_parent()->shared_from_this(); }
 
     /// Tests, if this Node is a descendant of the given ancestor.
     /// If the handle passed in is expired, the answer is always false.
     /// @param ancestor         Potential ancestor to verify.
-    bool has_ancestor(const AnyNodeHandle& ancestor) const {
-        if (const AnyNodeConstPtr ancestor_lock = AnyNodeHandle::AccessFor<AnyNode>::get_node_ptr(ancestor)) {
-            return _has_ancestor(ancestor_lock.get());
-        } else {
-            return false;
-        }
-    }
+    bool has_ancestor(const AnyNodeHandle& ancestor) const;
 
     /// Finds and returns the first common ancestor of two Nodes.
     /// At the latest, the RootNode is always a common ancestor.
     /// If the handle passed in is expired, the returned handle will also be expired.
     /// @param other        Other Node to find the common ancestor for.
-    /// @throws GraphError  If there is no common ancestor.
+    /// @throws HandleExpiredError  If the sibling handle has expired.
+    /// @throws GraphError          If there is no common ancestor.
     AnyNodeHandle get_common_ancestor(const AnyNodeHandle& other) const;
 
     /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
@@ -385,13 +373,14 @@ public:
         NOTF_ASSERT(parent);
         parent->_remove_child(this);
     }
-    // z-order ----------------------------------------------------------------
 
+    // z-order ----------------------------------------------------------------
+public:
     /// Checks if this Node is in front of all of its siblings.
-    bool is_in_front() const;
+    bool is_in_front() const { return _read_siblings().back().get() == this; }
 
     /// Checks if this Node is behind all of its siblings.
-    bool is_in_back() const;
+    bool is_in_back() const { return _read_siblings().front().get() == this; }
 
     /// Returns true if this node is stacked anywhere in front of the given sibling.
     /// Also returns false if the handle is expired, the given Node is not a sibling or it is the same as this.
@@ -411,23 +400,24 @@ public:
 
     /// Moves this Node before a given sibling.
     /// @param sibling  Sibling to stack before.
-    /// @throws hierarchy_error If the sibling is not a sibling of this node.
+    /// @throws HandleExpiredError  If the sibling handle has expired.
+    /// @throws GraphError          If the sibling is not a sibling of this node.
     void stack_before(const AnyNodeHandle& sibling);
 
     /// Moves this Node behind a given sibling.
     /// @param sibling  Sibling to stack behind.
-    /// @throws hierarchy_error If the sibling is not a sibling of this node.
+    /// @throws HandleExpiredError  If the sibling handle has expired.
+    /// @throws GraphError          If the sibling is not a sibling of this node.
     void stack_behind(const AnyNodeHandle& sibling);
 
-protected: // for all subclasses
     // properties -------------------------------------------------------------
-
+protected:
     /// (Re-)Defines a callback to be invoked every time the value of the Property is about to change.
     /// If the callback returns false, the update is cancelled and the old value remains.
     /// If the callback returns true, the update will proceed.
-    /// Since the value is passed in by mutable reference, it can modify the value however it wants to. Even if the new
-    /// value ends up the same as the old, the update will proceed. Note though, that the callback will only be called
-    /// if the value is initially different from the one stored in the PropertyOperator.
+    /// Since the value is passed in by mutable reference, the calblack can modify the value without restrictions. Even
+    /// if the new value ends up the same as the old, the update will proceed. Note though, that the callback will only
+    /// be called if the value is initially different from the one stored in the PropertyOperator.
     template<class T>
     void _set_property_callback(const std::string& property_name, typename TypedProperty<T>::callback_t callback) {
         NOTF_ASSERT(this_thread::is_the_ui_thread());
@@ -435,7 +425,7 @@ protected: // for all subclasses
     }
 
     // signals / slots --------------------------------------------------------
-
+protected:
     /// Internal access to a Slot of this Node.
     /// Used to forward calls to the Slot from the outside to some callback inside the Node.
     /// @param name     Node-unique name of the Slot.
@@ -464,22 +454,22 @@ protected: // for all subclasses
     /// @}
 
     // flags ------------------------------------------------------------------
-
+protected:
     /// Tests a user defineable flag on this Node.
-    /// @param index            Index of the user flag.
-    /// @returns                True iff the flag is set.
-    /// @throws IndexError   If index >= user flag count.
+    /// @param index    Index of the user flag.
+    /// @returns        True iff the flag is set.
+    /// @throws IndexError  If index >= user flag count.
     bool _get_flag(size_t index) const;
 
     /// Sets or unsets a user flag.
-    /// @param index            Index of the user flag.
-    /// @param value            Whether to set or to unser the flag.
-    /// @throws IndexError   If index >= user flag count.
+    /// @param index    Index of the user flag.
+    /// @param value    Whether to set or to unser the flag.
+    /// @throws IndexError  If index >= user flag count.
     void _set_flag(size_t index, bool value = true);
 
     // hierarchy --------------------------------------------------------------
-
-    /// Returns the first ancestor of this Node that has a specific type (can be empty if none is found).
+protected:
+    /// Returns the first ancestor of this Node that has a specific type.
     /// @returns    Raw pointer to the first ancestor of this Node of a specific type, is nullptr if none was found.
     template<class T, typename = std::enable_if_t<std::is_base_of<AnyNode, T>::value>>
     T* _get_first_ancestor() const {
@@ -526,7 +516,7 @@ protected: // for all subclasses
     /// @param new_parent_handle    New parent of this Node. If it is the same as the old, this method does nothing.
     void _set_parent(AnyNodeHandle new_parent_handle);
 
-    /// Tests if the parent of
+    /// Tests if the parent of this node is of a particular type.
     template<class T>
     bool _has_parent_of_type() const {
         return dynamic_cast<T*>(_get_parent()) != nullptr;
@@ -562,9 +552,8 @@ private:
     /// Never creates a modified copy.
     AnyNode* _get_parent() const;
 
-    /// Called on every new Node instance right after the Constructor of the most derived class has finished.
-    /// The reason for this method is that in it, you can already create Handles to this Node, which you cannot do in
-    /// the constructor.
+    /// Called on every new Node instance right after the constructor of the most derived class has finished.
+    /// Unlike in the constructor, you can already create Handles to this Node.
     virtual void _finalize() {}
 
     /// Marks this Node as finalized.
@@ -602,6 +591,8 @@ private:
     /// @throws         NameError / TypeError
     template<class T>
     TypedSlot<T>* _try_get_slot(const std::string& name) const {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
+
         AnySlot* any_slot = _get_slot_impl(name);
         if (!any_slot) { NOTF_THROW(NameError, "Node \"{}\" has no Slot called \"{}\"", get_name(), name); }
 
@@ -620,6 +611,8 @@ private:
     /// @throws         NameError / TypeError
     template<class T>
     TypedSignalPtr<T> _try_get_signal(const std::string& name) const {
+        NOTF_ASSERT(this_thread::is_the_ui_thread());
+
         AnySignalPtr any_signal = _get_signal_impl(name);
         if (!any_signal) { NOTF_THROW(NameError, "Node \"{}\" has no Signal called \"{}\"", get_name(), name); }
 
@@ -632,7 +625,12 @@ private:
         return typed_signal;
     }
 
-    bool _has_ancestor(const AnyNode* ancestor) const;
+    /// Checks if the given node is an ancestor of this node.
+    /// Returns false if node is this node.
+    /// Returns false if node is nullptr.
+    /// @param node Node to check.
+    /// @returns    True iff node is an ancestor of this node.
+    bool _has_ancestor(const AnyNode* node) const;
 
     /// Finds and returns the first common ancestor of two Nodes.
     /// At the latest, the RootNode is always a common ancestor.
@@ -662,7 +660,7 @@ private:
     void _set_internal_flag(size_t index, bool value = true);
 
     /// Creates (if necessary) and returns the modified Data for this Node.
-    Data& _ensure_modified_data();
+    ModifiedData& _ensure_modified_data();
 
     /// Marks this Node as dirty if it is finalized.
     void _set_dirty();
@@ -682,7 +680,7 @@ private:
     Flags m_flags;
 
     /// Pointer to modified Data, should this Node have been modified since the last Graph synchronization.
-    DataPtr m_modified_data;
+    ModifiedDataPtr m_modified_data;
 
     /// Hash of all Property values of this Node.
     size_t m_property_hash;
@@ -701,6 +699,7 @@ class Accessor<AnyNode, RootNode> {
     friend RootNode;
 
     static void set_finalized(AnyNode& node) { node._set_finalized(); }
+
     static std::vector<AnyNodePtr>& write_children(AnyNode& node) { return node._write_children(); }
 };
 
@@ -730,6 +729,7 @@ class Accessor<AnyNode, AnyWidget> {
     friend AnyWidget;
 
     static AnyNode* get_parent(const AnyNode& node) { return node._get_parent(); }
+
     static const AnyNode* get_common_ancestor(const AnyNode& node, const AnyNode* other) {
         return node._get_common_ancestor(other);
     }

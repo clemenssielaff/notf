@@ -101,6 +101,7 @@ public:
     /// Special "repetitions" value denoting infinite repetitions.
     static constexpr uint infinite = max_value<uint>();
 
+    /// States that Timer can take.
     enum class State : uchar {
         UNSTARTED,
         RUNNING,
@@ -110,7 +111,7 @@ public:
     // methods --------------------------------------------------------------------------------- //
 protected:
     /// Constructor.
-    /// @param repetitions  Number of times that the Timer will fire left.
+    /// @param repetitions  Number of times left that the Timer will fire.
     Timer(const uint repetitions = infinite)
         : m_repetitions_left(repetitions), m_state(m_repetitions_left != 0 ? State::UNSTARTED : State::FINISHED) {}
 

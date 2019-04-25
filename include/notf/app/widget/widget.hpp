@@ -285,7 +285,7 @@ protected:
             using widget_property_t = typename std::decay_t<decltype(property)>::element_type;
             property = std::make_unique<widget_property_t>();
 
-            // mark this Widget dirty whenever a REDRAW property changes its value
+            // mark this Widget dirty whenever a visible property changes its value
             if (widget_property_t::policy_t::visibility != AnyProperty::Visibility::INVISIBILE) {
                 property->get_operator()->subscribe(_get_redraw_observer());
             }
@@ -307,9 +307,8 @@ protected:
         });
     }
 
-public:
     // state machine ----------------------------------------------------------
-
+public:
     /// The name of the current State.
     std::string_view get_state_name() const noexcept final {
         return visit_at<std::string_view>(m_state, m_state.index(), [](const auto& state) -> std::string_view {
@@ -363,7 +362,7 @@ public:
     /// @}
 
     // properties -------------------------------------------------------------
-
+public:
     /// @{
     /// Returns the correctly typed value of a Property.
     /// @param name     Name of the requested Property.
@@ -423,7 +422,7 @@ public:
     using AnyNode::set;
 
     // signals / slots --------------------------------------------------------
-
+public:
     /// @{
     /// Manually call the requested Slot of this Node.
     /// If T is not`None`, this method takes a second argument that is passed to the Slot.
@@ -505,9 +504,8 @@ public:
     using AnyNode::connect_signal;
     using AnyNode::connect_slot;
 
-protected:
     // state machine ----------------------------------------------------------
-
+protected:
     /// Current State of this Widget.
     const StateVariant& _get_current_state() const { return m_state; }
 
@@ -590,7 +588,7 @@ protected:
     }
 
     // properties -------------------------------------------------------------
-
+protected:
     /// @{
     /// (Re-)Defines a callback to be invoked every time the value of the Property is about to change.
     template<char... Cs, class Study = _PropertyStudy<Cs...>, class Callback = typename Study::type::callback_t>
@@ -612,7 +610,7 @@ protected:
     using AnyNode::_set_property_callback;
 
     // signals / slots --------------------------------------------------------
-
+protected:
     /// @{
     /// Internal access to a Slot of this Node.
     /// @param name     Name of the requested Property.

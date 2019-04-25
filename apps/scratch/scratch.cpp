@@ -93,11 +93,11 @@ private:
     void _finalize() override {
 
         set<size_property>(Size2f(280, 200));
-        set<offset_xform>(M3f::translation(20, 20));
+        set<offset_xform>(M3f::translation(200, 200));
 
-        auto raw = handle_from_this();
-        NOTF_ASSERT(raw);
-        auto handle = handle_cast<NodeHandle<ParentWidget>>(raw);
+//        auto raw = handle_from_this();
+//        NOTF_ASSERT(raw);
+//        auto handle = handle_cast<NodeHandle<ParentWidget>>(raw);
 //        m_animation = IntervalTimer(60_fps, [handle]() mutable {
 //            if (handle.is_valid()) {
 //                TheEventHandler()->schedule([=]() mutable {
@@ -138,7 +138,6 @@ private:
         //                                                 V2f{380, 320}}));
         //        painter.stroke();
     }
-    void _relayout() override {}
     void _get_widgets_at(const V2f&, std::vector<WidgetHandle>&) const override {}
 
 private:

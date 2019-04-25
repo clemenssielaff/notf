@@ -23,6 +23,7 @@ public:
     enum Mode : uchar {
         SOURCE_OVER,      ///< Display the source image wherever the source image is opaque, the destination image
                           /// elsewhere (most common mode).
+        SOURCE_OVER2, // TODO: clearly wtf
         SOURCE_IN,        ///< Display the source image where the both are opaque, transparency elsewhere.
         SOURCE_OUT,       ///< Display the source image where the the source is opaque and the destination transparent,
                           ///  transparency elsewhere.
@@ -35,8 +36,10 @@ public:
         DESTINATION_ATOP, ///< Same as SOURCE_ATOP with the destination instead of the source.
         LIGHTER,          ///< The sum of the source image and destination image, with 255 (100%) as a limit.
         COPY,             ///< Source image instead of the destination image (overwrite destination).
+                          ///  Prodives the default values for `glBlendFuncSeparate`.
         XOR,              ///< Exclusive OR of the source image and destination image.
-        _DEFAULT = COPY,  ///< Provides the default values for `glBlendFuncSeparate`
+        OFF,              ///< No blending.
+        _DEFAULT = COPY,
     };
 
     /// Structure used to translate a notf::BlendMode into a pair of enums that can be used with OpenGL.
@@ -109,7 +112,7 @@ enum class CullFace : GLenum {
     FRONT = GL_FRONT,         ///< Do not render front-facing faces.
     BOTH = GL_FRONT_AND_BACK, ///< Cull all faces.
     NONE = GL_NONE,           ///< Render both front- and back-facing faces.
-    DEFAULT = BACK,
+    DEFAULT = BACK,           ///< Default OpenGL cull value.
 };
 
 struct GLBuffer {

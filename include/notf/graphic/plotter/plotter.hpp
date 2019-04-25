@@ -142,9 +142,9 @@ public:
     /// Type of joint beween two painted line segments.
     enum class JointStyle : uchar {
         _CURRENT, // default value, means "use the current one"
-        MITER,
-        ROUND,
         BEVEL,
+        ROUND,
+        MITER,
     };
 
     // external draw calls ----------------------------------------------------
@@ -191,9 +191,6 @@ private:
         CONCAVE = 2,
         TEXT = 3,
         STROKE = 4,
-        // JOINT     = 41, // internal
-        // START_CAP = 42, // internal
-        // END_CAP   = 43, // internal
     };
 
     /// The current State of the Plotter. Is used to diff against the target state.
@@ -359,10 +356,10 @@ public:
     void start_parsing();
 
     /// Paints the Design of the given Widget.
-    /// @param design   Design to parse.
-    /// @param xform    Base transformation.
-    /// @param clip     Clipping Aabr, in space transformed by `xform`.
-    void parse(const PlotterDesign& design, const M3f& xform = M3f::identity(), const Aabrf& clip = Aabrf::wrongest());
+    /// @param design       Design to parse.
+    /// @param base_xform   Base widget transformation.
+    /// @param clip         Clipping Aabr, in space transformed by `base_xform`.
+    void parse(const PlotterDesign& design, const M3f& base_xform, const Aabrf& clip = Aabrf::wrongest());
 
     /// Call after parsing the last design.
     /// Uploads all buffers to the GPU and enqueues all draw calls

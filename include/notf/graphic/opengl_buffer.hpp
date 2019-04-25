@@ -215,8 +215,28 @@ public:
     void upload() final {
         if (is_empty()) { return; }
 
+        const GLsizei buffer_size = m_buffer.size() * get_element_size();
+
         // update the local hash on request
-        if (0 == m_local_hash) { m_local_hash = hash(m_buffer); }
+        if (0 == m_local_hash) {
+
+            // TODO: memory bug here
+            // the problem is that `get_element_size` called from an uniform buffer produces the size of the data type
+            // plus padding - but in memory, we store it without padding. That means that when we pass the memory on to
+            // OpenGL, we will:
+            //  1. pass more memory than is in the buffer
+            //  2. from the second element ownwards, the offsets won't work and the data will be garbage
+            // The next line is a hack fix for nr. 1 at least for now, where we only have a single entry.
+            // THIS IS GARBAGE
+            // What I really want is not a virtual `get_memory_size`, but that the OpenGL buffer takes a type (Data)
+            // and produces its own type (data_t), which may or may not be the same as the one passed in.
+            // Of course, the big problem is, that we don't know the size of a uniform block (inclusive padding) at
+            // compile time ... otherwise, data_t could always be:
+            //  data_t : public Data { /* with a padding array, if necessary */ }
+            if (m_buffer.size() * sizeof(data_t) < buffer_size) { m_buffer.emplace_back(m_buffer.back()); }
+
+            m_local_hash = hash(m_buffer);
+        }
 
         // do nothing if the data on the server is still current
         if (m_local_hash == m_server_hash) { return; }
@@ -226,12 +246,12 @@ public:
 
         // upload the buffer data
         const GLenum gl_type = this->to_gl_type(this->get_type());
-        const GLsizei buffer_size = narrow_cast<GLsizei>(m_buffer.size() * get_element_size());
         if (buffer_size <= narrow_cast<GLsizei>(m_server_size)) {
-            NOTF_CHECK_GL(glBufferSubData(gl_type, /*offset = */ 0, buffer_size, &m_buffer.front()));
-        } else {
             NOTF_CHECK_GL(
-                glBufferData(gl_type, buffer_size, &m_buffer.front(), this->_to_gl_usage(this->get_usage_hint())));
+                glBufferSubData(gl_type, /*offset = */ 0, narrow_cast<GLsizei>(buffer_size), &m_buffer.front()));
+        } else {
+            NOTF_CHECK_GL(glBufferData(gl_type, narrow_cast<GLsizei>(buffer_size), &m_buffer.front(),
+                                       this->_to_gl_usage(this->get_usage_hint())));
             m_server_size = buffer_size;
             this->_log_buffer_size(buffer_size);
         }

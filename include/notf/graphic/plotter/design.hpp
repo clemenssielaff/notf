@@ -29,7 +29,7 @@ public:
     struct PopState {};
     struct SetXform {
         struct Data {
-            M3f transformation;
+            M3f xform;
         };
         std::unique_ptr<Data> data;
     };
@@ -124,11 +124,14 @@ private:
 
     // fields ---------------------------------------------------------------------------------- //
 private:
+    /// Whether or not the Design needs to be re-parsed or not.
+    /// Needs to start out dirty so the design is drawn at least once.
+    std::atomic_bool m_is_dirty = true;
+    // TODO: I don't know why this would have to be atomic, also we can move it into AnyWidget and put it into the
+    //       padding introduced after the Node baseclass for zero additional space requirements
+
     /// Buffer of untyped Command instances.
     std::vector<Command> m_buffer;
-
-    /// Whether or not the Design needs to be re-parsed or not.
-    std::atomic_bool m_is_dirty = false;
 };
 
 // accessors ======================================================================================================== //

@@ -4,24 +4,30 @@ precision mediump float;
 
 // constants ======================================================================================================== //
 
-// patch types
-const int CONVEX    = 1;
-const int CONCAVE   = 2;
-const int TEXT      = 3;
-const int STROKE    = 4;
-const int JOINT     = 41;
-const int START_CAP = 42;
-const int END_CAP   = 43;
+// type flags
+const int TYPE_FILL   = 1 << 0;
+const int TYPE_STROKE = 1 << 1;
+const int TYPE_TEXT   = 1 << 2;
 
-// cap styles
-const int CAP_STYLE_BUTT = 1;
-const int CAP_STYLE_ROUND = 2;
-const int CAP_STYLE_SQUARE = 3;
+const int TYPE_FILL_CONVEX  = 1 << 3;
+const int TYPE_FILL_CONCAVE = 1 << 4;
 
-// joint styles
-const int JOINT_STYLE_MITER = 1;
-const int JOINT_STYLE_ROUND = 2;
-const int JOINT_STYLE_BEVEL = 3;
+const int TYPE_STROKE_SEGMENT   = 1 << 5;
+const int TYPE_STROKE_JOINT     = 1 << 6;
+const int TYPE_STROKE_START_CAP = 1 << 7;
+const int TYPE_STROKE_END_CAP   = 1 << 8;
+
+const int TYPE_STROKE_JOINT_BEVEL         = 1 <<  9;
+const int TYPE_STROKE_JOINT_ROUND         = 1 << 10;
+const int TYPE_STROKE_JOINT_MITER         = 1 << 11;
+const int TYPE_STROKE_JOINT_MITER_CLIPPED = 1 << 12;
+
+const int TYPE_STROKE_CAP_BUTT   = 1 << 13;
+const int TYPE_STROKE_CAP_ROUND  = 1 << 14;
+const int TYPE_STROKE_CAP_SQUARE = 1 << 15;
+
+// constant symbols
+const float IGNORED = 0.; // for readability
 
 // uniforms ======================================================================================================== //
 
@@ -48,130 +54,32 @@ in FragmentData {
     /// start point of the line in screen coordinates
     flat vec2 line_origin;
 
-    /// normalized vector in direction of the line
-    flat vec2 line_direction;
-
-    /// x = line width, y = line length
-    flat vec2 line_size;
-
     /// transformation of the origin from screen- to line-space
     flat mat3x2 line_xform;
 
-    /// texture coordinate of this fragment
-    vec2 texture_coord;
+    /// Distance from the center of the line to its side.
+    flat float line_half_width;
 
     /// type of patch creating this fragment
     flat int patch_type;
+
+    /// texture coordinate of this fragment (interpolated)
+    vec2 texture_coord;
 } frag_in;
 
 layout(location=0) out vec4 final_color;
 
 // general ========================================================================================================= //
 
-/// Cross product for 2D vectors.
-float cross2(vec2 a, vec2 b)
-{
-    return a.x * b.y - a.y * b.x;
+/// Test a bitset against given flag/s.
+/// @param bitset       Integer bitset to test.
+/// @param flag         Integer flag/s to test for.
+/// @returns            True if all requested flags are set in the bitset.
+bool test(int bitset, int flag) {
+    return (bitset & flag) != 0;
 }
 
-// perfect antialiasing ============================================================================================ //
-
-/// Calculates the coverage of a 1x1 square (a pixel) that is intersected by a half-space at a given angle.
-/// For the area, we need the covered polygon which can have 3-5 sides, depending on the angle and offset of
-/// intersection. In order to speed up calculation on a GPU what we do is a bit more involved:
-///     1. Allocate 8 vec2s and define them to (-1, -1). These are going to be our vertices in screen coordinates.
-///        Values less than (0,0) can be used safely to denote "undefined" values as a fragment with negative
-///        coordinates would never be generated in the first place.
-///     2. Check each corner of the pixel and if it is inside the half space, write its position into the
-///        corresponding vertex. Corner vertices are at indices [0, 2, 4, 6]. If the corner is outside the half space,
-///        ignore it.
-///        Also remember the index of the first corner vertex that is inside the half space as we need it later.
-///     3. Find the intersection of each edge of the pixel with the half space.
-///        If the intersection exists and falls onto the edge of the pixel, store the intersection as a new vertex.
-///        Intersection vertices are stored at indices [1, 3, 5, 7].
-///     4. Fill the remaining, undefined vertices by copying their nearest defined neighbor. It doesn't matter if the
-///        neighbor has a higher or lower index, all that matters is that in the end, all are defined and that filling
-///        in does not add any area to the polygon.
-///     5. Lasty, calculate and return the area of the polygon.
-float half_space_coverage(vec2 point, vec2 start, vec2 direction, float half_stroke_width)
-{
-    vec2 corners[4] = vec2[](
-        point + vec2(+0.5, +0.5),
-        point + vec2(-0.5, +0.5),
-        point + vec2(-0.5, -0.5),
-        point + vec2(+0.5, -0.5)
-    );
-    vec2 vertices[8] = vec2[](vec2(-1), vec2(-1), vec2(-1), vec2(-1), vec2(-1), vec2(-1), vec2(-1), vec2(-1));
-
-    // check for each corner of the pixel if it is inside the half space
-    int first_known_vertex = 8;
-    for(int i=0; i < 4; ++i){
-        if(sign(cross2(direction, corners[i] - start)) < 0.){
-            vertices[i*2] = corners[i];
-            first_known_vertex = min(first_known_vertex, i*2);
-        }
-    }
-    if(first_known_vertex == 8){
-        return 0.; // if no corner is inside the half space, the coverage must be zero
-    }
-
-    // find all intersections of pixel edges with the half space
-    for(int i=0; i < 4; ++i){
-        vec2 edge = corners[(i+1) % 4] - corners[i];
-        float det = cross2(edge, direction);
-        if(det == 0.){
-            continue;
-        }
-        float t = cross2(start - corners[i], direction) / det;
-        if(0. <= t && t <= 1.){
-            vertices[(i*2)+1] = corners[i] + (edge * t);
-        }
-    }
-
-    // fill unknown vertices
-    for(int i, index = first_known_vertex+1; i < 7; ++i, index = ++index % 8){
-        if(vertices[index].x < 0.){
-            vertices[index] = vertices[index == 0 ? 7 : index-1];
-        }
-    }
-
-    // calculate the covered area
-    float result = 0.;
-    for(int i=0; i < 8; ++i){
-        result += vertices[i].x * vertices[(i + 1) % 8].y;
-        result -= vertices[i].y * vertices[(i + 1) % 8].x;
-    }
-    return result/2.;
-}
-
-/// Calculates the "perfect" coverage area of the fragment by an infinite line.
-/// This method is probably (?) a lot more expensive than the sampling approach without much of a visual difference.
-/// I keep it as a reference and because there might be a use-case for "perfect" line anti-aliasing in the future.
-/// @param coord        Coordinate to sample (typically that is going to be `gl_FragCoord.xy`).
-/// @param point        Any point on the line.
-/// @param direction    Direction of the line (normalized).
-/// @param width        Width of the line.
-float perfect_sample(vec2 coord, vec2 point, vec2 direction, float width)
-{
-    const float half_diagonal = sqrt(2.) / 2.;
-    float half_width = width / 2.;
-
-    // early outs
-    float distance_to_line = distance(coord, point + (direction * dot(coord-point, direction)));
-    if(distance_to_line > half_diagonal + half_width){
-        return 0.; // clearly outside
-    }
-    if(distance_to_line + half_diagonal < half_width){
-        return 1.; // clearly inside
-    }
-
-    // calculate coverage of two half spaces and combine them into the pixel coverage
-    vec2 normal = vec2(direction.y, -direction.x);
-    return half_space_coverage(coord, point - (normal * half_width), direction, half_width)
-          -half_space_coverage(coord, point + (normal * half_width), direction, half_width);
-}
-
-// fast antialiasing =============================================================================================== //
+// antialiasing ==================================================================================================== //
 
 /// Sample pattern.
 /// for a visual reference of the sample pattern see {notf_root}/dev/diagrams/aa_pattern.svg
@@ -192,9 +100,12 @@ const vec2 SAMPLE_QUADRANTS[4] = vec2[4](vec2(+1, +1),  // top-right quadrant
                                          vec2(-1, +1)); // top-left quadrant
 
 /// Cheap but precise super-sampling of the fragment coverage by the rendered line.
-/// @param sample_x Whether or not to sample the start- and end- edges of the line (only true for caps).
-/// @param sample_y Whether or not to sample the sides parallel to the center line (usually true).
-float sample_line(vec2 coord, mat3x2 xform, vec2 size, bool sample_x, bool sample_y)
+/// @param coord        Fragment position in screen coordinates.
+/// @param xform        Transformation from screen to line-space. In line space, the center start is at the origin
+///                     and the end of the line is at position (length, 0).
+/// @param half_length  Half the length of the line segment. Ignored if zero.
+/// @param half_width   Distance from the center of the line to its side. Ignored if zero.
+float sample_line(vec2 coord, mat3x2 xform, float half_length, float half_width)
 {
     // transform the coordinate from screen-space into line-space
     coord = (xform * vec3(coord, 1)).xy;
@@ -207,8 +118,8 @@ float sample_line(vec2 coord, mat3x2 xform, vec2 size, bool sample_x, bool sampl
             samples_x[i] = sample_coord.x;
             samples_y[i] = sample_coord.y;
         }
-        samples_x = sample_x ? (step(0., samples_x) - step(size.x, samples_x)) : vec4(1);
-        samples_y = sample_y ? (step(0., samples_y) - step(size.y, samples_y)) : vec4(1);
+        samples_x = (half_length == 0.) ? vec4(1) : (step(-half_length, samples_x) - step(half_length, samples_x));
+        samples_y = (half_width == 0.) ? vec4(1) : (step(-half_width, samples_y) - step(half_width, samples_y));
         result += dot(step(2., samples_x + samples_y), SAMPLE_WEIGHTS);
     }
     return result / 16.;
@@ -261,33 +172,40 @@ void main()
         discard;
     }
 
-    float half_width = frag_in.line_size.y / 2.;
-
     vec3 color = vec3(1);
     float alpha = 0.;
-    if(frag_in.patch_type == TEXT){
+    if(test(frag_in.patch_type, TYPE_TEXT)){
         color = vec3(1);
         alpha = texture(font_texture, frag_in.texture_coord).r;
     }
-    else if(frag_in.patch_type == STROKE){
+    else if(test(frag_in.patch_type, TYPE_STROKE_SEGMENT)){
         color = vec3(0, 1, 0);
-#ifdef SAMPLE_PERFECT
-        alpha = perfect_sample(gl_FragCoord.xy, frag_in.line_origin, frag_in.line_direction, frag_in.line_size.y);
-#else
-        alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, frag_in.line_size, false, true);
-#endif
+        alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, IGNORED, frag_in.line_half_width);
     }
-    else if(frag_in.patch_type == JOINT){
+    else if(test(frag_in.patch_type, TYPE_STROKE_JOINT)){
         color = vec3(1, .5, 0);
-        alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, half_width * half_width);
+        if(test(frag_in.patch_type, TYPE_STROKE_JOINT_ROUND)){
+            alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, frag_in.line_half_width * frag_in.line_half_width);
+        } else if(test(frag_in.patch_type, TYPE_STROKE_JOINT_BEVEL)) {
+            alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, IGNORED, frag_in.line_half_width);
+        } else {
+            alpha = 1.; // TODO: miter joints don't have antialiasing yet
+        }
     }
-    else if(frag_in.patch_type == START_CAP || frag_in.patch_type == END_CAP){
+    else if(test(frag_in.patch_type, TYPE_STROKE_START_CAP | TYPE_STROKE_END_CAP)){
         color = vec3(0, .5, 1);
-        alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, half_width * half_width);
+        if(test(frag_in.patch_type, TYPE_STROKE_CAP_ROUND)){
+            alpha = sample_circle(gl_FragCoord.xy, frag_in.line_origin, frag_in.line_half_width * frag_in.line_half_width);
+        } else {
+            float style_offset = test(frag_in.patch_type, TYPE_STROKE_CAP_SQUARE) ? frag_in.line_half_width : 1.;
+            alpha = sample_line(gl_FragCoord.xy, frag_in.line_xform, style_offset, frag_in.line_half_width);
+        }
     }
     if(alpha == 0.){
         discard;
     }
 
-    final_color = vec4(color, alpha * .5);
+    // color = vec3(1);
+    alpha *= .5;
+    final_color = vec4(color, alpha);
 }
