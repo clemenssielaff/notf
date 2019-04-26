@@ -201,7 +201,7 @@ set_target_properties(${CURRENT_TARGET} PROPERTIES LINKER_LANGUAGE CXX)
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/glfw-3.3.0)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/glfw-3.3)
 
 # freetype
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/freetype-2.9.1)

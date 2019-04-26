@@ -122,7 +122,9 @@ int Application::exec() {
         while (m_state.load() == State::RUNNING) {
 
             // wait for and execute all GLFW events
-            glfwWaitEventsTimeout(0.01 /*seconds*/);
+            glfwWaitEvents();
+
+//            glfwWaitEventsTimeout(0.01 /*seconds*/);
             // There's a bug in GLFW that causes empty events created with `glfwPostEmptyEvent` to fail to wake
             // `glfwWaitEvents`. In that case, the application hangs until some other event would wake GLWF and only
             // then proceed to handle the events scheduled to run on the main thread.
@@ -133,6 +135,7 @@ int Application::exec() {
             // Since events to run on the main thread are only needed for Window creation/removal and shutdown, the
             // effect of this workaround should be minimal.
             // Of course, once the bug is fixed, revert the line to `glfwWaitEvents()` and remove this comment.
+            // TODO: remove this comment, this should now be fixed (?)
 
             // see if there are any events scheduled to run on the main thread
             while (m_event_queue.try_pop(event) == fibers::channel_op_status::success
