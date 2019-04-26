@@ -41,19 +41,29 @@ constexpr detail::Aabr<AabrElement> do_transform(const detail::Aabr<AabrElement>
 }
 
 /// Generic Polyline transformation.
-template<class PolylineElement, class MatrixElement>
-detail::Polyline<PolylineElement> do_transform(const detail::Polyline<PolylineElement>& Polyline,
-                                               const detail::Matrix3<MatrixElement>& matrix) noexcept {
-    using vertex_t = typename detail::Polyline<PolylineElement>::vector_t;
+template<class V, class M, class Value = detail::Polyline<V>, class Matrix = detail::Matrix3<M>>
+Value do_transform(const Value& polyline, const Matrix& matrix) noexcept {
+    using vertex_t = typename Value::vector_t;
 
     std::vector<vertex_t> vertices;
-    vertices.reserve(Polyline.get_vertex_count());
+    vertices.reserve(polyline.get_vertex_count());
 
-    for (const auto& vertex : Polyline.get_vertices()) {
+    for (const auto& vertex : polyline.get_vertices()) {
         vertices.emplace_back(do_transform(vertex, matrix));
     }
 
-    return detail::Polyline<PolylineElement>(std::move(vertices));
+    Value result(std::move(vertices), polyline.is_closed());
+    return result;
+}
+
+/// Generic PolyBezier transformation.
+template<size_t D, class V, class M, class Value = detail::PolyBezier<D, V>, class Matrix = detail::Matrix3<M>>
+Value do_transform(const Value& polybezier, const Matrix& matrix) noexcept {
+    using hull_t = typename Value::hull_t;
+
+    Value result;
+    result.m_hull = do_transform<V, M>(polybezier.get_hull(), matrix);
+    return result;
 }
 
 } // namespace
@@ -78,14 +88,14 @@ template<> Aabrf transform_by<Aabrf, M3d>(const Aabrf& value, const M3d& matrix)
 template<> Aabrd transform_by<Aabrd, M3d>(const Aabrd& value, const M3d& matrix) { return do_transform(value, matrix); }
 
 // Polyline * m3
-template<> Polylinef transform_by<Polylinef, M3f>(const Polylinef& value, const M3f& matrix) { return do_transform(value, matrix); }
+template<> Polylinef transform_by<Polylinef, M3f>(const Polylinef& value, const M3f& matrix) { return do_transform<float, float>(value, matrix); }
 
 // bezier * m3
-template<> CubicPolyBezier2f transform_by<CubicPolyBezier2f, M3f>(const CubicPolyBezier2f& value, const M3f& matrix) { return do_transform(value.get_hull(), matrix); }
-template<> CubicPolyBezier2d transform_by<CubicPolyBezier2d, M3f>(const CubicPolyBezier2d& value, const M3f& matrix) { return do_transform(value.get_hull(), matrix); }
+template<> CubicPolyBezier2f transform_by<CubicPolyBezier2f, M3f>(const CubicPolyBezier2f& value, const M3f& matrix) { return do_transform<3, float, float>(value, matrix); }
+template<> CubicPolyBezier2d transform_by<CubicPolyBezier2d, M3f>(const CubicPolyBezier2d& value, const M3f& matrix) { return do_transform<3, double, float>(value, matrix); }
 
-template<> CubicPolyBezier2f transform_by<CubicPolyBezier2f, M3d>(const CubicPolyBezier2f& value, const M3d& matrix) { return do_transform(value.get_hull(), matrix); }
-template<> CubicPolyBezier2d transform_by<CubicPolyBezier2d, M3d>(const CubicPolyBezier2d& value, const M3d& matrix) { return do_transform(value.get_hull(), matrix); }
+template<> CubicPolyBezier2f transform_by<CubicPolyBezier2f, M3d>(const CubicPolyBezier2f& value, const M3d& matrix) { return do_transform<3, float, double>(value, matrix); }
+template<> CubicPolyBezier2d transform_by<CubicPolyBezier2d, M3d>(const CubicPolyBezier2d& value, const M3d& matrix) { return do_transform<3, double, double>(value, matrix); }
 
 // clang-format on
 NOTF_CLOSE_NAMESPACE

@@ -31,6 +31,9 @@ public:
     /// Parametric Bezier type.
     using parabezier_t = ParametricBezier<Order, Vector2<element_t>>;
 
+    /// Internal hull type.
+    using hull_t = Polyline<element_t>;
+
 private:
     /// Data held by a Bezier.
     using weights_t = typename bezier_t::weights_t;
@@ -199,7 +202,8 @@ private:
     }
 
     // fields ---------------------------------------------------------------------------------- //
-public:
+public: // TODO: clearly this shouldn't be public, but we need a way to get a hull from a polybezier and turn it back
+        // into a Polybezier without going through _polyline_to_hull
     /// Hull of this PolyBezier.
     Polyline<element_t> m_hull;
 };

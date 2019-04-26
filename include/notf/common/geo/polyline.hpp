@@ -32,6 +32,7 @@ public:
     /// (empty) Default constructor.
     constexpr Polyline() noexcept = default;
 
+    /// @{
     /// Value constructor.
     /// @param vertices     Vertices from which to construct the Polyline.
     /// @param is_closed    True if the Polyline should be closed even though the last vertex does not match the first.
@@ -39,6 +40,9 @@ public:
         : m_vertices(std::move(vertices))
         , m_is_closed((is_closed == Tristate::True)
                       || (m_vertices.empty() ? false : m_vertices.front().is_approx(m_vertices.back()))) {}
+    Polyline(std::vector<vector_t> vertices, bool is_closed) noexcept
+        : Polyline(std::move(vertices), is_closed ? Tristate::True : Tristate::False) {}
+    /// @}
 
     /// @{
     /// Variadic Constructor taking an arbitrary number of vertices.
@@ -248,7 +252,7 @@ private:
     std::vector<vector_t> m_vertices;
 
     /// A closed Polyline has an implicit edge from the last to the first vertex.
-    bool m_is_closed;
+    bool m_is_closed = false;
 };
 
 } // namespace detail
