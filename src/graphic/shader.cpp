@@ -108,22 +108,22 @@ std::string build_glsl_header() {
 
     const auto& extensions = TheGraphicsSystem::get_extensions();
 
-    { // pragmas first ...
-        bool any_pragma = false;
-#ifdef NOTF_DEBUG
-        any_pragma = true;
-        result += "#pragma debug(on)\n";
-#endif
-        if (any_pragma) { result += "\n"; }
-    }
-
-    { // ... then extensions ...
+    { // extensions first ...
         bool any_extensions = false;
         if (extensions.gpu_shader5) {
             result += "#extension GL_EXT_gpu_shader5 : enable\n";
             any_extensions = true;
         }
         if (any_extensions) { result += "\n"; }
+    }
+
+    { // ... then pragmas ...
+        bool any_pragma = false;
+#ifdef NOTF_DEBUG
+        any_pragma = true;
+        result += "#pragma debug(on)\n";
+#endif
+        if (any_pragma) { result += "\n"; }
     }
 
     { // ... and definitions last

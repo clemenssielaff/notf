@@ -221,13 +221,13 @@ void ShaderProgram::_link_program() {
         NOTF_CHECK_GL(glGetProgramPipelineiv(m_id.get_value(), GL_VALIDATE_STATUS, &is_valid));
         if (!is_valid) {
             GLint log_length = 0;
-            glGetProgramPipelineiv(m_id.get_value(), GL_INFO_LOG_LENGTH, &log_length);
+            NOTF_CHECK_GL(glGetProgramPipelineiv(m_id.get_value(), GL_INFO_LOG_LENGTH, &log_length));
             std::string error_message;
             if (!log_length) {
                 error_message = "Failed to validate the ShaderProgram";
             } else {
                 error_message.resize(static_cast<size_t>(log_length), '\0');
-                glGetProgramPipelineInfoLog(m_id.get_value(), log_length, nullptr, &error_message[0]);
+                NOTF_CHECK_GL(glGetProgramPipelineInfoLog(m_id.get_value(), log_length, nullptr, &error_message[0]));
                 if (error_message.compare(0, 7, "error:\t") != 0) { // prettify the message for logging
                     error_message = error_message.substr(7, error_message.size() - 9);
                 }

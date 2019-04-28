@@ -343,6 +343,7 @@ GraphicsContext::Guard GraphicsContext::make_current(bool assume_is_current) {
 }
 
 void GraphicsContext::begin_frame() {
+#ifdef NOTF_DEBUG
     const auto current_start_time = get_now();
     if (const auto difference
         = std::chrono::duration_cast<std::chrono::nanoseconds>(current_start_time - m_frame_start_time);
@@ -350,7 +351,7 @@ void GraphicsContext::begin_frame() {
         NOTF_LOG_WARN("Frame start difference of {}ms detected", difference.count() / 1000000.);
     }
     m_frame_start_time = current_start_time;
-
+#endif
     m_state.framebuffer.clear(m_state._clear_color, GLBuffer::COLOR | GLBuffer::DEPTH | GLBuffer::STENCIL);
 }
 
@@ -358,10 +359,12 @@ void GraphicsContext::finish_frame() {
     NOTF_ASSERT(is_current());
     glfwSwapBuffers(m_window);
 
+#ifdef NOTF_DEBUG
     if (const auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(get_now() - m_frame_start_time);
         duration > 16666666ns) {
         NOTF_LOG_WARN("Frame took {}ms to draw", duration.count() / 1000000.);
     }
+#endif
 }
 
 void GraphicsContext::reset() {
