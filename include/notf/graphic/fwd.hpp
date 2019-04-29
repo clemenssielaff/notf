@@ -64,6 +64,7 @@ NOTF_DECLARE_SHARED_POINTERS(class, TesselationShader);
 NOTF_DECLARE_SHARED_POINTERS(class, FragmentShader);
 NOTF_DECLARE_SHARED_POINTERS(class, GeometryShader);
 NOTF_DECLARE_SHARED_POINTERS(class, VertexShader);
+NOTF_DECLARE_SHARED_POINTERS(class, MultiStageShader);
 
 // shader_program.hpp ------------------------------------------------------ //
 

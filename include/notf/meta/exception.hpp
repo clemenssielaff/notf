@@ -33,10 +33,7 @@ public:
     /// @param type     Type of the error.
     /// @param message  What has caused this exception (can be empty).
     notf_exception(const char* file, const char* function, const long line, const char* type, const char* message = "")
-        : m_file(filename_from_path(file))
-        , m_function(function)
-        , m_line(line)
-        , m_message(fmt::format("[{}] {} ({}:{})", type, message, m_file, m_line)) {}
+        : m_file(filename_from_path(file)), m_function(function), m_line(line), m_type(type), m_message(message) {}
 
     /// Constructor with an fmt formatted message.
     /// @param file     File containing the function throwing the error.
@@ -51,8 +48,8 @@ public:
         : m_file(filename_from_path(file))
         , m_function(function)
         , m_line(line)
-        , m_message(
-              fmt::format(fmt::format("[{}] {} ({}:{})", type, fmt, m_file, m_line), std::forward<Args>(args)...)) {}
+        , m_type(type)
+        , m_message(fmt::format(fmt, std::forward<Args>(args)...)) {}
 
     /// Destructor.
     virtual ~notf_exception() override = default;
@@ -63,11 +60,22 @@ public:
     /// Name of the function in which the exception was thrown.
     const char* get_function() const noexcept { return m_function; }
 
+    /// Type of the error.
+    const char* get_type() const noexcept { return m_type; }
+
     /// Line in the file at which the exception was thrown.
     long get_line() const noexcept { return m_line; }
 
+    /// The raw error message, without information about the error's location.
+    const std::string& get_message() const noexcept { return m_message; }
+
     /// Returns the explanatory string.
-    const char* what() const noexcept override { return m_message.data(); }
+    const char* what() const noexcept override {
+        if (m_formatted_message.empty()) {
+            m_formatted_message = fmt::format("[{}] {} ({}:{})", m_type, m_message, m_file, m_line);
+        }
+        return m_formatted_message.data();
+    }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
@@ -80,8 +88,15 @@ private:
     /// Line in the file at which the exception was thrown.
     const long m_line;
 
+    /// Type of the error.
+    const char* m_type;
+
     /// The exception message;
     const std::string m_message;
+
+    /// The formatted message, is needed because we need to return a pointer to char from `what` and we need to make
+    /// sure that the memory stays valid after the function has returned.
+    mutable std::string m_formatted_message;
 };
 
 /// Convenience macro to throw a notf_exception with a message, that additionally contains the line, file and function

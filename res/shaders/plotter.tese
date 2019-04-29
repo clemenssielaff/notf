@@ -1,10 +1,21 @@
 #version 320 es
 
+// defines ========================================================================================================= //
+
+// Some but not all systems support a separate floating point precision for different stages.
+// In that case, it might save some space to use a lower precision for the fragment shader.
+// By default we use high-precision floating point operations in all stages because that seems to work more often.
+#ifndef NOTF_FRAGMENT_FLOAT_PRECISION
+#define NOTF_FRAGMENT_FLOAT_PRECISION
+#endif
+
+// stage specific ================================================================================================== //
+
 precision highp float;
 
 layout (quads, equal_spacing) in;
 
-// constants ======================================================================================================== //
+// constants ======================================================================================================= //
 
 /// cubic bezier matrix
 const mat4 BEZIER = mat4(
@@ -68,11 +79,11 @@ patch in PatchData {
 #define GLYPH_MAX_CORNER (patch_in.ctrl2_direction)
 
 out FragmentData {
-    mediump flat vec2 line_origin;
-    mediump flat mat3x2 line_xform;
-    mediump flat float line_half_width;
-    mediump flat int patch_type;
-    mediump vec2 texture_coord;
+    NOTF_FRAGMENT_FLOAT_PRECISION flat vec2 line_origin;
+    NOTF_FRAGMENT_FLOAT_PRECISION flat mat3x2 line_xform;
+    NOTF_FRAGMENT_FLOAT_PRECISION flat float line_half_width;
+    NOTF_FRAGMENT_FLOAT_PRECISION flat int patch_type;
+    NOTF_FRAGMENT_FLOAT_PRECISION vec2 texture_coord;
 } frag_out;
 
 // general ========================================================================================================= //

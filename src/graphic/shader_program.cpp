@@ -223,14 +223,78 @@ void ShaderProgram::_link_program() {
             GLint log_length = 0;
             NOTF_CHECK_GL(glGetProgramPipelineiv(m_id.get_value(), GL_INFO_LOG_LENGTH, &log_length));
             std::string error_message;
-            if (!log_length) {
-                error_message = "Failed to validate the ShaderProgram";
-            } else {
+            if (log_length) {
+                // if the driver is helpful enough to supply an error message, use that
                 error_message.resize(static_cast<size_t>(log_length), '\0');
                 NOTF_CHECK_GL(glGetProgramPipelineInfoLog(m_id.get_value(), log_length, nullptr, &error_message[0]));
                 if (error_message.compare(0, 7, "error:\t") != 0) { // prettify the message for logging
                     error_message = error_message.substr(7, error_message.size() - 9);
                 }
+            } else {
+                // Unfortunately, it seems that the OpenGL implementations that I use do not supply any additional
+                // information on why pipeline validation would fail. But even they do tell you why linking a Shader
+                // failed. So what we do here is to link a single Shader with all the same sources as the pipeline and
+                // see if that fails with a more helpful error message.
+
+                // collect all information required to re-build the pipeline as a MultiStageShader
+                MultiStageShader::Sources stages;
+                std::optional<AnyShader::Definitions> definitions;
+                bool warned_once = false;
+                if (m_vertex_shader) {
+                    definitions = m_vertex_shader->get_definitions();
+                    stages.vertex = m_vertex_shader->get_source();
+                }
+                if (m_tesselation_shader) {
+                    if (definitions.has_value()) {
+                        if (definitions.value() != m_tesselation_shader->get_definitions()) {
+                            NOTF_LOG_WARN("Shader Program \"{}\" uses shaders with different definitions", m_name);
+                            warned_once = true;
+                        }
+                    } else {
+                        definitions = m_tesselation_shader->get_definitions();
+                    }
+                    stages.tesselation_control = m_tesselation_shader->get_control_source();
+                    stages.tesselation_evaluation = m_tesselation_shader->get_evaluation_source();
+                }
+                if (m_geometry_shader) {
+                    if (definitions.has_value()) {
+                        if (definitions.value() != m_geometry_shader->get_definitions() && !warned_once) {
+                            NOTF_LOG_WARN("Shader Program \"{}\" uses shaders with different definitions", m_name);
+                            warned_once = true;
+                        }
+                    } else {
+                        definitions = m_geometry_shader->get_definitions();
+                    }
+                    stages.geometry = m_geometry_shader->get_source();
+                }
+                if (m_fragment_shader) {
+                    if (definitions.has_value()) {
+                        if (definitions.value() != m_fragment_shader->get_definitions() && !warned_once) {
+                            NOTF_LOG_WARN("Shader Program \"{}\" uses shaders with different definitions", m_name);
+                            warned_once = true;
+                        }
+                    } else {
+                        definitions = m_fragment_shader->get_definitions();
+                    }
+                    stages.fragment = m_fragment_shader->get_source();
+                }
+
+                // build the multi stage shader and hope it fails...
+                try {
+                    // if this succeeds, get rid of the shader_ptr immediately...
+                    {
+                        MultiStageShader::create(m_name, std::move(stages));
+                    }
+                    // ... and remove the shader from the resource manager
+                    ResourceManager::get_instance().get_type<MultiStageShader>().remove_all_inactive();
+                    // TODO: resource manager function to delete a specific inactive resource
+                }
+                catch (const OpenGLError& error) {
+                    error_message = error.get_message();
+                }
+
+                // if the error message is still empty, we've done all we can do
+                if (error_message.empty()) { error_message = "Failed to validate the ShaderProgram"; }
             }
             NOTF_THROW(OpenGLError, "{}", error_message);
         }

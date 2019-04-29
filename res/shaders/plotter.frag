@@ -1,6 +1,17 @@
 #version 320 es
 
-precision mediump float;
+// defines ========================================================================================================= //
+
+// Some but not all systems support a separate floating point precision for different stages.
+// In that case, it might save some space to use a lower precision for the fragment shader.
+// By default we use high-precision floating point operations in all stages because that seems to work more often.
+#ifndef NOTF_FRAGMENT_FLOAT_PRECISION
+#define NOTF_FRAGMENT_FLOAT_PRECISION mediump
+#endif
+
+// stage specific ================================================================================================== //
+
+precision NOTF_FRAGMENT_FLOAT_PRECISION float;
 
 // constants ======================================================================================================== //
 
@@ -43,7 +54,7 @@ layout(std140) uniform PaintBlock {
     vec4 inner_color;       // 16 (size = 4)
     vec4 outer_color;       // 20 (size = 4)
     int type;               // 24 (size = 1)
-    float stroke_width;     // 25 (size = 1)
+    float stroke_width_;    // 25 (size = 1) // TODO: there is already a `stroke_width` uniform
     float radius;           // 26 (size = 1)
     float feather;          // 27 (size = 1)
 };

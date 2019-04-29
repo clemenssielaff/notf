@@ -64,6 +64,10 @@ public:
 
         /// Value of the definition.
         std::string value;
+
+        /// Equality operator.
+        /// @param other    Other definition to compare to.
+        bool operator==(const Definition& other) const { return name == other.name && value == other.value; }
     };
     using Definitions = std::vector<Definition>;
 
@@ -84,11 +88,12 @@ protected:
     // methods --------------------------------------------------------------------------------- //
 protected:
     /// Constructor.
-    /// @param id       OpenGL Shader program ID.
-    /// @param stages   Program stage/s of the Shader.
-    /// @param name     Name of this Shader.
-    AnyShader(const GLuint id, Stage::Flags stages, std::string name)
-        : m_name(std::move(name)), m_id(id), m_stages(stages) {}
+    /// @param id           OpenGL Shader program ID.
+    /// @param stages       Program stage/s of the Shader.
+    /// @param name         Name of this Shader.
+    /// @param definitions  User-given definitions that were injected in the shader code.
+    AnyShader(const GLuint id, Stage::Flags stages, std::string name, Definitions definitions)
+        : m_name(std::move(name)), m_id(id), m_stages(stages), m_definitions(std::move(definitions)) {}
 
 public:
     NOTF_NO_COPY_OR_ASSIGN(AnyShader);
@@ -109,6 +114,15 @@ public:
 
     /// The name of this Shader.
     const std::string& get_name() const { return m_name; }
+
+    /// All user-given definitions that were injected in the shader.
+    const Definitions& get_definitions() const { return m_definitions; }
+
+    /// Injects a notf header, including system-dependent pragmas and user definitions into the source string.
+    /// @param source       GLSL source string to modify.
+    /// @param definitions  Definitions to inject.
+    /// @returns A new source string containing the custom header.
+    static std::string inject_header(const std::string& source, const Definitions& definitions);
 
 #ifdef NOTF_DEBUG
     /// Checks whether the shader can execute in the current OpenGL state.
@@ -143,6 +157,9 @@ private:
 
     /// All stages contained in this Shader.
     const Stage::Flags m_stages;
+
+    /// All user-given definitions that were injected in the shader.
+    const Definitions m_definitions;
 };
 
 // accessors -------------------------------------------------------------------------------------------------------- //
@@ -165,27 +182,33 @@ private:
     NOTF_CREATE_SMART_FACTORIES(VertexShader);
 
     /// Value Constructor.
-    /// @param program  OpenGL Shader program ID.
-    /// @param name     Human readable name of the Shader.
-    /// @param string   Source string of the Shader.
-    VertexShader(const GLuint program, std::string name, std::string string)
-        : AnyShader(program, Stage::VERTEX, std::move(name)), m_source(std::move(string)) {}
+    /// @param program      OpenGL Shader program ID.
+    /// @param name         Human readable name of the Shader.
+    /// @param source       Source string of the Shader as given by the user.
+    /// @param definitions  User-given definitions that were injected in the shader code.
+    VertexShader(const GLuint program, std::string name, std::string source, Definitions definitions)
+        : AnyShader(program, Stage::VERTEX, std::move(name), std::move(definitions)), m_source(std::move(source)) {}
 
 public:
+    /// Destructor.
+    ~VertexShader();
+
     /// Factory.
     /// @param name         Human readable name of the Shader.
-    /// @param string       Vertex shader source string.
+    /// @param source       Vertex shader source string.
     /// @param definitions  Additional definitions to inject into the shader code.
     /// @throws OpenGLError If the OpenGL shader program could not be created or linked.
-    static VertexShaderPtr create(std::string name, const std::string& string,
+    static VertexShaderPtr create(std::string name, std::string source,
                                   const Definitions& definitions = s_no_definitions);
 
-    /// The vertex shader source code.
+    /// The vertex shader source code as passed by the user.
+    /// To inspect the source as it passed to OpenGL, call:
+    ///     AnyShader::inject_header(shader.get_source(), shader.get_definitions())
     const std::string& get_source() const { return m_source; }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
-    /// Vertex Shader code (including injections).
+    /// Vertex Shader code as given by the user.
     const std::string m_source;
 };
 
@@ -201,37 +224,44 @@ private:
     /// Value Constructor.
     /// @param program              OpenGL Shader program ID.
     /// @param name                 Human readable name of the Shader.
-    /// @param control_string       Tesselation control shader source string.
-    /// @param evaluation_string    Tesselation evaluation shader source string.
-    TesselationShader(const GLuint program, std::string name, const std::string& control_string,
-                      const std::string& evaluation_string)
-        : AnyShader(program, Stage::TESS_CONTROL | Stage::TESS_EVALUATION, std::move(name))
-        , m_control_source(std::move(control_string))
-        , m_evaluation_source(std::move(evaluation_string)) {}
+    /// @param control_source       Tesselation control shader source string.
+    /// @param evaluation_source    Tesselation evaluation shader source string.
+    /// @param definitions  User-given definitions that were injected in the shader code.
+    TesselationShader(const GLuint program, std::string name, std::string control_source, std::string evaluation_source,
+                      Definitions definitions)
+        : AnyShader(program, Stage::TESS_CONTROL | Stage::TESS_EVALUATION, std::move(name), std::move(definitions))
+        , m_control_source(std::move(control_source))
+        , m_evaluation_source(std::move(evaluation_source)) {}
 
 public:
+    /// Destructor.
+    ~TesselationShader();
+
     /// Factory.
     /// @param name                 Human readable name of the Shader.
-    /// @param control_string       Tesselation control shader source string.
-    /// @param evaluation_string    Tesselation evaluation shader source string.
+    /// @param control_source       Tesselation control shader source string.
+    /// @param evaluation_source    Tesselation evaluation shader source string.
     /// @param definitions          Additional definitions to inject into the shader code.
     /// @throws OpenGLError         If the OpenGL shader program could not be created or linked.
-    static TesselationShaderPtr create(const std::string& name, const std::string& control_string,
-                                       const std::string& evaluation_string,
+    static TesselationShaderPtr create(std::string name, std::string control_source, std::string evaluation_source,
                                        const Definitions& definitions = s_no_definitions);
 
-    /// The teselation control shader source code.
+    /// The teselation control shader source code as passed by the user.
+    /// To inspect the source as it passed to OpenGL, call:
+    ///     AnyShader::inject_header(shader.get_control_source(), shader.get_definitions())
     const std::string& get_control_source() const { return m_control_source; }
 
-    /// The teselation evaluation shader source code.
+    /// The teselation evaluation shader source code as passed by the user.
+    /// To inspect the source as it passed to OpenGL, call:
+    ///     AnyShader::inject_header(shader.get_evaluation_source(), shader.get_definitions())
     const std::string& get_evaluation_source() const { return m_evaluation_source; }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
-    /// Teselation control shader code.
+    /// Teselation control shader code as given by the user.
     const std::string m_control_source;
 
-    /// Teselation evaluation shader code.
+    /// Teselation evaluation shader code as given by the user.
     const std::string m_evaluation_source;
 };
 
@@ -247,25 +277,31 @@ private:
     /// Value Constructor.
     /// @param program  OpenGL Shader program ID.
     /// @param name     Human readable name of the Shader.
-    /// @param string   Source string of the Shader.
-    GeometryShader(const GLuint program, std::string name, std::string string)
-        : AnyShader(program, Stage::GEOMETRY, std::move(name)), m_source(std::move(string)) {}
+    /// @param source   Source string of the Shader.
+    /// @param definitions  User-given definitions that were injected in the shader code.
+    GeometryShader(const GLuint program, std::string name, std::string source, Definitions definitions)
+        : AnyShader(program, Stage::GEOMETRY, std::move(name), std::move(definitions)), m_source(std::move(source)) {}
 
 public:
+    /// Destructor.
+    ~GeometryShader();
+
     /// Factory.
     /// @param name         Human readable name of the Shader.
-    /// @param string       Geometry shader source string.
+    /// @param source       Geometry shader source string.
     /// @param definitions  Additional definitions to inject into the shader code.
     /// @throws OpenGLError If the OpenGL shader program could not be created or linked.
-    static GeometryShaderPtr create(std::string name, const std::string& string,
+    static GeometryShaderPtr create(std::string name, std::string source,
                                     const Definitions& definitions = s_no_definitions);
 
-    /// The geometry shader source code.
+    /// The geometry shader source code as passed by the user.
+    /// To inspect the source as it passed to OpenGL, call:
+    ///     AnyShader::inject_header(shader.get_source(), shader.get_definitions())
     const std::string& get_source() const { return m_source; }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
-    /// Geometry Shader code (including injections).
+    /// Geometry Shader code as given by the user.
     const std::string m_source;
 };
 
@@ -281,26 +317,86 @@ private:
     /// Value Constructor.
     /// @param program  OpenGL Shader program ID.
     /// @param name     Human readable name of the Shader.
-    /// @param string   Source string of the Shader.
-    FragmentShader(const GLuint program, std::string name, std::string string)
-        : AnyShader(program, Stage::FRAGMENT, std::move(name)), m_source(std::move(string)) {}
+    /// @param source   Source string of the Shader.
+    /// @param definitions  User-given definitions that were injected in the shader code.
+    FragmentShader(const GLuint program, std::string name, std::string source, Definitions definitions)
+        : AnyShader(program, Stage::FRAGMENT, std::move(name), std::move(definitions)), m_source(std::move(source)) {}
 
 public:
+    /// Destructor.
+    ~FragmentShader();
+
     /// Factory.
     /// @param name         Human readable name of the Shader.
-    /// @param string       Fragment shader source string.
+    /// @param source       Fragment shader source string.
     /// @param definitions  Additional definitions to inject into the shader code.
     /// @throws OpenGLError If the OpenGL shader program could not be created or linked.
-    static FragmentShaderPtr create(std::string name, const std::string& string,
+    static FragmentShaderPtr create(std::string name, std::string source,
                                     const Definitions& definitions = s_no_definitions);
 
-    /// The fragment shader source code.
+    /// The fragment shader source code as passed by the user.
+    /// To inspect the source as it passed to OpenGL, call:
+    ///     AnyShader::inject_header(shader.get_source(), shader.get_definitions())
     const std::string& get_source() const { return m_source; }
 
     // fields ---------------------------------------------------------------------------------- //
 private:
-    /// Fragment Shader code (including injections).
+    /// Fragment Shader code as given by the user.
     const std::string m_source;
+};
+
+// multi stage shader =============================================================================================== //
+
+/// Multi-Stage Shader.
+class MultiStageShader : public AnyShader {
+
+    // types ----------------------------------------------------------------------------------- //
+public:
+    /// Source code for all stages, empty if not used.
+    struct Sources {
+        std::string vertex;
+        std::string tesselation_control;
+        std::string tesselation_evaluation;
+        std::string geometry;
+        std::string fragment;
+        std::string compute;
+    };
+
+    // methods --------------------------------------------------------------------------------- //
+private:
+    NOTF_CREATE_SMART_FACTORIES(MultiStageShader);
+
+    /// Value Constructor.
+    /// @param program  OpenGL Shader program ID.
+    /// @param name     Human readable name of the Shader.
+    /// @param sources  Sources of all stages used in the Shader.
+    /// @param stages   Stages that are used by this Shader.
+    /// @param definitions  User-given definitions that were injected in the shader code.
+    MultiStageShader(const GLuint program, std::string name, Sources sources, Stage::Flags stages,
+                     Definitions definitions)
+        : AnyShader(program, stages, std::move(name), std::move(definitions)), m_sources(std::move(sources)) {}
+
+public:
+    /// Destructor.
+    ~MultiStageShader();
+
+    /// Factory.
+    /// @param name         Human readable name of the Shader.
+    /// @param sources      Sources for all stages of the Shader.
+    /// @param definitions  Additional definitions to inject into the shader code.
+    /// @throws OpenGLError If the OpenGL shader program could not be created or linked.
+    static MultiStageShaderPtr create(std::string name, Sources sources,
+                                      const Definitions& definitions = s_no_definitions);
+
+    /// Various shader stage sources as passed by the user.
+    /// To inspect the source as it passed to OpenGL, call:
+    ///     AnyShader::inject_header(shader.get_sources().<STAGE>, shader.get_definitions())
+    const Sources& get_sources() const { return m_sources; }
+
+    // fields ---------------------------------------------------------------------------------- //
+private:
+    /// Various shader stage sources as given by the user.
+    const Sources m_sources;
 };
 
 NOTF_CLOSE_NAMESPACE

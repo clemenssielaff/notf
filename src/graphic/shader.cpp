@@ -101,9 +101,7 @@ std::string parse_definitions(const AnyShader::Definitions& definitions) {
     return ss.str();
 }
 
-namespace detail {
-
-std::string build_glsl_header() {
+std::string _build_glsl_header() {
     std::string result = "\n//==== notf header ========================================\n\n";
 
     const auto& extensions = TheGraphicsSystem::get_extensions();
@@ -183,17 +181,15 @@ std::string build_glsl_header() {
     return result;
 }
 
-} // namespace detail
-
 const std::string& glsl_header() {
-    static const std::string header = detail::build_glsl_header();
+    static const std::string header = _build_glsl_header();
     return header;
 }
 
 /// Injects an arbitrary string into a given GLSL source code.
 /// @return Modified source.
 /// @throws OpenGLError   If the injection point could not be found.
-std::string inject_header(const std::string& source, const std::string& injection) {
+std::string glsl_injection(const std::string& source, const std::string& injection) {
     if (injection.empty()) { return source; }
 
     const size_t injection_index = find_injection_index(source);
@@ -220,6 +216,11 @@ void assert_is_valid(const AnyShader& shader) {
 // shader =========================================================================================================== //
 
 AnyShader::~AnyShader() { _deallocate(); }
+
+std::string AnyShader::inject_header(const std::string& source, const Definitions& definitions) {
+    if (source.empty()) { return {}; }
+    return glsl_injection(source, glsl_header() + parse_definitions(definitions));
+}
 
 #ifdef NOTF_DEBUG
 bool AnyShader::validate_now() const {
@@ -328,13 +329,16 @@ void AnyShader::_deallocate() {
 
 // vertex shader ==================================================================================================== //
 
-VertexShaderPtr VertexShader::create(std::string name, const std::string& string, const Definitions& definitions) {
-    std::string source = inject_header(string, glsl_header() + parse_definitions(definitions));
+VertexShader::~VertexShader() = default;
+
+VertexShaderPtr VertexShader::create(std::string name, std::string source, const Definitions& definitions) {
+    std::string modified_source = inject_header(source, definitions);
 
     Args args;
-    args.vertex_source = source.c_str();
+    args.vertex_source = modified_source.c_str();
 
-    VertexShaderPtr shader = _create_shared(AnyShader::_build(name, args), name, std::move(source));
+    VertexShaderPtr shader
+        = _create_shared(AnyShader::_build(name, args), name, std::move(source), std::move(definitions));
     _register_with_system(shader);
     ResourceManager::get_instance().get_type<VertexShader>().set(std::move(name), shader);
     return shader;
@@ -342,18 +346,20 @@ VertexShaderPtr VertexShader::create(std::string name, const std::string& string
 
 // tesselation shader =============================================================================================== //
 
-TesselationShaderPtr TesselationShader::create(const std::string& name, const std::string& control_string,
-                                               const std::string& evaluation_string, const Definitions& definitions) {
-    const std::string injection_string = glsl_header() + parse_definitions(definitions);
-    const std::string modified_control_source = inject_header(control_string, injection_string);
-    const std::string modified_evaluation_source = inject_header(evaluation_string, injection_string);
+TesselationShader::~TesselationShader() = default;
+
+TesselationShaderPtr TesselationShader::create(std::string name, std::string control_source,
+                                               std::string evaluation_source, const Definitions& definitions) {
+    const std::string header = glsl_header() + parse_definitions(definitions);
+    const std::string modified_control_source = glsl_injection(control_source, header);
+    const std::string modified_evaluation_source = glsl_injection(evaluation_source, header);
 
     Args args;
     args.tess_ctrl_source = modified_control_source.c_str();
     args.tess_eval_source = modified_evaluation_source.c_str();
 
-    TesselationShaderPtr shader = _create_shared(
-        AnyShader::_build(name, args), name, std::move(modified_control_source), std::move(modified_evaluation_source));
+    TesselationShaderPtr shader = _create_shared(AnyShader::_build(name, args), name, std::move(control_source),
+                                                 std::move(evaluation_source), std::move(definitions));
     _register_with_system(shader);
     ResourceManager::get_instance().get_type<TesselationShader>().set(std::move(name), shader);
     return shader;
@@ -361,13 +367,16 @@ TesselationShaderPtr TesselationShader::create(const std::string& name, const st
 
 // geometry shader ================================================================================================== //
 
-GeometryShaderPtr GeometryShader::create(std::string name, const std::string& string, const Definitions& definitions) {
-    std::string source = inject_header(string, glsl_header() + parse_definitions(definitions));
+GeometryShader::~GeometryShader() = default;
+
+GeometryShaderPtr GeometryShader::create(std::string name, std::string source, const Definitions& definitions) {
+    std::string modified_source = inject_header(source, definitions);
 
     Args args;
-    args.geometry_source = source.c_str();
+    args.geometry_source = modified_source.c_str();
 
-    GeometryShaderPtr shader = _create_shared(AnyShader::_build(name, args), name, std::move(source));
+    GeometryShaderPtr shader
+        = _create_shared(AnyShader::_build(name, args), name, std::move(source), std::move(definitions));
     _register_with_system(shader);
     ResourceManager::get_instance().get_type<GeometryShader>().set(std::move(name), shader);
     return shader;
@@ -375,14 +384,64 @@ GeometryShaderPtr GeometryShader::create(std::string name, const std::string& st
 
 // fragment shader ================================================================================================== //
 
-FragmentShaderPtr FragmentShader::create(std::string name, const std::string& string, const Definitions& definitions) {
-    std::string source = inject_header(string, glsl_header() + parse_definitions(definitions));
+FragmentShader::~FragmentShader() = default;
+
+FragmentShaderPtr FragmentShader::create(std::string name, std::string source, const Definitions& definitions) {
+    std::string modified_source = inject_header(source, definitions);
 
     Args args;
-    args.fragment_source = source.c_str();
+    args.fragment_source = modified_source.c_str();
 
-    FragmentShaderPtr shader = _create_shared(AnyShader::_build(name, args), name, std::move(source));
+    FragmentShaderPtr shader
+        = _create_shared(AnyShader::_build(name, args), name, std::move(source), std::move(definitions));
     _register_with_system(shader);
     ResourceManager::get_instance().get_type<FragmentShader>().set(std::move(name), shader);
+    return shader;
+}
+
+// multi stage shader =============================================================================================== //
+
+MultiStageShader::~MultiStageShader() = default;
+
+MultiStageShaderPtr MultiStageShader::create(std::string name, Sources sources, const Definitions& definitions) {
+
+    Stage::Flags stages = 0;
+    const std::string header = glsl_header() + parse_definitions(definitions);
+    Args args;
+    if (!sources.vertex.empty()) {
+        stages |= Stage::VERTEX;
+        sources.vertex = glsl_injection(sources.vertex, header);
+        args.vertex_source = sources.vertex.c_str();
+    }
+    if (!sources.tesselation_control.empty()) {
+        stages |= Stage::TESS_CONTROL;
+        sources.tesselation_control = glsl_injection(sources.tesselation_control, header);
+        args.tess_ctrl_source = sources.tesselation_control.c_str();
+    }
+    if (!sources.tesselation_evaluation.empty()) {
+        stages |= Stage::TESS_EVALUATION;
+        sources.tesselation_evaluation = glsl_injection(sources.tesselation_evaluation, header);
+        args.tess_eval_source = sources.tesselation_evaluation.c_str();
+    }
+    if (!sources.geometry.empty()) {
+        stages |= Stage::GEOMETRY;
+        sources.geometry = glsl_injection(sources.geometry, header);
+        args.geometry_source = sources.geometry.c_str();
+    }
+    if (!sources.fragment.empty()) {
+        stages |= Stage::FRAGMENT;
+        sources.fragment = glsl_injection(sources.fragment, header);
+        args.fragment_source = sources.fragment.c_str();
+    }
+    if (!sources.compute.empty()) {
+        stages |= Stage::COMPUTE;
+        sources.compute = glsl_injection(sources.compute, header);
+        args.compute_source = sources.compute.c_str();
+    }
+
+    MultiStageShaderPtr shader
+        = _create_shared(AnyShader::_build(name, args), name, std::move(sources), stages, std::move(definitions));
+    _register_with_system(shader);
+    ResourceManager::get_instance().get_type<MultiStageShader>().set(std::move(name), shader);
     return shader;
 }
