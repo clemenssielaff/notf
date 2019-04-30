@@ -6,7 +6,11 @@
 // In that case, it might save some space to use a lower precision for the fragment shader.
 // By default we use high-precision floating point operations in all stages because that seems to work more often.
 #ifndef NOTF_FRAGMENT_FLOAT_PRECISION
-#define NOTF_FRAGMENT_FLOAT_PRECISION mediump
+#   ifdef GL_FRAGMENT_PRECISION_HIGH
+#       define NOTF_FRAGMENT_FLOAT_PRECISION highp
+#   else
+#       define NOTF_FRAGMENT_FLOAT_PRECISION mediump
+#   endif
 #endif
 
 // stage specific ================================================================================================== //
@@ -62,17 +66,17 @@ layout(std140) uniform PaintBlock {
 // pipeline ======================================================================================================== //
 
 in FragmentData {
+    /// type of patch creating this fragment
+    flat int patch_type;
+
+    /// Distance from the center of the line to its side.
+    flat float line_half_width;
+
     /// start point of the line in screen coordinates
     flat vec2 line_origin;
 
     /// transformation of the origin from screen- to line-space
     flat mat3x2 line_xform;
-
-    /// Distance from the center of the line to its side.
-    flat float line_half_width;
-
-    /// type of patch creating this fragment
-    flat int patch_type;
 
     /// texture coordinate of this fragment (interpolated)
     vec2 texture_coord;
