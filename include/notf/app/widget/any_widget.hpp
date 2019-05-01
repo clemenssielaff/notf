@@ -6,7 +6,8 @@
 #include "notf/graphic/plotter/painter.hpp"
 
 #include "notf/app/graph/node.hpp"
-#include "notf/app/widget/widget_claim.hpp"
+
+#include "notf/app/widget/layout.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -80,48 +81,6 @@ public:
     static constexpr const ConstString& opacity = detail::widget_policy::Opacity::name;
     static constexpr const ConstString& visibility = detail::widget_policy::Visibility::name;
 
-    // layout -----------------------------------------------------------------
-public:
-    class Layout {
-
-        // types ----------------------------------------------------------- //
-    public:
-        /// List of (pointers to) Claims of all child widgets that need to be layed out in draw order.
-        using ClaimList = std::vector<const WidgetClaim*>;
-
-        /// Result for a single child widget when the Layout is updated.
-        struct Placement {
-            M3f xform;
-            Size2f grant;
-        };
-
-        // methods --------------------------------------------------------- //
-    public:
-        /// Value Constructor.
-        /// @param widget   Widget owning this Subscriber.
-        Layout(AnyWidget& widget) : m_widget(widget) {}
-
-        /// Destructor.
-        virtual ~Layout() = default;
-
-        /// The name of this type of Layout.
-        virtual std::string_view get_type_name() const = 0;
-
-        /// Calculates the combined Claim of all of the Widget's children as determined by this Layout.
-        /// @param child_claims Claims of all child widgets that need to be combined into a single Claim.
-        virtual WidgetClaim calculate_claim(const ClaimList child_claims) const = 0;
-
-        /// @param grant    Size available for the Layout to place the child widgets.
-        /// @returns        The bounding rect of all descendants of this Widget.
-        virtual std::vector<Placement> update(const ClaimList child_claims, const Size2f& grant) const = 0;
-
-        // fields ---------------------------------------------------------- //
-    protected:
-        /// Widget whose children are transformed using this Layout.
-        const AnyWidget& m_widget;
-    };
-    using LayoutPtr = std::unique_ptr<Layout>;
-
     // refresh observer -------------------------------------------------------
 private:
     /// Internal reactive function that is subscribed to all REFRESH Properties and clears the WidgetDesign, should one
@@ -175,10 +134,10 @@ public:
     /// A mutable, typed refernce to the layout of this Widget.
     /// Returns the base type by default which should always be valid. If another type is requested, this method might
     /// throw.
-    template<class T = Layout>
+    template<class T = AnyLayout>
     T& get_layout() {
         NOTF_ASSERT(m_layout);
-        if constexpr (std::is_same_v<T, Layout>) {
+        if constexpr (std::is_same_v<T, AnyLayout>) {
             return *m_layout.get();
         } else {
             if (T* layout_ptr = dynamic_cast<T*>(m_layout.get())) { return *layout_ptr; }
@@ -238,7 +197,7 @@ protected:
     void _set_grant(Size2f grant);
 
     /// Produces a list of Claims of each child widget in draw order.
-    std::pair<std::vector<AnyWidget*>, AnyWidget::Layout::ClaimList> _get_claim_list();
+    std::pair<std::vector<AnyWidget*>, std::vector<const WidgetClaim*>> _get_claim_list();
 
 private:
     /// Changing the Claim or the visiblity of a Widget causes a relayout further up the hierarchy.
@@ -260,7 +219,7 @@ private:
     bool m_is_claim_explicit;
 
     /// Current layout of this Widget.
-    LayoutPtr m_layout;
+    AnyLayoutPtr m_layout;
 
     /// The Claim of a Widget determines how much space it receives in the parent Layout.
     /// Claim values are in untransformed local space.
@@ -314,6 +273,7 @@ class WidgetHandle : public NodeHandle<AnyWidget> {
 
     friend Accessor<WidgetHandle, AnyWidget>;
     friend Accessor<WidgetHandle, WidgetVisualizer>;
+    friend Accessor<WidgetHandle, WidgetScene>;
 
     // types ----------------------------------------------------------------------------------- //
 public:
@@ -334,6 +294,10 @@ private:
 
     /// Updates (if necessary) and returns the Design of this Widget.
     const PlotterDesign& _get_design() const { return _get_node()->_get_design(); }
+
+    /// Sets the space a Widget is "granted" in the Layout of its parent Widget.
+    /// @param grant    New Grant.
+    void _set_grant(Size2f grant) { _get_node()->_set_grant(std::move(grant)); }
 };
 
 // widget handle accessors ========================================================================================== //
@@ -352,6 +316,14 @@ class Accessor<WidgetHandle, WidgetVisualizer> {
 
     /// Updates (if necessary) and returns the Design of this Widget.
     static const PlotterDesign& get_design(WidgetHandle& widget) { return widget._get_design(); }
+};
+
+template<>
+class Accessor<WidgetHandle, WidgetScene> {
+    friend WidgetScene;
+
+    /// Updates (if necessary) and returns the Design of this Widget.
+    static void set_grant(WidgetHandle& widget, Size2f grant) { return widget._set_grant(std::move(grant)); }
 };
 
 NOTF_CLOSE_NAMESPACE

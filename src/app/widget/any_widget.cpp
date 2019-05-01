@@ -4,13 +4,14 @@
 
 #include "notf/reactive/trigger.hpp"
 
+#include "notf/app/widget/layout.hpp"
 #include "notf/app/widget/widget_scene.hpp"
 
 NOTF_OPEN_NAMESPACE
 
 // any widget ======================================================================================================= //
 
-AnyWidget::AnyWidget(valid_ptr<AnyNode*> parent) : super_t(parent) {
+AnyWidget::AnyWidget(valid_ptr<AnyNode*> parent) : super_t(parent), m_layout(std::make_unique<NoLayout>(*this)) {
 
     // set up properties
     _set_property_callback<opacity>([](float& value) {
@@ -90,7 +91,7 @@ void AnyWidget::_set_grant(Size2f grant) {
     }
 }
 
-std::pair<std::vector<AnyWidget*>, AnyWidget::Layout::ClaimList> AnyWidget::_get_claim_list() {
+std::pair<std::vector<AnyWidget*>, std::vector<const WidgetClaim*>> AnyWidget::_get_claim_list() {
     std::vector<AnyWidget*> child_widgets;
     child_widgets.reserve(get_child_count());
     for (size_t i = 0; i < get_child_count(); ++i) {
@@ -133,7 +134,7 @@ void AnyWidget::_relayout_upwards() {
 
 void AnyWidget::_relayout_downwards() {
     auto [child_widgets, claim_list] = _get_claim_list();
-    const std::vector<Layout::Placement> placements = m_layout->update(claim_list, m_grant);
+    const std::vector<AnyLayout::Placement> placements = m_layout->update(claim_list, m_grant);
     NOTF_ASSERT(placements.size() == child_widgets.size());
 
     m_children_aabr = Aabrf::zero();

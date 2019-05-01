@@ -236,7 +236,7 @@ public:
     /// Internal GraphicsContext.
     GraphicsContext& get_graphics_context() const { return *m_graphics_context; }
 
-    /// Scene contained in this Window.
+    /// Scene contained in this Window, can be empty.
     SceneHandle get_scene() const { return m_scene; }
 
     /// (Re-)Sets the Scene displayed in this Window.

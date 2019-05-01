@@ -348,7 +348,7 @@ void GraphicsContext::begin_frame() {
     if (const auto difference
         = std::chrono::duration_cast<std::chrono::nanoseconds>(current_start_time - m_frame_start_time);
         difference > 16666666ns) {
-        NOTF_LOG_WARN("Frame start difference of {}ms detected", difference.count() / 1000000.);
+//        NOTF_LOG_WARN("Frame start difference of {}ms detected", difference.count() / 1000000.);
     }
     m_frame_start_time = current_start_time;
 #endif

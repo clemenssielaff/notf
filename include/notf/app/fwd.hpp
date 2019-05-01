@@ -116,6 +116,9 @@ struct AnyInput;
 NOTF_DECLARE_SHARED_POINTERS(class, AnyWidget);
 class WidgetHandle;
 
+// widget/layout.hpp
+NOTF_DECLARE_UNIQUE_POINTERS(class, AnyLayout);
+
 // widget/widget.hpp
 template<class, class>
 class State;

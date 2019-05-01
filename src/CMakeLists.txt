@@ -21,6 +21,7 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     app/graph/window_driver.cpp
 
     app/widget/any_widget.cpp
+    app/widget/layout.cpp
     app/widget/widget_claim.cpp
     app/widget/widget_scene.cpp
     app/widget/widget_visualizer.cpp

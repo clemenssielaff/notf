@@ -5,6 +5,8 @@
 #include "notf/common/geo/size2.hpp"
 #include "notf/common/rational.hpp"
 
+#include "notf/app/fwd.hpp"
+
 NOTF_OPEN_NAMESPACE
 
 // claim ============================================================================================================ //

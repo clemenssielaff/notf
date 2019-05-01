@@ -265,14 +265,20 @@ bool Window::_on_size_change(Size2i& new_size) {
     // size must always be valid
     new_size = new_size.get_max(Size2i::zero());
 
+    // update the size of the actual window
     if (get<state>() == State::WINDOWED) {
-        Size2i old_size;
-        glfwGetWindowSize(m_glfw_window, &old_size.width(), &old_size.height());
-        if (old_size != new_size) {
+        Size2i current_window_size;
+        glfwGetWindowSize(m_glfw_window, &current_window_size.width(), &current_window_size.height());
+        if (current_window_size != new_size) {
             // the size is updated either from a callback notifying that the Window size has been changed, or
             // programatically from user code. We must only change the GLFW Window size in the latter case.
             glfwSetWindowSize(m_glfw_window, new_size.width(), new_size.height());
         }
+    }
+
+    // update the scene rectangle
+    if(m_scene){
+        m_scene->set<Scene::area>(new_size);
     }
 
     return true; // always succeed
