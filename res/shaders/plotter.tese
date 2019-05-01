@@ -79,7 +79,7 @@ patch in PatchData {
 #define GLYPH_MAX_CORNER (patch_in.ctrl2_direction)
 
 out FragmentData {
-    mediump flat int patch_type;
+    flat int patch_type;
     NOTF_FRAGMENT_FLOAT_PRECISION flat float line_half_width;
     NOTF_FRAGMENT_FLOAT_PRECISION flat vec2 line_origin;
     NOTF_FRAGMENT_FLOAT_PRECISION flat mat3x2 line_xform;
