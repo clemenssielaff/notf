@@ -146,6 +146,9 @@ public:
         }
     }
 
+    /// The size that was granted to this Widget by its parent layout.
+    const Size2f& get_grant() const noexcept { return m_grant; }
+
     /// The Clipping rect of this Widget.
     /// Most Widgets will forward the Clipping of their parent (which is the default), but some will introduce their own
     /// Clipping rects.
@@ -186,6 +189,15 @@ protected:
 
     /// Reactive function clearing this Widget's design whenever a REFRESH Property changes its value.
     RefreshObserverPtr& _get_refresh_observer() { return m_refresh_observer; }
+
+    /// Lets the Widget update its Layout.
+    /// If the Layout constructor should fail, the existing one will not be changed.
+    template<class T, class = std::enable_if_t<std::is_base_of_v<AnyLayout, T>>>
+    T& _set_layout() {
+        NOTF_ASSERT(m_layout);
+        m_layout = std::make_unique<T>(*this);
+        return *static_cast<T*>(m_layout.get());
+    }
 
     /// Let subclasses update their Claim whenever they feel like it.
     /// Every change will cause a chain of updates to propagate up and down the Widget hierarchy. If you can, try to

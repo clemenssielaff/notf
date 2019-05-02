@@ -68,8 +68,8 @@ private:
     /// Constructs the hull of a PolyBezier that is made up of only straight lines.
     /// @param polyline Polyline to emulate.
     static Polyline<element_t> _polyline_to_hull(Polyline<element_t>&& polyline) {
-        if (polyline.is_empty()) { return polyline; }
         polyline.optimize();
+        if (polyline.is_empty()) { return polyline; }
 
         Polyline<element_t> result;
         result.set_closed(polyline.is_closed());

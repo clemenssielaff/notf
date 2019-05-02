@@ -70,7 +70,7 @@ T fast_tan(const T& radians) {
 
 /// Tests whether a given value is NAN.
 template<class T>
-std::enable_if_t<std::is_floating_point_v<T>, bool> is_nan(const T value) noexcept {
+constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_nan(const T value) noexcept {
     return value != value;
 }
 template<class T>
@@ -81,7 +81,8 @@ constexpr std::enable_if_t<std::is_integral_v<T>, bool> is_nan(const T) noexcept
 /// Tests whether a given value is INFINITY.
 template<class T>
 constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_inf(const T value) noexcept {
-    return std::isinf(value);
+    if constexpr (!std::numeric_limits<T>::has_infinity) { return false; }
+    return value == std::numeric_limits<T>::infinity();
 }
 template<class T>
 constexpr std::enable_if_t<std::is_integral_v<T>, bool> is_inf(const T) noexcept {

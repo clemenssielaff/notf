@@ -96,32 +96,13 @@ public:
     /// Node iterator, iterates through all children of a Node in draw-order (from back to front).
     struct Iterator {
 
-        // types ----------------------------------------------------------- //
-    private:
-        struct Impl {
-            /// Constructor.
-            /// @param node         The iterated Node.
-            /// @param child_count  Numer of children of the Node.
-            Impl(const AnyNodeHandle node, const size_t child_count) : node(std::move(node)), end(child_count) {}
-
-            /// The iterated Node.
-            const AnyNodeHandle node;
-
-            /// Current child index.
-            size_t index = 0;
-
-            /// One index past the last child.
-            const size_t end;
-        };
-
         // methods --------------------------------------------------------- //
     public:
         /// Constructor.
         /// @param node Node at the root of the iteration.
         Iterator(const AnyNodeHandle node) {
             if (node) {
-                const size_t child_count = node->get_child_count();
-                m_iterators.emplace_back(std::move(node), child_count);
+                m_nodes.emplace_back(std::move(node));
             }
         }
 
@@ -133,7 +114,7 @@ public:
         // fields ---------------------------------------------------------- //
     private:
         /// Stack of Iterators.
-        std::vector<Impl> m_iterators;
+        std::vector<const AnyNodeHandle> m_nodes;
     };
 
 private:
@@ -350,6 +331,7 @@ public:
     /// @returns        The requested child Node.
     /// @throws IndexError    If the index is out-of-bounds or the child Node is of the wrong type.
     AnyNodeHandle get_child(size_t index) const;
+    // TODO: an iterable AnyNode::get_children
 
     /// Destroys this Node by deleting the owning pointer in its parent.
     /// This method is basically a destructor, make sure not to dereference this Node after this function call!

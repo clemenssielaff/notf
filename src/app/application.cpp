@@ -122,9 +122,9 @@ int Application::exec() {
         while (m_state.load() == State::RUNNING) {
 
             // wait for and execute all GLFW events
-            glfwWaitEvents();
+//            glfwWaitEvents();
 
-//            glfwWaitEventsTimeout(0.01 /*seconds*/);
+            glfwWaitEventsTimeout(0.01 /*seconds*/);
             // There's a bug in GLFW that causes empty events created with `glfwPostEmptyEvent` to fail to wake
             // `glfwWaitEvents`. In that case, the application hangs until some other event would wake GLWF and only
             // then proceed to handle the events scheduled to run on the main thread.

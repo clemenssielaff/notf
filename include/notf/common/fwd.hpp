@@ -114,6 +114,14 @@ struct Circle;
 }
 using Circlef = detail::Circle<float>;
 
+// padding.hpp
+namespace detail {
+template<class>
+struct Padding;
+}
+using Paddingf = detail::Padding<float>;
+using Paddingi = detail::Padding<int>;
+
 // polyline.hpp
 namespace detail {
 template<class>

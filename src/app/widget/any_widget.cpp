@@ -1,5 +1,7 @@
 #include "notf/app/widget/any_widget.hpp"
 
+#include "notf/meta/log.hpp"
+
 #include "notf/graphic/plotter/painter.hpp"
 
 #include "notf/reactive/trigger.hpp"
@@ -11,16 +13,16 @@ NOTF_OPEN_NAMESPACE
 
 // any widget ======================================================================================================= //
 
-AnyWidget::AnyWidget(valid_ptr<AnyNode*> parent) : super_t(parent), m_layout(std::make_unique<NoLayout>(*this)) {
-
+AnyWidget::AnyWidget(valid_ptr<AnyNode*> parent)
+    : super_t(parent)
+    , m_layout(std::make_unique<OverLayout>(*this)) // every widget has a overlayout by default
+{
     // set up properties
     _set_property_callback<opacity>([](float& value) {
         value = clamp(value, 0, 1);
         return true;
     });
     connect_property<visibility>()->subscribe(Trigger([this](const bool&) { this->_relayout_upwards(); }));
-
-    // TODO: always have a layout instance for a widget, maybe a StackLayout?
 }
 
 M3f AnyWidget::get_xform_to(WidgetHandle target) const {

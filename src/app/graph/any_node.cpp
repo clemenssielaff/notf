@@ -37,17 +37,19 @@ NOTF_OPEN_NAMESPACE
 
 // any node iterator ================================================================================================ //
 
-bool AnyNode::Iterator::next(AnyNodeHandle& output_node) {
-    while (!m_iterators.empty()) {
-        Impl& it = m_iterators.back();
-        output_node = it.node;
+bool AnyNode::Iterator::next(AnyNodeHandle& next_node) {
+    while (!m_nodes.empty()) {
 
-        if (it.index == it.end) {
-            m_iterators.pop_back();
-        } else {
-            const size_t child_count = output_node->get_child_count();
-            if (child_count > 0) { m_iterators.emplace_back(output_node->get_child(0), child_count); }
+        // take and return the next node from the stack
+        NodeHandle current = take_back(m_nodes);
+
+        // add all direct children of the next node in reverse order
+        for(size_t i = current->get_child_count(); i > 0; --i){
+            m_nodes.emplace_back(current->get_child(i-1));
         }
+
+        // move the next node out of the function
+        next_node = std::move(current);
         return true;
     }
     return false;
