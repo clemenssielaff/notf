@@ -15,6 +15,7 @@
 
 // stage specific ================================================================================================== //
 
+precision mediump int; // should be the default anyway, but not all compilers seem to honor this
 precision NOTF_FRAGMENT_FLOAT_PRECISION float;
 
 // constants ======================================================================================================== //

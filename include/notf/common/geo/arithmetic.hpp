@@ -48,17 +48,31 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default constructor.
+    /// Usually leaves the data in an undefined state.
     constexpr Arithmetic() noexcept = default;
 
     /// Value constructor.
     /// @param data Raw data for this arithmetic type.
     constexpr Arithmetic(Data data) noexcept : data(std::move(data)) {}
 
-    /// Value constructor.
+    /// Component constructor.
+    /// Allows construction of a Vector3<float> using (0, 1.3f, 123.l), for example.
     /// @param components   Components to store.
     template<class... Components, class = std::enable_if_t<all(sizeof...(Components) == Dimensions, //
                                                                all_convertible_to<component_t, Components...>)>>
     constexpr Arithmetic(Components... components) noexcept : data{static_cast<component_t>(components)...} {}
+
+    /// Casting constructor.
+    /// Allows implicit casting from Size2<int> to Size2<float>, for example.
+    /// @param similar  Similar data type using a different element type.
+    template<class Similar, class T,
+             class = std::enable_if_t<all(!std::is_same_v<Actual, Similar>,
+                                          is_static_castable_v<typename Similar::element_t, element_t>)>>
+    constexpr Arithmetic(const Arithmetic<Similar, T, Dimensions>& similar) noexcept {
+        for (size_t i = 0; i < Dimensions; ++i) {
+            data[i] = static_cast<element_t>(similar.data[i]);
+        }
+    }
 
     /// Create an arithmetic value with all elements set to the given value.
     /// @param value    Value to set.

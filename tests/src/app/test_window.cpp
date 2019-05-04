@@ -19,7 +19,7 @@ SCENARIO("Window", "[app][window]") {
 
     SECTION("every Window has an associated GLFW window") {
         auto window = Window::create();
-        REQUIRE(window.get_glfw_window() != nullptr);
+        REQUIRE(window->get_glfw_window() != nullptr);
     }
 
     SECTION("Windows may only be created from the UI thread") {

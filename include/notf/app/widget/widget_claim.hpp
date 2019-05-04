@@ -222,10 +222,10 @@ public:
         // fields ---------------------------------------------------------- //
     private:
         /// Minimum ratio.
-        Ratioi m_min;
+        Ratioi m_min = Ratioi::zero();
 
         /// Maximum ratio.
-        Ratioi m_max;
+        Ratioi m_max = Ratioi::zero();
     };
 
     // methods --------------------------------------------------------------------------------- //

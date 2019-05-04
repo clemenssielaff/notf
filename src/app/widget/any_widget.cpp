@@ -87,10 +87,10 @@ void AnyWidget::_set_claim(WidgetClaim claim) {
 }
 
 void AnyWidget::_set_grant(Size2f grant) {
-    if (grant != m_grant) {
-        m_grant = std::move(grant);
-        _relayout_downwards();
-    }
+    if (grant == m_grant) { return; }
+    m_grant = std::move(grant);
+    m_design.set_dirty();
+    _relayout_downwards();
 }
 
 std::pair<std::vector<AnyWidget*>, std::vector<const WidgetClaim*>> AnyWidget::_get_claim_list() {
@@ -139,7 +139,7 @@ void AnyWidget::_relayout_downwards() {
     const std::vector<AnyLayout::Placement> placements = m_layout->update(claim_list, m_grant);
     NOTF_ASSERT(placements.size() == child_widgets.size());
 
-    m_children_aabr = Aabrf::zero();
+    m_children_aabr = Aabrf(m_grant);
     for (size_t i = 0; i < child_widgets.size(); ++i) {
         AnyWidget* child = child_widgets[i];
         NOTF_ASSERT(child);

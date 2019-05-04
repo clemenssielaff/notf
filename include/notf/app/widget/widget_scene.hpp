@@ -29,8 +29,12 @@ public:
     template<class T, class... Args, class = std::enable_if_t<std::is_base_of_v<AnyWidget, T>>>
     auto set_widget(Args&&... args) {
         _clear_children();
+
+        // create the new widget and resize it to fit the scene
         auto widget = _create_child<T>(this, std::forward<Args>(args)...).to_handle();
         m_root_widget = handle_cast<WidgetHandle>(widget);
+        WidgetHandle::AccessFor<WidgetScene>::set_grant(m_root_widget, get<area>().get_size());
+
         return widget;
     }
 

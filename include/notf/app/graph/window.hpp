@@ -245,6 +245,7 @@ public:
         _clear_children();
         auto scene_node = _create_child<T>(this, std::forward<Args>(args)...).to_handle();
         m_scene = scene_node;
+        m_scene->set<Scene::area>(get<Window::size>());
         return scene_node;
     }
 
@@ -287,6 +288,7 @@ namespace detail {
 template<>
 struct NodeHandleInterface<Window> : public NodeHandleBaseInterface<Window> {
 
+    using Window::get_glfw_window;
     using Window::get_graphics_context;
     using Window::get_scene;
     using Window::set_scene;
@@ -303,9 +305,6 @@ public:
 
     /// Constructor from specialized base.
     WindowHandle(NodeHandle<Window>&& handle) : NodeHandle(std::move(handle)) {}
-
-    /// Returns the GlfwWindow contained in this Window.
-    GLFWwindow* get_glfw_window() const { return _get_node()->get_glfw_window(); }
 };
 
 NOTF_CLOSE_NAMESPACE
