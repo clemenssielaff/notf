@@ -366,7 +366,7 @@ static void updateWindowMode(_GLFWwindow* window)
 }
 
 // Splits and translates a text/uri-list into separate file paths
-// NOTE: This function destroys the provided string
+// This function destroys the provided string
 //
 static char** parseUriList(char* text, int* count)
 {
@@ -386,7 +386,6 @@ static char** parseUriList(char* text, int* count)
         if (strncmp(line, prefix, strlen(prefix)) == 0)
         {
             line += strlen(prefix);
-            // TODO: Validate hostname
             while (*line != '/')
                 line++;
         }
@@ -2694,8 +2693,8 @@ void _glfwPlatformPollEvents(void)
         int width, height;
         _glfwPlatformGetWindowSize(window, &width, &height);
 
-        // NOTE: Re-center the cursor only if it has moved since the last call,
-        //       to avoid breaking glfwWaitEvents with MotionNotify
+        // Re-center the cursor only if it has moved since the last call,
+        // to avoid breaking glfwWaitEvents with MotionNotify
         if (window->x11.lastCursorPosX != width / 2 ||
             window->x11.lastCursorPosY != height / 2)
         {
@@ -2900,8 +2899,8 @@ void _glfwPlatformGetRequiredInstanceExtensions(char** extensions)
 
     extensions[0] = "VK_KHR_surface";
 
-    // NOTE: VK_KHR_xcb_surface is preferred due to some early ICDs exposing but
-    //       not correctly implementing VK_KHR_xlib_surface
+    // VK_KHR_xcb_surface is preferred due to some early ICDs exposing but
+    // not correctly implementing VK_KHR_xlib_surface
     if (_glfw.vk.KHR_xcb_surface && _glfw.x11.x11xcb.handle)
         extensions[1] = "VK_KHR_xcb_surface";
     else

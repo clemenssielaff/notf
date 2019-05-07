@@ -37,6 +37,9 @@ public:
             , m_min(is_real(min) ? clamp(min, 0, m_preferred) : m_preferred)
             , m_max(is_nan(max) ? m_preferred : notf::max(max, m_preferred)) {}
 
+        /// A valid Stretch with all values set to zero.
+        static Stretch zero() { return Stretch(0, 0, 0); }
+
         /// Minimum size in local units, is 0 <= min <= preferred.
         float get_min() const { return m_min; }
 

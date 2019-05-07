@@ -264,7 +264,7 @@ public:
     // comparison -------------------------------------------------------------
 
     /// Checks if this Rational is zero.
-    explicit constexpr operator bool() const { return m_num != 0; }
+    explicit constexpr operator bool() const { return !is_zero(); }
 
     /// Equality operator.
     /// @param other    Value to test against.

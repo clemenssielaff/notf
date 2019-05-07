@@ -2,7 +2,7 @@
 
 #include "notf/meta/hash.hpp"
 
-#include "notf/app/fwd.hpp"
+#include "notf/common/geo/size2.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -23,40 +23,43 @@ public:
     // methods --------------------------------------------------------------------------------- //
 public:
     /// Default constructor.
-    Padding() = default;
+    constexpr Padding() noexcept = default;
 
     /// Even padding on all sides.
-    static Padding all(const float padding) { return {padding, padding, padding, padding}; }
+    static constexpr Padding all(const element_t padding) noexcept { return {padding, padding, padding, padding}; }
 
     /// No padding.
-    static Padding none() { return {0.f, 0.f, 0.f, 0.f}; }
+    static constexpr Padding none() noexcept { return {0, 0, 0, 0}; }
 
     /// Horizontal padding, sets both `left` and `right`.
-    static Padding horizontal(const float padding) { return {0.f, padding, 0.f, padding}; }
+    static constexpr Padding horizontal(const element_t padding) noexcept { return {0, padding, 0, padding}; }
 
     /// Vertical padding, sets both `top` and `bottom`.
-    static Padding vertical(const float padding) { return {padding, 0.f, padding, 0.f}; }
+    static constexpr Padding vertical(const element_t padding) noexcept { return {padding, 0, padding, 0}; }
 
     /// Checks if any of the sides is padding.
-    bool is_padding() const { return !(top == 0.f && right == 0.f && bottom == 0.f && left == 0.f); }
+    constexpr bool is_padding() const noexcept { return !(top == 0 && right == 0 && bottom == 0 && left == 0); }
 
     /// Checks if this Padding is valid (all sides have values >= 0).
-    bool is_valid() const { return top >= 0.f && right >= 0.f && bottom >= 0.f && left >= 0.f; }
+    constexpr bool is_valid() const noexcept { return top >= 0 && right >= 0 && bottom >= 0 && left >= 0; }
 
     /// Sum of the two horizontal padding sizes.
-    float get_width() const { return left + right; }
+    constexpr element_t get_width() const noexcept { return left + right; }
 
     /// Sum of the two vertical padding sizes.
-    float get_height() const { return top + bottom; }
+    constexpr element_t get_height() const noexcept { return top + bottom; }
+
+    /// Size of the padding, combining its width and height.
+    constexpr Size2<element_t> get_size() const noexcept { return {get_width(), get_height()}; }
 
     /// Equality operator.
-    bool operator==(const Padding& other) const {
+    constexpr bool operator==(const Padding& other) const noexcept {
         return (is_approx(other.top, top) && is_approx(other.right, right) && is_approx(other.bottom, bottom)
                 && is_approx(other.left, left));
     }
 
     /// Inequality operator.
-    bool operator!=(const Padding& other) const {
+    constexpr bool operator!=(const Padding& other) const noexcept {
         return (!is_approx(other.top, top) || !is_approx(other.right, right) || !is_approx(other.bottom, bottom)
                 || !is_approx(other.left, left));
     }
@@ -65,10 +68,10 @@ public:
 public:
     /// @{
     /// Padding sides in the same order as css margins.
-    float top;
-    float right;
-    float bottom;
-    float left;
+    element_t top;
+    element_t right;
+    element_t bottom;
+    element_t left;
     /// @}
 };
 

@@ -32,8 +32,7 @@ void WidgetVisualizer::visualize(valid_ptr<Scene*> scene) const {
     while (iterator.next(node)) {
         WidgetHandle widget = handle_cast<WidgetHandle>(node);
         if (widget) {
-            m_plotter->parse(WidgetHandle::AccessFor<WidgetVisualizer>::get_design(widget), //
-                             widget->get<AnyWidget::offset_xform>());
+            m_plotter->parse(WidgetHandle::AccessFor<WidgetVisualizer>::get_design(widget), widget->get_xform());
         }
     }
     m_plotter->finish_parsing(); // TODO Painterpreter::Picture RAII instance?

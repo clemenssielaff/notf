@@ -92,7 +92,7 @@ GLFWbool _glfwInitVulkan(int mode)
     err = vkEnumerateInstanceExtensionProperties(NULL, &count, NULL);
     if (err)
     {
-        // NOTE: This happens on systems with a loader but without any Vulkan ICD
+        // This happens on systems with a loader but without any Vulkan ICD
         if (mode == _GLFW_REQUIRE_LOADER)
         {
             _glfwInputError(GLFW_API_UNAVAILABLE,

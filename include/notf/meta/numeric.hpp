@@ -29,6 +29,12 @@ constexpr T min(L lhs, R rhs, Tail&&... tail) noexcept {
     return rest < static_cast<T>(lhs) ? rest : static_cast<T>(lhs); // returns lhs if both are equal
 }
 
+/// In-place min
+template<class L, class R, class... Tail>
+constexpr void set_min(L& lhs, R rhs, Tail&&... tail) noexcept {
+    lhs = min(lhs, static_cast<L>(rhs), std::forward<Tail>(tail)...);
+}
+
 /// Variadic max using auto type deduction.
 template<class T>
 constexpr T&& max(T&& val) noexcept {
@@ -38,6 +44,12 @@ template<class L, class R, class... Tail, class T = std::common_type_t<L, R>>
 constexpr T max(L lhs, R rhs, Tail&&... tail) noexcept {
     const T rest = max(static_cast<T>(rhs), std::forward<Tail>(tail)...);
     return rest > static_cast<T>(lhs) ? rest : static_cast<T>(lhs); // returns lhs if both are equal
+}
+
+/// In-place max
+template<class L, class R, class... Tail>
+constexpr void set_max(L& lhs, R rhs, Tail&&... tail) noexcept {
+    lhs = max(lhs, static_cast<L>(rhs), std::forward<Tail>(tail)...);
 }
 
 /// Clamps an input value to a given range.

@@ -82,7 +82,7 @@ void AnyWidget::unset_claim() {
 void AnyWidget::_set_claim(WidgetClaim claim) {
     if (claim != m_claim) {
         m_claim = std::move(claim);
-        _relayout_upwards();
+        if (_is_finalized()) { _relayout_upwards(); }
     }
 }
 

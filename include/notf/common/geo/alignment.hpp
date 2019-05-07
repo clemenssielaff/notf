@@ -23,10 +23,10 @@ private:
         constexpr _DirectedAlignment(float value = 0.5) noexcept { set_value(value); }
 
         /// Equality operator.
-        constexpr bool operator==(Direction other) noexcept { return is_approx(m_value, other.value); }
+        constexpr bool operator==(Direction other) const noexcept { return is_approx(m_value, other.m_value); }
 
         /// Inequality operator.
-        constexpr bool operator!=(Direction other) noexcept { return !is_approx(m_value, other.value); }
+        constexpr bool operator!=(Direction other) const noexcept { return !is_approx(m_value, other.m_value); }
 
         /// Numeric value of this alignment in range [0, 1].
         constexpr float get_value() const noexcept { return m_value; }
@@ -59,7 +59,7 @@ public:
     };
 
     /// Relative vertical alignment.
-    struct Vertical : public _DirectedAlignment<Horizontal> {
+    struct Vertical : public _DirectedAlignment<Vertical> {
 
         /// Bottom alignment.
         constexpr static Vertical bottom() { return {0.0}; }
@@ -87,6 +87,18 @@ public:
     static Alignment top_center() { return {Vertical::top(), Horizontal::center()}; }
     static Alignment top_right() { return {Vertical::top(), Horizontal::right()}; }
     /// @}
+
+    /// Equality operator.
+    /// @param other    Alignment to compare against.
+    constexpr bool operator==(Alignment other) const noexcept {
+        return vertical == other.vertical && horizontal == other.horizontal;
+    }
+
+    /// Inequality operator.
+    /// @param other    Alignment to compare against.
+    constexpr bool operator!=(Alignment other) const noexcept {
+        return vertical != other.vertical || horizontal != other.horizontal;
+    }
 
     // fields ---------------------------------------------------------------------------------- //
 public:

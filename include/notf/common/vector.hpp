@@ -251,18 +251,18 @@ bool remove_consecutive_equal(std::vector<T>& vector) {
 // reverse iteration ================================================================================================ //
 
 namespace detail {
-template<typename T>
+template<class T>
 struct reversion_wrapper {
     T& iterable;
 };
 } // namespace detail
 
-template<typename T>
+template<class T>
 auto begin(detail::reversion_wrapper<T> w) {
     return std::rbegin(w.iterable);
 }
 
-template<typename T>
+template<class T>
 auto end(detail::reversion_wrapper<T> w) {
     return std::rend(w.iterable);
 }
@@ -273,16 +273,16 @@ auto end(detail::reversion_wrapper<T> w) {
 ///         cout << foo << endl;
 ///     }
 /// From: http://stackoverflow.com/a/28139075
-template<typename T>
+template<class T>
 detail::reversion_wrapper<T> reverse(T&& iterable) {
-    return {iterable};
+    return {std::forward<T>(iterable)};
 }
 
 NOTF_CLOSE_NAMESPACE
 
 // std::hash ======================================================================================================== //
 
-/// std::hash specialization for notf::Claim::Stretch.
+/// std::hash specialization for any vector.
 template<class T>
 struct std::hash<std::vector<T>> {
     size_t operator()(const std::vector<T>& vector) const {

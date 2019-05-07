@@ -62,7 +62,12 @@ private:
     using super_t = Widget<test_widget::Policy>;
 
 public:
-    ChildWidget(valid_ptr<AnyNode*> parent) : super_t(parent) {}
+    ChildWidget(valid_ptr<AnyNode*> parent, float claim_width) : super_t(parent) {
+        WidgetClaim claim;
+        claim.get_horizontal().set_preferred(claim_width);
+        claim.get_vertical().set_preferred(claim_width);
+        set_claim(std::move(claim));
+    }
 
 private:
     void _finalize() override {}
@@ -90,10 +95,19 @@ public:
 
 public:
     ParentWidget(valid_ptr<AnyNode*> parent) : super_t(parent) {
-        OverLayout& layout = _set_layout<OverLayout>();
-        layout.set_padding(Paddingf::all(100));
+        FlexLayout& layout = _set_layout<FlexLayout>();
+        layout.set_padding(Paddingf::all(10));
+        layout.set_spacing(10);
+        layout.set_cross_spacing(10);
+        layout.set_wrap(FlexLayout::Wrap::WRAP);
+        layout.set_direction(FlexLayout::Direction::LEFT_TO_RIGHT);
+//        layout.set_direction(FlexLayout::Direction::RIGHT_TO_LEFT);
+//        layout.set_direction(FlexLayout::Direction::TOP_TO_BOTTOM);
+//        layout.set_direction(FlexLayout::Direction::BOTTOM_TO_TOP);
 
-        _create_child<ChildWidget>(this);
+        for (size_t i = 0; i < 100; ++i) {
+            NodeHandle<ChildWidget> child = _create_child<ChildWidget>(this, static_cast<float>(i));
+        }
     }
 
 private:
