@@ -66,6 +66,7 @@ struct WidgetPolicy {
 class AnyWidget : public Node<detail::widget_policy::WidgetPolicy> {
 
     friend WidgetHandle;
+    friend Accessor<AnyWidget, AnyLayout>;
 
     // types ----------------------------------------------------------------------------------- //
 private:
@@ -73,6 +74,9 @@ private:
     using super_t = Node<detail::widget_policy::WidgetPolicy>;
 
 public:
+    /// Nested `AccessFor<T>` type.
+    NOTF_ACCESS_TYPE(AnyWidget);
+
     /// Error thrown when a requested State transition is impossible.
     NOTF_EXCEPTION_TYPE(BadTransitionError);
 
@@ -156,7 +160,7 @@ public:
 
     /// Is true, if the Claim of this Widget is determined by the Widget itself.
     /// Is false, if the Claim of this Widget is determined by the combined Claims of all of its children.
-    bool has_explicit_claim() const { return m_is_claim_explicit; }
+    bool has_explicit_claim() const { return m_is_claim_explicit; } // TODO: explicit claims are not actually used yet
 
     /// Set an explicit Claim for this Widget.
     /// @param claim    New, explicit Claim.
@@ -255,6 +259,16 @@ private:
 
     /// Design of this Widget.
     PlotterDesign m_design;
+};
+
+// any widget accessors ============================================================================================= //
+
+template<>
+class Accessor<AnyWidget, AnyLayout> {
+    friend AnyLayout;
+
+    /// Forces a re-layout of the Widget even if its grant did not change.
+    static void relayout(AnyWidget& widget) { widget._relayout_downwards(); }
 };
 
 // widget handle ==================================================================================================== //

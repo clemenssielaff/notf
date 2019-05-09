@@ -44,8 +44,8 @@ bool AnyNode::Iterator::next(AnyNodeHandle& next_node) {
         NodeHandle current = take_back(m_nodes);
 
         // add all direct children of the next node in reverse order
-        for(size_t i = current->get_child_count(); i > 0; --i){
-            m_nodes.emplace_back(current->get_child(i-1));
+        for (size_t i = current->get_child_count(); i > 0; --i) {
+            m_nodes.emplace_back(current->get_child(i - 1));
         }
 
         // move the next node out of the function
@@ -55,17 +55,9 @@ bool AnyNode::Iterator::next(AnyNodeHandle& next_node) {
     return false;
 }
 
-// any node data ==================================================================================================== //
-
-AnyNode::ModifiedData::ModifiedData(valid_ptr<AnyNode*> parent, const std::vector<AnyNodePtr>& children, Flags flags)
-    : parent(parent), children(std::make_unique<std::vector<AnyNodePtr>>(children)), flags(std::move(flags)) {
-    NOTF_ASSERT(this->parent);
-    NOTF_ASSERT(this->children.get());
-}
-
 // any node ========================================================================================================= //
 
-AnyNode::AnyNode(valid_ptr<AnyNode*> parent) : m_parent(raw_pointer(parent)) {
+AnyNode::AnyNode(valid_ptr<AnyNode*> parent) : m_data({parent, {}, Flags()}) {
     NOTF_LOG_TRACE("Creating Node {}", m_uuid.to_string());
 }
 
@@ -73,7 +65,7 @@ AnyNode::~AnyNode() {
     NOTF_LOG_TRACE("Removing Node {}", m_uuid.to_string());
 
     // delete all children while their parent pointer is still valid
-    m_children.clear();
+    m_data.children.clear();
     m_modified_data.reset();
 
     TheGraph::AccessFor<AnyNode>::unregister_node(m_uuid);
@@ -252,10 +244,8 @@ void AnyNode::_set_parent(AnyNodeHandle new_parent_handle) {
 }
 
 AnyNode* AnyNode::_get_parent() const {
-    NOTF_ASSERT(m_parent);
-
     if (!this_thread::is_the_ui_thread()) {
-        return m_parent; // the renderer always sees the unmodified parent
+        return raw_pointer(m_data.parent); // the renderer always sees the unmodified parent
     }
 
     // if there exist a modified parent, return that one instead
@@ -263,18 +253,21 @@ AnyNode* AnyNode::_get_parent() const {
         NOTF_ASSERT(m_modified_data->parent);
         return m_modified_data->parent;
     }
-    return m_parent;
+    return raw_pointer(m_data.parent);
+}
+
+void AnyNode::_set_finalized() {
+    // do not check whether this is the UI thread as we need this method during Application construction
+    NOTF_ASSERT(!m_modified_data);
+    m_data.flags[to_number(InternalFlags::FINALIZED)] = true;
 }
 
 void AnyNode::_clear_modified_data() {
     NOTF_ASSERT(this_thread::is_the_ui_thread());
 
+    // move all modified data back onto the node
     if (m_modified_data) {
-        // move all modified data back onto the node
-        m_parent = m_modified_data->parent;
-        m_children = std::move(*m_modified_data->children.get());
-        m_flags = m_modified_data->flags;
-
+        m_data = std::move(*m_modified_data);
         m_modified_data.reset();
     }
 
@@ -329,21 +322,18 @@ const AnyNode* AnyNode::_get_common_ancestor(const AnyNode* const other) const {
 
 const std::vector<AnyNodePtr>& AnyNode::_read_children() const {
     if (!this_thread::is_the_ui_thread()) {
-        return m_children; // the renderer always sees the unmodified child list
+        return m_data.children; // the renderer always sees the unmodified child list
     }
 
     // if there exist a modified child list, return that one instead
-    if (m_modified_data) {
-        NOTF_ASSERT(m_modified_data->children);
-        return *m_modified_data->children;
-    }
-    return m_children;
+    if (m_modified_data) { return m_modified_data->children; }
+    return m_data.children;
 }
 
 std::vector<AnyNodePtr>& AnyNode::_write_children() {
     NOTF_ASSERT(this_thread::is_the_ui_thread());
     _set_dirty(); // changes in the child list make this node dirty
-    return *_ensure_modified_data().children;
+    return _ensure_modified_data().children;
 }
 
 const std::vector<AnyNodePtr>& AnyNode::_read_siblings() const {
@@ -356,12 +346,12 @@ bool AnyNode::_get_internal_flag(const size_t index) const {
     NOTF_ASSERT(index < bitset_size_v<Flags>);
 
     if (!this_thread::is_the_ui_thread()) {
-        return m_flags[index]; // the renderer always sees the unmodified flags
+        return m_data.flags[index]; // the renderer always sees the unmodified flags
     }
 
     // if a modified flag exist, return that one instead
     if (m_modified_data != nullptr) { return m_modified_data->flags[index]; }
-    return m_flags[index];
+    return m_data.flags[index];
 }
 
 void AnyNode::_set_internal_flag(const size_t index, const bool value) {
@@ -371,9 +361,14 @@ void AnyNode::_set_internal_flag(const size_t index, const bool value) {
     _ensure_modified_data().flags[index] = value;
 }
 
-AnyNode::ModifiedData& AnyNode::_ensure_modified_data() {
+AnyNode::Data& AnyNode::_ensure_modified_data() {
     NOTF_ASSERT(this_thread::is_the_ui_thread());
-    if (m_modified_data == nullptr) { m_modified_data = std::make_unique<ModifiedData>(m_parent, m_children, m_flags); }
+
+    // do not create a copy if the node hasn't even been finalized yet
+    if (!_is_finalized()) { return m_data; }
+
+    if (m_modified_data == nullptr) { m_modified_data = std::make_unique<Data>(m_data); }
+
     return *m_modified_data;
 }
 

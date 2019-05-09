@@ -1,5 +1,7 @@
 #include "notf/app/widget/layout.hpp"
 
+#include "notf/app/widget/any_widget.hpp"
+
 #include "notf/meta/breakable_scope.hpp"
 
 #include <map>
@@ -9,6 +11,8 @@ NOTF_OPEN_NAMESPACE
 // any layout ======================================================================================================= //
 
 AnyLayout::~AnyLayout() = default;
+
+void AnyLayout::_relayout() { AnyWidget::AccessFor<AnyLayout>::relayout(m_widget); }
 
 // overlayout ======================================================================================================= //
 
@@ -442,8 +446,7 @@ void layout_multi_stack(const FlexLayout& layout, const std::vector<const Widget
 } // namespace
 
 WidgetClaim FlexLayout::calculate_claim(const std::vector<const WidgetClaim*> claims) const {
-    // wrapping layouts adapt to whatever space is offered
-    if (is_wrapping()) { return {}; }
+    if (is_wrapping()) { return {}; } // wrapping layouts adapt to whatever space is offered
 
     WidgetClaim result;
     if (is_horizontal()) {

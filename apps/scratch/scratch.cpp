@@ -101,21 +101,49 @@ public:
         layout.set_cross_spacing(10);
         layout.set_wrap(FlexLayout::Wrap::WRAP);
         layout.set_direction(FlexLayout::Direction::LEFT_TO_RIGHT);
-//        layout.set_direction(FlexLayout::Direction::RIGHT_TO_LEFT);
-//        layout.set_direction(FlexLayout::Direction::TOP_TO_BOTTOM);
-//        layout.set_direction(FlexLayout::Direction::BOTTOM_TO_TOP);
+        //        layout.set_direction(FlexLayout::Direction::RIGHT_TO_LEFT);
+        //        layout.set_direction(FlexLayout::Direction::TOP_TO_BOTTOM);
+        //        layout.set_direction(FlexLayout::Direction::BOTTOM_TO_TOP);
 
         for (size_t i = 0; i < 100; ++i) {
             NodeHandle<ChildWidget> child = _create_child<ChildWidget>(this, static_cast<float>(i));
         }
+
+        m_pipeline = make_pipeline(connect_property<float_property>() | Trigger([&](float value) {
+                                       Paddingf padding = Paddingf::all(10);
+                                       padding.right += value *100;
+                                       get_layout<FlexLayout>().set_padding(std::move(padding));
+                                   }));
+    }
+
+    ~ParentWidget() override {
+        if (m_animation) { m_animation->stop(); }
     }
 
 private:
-    void _finalize() override {}
+    void _finalize() override {
+        auto handle = handle_cast<NodeHandle<ParentWidget>>(handle_from_this());
+        m_animation = IntervalTimer(500_fps, [handle]() mutable {
+            if (handle.is_valid()) {
+                TheEventHandler()->schedule([=]() mutable {
+                    const float time
+                        = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(get_age()).count());
+                    const float period = 10;
+                    const float t = fmod(time / (1000.f * period), 1.f);
+                    if (handle.is_valid()) { handle->set<float_property>(t); }
+                });
+            }
+        });
+        m_animation->start();
+    }
 
     void _get_widgets_at(const V2f&, std::vector<WidgetHandle>&) const override {}
 
     void _paint(Painter& painter) const override {}
+
+private:
+    TimerPtr m_animation;
+    AnyPipelinePtr m_pipeline;
 };
 
 // main ============================================================================================================= //

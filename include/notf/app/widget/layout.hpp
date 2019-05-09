@@ -68,14 +68,12 @@ public:
 
 protected:
     /// Lets the Widget know to relayout downwards because something about its layout changed.
-    void _relayout() {
-        // TODO: the layout should have a method to set the Widget dirty whenever a layout field is changed
-    }
+    void _relayout();
 
     // fields ---------------------------------------------------------------------------------- //
 protected:
     /// Widget whose children are transformed using this Layout.
-    const AnyWidget& m_widget;
+    AnyWidget& m_widget;
 
     /// Padding around the Layout's borders.
     Paddingf m_padding = Paddingf::none();

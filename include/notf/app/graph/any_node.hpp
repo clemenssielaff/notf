@@ -100,10 +100,8 @@ public:
     public:
         /// Constructor.
         /// @param node Node at the root of the iteration.
-        Iterator(const AnyNodeHandle node) {
-            if (node) {
-                m_nodes.emplace_back(std::move(node));
-            }
+        Iterator(AnyNodeHandle node) {
+            if (node) { m_nodes.emplace_back(std::move(node)); }
         }
 
         /// Finds and returns the next Node in the iteration.
@@ -114,7 +112,7 @@ public:
         // fields ---------------------------------------------------------- //
     private:
         /// Stack of Iterators.
-        std::vector<const AnyNodeHandle> m_nodes;
+        std::vector<AnyNodeHandle> m_nodes;
     };
 
 private:
@@ -168,29 +166,23 @@ private:
     /// Therefore, all modifications on a Node are first applied to a copy of the Node's Data, while the renderer still
     /// sees the Graph as it was when it was last "synchronized".
     ///
-    /// All modifyable data of a node is packed into a single `ModifiedData` object, instead of having individual
+    /// All modifiable data of a node is packed into a single `Data` object, instead of having individual
     /// pointers to a potential modified copy of each value.
     /// Since it will be a lot more common for a single Node to be modified many times than it is for many Nodes to be
     /// modified a single time, it is advantageous to have a single unused pointer to a Data object in most Nodes and a
     /// few unneccessary copies on others, than it is to have many unused pointers on most Nodes.
-    struct ModifiedData {
-        /// Value Constructor.
-        /// Initializes all data, so we can be sure that all of it is valid if a modified data copy exists.
-        /// @param parent   Modified parent of this Node, if it was moved.
-        /// @param children Modified children of this Node, should they have changed.
-        /// @param flags    Modified flags of this Node.
-        ModifiedData(valid_ptr<AnyNode*> parent, const std::vector<AnyNodePtr>& children, Flags flags);
+    struct Data {
 
-        /// Modified parent of this Node, if it was moved.
+        /// Parent of this Node.
         valid_ptr<AnyNode*> parent;
 
-        /// Modified children of this Node, should they have been modified.
-        std::unique_ptr<std::vector<AnyNodePtr>> children;
+        /// All children of this Node, ordered from back to front (later Nodes are drawn on top of earlier ones).
+        std::vector<AnyNodePtr> children;
 
-        /// Modified flags of this Node.
+        /// Additional flags, contains both internal and user-definable flags.
         Flags flags;
     };
-    using ModifiedDataPtr = std::unique_ptr<ModifiedData>;
+    using ModifiedDataPtr = std::unique_ptr<Data>;
 
     // methods --------------------------------------------------------------------------------- //
 protected:
@@ -540,10 +532,7 @@ private:
 
     /// Marks this Node as finalized.
     /// Called right after this Node's `_finalize` method has returned.
-    void _set_finalized() {
-        // do not check whether this is the UI thread as we need this method during Application construction
-        m_flags[to_number(InternalFlags::FINALIZED)] = true;
-    }
+    void _set_finalized();
 
     /// Deletes all modified data of this Node.
     void _clear_modified_data();
@@ -642,7 +631,7 @@ private:
     void _set_internal_flag(size_t index, bool value = true);
 
     /// Creates (if necessary) and returns the modified Data for this Node.
-    ModifiedData& _ensure_modified_data();
+    Data& _ensure_modified_data();
 
     /// Marks this Node as dirty if it is finalized.
     void _set_dirty();
@@ -652,14 +641,8 @@ private:
     /// Uuid of this Node.
     const Uuid m_uuid = Uuid::generate();
 
-    /// Parent of this Node.
-    AnyNode* m_parent;
-
-    /// All children of this Node, ordered from back to front (later Nodes are drawn on top of earlier ones).
-    std::vector<AnyNodePtr> m_children;
-
-    /// Additional flags, contains both internal and user-definable flags.
-    Flags m_flags;
+    /// Data that might change between the start of a frame and its end.
+    Data m_data;
 
     /// Pointer to modified Data, should this Node have been modified since the last Graph synchronization.
     ModifiedDataPtr m_modified_data;
@@ -695,7 +678,7 @@ class Accessor<AnyNode, Window> {
     /// while its GraphicsContext is still alive.
     static void remove_children_now(AnyNode* node) {
         node->m_modified_data.reset();
-        node->m_children.clear();
+        node->m_data.children.clear();
     }
 };
 

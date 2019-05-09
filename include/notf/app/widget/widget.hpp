@@ -403,15 +403,15 @@ public:
     /// Returns the correctly typed value of a Property.
     /// @param name     Name of the requested Property.
     template<char... Cs, class Study = _PropertyStudy<Cs...>>
-    constexpr const auto& connect_property(StringType<Cs...> name) const {
+    constexpr auto connect_property(StringType<Cs...> name) const {
         if constexpr (Study::is_widget) {
-            return PropertyHandle(std::get<Study::index>(m_widget_properties));
+            return PropertyHandle(std::get<Study::index>(m_widget_properties).get());
         } else {
             return AnyWidget::connect_property(name);
         }
     }
     template<const ConstString& name>
-    constexpr const auto& connect_property() const {
+    constexpr auto connect_property() const {
         return connect_property(make_string_type<name>());
     }
     /// @}
