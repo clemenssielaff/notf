@@ -13,8 +13,27 @@ NOTF_OPEN_NAMESPACE
 /// We are using macros here instead of constexpr functions to make sure that the expression within the macro brackets
 /// is never evaluated and to make use of the __FILE__ and __LINE__ macros.
 
-#define NOTFIMPL_LOG(LEVEL, MSG, ...) \
+#define NOTFIMPL_LOG(...) NOTF_OVERLOADED_MACRO(NOTFIMPL_LOG, __VA_ARGS__)
+
+/// no message
+#define NOTFIMPL_LOG1(LEVEL) ::notf::TheLogger::get()->LEVEL("({}:{})", ::notf::filename_from_path(__FILE__), __LINE__)
+
+/// you can use any single value as log entry, even if it is not a string
+#define NOTFIMPL_LOG2(LEVEL, MSG) \
+    ::notf::TheLogger::get()->LEVEL("{} ({}:{})", MSG, ::notf::filename_from_path(__FILE__), __LINE__)
+
+/// if you pass multiple arguments, the first one needs to be a string,
+/// subsequent arguments are used to format the string using fmt
+#define NOTFIMPL_LOG3(LEVEL, MSG, ...) \
     ::notf::TheLogger::get()->LEVEL(MSG " ({}:{})", ##__VA_ARGS__, ::notf::filename_from_path(__FILE__), __LINE__)
+
+// implementation detail
+#define NOTFIMPL_LOG4(LEVEL, MSG, ...) NOTFIMPL_LOG3(LEVEL, MSG, ##__VA_ARGS__)
+#define NOTFIMPL_LOG5(LEVEL, MSG, ...) NOTFIMPL_LOG3(LEVEL, MSG, ##__VA_ARGS__)
+#define NOTFIMPL_LOG6(LEVEL, MSG, ...) NOTFIMPL_LOG3(LEVEL, MSG, ##__VA_ARGS__)
+#define NOTFIMPL_LOG7(LEVEL, MSG, ...) NOTFIMPL_LOG3(LEVEL, MSG, ##__VA_ARGS__)
+#define NOTFIMPL_LOG8(LEVEL, MSG, ...) NOTFIMPL_LOG3(LEVEL, MSG, ##__VA_ARGS__)
+// add new entries here, if you need to construct a really long log entry
 
 #if NOTF_LOG_LEVEL <= 0
 #define NOTF_LOG_TRACE(MSG, ...) NOTF_DEFER(NOTFIMPL_LOG, trace, MSG, ##__VA_ARGS__)

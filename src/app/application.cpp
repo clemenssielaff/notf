@@ -34,12 +34,10 @@ Application::Application(Arguments args)
     : m_arguments(std::move(args)), m_ui_lock(m_ui_mutex), m_event_queue(m_arguments.app_buffer_size) {
 
     // log application header
-    NOTF_LOG_INFO("NOTF {} ({} built with {} from {}commit \"{}\")",
-                  config::version_string(),                           //
-                  (config::is_debug_build() ? "debug" : "release"),   //
-                  config::compiler_name(),                            //
-                  (config::was_commit_modified() ? "modified " : ""), //
-                  config::built_from_commit());
+    NOTF_LOG_INFO("NOTF {}, {} ({})",
+                  config::version_string(), //
+                  config::compiler_name(),  //
+                  (config::is_debug_build() ? "debug" : "release"));
 
     // initialize GLFW
     glfwSetErrorCallback(GlfwCallbacks::_on_error);

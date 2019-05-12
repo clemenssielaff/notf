@@ -205,3 +205,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/glfw-3.3)
 
 # freetype
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/freetype-2.9.1)
+
+# lua
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lua)

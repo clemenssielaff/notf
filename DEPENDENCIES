@@ -13,6 +13,10 @@ sudo apt-get -y install libgles2-mesa-dev
 # Python3
 sudo apt-get -y install python3-dev
 
+# Lua
+# maybe not necessary since I only build the library, not the executable
+#sudo apt-get install libreadline-dev
+
 # Jekyll
 sudo apt-get -y install ruby2.3-dev
 sudo gem install jekyll

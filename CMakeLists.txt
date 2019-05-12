@@ -195,24 +195,25 @@ set(NOTF_LITERALS_NAMESPACE_NAME "literals")
 # store information about the current git revision
 # note that this only displays the revision and modification state at the time that CMake is last run - not every time
 # that the source is built
-find_package(Git QUIET)
-if(GIT_FOUND)
-    execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
-                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-                    OUTPUT_VARIABLE NOTF_BUILT_COMMIT
-                    ERROR_QUIET
-                    OUTPUT_STRIP_TRAILING_WHITESPACE)
-    execute_process(COMMAND ${GIT_EXECUTABLE} diff --quiet
-                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-                    RESULT_VARIABLE NOTF_BUILT_COMMIT_WAS_MODIFIED
-                    ERROR_QUIET
-                    OUTPUT_STRIP_TRAILING_WHITESPACE)
-endif()
+#find_package(Git QUIET)
+#if(GIT_FOUND)
+#    execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+#                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+#                    OUTPUT_VARIABLE NOTF_BUILT_COMMIT
+#                    ERROR_QUIET
+#                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+#    execute_process(COMMAND ${GIT_EXECUTABLE} diff --quiet
+#                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+#                    RESULT_VARIABLE NOTF_BUILT_COMMIT_WAS_MODIFIED
+#                    ERROR_QUIET
+#                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+#endif()
 
 configure_file (
     "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp.in"
-    "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp"
+    "${CMAKE_BINARY_DIR}/include/notf/meta/config.hpp"
 )
+include_directories("${CMAKE_BINARY_DIR}/include")
 
 # SYSTEM DEPENDEND GLOBALS ############################################################################################
 

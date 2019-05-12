@@ -111,7 +111,7 @@ public:
 
         m_pipeline = make_pipeline(connect_property<float_property>() | Trigger([&](float value) {
                                        Paddingf padding = Paddingf::all(10);
-                                       padding.right += value *100;
+                                       padding.right += value * 300;
                                        get_layout<FlexLayout>().set_padding(std::move(padding));
                                    }));
     }
@@ -123,14 +123,14 @@ public:
 private:
     void _finalize() override {
         auto handle = handle_cast<NodeHandle<ParentWidget>>(handle_from_this());
-        m_animation = IntervalTimer(500_fps, [handle]() mutable {
+        m_animation = IntervalTimer(60_fps, [handle]() mutable {
             if (handle.is_valid()) {
                 TheEventHandler()->schedule([=]() mutable {
                     const float time
                         = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(get_age()).count());
                     const float period = 10;
-                    const float t = fmod(time / (1000.f * period), 1.f);
-                    if (handle.is_valid()) { handle->set<float_property>(t); }
+                    const float t = sin(fmod((time * pi<float>() * 2) / (1000.f * period), pi<float>() * 2));
+                    if (handle.is_valid()) { handle->set<float_property>((t + 1) / 2); }
                 });
             }
         });
