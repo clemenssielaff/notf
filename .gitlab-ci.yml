@@ -3,7 +3,7 @@ image: ubuntu
 notf-tests:
   stage: build
   before_script:
-    - apt update && apt -y install build-essential ninja-build cmake lcov
+    - apt update && apt -y install build-essential ninja-build cmake lcov uuid-dev freeglut3-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev libgles2-mesa-dev
   script:
     - mkdir ./build && cd ./build
     - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ../
