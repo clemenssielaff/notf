@@ -7,3 +7,4 @@ __pycache__
 
 # auto-generated files
 include/notf/meta/config.hpp
+thirdparty/lua/src/luaconf.h

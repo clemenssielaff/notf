@@ -1,0 +1,37 @@
+image: ubuntu
+
+notf-tests:
+  stage: build
+  before_script:
+    - apt update && apt -y install build-essential ninja-build cmake lcov
+  script:
+    - mkdir ./build && cd ./build
+    - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ../
+    - ninja -v
+    - ./tests/notf-tests --durations yes exclude:[slow] exclude:[app]
+    - lcov --capture --directory ./src/CMakeFiles/notf-core.dir/ --output-file src.cov
+    - lcov --capture --directory ./tests/CMakeFiles/notf-tests.dir/ --output-file test.cov
+    - lcov --add-tracefile src.cov --add-tracefile test.cov --output-file coverage.info
+    - lcov --remove coverage.info "/usr/*" --output-file coverage.info
+    - lcov --remove coverage.info "*/notf/thirdparty/*" --output-file coverage.info
+    - lcov --remove coverage.info "*/notf/tests/*" --output-file coverage.info
+    - genhtml ./coverage.info --output-directory coverage --title "notf test coverage" --prefix `realpath ..`
+  cache:
+    paths:
+      - "./build/**.o"
+  artifacts:
+    paths:
+      - ./build/coverage/
+
+pages:
+  stage: deploy
+  dependencies:
+    - notf-tests
+  script:
+    - mv build/ public/
+  artifacts:
+    paths:
+      - public
+    expire_in: 30 days
+  only:
+    - master

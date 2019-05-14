@@ -24,7 +24,7 @@ try_compile(
     "${CMAKE_SOURCE_DIR}/cmake/try_compiles/declval.cpp"
     )
 if(NOTF_COMPILER_HAS_DECLVAL)
-    message(STATUS ">>> notf: Compiler supports `decltype(std::declval<T>())`")
+    message(STATUS "notf: Compiler supports `decltype(std::declval<T>())`")
 else()
-    message(STATUS ">>> notf: Compiler DOES NOT support `decltype(std::declval<T>())`")
+    message(STATUS "notf: Compiler DOES NOT support `decltype(std::declval<T>())`")
 endif()

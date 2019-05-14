@@ -47,11 +47,17 @@ add_sources(LUA_SRC_LIB src
     lutf8lib.c
 )
 
+# options
+option(LUA_32BITS "Build Lua with 32-bit integers and 32-bit floats." OFF)
+option(LUA_USE_C89 "Avoid the use of C99 or Windows-specific features" OFF)
+
 # compile type specifics
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
-    message("Building Lua with \"LUA_USE_APICHECK\" defined")
+    message(STATUS "notf: Building Lua with \"LUA_USE_APICHECK\" defined")
     list(APPEND LUA_DEFINITIONS "LUA_USE_APICHECK" )
 endif()
+
+
 
 # system specifics
 if(WIN32)
@@ -62,6 +68,13 @@ elseif(UNIX)
     list(APPEND LUA_DEFINITIONS "LUA_USE_LINUX" )
     list(APPEND LUA_DEPENDENCIES ${CMAKE_DL_LIBS} )
 endif()
+
+# configuration
+configure_file (
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/luaconf.h.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/luaconf.h"
+)
+
 
 # library
 add_library (liblua STATIC

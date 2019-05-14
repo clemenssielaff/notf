@@ -91,16 +91,16 @@ if(CMAKE_BUILD_TYPE MATCHES "Release")
     include(CheckIPOSupported)
     check_ipo_supported(RESULT IS_LTO_SUPPORTED OUTPUT LTO_ERROR)
     if(IS_LTO_SUPPORTED)
-        message(STATUS ">>> notf: Building with LTO")
+        message(STATUS "notf: Building with LTO")
         set_property(GLOBAL PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     else()
-        message(STATUS ">>> notf:Building without LTO:\n${LTO_ERROR}")
+        message(STATUS "notf:Building without LTO:\n${LTO_ERROR}")
     endif()
 endif()
 
 # use LLVM libraries and tools
 if (NOTF_CLANG)
-    message(STATUS ">>> notf: Using llvm tools: libc++ and lld ")
+    message(STATUS "notf: Using llvm tools: libc++ and lld ")
     add_compile_options("-stdlib=libc++")
     add_link_options(
         "-stdlib=libc++"
@@ -112,7 +112,7 @@ endif()
 # use ccache if available
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
-    message(STATUS ">>> notf: Using ccache")
+    message(STATUS "notf: Using ccache")
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE_PROGRAM})
 endif()
 
@@ -123,34 +123,11 @@ include(try_compiles)
 
 # define notf's debug/release flags
 if(CMAKE_BUILD_TYPE MATCHES "Release")
-    message(STATUS ">>> notf: Building in release mode")
+    message(STATUS "notf: Building in release mode")
     set(NOTF_RELEASE TRUE)
 else()
-    message(STATUS ">>> notf: Building in debug mode")
+    message(STATUS "notf: Building in debug mode")
     set(NOTF_DEBUG TRUE)
-endif()
-
-# build and run the tests
-option(NOTF_BUILD_TESTS "Build tests" ON)
-if(NOTF_BUILD_TESTS)
-    message(STATUS ">>> notf: Building tests")
-    set(NOTF_TEST TRUE)
-endif()
-
-# build the benchmarks
-option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
-if(NOTF_BUILD_BENCHMARKS)
-    message(STATUS ">>> notf: Building benchmarks")
-endif()
-
-# log level
-set(NOTF_LOG_LEVEL "0" CACHE STRING "Log level to compile (0=all -> 6=nothing)")
-
-# abort on assert
-option(NOTF_ABORT_ON_ASSERT "Abort straight away when failing an assert" 1)
-if(NOTF_ABORT_ON_ASSERT)
-    message(STATUS ">>> notf: Aborting on assert failure")
-    set(NOTF_ABORT_ON_ASSERT 1)
 endif()
 
 # thread sanitization
@@ -159,24 +136,58 @@ if (NOTF_CLANG)
     if(NOTF_THREAD_SANITIZATION)
         add_compile_options("-fsanitize=thread")
         link_libraries("-fsanitize=thread")
-        message(STATUS ">>> notf: Building using thread sanitization")
+        message(STATUS "notf: Building using thread sanitization")
 
         # sanitization blacklist
         add_compile_options("-fsanitize-blacklist=${CMAKE_SOURCE_DIR}/.sanitizer-blacklist")
     endif()
 endif()
 
-# coverage
-if(NOTF_CLANG)
-    option(NOTF_CREATE_COVERAGE "Create test coverage " ON)
-    if(NOTF_CREATE_COVERAGE)
-        if(NOTF_THREAD_SANITIZATION)
-            message(AUTHOR_WARNING ">>> notf: Disabling coverage to avoid interference with thread sanitization.")
-            set(NOTF_CREATE_COVERAGE OFF)
+# build the tests
+option(NOTF_BUILD_TESTS "Build tests" ON)
+if(NOTF_BUILD_TESTS)
+    message(STATUS "notf: Building tests")
+    set(NOTF_TEST TRUE)
+
+    # enable coverage
+    if(NOTF_THREAD_SANITIZATION)
+        message(AUTHOR_WARNING "notf: Disabling coverage to avoid interference with thread sanitization.")
+    else()
+        message(STATUS "notf: Creating coverage.")
+        if (NOTF_CLANG)
+            set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-instr-generate -fcoverage-mapping")
+            set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-instr-generate")
+        elseif(NOTF_GCC)
+            set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
+            set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} --coverage")
         else()
-            message(STATUS ">>> notf: Creating coverage.")
+            message(AUTHOR_WARNING "notf: Code coverage is only supported for GCC and clang builds")
         endif()
     endif()
+endif()
+
+# build the apps
+option(NOTF_BUILD_APPS "Build apps" OFF)
+if(NOTF_BUILD_APPS)
+    message(STATUS "notf: Building apps.")
+else()
+    message(STATUS "notf: NOT building apps.")
+endif()
+
+# build the benchmarks
+option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
+if(NOTF_BUILD_BENCHMARKS)
+    message(STATUS "notf: Building benchmarks")
+endif()
+
+# log level
+set(NOTF_LOG_LEVEL "0" CACHE STRING "Log level to compile (0=all -> 6=nothing)")
+
+# abort on assert
+option(NOTF_ABORT_ON_ASSERT "Abort straight away when failing an assert" 1)
+if(NOTF_ABORT_ON_ASSERT)
+    message(STATUS "notf: Aborting on assert failure")
+    set(NOTF_ABORT_ON_ASSERT 1)
 endif()
 
 # CODE INTEGRATION #####################################################################################################
@@ -189,31 +200,11 @@ set(NOTF_NAMESPACE_NAME "notf")
 set(NOTF_VERSION_STRING ${PROJECT_VERSION})
 set(NOTF_LITERALS_NAMESPACE_NAME "literals")
 
-# cmake timestamp
-# STRING(TIMESTAMP NOTF_TIMESTAMP "%b %d %Y, %H:%M:%S")
-
-# store information about the current git revision
-# note that this only displays the revision and modification state at the time that CMake is last run - not every time
-# that the source is built
-#find_package(Git QUIET)
-#if(GIT_FOUND)
-#    execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
-#                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-#                    OUTPUT_VARIABLE NOTF_BUILT_COMMIT
-#                    ERROR_QUIET
-#                    OUTPUT_STRIP_TRAILING_WHITESPACE)
-#    execute_process(COMMAND ${GIT_EXECUTABLE} diff --quiet
-#                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-#                    RESULT_VARIABLE NOTF_BUILT_COMMIT_WAS_MODIFIED
-#                    ERROR_QUIET
-#                    OUTPUT_STRIP_TRAILING_WHITESPACE)
-#endif()
-
 configure_file (
     "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp.in"
-    "${CMAKE_BINARY_DIR}/include/notf/meta/config.hpp"
+    "${CMAKE_BINARY_DIR}/config/notf/meta/config.hpp"
 )
-include_directories("${CMAKE_BINARY_DIR}/include")
+include_directories("${CMAKE_BINARY_DIR}/config")
 
 # SYSTEM DEPENDEND GLOBALS ############################################################################################
 
@@ -285,10 +276,12 @@ file(GLOB_RECURSE NOTF_DOCS
 
 add_subdirectory(thirdparty)
 add_subdirectory(src)
-add_subdirectory(apps)
+
+if(NOTF_BUILD_APPS)
+    add_subdirectory(apps)
+endif()
 
 if(NOTF_BUILD_TESTS)
-    enable_testing()
     add_subdirectory(tests)
 endif()
 
