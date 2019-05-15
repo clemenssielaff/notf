@@ -4,8 +4,8 @@ notf-tests:
   stage: build
   before_script:
     - apt update && apt -y install build-essential ninja-build ccache cmake lcov uuid-dev freeglut3-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev libgles2-mesa-dev
+    - export CCACHE_DIR=`ccache -k cache_dir`
   script:
-    - ln -snf /usr/share/zoneinfo/Pacific/Auckland /etc/localtime && echo Pacific/Auckland > /etc/timezone
     - NOTF_BASE_DIR=`realpath .`
     - mkdir -p ./build/ci/ && cd ./build/ci/
     - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug $NOTF_BASE_DIR
@@ -19,8 +19,9 @@ notf-tests:
     - lcov --remove coverage.info "$NOTF_BASE_DIR/tests/*" --output-file coverage.info
     - genhtml ./coverage.info --output-directory coverage --title "notf test coverage" --prefix $NOTF_BASE_DIR
   cache:
+    key: ${CI_JOB_NAME}
     paths:
-      - "~/.ccache/**"
+      - $CCACHE_DIR/**
   artifacts:
     paths:
       - ./build/ci/coverage/
