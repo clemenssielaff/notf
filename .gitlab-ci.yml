@@ -3,25 +3,27 @@ image: ubuntu:19.04
 notf-tests:
   stage: build
   before_script:
-    - apt update && apt -y install build-essential ninja-build cmake lcov uuid-dev freeglut3-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev libgles2-mesa-dev
+    - apt update && apt -y install build-essential ninja-build ccache cmake lcov uuid-dev freeglut3-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev libgles2-mesa-dev
   script:
-    - mkdir ./build && cd ./build
-    - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ../
+    - timedatectl set-timezone Pacific/Auckland
+    - NOTF_BASE_DIR=`realpath .`
+    - mkdir -p ./build/ci/ && cd ./build/ci/
+    - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug $NOTF_BASE_DIR
     - ninja -v
     - ./tests/notf-tests --durations yes exclude:[slow] exclude:[app]
     - lcov --capture --directory ./src/CMakeFiles/notf-core.dir/ --output-file src.cov
     - lcov --capture --directory ./tests/CMakeFiles/notf-tests.dir/ --output-file test.cov
     - lcov --add-tracefile src.cov --add-tracefile test.cov --output-file coverage.info
     - lcov --remove coverage.info "/usr/*" --output-file coverage.info
-    - lcov --remove coverage.info "*/notf/thirdparty/*" --output-file coverage.info
-    - lcov --remove coverage.info "*/notf/tests/*" --output-file coverage.info
-    - genhtml ./coverage.info --output-directory coverage --title "notf test coverage" --prefix `realpath ..`
+    - lcov --remove coverage.info "$NOTF_BASE_DIR/thirdparty/*" --output-file coverage.info
+    - lcov --remove coverage.info "$NOTF_BASE_DIR/tests/*" --output-file coverage.info
+    - genhtml ./coverage.info --output-directory coverage --title "notf test coverage" --prefix $NOTF_BASE_DIR
   cache:
     paths:
-      - "./build/**.o"
+      - "~/.ccache/**"
   artifacts:
     paths:
-      - ./build/coverage/
+      - ./build/ci/coverage/
 
 pages:
   stage: deploy
