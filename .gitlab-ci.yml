@@ -5,7 +5,7 @@ notf-tests:
   before_script:
     - apt update && apt -y install build-essential ninja-build ccache cmake lcov uuid-dev freeglut3-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev libgles2-mesa-dev
   script:
-    - timedatectl set-timezone Pacific/Auckland
+    - ln -snf /usr/share/zoneinfo/Pacific/Auckland /etc/localtime && echo Pacific/Auckland > /etc/timezone
     - NOTF_BASE_DIR=`realpath .`
     - mkdir -p ./build/ci/ && cd ./build/ci/
     - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug $NOTF_BASE_DIR
