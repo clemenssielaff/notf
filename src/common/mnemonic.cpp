@@ -1,5 +1,5 @@
 /// This is a C++ port of a C implementation by John Mettraux (https://github.com/flon-io/mnemo),
-/// which was in turn a C port from Ruby of its own code (https://github.com/jmettraux/rufus-mnemo).
+/// which was in turn a C port from Ruby of his own code (https://github.com/jmettraux/rufus-mnemo).
 ///
 #include "notf/common/mnemonic.hpp"
 

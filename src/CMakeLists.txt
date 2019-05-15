@@ -82,13 +82,17 @@ add_library(${CURRENT_TARGET} STATIC
 target_include_directories(${CURRENT_TARGET} PUBLIC
     ${CMAKE_SOURCE_DIR}/include/
     ${CMAKE_SOURCE_DIR}/thirdparty/include/
-    ${CMAKE_SOURCE_DIR}/thirdparty/lib/glfw-3.3.0/include
-    ${CMAKE_SOURCE_DIR}/thirdparty/lib/freetype-2.9.1/include
+    ${CMAKE_SOURCE_DIR}/thirdparty/boost_1.68/include/
+    ${CMAKE_SOURCE_DIR}/thirdparty/fmt_5.3/include/
+    ${CMAKE_SOURCE_DIR}/thirdparty/glfw_3.3/include
+    ${CMAKE_SOURCE_DIR}/thirdparty/freetype_2.10/include
 )
 
 # dependencies
 target_link_libraries(${CURRENT_TARGET} PUBLIC
     notf-thirdparty
+    notf-fmt
+    notf-boost
     glfw
     uuid
     freetype
