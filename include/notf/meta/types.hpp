@@ -297,7 +297,7 @@ constexpr T null_result() noexcept
     static_assert(std::is_nothrow_default_constructible<T>::value);
     return {};
 }
-template <> void null_result<void>() noexcept {};
+template <> inline void null_result<void>() noexcept {};
 /// @}
 
 // declval ========================================================================================================== //
