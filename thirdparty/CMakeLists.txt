@@ -61,7 +61,7 @@ target_compile_definitions(${CURRENT_TARGET} PUBLIC ${NOTF_GLOBAL_DEFINES})
 # SUB-PROJECTS #########################################################################################################
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/fmt_5.3)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost_1.68)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost_1.70)
 
 # glfw
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)

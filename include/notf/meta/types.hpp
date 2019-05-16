@@ -287,6 +287,19 @@ constexpr std::array<Common, sizeof...(Args)> auto_list(Args&&... args) {
     return {static_cast<Common>(std::forward<Args>(args))...};
 }
 
+// null result ====================================================================================================== //
+
+/// @{
+/// Produces a type-specific "null" value or void.
+template <class T>
+constexpr T null_result() noexcept
+{
+    static_assert(std::is_nothrow_default_constructible<T>::value);
+    return {};
+}
+template <> void null_result<void>() noexcept {};
+/// @}
+
 // declval ========================================================================================================== //
 
 #ifndef NOTF_COMPILER_HAS_DECLVAL

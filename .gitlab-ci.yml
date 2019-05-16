@@ -5,9 +5,10 @@ notf-tests:
   variables:
     CCACHE_COMPILERCHECK: "content"
   before_script:
-    - apt update && apt -y install build-essential ninja-build cmake lcov uuid-dev freeglut3-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev libgles2-mesa-dev
+    - apt update && apt -y install build-essential ninja-build cmake ccache lcov uuid-dev freeglut3-dev libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev libgles2-mesa-dev
     - NOTF_BASEDIR="$PWD"
     - export PATH="/usr/lib/ccache:$PATH"
+    - echo `which ccache`
     - export CCACHE_BASEDIR="$PWD" CCACHE_DIR="$PWD/ccache"
     - ccache --zero-stats --show-stats || true
   script:
