@@ -1,4 +1,4 @@
-#include "catch2/catch.hpp"
+#include "catch.hpp"
 
 #include "notf/common/geo/vector2.hpp"
 #include "notf/common/random.hpp"

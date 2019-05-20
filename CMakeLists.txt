@@ -1,16 +1,8 @@
 # require at least CMake 3.9 to support Interprocedural Optimization IPO
 cmake_minimum_required(VERSION 3.9)
 
-# top-level project
-project(notf
-    VERSION 0.4.0.0
-    DESCRIPTION "Reactive & Lightweight UI Application Engine in C++/Python"
-    LANGUAGES CXX
-)
-
-# apply modern policies
+# CMake policies
 if(COMMAND cmake_policy)
-    cmake_policy(PUSH)
 
     # from https://cliutils.gitlab.io/modern-cmake/chapters/basics.html
     if(CMAKE_VERSION VERSION_LESS 3.12)
@@ -19,32 +11,36 @@ if(COMMAND cmake_policy)
         cmake_policy(VERSION 3.12)
     endif()
 
+    # apply modern policies
+    foreach(p
+        CMP0048 # it's okay to clear PROJECT_VERSION on project()
+        CMP0056 # use the same linker flags for `try_compile` as for the rest of the project
+        CMP0063 # honor visibility properties for all targets
+        CMP0066 # use the same compile flags for `try_compile` as for the rest of the project
+        CMP0067 # use the same c++ standard for `try_compile` as for the rest of the project
+        CMP0072 # OpenGL prefers GLVND by default when available
+        )
+      if(POLICY ${p})
+        cmake_policy(SET ${p} NEW)
+      endif()
+    endforeach()
+
     # Only interpret if() arguments as variables or keywords when unquoted.
     if (NOT CMAKE_VERSION VERSION_LESS "3.1")
         cmake_policy(SET CMP0054 NEW)
     endif()
 
-    # Use the same linker flags for `try_compile` as for the rest of the project.
-    if(POLICY CMP0056)
-        cmake_policy(SET CMP0056 NEW)
-    endif()
-
-    # Use the same compile flags for `try_compile` as for the rest of the project.
-    if(POLICY CMP0066)
-        cmake_policy(SET CMP0066 NEW)
-    endif()
-
-    # Use the same c++ standard for `try_compile` as for the rest of the project.
-    if(POLICY CMP0067)
-        cmake_policy(SET CMP0067 NEW)
-    endif()
-
-    # FindOpenGL prefers GLVND by default when available.
-    if(POLICY CMP0072)
-        cmake_policy(SET CMP0072 NEW)
-    endif()
-
 endif()
+
+# PROJECT ##############################################################################################################
+
+# top-level project
+project(notf
+    VERSION 0.4.0.0
+    DESCRIPTION "Reactive & Lightweight UI Application Engine in C++/Python"
+    LANGUAGES CXX
+)
+
 
 # SYSTEM CHECK #########################################################################################################
 
@@ -144,24 +140,26 @@ if (NOTF_CLANG)
 endif()
 
 # build the tests
-option(NOTF_BUILD_TESTS "Build tests" ON)
-if(NOTF_BUILD_TESTS)
-    message(STATUS "notf: Building tests")
-    set(NOTF_TEST TRUE)
+if(NOTF_DEBUG)
+    option(NOTF_BUILD_TESTS "Build tests" ON)
+    if(NOTF_BUILD_TESTS)
+        message(STATUS "notf: Building tests")
+        set(NOTF_TEST TRUE)
 
-    # enable coverage
-    if(NOTF_THREAD_SANITIZATION)
-        message(AUTHOR_WARNING "notf: Disabling coverage to avoid interference with thread sanitization.")
-    else()
-        message(STATUS "notf: Creating coverage.")
-        if (NOTF_CLANG)
-            set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-instr-generate -fcoverage-mapping")
-            set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-instr-generate")
-        elseif(NOTF_GCC)
-            set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
-            set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} --coverage")
+        # enable coverage
+        if(NOTF_THREAD_SANITIZATION)
+            message(AUTHOR_WARNING "notf: Disabling coverage to avoid interference with thread sanitization.")
         else()
-            message(AUTHOR_WARNING "notf: Code coverage is only supported for GCC and clang builds")
+            message(STATUS "notf: Creating coverage.")
+            if (NOTF_CLANG)
+                set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-instr-generate -fcoverage-mapping")
+                set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-instr-generate")
+            elseif(NOTF_GCC)
+                set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
+                set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} --coverage")
+            else()
+                message(AUTHOR_WARNING "notf: Code coverage is only supported for GCC and clang builds")
+            endif()
         endif()
     endif()
 endif()
@@ -287,10 +285,4 @@ endif()
 
 if(NOTF_BUILD_BENCHMARKS)
     add_subdirectory(benchmarks)
-endif()
-
-########################################################################################################################
-
-if(COMMAND cmake_policy)
-    cmake_policy(POP)
 endif()

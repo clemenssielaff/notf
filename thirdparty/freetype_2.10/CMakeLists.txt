@@ -93,6 +93,9 @@ if (NOT CMAKE_VERSION VERSION_LESS 3.3)
   cmake_policy(SET CMP0063 NEW)
 endif ()
 
+# It's okay to clear PROJECT_VERSION on project().
+cmake_policy(SET CMP0048 NEW)
+
 include(CheckIncludeFile)
 
 # CMAKE_TOOLCHAIN_FILE must be set before `project' is called, which

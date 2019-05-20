@@ -1,4 +1,4 @@
-#include "catch2/catch.hpp"
+#include "catch.hpp"
 
 #include "test/app.hpp"
 #include "test/utils.hpp"

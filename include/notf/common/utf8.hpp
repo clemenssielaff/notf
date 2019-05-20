@@ -1,6 +1,6 @@
 #pragma once
 
-#include "tinyutf8/tinyutf8.h"
+#include "tinyutf8.hpp"
 
 #include "notf/meta/config.hpp"
 

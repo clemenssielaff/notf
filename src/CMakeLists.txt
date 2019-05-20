@@ -34,6 +34,7 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     common/thread.cpp
     common/thread_pool.cpp
     common/uuid.cpp
+    common/utf8.cpp
 
     common/geo/matrix3.cpp
     common/geo/path2.cpp
@@ -66,11 +67,6 @@ add_sources(CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     meta/half.cpp
 )
 
-# add thirdparty files
-add_sources(CORE_FILES ${CMAKE_SOURCE_DIR}/thirdparty/include/
-    randutils/randutils.hpp
-)
-
 # declare core library
 add_library(${CURRENT_TARGET} STATIC
     ${CORE_FILES}
@@ -81,21 +77,27 @@ add_library(${CURRENT_TARGET} STATIC
 # include paths
 target_include_directories(${CURRENT_TARGET} PUBLIC
     ${CMAKE_SOURCE_DIR}/include/
-    ${CMAKE_SOURCE_DIR}/thirdparty/include/
-    ${CMAKE_SOURCE_DIR}/thirdparty/boost_1.68/include/
+    ${CMAKE_SOURCE_DIR}/thirdparty/boost_1.70/include/
     ${CMAKE_SOURCE_DIR}/thirdparty/fmt_5.3/include/
-    ${CMAKE_SOURCE_DIR}/thirdparty/glfw_3.3/include
-    ${CMAKE_SOURCE_DIR}/thirdparty/freetype_2.10/include
+    ${CMAKE_SOURCE_DIR}/thirdparty/freetype_2.10/include/
+    ${CMAKE_SOURCE_DIR}/thirdparty/glad/include/
+    ${CMAKE_SOURCE_DIR}/thirdparty/glfw_3.3/include/
+    ${CMAKE_SOURCE_DIR}/thirdparty/lua_5.3.5/src/
+    ${CMAKE_SOURCE_DIR}/thirdparty/randutils/
+    ${CMAKE_SOURCE_DIR}/thirdparty/spdlog_1.3.1/include/
+    ${CMAKE_SOURCE_DIR}/thirdparty/stb_image_2.22/
+    ${CMAKE_SOURCE_DIR}/thirdparty/tiny-utf8_3.0/
 )
 
 # dependencies
 target_link_libraries(${CURRENT_TARGET} PUBLIC
-    notf-thirdparty
-    notf-fmt
     notf-boost
-    glfw
-    uuid
+    notf-fmt
     freetype
+    notf-glad
+    glfw
+    notf-lua
+    uuid
     ${CMAKE_THREAD_LIBS_INIT}
     ${OPENGL_LIBRARIES}
 )

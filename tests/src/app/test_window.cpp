@@ -1,4 +1,4 @@
-#include "catch2/catch.hpp"
+#include "catch.hpp"
 
 #include "notf/app/application.hpp"
 #include "notf/app/event_handler.hpp"

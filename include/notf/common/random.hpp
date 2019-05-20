@@ -1,6 +1,6 @@
 #pragma once
 
-#include "randutils/randutils.hpp"
+#include "randutils.hpp"
 
 #include "notf/common/geo/arithmetic.hpp"
 

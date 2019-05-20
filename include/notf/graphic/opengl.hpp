@@ -1,7 +1,7 @@
 /// Collection of various C++ types representing different OpenGL enumerations and OpenGL related utility functions.
 #pragma once
 
-#include "glad/glad.h"
+#include "glad.h"
 
 #include "notf/meta/bits.hpp"
 #include "notf/meta/exception.hpp"

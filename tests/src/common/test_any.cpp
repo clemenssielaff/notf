@@ -1,4 +1,4 @@
-#include "catch2/catch.hpp"
+#include "catch.hpp"
 
 #include "notf/common/any.hpp"
 #include "notf/meta/real.hpp"

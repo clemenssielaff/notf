@@ -23,7 +23,6 @@ target_include_directories(${CURRENT_TARGET} PUBLIC
 
 # scratch dependencies
 target_link_libraries(${CURRENT_TARGET} PUBLIC
-    notf-thirdparty
     notf-core
     ${CMAKE_THREAD_LIBS_INIT}
 )

@@ -70,7 +70,7 @@ add_executable(${CURRENT_TARGET}
 # test runner include paths
 target_include_directories(${CURRENT_TARGET} PUBLIC
     ${CMAKE_SOURCE_DIR}/include/
-    ${CMAKE_SOURCE_DIR}/thirdparty/
+    ${CMAKE_SOURCE_DIR}/thirdparty/catch_2.7.2/
     ${CMAKE_CURRENT_SOURCE_DIR}/include/
 )
 

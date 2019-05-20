@@ -125,7 +125,7 @@ context::~context() {
 #ifdef BOOST_DISABLE_ASSERTS
         wait_queue_.pop_front();
 #else
-        context * ctx = & wait_queue_.front();
+        [[maybe_unused]] context * ctx = & wait_queue_.front();
         wait_queue_.pop_front();
         BOOST_ASSERT( ctx->is_context( type::main_context) );
         BOOST_ASSERT( nullptr == active() );

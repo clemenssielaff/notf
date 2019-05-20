@@ -2,7 +2,7 @@
 
 #include <unordered_map>
 
-#include "catch2/catch.hpp"
+#include "catch.hpp"
 
 #include "notf/common/msgpack.hpp"
 #include "notf/common/string_view.hpp"

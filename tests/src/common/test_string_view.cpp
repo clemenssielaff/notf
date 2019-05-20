@@ -1,4 +1,4 @@
-#include "catch2/catch.hpp"
+#include "catch.hpp"
 
 #include "notf/common/string_view.hpp"
 #include "notf/meta/stringtype.hpp"
