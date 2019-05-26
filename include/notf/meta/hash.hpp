@@ -55,7 +55,7 @@ enum class HashID : size_t {
 ///     https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp
 ///
 /// Use this to improve a hash function with a low entropy (like a counter).
-constexpr inline size_t hash_mix(uint key) noexcept {
+constexpr inline size_t hash_mix(uint32_t key) noexcept {
     key ^= key >> 16;
     key *= 0x85ebca6b;
     key ^= key >> 13;
@@ -70,7 +70,7 @@ constexpr inline size_t hash_mix(uint key) noexcept {
 ///     https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp
 ///
 /// Use this to improve a hash function with a low entropy (like a counter).
-constexpr inline size_t hash_mix(size_t key) noexcept {
+constexpr inline size_t hash_mix(uint64_t key) noexcept {
     key ^= (key >> 30);
     key *= 0xbf58476d1ce4e5b9;
     key ^= (key >> 27);

@@ -165,7 +165,7 @@ if(NOTF_DEBUG)
 endif()
 
 # build the apps
-option(NOTF_BUILD_APPS "Build apps" OFF)
+option(NOTF_BUILD_APPS "Build apps" ON)
 if(NOTF_BUILD_APPS)
     message(STATUS "notf: Building apps.")
 else()
@@ -173,7 +173,7 @@ else()
 endif()
 
 # build the benchmarks
-option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
+option(NOTF_BUILD_BENCHMARKS "Build benchmarks" ON)
 if(NOTF_BUILD_BENCHMARKS)
     message(STATUS "notf: Building benchmarks")
 endif()

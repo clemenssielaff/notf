@@ -233,7 +233,9 @@ public:
             // Of course, the big problem is, that we don't know the size of a uniform block (inclusive padding) at
             // compile time ... otherwise, data_t could always be:
             //  data_t : public Data { /* with a padding array, if necessary */ }
-            if (m_buffer.size() * sizeof(data_t) < buffer_size) { m_buffer.emplace_back(m_buffer.back()); }
+            if (m_buffer.size() * sizeof(data_t) < static_cast<uint>(buffer_size)) {
+                m_buffer.emplace_back(m_buffer.back());
+            }
 
             m_local_hash = hash(m_buffer);
         }

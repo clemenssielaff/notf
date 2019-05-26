@@ -1,3 +1,4 @@
+#if 0
 #include <array>
 #include <cmath>
 #include <iomanip>
@@ -13,3 +14,4 @@ int main() {
 
     return 0;
 }
+#endif

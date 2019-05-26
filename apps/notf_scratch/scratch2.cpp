@@ -1,3 +1,4 @@
+#if 0
 #include <iostream>
 
 #include "notf/app/application.hpp"
@@ -118,3 +119,5 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+
+#endif

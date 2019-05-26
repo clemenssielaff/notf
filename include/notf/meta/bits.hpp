@@ -21,7 +21,7 @@ constexpr bool check_bit(T number, const size_t pos) noexcept {
 /// This means, that the mask only contains 1 and X, where X denotes an arbitrary value.
 /// @param byte     Byte to check.
 /// @param mask     Mask to check the byte against.
-inline constexpr bool check_byte(const uchar byte, const uchar mask) { return (byte & mask) == mask; }
+inline constexpr bool check_byte(const uchar byte, const uchar mask) noexcept { return (byte & mask) == mask; }
 
 /// Checks a given byte against a mask with significant zeros.
 /// For example, if you want to check if a byte matches the pattern [1001XXXX] (where X denotes an arbitrary value),
@@ -29,21 +29,21 @@ inline constexpr bool check_byte(const uchar byte, const uchar mask) { return (b
 /// @param byte     Byte to check.
 /// @param mask     Positive mask to check the byte against.
 /// @param inverse  Negative mask to check the byte against.
-inline constexpr bool check_byte(const uchar byte, const uchar mask, const uchar inverse) {
+inline constexpr bool check_byte(const uchar byte, const uchar mask, const uchar inverse) noexcept {
     return ((byte & mask) == mask) && ((~byte & inverse) == inverse);
 }
 
-/// Returns the number with ast most the `count` least bits set.
+/// Returns the number with at most the `count` least bits set.
 /// @param number   Number to modify.
 /// @param count    Number of least significant bits to keep.
 template<class T, class Out = std::decay_t<T>>
-constexpr Out lowest_bits(T number, const uint count) {
+constexpr Out lowest_bits(T number, const uint count) noexcept {
     return number & (exp<T>(2, count) - 1);
 }
 
 /// Returns an integral value with all bits set to one.
 template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
-constexpr T all_bits_one() {
+constexpr T all_bits_one() noexcept {
     return ~T(0);
 }
 
@@ -52,7 +52,7 @@ constexpr T all_bits_one() {
 /// Like `bit_cast` but without any safe guards.
 /// Use this only if you know what you are doing, otherwise better use `bit_cast`.
 template<typename Dest, typename Source>
-inline Dest bit_cast_unsafe(const Source& source) {
+Dest bit_cast_unsafe(const Source& source) noexcept {
     Dest target;
     std::memcpy(&target, &source, sizeof(target));
     return target;
@@ -60,7 +60,7 @@ inline Dest bit_cast_unsafe(const Source& source) {
 
 /// Save bit_cast equivalent to `*reinterpret_cast<Dest*>(&source)`.
 template<typename Dest, typename Source>
-inline Dest bit_cast(const Source& source) {
+Dest bit_cast(const Source& source) noexcept {
     static_assert(sizeof(Dest) == sizeof(Source), "bit_cast requires source and destination to be the same size");
     static_assert(std::is_trivially_copyable<Dest>::value, "bit_cast requires the destination type to be copyable");
     static_assert(std::is_trivially_copyable<Source>::value, "bit_cast requires the source type to be copyable");

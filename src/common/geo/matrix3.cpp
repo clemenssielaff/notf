@@ -59,8 +59,6 @@ Value do_transform(const Value& polyline, const Matrix& matrix) noexcept {
 /// Generic PolyBezier transformation.
 template<size_t D, class V, class M, class Value = detail::PolyBezier<D, V>, class Matrix = detail::Matrix3<M>>
 Value do_transform(const Value& polybezier, const Matrix& matrix) noexcept {
-    using hull_t = typename Value::hull_t;
-
     Value result;
     result.m_hull = do_transform<V, M>(polybezier.get_hull(), matrix);
     return result;

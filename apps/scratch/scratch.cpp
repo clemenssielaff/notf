@@ -1,168 +1,124 @@
+#include <algorithm>
+#include <array>
+#include <cstdlib>
 #include <iostream>
+#include <type_traits>
+#include <typeindex>
+#include <typeinfo>
+#include <vector>
 
-#include "notf/meta/log.hpp"
-#include "notf/meta/time.hpp"
-
-#include "notf/common/geo/bezier.hpp"
-#include "notf/common/geo/path2.hpp"
-#include "notf/common/geo/polybezier.hpp"
-#include "notf/common/thread.hpp"
-
-#include "notf/reactive/publisher.hpp"
-#include "notf/reactive/subscriber.hpp"
-#include "notf/reactive/trigger.hpp"
-
-#include "notf/graphic/plotter/painter.hpp"
-
-#include "notf/app/application.hpp"
-#include "notf/app/event_handler.hpp"
-#include "notf/app/graph/slot.hpp"
-#include "notf/app/graph/window.hpp"
-#include "notf/app/graph/window_driver.hpp"
-#include "notf/app/timer_pool.hpp"
-
-#include "notf/app/widget/layout.hpp"
-#include "notf/app/widget/widget.hpp"
-#include "notf/app/widget/widget_scene.hpp"
-
-NOTF_OPEN_NAMESPACE
-
-// super widget ===================================================================================================== //
-
-class ParentWidget;
-
-namespace test_widget {
-
-struct FloatProperty {
-    using value_t = float;
-    static constexpr ConstString name = "float_property";
-    static inline const value_t default_value = 1;
-    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::REFRESH;
+template<class Type, size_t Arity = 1>
+struct Field {
+    using type_t = Type;
+    static inline constexpr const size_t arity = Arity;
+    const std::type_index type_index = typeid(Field<Type, Arity>);
+    static_assert(Arity > 0);
 };
 
-struct SingleState : State<SingleState, ParentWidget> {
-    static constexpr ConstString name = "single_state";
-    explicit SingleState(ParentWidget& node) : SingleState::super_t(node) {}
+template<class Type>
+struct List {
+    using type_t = Type;
 };
 
-struct Policy {
-    using properties = std::tuple<FloatProperty>;
-    using slots = std::tuple<>;
-    using signals = std::tuple<>;
-    using states = std::variant<SingleState>;
+template<class>
+struct is_field : std::false_type {};
+template<class T, size_t A>
+struct is_field<Field<T, A>> : std::true_type {};
+template<class T>
+static constexpr bool is_field_v = is_field<T>::value;
+
+template<class>
+struct is_list : std::false_type {};
+template<class T>
+struct is_list<List<T>> : std::true_type {};
+template<class T>
+static constexpr bool is_list_v = is_list<T>::value;
+
+struct V3f {
+    using schema = Field<float, 3>;
+    std::array<float, 3> data;
 };
 
-} // namespace test_widget
+struct V3i {
+    using schema = Field<int, 3>;
+    std::array<int, 3> data;
+};
 
-// child widget ===================================================================================================== //
+struct String {
+    using schema = List<char>;
+    std::string data;
+};
 
-class ChildWidget : public Widget<test_widget::Policy> {
+template<class, class = void>
+struct has_schema : std::false_type {};
+template<class T>
+struct has_schema<T, std::void_t<typename T::schema>> : std::true_type {};
+template<class T>
+static constexpr bool has_schema_v = has_schema<T>::value;
 
-private:
-    using super_t = Widget<test_widget::Policy>;
+template<class From, class To>
+constexpr bool is_schema_convertible() noexcept {
+    using from_t = typename From::type_t;
+    using to_t = typename To::type_t;
 
-public:
-    ChildWidget(valid_ptr<AnyNode*> parent, float claim_width) : super_t(parent) {
-        WidgetClaim claim;
-        claim.get_horizontal().set_preferred(claim_width);
-        claim.get_vertical().set_preferred(claim_width);
-        set_claim(std::move(claim));
+    // fields have to have the same arity
+    // for lists we can check the type only and need to defer the size check to run time
+    if constexpr (is_field_v<From> && is_field_v<To>) {
+        if constexpr (From::arity != To::arity) { return false; }
     }
-
-private:
-    void _finalize() override {}
-
-    void _get_widgets_at(const V2f&, std::vector<WidgetHandle>&) const override {}
-
-    void _paint(Painter& painter) const override {
-        // draw a rectangle
-        painter.set_stroke_width(2.f);
-        painter.set_joint_style(Painter::JointStyle::BEVEL);
-        painter.set_path(Path2::rect(get_grant()));
-        painter.stroke();
-    }
-};
-
-// parent widget ==================================================================================================== //
-
-class ParentWidget : public Widget<test_widget::Policy> {
-
-private:
-    using super_t = Widget<test_widget::Policy>;
-
-public:
-    static constexpr const ConstString& float_property = test_widget::FloatProperty::name;
-
-public:
-    ParentWidget(valid_ptr<AnyNode*> parent) : super_t(parent) {
-        FlexLayout& layout = _set_layout<FlexLayout>();
-        layout.set_padding(Paddingf::all(10));
-        layout.set_spacing(10);
-        layout.set_cross_spacing(10);
-        layout.set_wrap(FlexLayout::Wrap::WRAP);
-        layout.set_direction(FlexLayout::Direction::LEFT_TO_RIGHT);
-        //        layout.set_direction(FlexLayout::Direction::RIGHT_TO_LEFT);
-        //        layout.set_direction(FlexLayout::Direction::TOP_TO_BOTTOM);
-        //        layout.set_direction(FlexLayout::Direction::BOTTOM_TO_TOP);
-
-        for (size_t i = 0; i < 100; ++i) {
-            NodeHandle<ChildWidget> child = _create_child<ChildWidget>(this, static_cast<float>(i));
+    
+    // see if the schema is convertible or not
+    if constexpr (has_schema_v<from_t>) {
+        if constexpr (has_schema_v<to_t>) {
+            return is_schema_convertible<typename from_t::schema, typename from_t::type_t::schema>();
+        } else {
+            return false;
         }
-
-        m_pipeline = make_pipeline(connect_property<float_property>() | Trigger([&](float value) {
-                                       Paddingf padding = Paddingf::all(10);
-                                       padding.right += value * 300;
-                                       get_layout<FlexLayout>().set_padding(std::move(padding));
-                                   }));
+    } else {
+        return std::is_convertible_v<from_t, to_t>;
     }
-
-    ~ParentWidget() override {
-        if (m_animation) { m_animation->stop(); }
-    }
-
-private:
-    void _finalize() override {
-        auto handle = handle_cast<NodeHandle<ParentWidget>>(handle_from_this());
-        m_animation = IntervalTimer(60_fps, [handle]() mutable {
-            if (handle.is_valid()) {
-                TheEventHandler()->schedule([=]() mutable {
-                    const float time
-                        = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(get_age()).count());
-                    const float period = 10;
-                    const float t = sin(fmod((time * pi<float>() * 2) / (1000.f * period), pi<float>() * 2));
-                    if (handle.is_valid()) { handle->set<float_property>((t + 1) / 2); }
-                });
-            }
-        });
-        m_animation->start();
-    }
-
-    void _get_widgets_at(const V2f&, std::vector<WidgetHandle>&) const override {}
-
-    void _paint(Painter& painter) const override {}
-
-private:
-    TimerPtr m_animation;
-    AnyPipelinePtr m_pipeline;
-};
-
-// main ============================================================================================================= //
-
-int run_main(int argc, char* argv[]) {
-    // initialize application
-    TheApplication::Arguments arguments("Scratch1", argc, argv);
-    TheApplication app(std::move(arguments));
-
-    WindowHandle window = Window::create();
-    WidgetSceneHandle scene = window->set_scene<WidgetScene>();
-    scene->set_widget<ParentWidget>();
-
-    NOTF_ASSERT(window->get_scene());
-
-    const int result = app->exec();
-    return result;
 }
 
-NOTF_CLOSE_NAMESPACE
+template<class From, class To>
+constexpr bool is_value_convertible(const From& from, const To& to) noexcept {
+    // values without a schema cannot be converted automatically
+    if (!has_schema_v<From> || !has_schema_v<To>) {
+        return false;
+    }
 
-int main(int argc, char* argv[]) { return notf::run_main(argc, argv); }
+    // if the schemas are not compatible, the values aren't either
+    else if constexpr (!is_schema_convertible<typename From::schema, typename To::schema>()) {
+        return false;
+    }
+
+    // list value types need to support std::size
+    else if constexpr (is_list_v<From>) {
+        return std::size(from) == std::size(to);
+    }
+
+    // fallthrough
+    else {
+        return false;
+    }
+};
+
+template<class From, class To>
+bool convert_value(const From& input, To& output) {
+    // do not modify the output if the conversion would not succeed
+    if constexpr (!is_value_convertible(input, output)) {
+        return false;
+    }
+
+    // if the values can be converted directly, do that
+    else if constexpr (std::is_convertible_v<typename From::type_t, typename To::type_t>) {
+        std::transform(
+            std::cbegin(input), std::cend(input), std::begin(output),
+            [](const typename From::type_t& value) -> typename To::type_t { return value; });
+    }
+}
+
+static_assert(is_schema_convertible<V3f::schema, V3i::schema>());
+static_assert(!is_schema_convertible<V3f::schema, String::schema>());
+static_assert(!is_schema_convertible<String::schema, V3i::schema>());
+
+int main() { std::cout << "Hello, Wandbox!" << std::endl; }

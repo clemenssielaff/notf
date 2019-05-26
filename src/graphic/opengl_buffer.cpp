@@ -35,6 +35,8 @@ const char* AnyOpenGLBuffer::_to_type_name(const Type buffer_type) {
     case Type::UNIFORM: return "UniformBuffer";
     case Type::DRAWCALL: return "DrawCall";
     }
+    NOTF_ASSERT(false);
+    return "";
 }
 
 GLenum AnyOpenGLBuffer::_to_gl_usage(const UsageHint usage) {
@@ -49,6 +51,8 @@ GLenum AnyOpenGLBuffer::_to_gl_usage(const UsageHint usage) {
     case UsageHint::STREAM_READ: return GL_STREAM_READ;
     case UsageHint::STREAM_COPY: return GL_STREAM_COPY;
     }
+    NOTF_ASSERT(false);
+    return 0;
 }
 
 void AnyOpenGLBuffer::_log_buffer_size(const size_t size) const {

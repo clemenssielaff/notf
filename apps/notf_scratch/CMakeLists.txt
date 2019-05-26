@@ -1,11 +1,12 @@
 # The notf scratch project
-set(CURRENT_TARGET scratch)
+set(CURRENT_TARGET notf-scratch)
 
 # add scratch files
 add_sources(SCRATCH_FILES ${CMAKE_CURRENT_SOURCE_DIR}
-	#scratch.cpp
-    #msgpack_profile.cpp
-    dynamic_struct.cpp
+   scratch.cpp
+#    scratch2.cpp
+#    scratch3.cpp
+#    animation.cpp
 )
 
 # declare scratch executable
@@ -17,13 +18,12 @@ add_executable(${CURRENT_TARGET}
 # scratch include paths
 target_include_directories(${CURRENT_TARGET} PUBLIC
     ${CMAKE_SOURCE_DIR}/include/
-    ${CMAKE_SOURCE_DIR}/thirdparty/benchmark_1.5/include
+    ${CMAKE_SOURCE_DIR}/thirdparty/
 )
 
 # scratch dependencies
 target_link_libraries(${CURRENT_TARGET} PUBLIC
     notf-core
-    benchmark
     ${CMAKE_THREAD_LIBS_INIT}
 )
 

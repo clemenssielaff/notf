@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include "benchmark/benchmark.h"
-#include "msgpack11/msgpack11.hpp"
+#include "msgpack11.hpp"
 
 #include "notf/common/msgpack.hpp"
 

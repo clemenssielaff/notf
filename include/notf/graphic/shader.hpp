@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "notf/meta/assert.hpp"
 #include "notf/meta/smart_ptr.hpp"
 #include "notf/meta/types.hpp"
 
@@ -51,6 +52,8 @@ public:
             case FRAGMENT: return "fragment";
             case COMPUTE: return "compute";
             }
+            NOTF_ASSERT(false);
+            return ""; //
         }
 
         /// Combination of Shader stages.
