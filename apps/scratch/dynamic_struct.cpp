@@ -35,7 +35,6 @@ public:
         case Type::LIST: return "List";
         case Type::TUPLE: return "Map";
         }
-        NOTF_ASSERT(false);
         return "";
     }
 
