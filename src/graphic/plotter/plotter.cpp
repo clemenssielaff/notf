@@ -380,7 +380,8 @@ uint Plotter::_store_path(const Path2Ptr& p_path) {
 
                 // segment
                 indices.emplace_back(index);
-                index = ++index % wrap_index;
+                ++index;
+                index %= wrap_index;
                 indices.emplace_back(index);
             }
 

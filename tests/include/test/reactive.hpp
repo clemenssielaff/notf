@@ -96,7 +96,7 @@ NOTF_UNUSED auto TestSubscriber() {
 }
 
 template<>
-auto TestSubscriber<None>() {
+NOTF_UNUSED auto TestSubscriber<None>() {
     struct TestSubscriberNoneImpl : public Subscriber<None> {
 
         void on_next(const AnyPublisher*) final { ++counter; }
@@ -129,7 +129,7 @@ NOTF_UNUSED auto EverythingRelay() {
     return std::make_shared<EverythingRelayImpl>();
 }
 template<>
-auto EverythingRelay<None>() {
+NOTF_UNUSED auto EverythingRelay<None>() {
     return std::make_shared<Operator<All, None>>();
 }
 

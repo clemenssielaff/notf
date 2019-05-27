@@ -49,10 +49,10 @@ void write_data(const uchar header, const T& value, std::ostream& os) {
 template<typename T, class = std::enable_if_t<std::is_integral_v<T>>>
 void write_uint(T value, std::ostream& os) {
     if (value < 128) { return write_char(static_cast<uchar>(value), os); }                             // 7-bit fixuint
-    if (value <= max_value<uint8_t>()) { return write_data(0xcc, static_cast<uint8_t>(value), os); }   // uint8_t
-    if (value <= max_value<uint16_t>()) { return write_data(0xcd, static_cast<uint16_t>(value), os); } // uint16_t
-    if (value <= max_value<uint32_t>()) { return write_data(0xce, static_cast<uint32_t>(value), os); } // uint32_t
-    NOTF_ASSERT(value <= max_value<uint64_t>());                                                       // uint64_t
+    if (value <= max_v<uint8_t>) { return write_data(0xcc, static_cast<uint8_t>(value), os); }   // uint8_t
+    if (value <= max_v<uint16_t>) { return write_data(0xcd, static_cast<uint16_t>(value), os); } // uint16_t
+    if (value <= max_v<uint32_t>) { return write_data(0xce, static_cast<uint32_t>(value), os); } // uint32_t
+    NOTF_ASSERT(value <= max_v<uint64_t>);                                                       // uint64_t
     write_data(0xcf, static_cast<uint64_t>(value), os);
 }
 
@@ -60,10 +60,10 @@ template<typename T, class = std::enable_if_t<std::is_integral_v<T> && std::is_s
 void write_int(T value, std::ostream& os) {
     if (value >= 0) { return write_uint(static_cast<std::make_unsigned_t<T>>(value), os); }
     if (value >= -32) { return write_char(static_cast<uchar>(value), os); }                          // 5-bit fixint
-    if (value >= min_value<int8_t>()) { return write_data(0xd0, static_cast<int8_t>(value), os); }   // int8_t
-    if (value >= min_value<int16_t>()) { return write_data(0xd1, static_cast<int16_t>(value), os); } // int16_t
-    if (value >= min_value<int32_t>()) { return write_data(0xd2, static_cast<int32_t>(value), os); } // int32_t
-    NOTF_ASSERT(value >= min_value<int64_t>());                                                      // int64_t
+    if (value >= min_v<int8_t>) { return write_data(0xd0, static_cast<int8_t>(value), os); }   // int8_t
+    if (value >= min_v<int16_t>) { return write_data(0xd1, static_cast<int16_t>(value), os); } // int16_t
+    if (value >= min_v<int32_t>) { return write_data(0xd2, static_cast<int32_t>(value), os); } // int32_t
+    NOTF_ASSERT(value >= min_v<int64_t>);                                                      // int64_t
     write_data(0xd3, static_cast<int64_t>(value), os);
 }
 
@@ -71,14 +71,14 @@ void write_string(const MsgPack::String& string, std::ostream& os) {
     const size_t size = string.size();
     if (size < 32) {
         return write_data(0xa0 | static_cast<uint8_t>(size), string.data(), size, os);
-    } else if (size <= max_value<uint8_t>()) {
+    } else if (size <= max_v<uint8_t>) {
         write_data(0xd9, static_cast<uint8_t>(size), os);
         return write_data(string.data(), size, os);
-    } else if (size <= max_value<uint16_t>()) {
+    } else if (size <= max_v<uint16_t>) {
         write_data(0xda, static_cast<uint16_t>(size), os);
         return write_data(string.data(), size, os);
     } else {
-        NOTF_ASSERT((size <= max_value<uint32_t>()));
+        NOTF_ASSERT((size <= max_v<uint32_t>));
         write_data(0xdb, static_cast<uint32_t>(size), os);
         return write_data(string.data(), size, os);
     }
@@ -86,14 +86,14 @@ void write_string(const MsgPack::String& string, std::ostream& os) {
 
 void write_binary(const MsgPack::Binary& binary, std::ostream& os) {
     const size_t size = binary.size();
-    if (size <= max_value<uint8_t>()) {
+    if (size <= max_v<uint8_t>) {
         write_data(0xc4, static_cast<uint8_t>(size), os);
         return write_data(binary.data(), size, os);
-    } else if (size <= max_value<uint16_t>()) {
+    } else if (size <= max_v<uint16_t>) {
         write_data(0xc5, static_cast<uint16_t>(size), os);
         return write_data(binary.data(), size, os);
     } else {
-        NOTF_ASSERT((size <= max_value<uint32_t>()));
+        NOTF_ASSERT((size <= max_v<uint32_t>));
         write_data(0xc6, static_cast<uint32_t>(size), os);
         return write_data(binary.data(), size, os);
     }
@@ -105,10 +105,10 @@ void write_array(uint depth, const MsgPack::Array& array, std::ostream& os) {
     const size_t size = array.size();
     if (size <= 15) {
         write_char(0x90 | static_cast<uint8_t>(size), os);
-    } else if (size <= max_value<uint16_t>()) {
+    } else if (size <= max_v<uint16_t>) {
         write_data(0xdc, static_cast<uint16_t>(size), os);
     } else {
-        NOTF_ASSERT((size <= max_value<uint32_t>()));
+        NOTF_ASSERT((size <= max_v<uint32_t>));
         write_data(0xdd, static_cast<uint32_t>(size), os);
     }
 
@@ -121,10 +121,10 @@ void write_map(uint depth, const MsgPack::Map& map, std::ostream& os) {
     const size_t size = map.size();
     if (size <= 15) {
         write_char(0x80 | static_cast<uint8_t>(size), os);
-    } else if (size <= max_value<uint16_t>()) {
+    } else if (size <= max_v<uint16_t>) {
         write_data(0xde, static_cast<uint16_t>(size), os);
     } else {
-        NOTF_ASSERT((size <= max_value<uint32_t>()));
+        NOTF_ASSERT((size <= max_v<uint32_t>));
         write_data(0xdf, static_cast<uint32_t>(size), os);
     }
     for (const auto& it : map) {
@@ -148,12 +148,12 @@ void write_extension(const MsgPack::Extension& extension, std::ostream& os) {
         write_char(0xd7, os);
     } else if (size == 16) {
         write_char(0xd8, os);
-    } else if (size < max_value<uint8_t>()) {
+    } else if (size < max_v<uint8_t>) {
         write_data(0xc7, static_cast<uint8_t>(size), os);
-    } else if (size < max_value<uint16_t>()) {
+    } else if (size < max_v<uint16_t>) {
         write_data(0xc8, static_cast<uint16_t>(size), os);
     } else {
-        NOTF_ASSERT((size < max_value<uint32_t>()));
+        NOTF_ASSERT((size < max_v<uint32_t>));
         write_data(0xc9, static_cast<uint32_t>(size), os);
     }
 

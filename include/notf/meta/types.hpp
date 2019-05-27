@@ -17,6 +17,14 @@ using ushort = unsigned short;
 using uint = unsigned int;
 using ulong = unsigned long;
 
+// is_number ======================================================================================================== //
+
+/// Checks whether T is an integral or real numeric type.
+template<class T>
+struct is_numeric : std::disjunction<std::is_integral<T>, std::is_floating_point<T>> {};
+template<class T>
+static constexpr bool is_numeric_v = is_numeric<T>::value;
+
 // templated integer types ========================================================================================== //
 
 template<std::size_t size>
@@ -192,7 +200,7 @@ static constexpr bool always_true_v = always_true<Ts...>::value;
 ///     sizeof(OtherAndZeroArray)   // =  8
 ///     sizeof(OtherAndEmpty)       // = 16
 ///
-using empty_type = void * [0];
+using empty_type = void* [0];
 
 /// Checks if all expressions are true.
 ///     `if(all(a, !b, c < d))` is equal to `if(a && !b && c < d)`
@@ -291,13 +299,13 @@ constexpr std::array<Common, sizeof...(Args)> auto_list(Args&&... args) {
 
 /// @{
 /// Produces a type-specific "null" value or void.
-template <class T>
-constexpr T null_result() noexcept
-{
+template<class T>
+constexpr T null_result() noexcept {
     static_assert(std::is_nothrow_default_constructible<T>::value);
     return {};
 }
-template <> inline void null_result<void>() noexcept {};
+template<>
+inline void null_result<void>() noexcept {};
 /// @}
 
 // declval ========================================================================================================== //

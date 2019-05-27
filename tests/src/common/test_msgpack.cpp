@@ -182,7 +182,7 @@ SCENARIO("msgpack construction", "[common][msgpack]") {
         REQUIRE(pack_uint == MsgPack(uint16_t(15)));
         REQUIRE(pack_uint == MsgPack(uint64_t(15)));
 
-        REQUIRE(MsgPack(max_value<MsgPack::Uint>()).get<MsgPack::Int>() == 0);
+        REQUIRE(MsgPack(max_v<MsgPack::Uint>).get<MsgPack::Int>() == 0);
     }
 
     SECTION("Float") {

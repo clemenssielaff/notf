@@ -128,7 +128,7 @@ private:
         Bytes result;
         for (uchar i = 0; i < 16; ++i) {
             auto value = static_cast<std::make_unsigned_t<T>>(vector[i]);
-            if (value > max_value<uchar>()) {
+            if (value > max_v<uchar>) {
                 NOTF_THROW(ValueError, "Cannot narrow integral value {} into a byte", value);
             }
             result[i] = value;

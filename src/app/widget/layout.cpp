@@ -69,7 +69,7 @@ struct FlexItem {
 struct FlexStack {
     uint first_item = 0;
     uint item_count = 0;
-    int priority = min_value<int>();
+    int priority = min_v<int>;
     FlexItem item = {0, 0, 0, 0};
 };
 

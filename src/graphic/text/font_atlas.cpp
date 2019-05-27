@@ -17,7 +17,7 @@
 
 namespace { // anonymous
 
-const size_t INVALID_SIZE_T = notf::max_value<size_t>();
+const size_t INVALID_SIZE_T = notf::max_v<size_t>;
 
 } // namespace
 
@@ -36,7 +36,7 @@ Glyph::Rect FontAtlas::WasteMap::reclaim_rect(const coord_t width, const coord_t
     size_t best_node_index = INVALID_SIZE_T;
 
     { // try all free rects to find the best one for placement
-        area_t least_waste = max_value<area_t>();
+        area_t least_waste = max_v<area_t>;
         for (size_t node_index = 0; node_index < m_free_rects.size(); ++node_index) {
             const Glyph::Rect& rect = m_free_rects[node_index];
             if (width == rect.width && height == rect.height) {
@@ -177,8 +177,8 @@ std::vector<FontAtlas::ProtoGlyph> FontAtlas::insert_rects(std::vector<FitReques
         Glyph::Rect best_rect = {0, 0, 0, 0};
         size_t best_node_index = INVALID_SIZE_T;
         size_t best_extend_index = INVALID_SIZE_T;
-        coord_t best_node_width = max_value<coord_t>();
-        coord_t best_new_height = max_value<coord_t>();
+        coord_t best_node_width = max_v<coord_t>;
+        coord_t best_new_height = max_v<coord_t>;
         codepoint_t best_code_point = 0;
 
         // find the best fit
@@ -229,8 +229,8 @@ FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t he
     ScoredRect result;
     result.rect = {0, 0, 0, 0};
     result.node_index = INVALID_SIZE_T;
-    result.node_width = max_value<coord_t>();
-    result.new_height = max_value<coord_t>();
+    result.node_width = max_v<coord_t>;
+    result.new_height = max_v<coord_t>;
 
     for (size_t node_index = 0; node_index < m_nodes.size(); ++node_index) {
         const SkylineNode& current_node = m_nodes[node_index];
@@ -246,7 +246,7 @@ FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t he
                 NOTF_ASSERT(spanned_index < m_nodes.size());
                 y = max(y, m_nodes[spanned_index].y);
                 if (y + height >= m_height) {
-                    y = max_value<coord_t>();
+                    y = max_v<coord_t>;
                     break;
                 }
                 remaining_width -= m_nodes[spanned_index].width;
@@ -254,7 +254,7 @@ FontAtlas::ScoredRect FontAtlas::_get_rect(const coord_t width, const coord_t he
         }
         // treat the topmost y value as invalid,
         // because even if that was the correct answer, you would not be able to fit a rectangle there anyway
-        if (y == max_value<coord_t>()) { continue; }
+        if (y == max_v<coord_t>) { continue; }
 
         // if the rectangle fits, check if it is a better fit than the last one and update the result if it is
         const coord_t new_height = y + height;
@@ -297,7 +297,7 @@ void FontAtlas::_add_node(const size_t node_index, const Glyph::Rect& rect) {
     }
 
     // create the new node
-    NOTF_ASSERT(rect.y + rect.height <= max_value<coord_t>());
+    NOTF_ASSERT(rect.y + rect.height <= max_v<coord_t>);
     const SkylineNode& new_node = *(m_nodes.emplace(
         iterator_at(m_nodes, node_index), SkylineNode{rect.x, static_cast<coord_t>(rect.y + rect.height), rect.width}));
 

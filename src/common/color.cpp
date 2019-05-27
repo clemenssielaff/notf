@@ -28,7 +28,7 @@ struct Lab {
     float alpha;
 };
 
-Hsl rgb_to_hsl(const Color& input) {
+NOTF_UNUSED Hsl rgb_to_hsl(const Color& input) {
     float themin, themax, delta;
     Hsl result;
 
@@ -100,7 +100,7 @@ Color hsl_to_rgb(const Hsl& input) {
     return (result);
 }
 
-Lab rgb_to_lab(const Color& input) {
+NOTF_UNUSED Lab rgb_to_lab(const Color& input) {
     float var_R = input.r;
     float var_G = input.g;
     float var_B = input.b;
@@ -162,7 +162,7 @@ Lab rgb_to_lab(const Color& input) {
     return result;
 }
 
-Color lab_to_rgb(const Lab& input) {
+NOTF_UNUSED Color lab_to_rgb(const Lab& input) {
     float var_Y = (input.l + 16.f) / 116.f;
     float var_X = (input.a / 500.f) + var_Y;
     float var_Z = var_Y - (input.b / 200.f);

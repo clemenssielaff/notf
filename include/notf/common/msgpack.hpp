@@ -146,7 +146,7 @@ public:
         // integers can be requested with the wrong type, if the value is safely castable
         if constexpr (std::is_same_v<T, Int>) {
             if (std::holds_alternative<Uint>(m_value)) {
-                if (auto value = std::get<Uint>(m_value); value < static_cast<Uint>(max_value<Int>())) {
+                if (auto value = std::get<Uint>(m_value); value < static_cast<Uint>(max_v<Int>)) {
                     return static_cast<T>(value);
                 }
             }

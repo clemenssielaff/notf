@@ -35,7 +35,7 @@ struct WindowArguments {
 
     /// Position of the Window relative to the monitor's upper left corner.
     /// The default (max int) means the system is free to place the Window.
-    V2i position = {max_value<int>(), max_value<int>()};
+    V2i position = {max_v<int>, max_v<int>};
 
     /// Whether the window starts out is minimzed, windowed or maximized.
     enum class State {

@@ -151,7 +151,7 @@ T norm_angle(const T alpha) {
 /// Next representable floating point number greater than the given one.
 template<class T>
 constexpr std::enable_if_t<std::is_floating_point_v<T>, T> next_after(const T value) noexcept {
-    return std::nextafter(value, max_value<T>());
+    return std::nextafter(value, max_v<T>);
 }
 
 /// Breaks a given real number into an integral and fractional part.

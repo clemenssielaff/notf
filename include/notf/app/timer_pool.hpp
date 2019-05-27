@@ -99,7 +99,7 @@ class Timer : public std::enable_shared_from_this<Timer> {
     // types ----------------------------------------------------------------------------------- //
 public:
     /// Special "repetitions" value denoting infinite repetitions.
-    static constexpr uint infinite = max_value<uint>();
+    static constexpr uint infinite = max_v<uint>;
 
     /// States that Timer can take.
     enum class State : uchar {

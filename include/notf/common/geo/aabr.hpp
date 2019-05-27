@@ -98,8 +98,8 @@ public:
     /// The largest representable Aabr.
     constexpr static Aabr largest() noexcept {
         Aabr result{};
-        result[0] = component_t::all(min_value<element_t>());
-        result[1] = component_t::all(max_value<element_t>());
+        result[0] = component_t::all(min_v<element_t>);
+        result[1] = component_t::all(max_v<element_t>);
         return result;
     }
 
@@ -107,8 +107,8 @@ public:
     /// Is useful as the starting point for defining an Aabr from a set of points.
     constexpr static Aabr wrongest() noexcept {
         Aabr result{};
-        result[0] = component_t::all(max_value<element_t>());
-        result[1] = component_t::all(min_value<element_t>());
+        result[0] = component_t::all(max_v<element_t>);
+        result[1] = component_t::all(min_v<element_t>);
         return result;
     }
 

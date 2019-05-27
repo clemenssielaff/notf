@@ -59,10 +59,10 @@ constexpr T clamp(const T value, const identity_t<T> min = 0, const identity_t<T
 }
 
 /// Calculates number^exponent.
-template<class T, class Out = std::decay_t<T>>
-constexpr Out exp(T&& number, uint exponent) noexcept {
+template<class T>
+constexpr T exp(const T& number, uint exponent) noexcept {
     if (exponent == 0) { return 1; }
-    Out result = number;
+    T result = number;
     while (exponent-- > 1) {
         result *= number;
     }
@@ -79,23 +79,19 @@ constexpr auto sum(Ts&&... ts) {
 // limits =========================================================================================================== //
 
 /// Highest value representable with the given type.
-/// There exists no value X of the type for which "X > max_value<T>()" is true.
+/// There exists no value `x` of the type for which `x > max_v<T>` is true.
 template<class T>
-constexpr T max_value() noexcept {
-    return std::numeric_limits<T>::max();
-}
+static constexpr const T max_v = std::numeric_limits<T>::max();
 
 /// Lowest value representable with the given type.
-/// There exists no value X of the type for which "X < min_value<T>()" is true.
+/// There exists no value `x` of the type for which `x < min_v<T>` is true.
 template<class T>
-constexpr T min_value() noexcept {
-    return std::numeric_limits<T>::lowest();
-}
+static constexpr const T min_v = std::numeric_limits<T>::lowest();
 
 /// Helper struct containing the type that has a higher numeric limits.
 template<class LEFT, class RIGHT>
 struct higher_type {
-    using type = std::conditional_t<(max_value<LEFT>() <= max_value<RIGHT>()), LEFT, RIGHT>;
+    using type = std::conditional_t<(max_v<LEFT> <= max_v<RIGHT>), LEFT, RIGHT>;
 };
 
 // precision ======================================================================================================== //
@@ -138,38 +134,111 @@ constexpr std::array<T, N> power_list(const T& x) noexcept {
 // narrow cast ====================================================================================================== //
 
 /// Tests if a value can be narrow cast and optionally passes the cast value out again.
-template<class target_t, class Source, class source_t = std::decay_t<Source>>
-constexpr bool can_be_narrow_cast(Source&& value, target_t& result) noexcept {
-    // skip the check if both types are the same
-    if constexpr (std::is_same_v<source_t, target_t>) {
-        result = std::forward<Source>(value);
-
-        // TODO: skip expensive testing if target type "subsumes" source type
-    } else {
-        // simple reverse check
-        result = static_cast<target_t>(std::forward<Source>(value));
-        if (static_cast<source_t>(result) != value) { return false; }
-
-        // check sign overflow
-        if constexpr (!is_same_signedness<target_t, source_t>::value) {
-            if ((result < 0) != (value < 0)) { return false; }
+template<class Target, class Source>
+constexpr bool can_be_narrow_cast(const Source& source) noexcept {
+    if constexpr (std::is_same_v<Source, Target>) {
+        // both are the same type
+        return true;
+    } else if constexpr (std::conjunction_v<std::is_integral<Source>, std::is_integral<Target>>) {
+        // both are integers
+        if constexpr (is_same_signedness_v < Source, Target>) {
+            // both have the same signedness
+            if constexpr (std::is_signed_v<Source>) {
+                // both are signed
+                if constexpr (sizeof(Target) >= sizeof(Source)) {
+                    // target type is larger or equal
+                    return true;
+                } else {
+                    // source type is larger
+                    return (static_cast<Source>(max_v<Target>) <= source)
+                           && (static_cast<Source>(min_v<Target>) >= source);
+                }
+            } else {
+                // both are unsigned
+                if constexpr (sizeof(Target) >= sizeof(Source)) {
+                    // target type is larger or equal
+                    return true;
+                } else {
+                    // source type is larger
+                    return static_cast<Source>(max_v<Target>) <= source;
+                }
+            }
+        } else {
+            // source and targed have different signedness
+            if constexpr (std::is_signed_v<Source>) {
+                // source is signed, target is unsigned
+                if (source < 0) {
+                    // source is negative
+                    return false;
+                } else {
+                    // source is positive
+                    if constexpr (sizeof(Target) >= sizeof(Source)) {
+                        // target type is larger or equal
+                        return true;
+                    } else {
+                        // source type is larger
+                        return static_cast<Source>(max_v<Target>) <= source;
+                    }
+                }
+            } else {
+                // target is signed, source is unsigned
+                if constexpr (sizeof(Target) > sizeof(Source)) {
+                    // target type is larger
+                    return true;
+                } else {
+                    // source type is larger or equal
+                    return static_cast<Source>(max_v<Target>) <= source;
+                }
+            }
+        }
+    } else if constexpr (std::conjunction_v<std::is_floating_point<Source>, std::is_floating_point<Target>>) {
+        // both are floating point
+        if constexpr (sizeof(Target) >= sizeof(Source)) {
+            // target type is larger or equal
+            return true;
+        } else {
+            // source type is larger
+            return (static_cast<Source>(max_v<Target>) <= source) && (static_cast<Source>(min_v<Target>) >= source);
+        }
+    } else if constexpr (std::conjunction_v<is_numeric<Source>, is_numeric<Target>>) {
+        if constexpr (std::is_integral_v<Source>) {
+            // source is integral, target is floating point
+            return abs(source) <= exp(std::numeric_limits<Target>::radix, std::numeric_limits<Target>::digits);
+        } else {
+            // source is floating point, target is integral
+            if constexpr (std::is_signed_v<Target>) {
+                // target is signed
+                return static_cast<Source>(static_cast<Target>(source)) == source;
+            } else {
+                // target is unsigned
+                if (source < 0) {
+                    // source is negative
+                    return false;
+                } else {
+                    // source is positive
+                    return static_cast<Source>(static_cast<Target>(source)) == source;
+                }
+            }
         }
     }
-    return true;
-}
-template<class target_t, class Source, class source_t = std::decay_t<Source>>
-constexpr bool can_be_narrow_cast(Source&& value) noexcept {
-    static_assert(std::is_nothrow_constructible_v<target_t>);
-    target_t ignored;
-    return can_be_narrow_cast(std::forward<Source>(value), ignored);
+    else {
+        // non-numeric conversion
+        return false;
+    }
 }
 
 /// Save narrowing cast.
-/// https://github.com/Microsoft/GSL/blob/master/include/gsl/gsl_util
-template<class target_t, class Source, class source_t = std::decay_t<Source>>
-constexpr target_t narrow_cast(Source&& value) {
-    if (target_t result; can_be_narrow_cast(std::forward<Source>(value), result)) { return result; }
-    NOTF_THROW(ValueError, "narrow_cast failed");
+/// Original inspiration from:
+///     https://github.com/Microsoft/GSL/blob/master/include/gsl/gsl_util
+template<class Target, class Source>
+constexpr Target narrow_cast(const Source& source) {
+    if (can_be_narrow_cast<Target, Source>(source)) {
+        return static_cast<Target>(source);
+    } else {
+        NOTF_THROW(ValueError, "narrow_cast failed");
+    }
 }
+
+static_assert(can_be_narrow_cast<int>(int(0)));
 
 NOTF_CLOSE_NAMESPACE

@@ -48,7 +48,7 @@ public:
 
     /// The "most wrong" Size2 (maximal negative area).
     /// Is useful as the starting point for defining the union of multiple Size2.
-    constexpr static Size2 wrongest() noexcept { return {min_value<element_t>(), min_value<element_t>()}; }
+    constexpr static Size2 wrongest() noexcept { return {min_v<element_t>, min_v<element_t>}; }
 
     /// @{
     /// Width

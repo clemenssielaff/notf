@@ -91,7 +91,7 @@ public:
 
     /// The derivate bezier, can be used to calculate the tangent.
     constexpr std::enable_if_t<(Order > 0), Bezier<Order - 1, element_t>> get_derivate() const {
-        std::array<element_t, Order> deriv_weights;
+        std::array<element_t, Order> deriv_weights{};
         for (ulong k = 0; k < Order; ++k) {
             deriv_weights[k] = Order * (deriv_weights[k + 1] - deriv_weights[k]);
         }

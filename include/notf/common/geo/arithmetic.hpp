@@ -215,7 +215,7 @@ public:
     /// Get the element-wise maximum of this and the other value.
     /// @param other    Other value to max against.
     constexpr actual_t get_max(const actual_t& other) const noexcept {
-        actual_t result;
+        actual_t result{};
         for (size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 result.data[i] = max(data[i], other[i]);
@@ -229,7 +229,7 @@ public:
     /// Get the element-wise minimum of this and the other value.
     /// @param other    Other value to min against.
     constexpr actual_t get_min(const actual_t& other) const noexcept {
-        actual_t result;
+        actual_t result{};
         for (size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 result.data[i] = min(data[i], other[i]);
