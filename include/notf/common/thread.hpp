@@ -9,6 +9,7 @@
 #include "notf/meta/exception.hpp"
 #include "notf/meta/system.hpp"
 #include "notf/meta/types.hpp"
+#include "notf/meta/integer.hpp"
 
 #include "notf/common/fwd.hpp"
 

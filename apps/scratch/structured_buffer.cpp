@@ -13,6 +13,7 @@
 #include "notf/meta/assert.hpp"
 #include "notf/meta/exception.hpp"
 #include "notf/meta/numeric.hpp"
+#include "notf/meta/integer.hpp"
 #include "notf/meta/system.hpp"
 #include "notf/meta/types.hpp"
 
@@ -22,21 +23,25 @@ class StructuredBuffer {
 
     // types ----------------------------------------------------------------------------------- //
 public:
-    /// Size of a word.
-    using word_t = uint8_t;
+    /// A word is the size of a pointer.
+    using word_t = templated_unsigned_integer_t<sizeof(void*)>;
 
     /// All types of elements.
-    enum class Type : word_t { NUMBER = std::numeric_limits<word_t>::max() - 3, STRING, LIST, TUPLE };
-    // TODO: the type definitions basically eat into the space available for internal pointers
-    //       then again, we will never have a pointer to null or to one, and the pointed location will always be
-    //       larger than the current one... I am sure there is some smart way to do this
+    enum class Type : word_t { 
+        _FIRST = std::numeric_limits<word_t>::max() - 3,
+        NUMBER = _FIRST, 
+        STRING, 
+        LIST, 
+        MAP,
+        _LAST = MAP};
 
+    /// Human-readable name of the types.
     static constexpr const char* get_type_name(const Type type) noexcept {
         switch (type) {
         case Type::NUMBER: return "Number";
         case Type::STRING: return "String";
         case Type::LIST: return "List";
-        case Type::TUPLE: return "Map";
+        case Type::MAP: return "Map";
         }
         return "";
     }
@@ -58,14 +63,14 @@ private:
     /// Is a separate type and not a list of chars because UTF-8 characters have dynamic width.
     using string_t = utf8_string;
 
-    /// Lists and Tuples contain child Dynamic structs.
+    /// Lists and Maps contain child Dynamic structs.
     using list_t = std::vector<Element>;
 
-    /// Lists and Tuples contain child Dynamic structs.
-    using tuple_t = std::vector<std::pair<std::string, Element>>;
+    /// Lists and Maps contain child Dynamic structs.
+    using map_t = std::vector<std::pair<std::string, Element>>;
 
     /// Value variant.
-    using Variant = std::variant<number_t, string_t, list_t, tuple_t>;
+    using Variant = std::variant<number_t, string_t, list_t, map_t>;
 
     // element ================================================================
 
@@ -78,14 +83,13 @@ private:
 
     protected:
         /// Type-only constructor.
-        /// Used from subclasses and trivial types NUMBER and STRING.
         Element(const Type type) : m_type(type) {
             m_value = [type]() -> decltype(m_value) {
                 switch (type) {
                 case Type::NUMBER: return {number_t{0}};
                 case Type::STRING: return {string_t{}};
                 case Type::LIST: return {list_t{}};
-                case Type::TUPLE: return {tuple_t{}};
+                case Type::MAP: return {map_t{}};
                 }
                 return {number_t{0}};
             }();
@@ -145,10 +149,10 @@ private:
 
         /// Index operator for maps.
         const Element& operator[](const std::string_view key) const {
-            if (m_type != Type::TUPLE) {
+            if (m_type != Type::MAP) {
                 NOTF_THROW(TypeError, "DynamicStruct element is not a Map, but a {}", get_type_name(m_type));
             }
-            for (const auto& child : std::get<tuple_t>(m_value)) {
+            for (const auto& child : std::get<map_t>(m_value)) {
                 if (child.first == key) { return child.second; }
             }
             NOTF_THROW(NameError, "DynamicStruct Map does not contain an entry \"{}\"", key);
@@ -198,13 +202,13 @@ private:
                 return location;
             }
 
-            case Type::TUPLE: {
-                NOTF_ASSERT(std::holds_alternative<tuple_t>(obj.m_value));
-                const tuple_t& children = std::get<tuple_t>(obj.m_value);
+            case Type::MAP: {
+                NOTF_ASSERT(std::holds_alternative<map_t>(obj.m_value));
+                const map_t& children = std::get<map_t>(obj.m_value);
                 NOTF_ASSERT(!children.empty());
                 const word_t location = m_layout.size();
                 m_layout.reserve(location + children.size() + 2);
-                m_layout.push_back(to_number(Type::TUPLE));
+                m_layout.push_back(to_number(Type::MAP));
                 m_layout.push_back(children.size());
                 word_t itr = m_layout.size();
                 for (size_t i = 0; i < children.size(); ++i) {
@@ -224,7 +228,7 @@ private:
                            [](const number_t& number) {},
                            [](const string_t& string) {},
                            [](const list_t& list) {},
-                           [](const tuple_t& tuple) {},
+                           [](const map_t& map) {},
                        },
                        element.m_value);
         }
@@ -254,9 +258,9 @@ public:
     inline static const Element String = Element::String();
 
     struct Map : public Element {
-        Map(std::initializer_list<std::pair<std::string, Element>> entries) : Element(Type::TUPLE) {
+        Map(std::initializer_list<std::pair<std::string, Element>> entries) : Element(Type::MAP) {
             NOTF_ASSERT(entries.size() != 0);
-            tuple_t children(entries.begin(), entries.end());
+            map_t children(entries.begin(), entries.end());
             { // make sure that names are unique
                 std::unordered_set<std::string> unique_names;
                 for (const std::pair<std::string, Element>& child : children) {
@@ -356,7 +360,7 @@ int main() {
         {to_number(Type::NUMBER), "Number"},
         {to_number(Type::STRING), "String"},
         {to_number(Type::LIST), "List"},
-        {to_number(Type::TUPLE), "Map"},
+        {to_number(Type::MAP), "Map"},
     };
 
     { // schema
@@ -377,7 +381,7 @@ int main() {
     std::cout << "-------------------------------\n" << std::endl;
 
     schema_value[0]["coords"][1]["text"] = "Deine mudda";
-    schema_value[0]["coords"][1]["x"] = "74";
+    schema_value[0]["coords"][1]["x"] = 74;
     // std::cout << std::string_view(schema_value[0]["coords"][1]["text"]) << std::endl;
     std::cout << double(schema_value[0]["coords"][1]["x"]) << std::endl;
 

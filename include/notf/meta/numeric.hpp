@@ -160,7 +160,7 @@ constexpr bool can_be_narrow_cast(const Source& source) noexcept {
                     return true;
                 } else {
                     // source type is larger
-                    return static_cast<Source>(max_v<Target>) <= source;
+                    return source <= static_cast<Source>(max_v<Target>);
                 }
             }
         } else {
@@ -177,17 +177,17 @@ constexpr bool can_be_narrow_cast(const Source& source) noexcept {
                         return true;
                     } else {
                         // source type is larger
-                        return static_cast<Source>(max_v<Target>) <= source;
+                    return source <= static_cast<Source>(max_v<Target>);
                     }
                 }
             } else {
                 // target is signed, source is unsigned
-                if constexpr (sizeof(Target) > sizeof(Source)) {
-                    // target type is larger
+                if constexpr (sizeof(Target) >= sizeof(Source)) {
+                    // target type is larger or equal
                     return true;
                 } else {
-                    // source type is larger or equal
-                    return static_cast<Source>(max_v<Target>) <= source;
+                    // source type is larger
+                    return source <= static_cast<Source>(max_v<Target>);
                 }
             }
         }

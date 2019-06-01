@@ -25,50 +25,6 @@ struct is_numeric : std::disjunction<std::is_integral<T>, std::is_floating_point
 template<class T>
 static constexpr bool is_numeric_v = is_numeric<T>::value;
 
-// templated integer types ========================================================================================== //
-
-template<std::size_t size>
-struct templated_integer;
-template<>
-struct templated_integer<8> {
-    using type = std::int8_t;
-};
-template<>
-struct templated_integer<16> {
-    using type = std::int16_t;
-};
-template<>
-struct templated_integer<32> {
-    using type = std::int32_t;
-};
-template<>
-struct templated_integer<64> {
-    using type = std::int64_t;
-};
-template<std::size_t size>
-using tempated_integer_t = typename templated_integer<size>::type;
-
-template<std::size_t size>
-struct templated_unsigned_integer;
-template<>
-struct templated_unsigned_integer<8> {
-    using type = std::uint8_t;
-};
-template<>
-struct templated_unsigned_integer<16> {
-    using type = std::uint16_t;
-};
-template<>
-struct templated_unsigned_integer<32> {
-    using type = std::uint32_t;
-};
-template<>
-struct templated_unsigned_integer<64> {
-    using type = std::uint64_t;
-};
-template<std::size_t size>
-using templated_unsigned_integer_t = typename templated_unsigned_integer<size>::type;
-
 // traits =========================================================================================================== //
 
 /// Explicit None type.
