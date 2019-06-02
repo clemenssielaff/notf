@@ -6,6 +6,21 @@
 
 NOTF_OPEN_NAMESPACE
 
+// templated real types ============================================================================================= //
+
+template<std::size_t size>
+struct templated_real;
+template<>
+struct templated_real<32> {
+    using type = float;
+};
+template<>
+struct templated_real<8> {
+    using type = double;
+};
+template<std::size_t size>
+using templated_real_t = typename templated_real<size>::type;
+
 // constants ======================================================================================================== //
 
 /// Pi

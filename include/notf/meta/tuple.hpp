@@ -291,6 +291,31 @@ constexpr size_t get_first_index() noexcept {
     }
 }
 
+// count type occurrence ============================================================================================ //
+
+namespace detail {
+template<std::size_t I, class Tuple, class... Ts>
+constexpr void _count_type_occurrence(std::size_t& count) noexcept {
+    if constexpr(I < std::tuple_size_v<Tuple>){
+        if constexpr(is_one_of_v<std::tuple_element_t<I, Tuple>, Ts...>){
+            ++count;
+        }
+        _count_type_occurrence<I+1, Tuple, Ts...>(count);
+    }
+}
+}
+
+/// Counts the number of times any of the given types appears in the tuple.
+/// Example:
+///     using test_t = std::tuple<int, bool, int, float, bool, int, int, float>;
+///     static_assert(count_type_occurrence<test_t, float, bool>() == 4);
+template<class Tuple, class... Ts>
+constexpr std::size_t count_type_occurrence() noexcept {
+    std::size_t result = 0;
+    detail::_count_type_occurrence<0, Tuple, Ts...>(result);
+    return result;
+}
+
 // make n-tuple ===================================================================================================== //
 
 namespace detail {

@@ -12,8 +12,8 @@
 #include "notf/meta/allocator.hpp"
 #include "notf/meta/assert.hpp"
 #include "notf/meta/exception.hpp"
-#include "notf/meta/numeric.hpp"
 #include "notf/meta/integer.hpp"
+#include "notf/meta/real.hpp"
 #include "notf/meta/system.hpp"
 #include "notf/meta/types.hpp"
 
@@ -23,17 +23,24 @@ class StructuredBuffer {
 
     // types ----------------------------------------------------------------------------------- //
 public:
-    /// A word is the size of a pointer.
-    using word_t = templated_unsigned_integer_t<sizeof(void*)>;
+    /// A value word is the size of a pointer.
+    using word_t = templated_unsigned_integer_t<bitsizeof<void*>()>;
+
+    using layout_word_t = u_char;
+    // TODO: the type definitions basically eat into the space available for internal pointers in the layout.
+    //       Then again, we will never have a pointer to null or to one, and the pointed location will always be
+    //       larger than the current one... I am sure there is some smart way to do this
 
     /// All types of elements.
-    enum class Type : word_t { 
-        _FIRST = std::numeric_limits<word_t>::max() - 3,
-        NUMBER = _FIRST, 
-        STRING, 
-        LIST, 
+    enum class Type : word_t {
+        _FIRST = max_v<std::underlying_type_t<Type>> - 3,
+        NUMBER = _FIRST,
+        STRING,
+        LIST,
         MAP,
-        _LAST = MAP};
+        _LAST = MAP
+    };
+    static_assert(to_number(Type::_LAST) == max_v<std::underlying_type_t<Type>>);
 
     /// Human-readable name of the types.
     static constexpr const char* get_type_name(const Type type) noexcept {
@@ -198,7 +205,9 @@ private:
                 NOTF_ASSERT(!children.empty());
                 const word_t location = m_layout.size();
                 m_layout.push_back(to_number(Type::LIST));
-                _produce_sublayout(children[0]);
+                word_t itr = m_layout.size();
+                m_layout.push_back(0);
+                m_layout[itr] = _produce_sublayout(children[0]);
                 return location;
             }
 
@@ -333,27 +342,37 @@ int main() {
             },
             {"name", 
                 String
+            },
+            {"otherlist",
+                List(
+                    String
+                )
             }
         }
     );
-    auto schema_value = List(
-            Map{
-                {"coords", 
-                    List(
-                        Map{
-                            {"x", 0},
-                            {"somname", "---"}
-                        },
-                        Map{
-                            {"x", 1},
-                            {"text", "Hello world"}
-                        }
-                    )
-                },
-                {"name", "Hello World"}
-            }
+    // auto schema_value = List(
+    //         Map{
+    //             {"coords", 
+    //                 List(
+    //                     Map{
+    //                         {"x", 0},
+    //                         {"somname", "---"}
+    //                     },
+    //                     Map{
+    //                         {"x", 1},
+    //                         {"text", "Hello world"}
+    //                     }
+    //                 )
+    //             },
+    //             {"name", "Hello World"},
+    //             {"otherlist",
+    //                 List(
+    //                     "string"
+    //                 )
+    //             }
+    //         }
         
-    );
+    // );
     // clang-format on
 
     const std::map<word_t, std::string_view> legend = {
@@ -364,7 +383,7 @@ int main() {
     };
 
     { // schema
-        std::cout << "Schema: " << std::endl;
+        std::cout << "Schema of size " << schema.get_layout().size() << ": " << std::endl;
         size_t line = 0;
         for (const word_t& word : schema.get_layout()) {
             std::cout << line++ << ": ";
@@ -376,14 +395,14 @@ int main() {
         }
     }
 
-    std::cout << "-------------------------------" << std::endl;
-    std::cout << (schema.get_layout() == schema_value.get_layout() ? "Success" : "Failure") << std::endl;
-    std::cout << "-------------------------------\n" << std::endl;
+    // std::cout << "-------------------------------" << std::endl;
+    // std::cout << (schema.get_layout() == schema_value.get_layout() ? "Success" : "Failure") << std::endl;
+    // std::cout << "-------------------------------\n" << std::endl;
 
-    schema_value[0]["coords"][1]["text"] = "Deine mudda";
-    schema_value[0]["coords"][1]["x"] = 74;
-    // std::cout << std::string_view(schema_value[0]["coords"][1]["text"]) << std::endl;
-    std::cout << double(schema_value[0]["coords"][1]["x"]) << std::endl;
+    // schema_value[0]["coords"][1]["text"] = "Deine mudda";
+    // schema_value[0]["coords"][1]["x"] = 74;
+    // // std::cout << std::string_view(schema_value[0]["coords"][1]["text"]) << std::endl;
+    // std::cout << double(schema_value[0]["coords"][1]["x"]) << std::endl;
 
     return 0;
 }
