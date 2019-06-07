@@ -68,7 +68,7 @@ public:
     /// @param vertex_buffer VertexBuffer to bind.
     template<class AttributePolicies, class Vertex, class... Indices,
              class = std::enable_if_t<all(sizeof...(Indices) == std::tuple_size_v<Vertex>, //
-                                          all_convertible_to<uint, Indices...>)>>
+                                          all_convertible_to_v<uint, Indices...>)>>
     void bind(VertexBufferPtr<AttributePolicies, Vertex> vertex_buffer, Indices... indices) {
         if (!vertex_buffer) { return; }
         {

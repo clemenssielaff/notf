@@ -58,7 +58,7 @@ private:
     struct Element;
 
     /// Layout description.
-    using layout_t = std::vector<word_t>;
+    using DynamicSchema = std::vector<word_t>;
 
     /// Buffer, storing values according to a separate Layout description.
     using buffer_t = std::vector<char, DefaultInitAllocator<char>>;
@@ -68,7 +68,7 @@ private:
 
     /// An UTF-8 string.
     /// Is a separate type and not a list of chars because UTF-8 characters have dynamic width.
-    using string_t = utf8_string;
+    using string_t = std::string;
 
     /// Lists and Maps contain child Dynamic structs.
     using list_t = std::vector<Element>;
@@ -89,61 +89,45 @@ private:
     class Element {
 
     protected:
-        /// Type-only constructor.
-        Element(const Type type) : m_type(type) {
-            m_value = [type]() -> decltype(m_value) {
-                switch (type) {
-                case Type::NUMBER: return {number_t{0}};
-                case Type::STRING: return {string_t{}};
-                case Type::LIST: return {list_t{}};
-                case Type::MAP: return {map_t{}};
-                }
-                return {number_t{0}};
-            }();
+        Element(Variant&& value) : m_value(std::move(value)) {
+            _produce_subschema(*this, m_schema);
+            m_schema.shrink_to_fit();
         }
 
     public:
-        /// NUMBER type constructor.
-        static Element Number() { return Element(Type::NUMBER); }
+        Element() = default;
 
-        /// NUMBER value constructor.
+        /// Number value constructor.
         template<class T, class = std::enable_if_t<is_numeric_v<T>>>
-        Element(T number) : m_type(Type::NUMBER), m_value(number) {
-            _produce_sublayout(*this);
-        }
+        Element(T number) : m_value(number_t(number)) {}
 
-        /// STRING type constructor.
-        static Element String() { return Element(Type::STRING); }
-
-        /// STRING value constructor.
+        /// String value constructor.
         template<class T, class = std::enable_if_t<std::is_constructible_v<std::string, T>>>
-        Element(T&& string) : m_type(Type::STRING), m_value(std::forward<T>(string)) {
-            _produce_sublayout(*this);
-        }
+        Element(T&& string) : m_value(string_t(std::forward<T>(string))) {}
 
-        /// Combined layout of this element and its children.
-        const layout_t& get_layout() const noexcept { return m_layout; }
+        /// Combined schema of this element and its children.
+        const DynamicSchema& get_schema() const noexcept { return m_schema; }
 
         /// Cast to number.
         explicit operator number_t() const {
-            if (m_type != Type::NUMBER) {
-                NOTF_THROW(TypeError, "DynamicStruct element is not a Number, but a {}", get_type_name(m_type));
+            if (!std::holds_alternative<number_t>(m_value)) {
+                NOTF_THROW(TypeError, "DynamicStruct value is not a Number, but a {}", _get_type_name());
             }
             return std::get<number_t>(m_value);
         }
 
         /// Cast to string.
         explicit operator std::string_view() const {
-            if (m_type != Type::STRING) {
-                NOTF_THROW(TypeError, "DynamicStruct element is not a String, but a {}", get_type_name(m_type));
+            if (!std::holds_alternative<string_t>(m_value)) {
+                NOTF_THROW(TypeError, "DynamicStruct value is not a String, but a {}", _get_type_name());
             }
-            return std::get<string_t>(m_value).c_str();
+            return std::get<string_t>(m_value);
         }
 
         /// Index operator for lists.
         const Element& operator[](const std::size_t index) const {
-            if (m_type != Type::LIST) {
-                NOTF_THROW(TypeError, "DynamicStruct element is not a List, but a {}", get_type_name(m_type));
+            if (!std::holds_alternative<list_t>(m_value)) {
+                NOTF_THROW(TypeError, "DynamicStruct value is not a List, but a {}", _get_type_name());
             }
             const list_t& children = std::get<list_t>(m_value);
             if (index >= children.size()) {
@@ -152,124 +136,160 @@ private:
             }
             return children[index];
         }
-        Element& operator[](const std::size_t index) { return NOTF_FORWARD_CONST_AS_MUTABLE(operator[](index)); }
 
         /// Index operator for maps.
         const Element& operator[](const std::string_view key) const {
-            if (m_type != Type::MAP) {
-                NOTF_THROW(TypeError, "DynamicStruct element is not a Map, but a {}", get_type_name(m_type));
+            if (!std::holds_alternative<map_t>(m_value)) {
+                NOTF_THROW(TypeError, "DynamicStruct value is not a Map, but a {}", _get_type_name());
             }
             for (const auto& child : std::get<map_t>(m_value)) {
                 if (child.first == key) { return child.second; }
             }
             NOTF_THROW(NameError, "DynamicStruct Map does not contain an entry \"{}\"", key);
         }
-        Element& operator[](const std::string_view key) { return NOTF_FORWARD_CONST_AS_MUTABLE(operator[](key)); }
 
         /// Value assignment.
         template<class T>
         Element& operator=(T value) {
             if constexpr (std::is_convertible_v<T, number_t>) {
-                if (m_type == Type::NUMBER) {
+                if (std::holds_alternative<number_t>(m_value)) {
                     m_value = static_cast<number_t>(std::move(value));
                     return *this;
                 }
             } else if constexpr (std::is_convertible_v<T, string_t>) {
-                if (m_type == Type::STRING) {
+                if (std::holds_alternative<string_t>(m_value)) {
                     m_value = static_cast<string_t>(std::move(value));
                     return *this;
                 }
             }
-            NOTF_THROW(ValueError, "Element of type {} cannot store a \"{}\"", get_type_name(m_type), type_name<T>());
-        }
-
-        buffer_t produce_buffer() const {
-            buffer_t result;
-            VectorBuffer buffer(result);
-            std::ostream stream(&buffer);
-            _produce_subbuffer(*this, stream);
-            return {};
+            NOTF_THROW(ValueError, "Element of type {} cannot store a \"{}\"", _get_type_name(), type_name<T>());
         }
 
     protected:
-        word_t _produce_sublayout(const Element& obj) {
-            switch (obj.m_type) {
-
-            case Type::NUMBER: return to_number(Type::NUMBER);
-
-            case Type::STRING: return to_number(Type::STRING);
-
-            case Type::LIST: {
-                NOTF_ASSERT(std::holds_alternative<list_t>(obj.m_value));
-                const list_t& children = std::get<list_t>(obj.m_value);
-                NOTF_ASSERT(!children.empty());
-                const word_t location = m_layout.size();
-                m_layout.push_back(to_number(Type::LIST));
-                word_t itr = m_layout.size();
-                m_layout.push_back(0);
-                m_layout[itr] = _produce_sublayout(children[0]);
-                return location;
-            }
-
-            case Type::MAP: {
-                NOTF_ASSERT(std::holds_alternative<map_t>(obj.m_value));
-                const map_t& children = std::get<map_t>(obj.m_value);
-                NOTF_ASSERT(!children.empty());
-                const word_t location = m_layout.size();
-                m_layout.reserve(location + children.size() + 2);
-                m_layout.push_back(to_number(Type::MAP));
-                m_layout.push_back(children.size());
-                word_t itr = m_layout.size();
-                for (size_t i = 0; i < children.size(); ++i) {
-                    m_layout.push_back(0);
-                }
-                for (const auto& child : children) {
-                    m_layout[itr++] = _produce_sublayout(child.second);
-                }
-                return location;
-            };
-            }
-            return 0;
+        const char* _get_type_name() const {
+            return std::visit(overloaded{
+                                  [](const number_t& number) { return get_type_name(Type::NUMBER); },
+                                  [](const string_t& string) { return get_type_name(Type::STRING); },
+                                  [](const list_t& list) { return get_type_name(Type::LIST); },
+                                  [](const map_t& map) { return get_type_name(Type::MAP); },
+                              },
+                              m_value);
         }
 
-        static void _produce_subbuffer(const Element& element, std::ostream& out) {
+        static void _produce_subschema(const Element& obj, DynamicSchema& schema) {
             std::visit(overloaded{
-                           [](const number_t& number) {},
-                           [](const string_t& string) {},
-                           [](const list_t& list) {},
-                           [](const map_t& map) {},
+                           [&](const number_t&) { schema.push_back(to_number(Type::NUMBER)); },
+                           [&](const string_t&) { schema.push_back(to_number(Type::STRING)); },
+                           [&](const list_t& list) {
+                               NOTF_ASSERT(!list.empty());
+                               schema.push_back(to_number(Type::LIST));
+                               _produce_subschema(list[0], schema);
+                           },
+                           [&](const map_t& map) {
+                               NOTF_ASSERT(!map.empty());
+                               schema.reserve(schema.size() + map.size() + 2);
+                               schema.push_back(to_number(Type::MAP));
+                               schema.push_back(map.size());
+
+                               // pre-allocate space for the child elements
+                               std::size_t child_position = schema.size();
+                               schema.resize(child_position + map.size());
+
+                               for (const auto& childItr : map) {
+                                   const Element& child = childItr.second;
+                                   // numbers and strings are stored inline,
+                                   if (std::holds_alternative<number_t>(child.m_value)) {
+                                       schema[child_position++] = to_number(Type::NUMBER);
+                                   } else if (std::holds_alternative<string_t>(child.m_value)) {
+                                       schema[child_position++] = to_number(Type::STRING);
+                                   }
+                                   // lists and maps store a pointer and append themselves to after the map itself
+                                   else {
+                                       NOTF_ASSERT(std::holds_alternative<list_t>(child.m_value)
+                                                   || std::holds_alternative<map_t>(child.m_value));
+                                       schema[child_position++] = schema.size();
+                                       _produce_subschema(child, schema);
+                                   }
+                               }
+                           },
                        },
-                       element.m_value);
+                       obj.m_value);
         }
 
-        template<class T>
-        void _set_value(T&& value) {
-            m_value = std::forward<T>(value);
-        }
-
-    private:
-        /// Element type.
-        const Type m_type; // TODO: having both a Type and a Variant index is redundant
-
+        // fields ------------------------------------------------------- //
+    protected:
         /// User-defined value or child elements.
-        Variant m_value{};
+        Variant m_value = {};
 
-        /// Combined layout of this element and its children.
-        layout_t m_layout;
+        /// Combined schema of this element and its children.
+        DynamicSchema m_schema;
     };
 
     // types ----------------------------------------------------------------------------------- //
 public:
-    /// The valueless NUMBER type element.
-    inline static const Element Number = Element::Number();
+    struct Number : public Element {
+        /// Number constructor.
+        template<class T, class = std::enable_if_t<is_numeric_v<T>>>
+        constexpr Number(T number) noexcept : Element(number) {}
+    };
 
-    /// The valueless STRING type element.
-    inline static const Element String = Element::String();
+    struct String : public Element {
+        /// String constructor.
+        template<class T, class = std::enable_if_t<std::is_constructible_v<string_t, T>>>
+        String(T&& string) : Element(std::forward<T>(string)) {}
+    };
+
+    struct List : public Element {
+
+        // methods --------------------------------------------------------- //
+    public:
+        /// Variadic constructor.
+        /// @throws ValueError  If the child elements do not have the same layout.
+        template<class T, class... Ts, class = std::enable_if_t<all_of_type_v<T, Ts...>>>
+        List(T&& t, Ts&&... ts) : Element(_produce_list(std::forward<T>(t), std::forward<Ts>(ts)...)) {}
+
+    private:
+        template<class T, class... Ts>
+        static Variant _produce_list(T&& t, Ts&&... ts) {
+            if constexpr (sizeof...(ts) > 0) {
+                if (!_have_all_same_layout(t, ts...)) {
+                    NOTF_THROW(ValueError, "List elements must all have the same layout");
+                }
+                // TODO: check if maps all have the same keys
+            }
+            return list_t{std::forward<T>(t), std::forward<Ts>(ts)...};
+        }
+
+        template<class L, class R, class... Tail>
+        static bool _have_all_same_layout(const L& l, const R& r, Tail&&... tail) {
+            if constexpr (sizeof...(tail) == 0) {
+                return l.get_schema() == r.get_schema();
+            } else {
+                if (l.get_schema() != r.get_schema()) {
+                    return false;
+                } else {
+                    return _have_all_same_layout(l, std::forward<Tail>(tail)...);
+                }
+            }
+        }
+    };
 
     struct Map : public Element {
-        Map(std::initializer_list<std::pair<std::string, Element>> entries) : Element(Type::MAP) {
+        /// Variadic Map constructor.
+        /// param entries       Pairs of (string, Element) that make up the map.
+        /// @throws ValueError  If any key is not unique.
+        Map(std::initializer_list<std::pair<std::string, Element>> entries)
+            : Element(_produce_map(std::move(entries))) {}
+
+    private:
+        static Variant _produce_map(std::initializer_list<std::pair<std::string, Element>>&& entries) {
             NOTF_ASSERT(entries.size() != 0);
-            map_t children(entries.begin(), entries.end());
+            map_t children;
+            children.reserve(entries.size());
+            for (auto& entry : entries) {
+                children.push_back(std::make_pair(std::move(entry.first), std::move(entry.second)));
+            }
+            // map_t children(entries.begin(), entries.end());
             { // make sure that names are unique
                 std::unordered_set<std::string> unique_names;
                 for (const std::pair<std::string, Element>& child : children) {
@@ -279,41 +299,7 @@ public:
                     unique_names.insert(child.first);
                 }
             }
-            _set_value(std::move(children));
-            _produce_sublayout(*this);
-        }
-    };
-
-    struct List : public Element {
-
-        // methods --------------------------------------------------------- //
-    public:
-        /// Variadic constructor.
-        /// @throws ValueError  If the child elements do not have the same layout.
-        template<class T, class... Ts, class = std::enable_if_t<all_of_type<T, Ts...>>>
-        List(T&& t, Ts&&... ts) : Element(Type::LIST) {
-            if constexpr (sizeof...(ts) > 0) {
-                if (!_have_all_same_layout(t, ts...)) {
-                    NOTF_THROW(ValueError, "List elements must all have the same layout");
-                }
-                // TODO: check if maps all have the same keys
-            }
-            _set_value(list_t{std::forward<T>(t), std::forward<Ts>(ts)...});
-            _produce_sublayout(*this);
-        }
-
-    private:
-        template<class L, class R, class... Tail>
-        bool _have_all_same_layout(const L& l, const R& r, Tail&&... tail) {
-            if constexpr (sizeof...(tail) == 0) {
-                return l.get_layout() == r.get_layout();
-            } else {
-                if (l.get_layout() != r.get_layout()) {
-                    return false;
-                } else {
-                    return _have_all_same_layout(l, std::forward<Tail>(tail)...);
-                }
-            }
+            return children;
         }
     };
 };
@@ -326,53 +312,34 @@ int main() {
     using Type = StructuredBuffer::Type;
     using Map = StructuredBuffer::Map;
     using List = StructuredBuffer::List;
-    const auto& Number = StructuredBuffer::Number;
-    const auto& String = StructuredBuffer::String;
+
+    auto testmap =List (
+        0, 1, 2, 3, 4
+    );
 
     // clang-format off
-    const auto schema = List(
+    auto schema = List(
         Map{
             {"coords", 
                 List(
                     Map{
-                        {"x", Number},
-                        {"y", String}
+                        {"x", 0},
+                        {"somname", "---"}
+                    },
+                    Map{
+                        {"x", 1},
+                        {"text", "Hello world"}
                     }
                 )
             },
-            {"name", 
-                String
-            },
+            {"name", "Hello World"},
             {"otherlist",
                 List(
-                    String
+                    "string"
                 )
             }
         }
     );
-    // auto schema_value = List(
-    //         Map{
-    //             {"coords", 
-    //                 List(
-    //                     Map{
-    //                         {"x", 0},
-    //                         {"somname", "---"}
-    //                     },
-    //                     Map{
-    //                         {"x", 1},
-    //                         {"text", "Hello world"}
-    //                     }
-    //                 )
-    //             },
-    //             {"name", "Hello World"},
-    //             {"otherlist",
-    //                 List(
-    //                     "string"
-    //                 )
-    //             }
-    //         }
-        
-    // );
     // clang-format on
 
     const std::map<word_t, std::string_view> legend = {
@@ -383,9 +350,9 @@ int main() {
     };
 
     { // schema
-        std::cout << "Schema of size " << schema.get_layout().size() << ": " << std::endl;
+        std::cout << "Schema of size " << schema.get_schema().size() << ": " << std::endl;
         size_t line = 0;
-        for (const word_t& word : schema.get_layout()) {
+        for (const word_t& word : schema.get_schema()) {
             std::cout << line++ << ": ";
             if (legend.count(word)) {
                 std::cout << legend.at(word) << std::endl;
@@ -396,7 +363,7 @@ int main() {
     }
 
     // std::cout << "-------------------------------" << std::endl;
-    // std::cout << (schema.get_layout() == schema_value.get_layout() ? "Success" : "Failure") << std::endl;
+    // std::cout << (schema.get_schema() == schema_value.get_schema() ? "Success" : "Failure") << std::endl;
     // std::cout << "-------------------------------\n" << std::endl;
 
     // schema_value[0]["coords"][1]["text"] = "Deine mudda";

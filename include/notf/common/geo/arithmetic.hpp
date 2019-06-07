@@ -59,7 +59,7 @@ public:
     /// Allows construction of a Vector3<float> using (0, 1.3f, 123.l), for example.
     /// @param components   Components to store.
     template<class... Components, class = std::enable_if_t<all(sizeof...(Components) == Dimensions, //
-                                                               all_convertible_to<component_t, Components...>)>>
+                                                               all_convertible_to_v<component_t, Components...>)>>
     constexpr Arithmetic(Components... components) noexcept : data{static_cast<component_t>(components)...} {}
 
     /// Casting constructor.

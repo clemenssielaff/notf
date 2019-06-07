@@ -286,7 +286,7 @@ class Accessor<VertexBuffer<AttributePolicies, Vertex>, VertexObject> {
     /// @param indices  One index per attribute at which the attribute should be bound.
     /// @throws OpenGLError If no VAO is bound.
     template<class... Indices, class = std::enable_if_t<all(sizeof...(Indices) == std::tuple_size_v<Vertex>, //
-                                                            all_convertible_to<uint, Indices...>)>>
+                                                            all_convertible_to_v<uint, Indices...>)>>
     static void bind_to_vao(VertexBuffer<AttributePolicies, Vertex>& buffer, Indices... indices) {
         buffer._bind_to_vao(std::make_tuple(narrow_cast<uint>(indices)...));
     }

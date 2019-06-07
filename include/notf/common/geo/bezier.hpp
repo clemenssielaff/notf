@@ -60,7 +60,7 @@ public:
     template<class T, class... Ts,
              class = std::enable_if_t<all(sizeof...(Ts) == Order,  //
                                           std::is_arithmetic_v<T>, //
-                                          all_convertible_to<T, Ts...>)>>
+                                          all_convertible_to_v<T, Ts...>)>>
     constexpr Bezier(T start, Ts... tail) : m_weights({start, tail...}) {}
 
     /// Straight line with constant interpolation speed.
@@ -158,7 +158,8 @@ public:
 
     /// Value constructor.
     /// @param vertices Individual vertices that make up this ParametricBezier.
-    template<class... Ts, class = std::enable_if_t<all(sizeof...(Ts) == Order + 1, all_convertible_to<vector_t, Ts...>)>>
+    template<class... Ts,
+             class = std::enable_if_t<all(sizeof...(Ts) == Order + 1, all_convertible_to_v<vector_t, Ts...>)>>
     constexpr ParametricBezier(Ts&&... vertices) noexcept
         : ParametricBezier(_deinterleave({std::forward<Ts>(vertices)...})) {}
 

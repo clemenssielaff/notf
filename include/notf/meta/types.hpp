@@ -182,11 +182,11 @@ static constexpr bool is_derived_from_one_of_v = std::disjunction_v<std::is_base
 
 /// Checks if all Ts are the same type as T.
 template<class T, class... Ts>
-static constexpr bool all_of_type = std::conjunction_v<std::is_same<T, Ts>...>;
+static constexpr bool all_of_type_v = std::conjunction_v<std::is_same<T, Ts>...>;
 
 /// Checks if all Ts are convertible to T.
 template<class T, class... Ts>
-static constexpr bool all_convertible_to = std::conjunction_v<std::is_convertible<T, Ts>...>;
+static constexpr bool all_convertible_to_v = std::conjunction_v<std::is_convertible<T, Ts>...>;
 
 /// Compile-time check whether two types are both signed / both unsigned.
 template<class T, class U>
