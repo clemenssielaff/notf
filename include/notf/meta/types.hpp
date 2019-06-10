@@ -6,6 +6,7 @@
 
 #include <array>
 
+#include "notf/meta/assert.hpp"
 #include "notf/meta/config.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -23,7 +24,27 @@ using ulong = unsigned long;
 template<class T>
 struct is_numeric : std::disjunction<std::is_integral<T>, std::is_floating_point<T>> {};
 template<class T>
-static constexpr bool is_numeric_v = is_numeric<T>::value;
+inline constexpr const bool is_numeric_v = is_numeric<T>::value;
+
+// is un/bounded array ============================================================================================== //
+
+/// Checks if T is a bounded array type.
+/// This will be part of C++20
+template<class T>
+struct is_bounded_array : std::false_type {};
+template<class T, std::size_t N>
+struct is_bounded_array<T[N]> : std::true_type {};
+template<class T>
+inline constexpr const bool is_bounded_array_v = is_bounded_array<T>::value;
+
+/// Checks if T is an unbounded array type.
+/// This will be part of C++20
+template<class T>
+struct is_unbounded_array : std::false_type {};
+template<class T>
+struct is_unbounded_array<T[]> : std::true_type {};
+template<class T>
+inline constexpr const bool is_unbounded_array_v = is_unbounded_array<T>::value;
 
 // traits =========================================================================================================== //
 
@@ -113,13 +134,13 @@ constexpr T identity_func(const T& value) {
 template<class... Ts>
 struct always_false : std::false_type {};
 template<class... Ts>
-static constexpr bool always_false_v = always_false<Ts...>::value;
+inline constexpr const bool always_false_v = always_false<Ts...>::value;
 
 /// Always true, if T is a valid type.
 template<class... Ts>
 struct always_true : std::true_type {};
 template<class... Ts>
-static constexpr bool always_true_v = always_true<Ts...>::value;
+inline constexpr const bool always_true_v = always_true<Ts...>::value;
 
 /// Use in place of a type if you don't want the type to take up any space.
 /// This is actually not "valid" C++ but all compilers (that I tested) allow it without problems.
@@ -174,32 +195,32 @@ constexpr bool any(Ts... expressions) {
 
 /// Checks if T is any of the variadic types.
 template<class T, class... Ts>
-static constexpr bool is_one_of_v = std::disjunction_v<std::is_same<T, Ts>...>;
+inline constexpr const bool is_one_of_v = std::disjunction_v<std::is_same<T, Ts>...>;
 
 /// Checks if T is derived from any of the variadic types.
 template<class T, class... Ts>
-static constexpr bool is_derived_from_one_of_v = std::disjunction_v<std::is_base_of<Ts, T>...>;
+inline constexpr const bool is_derived_from_one_of_v = std::disjunction_v<std::is_base_of<Ts, T>...>;
 
 /// Checks if all Ts are the same type as T.
 template<class T, class... Ts>
-static constexpr bool all_of_type_v = std::conjunction_v<std::is_same<T, Ts>...>;
+inline constexpr const bool all_of_type_v = std::conjunction_v<std::is_same<T, Ts>...>;
 
 /// Checks if all Ts are convertible to T.
 template<class T, class... Ts>
-static constexpr bool all_convertible_to_v = std::conjunction_v<std::is_convertible<T, Ts>...>;
+inline constexpr const bool all_convertible_to_v = std::conjunction_v<std::is_convertible<T, Ts>...>;
 
 /// Compile-time check whether two types are both signed / both unsigned.
 template<class T, class U>
 struct is_same_signedness : public std::integral_constant<bool, std::is_signed_v<T> == std::is_signed_v<U>> {};
 template<class T, class U>
-static constexpr bool is_same_signedness_v = is_same_signedness<T, U>::value;
+inline constexpr const bool is_same_signedness_v = is_same_signedness<T, U>::value;
 
 /// Compile-time check whether T is both trivial and standard-layout.
 template<class T>
 struct is_pod
     : public std::integral_constant<bool, std::conjunction_v<std::is_trivial<T>, std::is_standard_layout<T>>> {};
 template<class T>
-static constexpr bool is_pod_v = is_pod<T>::value;
+inline constexpr const bool is_pod_v = is_pod<T>::value;
 
 // accessors ======================================================================================================== //
 
@@ -277,5 +298,95 @@ extern typename std::add_rvalue_reference<T>::type declval() noexcept;
 #else
 using std::declval;
 #endif
+
+// ingest =========================================================================================================== //
+
+template<class T>
+class ingest;
+template<class T>
+struct is_ingest : std::false_type {};
+template<class T>
+struct is_ingest<ingest<T>> : std::true_type {};
+template<class T>
+inline constexpr const bool is_ingest_v = is_ingest<T>::value;
+
+/// Normally, you cannot move from initializer lists, because the values can be anything including static variables that
+/// may not be moved from to ensure program correctness.
+/// This type can be used inside an initializer list, in order to differntiate at runtime, whether or not an object can
+/// be moved or not.
+/// This code is taken from
+///     https://cpptruths.blogspot.com/2013/09/21-ways-of-passing-parameters-plus-one.html#inTidiom
+/// where it is in turn reprinted from
+///     https://codesynthesis.com/~boris/blog/2012/06/26/efficient-argument-passing-cxx11-part2
+template<class T>
+class ingest {
+
+    // types ------------------------------------------------------------------------------------ //
+private:
+    // Support for implicit conversion via perfect forwarding.
+    struct Converter {
+        ~Converter() {
+            if (is_finalized) { reinterpret_cast<T*>(&data)->~T(); }
+        }
+        std::aligned_storage_t<sizeof(T), alignof(T)> data;
+        bool is_finalized = false;
+    };
+
+    // methods ---------------------------------------------------------------------------------- //
+public:
+    /// @{
+    /// L-value constructor.
+    /// Produces an `ingest` container that cannot be moved from.
+    /// @param value    Value to ingest.
+    constexpr ingest(T& value) noexcept : m_value(value), m_is_movable(false) {}
+    constexpr ingest(const T& value) noexcept : m_value(value), m_is_movable(false) {}
+    /// @}
+
+    /// R-value constructor.
+    /// Produces an `ingest` container that can be moved from.
+    /// @param value    Value to ingest.
+    constexpr ingest(T&& value) : m_value(value), m_is_movable(true) {}
+
+    /// Implicit r-value conversion with perfect forwarding.
+    /// Produces an `ingest` container that can be moved from.
+    /// @param value    Value to ingest.
+    template<class Value,
+             class = std::enable_if_t<std::is_convertible_v<Value, T> && !is_ingest_v<std::remove_reference_t<Value>>>>
+    ingest(Value&& value, Converter&& converter = Converter())
+        : m_value(*new (&converter.data) T(std::forward<Value>(value))), m_is_movable(true) {
+        converter.is_finalized = true;
+    }
+
+    /// Implicit conversion to const T&, this is always safe.
+    constexpr operator const T&() const noexcept { return m_value; }
+
+    /// Whether or not the value contained is movable or not.
+    constexpr bool is_movable() const noexcept { return m_is_movable; }
+
+    /// Creates a new value and returns it, either by moving the internal value out of this container or by copying it.
+    constexpr T move() const {
+        if (is_movable()) {
+            return force_move();
+        } else {
+            return m_value;
+        }
+    }
+
+    /// Forces a move.
+    /// Use this when you are certain that the value is movable (for example, by calling `is_movable`) to save the
+    /// construction of a new T in `move`.
+    constexpr T&& force_move() const {
+        NOTF_ASSERT(m_is_movable);
+        return std::move(const_cast<T&>(m_value));
+    }
+
+    // fields ----------------------------------------------------------------------------------- //
+private:
+    /// Value to ingest, must be const because that's what an initializer list gives you.
+    const T& m_value;
+
+    /// Runtime flag identifying the value as movable or not.
+    const bool m_is_movable;
+};
 
 NOTF_CLOSE_NAMESPACE

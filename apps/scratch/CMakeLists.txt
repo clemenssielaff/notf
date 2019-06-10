@@ -4,8 +4,9 @@ set(CURRENT_TARGET scratch)
 # add scratch files
 add_sources(SCRATCH_FILES ${CMAKE_CURRENT_SOURCE_DIR}
 	scratch.cpp
-    #structured_buffer.cpp
+    #tructured_buffer.cpp
     #msgpack_profile.cpp
+    #ingest_test.cpp
 )
 
 # declare scratch executable

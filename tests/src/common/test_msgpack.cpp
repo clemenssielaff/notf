@@ -15,17 +15,17 @@ template<>
 struct notf::Accessor<MsgPack, Tester> {
 
     using Variant = MsgPack::Variant;
-    static_assert(get_first_variant_index<MsgPack::None, Variant>() == 0);
-    static_assert(get_first_variant_index<MsgPack::Bool, Variant>() == 1);
-    static_assert(get_first_variant_index<MsgPack::Int, Variant>() == 2);
-    static_assert(get_first_variant_index<MsgPack::Uint, Variant>() == 3);
-    static_assert(get_first_variant_index<MsgPack::Float, Variant>() == 4);
-    static_assert(get_first_variant_index<MsgPack::Double, Variant>() == 5);
-    static_assert(get_first_variant_index<MsgPack::String, Variant>() == 6);
-    static_assert(get_first_variant_index<MsgPack::Binary, Variant>() == 7);
-    static_assert(get_first_variant_index<MsgPack::Array, Variant>() == 8);
-    static_assert(get_first_variant_index<MsgPack::Map, Variant>() == 9);
-    static_assert(get_first_variant_index<MsgPack::Extension, Variant>() == 10);
+    static_assert(get_first_index<MsgPack::None, Variant>() == 0);
+    static_assert(get_first_index<MsgPack::Bool, Variant>() == 1);
+    static_assert(get_first_index<MsgPack::Int, Variant>() == 2);
+    static_assert(get_first_index<MsgPack::Uint, Variant>() == 3);
+    static_assert(get_first_index<MsgPack::Float, Variant>() == 4);
+    static_assert(get_first_index<MsgPack::Double, Variant>() == 5);
+    static_assert(get_first_index<MsgPack::String, Variant>() == 6);
+    static_assert(get_first_index<MsgPack::Binary, Variant>() == 7);
+    static_assert(get_first_index<MsgPack::Array, Variant>() == 8);
+    static_assert(get_first_index<MsgPack::Map, Variant>() == 9);
+    static_assert(get_first_index<MsgPack::Extension, Variant>() == 10);
     static_assert(std::variant_size_v<Variant> == 11);
 
     static_assert(

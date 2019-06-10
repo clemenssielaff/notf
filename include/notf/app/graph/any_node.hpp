@@ -96,7 +96,7 @@ public:
     /// Node iterator, iterates through all children of a Node in draw-order (from back to front).
     struct Iterator {
 
-        // methods --------------------------------------------------------- //
+        // methods ---------------------------------------------------------- //
     public:
         /// Constructor.
         /// @param node Node at the root of the iteration.
@@ -109,7 +109,7 @@ public:
         /// @returns    True if a new Node was found.
         bool next(AnyNodeHandle& output_node);
 
-        // fields ---------------------------------------------------------- //
+        // fields ----------------------------------------------------------- //
     private:
         /// Stack of Iterators.
         std::vector<AnyNodeHandle> m_nodes;

@@ -16,7 +16,7 @@ struct is_tuple : std::false_type {};
 template<class... Ts>
 struct is_tuple<std::tuple<Ts...>> : std::true_type {};
 template<class T>
-static constexpr bool is_tuple_v = is_tuple<T>::value;
+inline constexpr bool is_tuple_v = is_tuple<T>::value;
 
 // flatten tuple ==================================================================================================== //
 
@@ -106,9 +106,7 @@ using concat_tuple_t = typename concat_tuple<Ts...>::type;
 
 /// Checks if T is one of the types contained in the given tuple.
 template<class T, class... Ts>
-struct is_one_of_tuple {
-    static constexpr bool value = false;
-};
+struct is_one_of_tuple : std::false_type {};
 template<class T, class... Ts>
 struct is_one_of_tuple<T, std::tuple<Ts...>> {
     static constexpr bool value = is_one_of_v<T, Ts...>;
@@ -118,9 +116,7 @@ static constexpr bool is_one_of_tuple_v = is_one_of_tuple<T, Ts...>::value;
 
 /// Checks if T is derived from (or the same as) one of the types contained in the given tuple.
 template<class T, class... Ts>
-struct is_derived_from_one_of_tuple {
-    static constexpr bool value = false;
-};
+struct is_derived_from_one_of_tuple : std::false_type {};
 template<class T, class... Ts>
 struct is_derived_from_one_of_tuple<T, std::tuple<Ts...>> {
     static constexpr bool value = is_derived_from_one_of_v<T, Ts...>;
@@ -155,7 +151,7 @@ struct is_empty_tuple : std::false_type {};
 template<>
 struct is_empty_tuple<std::tuple<>> : std::true_type {};
 template<class Tuple>
-static constexpr bool is_empty_tuple_v = is_empty_tuple<Tuple>::value;
+inline constexpr bool is_empty_tuple_v = is_empty_tuple<Tuple>::value;
 
 // make tuple unique ================================================================================================ //
 
@@ -281,10 +277,9 @@ visit_at(const std::tuple<Ts...>& tuple, size_t index, Function function, Args&&
 
 /// Finds and returns the first index of the given type in the tuple.
 template<class T, class Tuple, size_t I = 0>
-constexpr size_t get_first_index() noexcept {
-    if constexpr (I == std::tuple_size_v<Tuple>) {
-        throw 0;
-    } else if constexpr (std::is_same_v<std::tuple_element_t<I, Tuple>, T>) {
+constexpr std::enable_if_t<is_tuple_v<Tuple>, size_t> get_first_index() noexcept {
+    NOTF_ASSERT(I != std::tuple_size_v<Tuple>);
+    if constexpr (std::is_same_v<std::tuple_element_t<I, Tuple>, T>) {
         return I;
     } else {
         return get_first_index<T, Tuple, I + 1>();
@@ -296,14 +291,12 @@ constexpr size_t get_first_index() noexcept {
 namespace detail {
 template<std::size_t I, class Tuple, class... Ts>
 constexpr void _count_type_occurrence(std::size_t& count) noexcept {
-    if constexpr(I < std::tuple_size_v<Tuple>){
-        if constexpr(is_one_of_v<std::tuple_element_t<I, Tuple>, Ts...>){
-            ++count;
-        }
-        _count_type_occurrence<I+1, Tuple, Ts...>(count);
+    if constexpr (I < std::tuple_size_v<Tuple>) {
+        if constexpr (is_one_of_v<std::tuple_element_t<I, Tuple>, Ts...>) { ++count; }
+        _count_type_occurrence<I + 1, Tuple, Ts...>(count);
     }
 }
-}
+} // namespace detail
 
 /// Counts the number of times any of the given types appears in the tuple.
 /// Example:

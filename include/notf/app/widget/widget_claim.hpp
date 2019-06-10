@@ -14,12 +14,12 @@ NOTF_OPEN_NAMESPACE
 /// Every Widget has a Claim that determines how much space is alloted for it in its parent's Layout.
 class WidgetClaim {
 
-    // types ----------------------------------------------------------------------------------- //
+    // types ------------------------------------------------------------------------------------ //
 public:
     /// Horizontal or vertical Stretch of the Claim.
     class Stretch {
 
-        // methods ------------------------------------------------------------
+        // methods -------------------------------------------------------------
     public:
         /// Default Constructor.
         Stretch() = default;
@@ -174,14 +174,14 @@ public:
         int m_priority = 0;
     };
 
-    // ========================================================================
+    // =========================================================================
 
     /// A Claim has two different ratio-constraints, one for the minimum ratio - one for the max.
     /// Each ratio is represented by a rational number (width / height).
     struct Ratios {
         friend class WidgetClaim;
 
-        // methods --------------------------------------------------------- //
+        // methods ---------------------------------------------------------- //
     private:
         /// Default constructor.
         Ratios() = default;
@@ -222,7 +222,7 @@ public:
             m_max = Ratioi(max(m_max.num(), other.m_max.num()), m_max.den() + other.m_max.den());
         }
 
-        // fields ---------------------------------------------------------- //
+        // fields ----------------------------------------------------------- //
     private:
         /// Minimum ratio.
         Ratioi m_min = Ratioi::zero();
@@ -231,7 +231,7 @@ public:
         Ratioi m_max = Ratioi::zero();
     };
 
-    // methods --------------------------------------------------------------------------------- //
+    // methods ---------------------------------------------------------------------------------- //
 public:
     /// Default Constructor.
     WidgetClaim() = default;
@@ -403,7 +403,7 @@ public:
     /// @return  Constrainted size.
     Size2f apply(Size2f size) const;
 
-    // fields ---------------------------------------------------------------------------------- //
+    // fields ----------------------------------------------------------------------------------- //
 private:
     /// The vertical part of this Claim.
     Stretch m_horizontal;

@@ -278,6 +278,24 @@ detail::reversion_wrapper<T> reverse(T&& iterable) {
     return {std::forward<T>(iterable)};
 }
 
+// ingest initializer list ========================================================================================== //
+
+/// Common pattern to ingest an initializer list with the `ingest` helper type.
+/// Produces a vector of `T` with the fewest number of copies.
+template<class T>
+std::vector<T> ingest_initializer_list(std::initializer_list<ingest<T>>&& list) {
+    std::vector<T> result;
+    result.reserve(list.size());
+    for (auto& entry : list) {
+        if (entry.is_movable()) {
+            result.emplace_back(entry.force_move());
+        } else {
+            result.emplace_back(entry);
+        }
+    }
+    return result;
+}
+
 NOTF_CLOSE_NAMESPACE
 
 // std::hash ======================================================================================================== //

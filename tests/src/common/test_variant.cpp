@@ -6,9 +6,9 @@ NOTF_USING_NAMESPACE;
 
 SCENARIO("variant", "[common][variant]") {
 
-    SECTION("get_first_variant_index") {
+    SECTION("get_first_index for variants") {
         using MyVariant = std::variant<int, float, bool>;
-        REQUIRE(get_first_variant_index<float, MyVariant>() == 1);
+        REQUIRE(get_first_index<float, MyVariant>() == 1);
     }
 
     SECTION("is_one_of_variant") {

@@ -562,7 +562,7 @@ protected:
 
     /// Transitions from the current into the given State.
     /// @throws AnyWidget::BadTransitionError   If the transition is not possible.
-    template<class NewState, std::size_t I = get_first_variant_index<NewState, StateVariant>()>
+    template<class NewState, std::size_t I = get_first_index<NewState, StateVariant>()>
     void _transition_into() {
         if constexpr (is_valid_transition<state_t<I>, NewState>()) {
             m_state.template emplace<NewState>(std::move(std::get<I>(m_state)));
