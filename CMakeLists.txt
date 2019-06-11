@@ -222,9 +222,6 @@ if(NOTF_TEST)
         NOTF_TEST
     )
 endif()
-set(NOTF_GLOBAL_DEFINES ${NOTF_GLOBAL_DEFINES}
-    BOOST_ALL_NO_LIB # do not try to auto link boost libraries, we've got them all in notf-thirdparty
-)
 
 # global options
 if(NOTF_CLANG)

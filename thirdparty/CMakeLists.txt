@@ -17,7 +17,6 @@ add_compile_options("-Wno-unused-command-line-argument" )
 # SUB-PROJECTS #########################################################################################################
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/benchmark_1.5)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost_1.70)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/fmt_5.3)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/freetype_2.10)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/glad)

@@ -77,7 +77,6 @@ add_library(${CURRENT_TARGET} STATIC
 # include paths
 target_include_directories(${CURRENT_TARGET} PUBLIC
     ${CMAKE_SOURCE_DIR}/include/
-    ${CMAKE_SOURCE_DIR}/thirdparty/boost_1.70/include/
     ${CMAKE_SOURCE_DIR}/thirdparty/fmt_5.3/include/
     ${CMAKE_SOURCE_DIR}/thirdparty/freetype_2.10/include/
     ${CMAKE_SOURCE_DIR}/thirdparty/glad/include/
@@ -87,11 +86,23 @@ target_include_directories(${CURRENT_TARGET} PUBLIC
     ${CMAKE_SOURCE_DIR}/thirdparty/spdlog_1.3.1/include/
     ${CMAKE_SOURCE_DIR}/thirdparty/stb_image_2.22/
     ${CMAKE_SOURCE_DIR}/thirdparty/tiny-utf8_3.0/
+    /home/clemens/code/boost_1_70_0/build/include/
 )
+# library paths
+if(NOTF_CLANG)
+target_link_directories(${CURRENT_TARGET} PUBLIC
+    /home/clemens/code/boost_1_70_0/build/lib/clang
+)
+elseif(NOTF_GCC)
+target_link_directories(${CURRENT_TARGET} PUBLIC
+    /home/clemens/code/boost_1_70_0/build/lib/gcc
+)
+endif()
 
 # dependencies
 target_link_libraries(${CURRENT_TARGET} PUBLIC
-    notf-boost
+    boost_context
+    boost_fiber
     notf-fmt
     freetype
     notf-glad

@@ -1,5 +1,0 @@
-In the solution explorer, find the `notf-thirdparty` project.
-Right-click it and choose `Build Dependencies -> Build Customizations`.
-In the `Visual C++ Build Customization Files` dialog, enable `masm`.
-In the solution explorer, select the three *.asm files, right-click and select `Properties`.
-In `Configuration Properties -> General -> Item Type` choose `Microsoft Macro Assembler`.
