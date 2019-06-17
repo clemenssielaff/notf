@@ -75,8 +75,17 @@ add_library(${CURRENT_TARGET} STATIC
 )
 
 # additional requirements
-find_package(Boost 1.67 REQUIRED COMPONENTS fiber)
 find_package(Freetype REQUIRED)
+
+if(NOTF_CLANG)
+    set(BOOST_ROOT "/home/clemens/code/3rdparty/boost-1.70/clang")
+endif()
+set(Boost_USE_STATIC_LIBS        ON)  # only find static libs
+set(Boost_USE_DEBUG_LIBS         OFF) # ignore debug libs and
+set(Boost_USE_RELEASE_LIBS       ON)  # only find release libs
+set(Boost_USE_MULTITHREADED      ON)
+set(Boost_USE_STATIC_RUNTIME    OFF)
+find_package(Boost 1.67 REQUIRED COMPONENTS fiber)
 
 # include paths
 target_include_directories(${CURRENT_TARGET} PUBLIC
@@ -100,8 +109,7 @@ target_link_directories(${CURRENT_TARGET} PUBLIC
 
 # dependencies
 target_link_libraries(${CURRENT_TARGET} PUBLIC
-    boost_context
-    boost_fiber
+    Boost::fiber
     notf-fmt
     notf-glad
     glfw

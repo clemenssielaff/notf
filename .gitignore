@@ -9,3 +9,6 @@ __pycache__
 include/notf/meta/config.hpp
 thirdparty/lua/src/luaconf.h
 default.profraw
+
+# python sketch specific
+pynotf/.venv/

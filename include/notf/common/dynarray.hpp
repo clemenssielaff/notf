@@ -1,7 +1,8 @@
 #pragma once
 
-#include "notf/meta/smart_ptr.hpp"
 #include "notf/meta/types.hpp"
+
+#include <boost/smart_ptr/make_shared.hpp>
 
 NOTF_OPEN_NAMESPACE
 
@@ -126,7 +127,7 @@ public:
     /// Is only enabled for trivially destructible types, otherwise we might accidentally call `delete` on memory that
     /// hasn't been initialized yet.
     /// @param size     Size of this array.
-    template<class X = T, class = std::enable_if_t<std::is_trivially_destructible_v<T>>>
+    template<class X = T, std::enable_if_t<std::is_trivially_destructible_v<X>, int> = 0>
     DynArray(size_type size) : m_size(size), m_data(_produce_data(m_size)) {}
 
     /// Fill constructor.
@@ -283,7 +284,7 @@ public:
 private:
     static auto _produce_data(const std::size_t size) {
         if constexpr (IsShared) {
-            return make_shared_array<T>(size);
+            return boost::make_shared<T[]>(size);
         } else {
             return std::make_unique<T[]>(size);
         }

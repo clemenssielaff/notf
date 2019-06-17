@@ -22,7 +22,8 @@ sudo apt-get -y install ruby2.3-dev
 sudo gem install jekyll
 
 # Boost
-sudo apt-get -y install libboost-fiber-dev
+sudo apt-get install -y libboost-all-dev
+# sudo apt-get -y install libboost-fiber-dev # minmal installation
 
 # Freetype
 sudo apt-get install -y libfreetype6-dev

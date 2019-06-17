@@ -112,6 +112,9 @@ if(CCACHE_PROGRAM)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE_PROGRAM})
 endif()
 
+# print additional information during compilation (like timings)
+set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
+
 # CONFIGURATION ########################################################################################################
 
 # compiler feature check
