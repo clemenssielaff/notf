@@ -176,7 +176,7 @@ else()
 endif()
 
 # build the benchmarks
-option(NOTF_BUILD_BENCHMARKS "Build benchmarks" ON)
+option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
 if(NOTF_BUILD_BENCHMARKS)
     message(STATUS "notf: Building benchmarks")
 endif()

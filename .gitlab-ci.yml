@@ -34,6 +34,7 @@ notf-tests:
     paths:
       - build/ci/coverage/
 
+# coverage reports can be viewed online at https://clemenssielaff.gitlab.io/notf/ci/coverage/
 pages:
   stage: deploy
   dependencies:
