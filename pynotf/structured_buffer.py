@@ -9,10 +9,10 @@ Schema = NewType('Schema', List[int])
 
 class Element:
     """
-    StructuredMemory Elements define a StructuredMemory.
+    Elements define a single element in a StructuredMemory including all of its child elements (if it is a List or Map).
     From them, we can derive the Schema (which is a simple list of integers that define how data is laid out in
     memory), the Buffer (which are blocks of memory containing the data, but without additional information on the
-    type of data) and the Accessor (which requires both a Schema and a Buffer to read/write data).
+    type of data) and the Dictionary (which contains lookup names for Map elements that are not part of the Schema).
     """
 
     Value = NewType('Value', Union[float, str, List["Element"], Dict[str, "Element"]])
@@ -32,26 +32,24 @@ class Element:
         """
         self.type: Element.Type = element_type
         self.value: Element.Value = value
+        self.schema: Schema = self._produce_schema()
 
-        self.schema: Schema = Schema([])
-        self._produce_schema(self, self.schema)
-
-    @classmethod
-    def _produce_schema(cls, element: 'Element', schema: Schema):
+    def _produce_schema(self) -> Schema:
         """
         Recursive, breadth-first assembly of the Schema.
-        :param element: Element to add to the Schema.
-        :param schema: [out] Schema to modify.
+        :returns: Schema describing how the element buffer is laid out.
         """
-        if element.type == Element.Type.NUMBER:
+        schema = Schema([])
+
+        if self.type == Element.Type.NUMBER:
             # Numbers take up a single word in a Schema, the NUMBER type identifier
             schema.append(int(Element.Type.NUMBER))
 
-        elif element.type == Element.Type.STRING:
+        elif self.type == Element.Type.STRING:
             # Strings take up a single word in a Schema, the STRING type identifier
             schema.append(Element.Type.STRING)
 
-        elif element.type == Element.Type.LIST:
+        elif self.type == Element.Type.LIST:
             # Lists take up at least two words in the buffer - the LIST type identifier, immediately followed by their
             # child type in place. Lists can only contain a single type of element and in case that element is a Map,
             # all Maps in the List are required to have the same subschema. A List is basically a pair
@@ -62,19 +60,18 @@ class Element:
             # || ListType || ListType | ... ||
             # ||- header -||---- child -----||
             #
-            assert len(element.value) > 0
+            assert len(self.value) > 0
             schema.append(int(Element.Type.LIST))
-            # schema.extend(element.value[0].schema)
-            cls._produce_schema(element.value[0], schema)
+            schema.extend(self.value[0].schema)
 
-        elif element.type == Element.Type.MAP:
+        elif self.type == Element.Type.MAP:
             # Maps take up at least 3 words in the buffer - the MAP type identifier, the number of elements in the map
             # (must be at least 1) followed by the child elements.
             # An example Schema of a map containing a number, a list, a string and another map can be visualized as
             # follows:
             #
             # ||    1.    |    2.    ||    3.    |    4.    |    5.    |    6.    ||   7.     | ... |    14.   | ... ||
-            # || Map Type | Map Size || Nr. Type | Ptr  ->7 | Str Type | Ptr ->14 || ListType | ... | Map Type | ... ||
+            # || Map Type | Map Size || Nr. Type |  +3 (=7) | Str Type | +8 (=14) || ListType | ... | Map Type | ... ||
             # ||------ header -------||------------------ body -------------------||------------ children -----------||
             #
             # The map itself is split into three parts:
@@ -82,22 +79,24 @@ class Element:
             # 2. The body contains a single word for each child. Strings and Number Schemas are only a single word long,
             #    therefore they can be written straight into the body of the map.
             #    List and Map Schemas are longer than one word and are appended at the end of the body. The body itself
-            #    contains only a pointer to the child element.
+            #    contains only the forward offset to the child element in question.
             # 3. Child Lists and Maps in order of their appearance in the body.
-            assert len(element.value) > 0
+            assert len(self.value) > 0
             schema.append(int(Element.Type.MAP))  # this is a map
-            schema.append(len(element.value))  # number of items in the map
+            schema.append(len(self.value))  # number of items in the map
             child_position = len(schema)
-            schema.extend([0] * len(element.value))  # reserve space for pointers to the child data
-            for child_element in element.value.values():
+            schema.extend([0] * len(self.value))  # reserve space for pointers to the child data
+            for child_element in self.value.values():
                 # numbers and strings are stored inline
                 if child_element.type in (Element.Type.NUMBER, Element.Type.STRING):
                     schema[child_position] = int(child_element.type)
                 # lists and maps store a pointer and append themselves to the end of the schema
                 else:
-                    schema[child_position] = len(schema)
-                    cls._produce_schema(child_element, schema)
+                    schema[child_position] = len(schema) - child_position  # store the offset
+                    schema.extend(child_element.schema)
                 child_position += 1
+
+        return schema
 
 
 class Number(Element):
@@ -260,17 +259,17 @@ class Accessor:
             if key not in self.dictionary:
                 raise KeyError("Unknown key \"{}\"".format(key))
 
-            index = list(self.dictionary.keys()).index(key)
-            assert index < self._get_map_size()
+            child_index = list(self.dictionary.keys()).index(key)
+            assert child_index < self._get_map_size()
 
-            assert len(self.buffer) > index
-            next_buffer = self.buffer[index]
+            assert len(self.buffer) > child_index
+            next_buffer = self.buffer[child_index]
 
-            assert len(self.schema) > self.schema_index + 2 + index
-            next_schema_index = self.schema_index + 2 + index
+            next_schema_index = self.schema_index + 2 + child_index
+            assert len(self.schema) > next_schema_index
             if self.schema[next_schema_index] not in (Element.Type.NUMBER, Element.Type.STRING):
                 # resolve pointer to list or map
-                next_schema_index = self.schema[next_schema_index]
+                next_schema_index += self.schema[next_schema_index]
                 assert len(self.schema) > next_schema_index
 
             next_dictionary = self.dictionary[key]
@@ -302,4 +301,4 @@ def print_schema(schema: Schema):
                 print("{}: ↳ Size {}".format(index, x))
                 next_number_is_map_size = False
             else:
-                print("{}: → {}".format(index, x))
+                print("{}: → {}".format(index, index + x))
