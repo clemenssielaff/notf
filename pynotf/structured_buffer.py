@@ -1,10 +1,61 @@
 import sys
 from enum import IntEnum, unique, auto
-from typing import NewType, List, Dict, Union, Optional
+from typing import NewType, List, Dict, Union, Optional, Sequence
 
 Buffer = Union[float, str, int, List['Buffer']]
 Dictionary = Dict[str, Optional['Dictionary']]
-Schema = NewType('Schema', List[int])
+
+
+class Schema(list, Sequence[int]):
+    """
+    A simple list of integers.
+    """
+    def __str__(self) -> str:
+        """
+        :return: A string representation of this Schema.
+        """
+        result: str = ""
+        next_number_is_map_size = False
+        for x, index in zip(self, range(len(self))):
+            result += "{:>3}: ".format(index)
+            if x == Element.Type.NUMBER:
+                result += "Number"
+            elif x == Element.Type.STRING:
+                result += "String"
+            elif x == Element.Type.LIST:
+                result += "List"
+            elif x == Element.Type.MAP:
+                result += "Map"
+                next_number_is_map_size = True
+            else:
+                if next_number_is_map_size:
+                    result += " ↳ Size: {}".format(x)
+                    next_number_is_map_size = False
+                else:
+                    result += "→ {}".format(index + x)
+            result += "\n"
+        return result
+
+    @property
+    def data(self) -> List[int]:
+        """
+        Access to the Schema as a list of integers (useful for printing the raw data)
+        """
+        return [x for x in self]
+
+    @staticmethod
+    def is_ground(value: int) -> bool:
+        """
+        :return: Checks whether `value` is one of the ground types: Number and String
+        """
+        return value in (Element.Type.NUMBER, Element.Type.STRING, Element.Type.LIST, Element.Type.MAP)
+
+    @staticmethod
+    def is_pointer(value: int) -> bool:
+        """
+        :return: True iff `value` would be considered a pointer in a Schema.
+        """
+        return value in (Element.Type.NUMBER, Element.Type.STRING, Element.Type.LIST, Element.Type.MAP)
 
 
 class Element:
@@ -39,7 +90,7 @@ class Element:
         Recursive, breadth-first assembly of the Schema.
         :returns: Schema describing how the element buffer is laid out.
         """
-        schema = Schema([])
+        schema = Schema()
 
         if self.type == Element.Type.NUMBER:
             # Numbers take up a single word in a Schema, the NUMBER type identifier
@@ -134,7 +185,7 @@ class Map(Element):
         super().__init__(Element.Type.MAP, values)
 
 
-def produce_buffer(element: Element) -> Buffer:
+def produce_buffer_from_element(element: Element) -> Buffer:
     """
     Recursive, depth-first assembly of the Buffer.
     :param element: Element to write into the buffer
@@ -147,10 +198,46 @@ def produce_buffer(element: Element) -> Buffer:
         return element.value
 
     elif element.type == Element.Type.LIST:
-        return [len(element.value)] + [produce_buffer(child) for child in element.value]
+        return [len(element.value)] + [produce_buffer_from_element(child) for child in element.value]
 
     elif element.type == Element.Type.MAP:
-        return [produce_buffer(child) for child in element.value.values()]
+        return [produce_buffer_from_element(child) for child in element.value.values()]
+
+
+def produce_buffer_from_schema(schema: Schema) -> Buffer:
+    """
+    Zero-initialized assembly of a Buffer.
+    :param schema: Schema from which to create the Buffer.
+    :return: Empty buffer laid out according to the given Schema.
+    """
+
+    def _produce_subbuffer(buffer: Buffer, index: int = 0) -> Buffer:
+        assert len(schema) > index
+        if schema[index] == Element.Type.NUMBER:
+            buffer.append(0)
+
+        elif schema[index] == Element.Type.STRING:
+            buffer.append("")
+
+        elif schema[index] == Element.Type.LIST:
+            buffer.append([])
+
+        elif schema[index] == Element.Type.MAP:
+            assert len(schema) > index + 1
+            map_size = schema[index + 1]
+            for child_index in range(map_size):
+                child_schema_index = index + 2 + child_index
+                assert len(schema) > child_schema_index
+                # if the child index is not a number or a string, it is a pointer and needs to be resolved
+                if schema[child_schema_index] not in (Element.Type.NUMBER, Element.Type.STRING):
+                    child_schema_index += schema[child_schema_index]
+                    assert len(schema) > child_schema_index
+                    assert Schema.is_pointer(schema[child_schema_index])
+                _produce_subbuffer(buffer, child_schema_index)
+
+        return buffer
+
+    return _produce_subbuffer([])
 
 
 def produce_dictionary(element: Element) -> Optional[Dictionary]:
@@ -188,7 +275,7 @@ class Accessor:
         """
         Build an Accessor for a specific Element.
         """
-        return Accessor(element.schema, produce_buffer(element), 0, produce_dictionary(element))
+        return Accessor(element.schema, produce_buffer_from_element(element), 0, produce_dictionary(element))
 
     @property
     def type(self) -> Element.Type:
@@ -255,8 +342,7 @@ class Accessor:
             if not isinstance(key, str):
                 raise KeyError("Maps must be accessed using a string, not {}".format(key))
 
-            assert self.dictionary is not None
-            if key not in self.dictionary:
+            if self.dictionary is None or key not in self.dictionary:
                 raise KeyError("Unknown key \"{}\"".format(key))
 
             child_index = list(self.dictionary.keys()).index(key)
@@ -281,24 +367,30 @@ class Accessor:
                 "Number" if self.type == Element.Type.NUMBER else "String"))
 
 
-def print_schema(schema: Schema):
-    """
-    Prints a given Schema to the console.
-    """
-    next_number_is_map_size = False
-    for x, index in zip(schema, range(len(schema))):
-        if x == Element.Type.NUMBER:
-            print("{}: Number".format(index))
-        elif x == Element.Type.STRING:
-            print("{}: String".format(index))
-        elif x == Element.Type.LIST:
-            print("{}: List".format(index))
-        elif x == Element.Type.MAP:
-            print("{}: Map".format(index))
-            next_number_is_map_size = True
+class StructuredBuffer:
+
+    def __init__(self, schema: Schema, buffer: Buffer, dictionary: Optional[Dictionary]):
+        """
+        :param schema:      Schema of the Buffer. Is constant.
+        :param buffer:      Buffer from which to read and into which to write data.
+        :param dictionary:  A Dictionary referring to the topmost map in the Schema. Can be None.
+        """
+        self.schema: Schema = schema
+        self.buffer: Buffer = buffer
+        self.dictionary: Optional[Dictionary] = dictionary
+
+    @staticmethod
+    def create(source: [Schema, Element, 'StructuredBuffer']):
+        """
+        Factory function.
+        :param source: Anything that can be used to create a new StructuredBuffer.
+        :return: A new StructuredBuffer instance.
+        """
+        if isinstance(source, Schema):
+            return StructuredBuffer(source, produce_buffer_from_schema(source), None)
+        elif isinstance(source, Element):
+            return StructuredBuffer(source.schema, produce_buffer_from_element(source), produce_dictionary(source))
+        elif isinstance(source, StructuredBuffer):
+            return StructuredBuffer(source.schema, source.buffer, source.dictionary)
         else:
-            if next_number_is_map_size:
-                print("{}: ↳ Size {}".format(index, x))
-                next_number_is_map_size = False
-            else:
-                print("{}: → {}".format(index, index + x))
+            raise ValueError("Cannot create a StructuredBuffer from a {}".format(type(source).__name__))
