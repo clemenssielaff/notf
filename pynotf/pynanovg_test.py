@@ -55,15 +55,6 @@ def main():
             nanovg.fill(ctx)
 
             nanovg.translate(ctx, 1, 2)
-            xform = nanovg.current_transform(ctx)
-            # inverse, success = nanovg.transform_inverse(xform)
-            # print("({})".format(", ".join(str(x) for x in xform)))
-            # print("({})".format(", ".join(str(x) for x in inverse)))
-            # print(success)
-            # print("\n")
-            # print(nanovg.transform_point(xform, 0, 0))
-            # nanovg.transform_identity(xform)
-            # print(nanovg.transform_point(xform, 0, 0))
 
             nanovg.end_frame(ctx)
 

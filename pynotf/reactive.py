@@ -1,17 +1,17 @@
-from typing import Any
+from typing import Any, Union, List, Optional
 from enum import Enum, unique, auto
+from structured_buffer import StructuredBuffer, Schema
 
 
 class Publisher:
-
     @unique
     class State(Enum):
         """
         State of the Publisher.
         The state transition diagram is pretty easy:
 
-                          +-> FAILED
-                        /
+                            +-> FAILED
+                          /
             -> RUNNING - + --> COMPLETED
 
         """
@@ -19,42 +19,116 @@ class Publisher:
         COMPLETED = auto()
         ERROR = auto()
 
-    def __init__(self):
-        self.subscribers = set()
-        self.status: 'State' = self.State.RUNNING
+    def __init__(self, schema: Optional[Schema] = None):
+        """
+        Constructor.
+        :param schema:  Schema defining the StructuredBuffers published by this Publisher.
+                        Can be empty if this Publisher only produces signals.
+        """
+        self.output_schema: Optional[Schema] = schema
+        self.subscribers: List[Subscriber] = []
+        self.state: 'Publisher.State' = self.State.RUNNING
 
     def is_completed(self) -> bool:
         """
         Checks if this Publisher has already completed (either normally or though an error).
         """
-        return self.status != self.State.RUNNING
+        return self.state != self.State.RUNNING
 
     def is_failed(self) -> bool:
         """
         Checks if this Publisher has completed with an error.
         """
-        return self.status == self.State.FAILED
+        return self.state == self.State.FAILED
 
-    def subscribe(self, subscriber: 'Subscriber') -> bool:
+    def subscribe(self, subscriber: 'Subscriber'):
         """
         Called when a Subscriber wants to subscribe to this Publisher.
         If the Subscriber's data type does not match the Publisher's data type, the subscription is rejected.
 
         :param subscriber: New Subscriber.
-        :returns:          True iff the Subscriber was added, false if it was rejected.
+        :raise ValuerError: If the Subscriber's data schema doesn't match this Publishers'.
         """
-        raise NotImplementedError("Publisher subclass does not implement its `subscribe` method")
+        if subscriber.input_schema != self.output_schema:
+            raise ValueError("Cannot subscribe to a Publisher with a different data Schema")
 
-    def get_subscriber_count(self) -> int:
+        if self.is_completed():
+            subscriber.on_complete(self)
+            return
+
+        if subscriber not in self.subscribers:
+            self.subscribers.append(subscriber)
+
+    def next(self, value: StructuredBuffer, publisher: Optional['Publisher'] = None):
         """
-        :return: Number of connected Subscribers.
+        Default publishing implementation, forwards the value to all Subscribers.
+        :param value:       Value to publish.
+        :param publisher:   Publisher to identify as, defaults to `self`. Allows a Publisher to mimic another.
         """
-        return len(self.subscribers)
+        if value.schema != self.output_schema:
+            raise ValueError("Publisher cannot publish data with the given data Schema")
+
+        if self.is_completed():
+            return
+
+        if publisher is None:
+            publisher = self
+
+        for subscriber in self.subscribers:
+            # create a new StructuredBuffer value for each subscriber, internally they all reference the same buffer
+            # this way, every subscriber can choose to write to its own value without affecting the others
+            assert(subscriber.input_schema == self.output_schema)
+            new_value = StructuredBuffer(self.output_schema, value.buffer, subscriber.dictionary)
+            subscriber.on_next(publisher, new_value)
+
+    def error(self, exception: BaseException):
+        """
+        Fail method, completes the Publisher.
+        :param exception:   The exception that has occurred.
+        """
+        if self.is_completed():
+            return
+
+        self.state = self.State.ERROR
+
+        for subscriber in self.subscribers:
+            subscriber.on_error(self, exception)
+        self.subscribers.clear()
+
+    def complete(self):
+        """
+        Completes the Publisher successfully.
+        """
+        if self.is_completed():
+            return
+
+        self.state = self.State.COMPLETED
+
+        for subscriber in self.subscribers:
+            subscriber.on_complete(self)
+        self.subscribers.clear()
+
+    def __or__(self, other: 'Subscriber') -> 'Pipeline':
+        """
+        Pipe operator.
+        :param other: B in A | B
+        """
+        return Pipeline(self, other)
 
 
 class Subscriber:
 
-    def on_next(self, publisher: Publisher, value: Any = None):
+    def __init__(self, schema: Optional[Schema] = None, dictionary: Optional[StructuredBuffer.Dictionary] = None):
+        """
+        Constructor.
+        :param schema:      Schema defining the StructuredBuffers published by this Publisher.
+                            Can be empty if this Publisher only produces signals.
+        :param dictionary   Dictionary used to access the given values.
+        """
+        self.input_schema: Optional[Schema] = schema
+        self.dictionary = dictionary
+
+    def on_next(self, publisher: Publisher, value: StructuredBuffer):
         """
         Abstract method called by any upstream publisher.
         
@@ -85,9 +159,55 @@ class Subscriber:
         pass
 
 
-class Relay(Subscriber, Publisher):
-    pass
+class Operator(Subscriber, Publisher):
+    def __init__(self, schema: Optional[Schema] = None):
+        Subscriber.__init__(self, schema)
+        Publisher.__init__(self, schema)
+
+    def on_next(self, publisher: Publisher, value: StructuredBuffer):
+        raise NotImplementedError("Subscriber subclass does not implement its `on_next` method")
 
 
 class Pipeline:
-    pass
+    class _ToggleOp(Operator):
+        def __init__(self, schema: Optional[Schema]):
+            super().__init__(schema)
+            self.is_enabled = True
+
+        def on_next(self, publisher: Publisher, value: StructuredBuffer):
+            assert(value.schema == self.input_schema)
+            if not self.is_enabled:
+                return
+            self.next(value, publisher)
+
+    def __init__(self, source: Publisher, target: Union[Operator, Subscriber]):
+        """
+        Constructor.
+        :param source: First Publisher in the Pipeline.
+        :param target: First Subscriber in the Pipeline.
+        """
+        self.source = source
+        self.toggle = self._ToggleOp(self.source.output_schema)
+        self.operators: List[Union[Operator, Subscriber]] = [target]
+
+        self.source.subscribe(self.toggle)
+        self.toggle.subscribe(target)
+
+    def __or__(self, other: 'Subscriber') -> 'Pipeline':
+        """
+        Pipe operator.
+        :param other: B in A | B
+        """
+        self.operators[-1].subscribe(other)
+        self.operators.append(other)
+        return self
+
+    # TODO: __del__ implementation
+
+    @property
+    def is_enabled(self) -> bool:
+        return self.toggle.is_enabled
+
+    @is_enabled.setter
+    def is_enabled(self, value: bool):
+        self.toggle.is_enabled = value

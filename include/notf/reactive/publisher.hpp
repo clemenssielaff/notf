@@ -190,11 +190,12 @@ public:
     /// @param exception    The exception that has occurred.
     void error(const std::exception& exception) {
         if (!is_completed()) {
-            // call the virtual error handler while still running
+            // call the virtual handler while still running
             _error(exception);
 
             // transition into the error state
             m_reactive_state = State::FAILED;
+            // TODO: is this calling `on_error` twice?
             m_subscribers.on_each([this, &exception](auto* subscriber) { subscriber->on_error(this, exception); });
             m_subscribers.clear();
         }
@@ -203,11 +204,12 @@ public:
     /// Complete method, completes the Publisher in a regular fashion.
     void complete() {
         if (!is_completed()) {
-            // call the virtual error handler while still running
+            // call the virtual handler while still running
             _complete();
 
             // transition into the completed state
             m_reactive_state = State::COMPLETED;
+            // TODO: is this calling `on_complete` twice?
             m_subscribers.on_each([this](auto* subscriber) { subscriber->on_complete(this); });
             m_subscribers.clear();
         }
