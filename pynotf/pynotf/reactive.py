@@ -1,6 +1,6 @@
 from typing import Any, Union, List, Optional
 from enum import Enum, unique, auto
-from structured_buffer import StructuredBuffer, Schema
+from .structured_buffer import StructuredBuffer, Schema
 
 
 class Publisher:
