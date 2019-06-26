@@ -2,10 +2,11 @@ from enum import IntEnum, IntFlag, unique
 from ctypes import CDLL, Structure, c_void_p, c_float, c_int32, c_ubyte, c_char_p, byref
 from copy import copy
 from functools import wraps
+from pathlib import Path
 
 
 def _load_nanovg():
-    library = CDLL(r"""/home/clemens/code/notf/pynotf/thirdparty/nanovg/build/libnanovg.so""")
+    library = CDLL(str((Path(__file__).parent / Path("../lib/libnanovg.so")).resolve()))
     return library
 
 

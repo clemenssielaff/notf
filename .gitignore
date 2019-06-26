@@ -12,3 +12,4 @@ default.profraw
 
 # python sketch specific
 pynotf/.venv/
+pynotf/lib/*.so*

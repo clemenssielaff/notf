@@ -1,7 +1,7 @@
 import unittest
-from typing import Tuple
+from typing import Tuple, Optional, List, Union
 from pynotf.structured_buffer import String, Number, Schema, StructuredBuffer
-from pynotf.reactive import *
+from pynotf.reactive import Subscriber, Operator, Publisher
 
 
 class RecorderSubscriber(Subscriber):
@@ -9,7 +9,7 @@ class RecorderSubscriber(Subscriber):
         super().__init__(schema)
         self.values: List[Tuple[Union[Publisher, Operator], StructuredBuffer]] = []
 
-    def on_next(self, publisher: Publisher, value: Any):
+    def on_next(self, publisher: Publisher, value: Optional[StructuredBuffer] = None):
         self.values.append((publisher, value))
 
 
@@ -17,7 +17,7 @@ class AddOne(Operator):
     def __init__(self):
         super().__init__(Number().schema)
 
-    def on_next(self, publisher: Publisher, value: StructuredBuffer):
+    def on_next(self, publisher: Publisher, value: Optional[StructuredBuffer] = None):
         number = value.read().as_number()
         value.write().set(number + 1)
         self.next(value)
@@ -27,7 +27,7 @@ class PassThrough(Operator):
     def __init__(self):
         super().__init__(Number().schema)
 
-    def on_next(self, publisher: Publisher, value: StructuredBuffer):
+    def on_next(self, publisher: Publisher, value: Optional[StructuredBuffer] = None):
         self.next(value)
 
 
@@ -57,8 +57,8 @@ class TestCase(unittest.TestCase):
         sub1 = AddOne()
         sub2 = PassThrough()
         recorder = RecorderSubscriber(Number().schema)
-        pipe1 = pub | sub1 | recorder
-        pipe2 = pub | sub2 | recorder
+        pub | sub1 | recorder
+        pub | sub2 | recorder
 
         pub.next(StructuredBuffer.create(Number(10)))
         self.assertEqual(len(recorder.values), 2)

@@ -1,4 +1,4 @@
-from typing import Any, Union, List, Optional
+from typing import Union, List, Optional
 from enum import Enum, unique, auto
 from .structured_buffer import StructuredBuffer, Schema
 
@@ -49,7 +49,7 @@ class Publisher:
         :param subscriber: New Subscriber.
         :raise ValuerError: If the Subscriber's data schema doesn't match this Publishers'.
         """
-        if subscriber.input_schema != self.output_schema:
+        if subscriber.input_schema is not None and subscriber.input_schema != self.output_schema:
             raise ValueError("Cannot subscribe to a Publisher with a different data Schema")
 
         if self.is_completed():
@@ -59,14 +59,17 @@ class Publisher:
         if subscriber not in self.subscribers:
             self.subscribers.append(subscriber)
 
-    def next(self, value: StructuredBuffer, publisher: Optional['Publisher'] = None):
+    def next(self, value: StructuredBuffer = None, publisher: Optional['Publisher'] = None):
         """
         Default publishing implementation, forwards the value to all Subscribers.
-        :param value:       Value to publish.
+        :param value:       Value to publish. If this is a Publisher without a Schema, the value will be ignored.
         :param publisher:   Publisher to identify as, defaults to `self`. Allows a Publisher to mimic another.
         """
-        if value.schema != self.output_schema:
-            raise ValueError("Publisher cannot publish data with the given data Schema")
+        if self.output_schema is not None:
+            if value is None:
+                raise ValueError("Publisher requires a value to publish")
+            if value.schema != self.output_schema:
+                raise ValueError("Publisher cannot publish data with the given data Schema")
 
         if self.is_completed():
             return
@@ -75,11 +78,14 @@ class Publisher:
             publisher = self
 
         for subscriber in self.subscribers:
-            # create a new StructuredBuffer value for each subscriber, internally they all reference the same buffer
-            # this way, every subscriber can choose to write to its own value without affecting the others
-            assert(subscriber.input_schema == self.output_schema)
-            new_value = StructuredBuffer(self.output_schema, value.buffer, subscriber.dictionary)
-            subscriber.on_next(publisher, new_value)
+            if self.output_schema is None:
+                subscriber.on_next(publisher)
+            else:
+                # We need to create a new StructuredBuffer value for each subscriber. This way, every subscriber can
+                # choose to write to its own value without affecting the others
+                # Internally, they all reference the same buffer anyway and should be cheap to copy.
+                new_value = StructuredBuffer(self.output_schema, value.buffer, subscriber.dictionary)
+                subscriber.on_next(publisher, new_value)
 
     def error(self, exception: BaseException):
         """
@@ -122,18 +128,18 @@ class Subscriber:
         """
         Constructor.
         :param schema:      Schema defining the StructuredBuffers published by this Publisher.
-                            Can be empty if this Publisher only produces signals.
+                            Can be None if this Subscriber only receives signals.
         :param dictionary   Dictionary used to access the given values.
         """
         self.input_schema: Optional[Schema] = schema
-        self.dictionary = dictionary
+        self.dictionary: Optional[StructuredBuffer.Dictionary] = dictionary
 
-    def on_next(self, publisher: Publisher, value: StructuredBuffer):
+    def on_next(self, publisher: Publisher, value: Optional[StructuredBuffer] = None):
         """
         Abstract method called by any upstream publisher.
         
         :param publisher    The Publisher publishing the value, for identification purposes only.
-        :param value        Published value.
+        :param value        Published value, can be None.
         """
         raise NotImplementedError("Subscriber subclass does not implement its `on_next` method")
 
@@ -164,7 +170,7 @@ class Operator(Subscriber, Publisher):
         Subscriber.__init__(self, schema)
         Publisher.__init__(self, schema)
 
-    def on_next(self, publisher: Publisher, value: StructuredBuffer):
+    def on_next(self, publisher: Publisher, value: Optional[StructuredBuffer] = None):
         raise NotImplementedError("Subscriber subclass does not implement its `on_next` method")
 
 
@@ -174,8 +180,8 @@ class Pipeline:
             super().__init__(schema)
             self.is_enabled = True
 
-        def on_next(self, publisher: Publisher, value: StructuredBuffer):
-            assert(value.schema == self.input_schema)
+        def on_next(self, publisher: Publisher, value: Optional[StructuredBuffer] = None):
+            assert (value.schema == self.input_schema)
             if not self.is_enabled:
                 return
             self.next(value, publisher)
@@ -201,8 +207,6 @@ class Pipeline:
         self.operators[-1].subscribe(other)
         self.operators.append(other)
         return self
-
-    # TODO: __del__ implementation
 
     @property
     def is_enabled(self) -> bool:
