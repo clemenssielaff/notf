@@ -66,7 +66,7 @@ public:
     /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
     const T& get() const {
         if (!this_thread::is_the_ui_thread()) {
-            return m_value; // the renderer always sees the unmodified value
+            return m_value; // the graph always sees the unmodified value
         }
 
         // if there exist a modified value, return that one instead
@@ -143,7 +143,7 @@ class AnyProperty {
 public:
     /// Changing this Property ...
     enum class Visibility {
-        INVISIBILE, ///> ... does not require any action from the renderer.
+        INVISIBLE,  ///> ... does not require any action from the renderer.
         REDRAW,     ///> ... requires the Node to be drawn again as it is (only transformed etc.).
         REFRESH,    ///> ... requires the Node to update and then redraw.
     };
@@ -332,7 +332,7 @@ public:
     /// @param value        Property value.
     /// @param visibility   Whether a change in the Property will cause the Node to redraw or not.
     Property(value_t value = policy_t::get_default_value(), AnyProperty::Visibility visibility = policy_t::visibility)
-        : TypedProperty<value_t>(std::move(value), (visibility != AnyProperty::Visibility::INVISIBILE)) {}
+        : TypedProperty<value_t>(std::move(value), (visibility != AnyProperty::Visibility::INVISIBLE)) {}
 
     /// The Node-unique name of this Property.
     std::string_view get_name() const final { return name.c_str(); }

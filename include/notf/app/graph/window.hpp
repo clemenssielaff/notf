@@ -75,7 +75,7 @@ struct Title {
     using value_t = std::string;
     static constexpr ConstString name = "title";
     static inline const value_t default_value = WindowArguments().title;
-    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBILE;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBLE;
 };
 
 /// File name of the Window's icon, relative to the Application's texture directory, empty means no icon.
@@ -83,7 +83,7 @@ struct Icon {
     using value_t = std::string;
     static constexpr ConstString name = "icon";
     static inline const value_t default_value = WindowArguments().icon;
-    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBILE;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBLE;
 };
 
 /// Initial size when windowed.
@@ -100,7 +100,7 @@ struct Position {
     using value_t = V2i;
     static constexpr ConstString name = "position";
     static constexpr value_t default_value = WindowArguments().position;
-    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBILE;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBLE;
 };
 
 /// Size of the Window's graphics buffer when in fullscreen.
@@ -126,7 +126,7 @@ struct Monitor {
     using value_t = int;
     static constexpr ConstString name = "monitor";
     static constexpr value_t default_value = WindowArguments().monitor;
-    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBILE;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBLE;
 };
 
 // slots ======================================================================

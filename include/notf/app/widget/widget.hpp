@@ -286,7 +286,7 @@ protected:
             property = std::make_unique<widget_property_t>();
 
             // mark this Widget dirty whenever a visible property changes its value
-            if (widget_property_t::policy_t::visibility != AnyProperty::Visibility::INVISIBILE) {
+            if (widget_property_t::policy_t::visibility != AnyProperty::Visibility::INVISIBLE) {
                 property->get_operator()->subscribe(_get_redraw_observer());
             }
 

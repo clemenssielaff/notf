@@ -47,7 +47,7 @@ class Publisher:
         If the Subscriber's data type does not match the Publisher's data type, the subscription is rejected.
 
         :param subscriber: New Subscriber.
-        :raise ValuerError: If the Subscriber's data schema doesn't match this Publishers'.
+        :raise ValuerError: If the Subscriber's data schema doesn't match this Publisher's.
         """
         if subscriber.input_schema is not None and subscriber.input_schema != self.output_schema:
             raise ValueError("Cannot subscribe to a Publisher with a different data Schema")
