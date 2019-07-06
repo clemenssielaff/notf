@@ -66,7 +66,7 @@ public:
     /// @param thread_id    Id of this thread. Is exposed so it can be overridden by tests.
     const T& get() const {
         if (!this_thread::is_the_ui_thread()) {
-            return m_value; // the graph always sees the unmodified value
+            return m_value; // the renderer always sees the unmodified value
         }
 
         // if there exist a modified value, return that one instead

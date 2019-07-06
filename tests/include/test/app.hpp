@@ -106,7 +106,7 @@ struct BoolPropertyPolicy {
     using value_t = bool;
     static constexpr ConstString name = "bool";
     static constexpr value_t default_value = true;
-    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBILE;
+    static constexpr AnyProperty::Visibility visibility = AnyProperty::Visibility::INVISIBLE;
 };
 
 struct IntPropertyPolicy {

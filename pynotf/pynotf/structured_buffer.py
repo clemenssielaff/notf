@@ -517,3 +517,9 @@ class StructuredBuffer:
         Write access to this StructuredBuffer instance.
         """
         return StructuredBuffer.Writer(self)
+
+    def __hash__(self) -> int:
+        """
+        The hash of a StructuredBuffer only considers values in the buffer, not the Schema or Dictionary.
+        """
+        return hash(tuple(self.buffer))

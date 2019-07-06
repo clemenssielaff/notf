@@ -59,7 +59,7 @@ class Publisher:
         if subscriber not in self.subscribers:
             self.subscribers.append(subscriber)
 
-    def next(self, value: StructuredBuffer = None, publisher: Optional['Publisher'] = None):
+    def publish(self, value: StructuredBuffer = None, publisher: Optional['Publisher'] = None):
         """
         Default publishing implementation, forwards the value to all Subscribers.
         :param value:       Value to publish. If this is a Publisher without a Schema, the value will be ignored.
@@ -184,7 +184,7 @@ class Pipeline:
             assert (value.schema == self.input_schema)
             if not self.is_enabled:
                 return
-            self.next(value, publisher)
+            self.publish(value, publisher)
 
     def __init__(self, source: Publisher, target: Union[Operator, Subscriber]):
         """
@@ -215,3 +215,29 @@ class Pipeline:
     @is_enabled.setter
     def is_enabled(self, value: bool):
         self.toggle.is_enabled = value
+
+
+def connect_each(*publishers: [Publisher]):
+    """
+    Allows multiple publishers to subscribe the same subscriber downstream.
+    Example:
+
+        connect_each(pub1, pub2, pub3) | subscriber
+
+    is the same as
+
+        pub1.subscribe(subscriber)
+        pub2.subscribe(subscriber)
+        pub3.subscribe(subscriber)
+
+    :param publishers: All publishers to subscribe.
+    :return: Helper object that can be used on the left hand side of a pipe operation.
+    """
+    class LeftHandSide:
+        def __or__(self, subscriber: Subscriber) -> None:
+            """
+            Pipe operator.
+            """
+            for publisher in publishers:
+                publisher.subscribe(subscriber)
+    return LeftHandSide()

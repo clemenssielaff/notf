@@ -1,11 +1,26 @@
 from threading import current_thread
+from enum import Enum, unique, auto
 
-RENDER_THREAD_NAME = 'notf_render_thread'
+
+@unique
+class NotfThreadKind(Enum):
+    """
+    Thread identifiers.
+    """
+    MAIN = auto()
+    RENDER = auto()
 
 
-def this_is_the_render_thread():
+def is_this_the_render_thread():
     """
     Checks if the current thread is the notf render thread.
-    :return:
     """
-    return current_thread().name == RENDER_THREAD_NAME
+    return getattr(current_thread(), 'notf_type', None) == NotfThreadKind.RENDER
+
+
+def is_this_the_main_thread():
+    """
+    Checks if the current thread is the notf render thread.
+    """
+    kind = getattr(current_thread(), 'notf_type', None)
+    return kind is None or kind == NotfThreadKind.MAIN
