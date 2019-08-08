@@ -4,6 +4,10 @@ from .structured_buffer import StructuredBuffer, Schema
 
 
 class Publisher:
+    """
+    Pushes values downstream.
+    """
+
     @unique
     class State(Enum):
         """
@@ -13,7 +17,6 @@ class Publisher:
                             +-> FAILED
                           /
             -> RUNNING - + --> COMPLETED
-
         """
         RUNNING = auto()
         COMPLETED = auto()
@@ -26,20 +29,27 @@ class Publisher:
                         Can be empty if this Publisher only produces signals.
         """
         self.output_schema: Optional[Schema] = schema
+        # is constant
+
         self.subscribers: List[Subscriber] = []
-        self.state: 'Publisher.State' = self.State.RUNNING
+        # subscribers are unique but still stored in a list so we can be certain of their call order, which proved
+        # convenient for testing.
+
+        self.state: Publisher.State = Publisher.State.RUNNING
+        self.exception: Optional[BaseException] = None
+        # if self.exception is not None, the state must be ERROR
 
     def is_completed(self) -> bool:
         """
         Checks if this Publisher has already completed (either normally or though an error).
         """
-        return self.state != self.State.RUNNING
+        return self.state != Publisher.State.RUNNING
 
     def is_failed(self) -> bool:
         """
         Checks if this Publisher has completed with an error.
         """
-        return self.state == self.State.FAILED
+        return self.state == Publisher.State.FAILED
 
     def subscribe(self, subscriber: 'Subscriber'):
         """
@@ -72,7 +82,7 @@ class Publisher:
                 raise ValueError("Publisher cannot publish data with the given data Schema")
 
         if self.is_completed():
-            return
+            raise RuntimeError("Cannot publish from a completed Publisher")
 
         if publisher is None:
             publisher = self

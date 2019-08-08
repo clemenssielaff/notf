@@ -1,8 +1,7 @@
 from uuid import uuid4 as uuid
 from enum import Enum, unique, auto
 from logging import warning
-from typing import NamedTuple, List, TypeVar, Type, Union, Optional, Callable, Dict
-from .app import is_this_the_render_thread, is_this_the_main_thread
+from typing import NamedTuple, List, TypeVar, Type, Union, Optional, Callable, Dict, Any
 from .reactive import Operator, Publisher
 from .structured_buffer import StructuredBuffer, Element
 
@@ -17,13 +16,16 @@ class Property(Operator):
         REDRAW = auto()  # ... requires the Node to be drawn again as it is (only transformed etc.).
         REFRESH = auto()  # ... requires the Node to update and then redraw.
 
-    def __init__(self, name: str, value: Element, is_visible: bool):
+    def __init__(self, name: str, value: Any, is_visible: bool):
         """
         :param name: Node-unique name of the Property.
         :param value: Initial value of the Property.
         :param is_visible: Whether or not changes in this Property should cause a redraw of the Node or not.
+        :raise ValueError: If the given value cannot be represented as an Element.
         """
-        super().__init__(value.schema)
+        element: Element = Element(value)
+
+        super().__init__(element.schema)
 
         self._name = name
         """
@@ -31,7 +33,7 @@ class Property(Operator):
         Is constant.
         """
 
-        self._render_value: StructuredBuffer = StructuredBuffer.create(value)
+        self._render_value: StructuredBuffer = StructuredBuffer.create(element)
         """
         The value of this Property as it is currently being displayed on screen.
         """
@@ -50,7 +52,7 @@ class Property(Operator):
         reject the update completely.
         """
 
-        self.hash = 0 if is_visible == Property.Visibility.INVISIBLE else hash(value)
+        self.hash = 0 if is_visible == Property.Visibility.INVISIBLE else hash(element)
         """
         The hash of the most current value of this Property.
         Is always 0 if this is an invisible property.
@@ -166,7 +168,7 @@ class Node:
         def properties(self):
             return self._properties
 
-        def add_property(self, name: str, value: Element, is_visible: bool) -> Property:
+        def add_property(self, name: str, value: Any, is_visible: bool) -> Property:
             """
             Creates and returns a new Property instance, that will be attached to the node.
             :param name: Node-unique name of the Property.

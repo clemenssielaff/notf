@@ -1,6 +1,6 @@
 import unittest
 from typing import Tuple, Optional, List, Union
-from pynotf.structured_buffer import String, Number, Schema, StructuredBuffer
+from pynotf.structured_buffer import Element, Schema, StructuredBuffer
 from pynotf.reactive import Subscriber, Operator, Publisher, connect_each
 
 
@@ -15,7 +15,7 @@ class RecorderSubscriber(Subscriber):
 
 class AddOne(Operator):
     def __init__(self):
-        super().__init__(Number().schema)
+        super().__init__(Element(0).schema)
 
     def on_next(self, publisher: Publisher, value: Optional[StructuredBuffer] = None):
         number = value.read().as_number()
@@ -25,7 +25,7 @@ class AddOne(Operator):
 
 class PassThrough(Operator):
     def __init__(self):
-        super().__init__(Number().schema)
+        super().__init__(Element(0).schema)
 
     def on_next(self, publisher: Publisher, value: Optional[StructuredBuffer] = None):
         self.publish(value)
@@ -36,46 +36,46 @@ class PassThrough(Operator):
 
 class TestCase(unittest.TestCase):
     def test_concept(self):
-        pub = Publisher(String().schema)
-        sub = RecorderSubscriber(String().schema)
+        pub = Publisher(Element("").schema)
+        sub = RecorderSubscriber(Element("").schema)
         pipe = pub | sub
 
-        pub.publish(StructuredBuffer.create(String("DERBNESS")))
+        pub.publish(StructuredBuffer.create("DERBNESS"))
         self.assertEqual(len(sub.values), 1)
         self.assertEqual(sub.values[0][1].read().as_string(), "DERBNESS")
 
-        pub.publish(StructuredBuffer.create(String("indeed")))
+        pub.publish(StructuredBuffer.create("indeed"))
         self.assertEqual(len(sub.values), 2)
         self.assertEqual(sub.values[1][1].read().as_string(), "indeed")
 
         pipe.is_enabled = False
-        pub.publish(StructuredBuffer.create(String("...not")))
+        pub.publish(StructuredBuffer.create("...not"))
         self.assertEqual(len(sub.values), 2)
 
     def test_split_value(self):
-        pub = Publisher(Number().schema)
+        pub = Publisher(Element(0).schema)
         sub1 = AddOne()
         sub2 = PassThrough()
-        recorder = RecorderSubscriber(Number().schema)
+        recorder = RecorderSubscriber(Element(0).schema)
         pub | sub1 | recorder
         pub | sub2 | recorder
 
-        pub.publish(StructuredBuffer.create(Number(10)))
+        pub.publish(StructuredBuffer.create(10))
         self.assertEqual(len(recorder.values), 2)
         self.assertEqual(recorder.values[0][1].read().as_number(), 11)
         self.assertEqual(recorder.values[1][1].read().as_number(), 10)
 
     def test_connect_each(self):
-        pub1 = Publisher(Number().schema)
-        pub2 = Publisher(Number().schema)
-        pub3 = Publisher(Number().schema)
-        recorder = RecorderSubscriber(Number().schema)
+        pub1 = Publisher(Element(0).schema)
+        pub2 = Publisher(Element(0).schema)
+        pub3 = Publisher(Element(0).schema)
+        recorder = RecorderSubscriber(Element(0).schema)
 
         connect_each(pub1, pub2, pub3) | recorder
 
-        pub1.publish(StructuredBuffer.create(Number(1.)))
-        pub2.publish(StructuredBuffer.create(Number(2.)))
-        pub3.publish(StructuredBuffer.create(Number(3.)))
+        pub1.publish(StructuredBuffer.create(1.))
+        pub2.publish(StructuredBuffer.create(2.))
+        pub3.publish(StructuredBuffer.create(3.))
 
         self.assertEqual(len(recorder.values), 3)
         self.assertEqual(recorder.values[0][1].read().as_number(), 1.)

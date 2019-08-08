@@ -1,6 +1,6 @@
 from logging import warning
 from typing import Optional, Dict
-from pynotf import Number, Operator, Publisher, StructuredBuffer, Node, Graph, connect_each
+from pynotf import Operator, Publisher, StructuredBuffer, Node, Graph, connect_each, Element
 
 
 # REACTIVE #############################################################################################################
@@ -10,7 +10,7 @@ class SumOperator(Operator):
     Takes number values from an arbitrary number of sources and outputs their sum.
     """
     def __init__(self):
-        super().__init__(Number().schema)
+        super().__init__(Element(0).schema)
         self._values: Dict[Publisher, float] = {}
 
     def on_next(self, publisher: Publisher, value: Optional[StructuredBuffer] = None):
@@ -19,7 +19,7 @@ class SumOperator(Operator):
         new_sum = 0.
         for value in self._values.values():
             new_sum += value
-        self.publish(StructuredBuffer.create(Number(new_sum)))
+        self.publish(StructuredBuffer.create(new_sum))
 
     def on_complete(self, publisher: Publisher):
         if publisher in self._values:
@@ -47,9 +47,9 @@ class AdderNode(Node):
 
     def _define_node(self, definition: Node.Definition):
         # define properties
-        a = definition.add_property("in1", Number(0), is_visible=True)
-        b = definition.add_property("in2", Number(0), is_visible=True)
-        c = definition.add_property("out", Number(0), is_visible=True)
+        a = definition.add_property("in1", 0, is_visible=True)
+        b = definition.add_property("in2", 0, is_visible=True)
+        c = definition.add_property("out", 0, is_visible=True)
 
         # set up the property operation
         adder = SumOperator()
