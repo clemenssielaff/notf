@@ -1,5 +1,6 @@
 import unittest
-from pynotf.structured_buffer import StructuredBuffer, Element
+import sys
+from pynotf.structured_buffer import StructuredBuffer, Kind
 
 test_dictionary = {
         "coordinates": [
@@ -19,28 +20,34 @@ test_dictionary = {
         }
     }
 
-original = StructuredBuffer.create(test_dictionary)
+original = StructuredBuffer(test_dictionary)
 
 
 #######################################################################################################################
 
 
 class TestCase(unittest.TestCase):
+    def test_check_kind(self):
+        self.assertEqual(Kind.LIST, sys.maxsize - 3)
+        self.assertEqual(Kind.MAP, sys.maxsize - 2)
+        self.assertEqual(Kind.NUMBER, sys.maxsize - 1)
+        self.assertEqual(Kind.STRING, sys.maxsize)
+
     def test_check_schema(self):
-        self.assertEqual(original.schema, [9223372036854775807,
+        self.assertEqual(original.schema, [9223372036854775805,
                                            3,
                                            3,
-                                           9223372036854775805,
-                                           6,
-                                           9223372036854775806,
                                            9223372036854775807,
-                                           2,
+                                           6,
                                            9223372036854775804,
                                            9223372036854775805,
-                                           9223372036854775807,
                                            2,
+                                           9223372036854775806,
+                                           9223372036854775807,
                                            9223372036854775805,
-                                           9223372036854775804])
+                                           2,
+                                           9223372036854775807,
+                                           9223372036854775806])
 
     def test_repr(self):
         expected = """  0: Map
@@ -62,48 +69,48 @@ class TestCase(unittest.TestCase):
 
     def test_invalid_element(self):
         with self.assertRaises(ValueError):
-            Element(None)
+            StructuredBuffer(None)
 
     def test_valid_lists(self):
-        Element([False, 1, 2.])  # list of numbers
-        Element(['a', "bee", r"""zebra"""])  # list of strings
-        Element([[1, 2], [3, 4]])  # lists of lists
-        Element([dict(a=1, b=2), dict(a=3, b=-4)])  # lists of dicts
+        StructuredBuffer([False, 1, 2.])  # list of numbers
+        StructuredBuffer(['a', "bee", r"""zebra"""])  # list of strings
+        StructuredBuffer([[1, 2], [3, 4]])  # lists of lists
+        StructuredBuffer([dict(a=1, b=2), dict(a=3, b=-4)])  # lists of dicts
 
     def test_invalid_lists(self):
         # list cannot be empty
         with self.assertRaises(ValueError):
-            Element([])
+            StructuredBuffer([])
 
         # list elements must have the same schema
         with self.assertRaises(ValueError):
-            Element(['a', 2])
+            StructuredBuffer(['a', 2])
         with self.assertRaises(ValueError):
-            Element([[1, 2], ["a", "b"]])
+            StructuredBuffer([[1, 2], ["a", "b"]])
         with self.assertRaises(ValueError):
-            Element([dict(a=1, b=2), dict(a="1", b=2)])
+            StructuredBuffer([dict(a=1, b=2), dict(a="1", b=2)])
 
         # if the list contains maps, the maps must have the same keys
         with self.assertRaises(ValueError):
-            Element([dict(a=1, b=2), dict(a=1, c=3)])
+            StructuredBuffer([dict(a=1, b=2), dict(a=1, c=3)])
         with self.assertRaises(ValueError):
-            Element([dict(a=1, b=2), dict(a=1)])
+            StructuredBuffer([dict(a=1, b=2), dict(a=1)])
 
     def test_invalid_map(self):
         with self.assertRaises(ValueError):
-            Element(dict())  # maps cannot be empty
+            StructuredBuffer(dict())  # maps cannot be empty
         with self.assertRaises(ValueError):
-            Element({1: "nope"})  # maps keys must be of type string
+            StructuredBuffer({1: "nope"})  # maps keys must be of kind string
 
     def test_create_buffer_from_schema(self):
-        self.assertEqual(StructuredBuffer.create(original.schema).buffer, [[], '', '', 0])
+        self.assertEqual(StructuredBuffer(original.schema).buffer, [[], '', '', 0])
 
     def test_create_buffer_from_element(self):
-        buffer = StructuredBuffer.create(Element(test_dictionary))
+        buffer = StructuredBuffer(StructuredBuffer(test_dictionary))
         self.assertEqual(buffer.schema, original.schema)
 
     def test_basic_get_set(self):
-        copy = StructuredBuffer.create(original)
+        copy = StructuredBuffer(original)
 
         self.assertEqual(original.read()["coordinates"][1]["x"].as_number(), 2.0)
         self.assertEqual(copy.read()["coordinates"][1]["x"].as_number(), 2.0)
@@ -113,7 +120,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(copy.read()["coordinates"][1]["x"].as_number(), -123.0)
 
     def test_change_subtree(self):
-        copy = StructuredBuffer.create(original)
+        copy = StructuredBuffer(original)
         self.assertEqual(len(copy.read()["coordinates"]), 2)
         self.assertEqual(copy.read()["coordinates"][0]["someName"].as_string(), "SUCCESS")
 

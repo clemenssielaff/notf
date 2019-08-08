@@ -3,7 +3,7 @@ from enum import Enum, unique, auto
 from logging import warning
 from typing import NamedTuple, List, TypeVar, Type, Union, Optional, Callable, Dict, Any
 from .reactive import Operator, Publisher
-from .structured_buffer import StructuredBuffer, Element
+from .structured_buffer import StructuredBuffer
 
 
 class Property(Operator):
@@ -48,7 +48,7 @@ class Property(Operator):
         self.callback: Optional[Callable] = None
         """
         Optional callback executed before the value of the Property would be updated.
-        Must take a value of the Property's type and return either a (modified) value of the same type or None, to 
+        Must take a value of the Property's kind and return either a (modified) value of the same kind or None, to 
         reject the update completely.
         """
 
@@ -250,7 +250,7 @@ class Node:
     def property(self, name: str) -> Property:
         """
         Returns the Property requested by name.
-        :raises KeyError: If this Node type has no Property by the given name.
+        :raises KeyError: If this Node kind has no Property by the given name.
         """
         if name in self._properties:
             return self._properties[name]

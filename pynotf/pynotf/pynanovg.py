@@ -21,7 +21,7 @@ def _c_api_wrapper(name: str, argtypes: [], restype=None):
 
     :param name:        Name of the function to call and modify.
     :param argtypes:    Python ctypes argument types of the C function.
-    :param restype:     Python ctypes return type of the C function or None if the return type is void.
+    :param restype:     Python ctypes return kind of the C function or None if the return kind is void.
     :return:            Decorated function.
     """
     if hasattr(_nanovg, name):

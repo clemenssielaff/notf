@@ -54,7 +54,7 @@ class Publisher:
     def subscribe(self, subscriber: 'Subscriber'):
         """
         Called when a Subscriber wants to subscribe to this Publisher.
-        If the Subscriber's data type does not match the Publisher's data type, the subscription is rejected.
+        If the Subscriber's data kind does not match the Publisher's data kind, the subscription is rejected.
 
         :param subscriber: New Subscriber.
         :raise ValuerError: If the Subscriber's data schema doesn't match this Publisher's.
