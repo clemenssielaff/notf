@@ -32,12 +32,12 @@ def check_value(raw: Any) -> Value:
 
         values: List[Value] = [check_value(x) for x in raw]
         reference_value: Value = values[0]
-        reference_schema: Schema = produce_schema(reference_value)
+        reference_schema: Schema = Schema(reference_value)
         for i in range(1, len(values)):
-            if produce_schema(values[i]) != reference_schema:
+            if Schema(values[i]) != reference_schema:
                 raise ValueError("List elements must all have the same schema")
 
-        if value_kind(reference_value) == Kind.MAP:
+        if Kind.from_value(reference_value) == Kind.MAP:
             for i in range(1, len(values)):
                 if values[i].keys() != reference_value.keys():
                     raise ValueError("Map elements in a List must all have the same keys")
@@ -93,28 +93,93 @@ class Kind(IntEnum):
         """
         return not Kind.is_kind(value)
 
+    @staticmethod
+    def from_value(value: Value) -> 'Kind':
+        """
+        The kind of the given Value.
+        """
+        if isinstance(value, str):
+            return Kind.STRING
+        elif isinstance(value, float):
+            return Kind.NUMBER
+        elif isinstance(value, list):
+            return Kind.LIST
+        else:
+            assert isinstance(value, dict)
+            return Kind.MAP
 
-def value_kind(value: Value) -> Kind:
-    """
-    The kind of the given Value.
-    """
-    if isinstance(value, str):
-        return Kind.STRING
-    elif isinstance(value, float):
-        return Kind.NUMBER
-    elif isinstance(value, list):
-        return Kind.LIST
-    else:
-        assert isinstance(value, dict)
-        return Kind.MAP
 
-
-class Schema(list, Sequence[int]):
+class Schema(tuple, Sequence[int]):
     """
     A Schema describes how data of a StructuredBuffer instance is laid out in memory.
     It is a simple list of integers, each integer either identifying a ground value kind (like a number or string) or a
     forward offset to a container value (like a list or map).
     """
+
+    def __new__(cls, value: Value):
+        """
+        Recursive, breadth-first assembly of a Schema for a given Value.
+        :returns: Schema describing how a StructuredBuffer containing the given Value would be laid out.
+        """
+        kind: Kind = Kind.from_value(value)
+        schema: List[int] = []
+
+        if kind == Kind.NUMBER:
+            # Numbers take up a single word in a Schema, the NUMBER kind identifier
+            schema.append(int(Kind.NUMBER))
+
+        elif kind == Kind.STRING:
+            # Strings take up a single word in a Schema, the STRING kind identifier
+            schema.append(Kind.STRING)
+
+        elif kind == Kind.LIST:
+            # A List is a pair [List Type ID, child value] and its size in words is the size of the child value + 1.
+            # Lists can only contain a single kind of value and in case that value is a Map, all Maps in the List
+            # are required to have the same subschema.
+            # An example Schema of a list is:
+            #
+            # ||    1.     ||     2.    | ... ||
+            # || List Type || ChildType | ... ||
+            # ||- header --||---- child ------||
+            #
+            assert len(value) > 0
+            schema.append(int(Kind.LIST))
+            schema.extend(Schema(value[0]))
+
+        else:
+            assert kind == Kind.MAP
+            # Maps take up at least 3 words in the buffer - the MAP kind identifier, the number of elements in the map
+            # (must be at least 1) followed by the child elements.
+            # An example Schema of a map containing a number, a list, a string and another map can be visualized as
+            # follows:
+            #
+            # ||    1.    |    2.    ||    3.    |    4.    |    5.    |    6.    ||   7.     | ... |    14.   | ... ||
+            # || Map Type | Map Size || Nr. Type |  +3 (=7) | Str Type | +8 (=14) || ListType | ... | Map Type | ... ||
+            # ||------ header -------||------------------ body -------------------||------------ children -----------||
+            #
+            # The map itself is split into three parts:
+            # 1. The header just contains the Map Type ID and number of child elements.
+            # 2. The body contains a single word for each child. Strings and Number Schemas are only a single word long,
+            #    therefore they can be written straight into the body of the map.
+            #    List and Map Schemas are longer than one word and are appended at the end of the body. The body itself
+            #    contains only the forward offset to the child value in question.
+            # 3. Child Lists and Maps in order of their appearance in the body.
+            assert len(value) > 0
+            schema.append(int(Kind.MAP))  # this is a map
+            schema.append(len(value))  # number of items in the map
+            child_position = len(schema)
+            schema.extend([0] * len(value))  # reserve space for pointers to the child data
+            for child in value.values():
+                # numbers and strings are stored inline
+                if Kind.is_ground(Kind.from_value(child)):
+                    schema[child_position] = int(Kind.from_value(child))
+                # lists and maps store a pointer and append themselves to the end of the schema
+                else:
+                    schema[child_position] = len(schema) - child_position  # store the offset
+                    schema.extend(Schema(child))
+                child_position += 1
+
+        return super().__new__(Schema, schema)
 
     def __str__(self) -> str:
         """
@@ -141,72 +206,6 @@ class Schema(list, Sequence[int]):
                     result += "→ {}".format(index + x)
             result += "\n"
         return result
-
-
-def produce_schema(value: Value) -> Schema:
-    """
-    Recursive, breadth-first assembly of a Schema for a given Value.
-    :returns: Schema describing how a StructuredBuffer containing the given Value would be laid out.
-    """
-    kind: Kind = value_kind(value)
-    schema: Schema = Schema()
-
-    if kind == Kind.NUMBER:
-        # Numbers take up a single word in a Schema, the NUMBER kind identifier
-        schema.append(int(Kind.NUMBER))
-
-    elif kind == Kind.STRING:
-        # Strings take up a single word in a Schema, the STRING kind identifier
-        schema.append(Kind.STRING)
-
-    elif kind == Kind.LIST:
-        # A List is a pair [List Type ID, child value] and its size in words is the size of the child value + 1.
-        # Lists can only contain a single kind of value and in case that value is a Map, all Maps in the List
-        # are required to have the same subschema.
-        # An example Schema of a list is:
-        #
-        # ||    1.     ||     2.    | ... ||
-        # || List Type || ChildType | ... ||
-        # ||- header --||---- child ------||
-        #
-        assert len(value) > 0
-        schema.append(int(Kind.LIST))
-        schema.extend(produce_schema(value[0]))
-
-    else:
-        assert kind == Kind.MAP
-        # Maps take up at least 3 words in the buffer - the MAP kind identifier, the number of elements in the map
-        # (must be at least 1) followed by the child elements.
-        # An example Schema of a map containing a number, a list, a string and another map can be visualized as
-        # follows:
-        #
-        # ||    1.    |    2.    ||    3.    |    4.    |    5.    |    6.    ||   7.     | ... |    14.   | ... ||
-        # || Map Type | Map Size || Nr. Type |  +3 (=7) | Str Type | +8 (=14) || ListType | ... | Map Type | ... ||
-        # ||------ header -------||------------------ body -------------------||------------ children -----------||
-        #
-        # The map itself is split into three parts:
-        # 1. The header just contains the Map Type ID and number of child elements.
-        # 2. The body contains a single word for each child. Strings and Number Schemas are only a single word long,
-        #    therefore they can be written straight into the body of the map.
-        #    List and Map Schemas are longer than one word and are appended at the end of the body. The body itself
-        #    contains only the forward offset to the child value in question.
-        # 3. Child Lists and Maps in order of their appearance in the body.
-        assert len(value) > 0
-        schema.append(int(Kind.MAP))  # this is a map
-        schema.append(len(value))  # number of items in the map
-        child_position = len(schema)
-        schema.extend([0] * len(value))  # reserve space for pointers to the child data
-        for child in value.values():
-            # numbers and strings are stored inline
-            if Kind.is_ground(value_kind(child)):
-                schema[child_position] = int(value_kind(child))
-            # lists and maps store a pointer and append themselves to the end of the schema
-            else:
-                schema[child_position] = len(schema) - child_position  # store the offset
-                schema.extend(produce_schema(child))
-            child_position += 1
-
-    return schema
 
 
 Buffer = List[Union[float, int, str, List['Buffer']]]
@@ -257,7 +256,7 @@ def produce_buffer(source: Union[Schema, Value]) -> Buffer:
         """
         If `source` is a Value: Creates a value-initialized Buffer laid out according to the given value's Schema.
         """
-        kind: Kind = value_kind(value)
+        kind: Kind = Kind.from_value(value)
 
         if Kind.is_ground(kind):
             return value
@@ -297,7 +296,7 @@ def produce_dictionary(value: Value) -> Optional[Dictionary]:
     """
 
     def parse_next_value(next_value: Value):
-        kind: Kind = value_kind(next_value)
+        kind: Kind = Kind.from_value(next_value)
 
         if Kind.is_ground(kind):
             return None
@@ -364,65 +363,74 @@ class Accessor:
         else:
             return 0  # Number and Strings do not have child elements
 
-    def __getitem__(self, key: Union[str, int]) -> 'Accessor':
+    def __getitem__(self, key: Union[str, int]) -> Union['Accessor', 'Reader', 'Writer']:
         """
-        "Getting" an item from an Accessor with the [] operator advances the Accessor within the StructuredBuffer.
+        Getting an item from an Accessor with the [] operator returns a new, deeper Accessor into the StructuredBuffer.
         :param key: Index / Name of the value to access.
-        :return: This Accessor after it has advanced to the requested item.
+        :return: A new Accessor to the requested item.
         :raise KeyError: If the key does not identify an index in the current List / a key in the current Map.
         """
-        if self.kind == Kind.LIST:
+        result: Accessor = copy(self)  # shallow copy
+
+        if result.kind == Kind.LIST:
             if not isinstance(key, int):
                 raise KeyError("Lists must be accessed using an index, not {}".format(key))
 
+            # support negative indices from the back of the list
+            assert len(self._buffer) > 0
+            list_size: int = self._buffer[0]
+            original_key: int = key
+            if key < 0:
+                key = list_size - key
+
             # make sure that there are enough elements in the list
-            if key >= len(self):
+            if not (0 <= key < list_size):
                 raise KeyError(
-                    "Cannot get value at index {} from a List of size {}".format(key, len(self)))
+                    "Cannot get value at index {} from a List of size {}".format(original_key, list_size))
 
             # advance the schema index
-            self._schema_itr += 1
+            result._schema_itr += 1
 
-            # advance to the next buffer if the value is not ground
-            if Kind.is_ground(self._schema[self._schema_itr]):
-                self._buffer_itr = key + 1
+            # advance the iterator within the current buffer
+            if Kind.is_ground(result._schema[result._schema_itr]):
+                result._buffer_itr = key + 1
+            # ... or advance to the next buffer if the value is not ground
             else:
-                self._buffer = self._buffer[key + 1]
-                self._buffer_itr = 0
+                result._buffer_itr = 0
+                result._buffer = result._buffer[key + 1]
 
-        elif self.kind == Kind.MAP:
+        elif result.kind == Kind.MAP:
             if not isinstance(key, str):
                 raise KeyError("Maps must be accessed using a string, not {}".format(key))
 
-            if self._dictionary is None or key not in self._dictionary:
+            if result._dictionary is None or key not in result._dictionary:
                 raise KeyError("Unknown key \"{}\"".format(key))
 
             # find the index of the child in the map
-            child_index = list(self._dictionary.keys()).index(key)
-            assert child_index < len(self)
+            child_index = list(result._dictionary.keys()).index(key)
+            assert child_index < len(result)
 
             # advance the schema index
-            self._schema_itr = self._schema_itr + 2 + child_index
-            if Kind.is_offset(self._schema[self._schema_itr]):
+            result._schema_itr = result._schema_itr + 2 + child_index
+            if Kind.is_offset(result._schema[result._schema_itr]):
                 # resolve pointer to list or map
-                self._schema_itr += self._schema[self._schema_itr]
+                result._schema_itr += result._schema[result._schema_itr]
 
             # advance to the next buffer if the value is not ground
-            if Kind.is_ground(self._schema[self._schema_itr]):
-                self._buffer_itr = child_index
+            if Kind.is_ground(result._schema[result._schema_itr]):
+                result._buffer_itr = child_index
             else:
-                self._buffer = self._buffer[child_index]
-                self._buffer_itr = 0
+                result._buffer = result._buffer[child_index]
+                result._buffer_itr = 0
 
             # advance the dictionary
-            self._dictionary = self._dictionary[key]
+            result._dictionary = result._dictionary[key]
 
         else:
-            raise KeyError("Cannot use operator[] on a {} Value".format(
-                "Number" if self.kind == Kind.NUMBER else "String"))
+            raise KeyError("Cannot use operator[] on a {} Value".format(result.kind.name))
 
-        assert self._schema_itr < len(self._schema)
-        return self
+        assert result._schema_itr < len(result._schema)
+        return result
 
 
 class Reader(Accessor):
@@ -451,42 +459,60 @@ class Reader(Accessor):
 
 
 class Writer(Accessor):
+    """
+    Writing to a StructuredBuffer creates a new StructuredBuffer referencing a new root buffer.
+    The new root buffer contains as many references to the existing child-buffers, that are immutable, but in each
+    level there can be (at most) one updated reference to a new buffer. An example:
+
+    Let's say, we have a simple tree of buffers:
+
+            A
+         +--+--+
+         |     |
+         B     C
+
+    In order to change C to C', we need to update C and A:
+
+            A'
+         +--+--+
+         |     |
+         B     C'
+
+    Later on, when you update B to B`, we update B and A` again and you get:
+
+            A"
+         +--+--+
+         |     |
+         B'    C'
+    """
 
     def __init__(self, structured_buffer: 'StructuredBuffer'):
         """
-        :param structured_buffer:   StructuredBuffer instance being accessed.
+        :param structured_buffer:   StructuredBuffer instance to modify.
         """
         super().__init__(structured_buffer)
         self._path = [structured_buffer.buffer]
+        # in order to update the buffer tree from root to the modified element, we need to store the path containing
+        # each buffer that was passed on the way
 
     def __getitem__(self, key: Union[str, int]) -> 'Writer':
-        super().__getitem__(key)
-        if self._path[-1] is not self._buffer:
-            self._path.append(self._buffer)
-        return self
-
-    def set(self, raw: Any):
         """
-        Let's say, we have a simple tree of buffers:
+        Getting an item from an Accessor with the [] operator returns a new, deeper Accessor into the StructuredBuffer.
+        :param key: Index / Name of the value to access.
+        :return: A new Accessor to the requested item.
+        :raise KeyError: If the key does not identify an index in the current List / a key in the current Map.
+        """
+        writer: Writer = super().__getitem__(key)
 
-                A
-             +--+--+
-             |     |
-             B     C
+        # if the item resides in a new buffer, add it to the path of buffers to modify
+        if writer._path[-1] is not writer._buffer:
+            writer._path.append(writer._buffer)
 
-        In order to change C to C', we need to update C and A:
+        return writer
 
-                A'
-             +--+--+
-             |     |
-             B     C'
-
-        Later on, when you update B to B`, we update B and A` again and you get:
-
-                A"
-             +--+--+
-             |     |
-             B'    C'
+    def set(self, raw: Any) -> 'StructuredBuffer':
+        """
+        Creates a new StructuredBuffer with the minimal number of new sub-buffers.
 
         :param raw: "Raw" new value to set.
         :raise ValueError: If `raw` cannot be converted to a Value.
@@ -494,8 +520,8 @@ class Writer(Accessor):
         """
         # make sure the given raw value can be stored in the buffer
         value: Value = check_value(raw)
-        kind: Kind = value_kind(value)
-        schema: Schema = produce_schema(value)
+        kind: Kind = Kind.from_value(value)
+        schema: Schema = Schema(value)
 
         # make sure that the given value is compatible with the current
         if kind != self.kind:
@@ -503,29 +529,38 @@ class Writer(Accessor):
         else:
             slice_end = self._schema_itr + len(schema)
             if len(self._schema) < slice_end or schema != self._schema[self._schema_itr: slice_end]:
-                raise ValueError("Incompatible Schemas")
-
-        # if the new value is equal to the old one, we don't need to do anything
-        if value == self._buffer[self._buffer_itr]:
-            return
+                raise ValueError("Cannot assign a value with an incompatible Schema")
 
         # create a new buffer for the updated value
         if Kind.is_ground(self._schema[self._schema_itr]):
-            new_buffer = copy(self._buffer)
-            if self.kind == Kind.NUMBER:
-                new_buffer[self._buffer_itr] = float(value)
-            elif self.kind == Kind.STRING:
-                new_buffer[self._buffer_itr] = value
+
+            # if the new value is equal to the old one, we don't need to do anything
+            if value == self._buffer[self._buffer_itr]:
+                return self._structured_buffer
+
+            new_buffer = copy(self._buffer)  # shallow copy
+            new_buffer[self._buffer_itr] = value
+
+        # ... or replace the entire subbuffer, if it is a map or a list
         else:
             new_buffer = produce_buffer(value)
 
-        # create a copy of all buffers that are changed
+            # if the new buffer is equal to the old one, we don't need to do anything
+            if new_buffer == self._buffer:
+                return self._structured_buffer
+
+        # create the new buffer tree from the leaf up, made up of updated copies for those on the path straight copies
+        # for all others
         assert (self._path[-1] == self._buffer)
         while len(self._path) > 1:
             old_buffer = self._path.pop()
             old_parent_buffer = self._path[-1]
             new_buffer = [(x if x != old_buffer else new_buffer) for x in old_parent_buffer]
-        self._structured_buffer.buffer = new_buffer
+
+        # create a new StructuredBuffer instance that references the updated buffer tree
+        result: StructuredBuffer = copy(self._structured_buffer)
+        result.buffer = new_buffer
+        return result
 
 
 class StructuredBuffer:
@@ -534,6 +569,8 @@ class StructuredBuffer:
     and an optional Dictionary to access Map elements by name.
     """
 
+    Kind = Kind
+    Schema = Schema
     Dictionary = Dictionary
 
     def __init__(self, source: Any):
@@ -541,14 +578,8 @@ class StructuredBuffer:
         :param source: Anything that can be used to create a new StructuredBuffer.
         :raise ValueError: If `source` cannot be used to initialize a StructuredBuffer.
         """
-        # copy-initialize from other StructuredBuffer
-        if isinstance(source, StructuredBuffer):
-            schema: Schema = source.schema
-            buffer: Buffer = source.buffer
-            dictionary: Optional[Dictionary] = source.dictionary
-
         # null-initialize from schema
-        elif isinstance(source, Schema):
+        if isinstance(source, Schema):
             schema: Schema = source
             buffer: Buffer = produce_buffer(schema)
             dictionary = None
@@ -556,7 +587,7 @@ class StructuredBuffer:
         # value-initialize from value
         else:
             value: Value = check_value(source)
-            schema: Schema = produce_schema(value)
+            schema: Schema = Schema(value)
             buffer: Buffer = produce_buffer(value)
             dictionary: Optional[Dictionary] = produce_dictionary(value)
 
@@ -571,20 +602,14 @@ class StructuredBuffer:
         # A Dictionary referring to the topmost map in the Schema. Can be None.
         self.dictionary: Optional[Dictionary] = dictionary
 
-    def read(self) -> Reader:
+    def __getitem__(self, key: Union[str, int]) -> Reader:
         """
         Read access to this StructuredBuffer instance.
         """
-        return Reader(self)
+        return Reader(self)[key]
 
-    def write(self) -> Writer:
+    def modify(self) -> Writer:
         """
         Write access to this StructuredBuffer instance.
         """
         return Writer(self)
-
-    def __hash__(self) -> int:
-        """
-        The hash of a StructuredBuffer only considers values in the buffer, not the Schema or Dictionary.
-        """
-        return hash(tuple(self.buffer))

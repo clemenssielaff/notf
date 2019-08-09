@@ -1,26 +1,27 @@
 import unittest
 import sys
-from pynotf.structured_buffer import StructuredBuffer, Kind
+from pynotf.structured_buffer import StructuredBuffer
 
-test_dictionary = {
-        "coordinates": [
-            {
-                "x": 0,
-                "someName": "SUCCESS"
-            },
-            {
-                "x": 2,
-                "someName": "Hello world"
-            }
-        ],
-        "name": "Hello again",
-        "other map": {
-            "key": "string",
-            "a number": 847
+test_value = {
+    "coords": [
+        {
+            "x": 0,
+            "someName": "SUCCESS",
+        },
+        {
+            "x": 2,
+            "someName": "Hello world",
         }
-    }
-
-original = StructuredBuffer(test_dictionary)
+    ],
+    "name": "Mr. Okay",
+    "my_map": {
+        "key": "string",
+        "a number": 847,
+    },
+    "pos": 32.2,
+    "number_list": [2, 23.1, -347],
+}
+test_buffer = StructuredBuffer(test_value)
 
 
 #######################################################################################################################
@@ -28,44 +29,32 @@ original = StructuredBuffer(test_dictionary)
 
 class TestCase(unittest.TestCase):
     def test_check_kind(self):
-        self.assertEqual(Kind.LIST, sys.maxsize - 3)
-        self.assertEqual(Kind.MAP, sys.maxsize - 2)
-        self.assertEqual(Kind.NUMBER, sys.maxsize - 1)
-        self.assertEqual(Kind.STRING, sys.maxsize)
+        self.assertEqual(StructuredBuffer.Kind.LIST, sys.maxsize - 3)
+        self.assertEqual(StructuredBuffer.Kind.MAP, sys.maxsize - 2)
+        self.assertEqual(StructuredBuffer.Kind.NUMBER, sys.maxsize - 1)
+        self.assertEqual(StructuredBuffer.Kind.STRING, sys.maxsize)
 
-    def test_check_schema(self):
-        self.assertEqual(original.schema, [9223372036854775805,
-                                           3,
-                                           3,
-                                           9223372036854775807,
-                                           6,
-                                           9223372036854775804,
-                                           9223372036854775805,
-                                           2,
-                                           9223372036854775806,
-                                           9223372036854775807,
-                                           9223372036854775805,
-                                           2,
-                                           9223372036854775807,
-                                           9223372036854775806])
-
-    def test_repr(self):
-        expected = """  0: Map
-  1:  ↳ Size: 3
-  2: → 5
+    def test_schema(self):
+        self.assertEqual(len(test_buffer.schema), 18)
+        self.assertEqual(str(test_buffer.schema), """  0: Map
+  1:  ↳ Size: 5
+  2: → 7
   3: String
-  4: → 10
-  5: List
-  6: Map
-  7:  ↳ Size: 2
-  8: Number
-  9: String
- 10: Map
- 11:  ↳ Size: 2
- 12: String
- 13: Number
-"""
-        self.assertEqual(str(original.schema), expected)
+  4: → 12
+  5: Number
+  6: → 16
+  7: List
+  8: Map
+  9:  ↳ Size: 2
+ 10: Number
+ 11: String
+ 12: Map
+ 13:  ↳ Size: 2
+ 14: String
+ 15: Number
+ 16: List
+ 17: Number
+""")
 
     def test_invalid_element(self):
         with self.assertRaises(ValueError):
@@ -103,34 +92,126 @@ class TestCase(unittest.TestCase):
             StructuredBuffer({1: "nope"})  # maps keys must be of kind string
 
     def test_create_buffer_from_schema(self):
-        self.assertEqual(StructuredBuffer(original.schema).buffer, [[], '', '', 0])
+        self.assertEqual(StructuredBuffer(test_buffer.schema).buffer, [[], '', '', 0, 0, []])
 
-    def test_create_buffer_from_element(self):
-        buffer = StructuredBuffer(StructuredBuffer(test_dictionary))
-        self.assertEqual(buffer.schema, original.schema)
+    def test_accessor_len(self):
+        accessor = test_buffer["coords"]
+        self.assertEqual(len(accessor), 2)
+        accessor = accessor[0]
+        self.assertEqual(len(accessor), 2)
+        accessor = accessor["x"]
+        self.assertEqual(len(accessor), 0)
 
-    def test_basic_get_set(self):
-        copy = StructuredBuffer(original)
+    def test_accessor(self):
+        self.assertEqual(test_buffer["pos"].as_number(), 32.2)
+        with self.assertRaises(ValueError):
+            test_buffer["name"].as_number()  # read string as number
+        with self.assertRaises(ValueError):
+            test_buffer["coords"].as_number()  # read list as number
+        with self.assertRaises(ValueError):
+            test_buffer["my_map"].as_number()  # read map as number
 
-        self.assertEqual(original.read()["coordinates"][1]["x"].as_number(), 2.0)
-        self.assertEqual(copy.read()["coordinates"][1]["x"].as_number(), 2.0)
+        self.assertEqual(test_buffer["name"].as_string(), "Mr. Okay")
+        with self.assertRaises(ValueError):
+            test_buffer["pos"].as_string()  # read number as string
+        with self.assertRaises(ValueError):
+            test_buffer["coords"].as_string()  # read list as string
+        with self.assertRaises(ValueError):
+            test_buffer["my_map"].as_string()  # read map as string
 
-        copy.write()["coordinates"][1]["x"].set(-123)
-        self.assertEqual(original.read()["coordinates"][1]["x"].as_number(), 2.0)
-        self.assertEqual(copy.read()["coordinates"][1]["x"].as_number(), -123.0)
+        # access number in list
+        self.assertEqual(test_buffer["number_list"][1].as_number(), 23.1)
+
+        # access map using an invalid key
+        with self.assertRaises(KeyError):
+            _ = test_buffer["my_map"]["not a key"]
+
+    def test_immutability(self):
+        modified = test_buffer.modify()["coords"][0]["x"].set(1)
+        self.assertEqual(modified["coords"][0]["x"].as_number(), 1)
+        self.assertEqual(test_buffer["coords"][0]["x"].as_number(), 0)
+
+        modified2 = modified.modify()["name"].set("Mr. VeryWell")
+        self.assertEqual(modified2["name"].as_string(), "Mr. VeryWell")
+        self.assertEqual(modified["name"].as_string(), "Mr. Okay")
 
     def test_change_subtree(self):
-        copy = StructuredBuffer(original)
-        self.assertEqual(len(copy.read()["coordinates"]), 2)
-        self.assertEqual(copy.read()["coordinates"][0]["someName"].as_string(), "SUCCESS")
+        # change a subtree part of the buffer tree
+        modified = test_buffer.modify()["coords"].set([dict(x=42, someName="answer")])
+        self.assertEqual(len(modified["coords"]), 1)
+        self.assertEqual(modified["coords"][0]["someName"].as_string(), "answer")
 
-        copy.write()["coordinates"].set([dict(x=42, someName="answer")])
-        self.assertEqual(len(original.read()["coordinates"]), 2)
-        self.assertEqual(original.read()["coordinates"][0]["someName"].as_string(), "SUCCESS")
-        self.assertEqual(len(copy.read()["coordinates"]), 1)
-        self.assertEqual(copy.read()["coordinates"][0]["someName"].as_string(), "answer")
-
+        # fail to change the subtree to one with a different schema
         with self.assertRaises(ValueError):
-            copy.write()["coordinates"].set([{"x": 7}])
+            test_buffer.modify()["coords"].set([{"x": 7}])
 
-        # TODO: test that assigning the same value (ground and non-ground) really does not change the buffer
+        # fail to set a list to empty
+        with self.assertRaises(ValueError):
+            test_buffer.modify()["coords"].set([])
+
+    def test_get_failure(self):
+        with self.assertRaises(KeyError):  # access a list using a key
+            _ = test_buffer["coords"]["not a map"]
+        with self.assertRaises(KeyError):  # access a map using an index
+            _ = test_buffer["my_map"][34]
+
+        with self.assertRaises(KeyError):  # access a list using an invalid index
+            _ = test_buffer["coords"][-132]
+        with self.assertRaises(KeyError):
+            _ = test_buffer["coords"][9845]
+
+        with self.assertRaises(KeyError):  # access a number using an index
+            _ = test_buffer["pos"][0]
+        with self.assertRaises(KeyError):  # access a number using a key
+            _ = test_buffer["pos"]["what"]
+
+        with self.assertRaises(KeyError):  # access a string using an index
+            _ = test_buffer["name"][0]
+        with self.assertRaises(KeyError):  # access a string using a key
+            _ = test_buffer["name"]["what"]
+
+    def test_set_failures(self):
+        with self.assertRaises(ValueError):  # set number to string
+            test_buffer.modify()["pos"].set("0.23")
+        with self.assertRaises(ValueError):  # set number to list
+            test_buffer.modify()["pos"].set([])
+        with self.assertRaises(ValueError):  # set number to map
+            test_buffer.modify()["pos"].set({})
+
+        with self.assertRaises(ValueError):  # set string to number
+            test_buffer.modify()["name"].set(0.23)
+        with self.assertRaises(ValueError):  # set string to list
+            test_buffer.modify()["name"].set(["hello"])
+        with self.assertRaises(ValueError):  # set string to map
+            test_buffer.modify()["name"].set({"hello": "you"})
+
+        with self.assertRaises(ValueError):  # set list to number
+            test_buffer.modify()["coords"].set(0.23)
+        with self.assertRaises(ValueError):  # set list to string
+            test_buffer.modify()["coords"].set("nope")
+        with self.assertRaises(ValueError):  # set list to map
+            test_buffer.modify()["coords"].set({"hello": "you"})
+
+        with self.assertRaises(ValueError):  # set map to number
+            test_buffer.modify()["my_map"].set(0.23)
+        with self.assertRaises(ValueError):  # set map to string
+            test_buffer.modify()["my_map"].set("nope")
+        with self.assertRaises(ValueError):  # set map to list
+            test_buffer.modify()["my_map"].set([{"key": "b", "a number": 322}])
+
+    def test_modify_with_equal_value(self):
+        # update with the same number
+        modified = test_buffer.modify()["pos"].set(32.2)
+        self.assertEqual(id(test_buffer), id(modified))
+
+        # update with the same string
+        modified = test_buffer.modify()["name"].set("Mr. Okay")
+        self.assertEqual(id(test_buffer), id(modified))
+
+        # update with the same list
+        modified = test_buffer.modify()["number_list"].set([2, 23.1, -347])
+        self.assertEqual(id(test_buffer), id(modified))
+
+        # update with the same map
+        modified = test_buffer.modify()["my_map"].set({"key": "string", "a number": 847})
+        self.assertEqual(id(test_buffer), id(modified))
