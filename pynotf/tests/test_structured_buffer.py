@@ -18,6 +18,7 @@ test_value = {
     "name": "Mr. Okay",
     "my_map": {
         "key": "string",
+        "list_in_the_middle": ["I'm in the middle"],
         "a number": 847,
     },
     "pos": 32.2,
@@ -44,38 +45,40 @@ class TestCase(unittest.TestCase):
         self.assertEqual(test_buffer._buffer,
                          [[2, [0.0, "SUCCESS", [1, 1]], [2.0, "Hello world", [2, 2, 3]]],
                           "Mr. Okay",
-                          ["string", 847.0],
+                          ["string", [1, "I'm in the middle"], 847.0],
                           32.2,
                           [3, 2.0, 23.1, -347.0],
                           [2, [2, "a", "b"], [2, "c", "d"]]])
 
     def test_schema(self):
-        self.assertEqual(len(test_buffer._schema), 25)
+        self.assertEqual(len(test_buffer._schema), 27)
         self.assertEqual(str(test_buffer._schema), """  0: Map
   1:  ↳ Size: 6
   2: → 8
   3: String
-  4: → 16
+  4: → 15
   5: Number
-  6: → 20
-  7: → 22
+  6: → 22
+  7: → 24
   8: List
   9: Map
  10:  ↳ Size: 3
  11: Number
  12: String
- 13: → 14
- 14: List
- 15: Number
- 16: Map
- 17:  ↳ Size: 2
- 18: String
+ 13: List
+ 14: Number
+ 15: Map
+ 16:  ↳ Size: 3
+ 17: String
+ 18: → 20
  19: Number
  20: List
- 21: Number
+ 21: String
  22: List
- 23: List
- 24: String
+ 23: Number
+ 24: List
+ 25: List
+ 26: String
 """)
 
     def test_invalid_element(self):
@@ -114,7 +117,7 @@ class TestCase(unittest.TestCase):
             StructuredBuffer({1: "nope"})  # maps keys must be of kind string
 
     def test_create_buffer_from_schema(self):
-        self.assertEqual(StructuredBuffer(test_buffer._schema)._buffer, [[], '', '', 0, 0, [], []])
+        self.assertEqual(StructuredBuffer(test_buffer._schema)._buffer, [[], '', '', [], 0, 0, [], []])
 
     def test_kind(self):
         self.assertEqual(test_buffer.kind, StructuredBuffer.Kind.MAP)
@@ -246,7 +249,9 @@ class TestCase(unittest.TestCase):
         self.assertEqual(id(test_buffer), id(modified))
 
         # update with the same map
-        modified = test_buffer.modify()["my_map"].set({"key": "string", "a number": 847})
+        modified = test_buffer.modify()["my_map"].set({"key": "string",
+                                                       "list_in_the_middle": ["I'm in the middle"],
+                                                       "a number": 847})
         self.assertEqual(id(test_buffer), id(modified))
 
     def test_change_list_size(self):

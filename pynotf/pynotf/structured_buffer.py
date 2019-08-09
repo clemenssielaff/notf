@@ -163,19 +163,27 @@ class Schema(tuple, Sequence[int]):
             #    therefore they can be written straight into the body of the map.
             #    List and Map Schemas are longer than one word and are appended at the end of the body. The body itself
             #    contains only the forward offset to the child value in question.
+            #    In the special case where the map only contains a single non-ground value at the very end, we can
+            #    remove the last entry in the body and move the single child up one word.
             # 3. Child Lists and Maps in order of their appearance in the body.
             assert len(value) > 0
             schema.append(int(Kind.MAP))  # this is a map
             schema.append(len(value))  # number of items in the map
             child_position = len(schema)
-            schema.extend([0] * len(value))  # reserve space for pointers to the child data
+            schema.extend([0] * len(value))  # reserve space for the body
             for child in value.values():
                 # numbers and strings are stored inline
                 if Kind.is_ground(Kind.from_value(child)):
                     schema[child_position] = int(Kind.from_value(child))
                 # lists and maps store a pointer and append themselves to the end of the schema
                 else:
-                    schema[child_position] = len(schema) - child_position  # store the offset
+                    offset = len(schema) - child_position
+                    # if the offset is 1, we only have a single non-ground value in the map and it is at the very end
+                    # in this case, we can simply put the sub-schema of the child inline and save a pointer
+                    if offset > 1:
+                        schema[child_position] = offset  # store the offset
+                    else:
+                        schema.pop(-1)
                     schema.extend(Schema(child))
                 child_position += 1
 
