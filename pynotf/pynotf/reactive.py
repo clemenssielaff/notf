@@ -78,7 +78,7 @@ class Publisher:
         if self.output_schema is not None:
             if value is None:
                 raise ValueError("Publisher requires a value to publish")
-            if value.schema != self.output_schema:
+            if value._schema != self.output_schema:
                 raise ValueError("Publisher cannot publish data with the given data Schema")
 
         if self.is_completed():
@@ -94,7 +94,7 @@ class Publisher:
                 # We need to create a new StructuredBuffer value for each subscriber. This way, every subscriber can
                 # choose to write to its own value without affecting the others
                 # Internally, they all reference the same buffer anyway and should be cheap to copy.
-                new_value = StructuredBuffer(self.output_schema, value.buffer, subscriber.dictionary)
+                new_value = StructuredBuffer(self.output_schema, value._buffer, subscriber.dictionary)
                 subscriber.on_next(publisher, new_value)
 
     def error(self, exception: BaseException):
@@ -191,7 +191,7 @@ class Pipeline:
             self.is_enabled = True
 
         def on_next(self, publisher: Publisher, value: Optional[StructuredBuffer] = None):
-            assert (value.schema == self.input_schema)
+            assert (value._schema == self.input_schema)
             if not self.is_enabled:
                 return
             self.publish(value, publisher)

@@ -326,11 +326,11 @@ class Accessor:
         # offset, which also has the advantage that the structured buffer is needed for write operations anyway.
         # In order to access the schema, we use the private `_schema` property
 
-        self._buffer: Buffer = structured_buffer.buffer
+        self._buffer: Buffer = structured_buffer._buffer
         self._buffer_itr: int = 0
         # the currently iterated buffer as well as the offset to the current value within the buffer
 
-        self._dictionary: Optional[Dictionary] = structured_buffer.dictionary
+        self._dictionary: Optional[Dictionary] = structured_buffer._dictionary
         # dictionaries do not need an extra iterator since it is enough to point to the dictionary in question
 
     @property
@@ -344,6 +344,7 @@ class Accessor:
     def kind(self) -> Kind:
         """
         Kind of the currently accessed Value.
+        In C++, this would be a protected method that is only public on Reader.
         """
         assert Kind.is_kind(self._schema[self._schema_itr])
         return Kind(self._schema[self._schema_itr])
@@ -351,14 +352,19 @@ class Accessor:
     def __len__(self) -> int:
         """
         The number of child Values if the current Value is a List or Map, or zero otherwise.
+        In C++, this would be a protected method that is only public on Reader.
         """
         if self.kind == Kind.LIST:
             assert len(self._buffer) > 0
-            return self._buffer[0]
+            list_size = self._buffer[0]
+            assert list_size == len(self._buffer) - 1  # -1 for the first integer that is the size of the list
+            return list_size
 
         elif self.kind == Kind.MAP:
             assert len(self._schema) > self._schema_itr + 1
-            return self._schema[self._schema_itr + 1]
+            map_size = self._schema[self._schema_itr + 1]
+            assert map_size == len(self._buffer)
+            return map_size
 
         else:
             return 0  # Number and Strings do not have child elements
@@ -366,6 +372,8 @@ class Accessor:
     def __getitem__(self, key: Union[str, int]) -> Union['Accessor', 'Reader', 'Writer']:
         """
         Getting an item from an Accessor with the [] operator returns a new, deeper Accessor into the StructuredBuffer.
+        In C++ we would differentiate between r-value and l-value overloads, the r-value one would modify itself while
+        the l-value overload would produce a new Accessor as the Python implementation does.
         :param key: Index / Name of the value to access.
         :return: A new Accessor to the requested item.
         :raise KeyError: If the key does not identify an index in the current List / a key in the current Map.
@@ -377,8 +385,7 @@ class Accessor:
                 raise KeyError("Lists must be accessed using an index, not {}".format(key))
 
             # support negative indices from the back of the list
-            assert len(self._buffer) > 0
-            list_size: int = self._buffer[0]
+            list_size: int = len(self)
             original_key: int = key
             if key < 0:
                 key = list_size - key
@@ -434,6 +441,14 @@ class Accessor:
 
 
 class Reader(Accessor):
+
+    def keys(self) -> Optional[List[str]]:
+        """
+        If the current value is a Map, returns the available keys. If not, returns None.
+        """
+        if self.kind != Kind.MAP:
+            return None
+        return list(self._dictionary.keys())
 
     def as_number(self) -> float:
         """
@@ -491,7 +506,7 @@ class Writer(Accessor):
         :param structured_buffer:   StructuredBuffer instance to modify.
         """
         super().__init__(structured_buffer)
-        self._path = [structured_buffer.buffer]
+        self._path = [structured_buffer._buffer]
         # in order to update the buffer tree from root to the modified element, we need to store the path containing
         # each buffer that was passed on the way
 
@@ -559,7 +574,7 @@ class Writer(Accessor):
 
         # create a new StructuredBuffer instance that references the updated buffer tree
         result: StructuredBuffer = copy(self._structured_buffer)
-        result.buffer = new_buffer
+        result._buffer = new_buffer
         return result
 
 
@@ -593,18 +608,43 @@ class StructuredBuffer:
 
         # Schema of the buffer, is constant
         assert schema is not None
-        self.schema: Schema = schema
+        assert len(schema) > 0
+        self._schema: Schema = schema
 
         # Buffer storing the data of this StructuredBuffer.
         assert buffer is not None
-        self.buffer: Buffer = buffer
+        assert len(buffer) > 0
+        self._buffer: Buffer = buffer
 
         # A Dictionary referring to the topmost map in the Schema. Can be None.
-        self.dictionary: Optional[Dictionary] = dictionary
+        self._dictionary: Optional[Dictionary] = dictionary
+
+    @property
+    def schema(self) -> Schema:
+        """
+        Schema of the buffer, is constant
+        """
+        return self._schema
+
+    @property
+    def kind(self) -> Kind:
+        """
+        The Kind of the root Value.
+        """
+        assert Kind.is_kind(self._schema[0])
+        return Kind(self._schema[0])
+
+    def keys(self) -> Optional[List[str]]:
+        """
+        If the root value of this StructuredBuffer is a Map, returns the available keys. If not, returns None.
+        """
+        if self.kind != Kind.MAP:
+            return None
+        return list(self._dictionary.keys())       
 
     def __getitem__(self, key: Union[str, int]) -> Reader:
         """
-        Read access to this StructuredBuffer instance.
+        Read access to this StructuredBuffer instance via the [] operator.
         """
         return Reader(self)[key]
 

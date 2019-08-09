@@ -1,2 +1,4 @@
-glfw>=1.8.1
-PyOpenGL>=3.1.0
+attrs>=19.1.0
+coverage>=5.0a6
+glfw>=1.8.2
+hypothesis>=4.32.3

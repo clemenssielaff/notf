@@ -7,10 +7,12 @@ test_value = {
         {
             "x": 0,
             "someName": "SUCCESS",
+            "number_list": [1],
         },
         {
             "x": 2,
             "someName": "Hello world",
+            "number_list": [2, 3],
         }
     ],
     "name": "Mr. Okay",
@@ -20,6 +22,10 @@ test_value = {
     },
     "pos": 32.2,
     "number_list": [2, 23.1, -347],
+    "nested_list": [
+        ["a", "b"],
+        ["c", "d"],
+    ],
 }
 test_buffer = StructuredBuffer(test_value)
 
@@ -34,26 +40,42 @@ class TestCase(unittest.TestCase):
         self.assertEqual(StructuredBuffer.Kind.NUMBER, sys.maxsize - 1)
         self.assertEqual(StructuredBuffer.Kind.STRING, sys.maxsize)
 
+    def test_buffer(self):
+        self.assertEqual(test_buffer._buffer,
+                         [[2, [0.0, "SUCCESS", [1, 1]], [2.0, "Hello world", [2, 2, 3]]],
+                          "Mr. Okay",
+                          ["string", 847.0],
+                          32.2,
+                          [3, 2.0, 23.1, -347.0],
+                          [2, [2, "a", "b"], [2, "c", "d"]]])
+
     def test_schema(self):
-        self.assertEqual(len(test_buffer.schema), 18)
-        self.assertEqual(str(test_buffer.schema), """  0: Map
-  1:  ↳ Size: 5
-  2: → 7
+        self.assertEqual(len(test_buffer._schema), 25)
+        self.assertEqual(str(test_buffer._schema), """  0: Map
+  1:  ↳ Size: 6
+  2: → 8
   3: String
-  4: → 12
+  4: → 16
   5: Number
-  6: → 16
-  7: List
-  8: Map
-  9:  ↳ Size: 2
- 10: Number
- 11: String
- 12: Map
- 13:  ↳ Size: 2
- 14: String
+  6: → 20
+  7: → 22
+  8: List
+  9: Map
+ 10:  ↳ Size: 3
+ 11: Number
+ 12: String
+ 13: → 14
+ 14: List
  15: Number
- 16: List
- 17: Number
+ 16: Map
+ 17:  ↳ Size: 2
+ 18: String
+ 19: Number
+ 20: List
+ 21: Number
+ 22: List
+ 23: List
+ 24: String
 """)
 
     def test_invalid_element(self):
@@ -92,15 +114,26 @@ class TestCase(unittest.TestCase):
             StructuredBuffer({1: "nope"})  # maps keys must be of kind string
 
     def test_create_buffer_from_schema(self):
-        self.assertEqual(StructuredBuffer(test_buffer.schema).buffer, [[], '', '', 0, 0, []])
+        self.assertEqual(StructuredBuffer(test_buffer._schema)._buffer, [[], '', '', 0, 0, [], []])
+
+    def test_kind(self):
+        self.assertEqual(test_buffer.kind, StructuredBuffer.Kind.MAP)
+
+    def test_keys(self):
+        self.assertEqual(test_buffer.keys(), [key for key in test_value.keys()])
+        self.assertIsNone(StructuredBuffer(0).keys())
 
     def test_accessor_len(self):
         accessor = test_buffer["coords"]
         self.assertEqual(len(accessor), 2)
         accessor = accessor[0]
-        self.assertEqual(len(accessor), 2)
+        self.assertEqual(len(accessor), 3)
         accessor = accessor["x"]
         self.assertEqual(len(accessor), 0)
+
+    def test_accessor_keys(self):
+        self.assertEqual(test_buffer["coords"][0].keys(), ["x", "someName", "number_list"])
+        self.assertIsNone(test_buffer["name"].keys())
 
     def test_accessor(self):
         self.assertEqual(test_buffer["pos"].as_number(), 32.2)
@@ -137,7 +170,7 @@ class TestCase(unittest.TestCase):
 
     def test_change_subtree(self):
         # change a subtree part of the buffer tree
-        modified = test_buffer.modify()["coords"].set([dict(x=42, someName="answer")])
+        modified = test_buffer.modify()["coords"].set([dict(x=42, someName="answer", number_list=[-1, -2])])
         self.assertEqual(len(modified["coords"]), 1)
         self.assertEqual(modified["coords"][0]["someName"].as_string(), "answer")
 
@@ -215,3 +248,14 @@ class TestCase(unittest.TestCase):
         # update with the same map
         modified = test_buffer.modify()["my_map"].set({"key": "string", "a number": 847})
         self.assertEqual(id(test_buffer), id(modified))
+
+    def test_change_list_size(self):
+        # update list in nested list
+        self.assertEqual(len(test_buffer["nested_list"][0]), 2)
+        modified = test_buffer.modify()["nested_list"][0].set(["x", "y", "z"])
+        self.assertEqual(len(modified["nested_list"][0]), 3)
+
+        # update list in dict
+        self.assertEqual(len(test_buffer["coords"][1]["number_list"]), 2)
+        modified = test_buffer.modify()["coords"][1]["number_list"].set([6, 7, 8, 9])
+        self.assertEqual(len(modified["coords"][1]["number_list"]), 4)
