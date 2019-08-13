@@ -128,7 +128,7 @@ constexpr T identity_func(const T& value) {
 ///     template <class UNSUPPORTED_TYPE>
 ///     static void convert(const Vector4d& in, UNSUPPORTED_TYPE& out)
 ///     {
-///         static_assert(always_false<UNSUPPORTED_TYPE>{}, "Cannot convert Vector4d ...");
+///         static_assert(always_false_v<UNSUPPORTED_TYPE>, "Cannot convert Vector4d ...");
 ///     }
 ///
 template<class... Ts>

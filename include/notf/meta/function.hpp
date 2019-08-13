@@ -25,6 +25,8 @@ NOTF_OPEN_NAMESPACE
 ///
 ///     static_assert(ft::is_same<bool (&)(const int&)>()); // success
 ///
+///     static_assert(std::is_same_v<typename ft::template arg_type<0>, const int&>); // success
+///
 template<class Signature>
 class function_traits : public function_traits<decltype(&Signature::operator())> {
 
@@ -76,8 +78,10 @@ private:
         return (... && _check_arg_type<T, i>());
     }
 };
+
+// implementation for class methods
 template<class class_t, class return_t, class... Args>
-struct function_traits<return_t (class_t::*)(Args...) const> { // implementation for class methods
+struct function_traits<return_t (class_t::*)(Args...)> {
     using return_type = return_t;
     using args_tuple = std::tuple<Args...>;
     static constexpr auto arity = sizeof...(Args);
@@ -85,8 +89,22 @@ struct function_traits<return_t (class_t::*)(Args...) const> { // implementation
     template<size_t I>
     using arg_type = std::tuple_element_t<I, args_tuple>;
 };
+template<class class_t, class return_t, class... Args>
+struct function_traits<return_t (class_t::*)(Args...) const>
+    : public function_traits<return_t (class_t::*)(Args...)> {
+};
+template<class class_t, class return_t, class... Args>
+struct function_traits<return_t (class_t::*)(Args...) noexcept>
+    : public function_traits<return_t (class_t::*)(Args...)> {
+};
+template<class class_t, class return_t, class... Args>
+struct function_traits<return_t (class_t::*)(Args...) const noexcept>
+    : public function_traits<return_t (class_t::*)(Args...)> {
+};
+
+// implementation for free functions
 template<class return_t, class... Args>
-struct function_traits<return_t (&)(Args...)> { // implementation for free functions
+struct function_traits<return_t (&)(Args...)> {
     using return_type = return_t;
     using args_tuple = std::tuple<Args...>;
     static constexpr auto arity = sizeof...(Args);

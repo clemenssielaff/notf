@@ -8,7 +8,7 @@
 
 NOTF_OPEN_NAMESPACE
 
-// is tuple ========================================================================================================= //
+// inspection ======================================================================================================= //
 
 /// Template struct to test whether a given type is a tuple or not.
 template<class T>
@@ -18,91 +18,13 @@ struct is_tuple<std::tuple<Ts...>> : std::true_type {};
 template<class T>
 inline constexpr bool is_tuple_v = is_tuple<T>::value;
 
-// flatten tuple ==================================================================================================== //
-
-// template definition
-template<class... Ts>
-struct concat_tuple;
-
-// single ground type
+/// Checks if a given tuple has any elements or not.
 template<class T>
-struct concat_tuple<T> {
-    using type = std::tuple<T>;
-};
-
-// single tuple
-template<class... Ts>
-struct concat_tuple<std::tuple<Ts...>> {
-    using type = std::tuple<Ts...>;
-};
-
-// single identity type
-template<class T>
-struct concat_tuple<identity<T>> {
-    using type = T;
-};
-
-// two ground types
-template<class L, class R, class... Tail>
-struct concat_tuple<L, R, Tail...> {
-    using type = typename concat_tuple<std::tuple<L, R>, Tail...>::type;
-};
-
-// two tuples
-template<class... Ls, class... Rs, class... Tail>
-struct concat_tuple<std::tuple<Ls...>, std::tuple<Rs...>, Tail...> {
-    using type = typename concat_tuple<std::tuple<Ls..., Rs...>, Tail...>::type;
-};
-
-// two identities
-template<class L, class R, class... Tail>
-struct concat_tuple<identity<L>, identity<R>, Tail...> {
-    using type = typename concat_tuple<std::tuple<L, R>, Tail...>::type;
-};
-
-// ground & tuple
-template<class L, class... Rs, class... Tail>
-struct concat_tuple<L, std::tuple<Rs...>, Tail...> {
-    using type = typename concat_tuple<std::tuple<L, Rs...>, Tail...>::type;
-};
-
-// tuple & ground
-template<class... Ls, class R, class... Tail>
-struct concat_tuple<std::tuple<Ls...>, R, Tail...> {
-    using type = typename concat_tuple<std::tuple<Ls..., R>, Tail...>::type;
-};
-
-// ground & identity
-template<class L, class R, class... Tail>
-struct concat_tuple<L, identity<R>, Tail...> {
-    using type = typename concat_tuple<std::tuple<L, R>, Tail...>::type;
-};
-
-// identity & ground
-template<class L, class R, class... Tail>
-struct concat_tuple<identity<L>, R, Tail...> {
-    using type = typename concat_tuple<std::tuple<L, R>, Tail...>::type;
-};
-
-// tuple & identity
-template<class... Ls, class R, class... Tail>
-struct concat_tuple<std::tuple<Ls...>, identity<R>, Tail...> {
-    using type = typename concat_tuple<std::tuple<Ls..., R>, Tail...>::type;
-};
-
-// identity & tuple
-template<class L, class... Rs, class... Tail>
-struct concat_tuple<identity<L>, std::tuple<Rs...>, Tail...> {
-    using type = typename concat_tuple<std::tuple<L, Rs...>, Tail...>::type;
-};
-
-/// Flattens a list of types (that may or may not be other tuples) into a single tuple.
-/// Unlike std::tuple_concat, we allow certain tuples to remain "unflattened" if they are wrapped into the `identity`
-/// type.
-template<class... Ts>
-using concat_tuple_t = typename concat_tuple<Ts...>::type;
-
-// inspection ======================================================================================================= //
+struct is_tuple_empty : std::false_type {};
+template<>
+struct is_tuple_empty<std::tuple<>> : std::true_type {};
+template<class Tuple>
+inline constexpr bool is_tuple_empty_v = is_tuple_empty<Tuple>::value;
 
 /// Checks if T is one of the types contained in the given tuple.
 template<class T, class... Ts>
@@ -144,14 +66,6 @@ constexpr auto tuple_element() { // unfortunately, this cannot be tested at runt
 };
 template<long I, class Tuple>
 using tuple_element_t = decltype(tuple_element<I, Tuple>());
-
-/// Checks if a given tuple has any elements or not.
-template<class T>
-struct is_empty_tuple : std::false_type {};
-template<>
-struct is_empty_tuple<std::tuple<>> : std::true_type {};
-template<class Tuple>
-inline constexpr bool is_empty_tuple_v = is_empty_tuple<Tuple>::value;
 
 // make tuple unique ================================================================================================ //
 
@@ -252,7 +166,7 @@ struct visit_at_impl<0> {
 } // namespace detail
 
 /// @{
-/// Applies a given function to a single element of the tuple, identified by index.
+/// Applies a given function to a single element of the tuple, identified by index at runtime.
 /// If you expect a return type from the function, you'll have to manually declare it as a template argument, because we
 /// cannot infer the tuple element type from a runtime index.
 /// Implemented after https://stackoverflow.com/a/47385405
@@ -273,7 +187,108 @@ visit_at(const std::tuple<Ts...>& tuple, size_t index, Function function, Args&&
 }
 // @}
 
-// get first index=================================================================================================== //
+// filtered tuple =================================================================================================== //
+
+namespace detail {
+
+template<class Condition>
+struct TupleFilter {
+
+    /// Condition function
+    template<class Next, class... Ts, class... Tail>
+    static constexpr auto
+    apply(std::tuple<Ts...>, Next,
+          Tail&&... tail) noexcept(noexcept(Condition().template operator()<typename Next::type>())) {
+        if constexpr (sizeof...(Tail) > 0) {
+            if constexpr (Condition().template operator()<typename Next::type>()) {
+                return apply(std::tuple<Ts..., Next>{}, std::forward<Tail>(tail)...);
+            } else {
+                return apply(std::tuple<Ts...>{}, std::forward<Tail>(tail)...);
+            }
+        } else { // last loop
+            if constexpr (Condition().template operator()<typename Next::type>()) {
+                return std::tuple<Ts..., Next>{};
+            } else {
+                return std::tuple<Ts...>{};
+            }
+        }
+    }
+
+    /// Instead of passing types directly into the condition function, we wrap them into identity<T>.
+    /// This way, we can be certain that values of those identity types are default constructible at compile time.
+    /// In order to get the original types back, we need to unpack the resulting tuple of identities.
+    template<class...>
+    struct unbox_types;
+    template<class... Ts>
+    struct unbox_types<std::tuple<Ts...>> {
+        using type = std::tuple<typename Ts::type...>;
+    };
+
+    /// A tuple of all types (in order) that pass the condition.
+    template<class... Ts>
+    using result_t = typename unbox_types<decltype(apply(std::tuple<>{}, identity<Ts>{}...))>::type;
+};
+
+} // namespace detail
+
+/// Creates a struct that takes a condition functor and uses it to filter the given types into a tuple.
+/// Example:
+///
+///     struct IsNotEmptyFunctor {
+///         template<class T>
+///         constexpr bool operator()() noexcept {
+///             return !std::is_empty_v<T>; // return true iff T is not an empty type
+///         }
+///     };
+///     template<class... Ts>
+///     using remove_empty = create_filtered_tuple<IsNotEmptyFunctor, Ts...>;
+///
+///     struct Empty {};
+///     struct Full { int data; };
+///     static_assert(std::is_same_v<
+///         remove_empty<Empty, Full, Empty, Empty, Full>,
+///         std::tuple<Full, Full>
+///     >); // success
+///
+template<class Condition, class... Ts>
+using create_filtered_tuple = typename detail::TupleFilter<Condition>::template result_t<Ts...>;
+
+/// In order to relate an element in a tuple with its place in another tuple (for example one created using
+/// `create_filtered_tuple`), this method establishes the "filtered index" of the element with regards to a condition.
+/// This way, you can determine that:
+///                        this type
+///                           v
+///     <Full, Empty, Full, Full, Empty, Full, Empty>
+/// corresponds to the third entry in the filtered tuple:
+///     <Full, Full, Full, Full>
+///
+/// @param Condition    The condition functor. Must have a operator() implementation with the signature:
+///                     `template<class T> constexpr bool operator()() noexcept`
+/// @param Index        Index of the element in question in the unfiltered tuple.
+/// @param Tuple        The unfiltered tuple to inspect.
+template<class Condition, std::size_t Index, class Tuple, std::size_t Current = 0>
+constexpr std::size_t get_filtered_tuple_index(const std::size_t result = 0) {
+
+    // one-time checks
+    if constexpr (Current == 0) {
+        // The index of the element in question must fit into the tuple.
+        static_assert(Index < std::tuple_size_v<Tuple>);
+        // the element in question must fulfill the condition
+        static_assert(Condition().template operator()<std::tuple_element_t<Index, Tuple>>());
+    }
+
+    // recursion
+    if constexpr (Current < Index) {
+        return get_filtered_tuple_index<Condition, Index, Tuple, Current + 1>(
+            Condition().template operator()<std::tuple_element_t<Current, Tuple>>() ? result + 1 : result);
+    }
+    // .. breaker
+    else {
+        return result;
+    }
+}
+
+// get first index ================================================================================================== //
 
 /// Finds and returns the first index of the given type in the tuple.
 template<class T, class Tuple, size_t I = 0>
@@ -308,6 +323,90 @@ constexpr std::size_t count_type_occurrence() noexcept {
     detail::_count_type_occurrence<0, Tuple, Ts...>(result);
     return result;
 }
+
+// flatten tuple ==================================================================================================== //
+
+// template definition
+template<class... Ts>
+struct concat_tuple;
+
+// single ground type
+template<class T>
+struct concat_tuple<T> {
+    using type = std::tuple<T>;
+};
+
+// single tuple
+template<class... Ts>
+struct concat_tuple<std::tuple<Ts...>> {
+    using type = std::tuple<Ts...>;
+};
+
+// single identity type
+template<class T>
+struct concat_tuple<identity<T>> {
+    using type = T;
+};
+
+// two ground types
+template<class L, class R, class... Tail>
+struct concat_tuple<L, R, Tail...> {
+    using type = typename concat_tuple<std::tuple<L, R>, Tail...>::type;
+};
+
+// two tuples
+template<class... Ls, class... Rs, class... Tail>
+struct concat_tuple<std::tuple<Ls...>, std::tuple<Rs...>, Tail...> {
+    using type = typename concat_tuple<std::tuple<Ls..., Rs...>, Tail...>::type;
+};
+
+// two identities
+template<class L, class R, class... Tail>
+struct concat_tuple<identity<L>, identity<R>, Tail...> {
+    using type = typename concat_tuple<std::tuple<L, R>, Tail...>::type;
+};
+
+// ground & tuple
+template<class L, class... Rs, class... Tail>
+struct concat_tuple<L, std::tuple<Rs...>, Tail...> {
+    using type = typename concat_tuple<std::tuple<L, Rs...>, Tail...>::type;
+};
+
+// tuple & ground
+template<class... Ls, class R, class... Tail>
+struct concat_tuple<std::tuple<Ls...>, R, Tail...> {
+    using type = typename concat_tuple<std::tuple<Ls..., R>, Tail...>::type;
+};
+
+// ground & identity
+template<class L, class R, class... Tail>
+struct concat_tuple<L, identity<R>, Tail...> {
+    using type = typename concat_tuple<std::tuple<L, R>, Tail...>::type;
+};
+
+// identity & ground
+template<class L, class R, class... Tail>
+struct concat_tuple<identity<L>, R, Tail...> {
+    using type = typename concat_tuple<std::tuple<L, R>, Tail...>::type;
+};
+
+// tuple & identity
+template<class... Ls, class R, class... Tail>
+struct concat_tuple<std::tuple<Ls...>, identity<R>, Tail...> {
+    using type = typename concat_tuple<std::tuple<Ls..., R>, Tail...>::type;
+};
+
+// identity & tuple
+template<class L, class... Rs, class... Tail>
+struct concat_tuple<identity<L>, std::tuple<Rs...>, Tail...> {
+    using type = typename concat_tuple<std::tuple<L, Rs...>, Tail...>::type;
+};
+
+/// Flattens a list of types (that may or may not be other tuples) into a single tuple.
+/// Unlike std::tuple_concat, we allow certain tuples to remain "unflattened" if they are wrapped into the `identity`
+/// type.
+template<class... Ts>
+using concat_tuple_t = typename concat_tuple<Ts...>::type;
 
 // make n-tuple ===================================================================================================== //
 

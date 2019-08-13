@@ -22,6 +22,25 @@ class Publisher:
         COMPLETED = auto()
         ERROR = auto()
 
+    class Result:
+        def __init__(self):
+            self._is_completed: bool = False
+            self._exception: Optional[BaseException] = None
+
+        @property
+        def is_completed(self) -> bool:
+            return self._is_completed
+
+        @property
+        def exception(self) -> Optional[BaseException]:
+            return self._exception
+
+        def complete(self, exception: Optional[BaseException] = None):
+            if self._is_completed:
+                raise RuntimeError("Cannot complete a Publisher more than once")
+
+
+
     def __init__(self, schema: Optional[Schema] = None):
         """
         Constructor.
