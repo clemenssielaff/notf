@@ -16,7 +16,7 @@ struct is_tuple : std::false_type {};
 template<class... Ts>
 struct is_tuple<std::tuple<Ts...>> : std::true_type {};
 template<class T>
-inline constexpr bool is_tuple_v = is_tuple<T>::value;
+inline constexpr const bool is_tuple_v = is_tuple<T>::value;
 
 /// Checks if a given tuple has any elements or not.
 template<class T>
@@ -24,27 +24,27 @@ struct is_tuple_empty : std::false_type {};
 template<>
 struct is_tuple_empty<std::tuple<>> : std::true_type {};
 template<class Tuple>
-inline constexpr bool is_tuple_empty_v = is_tuple_empty<Tuple>::value;
+inline constexpr const bool is_tuple_empty_v = is_tuple_empty<Tuple>::value;
 
 /// Checks if T is one of the types contained in the given tuple.
 template<class T, class... Ts>
 struct is_one_of_tuple : std::false_type {};
 template<class T, class... Ts>
 struct is_one_of_tuple<T, std::tuple<Ts...>> {
-    static constexpr bool value = is_one_of_v<T, Ts...>;
+    static constexpr const bool value = is_one_of_v<T, Ts...>;
 };
 template<class T, class... Ts>
-static constexpr bool is_one_of_tuple_v = is_one_of_tuple<T, Ts...>::value;
+static constexpr const bool is_one_of_tuple_v = is_one_of_tuple<T, Ts...>::value;
 
 /// Checks if T is derived from (or the same as) one of the types contained in the given tuple.
 template<class T, class... Ts>
 struct is_derived_from_one_of_tuple : std::false_type {};
 template<class T, class... Ts>
 struct is_derived_from_one_of_tuple<T, std::tuple<Ts...>> {
-    static constexpr bool value = is_derived_from_one_of_v<T, Ts...>;
+    static constexpr const bool value = is_derived_from_one_of_v<T, Ts...>;
 };
 template<class T, class... Ts>
-static constexpr bool is_derived_from_one_of_tuple_v = is_derived_from_one_of_tuple<T, Ts...>::value;
+static constexpr const bool is_derived_from_one_of_tuple_v = is_derived_from_one_of_tuple<T, Ts...>::value;
 
 /// Returns the requested type from a Tuple.
 /// Fails if the index is out of bounds and supports negative indices.
