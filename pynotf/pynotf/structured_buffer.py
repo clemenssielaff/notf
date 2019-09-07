@@ -116,6 +116,12 @@ class Schema(tuple, Sequence[int]):
     forward offset to a container value (like a list or map).
     """
 
+    def is_empty(self) -> bool:
+        """
+        A Schema can be empty to denote the singular "None" value.
+        """
+        return len(self) == 0
+
     def __new__(cls, value: Value):
         """
         Recursive, breadth-first assembly of a Schema for a given Value.
@@ -550,6 +556,8 @@ class Writer(Accessor):
         if kind != self.kind:
             raise ValueError("Cannot change a value of kind {} to one of kind {}".format(self.kind.name, value))
         else:
+            if self.kind == Kind.MAP and tuple(raw.keys()) != tuple(self._dictionary.keys()):
+                raise ValueError("Cannot assign to a Map with incompatible keys (name and order)")
             slice_end = self._schema_itr + len(schema)
             if len(self._schema) < slice_end or schema != self._schema[self._schema_itr: slice_end]:
                 raise ValueError("Cannot assign a value with an incompatible Schema")
@@ -648,7 +656,7 @@ class StructuredBuffer:
         """
         if self.kind != Kind.MAP:
             return None
-        return list(self._dictionary.keys())       
+        return list(self._dictionary.keys())
 
     def __getitem__(self, key: Union[str, int]) -> Reader:
         """
@@ -656,7 +664,21 @@ class StructuredBuffer:
         """
         return Reader(self)[key]
 
-    def modify(self) -> Writer:
+    def as_number(self) -> float:
+        """
+        Returns the value as a Number.
+        :raise ValueError: If the value is not a number.
+        """
+        return Reader(self).as_number()
+
+    def as_string(self) -> str:
+        """
+        Returns the value as a String.
+        :raise ValueError: If the value is not a string.
+        """
+        return Reader(self).as_string()
+
+    def modified(self) -> Writer:
         """
         Write access to this StructuredBuffer instance.
         """

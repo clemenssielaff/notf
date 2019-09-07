@@ -19,7 +19,7 @@ def _c_api_wrapper(name: str, argtypes: [], restype=None):
     If no function with the given name is found in the api, this decorator returns a function that simply prints an
     error message instead.
 
-    :param name:        Name of the function to call and modify.
+    :param name:        Name of the function to call and modified.
     :param argtypes:    Python ctypes argument types of the C function.
     :param restype:     Python ctypes return kind of the C function or None if the return kind is void.
     :return:            Decorated function.
@@ -581,7 +581,7 @@ def transform_translate(xform: Xform, tx: float, ty: float):
     """
     Sets the transform to a pure translation matrix in-place.
 
-    :param xform:   Xform to modify.
+    :param xform:   Xform to modified.
     :param tx:      Translation along the x-axis.
     :param ty:      Translation along the y-axis.
     """
@@ -593,7 +593,7 @@ def transform_scale(xform: Xform, sx: float, sy: float):
     """
     Sets the transform to a pure scale matrix in-place.
 
-    :param xform:   Xform to modify.
+    :param xform:   Xform to modified.
     :param sx:      Horizontal scale factor.
     :param sy:      Vertical scale factor.
     """
@@ -605,7 +605,7 @@ def transform_rotate(xform: Xform, angle: float):
     """
     Sets the transform to a pure rotate matrix in-place.
 
-    :param xform:   Xform to modify.
+    :param xform:   Xform to modified.
     :param angle:   Rotation angle in radians.
     """
     _nanovg.nvgTransformRotate(byref(xform), angle)
@@ -616,7 +616,7 @@ def transform_skew_x(xform: Xform, angle: float):
     """
     Sets the transform to a pure skew matrix along the x-axis in-place.
 
-    :param xform:   Xform to modify.
+    :param xform:   Xform to modified.
     :param angle:   Skew angle in radians.
     """
     _nanovg.nvgTransformSkewX(byref(xform), angle)
@@ -627,7 +627,7 @@ def transform_skew_y(xform: Xform, angle: float):
     """
     Sets the transform to a pure skew matrix along the y-axis in-place.
 
-    :param xform:   Xform to modify.
+    :param xform:   Xform to modified.
     :param angle:   Skew angle in radians.
     """
     _nanovg.nvgTransformSkewY(byref(xform), angle)
@@ -638,7 +638,7 @@ def transform_multiply(dst: Xform, src: Xform):
     """
     Sets the transform to the result of multiplication of two transforms: `dst = dst*src`.
 
-    :param dst: Matrix to modify.
+    :param dst: Matrix to modified.
     :param src: Matrix to multiply src with.
     """
     _nanovg.nvgTransformMultiply(byref(dst), byref(src))
@@ -649,7 +649,7 @@ def transform_premultiply(dst: Xform, src: Xform):
     """
     Sets the transform to the result of multiplication of two transforms, of `dst = src*dst`.
 
-    :param dst: Matrix to modify.
+    :param dst: Matrix to modified.
     :param src: Matrix to multiply src with.
     """
     _nanovg.nvgTransformPremultiply(byref(dst), byref(src))

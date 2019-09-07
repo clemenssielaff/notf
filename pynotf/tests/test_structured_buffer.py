@@ -96,7 +96,7 @@ class TestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             StructuredBuffer([])
 
-        # list elements must have the same schema
+        # list elements must have the same output_schema
         with self.assertRaises(ValueError):
             StructuredBuffer(['a', 2])
         with self.assertRaises(ValueError):
@@ -163,27 +163,27 @@ class TestCase(unittest.TestCase):
             _ = test_buffer["my_map"]["not a key"]
 
     def test_immutability(self):
-        modified = test_buffer.modify()["coords"][0]["x"].set(1)
+        modified = test_buffer.modified()["coords"][0]["x"].set(1)
         self.assertEqual(modified["coords"][0]["x"].as_number(), 1)
         self.assertEqual(test_buffer["coords"][0]["x"].as_number(), 0)
 
-        modified2 = modified.modify()["name"].set("Mr. VeryWell")
+        modified2 = modified.modified()["name"].set("Mr. VeryWell")
         self.assertEqual(modified2["name"].as_string(), "Mr. VeryWell")
         self.assertEqual(modified["name"].as_string(), "Mr. Okay")
 
     def test_change_subtree(self):
         # change a subtree part of the buffer tree
-        modified = test_buffer.modify()["coords"].set([dict(x=42, someName="answer", number_list=[-1, -2])])
+        modified = test_buffer.modified()["coords"].set([dict(x=42, someName="answer", number_list=[-1, -2])])
         self.assertEqual(len(modified["coords"]), 1)
         self.assertEqual(modified["coords"][0]["someName"].as_string(), "answer")
 
-        # fail to change the subtree to one with a different schema
+        # fail to change the subtree to one with a different output_schema
         with self.assertRaises(ValueError):
-            test_buffer.modify()["coords"].set([{"x": 7}])
+            test_buffer.modified()["coords"].set([{"x": 7}])
 
         # fail to set a list to empty
         with self.assertRaises(ValueError):
-            test_buffer.modify()["coords"].set([])
+            test_buffer.modified()["coords"].set([])
 
     def test_get_failure(self):
         with self.assertRaises(KeyError):  # access a list using a key
@@ -208,48 +208,48 @@ class TestCase(unittest.TestCase):
 
     def test_set_failures(self):
         with self.assertRaises(ValueError):  # set number to string
-            test_buffer.modify()["pos"].set("0.23")
+            test_buffer.modified()["pos"].set("0.23")
         with self.assertRaises(ValueError):  # set number to list
-            test_buffer.modify()["pos"].set([])
+            test_buffer.modified()["pos"].set([])
         with self.assertRaises(ValueError):  # set number to map
-            test_buffer.modify()["pos"].set({})
+            test_buffer.modified()["pos"].set({})
 
         with self.assertRaises(ValueError):  # set string to number
-            test_buffer.modify()["name"].set(0.23)
+            test_buffer.modified()["name"].set(0.23)
         with self.assertRaises(ValueError):  # set string to list
-            test_buffer.modify()["name"].set(["hello"])
+            test_buffer.modified()["name"].set(["hello"])
         with self.assertRaises(ValueError):  # set string to map
-            test_buffer.modify()["name"].set({"hello": "you"})
+            test_buffer.modified()["name"].set({"hello": "you"})
 
         with self.assertRaises(ValueError):  # set list to number
-            test_buffer.modify()["coords"].set(0.23)
+            test_buffer.modified()["coords"].set(0.23)
         with self.assertRaises(ValueError):  # set list to string
-            test_buffer.modify()["coords"].set("nope")
+            test_buffer.modified()["coords"].set("nope")
         with self.assertRaises(ValueError):  # set list to map
-            test_buffer.modify()["coords"].set({"hello": "you"})
+            test_buffer.modified()["coords"].set({"hello": "you"})
 
         with self.assertRaises(ValueError):  # set map to number
-            test_buffer.modify()["my_map"].set(0.23)
+            test_buffer.modified()["my_map"].set(0.23)
         with self.assertRaises(ValueError):  # set map to string
-            test_buffer.modify()["my_map"].set("nope")
+            test_buffer.modified()["my_map"].set("nope")
         with self.assertRaises(ValueError):  # set map to list
-            test_buffer.modify()["my_map"].set([{"key": "b", "a number": 322}])
+            test_buffer.modified()["my_map"].set([{"key": "b", "a number": 322}])
 
     def test_modify_with_equal_value(self):
         # update with the same number
-        modified = test_buffer.modify()["pos"].set(32.2)
+        modified = test_buffer.modified()["pos"].set(32.2)
         self.assertEqual(id(test_buffer), id(modified))
 
         # update with the same string
-        modified = test_buffer.modify()["name"].set("Mr. Okay")
+        modified = test_buffer.modified()["name"].set("Mr. Okay")
         self.assertEqual(id(test_buffer), id(modified))
 
         # update with the same list
-        modified = test_buffer.modify()["number_list"].set([2, 23.1, -347])
+        modified = test_buffer.modified()["number_list"].set([2, 23.1, -347])
         self.assertEqual(id(test_buffer), id(modified))
 
         # update with the same map
-        modified = test_buffer.modify()["my_map"].set({"key": "string",
+        modified = test_buffer.modified()["my_map"].set({"key": "string",
                                                        "list_in_the_middle": ["I'm in the middle"],
                                                        "a number": 847})
         self.assertEqual(id(test_buffer), id(modified))
@@ -257,10 +257,10 @@ class TestCase(unittest.TestCase):
     def test_change_list_size(self):
         # update list in nested list
         self.assertEqual(len(test_buffer["nested_list"][0]), 2)
-        modified = test_buffer.modify()["nested_list"][0].set(["x", "y", "z"])
+        modified = test_buffer.modified()["nested_list"][0].set(["x", "y", "z"])
         self.assertEqual(len(modified["nested_list"][0]), 3)
 
         # update list in dict
         self.assertEqual(len(test_buffer["coords"][1]["number_list"]), 2)
-        modified = test_buffer.modify()["coords"][1]["number_list"].set([6, 7, 8, 9])
+        modified = test_buffer.modified()["coords"][1]["number_list"].set([6, 7, 8, 9])
         self.assertEqual(len(modified["coords"][1]["number_list"]), 4)
