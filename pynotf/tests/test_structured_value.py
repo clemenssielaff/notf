@@ -216,10 +216,6 @@ class TestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             test_value.modified()["coords"].set([{"x": 7}])
 
-        # fail to set a list to empty
-        with self.assertRaises(ValueError):
-            test_value.modified()["coords"].set([])
-
     def test_get_failure(self):
         with self.assertRaises(KeyError):  # access a list using a key
             _ = test_value["coords"]["not a map"]
@@ -307,3 +303,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(len(test_value["coords"][1]["number_list"]), 2)
         modified = test_value.modified()["coords"][1]["number_list"].set([6, 7, 8, 9])
         self.assertEqual(len(modified["coords"][1]["number_list"]), 4)
+
+        # set the list to empty
+        modified = test_value.modified()["coords"].set([])
+        self.assertEqual(len(modified["coords"]), 0)

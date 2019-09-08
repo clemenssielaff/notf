@@ -10,10 +10,11 @@ It defines a single Element including all of its child Elements (if the parent E
 """
 
 
-def check_element(raw: Any) -> Element:
+def check_element(raw: Any, allow_empty_lists: bool) -> Element:
     """
     Tries to convert any given "raw" value into an Element.
     :param raw: Raw value to convert.
+    :param allow_empty_lists: Empty lists are allowed when modifying a Value, but not during construction.
     :return: The given raw value as an Element.
     :raise ValueError: If the raw value cannot be represented as an Element.
     """
@@ -27,20 +28,21 @@ def check_element(raw: Any) -> Element:
 
     if isinstance(raw, list):
         # lists
-        if len(raw) == 0:
-            raise ValueError("Lists cannot be empty")  # TODO: why can lists not be empty?
+        elements: List[Element] = [check_element(x, allow_empty_lists) for x in raw]
 
-        elements: List[Element] = [check_element(x) for x in raw]
-        reference_element: Element = elements[0]
-        reference_schema: Schema = Schema(reference_element)
-        for i in range(1, len(elements)):
-            if Schema(elements[i]) != reference_schema:
-                raise ValueError("List entries must all have the same schema")
-
-        if Kind.from_element(reference_element) == Kind.MAP:
+        if len(elements) > 0:
+            reference_element: Element = elements[0]
+            reference_schema: Schema = Schema(reference_element)
             for i in range(1, len(elements)):
-                if elements[i].keys() != reference_element.keys():
-                    raise ValueError("Map entries in a List must all have the same keys")
+                if Schema(elements[i]) != reference_schema:
+                    raise ValueError("List entries must all have the same schema")
+
+            if Kind.from_element(reference_element) == Kind.MAP:
+                for i in range(1, len(elements)):
+                    if elements[i].keys() != reference_element.keys():
+                        raise ValueError("Map entries in a List must all have the same keys")
+        elif not allow_empty_lists:
+            raise ValueError("Lists cannot be empty when creating a Value")
 
         return elements
 
@@ -53,7 +55,7 @@ def check_element(raw: Any) -> Element:
         for key, element in raw.items():
             if not isinstance(key, str):
                 raise ValueError("All keys of a Map must be of kind string")
-            elements[key] = check_element(element)
+            elements[key] = check_element(element, allow_empty_lists)
         return elements
 
     raise ValueError("Cannot construct a StructuredValue.Element from a {}".format(type(raw).__name__))
@@ -297,7 +299,7 @@ def produce_buffer(source: Union[Schema, Element]) -> Buffer:
         else:
             return build_buffer_from_schema([])
     else:
-        root_element = build_buffer_from_element(check_element(source))
+        root_element = build_buffer_from_element(source)
         return root_element if isinstance(root_element, list) else [root_element]
 
 
@@ -560,19 +562,22 @@ class Writer(Accessor):
                            If the Element does not match the currently accessed Element Kind.
         """
         # make sure the given raw value can be stored in the buffer
-        element: Element = check_element(raw)
+        element: Element = check_element(raw, allow_empty_lists=True)
         kind: Kind = Kind.from_element(element)
-        schema: Schema = Schema(element)
 
         # make sure that the given Element is compatible with the current
         if kind != self.kind:
             raise ValueError("Cannot change an Element of kind {} to one of kind {}".format(self.kind.name, kind.name))
         else:
-            if self.kind == Kind.MAP and tuple(raw.keys()) != tuple(self._dictionary.keys()):
+            if kind == Kind.MAP and tuple(raw.keys()) != tuple(self._dictionary.keys()):
                 raise ValueError("Cannot assign to a Map with incompatible keys (name and order)")
-            slice_end = self._schema_itr + len(schema)
-            if len(self._schema) < slice_end or schema != self._schema[self._schema_itr: slice_end]:
-                raise ValueError("Cannot assign an Element with an incompatible Schema")
+            if kind == Kind.LIST and len(element) == 0:
+                pass  # we cannot deduce the Schema from an empty list
+            else:
+                schema: Schema = Schema(element)
+                slice_end = self._schema_itr + len(schema)
+                if len(self._schema) < slice_end or schema != self._schema[self._schema_itr: slice_end]:
+                    raise ValueError("Cannot assign an Element with an incompatible Schema")
 
         # create a new buffer for the updated Element
         if Kind.is_ground(self._schema[self._schema_itr]):
@@ -629,7 +634,7 @@ class StructuredValue:
 
         # value-initialize from Element
         else:
-            element: Element = check_element(source)
+            element: Element = check_element(source, allow_empty_lists=False)
             schema: Schema = Schema(element)
             buffer: Buffer = produce_buffer(element)
             dictionary: Optional[Dictionary] = produce_dictionary(element)
