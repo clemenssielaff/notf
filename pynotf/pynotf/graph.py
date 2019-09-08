@@ -3,7 +3,7 @@
 # from logging import warning
 # from typing import NamedTuple, List, TypeVar, Type, Union, Optional, Callable, Dict, Any
 # from .reactive import Operator, Publisher
-# from .structured_buffer import StructuredBuffer
+# from .structured_buffer import StructuredValue
 #
 #
 # class Property(Operator):
@@ -33,12 +33,12 @@
 #         Is constant.
 #         """
 #
-#         self._render_value: StructuredBuffer = StructuredBuffer.create(element)
+#         self._render_value: StructuredValue = StructuredValue.create(element)
 #         """
 #         The value of this Property as it is currently being displayed on screen.
 #         """
 #
-#         self._modified_value: Optional[StructuredBuffer] = None
+#         self._modified_value: Optional[StructuredValue] = None
 #         """
 #         The most current value of this Property.
 #         Is only set if the value was changed since the last frame. Before each frame, this value is copied into the
@@ -76,7 +76,7 @@
 #         return self.hash != 0
 #
 #     @property
-#     def value(self) -> StructuredBuffer:
+#     def value(self) -> StructuredValue:
 #         """
 #         The value of this Property, depending on whether this is the render thread or not, this function will return the
 #         "render value" or "modified value" if one exists.
@@ -89,14 +89,14 @@
 #             return self._render_value  # if no modified copy exists, return the unmodified value
 #
 #     @value.setter
-#     def value(self, value: StructuredBuffer):
+#     def value(self, value: StructuredValue):
 #         if not is_this_the_main_thread():
 #             raise RuntimeError("Properties can only be set from the main thread")
 #
 #         if value is None:
 #             raise ValueError("Properties cannot be None")
 #
-#         if not isinstance(value, StructuredBuffer):
+#         if not isinstance(value, StructuredValue):
 #             raise ValueError("Property values must be wrapped in a Structured Buffer instance")
 #
 #         # do nothing if the property value would not change
@@ -125,7 +125,7 @@
 #             self._render_value = self._modified_value
 #             self._modified_value = None
 #
-#     def on_next(self, publisher: Publisher, value: Optional[StructuredBuffer] = None):
+#     def on_next(self, publisher: Publisher, value: Optional[StructuredValue] = None):
 #         """
 #         Abstract method called by any upstream publisher.
 #

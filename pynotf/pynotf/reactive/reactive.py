@@ -1,7 +1,7 @@
 from typing import List, Optional, Iterable, Any, Tuple
 from abc import ABCMeta, abstractmethod
 from weakref import ref as weak
-from pynotf.structured_buffer import StructuredBuffer
+from pynotf.structured_value import StructuredValue
 
 
 class Publisher(metaclass=ABCMeta):
@@ -165,30 +165,30 @@ class Subscriber(metaclass=ABCMeta):
 
 class StructuredPublisher(Publisher):
     """
-    An Publisher publishing a StructuredBuffer.
+    An Publisher publishing a StructuredValue.
     Provides some additional checks
     """
 
-    def __init__(self, schema: StructuredBuffer.Schema):
+    def __init__(self, schema: StructuredValue.Schema):
         """
         Constructor.
         :param schema: Schema of the Value published by this Publisher.
         """
         Publisher.__init__(self)
 
-        self._output_schema: StructuredBuffer.Schema = schema
+        self._output_schema: StructuredValue.Schema = schema
         """
         Is constant.
         """
 
     @property
-    def output_schema(self) -> StructuredBuffer.Schema:
+    def output_schema(self) -> StructuredValue.Schema:
         """
         Schema of the published value. Can be the empty Schema if this Publisher does not publish any values.
         """
         return self._output_schema
 
-    def next(self, value: StructuredBuffer):
+    def next(self, value: StructuredValue):
         """
         Push the given value to all active Subscribers.
         :param value: Value to publish.
@@ -217,20 +217,20 @@ class StructuredPublisher(Publisher):
 
 class StructuredSubscriber(Subscriber):
 
-    def __init__(self, schema: StructuredBuffer.Schema):
+    def __init__(self, schema: StructuredValue.Schema):
         """
         Constructor.
         :param schema:      Schema defining the StructuredBuffers expected by this Publisher.
         """
         Subscriber.__init__(self)
 
-        self._input_schema: StructuredBuffer.Schema = schema
+        self._input_schema: StructuredValue.Schema = schema
         """
         Is constant.
         """
 
     @abstractmethod
-    def on_next(self, subscriber: Publisher, value: StructuredBuffer):
+    def on_next(self, subscriber: Publisher, value: StructuredValue):
         """
         Abstract method called by any upstream Publisher.
         :param subscriber   The Publisher publishing the value, for identification purposes only.
@@ -264,7 +264,7 @@ class Pipeline(StructuredSubscriber, StructuredPublisher):
 
         @property
         @abstractmethod
-        def input_schema(self) -> StructuredBuffer.Schema:
+        def input_schema(self) -> StructuredValue.Schema:
             """
             The Schema of the input value of the Operation.
             """
@@ -272,14 +272,14 @@ class Pipeline(StructuredSubscriber, StructuredPublisher):
 
         @property
         @abstractmethod
-        def output_schema(self) -> StructuredBuffer.Schema:
+        def output_schema(self) -> StructuredValue.Schema:
             """
             The Schema of the output value of the Operation (if there is one).
             """
             raise NotImplementedError("An Operation must provide an output Schema property")
 
         @abstractmethod
-        def __call__(self, value: StructuredBuffer) -> Optional[StructuredBuffer]:
+        def __call__(self, value: StructuredValue) -> Optional[StructuredValue]:
             """
             Operation implementation.
             :param value: Input value, must conform to the Schema specified by the `input_schema` property.
@@ -297,7 +297,7 @@ class Pipeline(StructuredSubscriber, StructuredPublisher):
 
         self._operations: Tuple[Pipeline.Operation] = operations
 
-    def on_next(self, subscriber: Publisher, value: Optional[StructuredBuffer] = None):
+    def on_next(self, subscriber: Publisher, value: Optional[StructuredValue] = None):
         """
         Abstract method called by any upstream Publisher.
         :param subscriber   The Publisher publishing the value, for identification purposes only.
@@ -305,7 +305,7 @@ class Pipeline(StructuredSubscriber, StructuredPublisher):
         """
         self.next(value)
 
-    def next(self, value: Optional[StructuredBuffer] = None):
+    def next(self, value: Optional[StructuredValue] = None):
         try:
             for operation in self._operations:
                 value = operation(value)

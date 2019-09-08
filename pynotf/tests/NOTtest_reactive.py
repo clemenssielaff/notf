@@ -1,42 +1,42 @@
 from typing import ClassVar, Optional, List
 from pynotf.reactive import Pipeline, Subscriber, Publisher
-from pynotf.structured_buffer import StructuredBuffer
+from pynotf.structured_value import StructuredValue
 
 
 class AddConstant(Pipeline.Operation):
-    _schema: ClassVar[StructuredBuffer.Schema] = StructuredBuffer(0).schema
+    _schema: ClassVar[StructuredValue.Schema] = StructuredValue(0).schema
 
     def __init__(self, addition: float):
         self._constant = addition
 
     @property
-    def input_schema(self) -> StructuredBuffer.Schema:
+    def input_schema(self) -> StructuredValue.Schema:
         return self._schema
 
     @property
-    def output_schema(self) -> StructuredBuffer.Schema:
+    def output_schema(self) -> StructuredValue.Schema:
         return self._schema
 
-    def __call__(self, value: StructuredBuffer) -> StructuredBuffer:
+    def __call__(self, value: StructuredValue) -> StructuredValue:
         return value.modified().set(value.as_number() + self._constant)
 
 
 class GroupTwo(Pipeline.Operation):
-    _input_schema: ClassVar[StructuredBuffer.Schema] = StructuredBuffer(0).schema
-    _output_prototype: ClassVar[StructuredBuffer] = StructuredBuffer({"x": 0, "y": 0})
+    _input_schema: ClassVar[StructuredValue.Schema] = StructuredValue(0).schema
+    _output_prototype: ClassVar[StructuredValue] = StructuredValue({"x": 0, "y": 0})
 
     def __init__(self):
         self._last_value: Optional[float] = None
 
     @property
-    def input_schema(self) -> StructuredBuffer.Schema:
+    def input_schema(self) -> StructuredValue.Schema:
         return self._input_schema
 
     @property
-    def output_schema(self) -> StructuredBuffer.Schema:
+    def output_schema(self) -> StructuredValue.Schema:
         return self._output_prototype.schema
 
-    def __call__(self, value: StructuredBuffer) -> Optional[StructuredBuffer]:
+    def __call__(self, value: StructuredValue) -> Optional[StructuredValue]:
         if self._last_value is None:
             self._last_value = value.as_number()
         else:
@@ -46,11 +46,11 @@ class GroupTwo(Pipeline.Operation):
 
 
 class Recorder(Subscriber):
-    def __init__(self, schema: StructuredBuffer.Schema):
+    def __init__(self, schema: StructuredValue.Schema):
         super().__init__(schema)
-        self.values: List[StructuredBuffer] = []
+        self.values: List[StructuredValue] = []
 
-    def on_next(self, subscriber: Publisher, value: Optional[StructuredBuffer] = None):
+    def on_next(self, subscriber: Publisher, value: Optional[StructuredValue] = None):
         self.values.append(value)
 
     def on_complete(self, subscriber: Publisher):
@@ -59,12 +59,12 @@ class Recorder(Subscriber):
 
 def main():
     pipe = Pipeline(AddConstant(5), GroupTwo())
-    recorder = Recorder(StructuredBuffer({"x": 0, "y": 0}).schema)
+    recorder = Recorder(StructuredValue({"x": 0, "y": 0}).schema)
 
     pipe.subscribe(recorder)
 
     for x in range(30):
-        pipe.next(StructuredBuffer(x))
+        pipe.next(StructuredValue(x))
     pipe.complete()
 
     for index, value in enumerate(recorder.values):
