@@ -29,6 +29,8 @@ test_value = {
     ],
 }
 test_buffer = StructuredBuffer(test_value)
+float_buffer = StructuredBuffer(42.24)
+string_buffer = StructuredBuffer("hello")
 
 
 #######################################################################################################################
@@ -139,6 +141,13 @@ class TestCase(unittest.TestCase):
         self.assertIsNone(test_buffer["name"].keys())
 
     def test_accessor(self):
+        self.assertEqual(float_buffer.as_number(), 42.24)
+        with self.assertRaises(ValueError):
+            float_buffer.as_string()  # read number as string
+        self.assertEqual(string_buffer.as_string(), "hello")
+        with self.assertRaises(ValueError):
+            string_buffer.as_number()  # read string as number
+
         self.assertEqual(test_buffer["pos"].as_number(), 32.2)
         with self.assertRaises(ValueError):
             test_buffer["name"].as_number()  # read string as number
@@ -172,10 +181,26 @@ class TestCase(unittest.TestCase):
         self.assertEqual(modified["name"].as_string(), "Mr. Okay")
 
     def test_change_subtree(self):
-        # change a subtree part of the buffer tree
+        # change a list in the buffer
         modified = test_buffer.modified()["coords"].set([dict(x=42, someName="answer", number_list=[-1, -2])])
         self.assertEqual(len(modified["coords"]), 1)
         self.assertEqual(modified["coords"][0]["someName"].as_string(), "answer")
+
+        # change a map in the buffer
+        modified = test_buffer.modified()["my_map"].set({"key": "changed",
+                                                         "list_in_the_middle": ["I am a changed string"],
+                                                         "a number": 124, })
+        self.assertEqual(modified["my_map"]["key"].as_string(), "changed")
+
+        # fail to change the subtree to one with different keys
+        with self.assertRaises(ValueError):
+            test_buffer.modified()["my_map"].set({"wrong key": "changed",
+                                                  "wrong list": ["I am a changed string"],
+                                                  "wrong number": 124, })
+        with self.assertRaises(ValueError):
+            test_buffer.modified()["my_map"].set({"list_in_the_middle": ["I am a changed string"],
+                                                  "key": "changed",
+                                                  "a number": 124, })
 
         # fail to change the subtree to one with a different output_schema
         with self.assertRaises(ValueError):
@@ -250,8 +275,8 @@ class TestCase(unittest.TestCase):
 
         # update with the same map
         modified = test_buffer.modified()["my_map"].set({"key": "string",
-                                                       "list_in_the_middle": ["I'm in the middle"],
-                                                       "a number": 847})
+                                                         "list_in_the_middle": ["I'm in the middle"],
+                                                         "a number": 847})
         self.assertEqual(id(test_buffer), id(modified))
 
     def test_change_list_size(self):

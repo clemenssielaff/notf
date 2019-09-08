@@ -28,7 +28,7 @@ def check_value(raw: Any) -> Value:
     if isinstance(raw, list):
         # lists
         if len(raw) == 0:
-            raise ValueError("Lists cannot be empty")
+            raise ValueError("Lists cannot be empty")  # TODO: why can lists not be empty?
 
         values: List[Value] = [check_value(x) for x in raw]
         reference_value: Value = values[0]
@@ -115,12 +115,6 @@ class Schema(tuple, Sequence[int]):
     It is a simple list of integers, each integer either identifying a ground value kind (like a number or string) or a
     forward offset to a container value (like a list or map).
     """
-
-    def is_empty(self) -> bool:
-        """
-        A Schema can be empty to denote the singular "None" value.
-        """
-        return len(self) == 0
 
     def __new__(cls, value: Value):
         """

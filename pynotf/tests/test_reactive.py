@@ -1,5 +1,5 @@
 from typing import ClassVar, Optional, List
-from pynotf.reactive import Pipeline, Observer, Observable
+from pynotf.reactive import Pipeline, Subscriber, Publisher
 from pynotf.structured_buffer import StructuredBuffer
 
 
@@ -45,15 +45,15 @@ class GroupTwo(Pipeline.Operation):
             return result
 
 
-class Recorder(Observer):
+class Recorder(Subscriber):
     def __init__(self, schema: StructuredBuffer.Schema):
         super().__init__(schema)
         self.values: List[StructuredBuffer] = []
 
-    def on_next(self, observable: Observable, value: Optional[StructuredBuffer] = None):
+    def on_next(self, subscriber: Publisher, value: Optional[StructuredBuffer] = None):
         self.values.append(value)
 
-    def on_complete(self, observable: Observable):
+    def on_complete(self, subscriber: Publisher):
         print("Completed")
 
 
