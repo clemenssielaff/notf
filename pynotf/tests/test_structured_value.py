@@ -86,6 +86,12 @@ class TestCase(unittest.TestCase):
  26: String
 """)
 
+    def test_equality(self):
+        self.assertEqual(StructuredValue(StructuredValue.Schema()), none_value)
+        self.assertEqual(StructuredValue(test_element), test_value)
+        self.assertNotEqual(none_value, test_value)
+        self.assertNotEqual(none_value, None)
+
     def test_invalid_element(self):
         with self.assertRaises(ValueError):
             StructuredValue(None)

@@ -682,6 +682,20 @@ class StructuredValue:
         """
         return Reader(self)[key]
 
+    def __eq__(self, other: Any) -> bool:
+        """
+        Equality test.
+        """
+        if not isinstance(other, self.__class__):
+            return False
+        return self._schema == other._schema and self._buffer == other._buffer and self._dictionary == other._dictionary
+
+    def __ne__(self, other) -> bool:
+        """
+        Inequality tests.
+        """
+        return not self.__eq__(other)
+
     def as_number(self) -> float:
         """
         Returns the Element as a Number.
