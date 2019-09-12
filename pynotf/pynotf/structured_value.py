@@ -22,11 +22,11 @@ def check_element(raw: Any, allow_empty_lists: bool) -> Element:
         # native Element types
         return raw
 
-    if isinstance(raw, int):
+    elif isinstance(raw, int):
         # types trivially convertible to a Element kind
         return float(raw)
 
-    if isinstance(raw, list):
+    elif isinstance(raw, list):
         # lists
         elements: List[Element] = [check_element(x, allow_empty_lists) for x in raw]
 
@@ -46,7 +46,7 @@ def check_element(raw: Any, allow_empty_lists: bool) -> Element:
 
         return elements
 
-    if isinstance(raw, dict):
+    elif isinstance(raw, dict):
         # map
         if len(raw) == 0:
             raise ValueError("Maps cannot be empty")
@@ -615,19 +615,27 @@ class StructuredValue:
     """
     The StructuredValue contains a Buffer from which to read the data, a Schema describing the layout of the Buffer, and
     an optional Dictionary to access Map entries by name.
+    Apart from a StructuredValue that contains one of the 4 Element types, you can also have an empty (None) value that
+    does not contain anything. It is not possible to have a None value nested inside another Value.
     """
 
     Kind = Kind
     Schema = Schema
     Dictionary = Dictionary
 
-    def __init__(self, source: Any = Schema()):
+    def __init__(self, source: Any = None):
         """
         :param source: Anything that can be used to create a new StructuredValue.
         :raise ValueError: If `source` cannot be used to initialize a StructuredValue.
         """
+        # explict None
+        if source is None:
+            schema: Schema = Schema()
+            buffer: Buffer = []
+            dictionary = None
+
         # null-initialize from schema
-        if isinstance(source, Schema):
+        elif isinstance(source, Schema):
             schema: Schema = source
             buffer: Buffer = produce_buffer(schema)
             dictionary = None

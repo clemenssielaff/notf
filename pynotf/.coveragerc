@@ -13,6 +13,10 @@ exclude_lines =
     if 0:
     if __name__ == .__main__.:
 
+    # Ignore abstract methods
+    raise NotImplementedError
+    @abstractmethod
+
 ignore_errors = True
 
 [html]

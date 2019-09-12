@@ -1,15 +1,16 @@
 from typing import List, Optional, Iterable, Any, Tuple
 from abc import ABCMeta, abstractmethod
+from traceback import print_exc
 from weakref import ref as weak
 from pynotf.structured_value import StructuredValue
 
 
-class Publisher(metaclass=ABCMeta):
+class Publisher:
     """
     A Publisher keeps a list of (weak references to) Subscribers that are called when a new value is published or the
     Publisher completes, either through an error or successfully.
-    This base class does not provide an implementation for `next` and does not check/restrict the type of values (if
-    any) that are published.
+    Publishers publish a single StructuredValue and contain additional checks to make sure their Subscribers are
+    compatible.
 
     Note: This would usually be named an "Observable", while the Subscriber (below) would usually be called "Observer".
     See: http://reactivex.io/documentation/observable.html
@@ -38,9 +39,10 @@ class Publisher(metaclass=ABCMeta):
     </rant>
     """
 
-    def __init__(self):
+    def __init__(self, schema: StructuredValue.Schema = StructuredValue.Schema()):
         """
-        Default constructor.
+        Constructor.
+        :param schema: Schema of the Value published by this Publisher, defaults to the empty Schema.
         """
 
         self._subscribers: List[weak] = []
@@ -54,12 +56,98 @@ class Publisher(metaclass=ABCMeta):
         Once a Publisher is completed, it will no longer publish any values.
         """
 
+        self._output_schema: StructuredValue.Schema = schema
+        """
+        Is constant.
+        """
+
+    @property
+    def output_schema(self) -> StructuredValue.Schema:
+        """
+        Schema of the published value. Can be the empty Schema if this Publisher does not publish a meaningful value.
+        """
+        return self._output_schema
+
+    def publish(self, value: Any = StructuredValue()):
+        """
+        Push the given value to all active Subscribers.
+        :param value: Value to publish, can be empty if this Publisher does not publish a meaningful value.
+        :raise TypeError: If the Value's Schema doesn't match.
+        :raise RuntimeError: If the Publisher has already completed (either normally or though an error).
+        """
+        if self._is_completed:
+            raise RuntimeError("Cannot publish from a completed Publisher")
+
+        if not isinstance(value, StructuredValue):
+            try:
+                value = StructuredValue(value)
+            except ValueError:
+                raise TypeError("Publisher can only publish values that are implicitly convertible to StructuredValues")
+
+        if value.schema != self.output_schema:
+            raise TypeError("Publisher cannot publish a value with the wrong Schema")
+
+        for subscriber in self._iter_subscribers():
+            subscriber.on_next(self, value)
+
+    def error(self, exception: Exception):
+        """
+        Failure method, completes the Publisher.
+        :param exception:   The exception that has occurred.
+        """
+        print_exc()
+
+        for subscriber in self._iter_subscribers():
+            subscriber.on_error(self, exception)
+
+        self._complete()
+
+    def complete(self):
+        """
+        Completes the Publisher successfully.
+        """
+        for subscriber in self._iter_subscribers():
+            subscriber.on_complete(self)
+
+        self._complete()
+
+    def is_completed(self) -> bool:
+        """
+        Returns true iff the Publisher has been completed, either through an error or normally.
+        """
+        return self._is_completed
+
+    def _subscribe(self, subscriber: 'Subscriber'):
+        """
+        Adds a new Subscriber to receive published values.
+        :param subscriber: New Subscriber.
+        :raise TypeError: If the Subscriber's input Schema does not match.
+        """
+        if subscriber.input_schema != self.output_schema:
+            raise TypeError("Cannot subscribe to an Publisher with a different Schema")
+
+        if self._is_completed:
+            subscriber.on_complete(self)
+
+        else:
+            weak_subscriber = weak(subscriber)
+            if weak_subscriber not in self._subscribers:
+                self._subscribers.append(weak_subscriber)
+
+    def _unsubscribe(self, subscriber: 'Subscriber'):
+        """
+        Removes the given Subscriber if it is subscribed. If not, the call is ignored.
+        :param subscriber: Subscriber to unsubscribe.
+        """
+        weak_subscriber = weak(subscriber)
+        if weak_subscriber in self._subscribers:
+            self._subscribers.remove(weak_subscriber)
+
     def _iter_subscribers(self) -> Iterable['Subscriber']:
         """
         Generate all active Subscribers, while removing those that have expired (without changing the order).
         """
-        if self._is_completed:
-            return  # no subscribers for you
+        assert (not self._is_completed)
         for index, weak_subscriber in enumerate(self._subscribers):
             subscriber = weak_subscriber()
             while subscriber is None:
@@ -78,55 +166,6 @@ class Publisher(metaclass=ABCMeta):
         self._subscribers.clear()
         self._is_completed = True
 
-    @abstractmethod
-    def next(self, value: Any):
-        """
-        Push the given value to all active Subscribers.
-        :param value: Value to publish.
-        :raise TypeError: If the value cannot be published by this Publisher.
-        :raise RuntimeError: If the Publisher has already completed (either normally or though an error).
-        """
-        raise NotImplementedError("Subscriber must implement its `next` method")
-
-    def error(self, exception: Exception):
-        """
-        Failure method, completes the Publisher.
-        :param exception:   The exception that has occurred.
-        """
-        for subscriber in self._iter_subscribers():
-            subscriber.on_error(self, exception)
-        self._complete()
-
-    def complete(self):
-        """
-        Completes the Publisher successfully.
-        """
-        for subscriber in self._iter_subscribers():
-            subscriber.on_complete(self)
-        self._complete()
-
-    def subscribe(self, subscriber: 'Subscriber'):
-        """
-        Called when an Subscriber wants to subscribe.
-        :param subscriber: New Subscriber.
-        """
-        if self._is_completed:
-            subscriber.on_complete(self)
-
-        else:
-            weak_subscriber = weak(subscriber)
-            if weak_subscriber not in self._subscribers:
-                self._subscribers.append(weak_subscriber)
-
-    def unsubscribe(self, subscriber: 'Subscriber'):
-        """
-        Removes the given Subscriber if it is subscribed. If not, the call is ignored.
-        :param subscriber: Subscriber to unsubscribe.
-        """
-        weak_subscriber = weak(subscriber)
-        if weak_subscriber in self._subscribers:
-            self._subscribers.remove(weak_subscriber)
-
 
 class Subscriber(metaclass=ABCMeta):
     """
@@ -134,109 +173,16 @@ class Subscriber(metaclass=ABCMeta):
     An Subscriber can be subscribed to multiple Publishers.
     """
 
-    @abstractmethod
-    def on_next(self, subscriber: Publisher, value: Optional[Any]):
-        """
-        Abstract method called by any upstream Publisher.
-        :param subscriber   The Publisher publishing the value, for identification purposes only.
-        :param value        Published value, can be None.
-        """
-        raise NotImplementedError("Subscriber subclass does not implement its `on_next` method")
-
-    def on_error(self, subscriber: Publisher, exception: BaseException):
-        """
-        Default implementation of the "error" method: throws the given exception.
-
-        Generally, it is advisable to override this method and handle the error somehow, instead of just letting it
-        propagate all the way through the call stack, as this could stop the connected Publisher from delivering any
-        more messages to other Subscribers.
-        :param subscriber:  The failed Publisher, for identification purposes only.
-        :param exception:   The exception that has occurred.
-        """
-        raise exception
-
-    def on_complete(self, subscriber: Publisher):
-        """
-        Default implementation of the "complete" operation, does nothing.
-        :param subscriber:  The completed Publisher, for identification purposes only.
-        """
-        pass
-
-
-class StructuredPublisher(Publisher):
-    """
-    An Publisher publishing a StructuredValue.
-    Provides some additional checks
-    """
-
-    def __init__(self, schema: StructuredValue.Schema):
-        """
-        Constructor.
-        :param schema: Schema of the Value published by this Publisher.
-        """
-        Publisher.__init__(self)
-
-        self._output_schema: StructuredValue.Schema = schema
-        """
-        Is constant.
-        """
-
-    @property
-    def output_schema(self) -> StructuredValue.Schema:
-        """
-        Schema of the published value. Can be the empty Schema if this Publisher does not publish any values.
-        """
-        return self._output_schema
-
-    def next(self, value: StructuredValue):
-        """
-        Push the given value to all active Subscribers.
-        :param value: Value to publish.
-        :raise TypeError: If the Value's Schema doesn't match.
-        :raise RuntimeError: If the Publisher has already completed (either normally or though an error).
-        """
-        if self._is_completed:
-            raise RuntimeError("Cannot publish from a completed Publisher")
-
-        if value.schema != self.output_schema:
-            raise TypeError("Publisher cannot publish a value with the wrong Schema")
-
-        for subscriber in self._iter_subscribers():
-            subscriber.on_next(self, value)
-
-    def subscribe(self, subscriber: 'StructuredSubscriber'):
-        """
-        Called when an Subscriber wants to subscribe.
-        :param subscriber: New Subscriber.
-        :raise TypeError: If the Subscriber's Schema doesn't match.
-        """
-        if subscriber.input_schema != self.output_schema:
-            raise TypeError("Cannot subscribe to an Publisher with a different Schema")
-        Publisher.subscribe(self, subscriber)
-
-
-class StructuredSubscriber(Subscriber):
-
-    def __init__(self, schema: StructuredValue.Schema):
+    def __init__(self, schema: StructuredValue.Schema = StructuredValue.Schema()):
         """
         Constructor.
         :param schema:      Schema defining the StructuredBuffers expected by this Publisher.
+                            Can be empty if this Subscriber does not expect a meaningful value.
         """
-        Subscriber.__init__(self)
-
         self._input_schema: StructuredValue.Schema = schema
         """
         Is constant.
         """
-
-    @abstractmethod
-    def on_next(self, subscriber: Publisher, value: StructuredValue):
-        """
-        Abstract method called by any upstream Publisher.
-        :param subscriber   The Publisher publishing the value, for identification purposes only.
-        :param value        Published value, can be None.
-        """
-        raise NotImplementedError("Subscriber subclass does not implement its `on_next` method")
 
     @property
     def input_schema(self):
@@ -245,8 +191,47 @@ class StructuredSubscriber(Subscriber):
         """
         return self._input_schema
 
+    @abstractmethod
+    def on_next(self, publisher: Publisher, value: Optional[StructuredValue]):
+        """
+        Abstract method called by any upstream Publisher.
+        :param publisher    The Publisher publishing the value, for identification purposes only.
+        :param value        Published value, can be None.
+        """
+        pass
 
-class Pipeline(StructuredSubscriber, StructuredPublisher):
+    def on_error(self, publisher: Publisher, exception: BaseException):
+        """
+        Default implementation of the "error" method: does nothing.
+        :param publisher:   The failed Publisher, for identification purposes only.
+        :param exception:   The exception that has occurred.
+        """
+        pass
+
+    def on_complete(self, publisher: Publisher):
+        """
+        Default implementation of the "complete" operation, does nothing.
+        :param publisher:   The completed Publisher, for identification purposes only.
+        """
+        pass
+
+    def subscribe_to(self, publisher: Publisher):
+        """
+        Subscribe to the given Publisher.
+        :param publisher:   Publisher to subscribe to. If this Subscriber is already subscribed, this does nothing.
+        :raise TypeError:   If the Publishers's input Schema does not match.
+        """
+        publisher._subscribe(self)
+
+    def unsubscribe_from(self, publisher: Publisher):
+        """
+        Unsubscribes from the given Publisher.
+        :param publisher:   Publisher to unsubscribe from. If this Subscriber is not subscribed, this does nothing.
+        """
+        publisher._unsubscribe(self)
+
+
+class Pipeline(Subscriber, Publisher):
     """
     A Pipeline is a sequence of Operations that are applied to an input value.
     Not every input is guaranteed to produce an output as Operations are free to store or ignore input values.
@@ -268,7 +253,7 @@ class Pipeline(StructuredSubscriber, StructuredPublisher):
             """
             The Schema of the input value of the Operation.
             """
-            raise NotImplementedError("An Operation must provide an input Schema property")
+            pass
 
         @property
         @abstractmethod
@@ -276,7 +261,7 @@ class Pipeline(StructuredSubscriber, StructuredPublisher):
             """
             The Schema of the output value of the Operation (if there is one).
             """
-            raise NotImplementedError("An Operation must provide an output Schema property")
+            pass
 
         @abstractmethod
         def __call__(self, value: StructuredValue) -> Optional[StructuredValue]:
@@ -286,26 +271,45 @@ class Pipeline(StructuredSubscriber, StructuredPublisher):
             :return: Either a new output value (conforming to the Schema specified by the `output_schema` property)
                 or None.
             """
-            raise NotImplementedError("Operation subclass does not implement its `__call_` method")
+            pass
 
     def __init__(self, *operations: Operation):
         if len(operations) == 0:
             raise ValueError("Cannot create a Pipeline without a single Operation")
 
-        StructuredSubscriber.__init__(self, operations[0].input_schema)
-        StructuredPublisher.__init__(self, operations[-1].output_schema)
-
         self._operations: Tuple[Pipeline.Operation] = operations
+        """
+        Tuple of Operations in order of execution.
+        """
 
-    def on_next(self, subscriber: Publisher, value: Optional[StructuredValue] = None):
+        Subscriber.__init__(self, self.input_schema)
+        Publisher.__init__(self, self.output_schema)
+
+    @property
+    def input_schema(self) -> StructuredValue.Schema:
+        """
+        The Schema of the input value of the Pipeline.
+        """
+        return self._operations[0].input_schema
+
+    @property
+    def output_schema(self) -> StructuredValue.Schema:
+        """
+        The Schema of the output value of the Pipeline.
+        """
+        return self._operations[-1].output_schema
+
+    def on_next(self, publisher: Publisher, value: Optional[StructuredValue] = None):
         """
         Abstract method called by any upstream Publisher.
-        :param subscriber   The Publisher publishing the value, for identification purposes only.
+        :param publisher   The Publisher publishing the value, for identification purposes only.
         :param value        Published value, can be None.
         """
-        self.next(value)
+        self.publish(value)
 
-    def next(self, value: Optional[StructuredValue] = None):
+    def publish(self, value: Optional[Any] = None):
+        if not (value is None or isinstance(value, StructuredValue)):
+            value = StructuredValue(value)
         try:
             for operation in self._operations:
                 value = operation(value)
@@ -314,4 +318,4 @@ class Pipeline(StructuredSubscriber, StructuredPublisher):
         except Exception as exception:
             self.error(exception)
 
-        StructuredPublisher.next(self, value)
+        Publisher.publish(self, value)

@@ -93,8 +93,10 @@ class TestCase(unittest.TestCase):
         self.assertNotEqual(none_value, None)
 
     def test_invalid_element(self):
+        class Nope:
+            pass
         with self.assertRaises(ValueError):
-            StructuredValue(None)
+            StructuredValue(Nope())
 
     def test_valid_lists(self):
         StructuredValue([False, 1, 2.])  # list of numbers
