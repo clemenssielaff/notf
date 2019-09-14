@@ -320,3 +320,36 @@ class Pipeline(Subscriber, Publisher):
             self.error(exception)
 
         Publisher.publish(self, value)
+
+
+"""
+Additional Thoughts
+===================
+
+Scheduling
+----------
+When the application executor schedules a new value to be published, it could determine the effect of the change by
+traversing the dependency DAG prior to the actual change. Take the following DAG topology:
+
+        +-> B ->+
+        |       |  
+    A --+       +-> D
+        |       |
+        +-> C ->+ 
+
+Whenever A changes, it will update B, which in turn will update D. A will then continue to update C, which will in turn
+update D a second time. This would have been avoided if we scheduled the downstream propagation and would have updated B
+and C before D.
+While this particular example could be fixed by simply doing a breadth-first traversal instead of a depth-first one, 
+this solution does not work in the general case, as can be seen with the following example:
+
+        +-> B --> E ->+
+        |             |  
+    A --+             +-> D
+        |             |
+        +-> C ------->+ 
+
+In order to guarantee the minimum amount of work, we will need a scheduler.
+However, this is an optimization only - even the worst possible execution order will still produce the correct result
+eventually.
+"""
