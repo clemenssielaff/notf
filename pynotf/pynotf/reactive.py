@@ -1,6 +1,7 @@
 from typing import List, Optional, Iterable, Any, Tuple
 from abc import ABCMeta, abstractmethod
-from traceback import print_exc
+import logging
+from traceback import format_exc
 from weakref import ref as weak
 from pynotf.structured_value import StructuredValue
 
@@ -95,7 +96,7 @@ class Publisher:
         Failure method, completes the Publisher.
         :param exception:   The exception that has occurred.
         """
-        print_exc()
+        logging.error(format_exc())
 
         for subscriber in self._iter_subscribers():
             subscriber.on_error(self, exception)

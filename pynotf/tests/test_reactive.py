@@ -1,4 +1,5 @@
 import unittest
+import logging
 from typing import ClassVar, Optional, List
 from pynotf.reactive import Pipeline, Subscriber, Publisher
 from pynotf.structured_value import StructuredValue
@@ -106,6 +107,12 @@ Coord2D = StructuredValue(coord2d_element)
 
 
 class TestCase(unittest.TestCase):
+
+    def setUp(self):
+        logging.disable(logging.CRITICAL)
+
+    def tearDown(self):
+        logging.disable(logging.NOTSET)
 
     def test_publisher_schema(self):
         publisher = NumberPublisher()
