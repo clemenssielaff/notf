@@ -326,6 +326,14 @@ class Pipeline(Subscriber, Publisher):
 Additional Thoughts
 ===================
 
+
+Faulty Reasoning
+================
+*WARNING!* The chapters below are only kept as reference of what doesn't make sense, so that I can look them up once I
+re-discover the "brilliant" idea underlying each one. 
+Each chapter has a closing paragraph on why it actually doesn't work.
+
+
 Scheduling
 ----------
 When the application executor schedules a new value to be published, it could determine the effect of the change by
@@ -352,4 +360,10 @@ this solution does not work in the general case, as can be seen with the followi
 In order to guarantee the minimum amount of work, we will need a scheduler.
 However, this is an optimization only - even the worst possible execution order will still produce the correct result
 eventually.
+
+Except...
+None of this makes sense in the context of streams. Every single value is as important as the next one and if D receives
+two downstream values from A, so be it. The order of values may change (which is it's very own topic discussed in the
+application logic), but that's why we pass the direct upstream publisher alongside the value: to allow the subscriber to
+apply an order per publisher on the absolute order in which it receives values.
 """
