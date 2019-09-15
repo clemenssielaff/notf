@@ -24,14 +24,14 @@ class Publisher:
         - When you add another qualifier (like "Value"), you end up with "ObservableValue" and "ValueObserver". Or
           "ValuedObservable" and "ValueObserver" if you want to keep the "Value" part up front. Both solutions are
           inferior to "ValuePublisher" and "ValueSubscriber", two words that look distinct from each other and do not
-          need any grammatical artistry to make sense.
+          require grammatical artistry to make sense.
         - Lastly, with "Observable" and "Observer", there is only one verb you can use to describe what they are doing:
           "to observe" / "to being observed" (because what else can they do?). This leads to incomprehensible sentences
-          like: "All Observers contain strong references to the Observables they observe, each Observer can observe
-          multiple Observables while each Observable can be observed by multiple Observers".
-          The same sentence with the notf naming of Publisher / Subscriber: "All Subscribers contain strong references
-          to the Publishers they subscribe to, each Subscriber can subscribe to multiple Publishers while each Publisher
-          can publish to multiple Subscribers". It's not great prose either way, but at least the second version doesn't
+          like: "All Observables contain weak references to each Observer that observes them, each Observer can observe
+          multiple Observables while each Observables can be observed by multiple Observers".
+          The same sentence using the terms Publisher and Subscriber: "All Publishers contain weak references to each
+          Subscriber they publish to, each Subscriber can subscribe to multiple Publishers while each Publisher can
+          publish to multiple Subscribers". It's not great prose either way, but at least the second version doesn't
           make me want to change my profession.
     I am aware that the Publish-subscribe pattern (https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) is
     generally understood to mean something different. And while I can understand that all easy names are already used in
@@ -170,7 +170,7 @@ class Publisher:
 
 class Subscriber(metaclass=ABCMeta):
     """
-    Subscribers contain strong references to the Publishers they subscribe to.
+    Subscribers do not keep track of the Publishers they subscribe to.
     An Subscriber can be subscribed to multiple Publishers.
     """
 
@@ -327,15 +327,70 @@ Additional Thoughts
 ===================
 
 
-Faulty Reasoning
-================
-*WARNING!* The chapters below are only kept as reference of what doesn't make sense, so that I can look them up once I
-re-discover the "brilliant" idea underlying each one. 
-Each chapter has a closing paragraph on why it actually doesn't work.
+Ownership
+---------
+In the Publisher-Subscriber relationship, who owns who? Clearly, the Publisher must have a set (or list) of weak or
+strong references to all of its Subscribers, but do Subscribers need to know their Publishers? And if so, do they need
+to keep them alive? 
+
+After some back and forth I now think that Subscribers do not need to know about the Publishers they are subscribed to. 
+If a Publisher goes out of scope, the Subscriber will receive a completed or failure message and that's that. The 
+Publishers in turn do not own their Subscribers either. If a Subscriber drops, the Publisher will simply remove it and 
+carry on. This puts the responsibility of ownership on entities outside the Publisher-Subscriber module. 
 
 
 Scheduling
 ----------
+TODO: wherein we discuss that Publishers don't actually publish but only manage a list of Subscribers, while the 
+publishing aspect is the domain of a Scheduler. Maybe we can even remove the three golden methods: publish, error, and
+complete?
+
+
+Propagation halting
+-------------------
+Now that we can be certain that the order in which Subscribers are notified of an update is not (completely) random,
+we can think about how basic events like a mouse click are propagated in the system. Previously, I had dedicated Event
+objects that were given to each applicable Widget in stack-order, with higher Widgets receiving the event first and
+lower Widgets later. Every Widget could "accept" the Event, which would set a flag on the Event object itself notifying
+later Widgets that the Event was already handled and that they don't have to act if they don't want to. 
+
+Here are some ways we could achieve the same using the current setup:
+    1. Subscribers.on_next return a boolean letting the Scheduler know whether to continue propagating the event or not.
+    2. Let Subscribers return the Event object, optionally modified.
+    3. Add a mutable extra-argument where the state of the Event can be changed, so the Value itself remains immutable.
+    4. Have a global / ApplicationLogic / Graph state for the currently handled Event that can be modified.
+
+Discussion:
+    1. Easy but does not allow handled Events to be propagated. If you want a foreground button and a nice background 
+       effect whenever you click on the button, the button must know it and return "False" even though the Event was 
+       handled by it, just so that the background still receives the Event. If another button moves in between the first
+       and the background, it will not know that the Event was handled. A nightmare. Declined. 
+    2. This is actually really interesting... You could, for example, strip or add modifier keys to a mouse click on a
+       part of a Widget that lies on top of another one, so the lower Widget would then receive the modified Event 
+       instead. This is truly general and since Values are shared pointers anyway, should also be really cheap to return
+       unmodified values. And it's not like you can return just anything, a Value can only be modified within its Schema
+       so the "type" of Value will stay the same.
+    3. This would work. Instead of the Publisher that publishes the value, we can pass a structure that has 
+       additional mutable and immutable information, like the publisher that published the value, but also whether or 
+       not the event was accepted. It would be nice to generalize this approach though, so we don't have to encode
+       event acceptance into the Scheduler. Previously, this was part of the Event class, which is nice because if you
+       want a different kind of behavior (maybe an event that can actually be blocked), you just add it to the specific
+       Event type. But maybe handled or not is general enough?
+    4. Possible, but each with drawbacks. A global state is easily accessible but does not work with multiple instances.
+       ApplicationLogic and Graph both require the Subscriber to keep a reference to them, even though they are hardly
+       ever used.
+It appears number 2 is the winner here.
+
+
+Dead Ends
+=========
+*WARNING!* 
+The chapters below are only kept as reference of what doesn't make sense, so that I can look them up once I re-discover 
+the "brilliant" idea underlying each one. Each chapter has a closing paragraph on why it actually doesn't work.
+
+
+Scheduling (Dead End)
+---------------------
 When the application executor schedules a new value to be published, it could determine the effect of the change by
 traversing the dependency DAG prior to the actual change. Take the following DAG topology:
 

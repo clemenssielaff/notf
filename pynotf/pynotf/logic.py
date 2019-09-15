@@ -196,8 +196,19 @@ and do not carry any additional state beyond that of what any Publisher has.
 Slots however can (and often will) require a strong reference to the Widget that they live on. What now if we face
 problem 1 from the chapter "Logic Modifications" and Widget B removes Widget C and vice-versa? 
 
-quick: maybe Widgets can only be scheduled for destruction but not immediately destroyed. 
+It is clear that an immediate removal is out of the question (see above). We still need to remove them, but only when it
+is absolutely safe to do so. And the only time during an update process when it is safe to do so is at the very end.
+At the moment, the Widget is flagged for deletion, a strong reference to it is added to a set of "to delete" Widgets in
+the Graph. Then, at the very end of the update, we discard every Widget that has an ancestor in the "to delete" set and
+delete the rest. This way, we keep the re-layouting to a minimum. 
 
+Note that it is not possible to check whether a Widget is going to be removed at the end of the update process or not,
+even though such a method would be easy enough to implement. The problem is the same as with an immediate removal. 
+Depending on the execution order, the flag of Widget A would either say "this Widget is going to be deleted" if B 
+was updated first or "this Widget is not scheduled for removal" if A is updated first. The result is not wrong, but
+essentially useless.
+The same goes for anything else that might be used as "removal light", like removing the Widget as child of the parent
+so it does not get found anymore when the hierarchy is traversed.
 
 Properties
 ----------
