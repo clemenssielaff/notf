@@ -339,29 +339,29 @@ Publishers in turn do not own their Subscribers either. If a Subscriber drops, t
 carry on. This puts the responsibility of ownership on entities outside the Publisher-Subscriber module. 
 
 
-Scheduling
-----------
-TODO: wherein we discuss that Publishers don't actually publish but only manage a list of Subscribers, while the 
-publishing aspect is the domain of a Scheduler. Maybe we can even remove the three golden methods: publish, error, and
-complete?
+Propagated Data & Metadata
+--------------------------
+At some point I decided that the only thing to be handed out by Publishers should be StructuredValues to allow complete
+introspection of the system and to not have any types that are only accessible from C++, for example. This works fine,
+as long as the only thing that got passed around is pure, immutable data. Immutable being the weight bearing word here.
 
+Then it came time to think about how basic basic events like a mouse click are propagated in the system. In previous 
+versions, I had taken the Qt approach of using dedicated Event objects that were given to each applicable Widget in 
+draw stack-order, with higher Widgets receiving the event first and lower Widgets later. Every Widget could "accept" the
+Event, which would set a flag on the Event object itself notifying later Widgets that the Event was already handled and 
+that they don't have to act if they don't want to. 
+This of course requires the given data to be mutable, which isn't possible with StructuredValues.
 
-Propagation halting
--------------------
-Now that we can be certain that the order in which Subscribers are notified of an update is not (completely) random,
-we can think about how basic events like a mouse click are propagated in the system. Previously, I had dedicated Event
-objects that were given to each applicable Widget in stack-order, with higher Widgets receiving the event first and
-lower Widgets later. Every Widget could "accept" the Event, which would set a flag on the Event object itself notifying
-later Widgets that the Event was already handled and that they don't have to act if they don't want to. 
-
-Here are some ways we could achieve the same using the current setup:
-    1. Subscribers.on_next return a boolean letting the Scheduler know whether to continue propagating the event or not.
-    2. Let Subscribers return the Event object, optionally modified.
-    3. Add a mutable extra-argument where the state of the Event can be changed, so the Value itself remains immutable.
+Here a (hopefully) comprehensive list of solutions to the problem:
+    1.`Subscriber.on_next` could return a bool to let the Scheduler know if it should continue propagating the event.
+    2.`Subscriber.on_next` could return the (optionally modified) Value to propagate further.
+    3. Add a mutable extra-argument to `Subscriber.on_next`, so the Value itself remains immutable.
     4. Have a global / ApplicationLogic / Graph state for the currently handled Event that can be modified.
+    5. Allow non-Value propagation and simply propagate classic Event objects.
+    6. Make Event handling a separate "thing" from the Application Logic, effectively sidestepping the problem.
 
 Discussion:
-    1. Easy but does not allow handled Events to be propagated. If you want a foreground button and a nice background 
+    1. Easy, but does not allow handled Events to be propagated. If you want a foreground button and a nice background 
        effect whenever you click on the button, the button must know it and return "False" even though the Event was 
        handled by it, just so that the background still receives the Event. If another button moves in between the first
        and the background, it will not know that the Event was handled. A nightmare. Declined. 
@@ -370,6 +370,12 @@ Discussion:
        instead. This is truly general and since Values are shared pointers anyway, should also be really cheap to return
        unmodified values. And it's not like you can return just anything, a Value can only be modified within its Schema
        so the "type" of Value will stay the same.
+       However, it is really easy to mess around with the Event handling to a point where pinpointing errors could 
+       become a hassle. There is no mechanism protecting handled Events to become unhandled again since Values do not
+       encode any internal logic. Additionally, this would have to be the general case, where each Subscriber would need
+       to return the Value even if no Event handling is happening. And since Subscribers (in the general case) are 
+       called in essentially random order, passing on a possibly modified value from one to the next is a potential
+       debugging nightmare.
     3. This would work. Instead of the Publisher that publishes the value, we can pass a structure that has 
        additional mutable and immutable information, like the publisher that published the value, but also whether or 
        not the event was accepted. It would be nice to generalize this approach though, so we don't have to encode
@@ -379,11 +385,135 @@ Discussion:
     4. Possible, but each with drawbacks. A global state is easily accessible but does not work with multiple instances.
        ApplicationLogic and Graph both require the Subscriber to keep a reference to them, even though they are hardly
        ever used.
-It appears number 2 is the winner here.
+    5. I wanted to avoid that in the general case, because it would be nice to a have a Logic DAG consisting of only 
+       data flow, no additional logic encapsulated within the data, only in the Operators. Then again, allowing other 
+       types than StructuredValues to be passed isn't really a "new" concept, it is more a generalization of an existing
+       one. It won't even change the behavior much, because Schemas act as quasi-typing for StructuredValues and so you
+       were never allowed to just connect any two arbitrary Publisher/Subscriber pairs anyway. 
+    6. Intriguing, but this would add yet another concept whereas I am trying to reduce the number of different concepts
+       that make up the system.
 
+Decision:
+    This was a tough one. I stared out liking option 3 a lot, then number 2 until I realized how brittle that would be,
+    then switched to number 5 as the "sane" default option that only required me to give up the impossible idea of
+    building the Application Logic using only StructuredValues and Operators. However, I have since gotten around to 
+    favor number 3 again, hopefully for good this time.
+    Here is the problem with number 5: It is probably the best solution for this special case: handling a well-defined
+    (in this case a mouse-click) problem by introducing a new, well defined type is a straight-forward approach for 
+    every object oriented programmer. But it requires Subscribers and Publishers that are both aware of the type and 
+    know how to work with it. This if fine in this example alone, but the more I thought about it, the more I realized
+    that we would need a truly general solution.
+    
+    To illustrate the problem, let's take the simple example from above: a simple mouse click should be propagated to 
+    all Widgets that are interested in its effects. To make things interesting, the click can either be a single mouse 
+    click or the second click in a double-click event! Here is the Application Logic that I originally envisioned:
+
+                                                 +---------------+
+                                                 |    Filter     |
+                                                 | Single Click  |
+                                                 | ------------- |    +-------------- +
+                                              +---> Click Value  |    |  Distributor  |
+        +-------------+    +---------------+  |  |   & count     |    | Single Click  |
+        |    Fact     |    |   Operator    |  |  | ------------- |    | ------------- |
+        | Mouse Click |    | Click Counter |  |  |   Click Value +-----> Click Value  |           +------------+
+        | ----------- |    | ------------- |  |  +---------------+    | ------------- |           |            |
+        | Click Value +-----> Click Value  |  |                       |   Click Event +------------> Widget 1  |
+        +-------------+    | ------------- |  |                       +---------------+        |  |            |
+                           |   Click Value +--+                                                |  +------------+
+                           |    & count    |  |  +---------------+                             |
+                           +---------------+  |  |    Filter     |                             |  +------------+
+                                              |  | Double Click  |                             +--->           |
+                                              |  | ------------- |    +---------------------+     |  Widget 2  |
+                                              +---> Click Value  |    |     Distributor     |  +--->           |
+                                                 |   & count     |    |     Double Click    |  |  +------------+
+                                                 | ------------- |    | ------------------- |  |
+                                                 |   Click Value +-----> Click Value        |  |  +------------+
+                                                 +---------------+    | ------------------- |  |  |            |
+                                                                      |  Double Click Event +------> Widget 3  |
+                                                                      +---------------------+     |            |
+                                                                                                  +------------+
+
+    At the beginning, there is the simple Fact that a mouse click has occurred, alongside some additional information
+    like the position of the cursor and the button that was clicked. Whenever a click happens, it flows immediately into
+    the "Click Counter" Operator that counts the number of clicks within a given time in the past and adds that number
+    to the Click Value. Downstream of the counter, we have two filters that check the click count number, strip it from
+    the output Value and fire only if it is a single click or a second click respectively. Both filters then flow into
+    a dedicated Distributor each, which turns the Click Value into a (Double) Click Event and propagates it to the 
+    interested Widgets according to their draw order. Widget 1 is only interested in single click events, Widget 3 only 
+    in double-clicks and Widget 2 in both.
+    Looks good so far. We could even easily add a triple-click event and wouldn't have to change the existing network
+    at all. What this story misses however, is that we don't get "click" messages, we only get "mouse up" messages. This
+    only translates into a "click" if the mouse wasn't moved while it was down ... or is it a "click" regardless? What
+    if the mouse was held down for a significant amount of time? Maybe to select a span in a playing audio file? Is this
+    a click as well?
+    The problem is that there are many different ways to interpret a system event like a "mouse up" and not all of them
+    are as cleanly cut as "is this the second click in the last x milliseconds". In the example, there was a dedicated 
+    Operator to count clicks. This seems fairly general. But what about an Operator to decide whether this was a click, 
+    a gesture, etc? Suddenly, this Operator has a lot of logic inside, written as code. This is not the general solution 
+    that we want. 
+    What we need here is an "Ordered X-OR" Operator, or however you want to call it. It is a way to make sure that of n 
+    different Operators, at most one will actually generate a Value -- or in terms of the example: a mouse up event is 
+    either a click, the end of a drag, the end of a gesture or something else. But it should not be more than one of 
+    these things. The Operator keeps its Subscribers ordered in a list and the first Subscriber to report that it has
+    successfully accepted the Value, is the last one to receive it... sounds familiar. So maybe we should add another
+    type, something like "Pre-Event", since at this point, the "mouse up" isn't yet what we called an Event earlier?
+    Of course, we'd need a dedicated Operator to spit out these "Pre-Event" values and all of the Subscribers need to
+    accept them.
+    ... At this point I realized that option number 5 was a dead end as well.
+    Which finally brings us to:
+
+Meta Data:
+    Early on, when designing a reactive module, I decided that Publishers should always pass their `this` pointer 
+    alongside the published value, for identification purposes only. This way the Subscriber was free to sort values
+    from different Publishers into different Buckets for example, and concatenate all of them when each Publisher had
+    completed. I don't really know how else to implement this feature and it seems like a straightforward, easy and
+    cheap thing to do.
+    With the need for some kind of feedback from the Subscriber back to the Publisher, I think I have found yet another
+    use-case for meta data to accompany any published value that will be ignored by some/most, but offers indispensable
+    features to others. And instead of adding yet another argument to the `Subscriber.on_next` function, it seems 
+    reasonable to replace the const pointer back to the Publisher, with a mutable reference to what we shall call Meta 
+    Data. So far, it consists of only two things:
+        1. Some kind of ID that uniquely identifies the Publisher from all other possible Publishers that the Subscriber
+           might subscribe to. This ID is constant. It can be the memory address of the Publisher or some other integer.
+        2. A flag or enum that describes the status of this publishing process. It can either be:
+            UNHANDLED:
+            HANDLED:   
+            NONBLOCKABLE:
+     
+
+Application Logic
+-----------------
+
+
+
+                                         +---------------+
+                                         |    Filter     |
+                                         | Single Click  |
+                                         | ------------- |    +-------------- +
+                                      +---> Click Value  |    |  Distributor  |
++-------------+    +---------------+  |  |   & count     |    | Single Click  |
+|    Fact     |    |   Operator    |  |  | ------------- |    | ------------- |
+| Mouse Click |    | Click Counter |  |  |   Click Value +-----> Click Value  |           +------------+
+| ----------- |    | ------------- |  |  +---------------+    | ------------- |           |            |
+| Click Value +-----> Click Value  |  |                       |   Click Event +------------> Widget 1  |
++-------------+    | ------------- |  |                       +---------------+        |  |            |
+                   |   Click Value +--+                                                |  +------------+
+                   |    & count    |  |  +---------------+                             |
+                   +---------------+  |  |    Filter     |                             |  +------------+
+                                      |  | Double Click  |                             +--->           |
+                                      |  | ------------- |    +---------------------+     |  Widget 2  |
+                                      +---> Click Value  |    |     Distributor     |  +--->           |
+                                         |   & count     |    |     Double Click    |  |  +------------+
+                                         | ------------- |    | ------------------- |  |
+                                         |   Click Value +-----> Click Value        |  |  +------------+
+                                         +---------------+    | ------------------- |  |  |            |
+                                                              |  Double Click Event +------> Widget 3  |
+                                                              +---------------------+     |            |
+                                                                                          +------------+
+ 
 
 Dead Ends
-=========
+========= ==============================================================================================================
 *WARNING!* 
 The chapters below are only kept as reference of what doesn't make sense, so that I can look them up once I re-discover 
 the "brilliant" idea underlying each one. Each chapter has a closing paragraph on why it actually doesn't work.
@@ -421,4 +551,5 @@ None of this makes sense in the context of streams. Every single value is as imp
 two downstream values from A, so be it. The order of values may change (which is it's very own topic discussed in the
 application logic), but that's why we pass the direct upstream publisher alongside the value: to allow the subscriber to
 apply an order per publisher on the absolute order in which it receives values.
+
 """
