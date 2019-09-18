@@ -1,5 +1,6 @@
 from typing import List, Optional, Iterable, Any, Tuple
 from abc import ABCMeta, abstractmethod
+from enum import Enum, auto
 import logging
 from traceback import format_exc
 from weakref import ref as weak
@@ -39,6 +40,85 @@ class Publisher:
     relationship is an apt analogy to what is really happening in code (more so than observable-observer).
     </rant>
     """
+
+    class Signal:
+        """
+        Whenever a Publisher publishes a new Value, it passes along a "Signal" object containing additional information
+        about the source of the Signal and whether or not it can be blocked from being propagated further.
+        The Signal acts as meta-data, which provides essential information for some kind of Operators and the
+        Application Logic.
+
+        The "source" of the Signal is the Publisher that published the Value to the Subscriber. Since a Subscriber is
+        free to subscribe to any number of different Publishers, and the Value itself does not encode where it was
+        generated, without the source it would be impossible for example to have an Operator that collects values from
+        multiple Publishers in a list each until they complete and then publishes a single concatenated Value.
+
+        The "status" of the Signal is relevant for distributing Operators, for example one that propagates a mouse click
+        to all Widgets at that location, in the draw order from top to bottom. The first Widget to accept the click
+        would set the status from "unhandled" to "accepted", notifying later widgets that they should not act unless the
+        programmer chooses to do so regardless. A "blocked" status signifies to the distributing Operator, that it
+        should halt further propagation and return immediately, if for example we want to put a grey overlay over a
+        Widget to signify that this part of the interface has been temporarily disabled without explicitly adding a
+        disabled-state to the lower Widgets.
+        Most Signals are "unblockable", meaning that the Subscriber is unable to interfere with their propagation.
+        """
+
+        class Status(Enum):
+            """
+            Status of the Signal with the following state transition diagram:
+                --> Unhandled --> Accepted --> Blocked
+                        |                        ^
+                        +------------------------+
+                --> Unblockable
+            """
+            UNBLOCKABLE = 0
+            UNHANDLED = auto()
+            ACCEPTED = auto()
+            BLOCKED = auto()
+
+        def __init__(self, publisher: 'Publisher', is_blockable: bool = False):
+            self._publisher: Publisher = publisher
+            self._status: Publisher.Signal.Status = self.Status.UNHANDLED if is_blockable else self.Status.UNBLOCKABLE
+
+        @property
+        def source(self) -> int:
+            """
+            Numeric ID of the publisher that published the value.
+            """
+            return id(self._publisher)
+
+        def is_blockable(self) -> bool:
+            """
+            Checks if this Signal could be blocked. Note that this also returns true if the Signal has already been
+            blocked and blocking it again would have no effect.
+            """
+            return self._status != self.Status.UNBLOCKABLE
+
+        def is_accepted(self) -> bool:
+            """
+            Returns true iff this Signal is blockable and has been accepted.
+            """
+            return self._status in (self.Status.ACCEPTED, self.Status.BLOCKED)
+
+        def is_blocked(self) -> bool:
+            """
+            Returns true iff this Signal is blockable and has been blocked.
+            """
+            return self._status == self.Status.BLOCKED
+
+        def accept(self):
+            """
+            If this Signal is blockable and has not been accepted yet, mark it as accepted.
+            """
+            if self._status == self.Status.UNHANDLED:
+                self._status = self.Status.ACCEPTED
+
+        def block(self):
+            """
+            If this Signal is blockable and has not been blocked yet, mark it as blocked.
+            """
+            if self._status in (self.Status.UNHANDLED, self.Status.ACCEPTED):
+                self._status = self.Status.BLOCKED
 
     def __init__(self, schema: StructuredValue.Schema = StructuredValue.Schema()):
         """
@@ -88,8 +168,7 @@ class Publisher:
         if value.schema != self.output_schema:
             raise TypeError("Publisher cannot publish a value with the wrong Schema")
 
-        for subscriber in self._iter_subscribers():
-            subscriber.on_next(self, value)
+        self._publish(value)
 
     def error(self, exception: Exception):
         """
@@ -98,8 +177,9 @@ class Publisher:
         """
         logging.error(format_exc())
 
+        signal = Publisher.Signal(self, is_blockable=False)
         for subscriber in self._iter_subscribers():
-            subscriber.on_error(self, exception)
+            subscriber.on_error(signal, exception)
 
         self._complete()
 
@@ -107,8 +187,9 @@ class Publisher:
         """
         Completes the Publisher successfully.
         """
+        signal = Publisher.Signal(self, is_blockable=False)
         for subscriber in self._iter_subscribers():
-            subscriber.on_complete(self)
+            subscriber.on_complete(signal)
 
         self._complete()
 
@@ -117,6 +198,16 @@ class Publisher:
         Returns true iff the Publisher has been completed, either through an error or normally.
         """
         return self._is_completed
+
+    def _publish(self, value: StructuredValue = StructuredValue()):
+        """
+        Default publishing method.
+        Produces an unblockable Signal and makes no guarantees about the order of Subscribers published to.
+        :param value: Value to publish, can be empty if this Publisher does not publish a meaningful value.
+        """
+        signal = Publisher.Signal(self, is_blockable=False)
+        for subscriber in self._iter_subscribers():
+            subscriber.on_next(signal, value)
 
     def _subscribe(self, subscriber: 'Subscriber'):
         """
@@ -128,7 +219,7 @@ class Publisher:
             raise TypeError("Cannot subscribe to an Publisher with a different Schema")
 
         if self._is_completed:
-            subscriber.on_complete(self)
+            subscriber.on_complete(Publisher.Signal(self))
 
         else:
             weak_subscriber = weak(subscriber)
@@ -193,26 +284,26 @@ class Subscriber(metaclass=ABCMeta):
         return self._input_schema
 
     @abstractmethod
-    def on_next(self, publisher: Publisher, value: Optional[StructuredValue]):
+    def on_next(self, signal: Publisher.Signal, value: Optional[StructuredValue]):
         """
         Abstract method called by any upstream Publisher.
-        :param publisher    The Publisher publishing the value, for identification purposes only.
-        :param value        Published value, can be None.
+        :param signal   The Signal associated with this call.
+        :param value    Published value, can be None.
         """
         pass
 
-    def on_error(self, publisher: Publisher, exception: BaseException):
+    def on_error(self, signal: Publisher.Signal, exception: BaseException):
         """
         Default implementation of the "error" method: does nothing.
-        :param publisher:   The failed Publisher, for identification purposes only.
+        :param signal   The Signal associated with this call.
         :param exception:   The exception that has occurred.
         """
         pass
 
-    def on_complete(self, publisher: Publisher):
+    def on_complete(self, signal: Publisher.Signal):
         """
         Default implementation of the "complete" operation, does nothing.
-        :param publisher:   The completed Publisher, for identification purposes only.
+        :param signal   The Signal associated with this call.
         """
         pass
 
@@ -232,20 +323,20 @@ class Subscriber(metaclass=ABCMeta):
         publisher._unsubscribe(self)
 
 
-class Pipeline(Subscriber, Publisher):
+class Operator(Subscriber, Publisher):
     """
-    A Pipeline is a sequence of Operations that are applied to an input value.
+    A Operator is a sequence of Operations that are applied to an input value.
     Not every input is guaranteed to produce an output as Operations are free to store or ignore input values.
     If an Operation returns a value, it is passed on to the next Operation. The last Operation publishes the value to
-    all Subscribers of the Pipeline. If an Operation does not return a value, the following Operations are not called
+    all Subscribers of the Operator. If an Operation does not return a value, the following Operations are not called
     and no new value is published.
-    If an Operation throws an exception, the Pipeline will fail as a whole.
-    Operations are not able to complete the Pipeline, other than through failure.
+    If an Operation throws an exception, the Operator will fail as a whole.
+    Operations are not able to complete the Operator, other than through failure.
     """
 
     class Operation(metaclass=ABCMeta):
         """
-        Operations are Functors that can be part of a Pipeline.
+        Operations are Functors that can be part of a Operator.
         """
 
         @property
@@ -276,9 +367,9 @@ class Pipeline(Subscriber, Publisher):
 
     def __init__(self, *operations: Operation):
         if len(operations) == 0:
-            raise ValueError("Cannot create a Pipeline without a single Operation")
+            raise ValueError("Cannot create a Operator without a single Operation")
 
-        self._operations: Tuple[Pipeline.Operation] = operations
+        self._operations: Tuple[Operator.Operation] = operations
         """
         Tuple of Operations in order of execution.
         """
@@ -289,22 +380,22 @@ class Pipeline(Subscriber, Publisher):
     @property
     def input_schema(self) -> StructuredValue.Schema:
         """
-        The Schema of the input value of the Pipeline.
+        The Schema of the input value of the Operator.
         """
         return self._operations[0].input_schema
 
     @property
     def output_schema(self) -> StructuredValue.Schema:
         """
-        The Schema of the output value of the Pipeline.
+        The Schema of the output value of the Operator.
         """
         return self._operations[-1].output_schema
 
-    def on_next(self, publisher: Publisher, value: Optional[StructuredValue] = None):
+    def on_next(self, signal: Publisher.Signal, value: Optional[StructuredValue] = None):
         """
         Abstract method called by any upstream Publisher.
-        :param publisher   The Publisher publishing the value, for identification purposes only.
-        :param value        Published value, can be None.
+        :param signal   The Signal associated with this call.
+        :param value    Published value, can be None.
         """
         self.publish(value)
 
@@ -339,7 +430,7 @@ Publishers in turn do not own their Subscribers either. If a Subscriber drops, t
 carry on. This puts the responsibility of ownership on entities outside the Publisher-Subscriber module. 
 
 
-Propagated Data & Metadata
+Propagated Data & Signal
 --------------------------
 At some point I decided that the only thing to be handed out by Publishers should be StructuredValues to allow complete
 introspection of the system and to not have any types that are only accessible from C++, for example. This works fine,
@@ -462,7 +553,7 @@ Decision:
     ... At this point I realized that option number 5 was a dead end as well.
     Which finally brings us to:
 
-Meta Data:
+Signal:
     Early on, when designing a reactive module, I decided that Publishers should always pass their `this` pointer 
     alongside the published value, for identification purposes only. This way the Subscriber was free to sort values
     from different Publishers into different Buckets for example, and concatenate all of them when each Publisher had
@@ -471,14 +562,25 @@ Meta Data:
     With the need for some kind of feedback from the Subscriber back to the Publisher, I think I have found yet another
     use-case for meta data to accompany any published value that will be ignored by some/most, but offers indispensable
     features to others. And instead of adding yet another argument to the `Subscriber.on_next` function, it seems 
-    reasonable to replace the const pointer back to the Publisher, with a mutable reference to what we shall call Meta 
-    Data. So far, it consists of only two things:
+    reasonable to replace the const pointer back to the Publisher with a mutable reference to what we shall call Signal. 
+    So far, it consists of only two things:
         1. Some kind of ID that uniquely identifies the Publisher from all other possible Publishers that the Subscriber
            might subscribe to. This ID is constant. It can be the memory address of the Publisher or some other integer.
-        2. A flag or enum that describes the status of this publishing process. It can either be:
-            UNHANDLED:
-            HANDLED:   
-            NONBLOCKABLE:
+        2. An enum that describes the Status of the Signal, encapsulated in an object to ensure that it follows the 
+           state transition diagram outlined below:
+            
+            --> Unhandled --> Handled --> Blocked 
+                    |                        ^
+                    +------------------------+
+                    
+            --> Unblockable
+
+           The Status always starts out as either "Unhandled" or "Unblockable", with "Unblockable" being the default.
+           An unblockable Signal cannot be stopped and calls to `set_handled()` or `block()` are ignored. If the Status
+           starts out as "Unhandled", then each Subscriber is free to mark the Status as handled or blocked. A handled
+           Signal is usually propagated further (depending on how the Publisher chooses to interpret what "handled" 
+           means in its specific use-case), whereas the Subscriber that marks its Signal as being blocked, is the last
+           one to receive it.  
      
 
 Application Logic

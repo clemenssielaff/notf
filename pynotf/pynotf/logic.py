@@ -212,6 +212,6 @@ so it does not get found anymore when the hierarchy is traversed.
 
 Properties
 ----------
-Widget Properties are Pipelines. Instead of having a fixed min- or max or validation function, we can simply define them
-as Pipelines with a list of Operations that are applied to each new input.
+Widget Properties are Operators. Instead of having a fixed min- or max or validation function, we can simply define them
+as Operators with a list of Operations that are applied to each new input.
 """

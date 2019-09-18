@@ -1,7 +1,7 @@
 import unittest
 import logging
 from typing import ClassVar, Optional, List
-from pynotf.reactive import Pipeline, Subscriber, Publisher
+from pynotf.reactive import Operator, Subscriber, Publisher
 from pynotf.structured_value import StructuredValue
 
 
@@ -10,7 +10,7 @@ class NumberPublisher(Publisher):
         Publisher.__init__(self, StructuredValue(0).schema)
 
 
-class AddConstant(Pipeline.Operation):
+class AddConstant(Operator.Operation):
     _schema: ClassVar[StructuredValue.Schema] = StructuredValue(0).schema
 
     def __init__(self, addition: float):
@@ -28,7 +28,7 @@ class AddConstant(Pipeline.Operation):
         return value.modified().set(value.as_number() + self._constant)
 
 
-class GroupTwo(Pipeline.Operation):
+class GroupTwo(Operator.Operation):
     _input_schema: ClassVar[StructuredValue.Schema] = StructuredValue(0).schema
     _output_prototype: ClassVar[StructuredValue] = StructuredValue({"x": 0, "y": 0})
 
@@ -52,7 +52,7 @@ class GroupTwo(Pipeline.Operation):
             return result
 
 
-class ErrorOperator(Pipeline.Operation):
+class ErrorOperator(Operator.Operation):
     """
     An Operation that raises a ValueError if a certain number is passed.
     """
@@ -79,17 +79,19 @@ class Recorder(Subscriber):
     def __init__(self, schema: StructuredValue.Schema):
         super().__init__(schema)
         self.values: List[StructuredValue] = []
-        self.completed: List[Publisher] = []
+        self.signals: List[Publisher.Signal] = []
+        self.completed: List[int] = []
 
-    def on_next(self, publisher: Publisher, value: Optional[StructuredValue] = None):
+    def on_next(self, signal: Publisher.Signal, value: StructuredValue):
         self.values.append(value)
+        self.signals.append(signal)
 
-    def on_complete(self, publisher: Publisher):
-        Subscriber.on_complete(self, publisher)  # just for coverage
-        self.completed.append(publisher)
+    def on_complete(self, signal: Publisher.Signal):
+        Subscriber.on_complete(self, signal)  # just for coverage
+        self.completed.append(signal.source)
 
 
-def record(publisher: [Publisher, Pipeline]) -> Recorder:
+def record(publisher: [Publisher, Operator]) -> Recorder:
     recorder = Recorder(publisher.output_schema)
     recorder.subscribe_to(publisher)
     return recorder
@@ -187,14 +189,14 @@ class TestCase(unittest.TestCase):
         not_a_subscriber = Recorder(publisher.output_schema)
         not_a_subscriber.unsubscribe_from(publisher)
 
-    def test_simple_pipeline(self):
+    def test_simple_operator(self):
         """
         0, 1, 2, 3 -> 7, 8, 9, 10 -> (7, 8), (9, 10)
         """
         publisher = NumberPublisher()
-        pipeline = Pipeline(AddConstant(7), GroupTwo())
-        pipeline.subscribe_to(publisher)
-        recorder = record(pipeline)
+        operator = Operator(AddConstant(7), GroupTwo())
+        operator.subscribe_to(publisher)
+        recorder = record(operator)
 
         for x in range(4):
             publisher.publish(StructuredValue(x))
@@ -203,24 +205,24 @@ class TestCase(unittest.TestCase):
         for index, value in enumerate(recorder.values):
             self.assertEqual(expected[index], (value["x"].as_number(), value["y"].as_number()))
 
-    def test_pipeline_error(self):
-        pipeline = Pipeline(ErrorOperator(4))
-        recorder = record(pipeline)
+    def test_operator_error(self):
+        operator = Operator(ErrorOperator(4))
+        recorder = record(operator)
 
         # it's not the ErrorOperator that fails, but trying to publish another value
         with self.assertRaises(RuntimeError):
             for x in range(10):
-                pipeline.publish(x)
-        self.assertTrue(pipeline.is_completed())
+                operator.publish(x)
+        self.assertTrue(operator.is_completed())
 
         expected = [0, 1, 2, 3]
         self.assertEqual(len(recorder.values), len(expected))
         for i in range(len(expected)):
             self.assertEqual(expected[i], recorder.values[i].as_number())
 
-    def test_no_empty_pipeline(self):
+    def test_no_empty_operator(self):
         with self.assertRaises(ValueError):
-            _ = Pipeline()
+            _ = Operator()
 
     def test_subscriber_lifetime(self):
         publisher: Publisher = NumberPublisher()
@@ -254,3 +256,91 @@ class TestCase(unittest.TestCase):
 
         publisher.complete()
         self.assertEqual(len(publisher._subscribers), 0)
+
+    def test_signal_source(self):
+        pub1: Publisher = NumberPublisher()
+        pub2: Publisher = NumberPublisher()
+        sub = record(pub1)
+        sub.subscribe_to(pub2)
+
+        pub1.publish(1)
+        pub1.publish(2)
+        pub2.publish(1)
+        pub1.publish(3)
+        pub2.publish(2000)
+
+        self.assertEqual([value.as_number() for value in sub.values], [1, 2, 1, 3, 2000])
+        self.assertEqual([signal.source for signal in sub.signals], [id(pub1), id(pub1), id(pub2), id(pub1), id(pub2)])
+
+    def test_signal_status(self):
+        class Ignore(Recorder):
+            """
+            Records the value if it has not been accepted yet, but doesn't modify the Signal.
+            """
+
+            def __init__(self):
+                Recorder.__init__(self, StructuredValue(0).schema)
+
+            def on_next(self, signal: Publisher.Signal, value: StructuredValue):
+                if signal.is_blockable() and not signal.is_accepted():
+                    Recorder.on_next(self, signal, value)
+
+        class Accept(Recorder):
+            """
+            Always records the value, and accepts the Signal.
+            """
+
+            def __init__(self):
+                Recorder.__init__(self, StructuredValue(0).schema)
+
+            def on_next(self, signal: Publisher.Signal, value: StructuredValue):
+                Recorder.on_next(self, signal, value)
+                if signal.is_blockable():
+                    signal.accept()
+
+        class Blocker(Recorder):
+            """
+            Always records the value, and blocks the Signal.
+            """
+
+            def __init__(self):
+                Recorder.__init__(self, StructuredValue(0).schema)
+
+            def on_next(self, signal: Publisher.Signal, value: StructuredValue):
+                Recorder.on_next(self, signal, value)
+                signal.block()
+                signal.block()  # again ... for coverage
+
+        class Distributor(NumberPublisher):
+            def _publish(self, value: StructuredValue = StructuredValue()):
+                signal: Publisher.Signal = Publisher.Signal(self, is_blockable=True)
+                for subscriber in self._iter_subscribers():
+                    if signal.is_blocked():
+                        break
+                    subscriber.on_next(signal, value)
+
+        distributor: Distributor = Distributor()
+        ignore1: Ignore = Ignore()  # records all values
+        accept1: Accept = Accept()  # records and accepts all values
+        ignore2: Ignore = Ignore()  # should not record any since all are accepted
+        accept2: Accept = Accept()  # should record the same as accept1
+        block1: Blocker = Blocker()  # should record the same as accept1
+        block2: Blocker = Blocker()  # should not record any values
+
+        # order matters here, as the subscribers are called in the order they subscribed
+        ignore1.subscribe_to(distributor)
+        accept1.subscribe_to(distributor)
+        ignore2.subscribe_to(distributor)
+        accept2.subscribe_to(distributor)
+        block1.subscribe_to(distributor)
+        block2.subscribe_to(distributor)
+
+        for x in range(1, 5):
+            distributor.publish(x)
+
+        self.assertEqual([value.as_number() for value in ignore1.values], [1, 2, 3, 4])
+        self.assertEqual([value.as_number() for value in accept1.values], [1, 2, 3, 4])
+        self.assertEqual([value.as_number() for value in ignore2.values], [])
+        self.assertEqual([value.as_number() for value in accept2.values], [1, 2, 3, 4])
+        self.assertEqual([value.as_number() for value in block1.values], [1, 2, 3, 4])
+        self.assertEqual([value.as_number() for value in block2.values], [])
