@@ -156,19 +156,46 @@ class Publisher:
         :raise TypeError: If the Value's Schema doesn't match.
         :raise RuntimeError: If the Publisher has already completed (either normally or though an error).
         """
+        # First, the Publisher needs to check if it is already completed. No point doing anything, if the Publisher is
+        # unable to publish anything. This should never happen, so raise an exception if it does.
         if self._is_completed:
             raise RuntimeError("Cannot publish from a completed Publisher")
 
+        # Check the given value to see if the Publisher is allowed to publish it. If it is not a StructuredValue, try to
+        # build one out of it. If that doesn't work, or the Schema of the StructuredValue does not match that of the
+        # Publisher, raise an exception.
         if not isinstance(value, StructuredValue):
             try:
                 value = StructuredValue(value)
             except ValueError:
                 raise TypeError("Publisher can only publish values that are implicitly convertible to StructuredValues")
-
         if value.schema != self.output_schema:
             raise TypeError("Publisher cannot publish a value with the wrong Schema")
 
-        self._publish(value)
+        # Without changing the order, remove all expired Subscribers and compile a list of strong references to the live
+        # Subscribers that will receive the published Value.
+        subscribers = []
+        for weak_subscriber in self._subscribers:
+            subscriber = weak_subscriber()
+            if subscriber is not None:
+                subscribers.append(subscriber)
+
+        # Call a virtual / template function that takes a mutable list of strong references to Subscribers and sorts
+        # them in place. This function should also return true if it changed the order and false if it didn't.
+        if self._sort_subscribers(subscribers) or len(subscribers) != len(self._subscribers):
+            # If the sorting function returns True, the Publisher takes the modified list an updates its own list of
+            # weak references with the new order in the hope that on the next publish, the list does not have to be
+            # sorted again.
+            self._subscribers = [weak(subscriber) for subscriber in subscribers]
+
+        # Publish from the local list of strong references that we know will stay alive. The member field may change
+        # during the iteration because some Subscriber downstream might add to the subscriptions or even unsubscribe
+        # other Subscribers, but those changes will not affect the current publishing process.
+        signal = Publisher.Signal(self, self._is_blockable())
+        for subscriber in subscribers:
+            subscriber.on_next(signal, value)
+            if signal.is_blocked():
+                break
 
     def error(self, exception: Exception):
         """
@@ -178,8 +205,10 @@ class Publisher:
         logging.error(format_exc())
 
         signal = Publisher.Signal(self, is_blockable=False)
-        for subscriber in self._iter_subscribers():
-            subscriber.on_error(signal, exception)
+        for weak_subscriber in self._subscribers:
+            subscriber = weak_subscriber()
+            if subscriber is not None:
+                subscriber.on_error(signal, exception)
 
         self._complete()
 
@@ -188,8 +217,10 @@ class Publisher:
         Completes the Publisher successfully.
         """
         signal = Publisher.Signal(self, is_blockable=False)
-        for subscriber in self._iter_subscribers():
-            subscriber.on_complete(signal)
+        for weak_subscriber in self._subscribers:
+            subscriber = weak_subscriber()
+            if subscriber is not None:
+                subscriber.on_complete(signal)
 
         self._complete()
 
@@ -199,15 +230,25 @@ class Publisher:
         """
         return self._is_completed
 
-    def _publish(self, value: StructuredValue = StructuredValue()):
+    @staticmethod
+    def _is_blockable() -> bool:
         """
-        Default publishing method.
-        Produces an unblockable Signal and makes no guarantees about the order of Subscribers published to.
-        :param value: Value to publish, can be empty if this Publisher does not publish a meaningful value.
+        Indicates whether a Signal from this Publisher can be blocked or not.
+        Overwrite this method in subclasses to modify the behavior of the `publish` method.
         """
-        signal = Publisher.Signal(self, is_blockable=False)
-        for subscriber in self._iter_subscribers():
-            subscriber.on_next(signal, value)
+        return False
+
+    @staticmethod
+    def _sort_subscribers(subscribers: List['Subscriber']) -> bool:
+        """
+        Some Publishers have to sort their Subscribers in a certain way before publishing a Value, but most do not care.
+        The default implementation only returns False, letting the publishing process know that the list of subscribers
+        was not modified.
+        Getting the return value wrong is not a critical error, but it will cause unnecessary work to happen.
+        @param subscribers: Mutable list of subscribers to be sorted.
+        @returns: True iff `subscribers` was modified, otherwise False.
+        """
+        return False
 
     def _subscribe(self, subscriber: 'Subscriber'):
         """
@@ -234,22 +275,6 @@ class Publisher:
         weak_subscriber = weak(subscriber)
         if weak_subscriber in self._subscribers:
             self._subscribers.remove(weak_subscriber)
-
-    def _iter_subscribers(self) -> Iterable['Subscriber']:
-        """
-        Generate all active Subscribers, while removing those that have expired (without changing the order).
-        """
-        assert (not self._is_completed)
-        for index, weak_subscriber in enumerate(self._subscribers):
-            subscriber = weak_subscriber()
-            while subscriber is None:
-                del self._subscribers[index]
-                if index < len(self._subscribers):
-                    subscriber = self._subscribers[index]()
-                else:
-                    break
-            else:
-                yield subscriber
 
     def _complete(self):
         """
@@ -391,17 +416,12 @@ class Operator(Subscriber, Publisher):
         """
         return self._operations[-1].output_schema
 
-    def on_next(self, signal: Publisher.Signal, value: Optional[StructuredValue] = None):
+    def on_next(self, signal: Publisher.Signal, value: StructuredValue):
         """
         Abstract method called by any upstream Publisher.
         :param signal   The Signal associated with this call.
         :param value    Published value, can be None.
         """
-        self.publish(value)
-
-    def publish(self, value: Optional[Any] = None):
-        if not (value is None or isinstance(value, StructuredValue)):
-            value = StructuredValue(value)
         try:
             for operation in self._operations:
                 value = operation(value)
@@ -410,7 +430,7 @@ class Operator(Subscriber, Publisher):
         except Exception as exception:
             self.error(exception)
 
-        Publisher.publish(self, value)
+        self.publish(value)
 
 
 """
@@ -583,35 +603,54 @@ Signal:
            one to receive it.  
      
 
-Application Logic
------------------
+Logic Modifications
+-------------------
+Unlike static DAGs, we allow Operators and other callbacks to modify the Logic "in flight", while an event is processed. 
+This can lead to several problems.
+Problem 1:
+    
+        +-> B 
+        |
+    A --+
+        |
+        +-> C
+    
+    Lets assume that B and C are Subscribers that are subscribed to updates from Publisher A. B reacts by removing C and
+    adding the string "B" to a log file, while C reacts by removing B and adding "C" to a log file. Depending on which 
+    Subscriber receives the update first, the log file with either say "B" _or_ "C". Since not all Publishers adhere to 
+    an order in their Subscribers, the result of this setup is essentially random.
 
+Problem 2:
+    
+    A +--> B
+      | 
+      +..> C
 
+    B is a Slot of a canvas-like Widget. Whenever the user clicks into the Widget, it will create a new child Widget C, 
+    which an also be clicked on. Whenever the user clicks on C, it disappears. The problem arises when B receives an 
+    update from A, creates C and immediately subscribes C to A. Let's assume that this does not cause a problem with A's
+    list of subscribers changing its size mid-iteration. It is fair to assume that C will be updated by A after B has 
+    been updated. Therefore, after B has been updated, the *same* click is immediately forwarded to C, which causes it 
+    to disappear. In effect, C will never show up.
 
-                                         +---------------+
-                                         |    Filter     |
-                                         | Single Click  |
-                                         | ------------- |    +-------------- +
-                                      +---> Click Value  |    |  Distributor  |
-+-------------+    +---------------+  |  |   & count     |    | Single Click  |
-|    Fact     |    |   Operator    |  |  | ------------- |    | ------------- |
-| Mouse Click |    | Click Counter |  |  |   Click Value +-----> Click Value  |           +------------+
-| ----------- |    | ------------- |  |  +---------------+    | ------------- |           |            |
-| Click Value +-----> Click Value  |  |                       |   Click Event +------------> Widget 1  |
-+-------------+    | ------------- |  |                       +---------------+        |  |            |
-                   |   Click Value +--+                                                |  +------------+
-                   |    & count    |  |  +---------------+                             |
-                   +---------------+  |  |    Filter     |                             |  +------------+
-                                      |  | Double Click  |                             +--->           |
-                                      |  | ------------- |    +---------------------+     |  Widget 2  |
-                                      +---> Click Value  |    |     Distributor     |  +--->           |
-                                         |   & count     |    |     Double Click    |  |  +------------+
-                                         | ------------- |    | ------------------- |  |
-                                         |   Click Value +-----> Click Value        |  |  +------------+
-                                         +---------------+    | ------------------- |  |  |            |
-                                                              |  Double Click Event +------> Widget 3  |
-                                                              +---------------------+     |            |
-                                                                                          +------------+
+There are multiple ways these problems could be addressed.
+Solution 1:
+    Have a Scheduler determine the order of all updates beforehand. During that step, all expired Subscribers are 
+    removed and a backup strong reference for all live Subscribers are stored in the Scheduler to ensure that they
+    survive (which mitigates Problem 1). Additionally, when new Subscribers are added to any Publisher during the update
+    process, they will not be part of the Scheduler and are simply not called.
+
+Solution 2:
+    A two-phase update. In phase 1, all Publishers weed out expired Subscribers and keep an internal copy of strong
+    references to all live ones. In phase 2, this copy is then iterated and any changes to the original list of
+    Subscribers do not affect the update process.
+
+Solution 3:
+    Do not allow the direct addition or removal ob subscriptions and instead record them in a buffer. This buffer is 
+    then executed at the end of the update process, cleanly separating the old and the new DAG state.
+
+I have opted for solution 2, which allows us to keep the scheduling of Subscribers contained within the individual
+Publisher directly upstream. In order to make this work, publishing becomes a bit more complicated but not by a lot. 
  
 
 Dead Ends

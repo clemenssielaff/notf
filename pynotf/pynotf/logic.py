@@ -4,7 +4,7 @@ from time import sleep
 import asyncio
 from functools import partial
 from pynotf.reactive import Subscriber, Publisher
-from pynotf.structured_value import StructuredValue as Value
+from pynotf.structured_value import StructuredValue
 
 
 class Executor:
@@ -50,41 +50,41 @@ class Fact(Publisher):
     Empty Fact act as a signal informing the logic that an event has occurred but without additional information.
     """
 
-    def __init__(self, executor: Executor, schema: Value.Schema = Value.Schema()):
+    def __init__(self, executor: Executor, schema: StructuredValue.Schema = StructuredValue.Schema()):
         Publisher.__init__(self, schema)
         self._executor: Executor = executor
 
-    def publish(self, value: Any = Value()):
+    def publish(self, value: Any = StructuredValue()):
         """
         Push the given value to all active Subscribers.
         :param value: Value to publish, can be empty if this Publisher does not publish a meaningful value.
         """
-        self._executor.call(Publisher.publish, self, value)
+        self._executor.schedule(Publisher.publish, self, value)
 
     def error(self, exception: Exception):
         """
         Failure method, completes the Publisher.
         :param exception:   The exception that has occurred.
         """
-        self._executor.call(Publisher.error, self)
+        self._executor.schedule(Publisher.error, self)
 
     def complete(self):
         """
         Completes the Publisher successfully.
         """
-        self._executor.call(Publisher.complete, self)
+        self._executor.schedule(Publisher.complete, self)
 
 
 class StringFact(Fact):
     def __init__(self, executor: Executor):
-        Fact.__init__(self, executor, Value("").schema)
+        Fact.__init__(self, executor, StructuredValue("").schema)
 
 
 class Printer(Subscriber):
     def __init__(self):
-        super().__init__(Value("").schema)
+        super().__init__(StructuredValue("").schema)
 
-    def on_next(self, publisher: Publisher, value: Value):
+    def on_next(self, publisher: Publisher, value: StructuredValue):
         print(value.as_string())
 
 
@@ -122,64 +122,6 @@ if __name__ == '__main__':
 Additional Thoughts
 ===================
 
-
-Logic Modifications
--------------------
-Unlike static DAGs, we allow Nodes to modify the DAG "in flight". That is, while an event is processed. This can lead to
-several problems.
-Problem 1:
-    
-        +-> B 
-        |
-    A --+
-        |
-        +-> C
-    
-    Lets assume that B and C are Nodes that are subscribed to updates from A. B reacts by removing C and adding "B" to a
-    log file, while C reacts by removing B and adding "C" to a log file. Depending on which Node receives the update
-    first, the log file with either say "B" _or_ "C". Since Publishers do not adhere to any order in their Subscribers,
-    the result of this setup is essentially random.
-
-Problem 2:
-    
-    A +--> B
-      | 
-      +..> C
-
-    B is a Node that represents a canvas-like Widget. Whenever the user clicks into the Widget, it will create a new 
-    child Widget C, which an also be clicked on. Whenever the user clicks on C, it disappears.
-    The problem arises when B receives an update from A, creates C and immediately subscribes C to A. Let's assume that
-    this does not cause a problem with A's list of subscribers changing its size mid-iteration. It is fair to assume
-    that C will be updated by A after B has been updated. Therefore, after B has been updated, the *same* click is 
-    immediately forwarded to C, which causes it to disappear. In effect, C will never show up.
-
-There are multiple ways these problems could be addressed.
-Solution 1:
-    Have a Scheduler determine the order of all updates beforehand. During that step, all expired Subscribers are 
-    removed and a backup strong reference for all live Subscribers are stored in the Scheduler to ensure that they
-    survive (which mitigates Problem 1). Additionally, when new Subscribers are added to any Publisher during the update
-    process, they will not be part of the Scheduler and are simply not called.
-
-Solution 2:
-    A two-phase update. In phase 1, all Publishers weed out expired Subscribers and keep an internal copy of strong
-    references to all live ones. In phase 2, this copy is then iterated and any changes to the original list of
-    Subscribers do not affect the update process.
-
-Solution 3:
-    Do not allow the direct addition or removal ob subscriptions and instead record them in a buffer. This buffer is 
-    then executed at the end of the update process, cleanly separating the old and the new DAG state.
-
-As far as I can see right now, solution 1 appears to be the best. It has no downsides compared to the other ones and
-centralizes the ordering of Subscribers in one place, which will also become very important when we start to think about
-event-like handling of updates, where earlier Subscribers can basically decide whether they want to "accept" the event,
-effectively stopping its further propagation, or if they want to pass it on to the next Subscriber.
-Solution 2 is similar to the first one, but it does not allow for a centralized scheduling and instead distributes the
-logic throughout all Subscribers. It also requires each Publisher to keep two lists of Subscribers around, which is
-wasteful.
-Solution 3 has the large disadvantage that objects are not ready to be interacted with at the point where they are
-created, because they are not - only the request to create them some time later. It would be possible to add additional
-methods to schedule a subscription to a yet-to-be created Publisher (for example) but that will get tedious fast and 
-does nothing for general scheduling.
 
 
 Widgets and Logic

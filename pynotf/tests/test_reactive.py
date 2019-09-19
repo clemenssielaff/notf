@@ -206,13 +206,15 @@ class TestCase(unittest.TestCase):
             self.assertEqual(expected[index], (value["x"].as_number(), value["y"].as_number()))
 
     def test_operator_error(self):
+        publisher = NumberPublisher()
         operator = Operator(ErrorOperator(4))
+        operator.subscribe_to(publisher)
         recorder = record(operator)
 
         # it's not the ErrorOperator that fails, but trying to publish another value
         with self.assertRaises(RuntimeError):
             for x in range(10):
-                operator.publish(x)
+                publisher.publish(x)
         self.assertTrue(operator.is_completed())
 
         expected = [0, 1, 2, 3]
@@ -255,6 +257,22 @@ class TestCase(unittest.TestCase):
         self.assertEqual(len(publisher._subscribers), 2)
 
         publisher.complete()
+        self.assertEqual(len(publisher._subscribers), 0)
+
+    def test_expired_subscriber_on_complete(self):
+        publisher: Publisher = NumberPublisher()
+        sub1 = record(publisher)
+        self.assertEqual(len(publisher._subscribers), 1)
+        del sub1
+        publisher.complete()
+        self.assertEqual(len(publisher._subscribers), 0)
+
+    def test_expired_subscriber_on_failure(self):
+        publisher: Publisher = NumberPublisher()
+        sub1 = record(publisher)
+        self.assertEqual(len(publisher._subscribers), 1)
+        del sub1
+        publisher.error(ValueError())
         self.assertEqual(len(publisher._subscribers), 0)
 
     def test_signal_source(self):
@@ -312,12 +330,9 @@ class TestCase(unittest.TestCase):
                 signal.block()  # again ... for coverage
 
         class Distributor(NumberPublisher):
-            def _publish(self, value: StructuredValue = StructuredValue()):
-                signal: Publisher.Signal = Publisher.Signal(self, is_blockable=True)
-                for subscriber in self._iter_subscribers():
-                    if signal.is_blocked():
-                        break
-                    subscriber.on_next(signal, value)
+            @staticmethod
+            def _is_blockable() -> bool:
+                return True
 
         distributor: Distributor = Distributor()
         ignore1: Ignore = Ignore()  # records all values
@@ -344,3 +359,106 @@ class TestCase(unittest.TestCase):
         self.assertEqual([value.as_number() for value in accept2.values], [1, 2, 3, 4])
         self.assertEqual([value.as_number() for value in block1.values], [1, 2, 3, 4])
         self.assertEqual([value.as_number() for value in block2.values], [])
+
+    def test_subscription_during_publish(self):
+        class SubscribeOther(Recorder):
+            """
+            Subscribes another Recorder when receiving a value.
+            """
+
+            def __init__(self, publisher: Publisher, other: Recorder):
+                Recorder.__init__(self, StructuredValue(0).schema)
+                self._publisher = publisher
+                self._other = other
+
+            def on_next(self, signal: Publisher.Signal, value: StructuredValue):
+                self._other.subscribe_to(self._publisher)
+                Recorder.on_next(self, signal, value)
+
+        pub: Publisher = NumberPublisher()
+        sub2 = Recorder(StructuredValue(0).schema)
+        sub1 = SubscribeOther(pub, sub2)
+        sub1.subscribe_to(pub)
+
+        self.assertEqual(len(sub1.values), 0)
+        self.assertEqual(len(sub2.values), 0)
+
+        self.assertEqual(len(pub._subscribers), 1)
+        pub.publish(45)
+        self.assertEqual(len(pub._subscribers), 2)
+        self.assertEqual(len(sub1.values), 1)
+        self.assertEqual(sub1.values[0].as_number(), 45)
+        self.assertEqual(len(sub2.values), 0)
+
+        pub.publish(89)
+        self.assertEqual(len(sub1.values), 2)
+        self.assertEqual(sub1.values[1].as_number(), 89)
+        self.assertEqual(len(sub2.values), 1)
+        self.assertEqual(sub2.values[0].as_number(), 89)
+
+    def test_unsubscribe_during_publish(self):
+        class UnsubscribeOther(Recorder):
+            """
+            Unsubscribes another Recorder when receiving a value.
+            """
+
+            def __init__(self, publisher: Publisher, other: Recorder):
+                Recorder.__init__(self, StructuredValue(0).schema)
+                self._publisher = publisher
+                self._other = other
+
+            def on_next(self, signal: Publisher.Signal, value: StructuredValue):
+                self._other.unsubscribe_from(self._publisher)
+                Recorder.on_next(self, signal, value)
+
+        pub: Publisher = NumberPublisher()
+        sub2 = Recorder(StructuredValue(0).schema)
+        sub1 = UnsubscribeOther(pub, sub2)
+        sub1.subscribe_to(pub)
+        sub2.subscribe_to(pub)
+
+        self.assertEqual(len(sub1.values), 0)
+        self.assertEqual(len(sub2.values), 0)
+
+        self.assertEqual(len(pub._subscribers), 2)
+        pub.publish(45)
+        self.assertEqual(len(pub._subscribers), 1)
+        self.assertEqual(len(sub1.values), 1)
+        self.assertEqual(sub1.values[0].as_number(), 45)
+        self.assertEqual(len(sub2.values), 1)
+        self.assertEqual(sub2.values[0].as_number(), 45)
+
+        pub.publish(89)
+        self.assertEqual(len(sub1.values), 2)
+        self.assertEqual(sub1.values[1].as_number(), 89)
+        self.assertEqual(len(sub2.values), 1)
+
+    def test_removal_during_publish(self):
+        class RemoveOther(Recorder):
+            """
+            Removes another Recorder when receiving a value.
+            """
+
+            def __init__(self, publisher: Publisher):
+                Recorder.__init__(self, StructuredValue(0).schema)
+                self._publisher = publisher
+                self._other = Recorder(StructuredValue(0).schema)
+                self._other.subscribe_to(self._publisher)
+
+            def on_next(self, signal: Publisher.Signal, value: StructuredValue):
+                self._other = None
+                Recorder.on_next(self, signal, value)
+
+        pub: Publisher = NumberPublisher()
+        sub = RemoveOther(pub)
+        sub.subscribe_to(pub)
+
+        self.assertEqual(len(pub._subscribers), 2)
+        pub.publish(30)
+        self.assertEqual(len(pub._subscribers), 2)  # although one of them should have expired by now
+
+        pub.publish(93)
+        self.assertEqual(len(pub._subscribers), 1)
+
+    def test_sorting(self):
+        pass
