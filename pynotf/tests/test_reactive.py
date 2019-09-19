@@ -1,5 +1,6 @@
 import unittest
 import logging
+from enum import Enum
 from typing import ClassVar, Optional, List
 from pynotf.reactive import Operator, Subscriber, Publisher
 from pynotf.structured_value import StructuredValue
@@ -461,4 +462,53 @@ class TestCase(unittest.TestCase):
         self.assertEqual(len(pub._subscribers), 1)
 
     def test_sorting(self):
-        pass
+        class NamedSubscriber(Subscriber):
+
+            class Status(Enum):
+                NOT_CALLED = 0
+                FIRST = 1
+                ACCEPTED = 2
+
+            def __init__(self, name: str):
+                Subscriber.__init__(self, StructuredValue(0).schema)
+                self.name: str = name
+                self.status = self.Status.NOT_CALLED
+
+            def on_next(self, signal: Publisher.Signal, value: StructuredValue):
+                if not signal.is_accepted():
+                    self.status = self.Status.FIRST
+                    signal.accept()
+                else:
+                    self.status = self.Status.ACCEPTED
+                    signal.block()
+
+        class SortByName(NumberPublisher):
+            @staticmethod
+            def _is_blockable() -> bool:
+                return True
+
+            @staticmethod
+            def _sort_subscribers(subscribers: List['Subscriber']) -> bool:
+                by_name = sorted(subscribers, key=lambda subscriber: subscriber.name)
+                was_changed = (by_name == subscribers)
+                subscribers.clear()
+                for new in by_name:
+                    subscribers.append(new)
+                return was_changed
+
+        a: NamedSubscriber = NamedSubscriber("a")
+        b: NamedSubscriber = NamedSubscriber("b")
+        c: NamedSubscriber = NamedSubscriber("c")
+        d: NamedSubscriber = NamedSubscriber("d")
+        subs = [c, b, a, d]
+
+        # subscribe in random order
+        pub: Publisher = SortByName()
+        for x in subs:
+            x.subscribe_to(pub)
+
+        pub.publish(938)
+        self.assertEqual(a.status, NamedSubscriber.Status.FIRST)
+        self.assertEqual(b.status, NamedSubscriber.Status.ACCEPTED)
+        self.assertEqual(c.status, NamedSubscriber.Status.NOT_CALLED)
+        self.assertEqual(d.status, NamedSubscriber.Status.NOT_CALLED)

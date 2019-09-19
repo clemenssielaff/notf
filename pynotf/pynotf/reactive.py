@@ -1,4 +1,4 @@
-from typing import List, Optional, Iterable, Any, Tuple
+from typing import List, Optional, Any, Tuple
 from abc import ABCMeta, abstractmethod
 from enum import Enum, auto
 import logging
@@ -96,7 +96,7 @@ class Publisher:
 
         def is_accepted(self) -> bool:
             """
-            Returns true iff this Signal is blockable and has been accepted.
+            Returns true iff this Signal is blockable and has been accepted or blocked.
             """
             return self._status in (self.Status.ACCEPTED, self.Status.BLOCKED)
 
