@@ -175,41 +175,19 @@ class Publisher:
         # Without changing the order, remove all expired Subscribers and compile a list of strong references to the live
         # Subscribers that will receive the published Value.
         subscribers = []
-        for weak_subscriber in self._subscribers:
-            subscriber = weak_subscriber()
+        valid_index = 0
+        for current_index in range(len(self._subscribers)):
+            subscriber = self._subscribers[current_index]()
             if subscriber is not None:
                 subscribers.append(subscriber)
-
-        # Call a virtual / template function that takes a mutable list of strong references to Subscribers and sorts
-        # them in place. This function should also return true if it changed the order and false if it didn't.
-        first_unsorted_index: int = self._sort_subscribers(subscribers)
-        if first_unsorted_index < 0 or len(subscribers) != len(self._subscribers):
-            # If the sorting function a negative number, or some Subscribers have expired, the Publisher takes the
-            # new list and update its own list of weak references with the new order in the hope that on the next
-            # publish, the list does not have to be sorted again
-            self._subscribers = [weak(subscriber) for subscriber in subscribers]
-            first_unsorted_index = abs(first_unsorted_index)
+                self._subscribers[valid_index] = self._subscribers[current_index]  # would be a move or swap in C++
+                valid_index += 1
+        self._subscribers = self._subscribers[:valid_index]
 
         # Publish from the local list of strong references that we know will stay alive. The member field may change
         # during the iteration because some Subscriber downstream might add to the subscriptions or even unsubscribe
         # other Subscribers, but those changes will not affect the current publishing process.
-
-        index: int = 0
-        if first_unsorted_index > 0:
-            # If the sorted function marked some Subscribers as "sorted", we can safely assume that they are ordered in
-            # a way to allow the Signal to be blocked
-            signal = Publisher.Signal(self, is_blockable=True)
-            while index < first_unsorted_index:
-                subscribers[index].on_next(signal, value)
-                if signal.is_blocked():
-                    return
-                index += 1
-
-        # unsorted Subscribers should not be able to block the publishing process
-        signal = Publisher.Signal(self, is_blockable=False)
-        while index < len(subscribers):
-            subscribers[index].on_next(signal, value)
-            index += 1
+        self._publish(subscribers, value)
 
     def error(self, exception: Exception):
         """
@@ -244,37 +222,22 @@ class Publisher:
         """
         return self._is_completed
 
-    def _sort_subscribers(self, subscribers: List['Subscriber']) -> int:
+    def _publish(self, subscribers: List['Subscriber'], value: StructuredValue):
         """
-        Some Publishers have to sort their Subscribers in a way defined by their subclass, before publishing a Value.
-        Most however, do not care.
-        The signature of this method is very specific and requires some explanation:
-            - This is a method, even though sorting through the list of Subscribers will most often not require any
-              additional data. However, it is conceivable that a Publisher might store additional data for each
-              Subscriber, which would only be accessible the the sorting function if it is a member function.
-            - We do a quite "unpythonic" thing here by modifying the argument in-place. It would be more pythonic to
-              return a new list, but if we did that, we might as well check whether the new list equals the old one in
-              Publisher.publish and I explicitly want to have all that logic happening in this method alone. In C++
-              though, this would be the default way to go anyway.
-            - The return integer fulfills two roles:
-              - The sign of the return integer signifies whether the given list of Subscribers was modified in place or
-                not. Getting the sign wrong is not a critical error, but it will cause unnecessary work to happen.
-              - The absolute integer is the number of items in the list that were sorted. This is because Publishers
-                may have Subscribers that cannot be sorted along those that can be. For example, a Publisher that sorts
-                Widget Slots by draw depth might also have a few Subscribers that are not Slots, have no Widget attached
-                and no draw order to sort by. These Subscribers are to be sorted at the end of the list and remain in an
-                essentially random order.
-                This way, we can have, for example, a mouse click that is
-                1. always published to interested Subscribers that simply subscribe to the Fact directly
-                2. published through a Distributor to the Slots that decide to accept and/or handle the Signal
-                3. and lastly published to all other (non-Slot) Subscribers, if the Signal was not blocked by one of the
-                   Slots in Step 2.
-        The default implementation does not modify the list of subscribers and returns 0, letting the publishing process
-        know that the list remains unordered.
-        @param subscribers: Mutable list of subscribers to be sorted.
-        @returns: Number of ordered elements at the beginning of the list, multiplied by -1 if the list was modified.
+        This method can be overwritten in subclasses to modify the publishing process.
+        At the point where this method is called, we have established that `value` can be published by this Publisher,
+        meaning its Schema matches the output Schema of this Publisher and the Publisher has not been completed. All
+        expired Subscribers have been removed from the subscriptions and the `subscribers` argument is a list of strong
+        references matching the `self._subscribers` weak list.
+        The default implementation of this method simply publishes an unblockable Signal to every Subscriber in order.
+        Subclasses can do further sorting and if they choose to, can re-apply that ordering to the `_subscribers`
+        member field in the hope to speed up sorting the same list in the future.
+        :param subscribers: List of Subscribers to publish to.
+        :param value: Value to publish.
         """
-        return 0
+        signal = Publisher.Signal(self, is_blockable=False)
+        for subscriber in subscribers:
+            subscriber.on_next(signal, value)
 
     def _subscribe(self, subscriber: 'Subscriber'):
         """

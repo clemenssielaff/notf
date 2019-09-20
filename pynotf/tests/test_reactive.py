@@ -331,8 +331,12 @@ class TestCase(unittest.TestCase):
                 signal.block()  # again ... for coverage
 
         class Distributor(NumberPublisher):
-            def _sort_subscribers(self, subscribers: List['Subscriber']) -> int:
-                return len(subscribers)
+            def _publish(self, subscribers: List['Subscriber'], value: StructuredValue):
+                signal = Publisher.Signal(self, is_blockable=True)
+                for subscriber in subscribers:
+                    subscriber.on_next(signal, value)
+                    if signal.is_blocked():
+                        return
 
         distributor: Distributor = Distributor()
         ignore1: Ignore = Ignore()  # records all values
@@ -482,7 +486,8 @@ class TestCase(unittest.TestCase):
                     signal.block()
 
         class SortByName(NumberPublisher):
-            def _sort_subscribers(self, subscribers: List['Subscriber']) -> int:
+
+            def _publish(self, subscribers: List['Subscriber'], value: StructuredValue):
                 # split the subscribers into sortable and un-sortable
                 named_subs = []
                 other_subs = []
@@ -492,14 +497,17 @@ class TestCase(unittest.TestCase):
                     else:
                         other_subs.append(sub)
 
-                # order the sortable subscribers
-                ordered_subs = sorted(named_subs, key=lambda x: x.name)
+                # publish to the sorted subscribers first
+                signal = Publisher.Signal(self, is_blockable=True)
+                for named_sub in sorted(named_subs, key=lambda x: x.name):
+                    named_sub.on_next(signal, value)
+                    if signal.is_blocked():
+                        return
 
-                # modify the argument list in place
-                subscribers.clear()
-                subscribers.extend(ordered_subs)
-                subscribers.extend(other_subs)
-                return len(named_subs)
+                # unsorted Subscribers should not be able to block the publishing process
+                signal = Publisher.Signal(self, is_blockable=False)
+                for other_sub in other_subs:
+                    other_sub.on_next(signal, value)
 
         a: NamedSubscriber = NamedSubscriber("a")
         b: NamedSubscriber = NamedSubscriber("b")
