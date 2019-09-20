@@ -7,7 +7,8 @@ from pynotf.reactive import Subscriber, Publisher
 from pynotf.structured_value import StructuredValue
 
 
-class Executor:
+class LogicExecutor:
+
     def __init__(self):
         self._loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
         self._lock: Lock = Lock()
@@ -15,7 +16,7 @@ class Executor:
         self._thread.start()
 
     def schedule(self, *args, **kwargs):
-        assert current_thread() != self._thread, "Do not call Executor.schedule from the Executor's own thread"
+        assert current_thread() != self._thread, "Do not call LogicExecutor.schedule from the Executor's own thread"
         with self._lock:
             if self._loop.is_running():
                 self._loop.call_soon_threadsafe(partial(*args, **kwargs))
@@ -36,9 +37,9 @@ class Executor:
 
 class Fact(Publisher):
     """
-    notf Facts represent changeable, external truths that the Executor logic can react to.
-    To the Executor logic they appear as simple Publishers that are owned and managed by a single Service in a
-    thread-safe fashion. The service will update the Fact as new information becomes available, completes the Fact's
+    Facts represent changeable, external truths that the Application Logic can react to.
+    To the Application Logic they appear as simple Publishers that are owned and managed by a single Service in a
+    thread-safe fashion. The Service will update the Fact as new information becomes available, completes the Fact's
     Publisher when the Service is stopped or the Fact has expired (for example, when a sensor is disconnected) and
     forwards appropriate exceptions to the Subscribers of the Fact should an error occur.
     Examples of Facts are:
@@ -46,13 +47,13 @@ class Fact(Publisher):
         - the user performed a mouse click (incl. position, button and modifiers)
         - the complete chat log
         - the expiration signal of a timer
-    Facts usually consist of a Value, but can also exist without one (in which case the None Value is used).
-    Empty Fact act as a signal informing the logic that an event has occurred but without additional information.
+    Facts consist of a Value, possibly the empty None Value. Empty Facts simply informing the logic that an event has
+    occurred without additional information.
     """
 
-    def __init__(self, executor: Executor, schema: StructuredValue.Schema = StructuredValue.Schema()):
+    def __init__(self, executor: LogicExecutor, schema: StructuredValue.Schema = StructuredValue.Schema()):
         Publisher.__init__(self, schema)
-        self._executor: Executor = executor
+        self._executor: LogicExecutor = executor
 
     def publish(self, value: Any = StructuredValue()):
         """
@@ -76,7 +77,7 @@ class Fact(Publisher):
 
 
 class StringFact(Fact):
-    def __init__(self, executor: Executor):
+    def __init__(self, executor: LogicExecutor):
         Fact.__init__(self, executor, StructuredValue("").schema)
 
 
@@ -85,12 +86,18 @@ class Printer(Subscriber):
         super().__init__(StructuredValue("").schema)
 
     def on_next(self, publisher: Publisher, value: StructuredValue):
-        print(value.as_string())
+        print("Immediate message: {}".format(value.as_string()))
+        asyncio.get_running_loop().create_task(print_delayed(value.as_string()))
+
+
+async def print_delayed(string: str):
+    await asyncio.sleep(0.5)
+    print(f"Delayed message: {string}")
 
 
 class Tester:
-    def __init__(self, app: Executor):
-        self._executor: Executor = app
+    def __init__(self, app: LogicExecutor):
+        self._executor: LogicExecutor = app
         self._thread: Thread = Thread(target=self._run)
         self._thread.start()
 
@@ -109,7 +116,7 @@ class Tester:
 
 if __name__ == '__main__':
     def main():
-        app = Executor()
+        app = LogicExecutor()
         tester = Tester(app)
         tester.join()
         app.stop()

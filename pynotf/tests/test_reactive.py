@@ -2,6 +2,7 @@ import unittest
 import logging
 from enum import Enum
 from typing import ClassVar, Optional, List
+from weakref import ref as weak
 from pynotf.reactive import Operator, Subscriber, Publisher
 from pynotf.structured_value import StructuredValue
 
@@ -496,10 +497,14 @@ class TestCase(unittest.TestCase):
                         named_subs.append(sub)
                     else:
                         other_subs.append(sub)
+                named_subs: List = sorted(named_subs, key=lambda x: x.name)
+
+                # re-apply the order back to the Publisher
+                self._sort_subscribers([subscribers.index(x) for x in (named_subs + other_subs)])
 
                 # publish to the sorted subscribers first
                 signal = Publisher.Signal(self, is_blockable=True)
-                for named_sub in sorted(named_subs, key=lambda x: x.name):
+                for named_sub in named_subs:
                     named_sub.on_next(signal, value)
                     if signal.is_blocked():
                         return
@@ -527,6 +532,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(c.status, NamedSubscriber.Status.NOT_CALLED)
         self.assertEqual(d.status, NamedSubscriber.Status.NOT_CALLED)
         self.assertEqual(len(e.values), 0)
+        self.assertEqual(pub._subscribers, [weak(x) for x in [a, b, c, d, e]])
 
         # delete all but b and reset
         del a
@@ -537,3 +543,21 @@ class TestCase(unittest.TestCase):
         pub.publish(34)
         self.assertEqual(b.status, NamedSubscriber.Status.FIRST)
         self.assertEqual(len(e.values), 1)
+
+    def test_apply_invalid_order(self):
+        pub = NumberPublisher()
+        _ = record(pub)
+        _ = record(pub)
+        _ = record(pub)
+
+        with self.assertRaises(RuntimeError):
+            pub._sort_subscribers([])  # empty
+        with self.assertRaises(RuntimeError):
+            pub._sort_subscribers([0, 1])  # too few indices
+        with self.assertRaises(RuntimeError):
+            pub._sort_subscribers([0, 1, 2, 3])  # too many indices
+        with self.assertRaises(RuntimeError):
+            pub._sort_subscribers([0, 1, 1])  # duplicate indices
+        with self.assertRaises(RuntimeError):
+            pub._sort_subscribers([1, 2, 3])  # wrong indices
+        pub._sort_subscribers([0, 1, 2])  # success

@@ -231,13 +231,26 @@ class Publisher:
         references matching the `self._subscribers` weak list.
         The default implementation of this method simply publishes an unblockable Signal to every Subscriber in order.
         Subclasses can do further sorting and if they choose to, can re-apply that ordering to the `_subscribers`
-        member field in the hope to speed up sorting the same list in the future.
+        member field in the hope to speed up sorting the same list in the future using the `_sort_subscribers` method.
         :param subscribers: List of Subscribers to publish to.
         :param value: Value to publish.
         """
         signal = Publisher.Signal(self, is_blockable=False)
         for subscriber in subscribers:
             subscriber.on_next(signal, value)
+
+    def _sort_subscribers(self, order: List[int]):
+        """
+        Changes the order of the Subscribers of this Publisher without giving write access to the `_subscribers` field.
+        Example: Given Subscribers [a, b, c], then calling `self._sort_subscribers([2, 0, 1])` will change the order
+        to [c, a, b]. Invalid orders will raise an exception.
+        :param order: New order of the subscribers.
+        :raise RuntimeError: If the given order is invalid.
+        """
+        if sorted(order) != list(range(len(self._subscribers))):
+            raise RuntimeError(f"Invalid order: {order} for a Publisher with {len(self._subscribers)} Subscribers")
+
+        self._subscribers = [self._subscribers[index] for index in order]
 
     def _subscribe(self, subscriber: 'Subscriber'):
         """
@@ -272,6 +285,8 @@ class Publisher:
         self._subscribers.clear()
         self._is_completed = True
 
+
+########################################################################################################################
 
 class Subscriber(metaclass=ABCMeta):
     """
@@ -336,6 +351,8 @@ class Subscriber(metaclass=ABCMeta):
         """
         publisher._unsubscribe(self)
 
+
+########################################################################################################################
 
 class Operator(Subscriber, Publisher):
     """
@@ -420,6 +437,9 @@ class Operator(Subscriber, Publisher):
             self.error(exception)
 
         self.publish(value)
+
+
+########################################################################################################################
 
 
 """
