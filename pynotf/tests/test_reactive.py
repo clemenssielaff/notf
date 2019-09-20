@@ -331,9 +331,8 @@ class TestCase(unittest.TestCase):
                 signal.block()  # again ... for coverage
 
         class Distributor(NumberPublisher):
-            @staticmethod
-            def _is_blockable() -> bool:
-                return True
+            def _sort_subscribers(self, subscribers: List['Subscriber']) -> int:
+                return len(subscribers)
 
         distributor: Distributor = Distributor()
         ignore1: Ignore = Ignore()  # records all values
@@ -483,32 +482,50 @@ class TestCase(unittest.TestCase):
                     signal.block()
 
         class SortByName(NumberPublisher):
-            @staticmethod
-            def _is_blockable() -> bool:
-                return True
+            def _sort_subscribers(self, subscribers: List['Subscriber']) -> int:
+                # split the subscribers into sortable and un-sortable
+                named_subs = []
+                other_subs = []
+                for sub in subscribers:
+                    if isinstance(sub, NamedSubscriber):
+                        named_subs.append(sub)
+                    else:
+                        other_subs.append(sub)
 
-            @staticmethod
-            def _sort_subscribers(subscribers: List['Subscriber']) -> bool:
-                by_name = sorted(subscribers, key=lambda subscriber: subscriber.name)
-                was_changed = (by_name == subscribers)
+                # order the sortable subscribers
+                ordered_subs = sorted(named_subs, key=lambda x: x.name)
+
+                # modify the argument list in place
                 subscribers.clear()
-                for new in by_name:
-                    subscribers.append(new)
-                return was_changed
+                subscribers.extend(ordered_subs)
+                subscribers.extend(other_subs)
+                return len(named_subs)
 
         a: NamedSubscriber = NamedSubscriber("a")
         b: NamedSubscriber = NamedSubscriber("b")
         c: NamedSubscriber = NamedSubscriber("c")
         d: NamedSubscriber = NamedSubscriber("d")
-        subs = [c, b, a, d]
+        e: Recorder = Recorder(StructuredValue(0).schema)
 
         # subscribe in random order
         pub: Publisher = SortByName()
-        for x in subs:
-            x.subscribe_to(pub)
+        for subscriber in (e, c, b, a, d):
+            subscriber.subscribe_to(pub)
+        del subscriber
 
         pub.publish(938)
         self.assertEqual(a.status, NamedSubscriber.Status.FIRST)
         self.assertEqual(b.status, NamedSubscriber.Status.ACCEPTED)
         self.assertEqual(c.status, NamedSubscriber.Status.NOT_CALLED)
         self.assertEqual(d.status, NamedSubscriber.Status.NOT_CALLED)
+        self.assertEqual(len(e.values), 0)
+
+        # delete all but b and reset
+        del a
+        b.status = NamedSubscriber.Status.NOT_CALLED
+        del c
+        del d
+
+        pub.publish(34)
+        self.assertEqual(b.status, NamedSubscriber.Status.FIRST)
+        self.assertEqual(len(e.values), 1)
