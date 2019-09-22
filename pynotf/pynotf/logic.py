@@ -1,6 +1,7 @@
-from threading import Thread, current_thread, Lock
+from threading import Thread
 from typing import Any
 from time import sleep
+from inspect import iscoroutine
 import asyncio
 from functools import partial
 from pynotf.reactive import Subscriber, Publisher
@@ -11,28 +12,44 @@ class LogicExecutor:
 
     def __init__(self):
         self._loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
-        self._lock: Lock = Lock()
         self._thread: Thread = Thread(target=self._run)
+        self._cancel_all = False
         self._thread.start()
 
-    def schedule(self, *args, **kwargs):
-        assert current_thread() != self._thread, "Do not call LogicExecutor.schedule from the Executor's own thread"
-        with self._lock:
-            if self._loop.is_running():
-                self._loop.call_soon_threadsafe(partial(*args, **kwargs))
+    def schedule(self, func):
+        if self._loop.is_running():
+            if iscoroutine(func):
+                self._loop.call_soon_threadsafe(partial(self._loop.create_task, func))
+            else:
+                self._loop.call_soon_threadsafe(func)
 
-    def stop(self):
-        with self._lock:
-            self._loop.call_soon_threadsafe(self._loop.stop)
-            self._thread.join()
+    def finish(self):
+        self.stop(force=False)
+
+    def stop(self, force=True):
+
+        async def _stop():
+            self._cancel_all = force
+            self._loop.stop()
+
+        self.schedule(_stop())
+        self._thread.join()
 
     def _run(self):
         asyncio.set_event_loop(self._loop)
         try:
             self._loop.run_forever()
         finally:
-            self._loop.run_until_complete(self._loop.shutdown_asyncgens())
-            self._loop.close()
+            pending_tasks = [task for task in asyncio.Task.all_tasks() if not task.done()]
+            if self._cancel_all:
+                for task in pending_tasks:
+                    task.cancel()
+            try:
+                self._loop.run_until_complete(asyncio.gather(*pending_tasks))
+            except asyncio.CancelledError:
+                pass
+            finally:
+                self._loop.close()
 
 
 class Fact(Publisher):
@@ -60,20 +77,20 @@ class Fact(Publisher):
         Push the given value to all active Subscribers.
         :param value: Value to publish, can be empty if this Publisher does not publish a meaningful value.
         """
-        self._executor.schedule(Publisher.publish, self, value)
+        self._executor.schedule(partial(Publisher.publish, self, value))
 
     def error(self, exception: Exception):
         """
         Failure method, completes the Publisher.
         :param exception:   The exception that has occurred.
         """
-        self._executor.schedule(Publisher.error, self)
+        self._executor.schedule(partial(Publisher.error, self))
 
     def complete(self):
         """
         Completes the Publisher successfully.
         """
-        self._executor.schedule(Publisher.complete, self)
+        self._executor.schedule(partial(Publisher.complete, self))
 
 
 class StringFact(Fact):
