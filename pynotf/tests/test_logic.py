@@ -1,53 +1,56 @@
 import unittest
 import logging
-import asyncio
 from enum import Enum
 from typing import ClassVar, Optional, List
 from weakref import ref as weak
-from pynotf.logic import Operator, Subscriber, Publisher, Executor, Fact
-from pynotf.structured_value import StructuredValue
-from time import sleep
+from pynotf.logic import Operator, Subscriber, Publisher
+from pynotf.value import Value
+from .utils import Recorder, record
 
+
+########################################################################################################################
+# TEST HELPER
+########################################################################################################################
 
 class NumberPublisher(Publisher):
     def __init__(self):
-        Publisher.__init__(self, StructuredValue(0).schema)
+        Publisher.__init__(self, Value(0).schema)
 
 
 class AddConstant(Operator.Operation):
-    _schema: ClassVar[StructuredValue.Schema] = StructuredValue(0).schema
+    _schema: ClassVar[Value.Schema] = Value(0).schema
 
     def __init__(self, addition: float):
         self._constant = addition
 
     @property
-    def input_schema(self) -> StructuredValue.Schema:
+    def input_schema(self) -> Value.Schema:
         return self._schema
 
     @property
-    def output_schema(self) -> StructuredValue.Schema:
+    def output_schema(self) -> Value.Schema:
         return self._schema
 
-    def __call__(self, value: StructuredValue) -> StructuredValue:
+    def __call__(self, value: Value) -> Value:
         return value.modified().set(value.as_number() + self._constant)
 
 
 class GroupTwo(Operator.Operation):
-    _input_schema: ClassVar[StructuredValue.Schema] = StructuredValue(0).schema
-    _output_prototype: ClassVar[StructuredValue] = StructuredValue({"x": 0, "y": 0})
+    _input_schema: ClassVar[Value.Schema] = Value(0).schema
+    _output_prototype: ClassVar[Value] = Value({"x": 0, "y": 0})
 
     def __init__(self):
         self._last_value: Optional[float] = None
 
     @property
-    def input_schema(self) -> StructuredValue.Schema:
+    def input_schema(self) -> Value.Schema:
         return self._input_schema
 
     @property
-    def output_schema(self) -> StructuredValue.Schema:
+    def output_schema(self) -> Value.Schema:
         return self._output_prototype.schema
 
-    def __call__(self, value: StructuredValue) -> Optional[StructuredValue]:
+    def __call__(self, value: Value) -> Optional[Value]:
         if self._last_value is None:
             self._last_value = value.as_number()
         else:
@@ -60,84 +63,36 @@ class ErrorOperator(Operator.Operation):
     """
     An Operation that raises a ValueError if a certain number is passed.
     """
-    _schema: ClassVar[StructuredValue.Schema] = StructuredValue(0).schema
+    _schema: ClassVar[Value.Schema] = Value(0).schema
 
     def __init__(self, err_on_number: float):
         self._err_on_number: float = err_on_number
 
     @property
-    def input_schema(self) -> StructuredValue.Schema:
+    def input_schema(self) -> Value.Schema:
         return self._schema
 
     @property
-    def output_schema(self) -> StructuredValue.Schema:
+    def output_schema(self) -> Value.Schema:
         return self._schema
 
-    def __call__(self, value: StructuredValue) -> Optional[StructuredValue]:
+    def __call__(self, value: Value) -> Optional[Value]:
         if value.as_number() == self._err_on_number:
             raise ValueError("The error condition has occurred")
         return value
-
-
-class Recorder(Subscriber):
-    def __init__(self, schema: StructuredValue.Schema):
-        super().__init__(schema)
-        self.values: List[StructuredValue] = []
-        self.signals: List[Publisher.Signal] = []
-        self.completed: List[int] = []
-        self.errors: List[BaseException] = []
-
-    def on_next(self, signal: Publisher.Signal, value: StructuredValue):
-        self.values.append(value)
-        self.signals.append(signal)
-
-    def on_error(self, signal: Publisher.Signal, exception: BaseException):
-        Subscriber.on_error(self, signal, exception)  # just for coverage
-        self.errors.append(exception)
-
-    def on_complete(self, signal: Publisher.Signal):
-        Subscriber.on_complete(self, signal)  # just for coverage
-        self.completed.append(signal.source)
-
-
-def record(publisher: [Publisher, Operator]) -> Recorder:
-    recorder = Recorder(publisher.output_schema)
-    recorder.subscribe_to(publisher)
-    return recorder
 
 
 class Nope:
     pass
 
 
-class IntFact(Fact):
-    def __init__(self, executor: Executor):
-        Fact.__init__(self, executor, StructuredValue(0).schema)
-
-
-async def add_delayed(state: List[int], number: int):
-    await asyncio.sleep(0.01)
-    state.append(number)
-
-
-def add_immediate(state: List[int], number: int):
-    state.append(number)
-
-
-async def fail_delayed():
-    await asyncio.sleep(0.01)
-    raise ValueError("Delayed fail")
-
-
-def fail_immediate():
-    raise ValueError("Immediate fail")
-
-
 coord2d_element = {"x": 0, "y": 0}
-Coord2D = StructuredValue(coord2d_element)
+Coord2D = Value(coord2d_element)
 
 
-#######################################################################################################################
+########################################################################################################################
+# TEST CASE
+########################################################################################################################
 
 
 class TestCase(unittest.TestCase):
@@ -150,26 +105,26 @@ class TestCase(unittest.TestCase):
 
     def test_publisher_schema(self):
         publisher = NumberPublisher()
-        self.assertEqual(publisher.output_schema, StructuredValue(0).schema)
+        self.assertEqual(publisher.output_schema, Value(0).schema)
 
     def test_publishing(self):
         publisher = NumberPublisher()
         recorder = record(publisher)
 
-        publisher.publish(StructuredValue(85))
+        publisher.publish(Value(85))
         self.assertEqual(len(recorder.values), 1)
         self.assertEqual(recorder.values[0].as_number(), 85)
 
-        publisher.publish(StructuredValue(254))
+        publisher.publish(Value(254))
         self.assertEqual(len(recorder.values), 2)
         self.assertEqual(recorder.values[1].as_number(), 254)
 
         with self.assertRaises(TypeError):
             publisher.publish(None)  # empty (wrong) schema
         with self.assertRaises(TypeError):
-            publisher.publish(StructuredValue(coord2d_element))  # wrong schema
+            publisher.publish(Value(coord2d_element))  # wrong schema
         with self.assertRaises(TypeError):
-            publisher.publish(Nope())  # not convertible to structured value
+            publisher.publish(Nope())  # not convertible to Value
 
         publisher.complete()
         with self.assertRaises(RuntimeError):
@@ -178,7 +133,7 @@ class TestCase(unittest.TestCase):
     def test_subscribing_with_wrong_schema(self):
         with self.assertRaises(TypeError):
             publisher = NumberPublisher()
-            subscriber = Recorder(StructuredValue("String").schema)
+            subscriber = Recorder(Value("String").schema)
             subscriber.subscribe_to(publisher)
 
     def test_subscribing_to_completed_publisher(self):
@@ -231,7 +186,7 @@ class TestCase(unittest.TestCase):
         recorder = record(operator)
 
         for x in range(4):
-            publisher.publish(StructuredValue(x))
+            publisher.publish(Value(x))
 
         expected = [(7, 8), (9, 10)]
         for index, value in enumerate(recorder.values):
@@ -329,9 +284,9 @@ class TestCase(unittest.TestCase):
             """
 
             def __init__(self):
-                Recorder.__init__(self, StructuredValue(0).schema)
+                Recorder.__init__(self, Value(0).schema)
 
-            def on_next(self, signal: Publisher.Signal, value: StructuredValue):
+            def on_next(self, signal: Publisher.Signal, value: Value):
                 if signal.is_blockable() and not signal.is_accepted():
                     Recorder.on_next(self, signal, value)
 
@@ -341,9 +296,9 @@ class TestCase(unittest.TestCase):
             """
 
             def __init__(self):
-                Recorder.__init__(self, StructuredValue(0).schema)
+                Recorder.__init__(self, Value(0).schema)
 
-            def on_next(self, signal: Publisher.Signal, value: StructuredValue):
+            def on_next(self, signal: Publisher.Signal, value: Value):
                 Recorder.on_next(self, signal, value)
                 if signal.is_blockable():
                     signal.accept()
@@ -354,15 +309,15 @@ class TestCase(unittest.TestCase):
             """
 
             def __init__(self):
-                Recorder.__init__(self, StructuredValue(0).schema)
+                Recorder.__init__(self, Value(0).schema)
 
-            def on_next(self, signal: Publisher.Signal, value: StructuredValue):
+            def on_next(self, signal: Publisher.Signal, value: Value):
                 Recorder.on_next(self, signal, value)
                 signal.block()
                 signal.block()  # again ... for coverage
 
         class Distributor(NumberPublisher):
-            def _publish(self, subscribers: List['Subscriber'], value: StructuredValue):
+            def _publish(self, subscribers: List['Subscriber'], value: Value):
                 signal = Publisher.Signal(self, is_blockable=True)
                 for subscriber in subscribers:
                     subscriber.on_next(signal, value)
@@ -402,16 +357,16 @@ class TestCase(unittest.TestCase):
             """
 
             def __init__(self, publisher: Publisher, other: Recorder):
-                Recorder.__init__(self, StructuredValue(0).schema)
+                Recorder.__init__(self, Value(0).schema)
                 self._publisher = publisher
                 self._other = other
 
-            def on_next(self, signal: Publisher.Signal, value: StructuredValue):
+            def on_next(self, signal: Publisher.Signal, value: Value):
                 self._other.subscribe_to(self._publisher)
                 Recorder.on_next(self, signal, value)
 
         pub: Publisher = NumberPublisher()
-        sub2 = Recorder(StructuredValue(0).schema)
+        sub2 = Recorder(Value(0).schema)
         sub1 = SubscribeOther(pub, sub2)
         sub1.subscribe_to(pub)
 
@@ -438,16 +393,16 @@ class TestCase(unittest.TestCase):
             """
 
             def __init__(self, publisher: Publisher, other: Recorder):
-                Recorder.__init__(self, StructuredValue(0).schema)
+                Recorder.__init__(self, Value(0).schema)
                 self._publisher = publisher
                 self._other = other
 
-            def on_next(self, signal: Publisher.Signal, value: StructuredValue):
+            def on_next(self, signal: Publisher.Signal, value: Value):
                 self._other.unsubscribe_from(self._publisher)
                 Recorder.on_next(self, signal, value)
 
         pub: Publisher = NumberPublisher()
-        sub2 = Recorder(StructuredValue(0).schema)
+        sub2 = Recorder(Value(0).schema)
         sub1 = UnsubscribeOther(pub, sub2)
         sub1.subscribe_to(pub)
         sub2.subscribe_to(pub)
@@ -475,12 +430,12 @@ class TestCase(unittest.TestCase):
             """
 
             def __init__(self, publisher: Publisher):
-                Recorder.__init__(self, StructuredValue(0).schema)
+                Recorder.__init__(self, Value(0).schema)
                 self._publisher = publisher
-                self._other = Recorder(StructuredValue(0).schema)
+                self._other = Recorder(Value(0).schema)
                 self._other.subscribe_to(self._publisher)
 
-            def on_next(self, signal: Publisher.Signal, value: StructuredValue):
+            def on_next(self, signal: Publisher.Signal, value: Value):
                 self._other = None
                 Recorder.on_next(self, signal, value)
 
@@ -504,11 +459,11 @@ class TestCase(unittest.TestCase):
                 ACCEPTED = 2
 
             def __init__(self, name: str):
-                Subscriber.__init__(self, StructuredValue(0).schema)
+                Subscriber.__init__(self, Value(0).schema)
                 self.name: str = name
                 self.status = self.Status.NOT_CALLED
 
-            def on_next(self, signal: Publisher.Signal, value: StructuredValue):
+            def on_next(self, signal: Publisher.Signal, value: Value):
                 if not signal.is_accepted():
                     self.status = self.Status.FIRST
                     signal.accept()
@@ -518,7 +473,7 @@ class TestCase(unittest.TestCase):
 
         class SortByName(NumberPublisher):
 
-            def _publish(self, subscribers: List['Subscriber'], value: StructuredValue):
+            def _publish(self, subscribers: List['Subscriber'], value: Value):
                 # split the subscribers into sortable and un-sortable
                 named_subs = []
                 other_subs = []
@@ -548,7 +503,7 @@ class TestCase(unittest.TestCase):
         b: NamedSubscriber = NamedSubscriber("b")
         c: NamedSubscriber = NamedSubscriber("c")
         d: NamedSubscriber = NamedSubscriber("d")
-        e: Recorder = Recorder(StructuredValue(0).schema)
+        e: Recorder = Recorder(Value(0).schema)
 
         # subscribe in random order
         pub: Publisher = SortByName()
@@ -592,93 +547,6 @@ class TestCase(unittest.TestCase):
             pub._sort_subscribers([1, 2, 3])  # wrong indices
         pub._sort_subscribers([0, 1, 2])  # success
 
-    def test_executor_stop(self):
-        state: List[int] = []
 
-        executor = Executor()
-        executor.schedule(add_delayed, state, 1)
-        executor.schedule(add_delayed, state, 2)
-        executor.schedule(add_immediate, state, 3)
-        executor.schedule(add_delayed, state, 4)
-        executor.schedule(add_immediate, state, 5)
-        executor.stop()
-        executor.schedule(add_delayed, state, 6)
-        executor.schedule(add_immediate, state, 7)
-        sleep(0.1)
-
-        # We call stop before any of the delayed functions have time to add to the state.
-        # Therefore only the immediate functions affect it, but only up to the point where we call `stop`
-        self.assertEqual(state, [3, 5])
-
-    def test_executor_finish(self):
-        state: List[int] = []
-
-        executor = Executor()
-        executor.schedule(add_delayed, state, 1)
-        executor.schedule(add_delayed, state, 2)
-        executor.schedule(add_immediate, state, 3)
-        executor.schedule(add_delayed, state, 4)
-        executor.schedule(add_immediate, state, 5)
-        executor.finish()
-        executor.schedule(add_delayed, state, 6)
-        executor.stop(force=False)
-        executor.schedule(add_immediate, state, 7)
-        sleep(0.1)
-
-        # Almost same as the test case above, but instead of calling `stop`, we call `finish`, which gives all running
-        # coroutines time to finish.
-        self.assertEqual(state, [3, 5, 1, 2, 4])
-
-    def test_executor_failure(self):
-        state: List[int] = []
-
-        executor = Executor()
-        original_handler = executor.exception_handler
-        executor.exception_handler = lambda: state.append(0 if original_handler() is None else 0)
-
-        executor.schedule(add_delayed, state, 1)
-        executor.schedule(add_immediate, state, 2)
-        executor.schedule(add_delayed, state, 3)
-        executor.schedule(fail_immediate)
-        executor.schedule(add_immediate, state, 4)
-        executor.schedule(add_delayed, state, 5)
-        executor.schedule(fail_delayed)
-        executor.finish()
-        executor.schedule(add_delayed, state, 6)
-        executor.schedule(fail_delayed)
-        executor.schedule(add_immediate, state, 7)
-        executor.schedule(fail_immediate)
-        sleep(0.1)
-
-        # Whenever an exception is encountered, we add a zero to the state but continue the execution.
-        self.assertEqual(state, [2, 0, 4, 1, 3, 5, 0])
-
-    def test_fact(self):
-        executor = Executor()
-
-        fact1 = IntFact(executor)
-        recorder1 = record(fact1)
-
-        fact2 = IntFact(executor)
-        recorder2 = record(fact2)
-        error = RuntimeError("Nope")
-
-        fact1.publish(2)
-        fact1.publish(7)
-        fact1.publish(-23)
-        fact1.complete()
-        fact1.publish(456)
-
-        fact2.publish(8234)
-        fact2.error(error)
-        fact2.publish(-6)
-
-        executor.finish()
-
-        values1 = [v.as_number() for v in recorder1.values]
-        self.assertEqual(values1, [2, 7, -23])
-        self.assertEqual(recorder1.completed, [id(fact1)])
-
-        values2 = [v.as_number() for v in recorder2.values]
-        self.assertEqual(values2, [8234])
-        self.assertEqual(recorder2.errors, [error])
+if __name__ == '__main__':
+    unittest.main()

@@ -1,6 +1,10 @@
 import unittest
 import sys
-from pynotf.structured_value import StructuredValue
+from pynotf.value import Value
+
+########################################################################################################################
+# TEST HELPER
+########################################################################################################################
 
 test_element = {
     "coords": [
@@ -28,24 +32,26 @@ test_element = {
         ["c", "d"],
     ],
 }
-test_value = StructuredValue(test_element)
-float_value = StructuredValue(42.24)
-string_value = StructuredValue("hello")
-none_value = StructuredValue()
+test_value = Value(test_element)
+float_value = Value(42.24)
+string_value = Value("hello")
+none_value = Value()
 
 
-#######################################################################################################################
+########################################################################################################################
+# TEST CASE
+########################################################################################################################
 
 
 class TestCase(unittest.TestCase):
     def test_check_kind(self):
-        self.assertEqual(StructuredValue.Kind.NONE, 0)
-        self.assertEqual(StructuredValue.Kind.LIST, sys.maxsize - 3)
-        self.assertEqual(StructuredValue.Kind.MAP, sys.maxsize - 2)
-        self.assertEqual(StructuredValue.Kind.NUMBER, sys.maxsize - 1)
-        self.assertEqual(StructuredValue.Kind.STRING, sys.maxsize - 0)
+        self.assertEqual(Value.Kind.NONE, 0)
+        self.assertEqual(Value.Kind.LIST, sys.maxsize - 3)
+        self.assertEqual(Value.Kind.MAP, sys.maxsize - 2)
+        self.assertEqual(Value.Kind.NUMBER, sys.maxsize - 1)
+        self.assertEqual(Value.Kind.STRING, sys.maxsize - 0)
 
-    def test_buffer(self):
+    def test_value(self):
         self.assertEqual(test_value._buffer,
                          [[2, [0.0, "SUCCESS", [1, 1]], [2.0, "Hello world", [2, 2, 3]]],
                           "Mr. Okay",
@@ -87,60 +93,61 @@ class TestCase(unittest.TestCase):
 """)
 
     def test_equality(self):
-        self.assertEqual(StructuredValue(StructuredValue.Schema()), none_value)
-        self.assertEqual(StructuredValue(test_element), test_value)
+        self.assertEqual(Value(Value.Schema()), none_value)
+        self.assertEqual(Value(test_element), test_value)
         self.assertNotEqual(none_value, test_value)
         self.assertNotEqual(none_value, None)
 
     def test_invalid_element(self):
         class Nope:
             pass
+
         with self.assertRaises(ValueError):
-            StructuredValue(Nope())
+            Value(Nope())
 
     def test_valid_lists(self):
-        StructuredValue([False, 1, 2.])  # list of numbers
-        StructuredValue(['a', "bee", r"""zebra"""])  # list of strings
-        StructuredValue([[1, 2], [3, 4]])  # lists of lists
-        StructuredValue([dict(a=1, b=2), dict(a=3, b=-4)])  # lists of dicts
+        Value([False, 1, 2.])  # list of numbers
+        Value(['a', "bee", r"""zebra"""])  # list of strings
+        Value([[1, 2], [3, 4]])  # lists of lists
+        Value([dict(a=1, b=2), dict(a=3, b=-4)])  # lists of dicts
 
     def test_invalid_lists(self):
         # list cannot be empty on creation
         with self.assertRaises(ValueError):
-            StructuredValue([])
+            Value([])
 
         # list elements must have the same output_schema
         with self.assertRaises(ValueError):
-            StructuredValue(['a', 2])
+            Value(['a', 2])
         with self.assertRaises(ValueError):
-            StructuredValue([[1, 2], ["a", "b"]])
+            Value([[1, 2], ["a", "b"]])
         with self.assertRaises(ValueError):
-            StructuredValue([dict(a=1, b=2), dict(a="1", b=2)])
+            Value([dict(a=1, b=2), dict(a="1", b=2)])
 
         # if the list contains maps, the maps must have the same keys
         with self.assertRaises(ValueError):
-            StructuredValue([dict(a=1, b=2), dict(a=1, c=3)])
+            Value([dict(a=1, b=2), dict(a=1, c=3)])
         with self.assertRaises(ValueError):
-            StructuredValue([dict(a=1, b=2), dict(a=1)])
+            Value([dict(a=1, b=2), dict(a=1)])
 
     def test_invalid_map(self):
         with self.assertRaises(ValueError):
-            StructuredValue(dict())  # maps cannot be empty
+            Value(dict())  # maps cannot be empty
         with self.assertRaises(ValueError):
-            StructuredValue({1: "nope"})  # maps keys must be of kind string
+            Value({1: "nope"})  # maps keys must be of kind string
 
-    def test_create_buffer_from_schema(self):
-        self.assertEqual(StructuredValue(test_value._schema)._buffer, [[], '', '', [], 0, 0, [], []])
+    def test_create_value_from_schema(self):
+        self.assertEqual(Value(test_value._schema)._buffer, [[], '', '', [], 0, 0, [], []])
 
     def test_kind(self):
-        self.assertEqual(none_value.kind, StructuredValue.Kind.NONE)
-        self.assertEqual(float_value.kind, StructuredValue.Kind.NUMBER)
-        self.assertEqual(string_value.kind, StructuredValue.Kind.STRING)
-        self.assertEqual(test_value.kind, StructuredValue.Kind.MAP)
+        self.assertEqual(none_value.kind, Value.Kind.NONE)
+        self.assertEqual(float_value.kind, Value.Kind.NUMBER)
+        self.assertEqual(string_value.kind, Value.Kind.STRING)
+        self.assertEqual(test_value.kind, Value.Kind.MAP)
 
     def test_keys(self):
         self.assertEqual(test_value.keys(), [key for key in test_element.keys()])
-        self.assertIsNone(StructuredValue(0).keys())
+        self.assertIsNone(Value(0).keys())
 
     def test_accessor_len(self):
         accessor = test_value["coords"]
@@ -199,12 +206,12 @@ class TestCase(unittest.TestCase):
         self.assertEqual(modified["name"].as_string(), "Mr. Okay")
 
     def test_change_subtree(self):
-        # change a list in the buffer
+        # change a list in the value
         modified = test_value.modified()["coords"].set([dict(x=42, someName="answer", number_list=[-1, -2])])
         self.assertEqual(len(modified["coords"]), 1)
         self.assertEqual(modified["coords"][0]["someName"].as_string(), "answer")
 
-        # change a map in the buffer
+        # change a map in the value
         modified = test_value.modified()["my_map"].set({"key": "changed",
                                                         "list_in_the_middle": ["I am a changed string"],
                                                         "a number": 124, })
@@ -315,3 +322,7 @@ class TestCase(unittest.TestCase):
         # set the list to empty
         modified = test_value.modified()["coords"].set([])
         self.assertEqual(len(modified["coords"]), 0)
+
+
+if __name__ == '__main__':
+    unittest.main()

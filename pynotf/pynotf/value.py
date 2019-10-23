@@ -5,7 +5,7 @@ from typing import NewType, List, Dict, Union, Optional, Sequence, Any
 
 Element = NewType('Element', Union[float, str, List["Element"], Dict[str, "Element"]])
 """
-The `Element` kind is a variant of the four data kinds that can be stored in a StructuredValue.
+The `Element` kind is a variant of the four data kinds that can be stored in a Value.
 It defines a single Element including all of its child Elements (if the parent Element is a List or a Map)
 """
 
@@ -58,7 +58,7 @@ def check_element(raw: Any, allow_empty_lists: bool) -> Element:
             elements[key] = check_element(element, allow_empty_lists)
         return elements
 
-    raise ValueError("Cannot construct a StructuredValue.Element from a {}".format(type(raw).__name__))
+    raise ValueError("Cannot construct a Value.Element from a {}".format(type(raw).__name__))
 
 
 class Kind(IntEnum):
@@ -115,7 +115,7 @@ class Kind(IntEnum):
 
 class Schema(tuple, Sequence[int]):
     """
-    A Schema describes how data of a StructuredValue instance is laid out in memory.
+    A Schema describes how data of a Value instance is laid out in memory.
     It is a simple list of integers, each integer either identifying a ground Element kind (like a number or string) or
     a forward offset to a container Element (like a list or map).
     """
@@ -123,7 +123,7 @@ class Schema(tuple, Sequence[int]):
     def __new__(cls, element: Optional[Element] = None):
         """
         Recursive, breadth-first assembly of a Schema for a given Element.
-        :returns: Schema describing how a StructuredValue containing the given Element would be laid out.
+        :returns: Schema describing how a Value containing the given Element would be laid out.
         """
         kind: Kind = Kind.from_element(element)
         schema: List[int] = []
@@ -232,7 +232,7 @@ class Schema(tuple, Sequence[int]):
 
 Buffer = List[Union[float, int, str, List['Buffer']]]
 """
-The Buffer is a list of Element that make up the data of a StructuredValue.
+The Buffer is a list of Element that make up the data of a Value.
 Note that buffers also contain integers as list/map sizes and offsets.
 """
 
@@ -305,9 +305,9 @@ def produce_buffer(source: Union[Schema, Element]) -> Buffer:
 
 Dictionary = Dict[str, Optional['Dictionary']]
 """
-A Dictionary can be attached to a StructuredValue to access Map entries by name.
+A Dictionary can be attached to a Value to access Map entries by name.
 The map keys are not part of the data as they are not mutable, much like a Schema.
-Unlike a Schema however, a Dictionary is not mandatory for a StructuredValue, as some might not contain maps.
+Unlike a Schema however, a Dictionary is not mandatory for a Value, as some might not contain maps.
 The Dictionary is also ignored when two Schemas are compared, meaning a map {x=float, y=float, z=float} will be 
 compatible to {r=float, g=float, b=float}.
 """
@@ -338,16 +338,16 @@ def produce_dictionary(element: Element) -> Optional[Dictionary]:
 
 class Accessor:
     """
-    Base class for both Reader and Writer accessors to a StructuredValue.
+    Base class for both Reader and Writer accessors to a Value.
     """
 
-    def __init__(self, value: 'StructuredValue'):
+    def __init__(self, value: 'Value'):
         """
-        :param value:   StructuredValue instance being accessed.
+        :param value:   Value instance being accessed.
         """
         self._value = value
         self._schema_itr: int = 0
-        # since the schema is constant, we store the StructuredValue itself instead of the schema as well as the
+        # since the schema is constant, we store the Value itself instead of the schema as well as the
         # offset, which also has the advantage that the value's buffer is needed for write operations anyway.
         # In order to access the schema, we use the private `_schema` property
 
@@ -361,7 +361,7 @@ class Accessor:
     @property
     def _schema(self) -> Schema:
         """
-        Private access to the constant schema of the iterated StructuredValue, just for readability.
+        Private access to the constant schema of the iterated Value, just for readability.
         """
         return self._value.schema
 
@@ -399,7 +399,7 @@ class Accessor:
 
     def __getitem__(self, key: Union[str, int]) -> Union['Accessor', 'Reader', 'Writer']:
         """
-        Getting an item from an Accessor with the [] operator returns a new, deeper Accessor into the StructuredValue.
+        Getting an item from an Accessor with the [] operator returns a new, deeper Accessor into the Value.
         In C++ we would differentiate between r-value and l-value overloads, the r-value one would modify itself while
         the l-value overload would produce a new Accessor as the Python implementation does.
         :param key: Index / Name of the value to access.
@@ -503,7 +503,7 @@ class Reader(Accessor):
 
 class Writer(Accessor):
     """
-    Writing to a StructuredValue creates a new StructuredValue referencing a new root buffer.
+    Writing to a Value creates a new Value referencing a new root buffer.
     The new root buffer contains as many references to the existing child-buffers, that are immutable, but in each
     level there can be (at most) one updated reference to a new buffer. An example:
 
@@ -529,9 +529,9 @@ class Writer(Accessor):
          B'    C'
     """
 
-    def __init__(self, value: 'StructuredValue'):
+    def __init__(self, value: 'Value'):
         """
-        :param value:   StructuredValue instance to modify.
+        :param value:   Value instance to modify.
         """
         super().__init__(value)
         self._path = [value._buffer]
@@ -540,7 +540,7 @@ class Writer(Accessor):
 
     def __getitem__(self, key: Union[str, int]) -> 'Writer':
         """
-        Getting an item from an Accessor with the [] operator returns a new, deeper Accessor into the StructuredValue.
+        Getting an item from an Accessor with the [] operator returns a new, deeper Accessor into the Value.
         :param key: Index / Name of the Element to access.
         :return: A new Accessor to the requested item.
         :raise KeyError: If the key does not identify an index in the current List / a key in the current Map.
@@ -553,9 +553,9 @@ class Writer(Accessor):
 
         return writer
 
-    def set(self, raw: Any) -> 'StructuredValue':
+    def set(self, raw: Any) -> 'Value':
         """
-        Creates a new StructuredValue with the minimal number of new sub-buffers.
+        Creates a new Value with the minimal number of new sub-buffers.
 
         :param raw: "Raw" new value to set.
         :raise ValueError: If `raw` cannot be converted to an Element.
@@ -605,17 +605,17 @@ class Writer(Accessor):
             old_parent_buffer = self._path[-1]
             new_buffer = [(x if x != old_buffer else new_buffer) for x in old_parent_buffer]
 
-        # create a new StructuredValue instance that references the updated buffer tree
-        result: StructuredValue = copy(self._value)
+        # create a new Value instance that references the updated buffer tree
+        result: Value = copy(self._value)
         result._buffer = new_buffer
         return result
 
 
-class StructuredValue:
+class Value:
     """
-    The StructuredValue contains a Buffer from which to read the data, a Schema describing the layout of the Buffer, and
+    The Value contains a Buffer from which to read the data, a Schema describing the layout of the Buffer, and
     an optional Dictionary to access Map entries by name.
-    Apart from a StructuredValue that contains one of the 4 Element types, you can also have an empty (None) value that
+    Apart from a Value that contains one of the 4 Element types, you can also have an empty (None) value that
     does not contain anything. It is not possible to have a None value nested inside another Value.
     """
 
@@ -625,8 +625,8 @@ class StructuredValue:
 
     def __init__(self, source: Any = None):
         """
-        :param source: Anything that can be used to create a new StructuredValue.
-        :raise ValueError: If `source` cannot be used to initialize a StructuredValue.
+        :param source: Anything that can be used to create a new Value.
+        :raise ValueError: If `source` cannot be used to initialize a Value.
         """
         # explict None
         if source is None:
@@ -651,7 +651,7 @@ class StructuredValue:
         assert schema is not None
         self._schema: Schema = schema
 
-        # Buffer storing the data of this StructuredValue.
+        # Buffer storing the data of this Value.
         assert buffer is not None
         self._buffer: Buffer = buffer
 
@@ -678,7 +678,7 @@ class StructuredValue:
 
     def keys(self) -> Optional[List[str]]:
         """
-        If the root Element of this StructuredValue is a Map, returns the available keys. If not, returns None.
+        If the root Element of this Value is a Map, returns the available keys. If not, returns None.
         """
         if self.kind != Kind.MAP:
             return None
@@ -686,7 +686,7 @@ class StructuredValue:
 
     def __getitem__(self, key: Union[str, int]) -> Reader:
         """
-        Read access to this StructuredValue instance via the [] operator.
+        Read access to this Value instance via the [] operator.
         """
         return Reader(self)[key]
 
@@ -726,7 +726,7 @@ class StructuredValue:
 
     def modified(self) -> Writer:
         """
-        Write access to this StructuredValue instance.
+        Write access to this Value instance.
         """
         return Writer(self)
 
@@ -743,8 +743,8 @@ changed. For example if you have a list "2ab" and want to add a "c" at the end, 
 before you can modify it to "3abc". The problem here is that we store the size of the list at the beginning.
 
 Instead, the size of the list should be stored in the buffer looking into the list (alternatively, you could also store
-the beginning and end of the list). This way, you can have two StructuredValues referencing the same underlying list,
-but offering different views. Using this approach we could even use different start- and end-points in the same list...
+the beginning and end of the list). This way, you can have two Values referencing the same underlying list, but offering
+different views. Using this approach we could even use different start- and end-points in the same list...
 
 The big problem here is that we'd now have a single Element type that uses two words instead of one. 
 Possible ramifications:

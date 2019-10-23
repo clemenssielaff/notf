@@ -1,21 +1,17 @@
-from typing import List, Optional, Any, Tuple
+from typing import List, Optional, Any
 from abc import ABCMeta, abstractmethod
 from enum import Enum, auto
-from threading import Thread, Lock
-import asyncio
-from inspect import iscoroutinefunction
-from functools import partial
 from logging import error as print_error
 from traceback import format_exc
 from weakref import ref as weak
-from pynotf.structured_value import StructuredValue
+from pynotf.value import Value
 
 
 class Publisher:
     """
     A Publisher keeps a list of (weak references to) Subscribers that are called when a new value is published or the
     Publisher completes, either through an error or successfully.
-    Publishers publish a single StructuredValue and contain additional checks to make sure their Subscribers are
+    Publishers publish a single Value and contain additional checks to make sure their Subscribers are
     compatible.
 
     Note: This would usually be named an "Observable", while the Subscriber (below) would usually be called "Observer".
@@ -124,7 +120,7 @@ class Publisher:
             if self._status in (self.Status.UNHANDLED, self.Status.ACCEPTED):
                 self._status = self.Status.BLOCKED
 
-    def __init__(self, schema: StructuredValue.Schema = StructuredValue.Schema()):
+    def __init__(self, schema: Value.Schema = Value.Schema()):
         """
         Constructor.
         :param schema: Schema of the Value published by this Publisher, defaults to the empty Schema.
@@ -141,19 +137,19 @@ class Publisher:
         Once a Publisher is completed, it will no longer publish any values.
         """
 
-        self._output_schema: StructuredValue.Schema = schema
+        self._output_schema: Value.Schema = schema
         """
         Is constant.
         """
 
     @property
-    def output_schema(self) -> StructuredValue.Schema:
+    def output_schema(self) -> Value.Schema:
         """
         Schema of the published value. Can be the empty Schema if this Publisher does not publish a meaningful value.
         """
         return self._output_schema
 
-    def publish(self, value: Any = StructuredValue()):
+    def publish(self, value: Any = Value()):
         """
         Push the given value to all active Subscribers.
         :param value: Value to publish, can be empty if this Publisher does not publish a meaningful value.
@@ -165,14 +161,14 @@ class Publisher:
         if self._is_completed:
             raise RuntimeError("Cannot publish from a completed Publisher")
 
-        # Check the given value to see if the Publisher is allowed to publish it. If it is not a StructuredValue, try to
-        # build one out of it. If that doesn't work, or the Schema of the StructuredValue does not match that of the
+        # Check the given value to see if the Publisher is allowed to publish it. If it is not a Value, try to
+        # build one out of it. If that doesn't work, or the Schema of the Value does not match that of the
         # Publisher, raise an exception.
-        if not isinstance(value, StructuredValue):
+        if not isinstance(value, Value):
             try:
-                value = StructuredValue(value)
+                value = Value(value)
             except ValueError:
-                raise TypeError("Publisher can only publish values that are implicitly convertible to StructuredValues")
+                raise TypeError("Publisher can only publish values that are implicitly convertible to a Value")
         if value.schema != self.output_schema:
             raise TypeError("Publisher cannot publish a value with the wrong Schema")
 
@@ -193,7 +189,7 @@ class Publisher:
         # other Subscribers, but those changes will not affect the current publishing process.
         self._publish(subscribers, value)
 
-    def error(self, exception: Exception):
+    def error(self, exception: BaseException):
         """
         Failure method, completes the Publisher.
         :param exception:   The exception that has occurred.
@@ -226,7 +222,7 @@ class Publisher:
         """
         return self._is_completed
 
-    def _publish(self, subscribers: List['Subscriber'], value: StructuredValue):
+    def _publish(self, subscribers: List['Subscriber'], value: Value):
         """
         This method can be overwritten in subclasses to modify the publishing process.
         At the point where this method is called, we have established that `value` can be published by this Publisher,
@@ -298,13 +294,13 @@ class Subscriber(metaclass=ABCMeta):
     An Subscriber can be subscribed to multiple Publishers.
     """
 
-    def __init__(self, schema: StructuredValue.Schema = StructuredValue.Schema()):
+    def __init__(self, schema: Value.Schema = Value.Schema()):
         """
         Constructor.
-        :param schema:      Schema defining the StructuredBuffers expected by this Publisher.
-                            Can be empty if this Subscriber does not expect a meaningful value.
+        :param schema:  Schema defining the Value expected by this Publisher.
+                        Can be empty if this Subscriber does not expect a meaningful value.
         """
-        self._input_schema: StructuredValue.Schema = schema
+        self._input_schema: Value.Schema = schema
         """
         Is constant.
         """
@@ -317,7 +313,7 @@ class Subscriber(metaclass=ABCMeta):
         return self._input_schema
 
     @abstractmethod
-    def on_next(self, signal: Publisher.Signal, value: Optional[StructuredValue]):
+    def on_next(self, signal: Publisher.Signal, value: Optional[Value]):
         """
         Abstract method called by any upstream Publisher.
         :param signal   The Signal associated with this call.
@@ -358,283 +354,6 @@ class Subscriber(metaclass=ABCMeta):
 
 ########################################################################################################################
 
-class Operator(Subscriber, Publisher):
-    """
-    A Operator is a sequence of Operations that are applied to an input value.
-    Not every input is guaranteed to produce an output as Operations are free to store or ignore input values.
-    If an Operation returns a value, it is passed on to the next Operation. The last Operation publishes the value to
-    all Subscribers of the Operator. If an Operation does not return a value, the following Operations are not called
-    and no new value is published.
-    If an Operation throws an exception, the Operator will fail as a whole.
-    Operations are not able to complete the Operator, other than through failure.
-    """
-
-    class Operation(metaclass=ABCMeta):
-        """
-        Operations are Functors that can be part of a Operator.
-        """
-
-        @property
-        @abstractmethod
-        def input_schema(self) -> StructuredValue.Schema:
-            """
-            The Schema of the input value of the Operation.
-            """
-            pass
-
-        @property
-        @abstractmethod
-        def output_schema(self) -> StructuredValue.Schema:
-            """
-            The Schema of the output value of the Operation (if there is one).
-            """
-            pass
-
-        @abstractmethod
-        def __call__(self, value: StructuredValue) -> Optional[StructuredValue]:
-            """
-            Operation implementation.
-            :param value: Input value, must conform to the Schema specified by the `input_schema` property.
-            :return: Either a new output value (conforming to the Schema specified by the `output_schema` property)
-                or None.
-            """
-            pass
-
-    def __init__(self, *operations: Operation):
-        if len(operations) == 0:
-            raise ValueError("Cannot create a Operator without a single Operation")
-
-        self._operations: Tuple[Operator.Operation] = operations
-        """
-        Tuple of Operations in order of execution.
-        """
-
-        Subscriber.__init__(self, self.input_schema)
-        Publisher.__init__(self, self.output_schema)
-
-    @property
-    def input_schema(self) -> StructuredValue.Schema:
-        """
-        The Schema of the input value of the Operator.
-        """
-        return self._operations[0].input_schema
-
-    @property
-    def output_schema(self) -> StructuredValue.Schema:
-        """
-        The Schema of the output value of the Operator.
-        """
-        return self._operations[-1].output_schema
-
-    def on_next(self, signal: Publisher.Signal, value: StructuredValue):
-        """
-        Abstract method called by any upstream Publisher.
-        :param signal   The Signal associated with this call.
-        :param value    Published value, can be None.
-        """
-        try:
-            for operation in self._operations:
-                value = operation(value)
-                if value is None:
-                    return
-        except Exception as exception:
-            self.error(exception)
-
-        self.publish(value)
-
-
-########################################################################################################################
-
-class Executor:
-    """
-    The Application logic runs on a separate thread that is further split up into multiple fibers. In Python, we use the
-    asyncio module for this, in C++ this would be boost.fiber. Regardless, we need a mechanism for cooperative
-    concurrency (not parallelism) that makes sure that only one path of execution is active at any time.
-    It is the executor's job to provide this functionality.
-    """
-
-    class _Status(Enum):
-        """
-        Status of the Executor with the following state transition diagram:
-            --> Running --> Stopping --> Stopped
-                  |                        ^
-                  +------------------------+
-        """
-        RUNNING = 0
-        STOPPING = auto()
-        STOPPED = auto()
-
-    def __init__(self):
-        """
-        Default constructor.
-        """
-
-        self._loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
-        """
-        Python asyncio event loop, used to schedule coroutines.
-        """
-
-        self._thread: Thread = Thread(target=self._run)
-        """
-        Logic thread, runs the Logic's event loop.
-        """
-
-        self._status = self._Status.RUNNING
-        """
-        Used for managing the Executor shutdown process. As soon as the `_stop` coroutine (in Executor.stop) is 
-        scheduled, the status switches from RUNNING to either STOPPING or STOPPED. Only an Executor in the RUNNING
-        state is able to schedule new coroutines.
-        The difference between STOPPING and STOPPED is that a STOPPING Executor will wait until all of its scheduled
-        coroutines have finished, whereas a STOPPED Executor will cancel everything that is still waiting and finish
-        the Logic thread as soon as possible. 
-        """
-
-        self._mutex: Lock = Lock()
-        """
-        Mutex protecting the status, in C++ an atomic value would do.
-        """
-
-        self._thread.start()  # start the logic thread immediately
-
-    def schedule(self, func, *args, **kwargs):
-        """
-        Schedule a new function or coroutine to run if the logic is running.
-
-        :param func: Function to execute in the logic thread.
-        :param args: Variadic arguments for the function.
-        :param kwargs: Keyword arguments for the function.
-        """
-        with self._mutex:
-            if self._status is not self._Status.RUNNING:
-                return
-        self._schedule(func, *args, **kwargs)
-
-    def _schedule(self, func, *args, **kwargs):
-        """
-        Internal scheduling, is thread-safe.
-
-        :param func: Function to execute in the logic thread.
-        :param args: Variadic arguments for the function.
-        :param kwargs: Keyword arguments for the function.
-        """
-        if iscoroutinefunction(func):
-            self._loop.call_soon_threadsafe(partial(self._loop.create_task, func(*args, **kwargs)))
-        else:
-            self._loop.call_soon_threadsafe(partial(func, *args, **kwargs))
-
-    def finish(self):
-        """
-        Finish all waiting coroutines and then stop the Executor.
-        """
-        self.stop(force=False)
-
-    def stop(self, force=True):
-        """
-        Stop the Executor, optionally cancelling all waiting coroutines.
-        :param force: If true (the default), all waiting coroutines will be cancelled.
-        """
-        with self._mutex:
-            if self._status is not self._Status.RUNNING:
-                return
-
-            if force:
-                self._status = self._Status.STOPPED
-            else:
-                self._status = self._Status.STOPPING
-
-        async def _stop():
-            self._loop.stop()
-
-        self._schedule(_stop)
-
-        self._thread.join()
-
-    @staticmethod
-    def exception_handler():
-        """
-        Exception handling for exceptions that escape the loop.
-        Prints the exception stack trace.
-        Is a public method so it can be monkey-patched at runtime (e.g. for testing).
-        """
-        print_error(
-            "\n==================================\n"
-            f"{format_exc()}"
-            "==================================\n")
-
-    def _run(self):
-        """
-        Logic thread code.
-        """
-        self._loop.set_exception_handler(lambda *args: self.exception_handler())
-        asyncio.set_event_loop(self._loop)
-
-        try:
-            self._loop.run_forever()
-        finally:
-            pending_tasks = [task for task in asyncio.Task.all_tasks() if not task.done()]
-            with self._mutex:
-                cancel_all = self._status is self._Status.STOPPED
-                self._status = self._Status.STOPPED
-            if cancel_all:
-                for task in pending_tasks:
-                    task.cancel()
-
-            # noinspection PyBroadException
-            try:
-                self._loop.run_until_complete(asyncio.gather(*pending_tasks))
-            except asyncio.CancelledError:
-                pass
-            except Exception:
-                self.exception_handler()
-            finally:
-                self._loop.close()
-
-
-########################################################################################################################
-
-class Fact(Publisher):
-    """
-    Facts represent changeable, external truths that the Application Logic can react to.
-    To the Application Logic they appear as simple Publishers that are owned and managed by a single Service in a
-    thread-safe fashion. The Service will update the Fact as new information becomes available, completes the Fact's
-    Publisher when the Service is stopped or the Fact has expired (for example, when a sensor is disconnected) and
-    forwards appropriate exceptions to the Subscribers of the Fact should an error occur.
-    Examples of Facts are:
-        - the latest reading of a sensor
-        - the user performed a mouse click (incl. position, button and modifiers)
-        - the complete chat log
-        - the expiration signal of a timer
-    Facts consist of a Value, possibly the empty None Value. Empty Facts simply informing the logic that an event has
-    occurred without additional information.
-    """
-
-    def __init__(self, executor: Executor, schema: StructuredValue.Schema = StructuredValue.Schema()):
-        Publisher.__init__(self, schema)
-        self._executor: Executor = executor
-
-    def publish(self, value: Any = StructuredValue()):
-        """
-        Push the given value to all active Subscribers.
-        :param value: Value to publish, can be empty if this Publisher does not publish a meaningful value.
-        """
-        self._executor.schedule(Publisher.publish, self, value)
-
-    def error(self, exception: Exception):
-        """
-        Failure method, completes the Publisher.
-        :param exception:   The exception that has occurred.
-        """
-        self._executor.schedule(Publisher.error, self, exception)
-
-    def complete(self):
-        """
-        Completes the Publisher successfully.
-        """
-        self._executor.schedule(Publisher.complete, self)
-
-
-########################################################################################################################
-
 """
 Ideas
 =====
@@ -665,7 +384,7 @@ carry on. This puts the responsibility of ownership on entities outside the Publ
 
 Propagated Data & Signal
 --------------------------
-At some point I decided that the only thing to be handed out by Publishers should be StructuredValues to allow complete
+At some point I decided that the only thing to be handed out by Publishers should be Values to allow complete
 introspection of the system and to not have any types that are only accessible from C++, for example. This works fine,
 as long as the only thing that got passed around is pure, immutable data. Immutable being the weight bearing word here.
 
@@ -674,7 +393,7 @@ versions, I had taken the Qt approach of using dedicated Event objects that were
 draw stack-order, with higher Widgets receiving the event first and lower Widgets later. Every Widget could "accept" the
 Event, which would set a flag on the Event object itself notifying later Widgets that the Event was already handled and 
 that they don't have to act if they don't want to. 
-This of course requires the given data to be mutable, which isn't possible with StructuredValues.
+This of course requires the given data to be mutable, which isn't possible with Values.
 
 Here a (hopefully) comprehensive list of solutions to the problem:
     1.`Subscriber.on_next` could return a bool to let the Scheduler know if it should continue propagating the event.
@@ -711,17 +430,17 @@ Discussion:
        ever used.
     5. I wanted to avoid that in the general case, because it would be nice to a have a Logic DAG consisting of only 
        data flow, no additional logic encapsulated within the data, only in the Operators. Then again, allowing other 
-       types than StructuredValues to be passed isn't really a "new" concept, it is more a generalization of an existing
-       one. It won't even change the behavior much, because Schemas act as quasi-typing for StructuredValues and so you
-       were never allowed to just connect any two arbitrary Publisher/Subscriber pairs anyway. 
+       types than Values to be passed isn't really a "new" concept, it is more a generalization of an existing one. 
+       It won't even change the behavior much, because Schemas act as quasi-typing for Values and so you were never 
+       allowed to just connect any two arbitrary Publisher/Subscriber pairs anyway. 
     6. Intriguing, but this would add yet another concept whereas I am trying to reduce the number of different concepts
        that make up the system.
 
 Decision:
     This was a tough one. I stared out liking option 3 a lot, then number 2 until I realized how brittle that would be,
     then switched to number 5 as the "sane" default option that only required me to give up the impossible idea of
-    building the Application Logic using only StructuredValues and Operators. However, I have since gotten around to 
-    favor number 3 again, hopefully for good this time.
+    building the Application Logic using only Values and Operators. However, I have since gotten around to favor number 
+    3 again, hopefully for good this time.
     Here is the problem with number 5: It is probably the best solution for this special case: handling a well-defined
     (in this case a mouse-click) problem by introducing a new, well defined type is a straight-forward approach for 
     every object oriented programmer. But it requires Subscribers and Publishers that are both aware of the type and 
@@ -863,37 +582,7 @@ Solution 3:
     then executed at the end of the update process, cleanly separating the old and the new DAG state.
 
 I have opted for solution 2, which allows us to keep the scheduling of Subscribers contained within the individual
-Publisher directly upstream. In order to make this work, publishing becomes a bit more complicated but not by a lot. 
- 
-
-Asynchronous Operations
------------------------
-Many languages allow await/async syntax, Python is among them. I want to do something similar in the general case,
-using fibers in C++. Where in the Logic graph do we allow for asynchronous code to run? One easy answer is to put them 
-behind dedicated "async-operations", that take a value + Signal and spawn a new coroutine that can be suspended while 
-waiting on some asynchronous event to take place. This leads to follow up questions:
-    1.) Do we switch to new coroutines immediately and run them until they halt? Or Are they scheduled to run 
-        immediately after the non-concurrent code has finished?
-    2.) How are Signals accepted or blocked with async code?
-Actually, those two questions sound like the same one. If we only have Publishers that do not care about the order in 
-which their Subscribers get updated, then it shouldn't matter whether an asynchronous subscriber is called immediately
-or after all other subscribers have been called. It might actually even be better to delay all asynchronous subscribers
-until after all synchronous ones have been handled, because async means "now or later" while synchronous means "now" and
-scheduling all coroutines for later would honor that meaning more than those that execute immediately.
-
-Therefore, a sync code sits behind async operators in the logic. Async operators ignore the upstream Signal and 
-propagate an unblockable downstream Signal, meaning accepting or blocking has to happen before. Publications downstream 
-of the async operator are scheduled to happen after the synchronous "parent" Publication.
-
-It should never be acceptable to accept or block a publication in async code - if we'd allow that, then it would be 
-possible for an event to be delayed indefinitely by a sibling subscriber.
-Example: A mouse click is delivered to two unrelated widgets that happen to overlap on screen. If the top widget 
-receives the publication and waits for three seconds to decide whether to accept it or not, the bottom widget will do 
-nothing and only be able to respond after the three seconds have passed. This might be what you want in some weird edge 
-case, but generally accept/ ignore/block decisions should be instantaneous.
-
-Interestingly this mirrors the way Python handles its own async code: You have to mark async functions with the async 
-keyword and only then can you await.
+Publisher directly upstream. In order to make this work, publishing becomes a bit more complicated but not by a lot.
 
 
 Dead Ends
