@@ -192,6 +192,8 @@ class Property(Transformer):
     If you take the entire Scene, take all Properties of all the Nodes, serialize the Scene alongside the Properties and
     re-load them, you have essentially restored the entire UI application at the point of serialization. Each Property
     is an operator that produces a single Value.
+    The Operations that define how a Property transforms its input Value are fixed as they are an essential part of the
+    Property type.
     """
 
     def __init__(self, name: str, value: Value, *operations: Operation):
@@ -324,7 +326,7 @@ class Node:
             """
             if name in self._properties:
                 raise NameError("Node already has a property named {}".format(name))
-            new_property = Property(name, value, is_visible)
+            new_property = Property(name, value, is_visible)  # TODO: continue here
             self._properties[name] = new_property
             return new_property
 
@@ -618,8 +620,68 @@ essentially useless.
 The same goes for anything else that might be used as "removal light", like removing the Widget as child of the parent
 so it does not get found anymore when the hierarchy is traversed.
 
+
 Properties
 ----------
 Widget Properties are Operators. Instead of having a fixed min- or max or validation function, we can simply define them
 as Operators with a list of Operations that are applied to each new input.
+
+
+Multithreaded evaluation
+------------------------
+The topic of true parallel execution of the Application Logic has been a difficult one. On the surface it seems like
+it should be possible - after all, what is the Logic but a DAG? And parallel graph execution has been done countless 
+times. The problem however is twofold:
+    1. Logic operations are allowed to add, move or remove other operations in the Logic graph.
+    2. Since we allow user-defined code to execute in the Logic (be that dynamically through scripting or statically 
+       at compile time), we cannot be certain what dependencies an operation has.
+Actually, looking at the problems - it is really just one: User-defined code. 
+
+This all means that it is impossible to statically determine the topology of the graph. Even if you propagate an Event 
+once, you cannot be certain that the same Event with a different Value would reach the same child operations, since any
+Operation could contain a simply if-statement for any specific case which would be transparent from the outside. And
+event with the same Value you might get a different result, as long as the user defined code is allowed to store its own
+state.
+Without a fixed topology, you do not have multithreaded execution.
+
+However ...  
+There is this idea called "Event Sourcing" (https://martinfowler.com/eaaDev/EventSourcing.html) that basically says that
+instead of storing the state of something, we only store all the events that modify that something and then, if someone
+asks, use the events to generate the state that we need. For example, instead of storing the amount of money in the bank
+account, we assume that it starts with zero and only store transactions. Then, if you want to look up your current
+balance, we replay all transactions and generate the answer.
+That alone does not help here though. Our problem is not the state of the Logic, but its lack of visibility. We only
+know which Logic operators were read, written, created or destroyed *after* the event has been processed. Since there
+is no way to know that in advance, we cannot schedule multiple threads executing the Logic in parallel without creating
+race conditions.
+But what if we keep a record of ever read, write, creation or destruction that ever event triggered? This will not solve
+the problems of racy reads and writes, but it will allow us to reason about dependencies of events after the fact.
+So if we have event A and B (in that order), we handle both in parallel (based on the Logic as it presented itself at
+the start of the event loop) and afterwards find out that they touched completely different operators? We do nothing.
+There was no possible race condition and we can update the Logic using the CRUD (create, read, update, delete) records
+that both Events generated independently. If however we find an Operator that:
+    * A and B wrote to
+    * A wrote to and B read
+    * A destroyed and B read
+we must assume that the records from B are invalid, as it was run on an outdated Logic graph. Now we need to re-run B, 
+after applying the changes from A. 
+And yes, that does mean that we might have to do some work twice. It also means that we  have to keep track of child 
+events, so they too can be destroyed should their parent (B in the example) be found out to be invalid; otherwise B 
+might spawn invalid and/or duplicate child events. But on the plus side, if enough events are independent (which I 
+assume they will be) we can have true parallel execution for most Events.
+Whether or not this is actually useful is left to be determined through profiling.
+
+Okay, counterpoint: Since we have user-defined code; *state-full* user-defined code, how can we guarantee that the 
+effect of an Event can be truly reversible? Meaning, if we do find that B is invalid, how can we restore the complete
+state of the Logic graph to before B was run? "complete" being the weight-bearing word here. The point is: we can not.
+Not, as long as the user is able to keep her own state around that we don't know anything about.
+The true question is: can we allow that? Or asked differently, do we gain enough by cutting the user's ability to 
+manage her own state? 
+Probably not. The dream of true parallel Logic execution remains as alluring as it is elusive. It sure sounds good to 
+say that all events are executed in parallel, but that might well be a burden. It is not unlikely that most events will 
+be short or even ultra-short lived (by that I mean that they are published straight into Nirvana, without a single 
+Subscriber to react) and opening up a new thread for each one would be a massive overhead. On top of that, you'd have to
+record CRUD and analyse the records - more overhead. And we didn't even consider the cost of doing the same work twice 
+if a collision in the records is found. Combine that with the fact that we would need to keep track of *all* of the 
+state and must forbid the user to manage any of her own ... I say it is not worth it.
 """
