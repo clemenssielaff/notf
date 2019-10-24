@@ -5,7 +5,7 @@ import logging
 from time import sleep
 from pynotf.value import Value
 from pynotf.scene import Executor, Fact
-from .utils import record
+from tests.utils import record
 
 
 ########################################################################################################################

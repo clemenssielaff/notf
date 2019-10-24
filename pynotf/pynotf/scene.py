@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple, NamedTuple
 from threading import Thread, Lock
 import asyncio
 from inspect import iscoroutinefunction
@@ -8,29 +8,8 @@ from logging import error as print_error, warning as print_warning
 from traceback import format_exc
 
 from .value import Value
-from .logic import Publisher
-from .operation import Transformer, Operation, NoOp
+from .logic import Publisher, Operator
 
-
-# from uuid import uuid4 as uuid
-# from enum import Enum, unique, auto
-# from logging import warning
-# from typing import NamedTuple, List, TypeVar, Type, Union, Optional, Callable, Dict, Any
-# from .reactive import Operator, Publisher
-# from .value import Value
-#
-#
-# class Property(Operator):
-#
-#     def clean(self):
-#         assert is_this_the_main_thread()
-#         if self._modified_value:
-#             self._render_value = self._modified_value
-#             self._modified_value = None
-#
-
-#
-#
 # class Node:
 #     T = TypeVar('T')
 #
@@ -186,7 +165,7 @@ from .operation import Transformer, Operation, NoOp
 
 ########################################################################################################################
 
-class Property(Transformer):
+class Property(Operator):
     """
     Properties are values that combined fully define the state of the Node.
     If you take the entire Scene, take all Properties of all the Nodes, serialize the Scene alongside the Properties and
@@ -196,7 +175,7 @@ class Property(Transformer):
     Property type.
     """
 
-    def __init__(self, name: str, value: Value, *operations: Operation):
+    def __init__(self, name: str, value: Value, *operations: Operator.Operation):
         """
         Constructor.
         :param name: Node-unique name of the Property, is constant.
@@ -210,9 +189,10 @@ class Property(Transformer):
         self._value: Value = value
 
         if len(operations) == 0:
-            operations = (NoOp(self._value.schema),)
+            # we need at least one Operator store provide Value Schemas for input and output
+            operations = (Operator.NoOp(self._value.schema),)
 
-        Transformer.__init__(self, *operations)
+        Operator.__init__(self, *operations)
 
         if self.input_schema != self.output_schema:
             raise TypeError("Property Operations must not change the type of Value")
@@ -254,13 +234,14 @@ class Property(Transformer):
         if value.schema != self._value.schema:
             raise TypeError("Cannot change the type of a Property")
 
-        value = self._operator(value)
-
-        if value == self._value:
-            return
-        self._value = value
-
-        self.publish(value)
+        try:
+            result = self._operate_on(value)
+        except Exception as exception:
+            self.error(exception)
+        else:
+            if result != self._value:
+                self._value = result
+                self.publish(self._value)
 
     def on_next(self, publisher: Publisher, value: Optional[Value] = None):
         """
@@ -306,29 +287,40 @@ class Node:
         Instead of implementing `_add_property`, `_add_signal` and `_add_slot` methods in the Node class, a Node must be
         fully defined on construction, by passing in a Node.Definition object. Like a Schema describes a type of Value,
         the Node.Definition describes a type of Node without making any assumptions about the actual state of the Node.
-
         """
 
+        class PropertyArgs(NamedTuple):
+            value: Value
+            operations: Tuple[Operator.Operation] = tuple()
+
         def __init__(self):
-            self._properties: Dict[str, Property] = {}
+            self._properties: Dict[str, Node.Definition.PropertyArgs] = {}
 
         @property
         def properties(self):
             return self._properties
 
-        def add_property(self, name: str, value: Any, is_visible: bool) -> Property:
+        def add_property(self, name: str, value: Any, *operations: Operator.Operation):
             """
             Creates and returns a new Property instance, that will be attached to the node.
             :param name: Node-unique name of the Property.
             :param value: Initial value of the Property.
-            :param is_visible: Whether or not changes in this Property should cause a redraw of the Node or not.
-            :return: New Property instance.
+            :param operations: Operations applied to every new Value of this Property.
+            :raise NameError: If the Node already has a Property with the given name.
             """
             if name in self._properties:
                 raise NameError("Node already has a property named {}".format(name))
-            new_property = Property(name, value, is_visible)  # TODO: continue here
-            self._properties[name] = new_property
-            return new_property
+            self._properties[name] = self.PropertyArgs(value, operations)
+
+        # TODO: continue with Signals and Slots
+
+    def __init__(self, definition: 'Node.Definition'):
+        """
+        Constructor.
+        :param definition: Node type definition.
+        """
+        self._properties = {name: Property(name, prop.value, *prop.operations)
+                            for name, prop in definition.properties.items()}
 
 
 ########################################################################################################################

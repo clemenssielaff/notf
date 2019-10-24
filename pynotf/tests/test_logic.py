@@ -5,7 +5,7 @@ from typing import ClassVar, Optional, List
 from weakref import ref as weak
 from pynotf.logic import Operator, Subscriber, Publisher
 from pynotf.value import Value
-from .utils import Recorder, record
+from tests.utils import Recorder, record
 
 
 ########################################################################################################################
@@ -31,7 +31,7 @@ class AddConstant(Operator.Operation):
     def output_schema(self) -> Value.Schema:
         return self._schema
 
-    def __call__(self, value: Value) -> Value:
+    def _perform(self, value: Value) -> Value:
         return value.modified().set(value.as_number() + self._constant)
 
 
@@ -50,7 +50,7 @@ class GroupTwo(Operator.Operation):
     def output_schema(self) -> Value.Schema:
         return self._output_prototype.schema
 
-    def __call__(self, value: Value) -> Optional[Value]:
+    def _perform(self, value: Value) -> Optional[Value]:
         if self._last_value is None:
             self._last_value = value.as_number()
         else:
@@ -76,7 +76,7 @@ class ErrorOperator(Operator.Operation):
     def output_schema(self) -> Value.Schema:
         return self._schema
 
-    def __call__(self, value: Value) -> Optional[Value]:
+    def _perform(self, value: Value) -> Optional[Value]:
         if value.as_number() == self._err_on_number:
             raise ValueError("The error condition has occurred")
         return value
