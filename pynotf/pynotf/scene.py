@@ -1,171 +1,46 @@
-from typing import Any, Dict, Optional, Tuple, NamedTuple
+from typing import Any, Dict, Optional, List, Tuple, NamedTuple, Type
 from threading import Thread, Lock
+from abc import abstractmethod
 import asyncio
 from inspect import iscoroutinefunction
 from functools import partial
 from enum import Enum, auto
-from logging import error as print_error, warning as print_warning
+from logging import error as print_error
 from traceback import format_exc
+from uuid import uuid4 as uuid
+from weakref import ref as weak_ref
 
 from .value import Value
-from .logic import Publisher, Operator
-
-# class Node:
-#     T = TypeVar('T')
-#
-#     class Data(NamedTuple):
-#         parent: 'Node'  # mandatory
-#         children: List['Node'] = []
-#         is_enabled: bool = True
-#         is_visible: bool = True
-#         is_dirty: bool = True
-#
-#     def __init__(self, graph: 'Graph', parent: 'Node'):
-#         self._graph: Graph = graph
-#         self.__data: 'Node.Data' = self.Data(parent)
-#         self._uuid: uuid = uuid()
-#         self._properties: Dict[str, Property] = {}
-#         # TODO: signals and slots
-#
-#     def _define_node(self, definition: Definition):
-#         """
-#         Is called right after the constructor has finished.
-#         :param definition:  Node Definition. Is changed in-place to define the node instance.
-#         """
-#         raise NotImplementedError("Node subclasses must implement their virtual `_define_node` method")
-#
-#     def _apply_definition(self, definition: Definition):
-#         """
-#         Applies the given Node Definition to this instance.
-#         :param definition: Node Definition to apply. Is constant.
-#         """
-#         self._properties = definition.properties
-#         # TODO: automatic update when visible properties are updated
-#
-#     @property
-#     def _data(self) -> Data:
-#         """
-#         A private getter for the Node data that can change depending on whether you ask for it from the main thread or
-#         the render thread.
-#         """
-#         # TODO: render data & modified data
-#         return self.__data
-#
-#     @property
-#     def uuid(self) -> uuid:
-#         return self._uuid
-#
-#     @property
-#     def name(self) -> str:
-#         return self._graph.registry.get_name(self)
-#
-#     @name.setter
-#     def name(self, value: str):
-#         self._graph.registry.set_name(self, value)
-#
-#     def create_child(self, node_type: Type['Node']) -> 'Node':
-#         """
-#         Create a new child Node of this Node.
-#         By tying node creation to the existence of its parent node, we can make sure that a node can never not have a
-#         valid parent. We can also call `_define_node` on the new instance.
-#         :param node_type: Subclass of Node to instantiate as a child of this Node.
-#         :return:          The new child Node instance.
-#         """
-#         # create the node instance
-#         if not issubclass(node_type, Node):
-#             raise TypeError("Nodes can only have other Nodes as children")
-#         child = node_type(self._graph, self)
-#
-#         # finalize the node
-#         definition = self.Definition()
-#         child._define_node(definition)
-#         child._apply_definition(definition)
-#
-#         # register the node as a new child
-#         self._data.children.append(child)
-#         return child
-#
-#     def property(self, name: str) -> Property:
-#         """
-#         Returns the Property requested by name.
-#         :raises KeyError: If this Node kind has no Property by the given name.
-#         """
-#         if name in self._properties:
-#             return self._properties[name]
-#         raise KeyError("Node has no Property named: {}. Available Property names are: {}".format(name, ", ".join(
-#             self._properties.keys())))
-#
-#
-# class RootNode(Node):
-#     """
-#     The Root Node is its own parent.
-#     """
-#
-#     def __init__(self, graph: 'Graph'):
-#         super().__init__(graph, self)
-#
-#     def _define_node(self, definition: Node.Definition):
-#         pass
-#
-#
-# class Graph:
-#     """
-#     The UI Graph.
-#     """
-#
-#     class NodeRegistry:
-#         def __init__(self):
-#             self._nodes: Dict[Union[Node, str], Union[Node, str]] = {}  # str <-> Node bimap
-#
-#         def __len__(self) -> int:
-#             """
-#             Number of node/name pairs in the registry.
-#             """
-#             assert len(self._nodes) % 2 == 0
-#             return len(self._nodes) // 2
-#
-#         def get_name(self, node: Node) -> str:
-#             name = self._nodes.get(node, None)
-#             if name is None:
-#                 # create a default name and register the node with it
-#                 name = str(node.uuid)
-#                 self._nodes[name] = node
-#                 self._nodes[node] = name
-#             return name
-#
-#         def set_name(self, node: Node, name: str) -> str:
-#             # delete the old node/name pair if it exists
-#             old_name = self._nodes.get(node, None)
-#             if old_name is not None:
-#                 assert node in self._nodes
-#                 del self._nodes[old_name]
-#                 del self._nodes[node]
-#
-#             # make sure the name is unique
-#             proposal = name
-#             counter = 1
-#             while proposal in self._nodes:
-#                 proposal = "{}{:>2}".format(name, counter)
-#                 counter += 1
-#
-#             # (re-)register the node under its new name
-#             self._nodes[proposal] = node
-#             self._nodes[node] = proposal
-#
-#             # return the actual new name of the node
-#             return proposal
-#
-#         def get_node(self, name: str) -> Optional[Node]:
-#             return self._nodes.get(name, None)
-#
-#     def __init__(self):
-#         self.root: RootNode = RootNode(self)
-#         self.registry: Graph.NodeRegistry = Graph.NodeRegistry()
+from .logic import Subscriber, Publisher, Operator
 
 
 ########################################################################################################################
 
-class Property(Operator):
+class HasNode:
+    """
+    Interface class for subclasses of Subscriber that live on a Node.
+    By having this common interface, Publishers that may want to sort their Subscribers during a publish can identify
+    those that are connected to a Node and can ask them for it.
+    """
+
+    def __init__(self, node: 'Node'):
+        """
+        Constructor.
+        :param node: Reference to the Node that this Subscriber lives on.
+        """
+        self._node: Node = node
+
+    @property
+    def node(self) -> 'Node':
+        """
+        The Node that this Subscriber lives on.
+        """
+        return self._node
+
+
+########################################################################################################################
+
+class Property(Operator, HasNode):
     """
     Properties are values that combined fully define the state of the Node.
     If you take the entire Scene, take all Properties of all the Nodes, serialize the Scene alongside the Properties and
@@ -175,9 +50,10 @@ class Property(Operator):
     Property type.
     """
 
-    def __init__(self, name: str, value: Value, *operations: Operator.Operation):
+    def __init__(self, node: 'Node', name: str, value: Value, *operations: Operator.Operation):
         """
         Constructor.
+        :param node: Node that this Property lives on.
         :param name: Node-unique name of the Property, is constant.
         :param value: Initial value of the Property, also defines its Schema.
         :param operation: Operations applied to every new Value of this Property, must ingest and produce Values of the
@@ -193,6 +69,7 @@ class Property(Operator):
             operations = (Operator.NoOp(self._value.schema),)
 
         Operator.__init__(self, *operations)
+        HasNode.__init__(self, node)
 
         if self.input_schema != self.output_schema:
             raise TypeError("Property Operations must not change the type of Value")
@@ -253,10 +130,37 @@ class Property(Operator):
         self.value = value
 
     def on_error(self, publisher: Publisher, exception: BaseException):
-        print_warning("Caught propagated error from Publisher {}: {}".format(publisher, str(exception)))
+        pass  # Properties do not care about upstream errors
 
     def complete(self):
         pass  # Properties cannot be completed manually
+
+
+########################################################################################################################
+
+class Slot(Subscriber, HasNode):
+    """
+    A Slot is just a Subscriber that has an associated Node.
+    This is an abstract class that does not implement the `Subscriber.on_next` method.
+    """
+
+    def __init__(self, node: 'Node', schema: Value.Schema = Value.Schema()):
+        """
+        Constructor.
+        :param node: Node that this Slot lives on.
+        :param schema: Schema of the Value accepted by this Slot.
+        """
+        Subscriber.__init__(self, schema)
+        HasNode.__init__(self, node)
+
+    @abstractmethod
+    def on_next(self, signal: Publisher.Signal, value: Optional[Value]):
+        """
+        Abstract method called by any upstream Publisher.
+        :param signal   The Signal associated with this call.
+        :param value    Published value, can be None.
+        """
+        pass
 
 
 ########################################################################################################################
@@ -287,40 +191,178 @@ class Node:
         Instead of implementing `_add_property`, `_add_signal` and `_add_slot` methods in the Node class, a Node must be
         fully defined on construction, by passing in a Node.Definition object. Like a Schema describes a type of Value,
         the Node.Definition describes a type of Node without making any assumptions about the actual state of the Node.
+
+        Properties and Slots must be constructed with a reference to the Node instance that they live on. Therefore,
+        we only store the construction arguments here and build the object in the Node constructor.
         """
 
         class PropertyArgs(NamedTuple):
             value: Value
             operations: Tuple[Operator.Operation] = tuple()
 
+        class SignalArgs(NamedTuple):
+            schema: Value.Schema = Value.Schema()
+
+        class SlotArgs(NamedTuple):
+            schema: Value.Schema = Value.Schema()
+
         def __init__(self):
+            """
+            Empty constructor.
+            """
             self._properties: Dict[str, Node.Definition.PropertyArgs] = {}
+            self._signals: Dict[str, Node.Definition.SignalArgs] = {}
+            self._slots: Dict[str, Node.Definition.SlotArgs] = {}
 
         @property
         def properties(self):
             return self._properties
 
+        @property
+        def signals(self):
+            return self._signals
+
+        @property
+        def slots(self):
+            return self._slots
+
         def add_property(self, name: str, value: Any, *operations: Operator.Operation):
             """
-            Creates and returns a new Property instance, that will be attached to the node.
+            Stores the arguments need to construct a Property instance on the node.
             :param name: Node-unique name of the Property.
             :param value: Initial value of the Property.
             :param operations: Operations applied to every new Value of this Property.
-            :raise NameError: If the Node already has a Property with the given name.
+            :raise NameError: If the Node already has a Property, Signal or Slot with the given name.
             """
-            if name in self._properties:
-                raise NameError("Node already has a property named {}".format(name))
-            self._properties[name] = self.PropertyArgs(value, operations)
+            if not self._is_name_available(name):
+                raise NameError("Node already has a Property named {}".format(name))
+            self._properties[name] = Node.Definition.PropertyArgs(value, operations)
 
-        # TODO: continue with Signals and Slots
+        def add_signal(self, name: str, schema: Value.Schema = Value.Schema()):
+            """
+            Stores the arguments need to construct a Signal instance on the node.
+            :param name: Node-unique name of the Signal.
+            :param schema: Scheme of the Value published by the Signal.
+            :raise NameError: If the Node already has a Property, Signal or Slot with the given name.
+            """
+            if not self._is_name_available(name):
+                raise NameError("Node already has a Signal named {}".format(name))
+            self._signals[name] = Node.Definition.SignalArgs(schema)
 
-    def __init__(self, definition: 'Node.Definition'):
+        def add_slot(self, name: str, schema: Value.Schema = Value.Schema()):
+            """
+            Stores the arguments need to construct a Slot instance on the node.
+            :param name: Node-unique name of the Slot.
+            :param schema: Scheme of the Value received by the Slot.
+            :raise NameError: If the Node already has a Property, Signal or Slot with the given name.
+            """
+            if not self._is_name_available(name):
+                raise NameError("Node already has a Signal named {}".format(name))
+            self._slots[name] = Node.Definition.SlotArgs(schema)
+
+        def _is_name_available(self, name: str) -> bool:
+            """
+            Properties, Signals and Slots share the same namespace on a Node. Therefore we need to check whether any
+            one of the three dictionaries already contains a given name before it can be accepted as new.
+            :param name: Name to test
+            :return: Whether or not the given name would be a valid new name for a Property, Signal or Slot.
+            """
+            return not ((name in self._properties) or (name in self._signals) or (name in self._slots))
+
+    def __init__(self, scene: 'Scene', parent: 'Node', definition: 'Node.Definition', name: Optional[str] = None):
         """
         Constructor.
+        :param scene: The Scene that this Node lives in.
+        :param parent: The parent of this Node.
         :param definition: Node type definition.
+        :param name: (Optional) Scene-unique name of the Node.
+        :raise NameError: If another Node with the same (not-None) name is alive in the Scene.
         """
-        self._properties = {name: Property(name, prop.value, *prop.operations)
+        self._scene: Scene = scene
+        self._parent: Node = parent
+        self._children: List[Node] = []
+        self._properties: Dict[str, Property] = {}
+        self._signals: Dict[str, Publisher] = {}
+        self._slots: Dict[str, Slot] = {}
+        self._uuid: uuid = uuid()
+        self._name: Optional[str] = name  # in C++ this could be a raw pointer to the name inside the Scene's registry
+
+        self._apply_definition(definition)
+
+        if self._name is not None:
+            self._scene.register_name(self)
+
+        # TODO: generally speaking ... what does happen when a failure occurs in the middle of a Logic evaluation?
+        #   Like when a Node creates a child Node with a non-unique name? Ideally we'd want to have transactional
+        #   handling where either the complete event succeeds or nothing does. Then again, do we really want that?
+        #   If a Publisher publishes to x different Subscribers and only one fails, is the whole event broken?
+        #   Not really. but the broken Subscriber should be stopped. Which is what happens when you raise an error.
+        #   So ... what we do here is to say that you (as in "the person writing custom code") are responsible to make
+        #   sure that exceptions that are thrown in your code do not fuck up the system ...?
+        #   That makes sense.
+
+    def _apply_definition(self, definition: 'Node.Definition'):
+        # TODO: automatic update when visible properties are updated
+        self._properties = {name: Property(self, name, prop.value, *prop.operations)
                             for name, prop in definition.properties.items()}
+        self._signals = {name: Publisher(signal.schema) for name, signal in definition.signals.items()}
+        self._slots = {name: Slot(self, slot.schema) for name, slot in definition.signals.items()}
+
+    @property
+    def name(self) -> Optional[str]:
+        """
+        The Scene-unique name of this Node if it has any.
+        """
+        return self._name
+
+    @property
+    def uuid(self) -> uuid:
+        return self._uuid
+
+    def get_property(self, name: str) -> Property:
+        """
+        Returns the Property requested by name.
+        :raises KeyError: If this Node kind has no Property by the given name.
+        """
+        prop: Optional[Property] = self._properties.get(name, None)
+        if prop is None:
+            raise KeyError("Node has no Property named: {}. Available Property names are: {}".format(name, ", ".join(
+                self._properties.keys())))
+        return prop
+
+    # def create_child(self, node_type: Type['Node']) -> 'Node':
+    #     """
+    #     Create a new child Node of this Node.
+    #     By tying Node creation to the existence of its parent, we can make sure that a Node can never not have a valid
+    #     parent. We can also call `_define_node` on the new instance.
+    #     :param node_type: Subclass of Node to instantiate as a child of this Node.
+    #     :return:          The new child Node instance.
+    #     """
+    #     # create the node instance
+    #     if not issubclass(node_type, Node):
+    #         raise TypeError("Nodes can only have other Nodes as children")
+    #     child = node_type(self._graph, self)
+    #
+    #     # finalize the node
+    #     definition = self.Definition()
+    #     child._define_node(definition)
+    #     child._apply_definition(definition)
+    #
+    #     # register the node as a new child
+    #     self._children.append(child)
+    #     return child
+
+
+########################################################################################################################
+
+class RootNode(Node):
+    """
+    The Root Node is its own parent and does not have any Properties, Signals or Slots.
+    The root has the reserved name '/'.
+    """
+
+    def __init__(self, scene: 'Scene'):
+        Node.__init__(self, scene, self, Node.Definition(), '/')
 
 
 ########################################################################################################################
@@ -336,10 +378,52 @@ class Scene:
     Widgets later children are drawn on top of earlier ones.
 
     Modification of the Scene must only occur in the Logic thread.
+
+    Nodes can be named. They have a name associated with them during construction and it can not be changed afterwards.
+    Names are unique in the Scene, if you try to create two Nodes with the same name, the creation of the second one
+    will fail.
+    Root Nodes have the reserved name '/', we can therefore be sure that only one Root Node can exist in the Scene.
     """
 
     def __init__(self):
-        pass
+        """
+        Constructor.
+        """
+        self._named_nodes: Dict[str: weak_ref] = {}
+        self._root: RootNode = RootNode(self)
+
+    @property
+    def root(self) -> RootNode:
+        """
+        The Root Node of this Scene.
+        """
+        return self._root
+
+    def get_node(self, name: str) -> Optional[Node]:
+        """
+        Looks for a Node with the given name and returns it if one is found.
+        :param name: Name of the Node to look for.
+        """
+        weak_node: weak_ref = self._named_nodes.get(name, None)
+        return None if weak_node is None else weak_node()
+
+    def register_name(self, node: Node):
+        """
+        Registers a new Node with its name. If the Node does not have a name, this method does nothing.
+        Must only be called from the Node constructor.
+        :param node: Named Node to register.
+        :raise NameError: If another Node with the same name is alive in the Scene.
+        """
+        name = node.name
+        if name is None:
+            return
+
+        weak_node = self._named_nodes.get(name, None)
+        existing_node = None if weak_node is None else weak_node()
+        if existing_node is None:
+            self._named_nodes[name] = weak_ref(node)
+        elif existing_node != node:
+            raise NameError('Cannot create another Node with the name "{}"'.format(name))
 
 
 ########################################################################################################################
@@ -550,6 +634,17 @@ class Fact(Publisher):
 ########################################################################################################################
 
 """
+Ideas
+=====
+
+Rename Publisher to Signal?
+--------------------------
+A Signal is a Publisher, but the word "Publisher" feels wrong when talking about a Signal. However, a Signal could well
+be a term used for a Publisher as well. I guess "Subscriber" would then be an "Observer"? A "Slot" would still be its
+own term, since it also implements the "HasNode"-interface.
+Of course, the thing that is published by a Signal cannot itself be named "Signal"...
+
+
 Additional Thoughts
 ===================
 
