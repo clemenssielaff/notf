@@ -50,7 +50,7 @@ class TestCase(unittest.TestCase):
         with self.assertRaises(TypeError):
             publisher.publish(Nope())  # not convertible to Value
 
-        publisher.complete()
+        publisher._complete()
         self.assertTrue(publisher.is_completed())
         with self.assertRaises(RuntimeError):
             publisher.publish(0)  # completed
@@ -63,7 +63,7 @@ class TestCase(unittest.TestCase):
 
     def test_subscribing_to_completed_publisher(self):
         publisher = NumberPublisher()
-        publisher.complete()
+        publisher._complete()
 
         subscriber = Recorder(publisher.output_schema)
         self.assertEqual(len(subscriber.completed), 0)
@@ -74,13 +74,13 @@ class TestCase(unittest.TestCase):
         pub = NumberPublisher()
         sub = ExceptionOnCompleteSubscriber()
         sub.subscribe_to(pub)
-        pub.error(NameError())  # should be safely ignored
+        pub._error(NameError())  # should be safely ignored
 
     def test_exception_on_complete(self):
         pub = NumberPublisher()
         sub = ExceptionOnCompleteSubscriber()
         sub.subscribe_to(pub)
-        pub.complete()  # should be safely ignored
+        pub._complete()  # should be safely ignored
 
     def test_double_subscription(self):
         publisher: Publisher = NumberPublisher()
@@ -192,7 +192,7 @@ class TestCase(unittest.TestCase):
         publisher.publish(-2)  # remove sub3
         self.assertEqual(len(publisher._subscribers), 2)
 
-        publisher.complete()
+        publisher._complete()
         self.assertEqual(len(publisher._subscribers), 0)
 
     def test_expired_subscriber_on_complete(self):
@@ -200,7 +200,7 @@ class TestCase(unittest.TestCase):
         sub1 = record(publisher)
         self.assertEqual(len(publisher._subscribers), 1)
         del sub1
-        publisher.complete()
+        publisher._complete()
         self.assertEqual(len(publisher._subscribers), 0)
 
     def test_expired_subscriber_on_failure(self):
@@ -208,7 +208,7 @@ class TestCase(unittest.TestCase):
         sub1 = record(publisher)
         self.assertEqual(len(publisher._subscribers), 1)
         del sub1
-        publisher.error(ValueError())
+        publisher._error(ValueError())
         self.assertEqual(len(publisher._subscribers), 0)
 
     def test_signal_source(self):

@@ -141,11 +141,11 @@ class TestCase(unittest.TestCase):
         self.assertEqual(prop.value.as_number(), 8)
 
         self.assertFalse(prop.is_completed())
-        publisher1.complete()
+        publisher1._complete()
         self.assertFalse(prop.is_completed())
         prop.complete()
         self.assertFalse(prop.is_completed())
-        publisher2.error(RuntimeError())
+        publisher2._error(RuntimeError())
         self.assertFalse(prop.is_completed())
 
     def test_create_property_error(self):
@@ -310,11 +310,11 @@ class TestCase(unittest.TestCase):
         fact1.publish(2)
         fact1.publish(7)
         fact1.publish(-23)
-        fact1.complete()
+        fact1._complete()
         fact1.publish(456)
 
         fact2.publish(8234)
-        fact2.error(error)
+        fact2._error(error)
         fact2.publish(-6)
 
         executor.finish()

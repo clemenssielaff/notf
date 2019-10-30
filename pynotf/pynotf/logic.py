@@ -187,10 +187,10 @@ class Publisher:
         # other Subscribers, but those changes will not affect the current publishing process.
         self._publish(self._collect_subscribers(), value)
 
-    # TODO: do not make error a public method, it should be private - same goes for complete
-    def error(self, exception: Exception):
+    def _error(self, exception: Exception):
         """
         Failure method, completes the Publisher.
+        This method would be protected in C++. It is not private, but should not be part of the public interface.
         :param exception:   The exception that has occurred.
         """
         print_error(format_exc())
@@ -202,11 +202,13 @@ class Publisher:
             except Exception as ex:
                 print_error(format_exc())
 
-        self._complete()
+        self._subscribers.clear()
+        self._is_completed = True
 
-    def complete(self):
+    def _complete(self):
         """
         Completes the Publisher successfully.
+        This method would be protected in C++. It is not private, but should not be part of the public interface.
         """
         signal: Publisher.Signal = Publisher.Signal(self, is_blockable=False)
         for subscriber in self._collect_subscribers():
@@ -215,7 +217,8 @@ class Publisher:
             except Exception as ex:
                 print_error(format_exc())
 
-        self._complete()
+        self._subscribers.clear()
+        self._is_completed = True
 
     def _collect_subscribers(self) -> List['Subscriber']:
         """
@@ -302,13 +305,6 @@ class Publisher:
         """
         print_error("Subscriber {} failed during Logic evaluation.\nException caught by Publisher {}:\n{}".format(
             id(subscriber), id(self), exception))
-
-    def _complete(self):
-        """
-        Complete the Publisher, either because it was explicitly completed or because an error has occurred.
-        """
-        self._subscribers.clear()
-        self._is_completed = True
 
 
 ########################################################################################################################
@@ -508,7 +504,7 @@ class Operator(Subscriber, Publisher):
         try:
             result = self._operate_on(value)
         except Exception as exception:
-            self.error(exception)
+            self._error(exception)
         else:
             if result is not None:
                 self.publish(result)

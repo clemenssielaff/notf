@@ -105,7 +105,7 @@ class Property(Operator, HasNode):
         try:
             result = self._operate_on(value)
         except Exception as exception:
-            self.error(exception)
+            self._error(exception)
         else:
             if result != self._value:
                 self._value = result
@@ -637,18 +637,18 @@ class Fact(Publisher):
         """
         self._executor.schedule(Publisher.publish, self, value)
 
-    def error(self, exception: Exception):
+    def _error(self, exception: Exception):
         """
         Failure method, completes the Publisher.
         :param exception:   The exception that has occurred.
         """
-        self._executor.schedule(Publisher.error, self, exception)
+        self._executor.schedule(Publisher._error, self, exception)
 
-    def complete(self):
+    def _complete(self):
         """
         Completes the Publisher successfully.
         """
-        self._executor.schedule(Publisher.complete, self)
+        self._executor.schedule(Publisher._complete, self)
 
 
 ########################################################################################################################
