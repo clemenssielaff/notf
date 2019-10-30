@@ -193,7 +193,9 @@ class Publisher:
         # other Subscribers, but those changes will not affect the current publishing process.
         self._publish(subscribers, value)
 
-    def error(self, exception: BaseException):
+    # TODO: do not make error a public method, it should be private - same goes for complete
+    # TODO: publish correctly gets strong references to subscribers before publishing - error and complete should do the same
+    def error(self, exception: Exception):
         """
         Failure method, completes the Publisher.
         :param exception:   The exception that has occurred.
@@ -241,7 +243,10 @@ class Publisher:
         """
         signal = Publisher.Signal(self, is_blockable=False)
         for subscriber in subscribers:
-            subscriber.on_next(signal, value)
+            try:
+                subscriber.on_next(signal, value)
+            except Exception as exception:
+                self._handle_exception(subscriber, exception)
 
     def _sort_subscribers(self, order: List[int]):
         """
@@ -281,6 +286,17 @@ class Publisher:
         weak_subscriber = weak(subscriber)
         if weak_subscriber in self._subscribers:
             self._subscribers.remove(weak_subscriber)
+
+    def _handle_exception(self, subscriber: 'Subscriber', exception: Exception):
+        """
+        This is a virtual method that Publishers can override in order to handle exceptions that occurred in their
+        Subscribers `on_next` method.
+        The default implementation simply reports the exception but ultimately ignores it.
+        :param subscriber: Subscriber that raised the exception.
+        :param exception: Exception raised by subscriber.
+        """
+        print_error("Subscriber {} failed during Logic evaluation.\nException caught by Publisher {}:\n{}".format(
+            id(subscriber), id(self), exception))
 
     def _complete(self):
         """
@@ -325,7 +341,7 @@ class Subscriber(metaclass=ABCMeta):
         """
         pass
 
-    def on_error(self, signal: Publisher.Signal, exception: BaseException):
+    def on_error(self, signal: Publisher.Signal, exception: Exception):
         """
         Default implementation of the "error" method: does nothing.
         :param signal   The Signal associated with this call.
@@ -409,7 +425,7 @@ class Operator(Subscriber, Publisher):
                 or None.
             :raise TypeError: If the input Value does not conform to this Operation's input Schema.
             """
-            if value.schema != self.input_schema:
+            if not isinstance(value, Value) or value.schema != self.input_schema:
                 raise TypeError("Value does not conform to the Operation's input Schema")
             result: Optional[Value] = self._perform(value)
             if result is not None:
@@ -505,6 +521,37 @@ Maybe it would be a good idea to pack the <Value, Signal> pair into a single obj
 is what is published by a publisher). A Publication is non-copyable, but the value within it is. Publications itself
 can be ignored, handled or blocked, which frees up the term "Signal" for other uses. Also let's use "handled" instead
 of "accepted" ...?
+
+
+Emitters - Receivers
+--------------------
+I am not too happy about Publisher/Subscriber at the moment. A Node "Signal" is basically just a Publisher, yet I feel
+like something named "Publisher" should not be part of something named "Node"... that is just mixing metaphors.
+And Publishers publishing "Signals" (or Publications) is also weird. 
+Instead, I would suggest the following renaming:
+    Publisher -> Emitter
+    Subscriber -> Receiver
+    Noop-Operator -> Relay
+    Operator -> Switch (? https://en.wikipedia.org/wiki/Switch)
+    Signal (stays, is not renamed to Publication) 
+
+
+Exceptions
+----------
+(using the new terminology from above)
+With the introduction of user-written code, we inevitable open the door to user-written bugs. Therefore, during Logic 
+evaluation, all Receivers and Switches are expected to be able to fail at any time.
+Failure in this case means that the Receiver throws an exception instead of finishing normally. Internal errors are of
+course invisible to us.
+In case of a failure, the Emitter upstream will acknowledge the error and ignore it for now.
+In the future, we might think of different policies, where the Emitter drops Receivers that fail once, multiple times
+in a row or in total or whatever.
+
+The alternative is that we keep track of the entire state of the application (meaning that user-defined code is no 
+longer allowed to keep any state of itself) and use event-sourcing in order to facility complete roll-backs of the state
+once a failure has occurred (make user-code transactional). This might be something else to think of in the future, but 
+I think that for now it might be best to assume that the user-programmer is capable of producing code that does not 
+break once a failure occurs.
 
 
 Additional Thoughts

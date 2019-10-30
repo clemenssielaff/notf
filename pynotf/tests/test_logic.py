@@ -1,93 +1,13 @@
 import unittest
 import logging
 from enum import Enum
-from typing import ClassVar, Optional, List
+from typing import List
 from weakref import ref as weak
+
 from pynotf.logic import Operator, Subscriber, Publisher
 from pynotf.value import Value
-from tests.utils import Recorder, record
 
-
-########################################################################################################################
-# TEST HELPER
-########################################################################################################################
-
-class NumberPublisher(Publisher):
-    def __init__(self):
-        Publisher.__init__(self, Value(0).schema)
-
-
-class AddConstant(Operator.Operation):
-    _schema: ClassVar[Value.Schema] = Value(0).schema
-
-    def __init__(self, addition: float):
-        self._constant = addition
-
-    @property
-    def input_schema(self) -> Value.Schema:
-        return self._schema
-
-    @property
-    def output_schema(self) -> Value.Schema:
-        return self._schema
-
-    def _perform(self, value: Value) -> Value:
-        return value.modified().set(value.as_number() + self._constant)
-
-
-class GroupTwo(Operator.Operation):
-    _input_schema: ClassVar[Value.Schema] = Value(0).schema
-    _output_prototype: ClassVar[Value] = Value({"x": 0, "y": 0})
-
-    def __init__(self):
-        self._last_value: Optional[float] = None
-
-    @property
-    def input_schema(self) -> Value.Schema:
-        return self._input_schema
-
-    @property
-    def output_schema(self) -> Value.Schema:
-        return self._output_prototype.schema
-
-    def _perform(self, value: Value) -> Optional[Value]:
-        if self._last_value is None:
-            self._last_value = value.as_number()
-        else:
-            result = self._output_prototype.modified().set({"x": self._last_value, "y": value.as_number()})
-            self._last_value = None
-            return result
-
-
-class ErrorOperator(Operator.Operation):
-    """
-    An Operation that raises a ValueError if a certain number is passed.
-    """
-    _schema: ClassVar[Value.Schema] = Value(0).schema
-
-    def __init__(self, err_on_number: float):
-        self._err_on_number: float = err_on_number
-
-    @property
-    def input_schema(self) -> Value.Schema:
-        return self._schema
-
-    @property
-    def output_schema(self) -> Value.Schema:
-        return self._schema
-
-    def _perform(self, value: Value) -> Optional[Value]:
-        if value.as_number() == self._err_on_number:
-            raise ValueError("The error condition has occurred")
-        return value
-
-
-class Nope:
-    pass
-
-
-coord2d_element = {"x": 0, "y": 0}
-Coord2D = Value(coord2d_element)
+from tests.utils import NumberPublisher, Recorder, record, ErrorOperation, AddConstantOperation, GroupTwoOperation
 
 
 ########################################################################################################################
@@ -108,6 +28,9 @@ class TestCase(unittest.TestCase):
         self.assertEqual(publisher.output_schema, Value(0).schema)
 
     def test_publishing(self):
+        class Nope:
+            pass
+
         publisher = NumberPublisher()
         recorder = record(publisher)
 
@@ -122,11 +45,12 @@ class TestCase(unittest.TestCase):
         with self.assertRaises(TypeError):
             publisher.publish(None)  # empty (wrong) schema
         with self.assertRaises(TypeError):
-            publisher.publish(Value(coord2d_element))  # wrong schema
+            publisher.publish(Value({"x": 0, "y": 0}))  # wrong schema
         with self.assertRaises(TypeError):
             publisher.publish(Nope())  # not convertible to Value
 
         publisher.complete()
+        self.assertTrue(publisher.is_completed())
         with self.assertRaises(RuntimeError):
             publisher.publish(0)  # completed
 
@@ -178,10 +102,11 @@ class TestCase(unittest.TestCase):
 
     def test_simple_operator(self):
         """
-        0, 1, 2, 3 -> 7, 8, 9, 10 -> (7, 8), (9, 10)
+        0, 1, 2, 3 -> 7, 8, 9, 10 -> (7, 8), (9, 10) -> (7, 8), (9, 10)
         """
         publisher = NumberPublisher()
-        operator = Operator(AddConstant(7), GroupTwo())
+        operator = Operator(AddConstantOperation(7), GroupTwoOperation(),
+                            Operator.NoOp(GroupTwoOperation().output_schema))
         operator.subscribe_to(publisher)
         recorder = record(operator)
 
@@ -192,16 +117,23 @@ class TestCase(unittest.TestCase):
         for index, value in enumerate(recorder.values):
             self.assertEqual(expected[index], (value["x"].as_number(), value["y"].as_number()))
 
+    def test_operator_wrong_type(self):
+        operator = Operator(Operator.NoOp(Value(0).schema))
+        operator.on_next(Publisher.Signal(NumberPublisher()), Value("Not A Number"))
+
     def test_operator_error(self):
         publisher = NumberPublisher()
-        operator = Operator(ErrorOperator(4))
+        operator = Operator(ErrorOperation(4))
         operator.subscribe_to(publisher)
         recorder = record(operator)
 
-        # it's not the ErrorOperator that fails, but trying to publish another value
-        with self.assertRaises(RuntimeError):
-            for x in range(10):
-                publisher.publish(x)
+        with self.assertRaises(TypeError):
+            publisher.publish("Not A Number")
+
+        # it's not the ErrorOperation that fails, but trying to publish another value
+        for x in range(10):
+            publisher.publish(x)
+        self.assertTrue(len(publisher.exceptions) > 0)
         self.assertTrue(operator.is_completed())
 
         expected = [0, 1, 2, 3]
@@ -212,6 +144,10 @@ class TestCase(unittest.TestCase):
     def test_no_empty_operator(self):
         with self.assertRaises(ValueError):
             _ = Operator()
+
+    def test_mismatched_operations(self):
+        with self.assertRaises(TypeError):
+            Operator(GroupTwoOperation(), AddConstantOperation(7))
 
     def test_subscriber_lifetime(self):
         publisher: Publisher = NumberPublisher()

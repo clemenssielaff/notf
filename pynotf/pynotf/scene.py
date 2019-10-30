@@ -11,7 +11,7 @@ from uuid import uuid4 as uuid
 from weakref import ref as weak_ref
 
 from .value import Value
-from .logic import Subscriber, Publisher, Operator
+from .logic import Publisher, Operator
 
 
 ########################################################################################################################
@@ -50,18 +50,16 @@ class Property(Operator, HasNode):
     Property type.
     """
 
-    def __init__(self, node: 'Node', name: str, value: Value, *operations: Operator.Operation):
+    def __init__(self, node: 'Node', value: Value, *operations: Operator.Operation):
         """
         Constructor.
         :param node: Node that this Property lives on.
-        :param name: Node-unique name of the Property, is constant.
         :param value: Initial value of the Property, also defines its Schema.
         :param operation: Operations applied to every new Value of this Property, must ingest and produce Values of the
             Property's type. Can be empty.
         :raise TypeError: If the input of the first or the output of the last Operation does not match this Property's
             Value type.
         """
-        self._name: str = name
         self._value: Value = value
 
         if len(operations) == 0:
@@ -75,13 +73,6 @@ class Property(Operator, HasNode):
             raise TypeError("Property Operations must not change the type of Value")
         if self.input_schema != self._value.schema:
             raise TypeError("Property Operations must ingest and produce the Property's Value type")
-
-    @property
-    def name(self) -> str:
-        """
-        Node-unique name of this Property.
-        """
-        return self._name
 
     @property
     def value(self) -> Value:
@@ -129,7 +120,7 @@ class Property(Operator, HasNode):
         """
         self.value = value
 
-    def on_error(self, publisher: Publisher, exception: BaseException):
+    def on_error(self, publisher: Publisher, exception: Exception):
         pass  # Properties do not care about upstream errors
 
     def complete(self):
@@ -138,10 +129,9 @@ class Property(Operator, HasNode):
 
 ########################################################################################################################
 
-class Slot(Subscriber, HasNode):
+class Slot(Operator, HasNode):
     """
-    A Slot is just a Subscriber that has an associated Node.
-    This is an abstract class that does not implement the `Subscriber.on_next` method.
+    A Slot is just a Relay that has an associated Node.
     """
 
     def __init__(self, node: 'Node', schema: Value.Schema = Value.Schema()):
@@ -150,17 +140,8 @@ class Slot(Subscriber, HasNode):
         :param node: Node that this Slot lives on.
         :param schema: Schema of the Value accepted by this Slot.
         """
-        Subscriber.__init__(self, schema)
+        Operator.__init__(self, Operator.NoOp(schema))
         HasNode.__init__(self, node)
-
-    @abstractmethod
-    def on_next(self, signal: Publisher.Signal, value: Optional[Value]):
-        """
-        Abstract method called by any upstream Publisher.
-        :param signal   The Signal associated with this call.
-        :param value    Published value, can be None.
-        """
-        pass
 
 
 ########################################################################################################################
@@ -269,12 +250,11 @@ class Node:
             """
             return not ((name in self._properties) or (name in self._signals) or (name in self._slots))
 
-    def __init__(self, scene: 'Scene', parent: 'Node', definition: 'Node.Definition', name: Optional[str] = None):
+    def __init__(self, scene: 'Scene', parent: 'Node', name: Optional[str] = None):
         """
         Constructor.
         :param scene: The Scene that this Node lives in.
         :param parent: The parent of this Node.
-        :param definition: Node type definition.
         :param name: (Optional) Scene-unique name of the Node.
         :raise NameError: If another Node with the same (not-None) name is alive in the Scene.
         """
@@ -287,26 +267,8 @@ class Node:
         self._uuid: uuid = uuid()
         self._name: Optional[str] = name  # in C++ this could be a raw pointer to the name inside the Scene's registry
 
-        self._apply_definition(definition)
-
         if self._name is not None:
             self._scene.register_name(self)
-
-        # TODO: generally speaking ... what does happen when a failure occurs in the middle of a Logic evaluation?
-        #   Like when a Node creates a child Node with a non-unique name? Ideally we'd want to have transactional
-        #   handling where either the complete event succeeds or nothing does. Then again, do we really want that?
-        #   If a Publisher publishes to x different Subscribers and only one fails, is the whole event broken?
-        #   Not really. but the broken Subscriber should be stopped. Which is what happens when you raise an error.
-        #   So ... what we do here is to say that you (as in "the person writing custom code") are responsible to make
-        #   sure that exceptions that are thrown in your code do not fuck up the system ...?
-        #   That makes sense.
-
-    def _apply_definition(self, definition: 'Node.Definition'):
-        # TODO: automatic update when visible properties are updated
-        self._properties = {name: Property(self, name, prop.value, *prop.operations)
-                            for name, prop in definition.properties.items()}
-        self._signals = {name: Publisher(signal.schema) for name, signal in definition.signals.items()}
-        self._slots = {name: Slot(self, slot.schema) for name, slot in definition.signals.items()}
 
     @property
     def name(self) -> Optional[str]:
@@ -317,6 +279,9 @@ class Node:
 
     @property
     def uuid(self) -> uuid:
+        """
+        Universally unique ID of this Node.
+        """
         return self._uuid
 
     def get_property(self, name: str) -> Property:
@@ -330,39 +295,94 @@ class Node:
                 self._properties.keys())))
         return prop
 
-    # def create_child(self, node_type: Type['Node']) -> 'Node':
-    #     """
-    #     Create a new child Node of this Node.
-    #     By tying Node creation to the existence of its parent, we can make sure that a Node can never not have a valid
-    #     parent. We can also call `_define_node` on the new instance.
-    #     :param node_type: Subclass of Node to instantiate as a child of this Node.
-    #     :return:          The new child Node instance.
-    #     """
-    #     # create the node instance
-    #     if not issubclass(node_type, Node):
-    #         raise TypeError("Nodes can only have other Nodes as children")
-    #     child = node_type(self._graph, self)
-    #
-    #     # finalize the node
-    #     definition = self.Definition()
-    #     child._define_node(definition)
-    #     child._apply_definition(definition)
-    #
-    #     # register the node as a new child
-    #     self._children.append(child)
-    #     return child
+    def get_signal(self, name: str) -> Publisher:
+        """
+        Returns the Signal requested by name.
+        :raises KeyError: If this Node kind has no Signal by the given name.
+        """
+        signal: Optional[Publisher] = self._signals.get(name, None)
+        if signal is None:
+            raise KeyError("Node has no Signal named: {}. Available Signal names are: {}".format(name, ", ".join(
+                self._signals.keys())))
+        return signal
+
+    def get_slot(self, name: str) -> Slot:
+        """
+        Returns the Slot requested by name.
+        :raises KeyError: If this Node kind has no Slot by the given name.
+        """
+        slot: Optional[Slot] = self._slots.get(name, None)
+        if slot is None:
+            raise KeyError("Node has no Slot named: {}. Available Slot names are: {}".format(name, ", ".join(
+                self._slots.keys())))
+        return slot
+
+    def create_child(self, node_type: Type['Node'], name: Optional[str] = None) -> 'Node':
+        """
+        Create a new child Node of this Node.
+        By tying Node creation to the existence of its parent, we can make sure that a Node can never not have a valid
+        parent. We can also call `_produce_definition` on the new instance after is has been constructed.
+        :param node_type: Subclass of Node to instantiate as a child of this Node.
+        :param name: (Optional) Scene-unique name of the new Node.
+        :return: The new child Node instance.
+        """
+        if not issubclass(node_type, Node):
+            raise TypeError("Nodes can only have other Nodes as children")
+
+        # create the node instance and define it
+        node = node_type(self._scene, self, name)
+        node._apply_definition(node._produce_definition())
+
+        # register the node as a new child of this one
+        self._children.append(node)
+
+        return node
+
+    @abstractmethod
+    def _produce_definition(self) -> 'Node.Definition':
+        """
+        Node subclasses should not be able to create Properties, Signals or Slots. Therefore, they are no methods like
+        `_add_property` etc. However, they still need a way to define the Properties, Signals and Slots what they need
+        in order to function.
+        This abstract method must be overwritten by a Node subtype and produce a `Definition` object that will be used
+        to define the instance of the new Node upon creation in `Node.create_child`.
+        :return: Node Definition object to define Nodes of the specific sub-type.
+        """
+        raise NotImplementedError()
+
+    def _apply_definition(self, definition: 'Node.Definition'):
+        """
+        This method cannot be called in the constructor, since (in general, meaning C++) you cannot call virtual methods
+        inside the constructor. And we need to call `_produce_definition` in order to get the Definition object to apply
+        to this Node instance in the first place. This is why this method is instead called by `Node.create_child`.
+        :param definition: Node Definition object to define this Node instance with.
+        """
+        # TODO: automatic update when visible properties are updated
+        self._properties = {name: Property(self, prop.value, *prop.operations)
+                            for name, prop in definition.properties.items()}
+        self._signals = {name: Publisher(signal.schema) for name, signal in definition.signals.items()}
+        self._slots = {name: Slot(self, slot.schema) for name, slot in definition.slots.items()}
+
+    # TODO: remove Nodes
 
 
 ########################################################################################################################
 
 class RootNode(Node):
     """
-    The Root Node is its own parent and does not have any Properties, Signals or Slots.
-    The root has the reserved name '/'.
+    The Root Node is its own parent and has the reserved name '/'.
     """
 
     def __init__(self, scene: 'Scene'):
-        Node.__init__(self, scene, self, Node.Definition(), '/')
+        Node.__init__(self, scene, self, '/')
+
+    def _produce_definition(self):
+        """
+        Root Nodes have no Properties, Signals or Slots.
+        This method should never be called because the only way to get is is to try to add a Root Node as a child of
+        an existing Node.
+        """
+        raise RuntimeError("RootNodes cannot be a child of another Node")
 
 
 ########################################################################################################################
@@ -647,6 +667,16 @@ Of course, the thing that is published by a Signal cannot itself be named "Signa
 
 Additional Thoughts
 ===================
+
+
+Is a Widget a Node?
+-------------------
+The way thing are set up now, we could turn the Widget -> Node relationship from an "is-a" to a "has-a" relationship.
+Meaning instead Widget deriving from Node, we could simply contain a Node as a field in Widget. Usually this is
+preferable, if not for one thing: discoverability. What I mean is that you can find a Node using its name in a Scene,
+but if the Node knows nothing about Widgets (or potential other Node-subclasses), then you don't get to a Widget from
+a Node. Instead, when a Widget *is-a* Node, the Node class can still be kept in the dark about the existence of a Widget
+class, but you will be able to `dynamic_cast` from the Node to a Widget.
 
 
 Asynchronous Operations
