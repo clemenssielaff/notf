@@ -153,6 +153,12 @@ class Publisher:
         """
         return self._output_schema
 
+    def is_completed(self) -> bool:
+        """
+        Returns true iff the Publisher has been completed, either through an error or normally.
+        """
+        return self._is_completed
+
     def publish(self, value: Any = Value()):
         """
         Push the given value to all active Subscribers.
@@ -176,8 +182,46 @@ class Publisher:
         if value.schema != self.output_schema:
             raise TypeError("Publisher cannot publish a value with the wrong Schema")
 
-        # Without changing the order, remove all expired Subscribers and compile a list of strong references to the live
-        # Subscribers that will receive the published Value.
+        # Publish from the local list of strong references that we know will stay alive. The member field may change
+        # during the iteration because some Subscriber downstream might add to the subscriptions or even unsubscribe
+        # other Subscribers, but those changes will not affect the current publishing process.
+        self._publish(self._collect_subscribers(), value)
+
+    # TODO: do not make error a public method, it should be private - same goes for complete
+    def error(self, exception: Exception):
+        """
+        Failure method, completes the Publisher.
+        :param exception:   The exception that has occurred.
+        """
+        print_error(format_exc())
+
+        signal: Publisher.Signal = Publisher.Signal(self, is_blockable=False)
+        for subscriber in self._collect_subscribers():
+            try:
+                subscriber.on_error(signal, exception)
+            except Exception as ex:
+                print_error(format_exc())
+
+        self._complete()
+
+    def complete(self):
+        """
+        Completes the Publisher successfully.
+        """
+        signal: Publisher.Signal = Publisher.Signal(self, is_blockable=False)
+        for subscriber in self._collect_subscribers():
+            try:
+                subscriber.on_complete(signal)
+            except Exception as ex:
+                print_error(format_exc())
+
+        self._complete()
+
+    def _collect_subscribers(self) -> List['Subscriber']:
+        """
+        Remove all expired Subscribers and return a list of strong references to the valid ones.
+        Note that the order of Subscribers does not change.
+        """
         subscribers = []
         valid_index = 0
         for current_index in range(len(self._subscribers)):
@@ -187,46 +231,7 @@ class Publisher:
                 self._subscribers[valid_index] = self._subscribers[current_index]  # would be a move or swap in C++
                 valid_index += 1
         self._subscribers = self._subscribers[:valid_index]
-
-        # Publish from the local list of strong references that we know will stay alive. The member field may change
-        # during the iteration because some Subscriber downstream might add to the subscriptions or even unsubscribe
-        # other Subscribers, but those changes will not affect the current publishing process.
-        self._publish(subscribers, value)
-
-    # TODO: do not make error a public method, it should be private - same goes for complete
-    # TODO: publish correctly gets strong references to subscribers before publishing - error and complete should do the same
-    def error(self, exception: Exception):
-        """
-        Failure method, completes the Publisher.
-        :param exception:   The exception that has occurred.
-        """
-        print_error(format_exc())
-
-        signal = Publisher.Signal(self, is_blockable=False)
-        for weak_subscriber in self._subscribers:
-            subscriber = weak_subscriber()
-            if subscriber is not None:
-                subscriber.on_error(signal, exception)
-
-        self._complete()
-
-    def complete(self):
-        """
-        Completes the Publisher successfully.
-        """
-        signal = Publisher.Signal(self, is_blockable=False)
-        for weak_subscriber in self._subscribers:
-            subscriber = weak_subscriber()
-            if subscriber is not None:
-                subscriber.on_complete(signal)
-
-        self._complete()
-
-    def is_completed(self) -> bool:
-        """
-        Returns true iff the Publisher has been completed, either through an error or normally.
-        """
-        return self._is_completed
+        return subscribers
 
     def _publish(self, subscribers: List['Subscriber'], value: Value):
         """

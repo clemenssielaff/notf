@@ -14,6 +14,20 @@ class NumberPublisher(Publisher):
         self.exceptions.append((subscriber, exception))
 
 
+class ExceptionOnCompleteSubscriber(Subscriber):
+    def __init__(self, schema: Value.Schema = Value(0).schema):
+        super().__init__(schema)
+
+    def on_next(self, signal: Publisher.Signal, value: Value):
+        pass
+
+    def on_error(self, signal: Publisher.Signal, exception: Exception):
+        raise RuntimeError("I also want to err")
+
+    def on_complete(self, signal: Publisher.Signal):
+        raise RuntimeError("I am now also complete")
+
+
 class Recorder(Subscriber):
     def __init__(self, schema: Value.Schema):
         super().__init__(schema)

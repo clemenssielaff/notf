@@ -109,7 +109,6 @@ class TestCase(unittest.TestCase):
         string_prop.value = "test string"
         self.assertEqual(string_prop.value.as_string(), "test string")
 
-
         with self.assertRaises(TypeError):
             number_prop.value = None
 

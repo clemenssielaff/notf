@@ -7,7 +7,8 @@ from weakref import ref as weak
 from pynotf.logic import Operator, Subscriber, Publisher
 from pynotf.value import Value
 
-from tests.utils import NumberPublisher, Recorder, record, ErrorOperation, AddConstantOperation, GroupTwoOperation
+from tests.utils import NumberPublisher, Recorder, record, ErrorOperation, AddConstantOperation, GroupTwoOperation, \
+    ExceptionOnCompleteSubscriber
 
 
 ########################################################################################################################
@@ -68,6 +69,18 @@ class TestCase(unittest.TestCase):
         self.assertEqual(len(subscriber.completed), 0)
         subscriber.subscribe_to(publisher)
         self.assertEqual(len(subscriber.completed), 1)
+
+    def test_exception_on_error(self):
+        pub = NumberPublisher()
+        sub = ExceptionOnCompleteSubscriber()
+        sub.subscribe_to(pub)
+        pub.error(NameError())  # should be safely ignored
+
+    def test_exception_on_complete(self):
+        pub = NumberPublisher()
+        sub = ExceptionOnCompleteSubscriber()
+        sub.subscribe_to(pub)
+        pub.complete()  # should be safely ignored
 
     def test_double_subscription(self):
         publisher: Publisher = NumberPublisher()
