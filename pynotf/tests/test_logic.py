@@ -8,7 +8,7 @@ from pynotf.logic import Operator, Subscriber, Publisher
 from pynotf.value import Value
 
 from tests.utils import NumberPublisher, Recorder, record, ErrorOperation, AddConstantOperation, GroupTwoOperation, \
-    ExceptionOnCompleteSubscriber
+    ExceptionOnCompleteSubscriber, AddAnotherSubscriberSubscriber, count_live_subscribers, UnsubscribeSubscriber
 
 
 ########################################################################################################################
@@ -210,6 +210,37 @@ class TestCase(unittest.TestCase):
         del sub1
         publisher._error(ValueError())
         self.assertEqual(len(publisher._subscribers), 0)
+
+    def test_add_subscribers(self):
+        publisher: Publisher = NumberPublisher()
+        subscriber: AddAnotherSubscriberSubscriber = AddAnotherSubscriberSubscriber(publisher, modulus=3)
+
+        subscriber.subscribe_to(publisher)
+        self.assertEqual(count_live_subscribers(publisher), 1)
+        publisher.publish(1)
+        self.assertEqual(count_live_subscribers(publisher), 2)
+        publisher.publish(2)
+        self.assertEqual(count_live_subscribers(publisher), 3)
+        publisher.publish(3)  # activates modulus
+        self.assertEqual(count_live_subscribers(publisher), 1)
+
+        publisher.publish(4)
+        publisher._complete()  # this too tries to add a subscriber, but is rejected
+        self.assertEqual(count_live_subscribers(publisher), 0)
+
+    def test_remove_subscribers(self):
+        publisher: Publisher = NumberPublisher()
+        sub1: Subscriber = UnsubscribeSubscriber(publisher)
+
+        self.assertEqual(count_live_subscribers(publisher), 1)
+        publisher.publish(0)
+        self.assertEqual(count_live_subscribers(publisher), 0)
+
+        sub2: Subscriber = UnsubscribeSubscriber(publisher)
+        sub3: Subscriber = UnsubscribeSubscriber(publisher)
+        self.assertEqual(count_live_subscribers(publisher), 2)
+        publisher.publish(1)
+        self.assertEqual(count_live_subscribers(publisher), 0)
 
     def test_signal_source(self):
         pub1: Publisher = NumberPublisher()

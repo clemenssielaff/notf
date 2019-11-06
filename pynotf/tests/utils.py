@@ -1,7 +1,12 @@
 from typing import List, ClassVar, Optional, Tuple
+import sys
 
 from pynotf.logic import Operator, Subscriber, Publisher
 from pynotf.value import Value
+
+
+def count_live_subscribers(publisher: Publisher) -> int:
+    return len([sub for sub in publisher._subscribers if sub() is not None])
 
 
 class NumberPublisher(Publisher):
@@ -12,6 +17,20 @@ class NumberPublisher(Publisher):
     def _handle_exception(self, subscriber: 'Subscriber', exception: Exception):
         Publisher._handle_exception(self, subscriber, exception)  # for coverage
         self.exceptions.append((subscriber, exception))
+
+
+class NoopSubscriber(Subscriber):
+    def __init__(self, schema: Value.Schema = Value(0).schema):
+        super().__init__(schema)
+
+    def on_next(self, signal: Publisher.Signal, value: Value):
+        pass
+
+    def on_error(self, signal: Publisher.Signal, exception: Exception):
+        pass
+
+    def on_complete(self, signal: Publisher.Signal):
+        pass
 
 
 class ExceptionOnCompleteSubscriber(Subscriber):
@@ -53,6 +72,59 @@ def record(publisher: [Publisher, Operator]) -> Recorder:
     recorder = Recorder(publisher.output_schema)
     recorder.subscribe_to(publisher)
     return recorder
+
+
+class AddAnotherSubscriberSubscriber(Subscriber):
+    """
+    Whenever one of the three methods is called, this Subscriber creates a new (Noop) Subscriber and subscibes it to
+    the given Publisher.
+    """
+
+    def __init__(self, publisher: Publisher, modulus: int = sys.maxsize, schema: Value.Schema = Value(0).schema):
+        """
+        :param publisher: Publisher to subscribe new Subscribers to.
+        :param modulus: With n = number of subscribers, every time n % modulus = 0, delete all subscribers.
+        :param schema: Schema of the Subscriber.
+        """
+        super().__init__(schema)
+        self._publisher: Publisher = publisher
+        self._modulus: int = modulus
+        self._subscribers: List[NoopSubscriber] = []  # to keep them alive
+
+    def _add_another(self):
+        if (len(self._subscribers) + 1) % self._modulus == 0:
+            self._subscribers.clear()
+        else:
+            subscriber: NoopSubscriber = NoopSubscriber(self.input_schema)
+            self._subscribers.append(subscriber)
+            subscriber.subscribe_to(self._publisher)
+
+    def on_next(self, signal: Publisher.Signal, value: Value):
+        self._add_another()
+
+    def on_error(self, signal: Publisher.Signal, exception: Exception):
+        self._add_another()
+
+    def on_complete(self, signal: Publisher.Signal):
+        self._add_another()
+
+
+class UnsubscribeSubscriber(Subscriber):
+    """
+    A Subscriber that unsubscribes whenever it gets a value.
+    """
+
+    def __init__(self, publisher: Publisher, schema: Value.Schema = Value(0).schema):
+        """
+        :param publisher: Publisher to subscribe to.
+        :param schema: Schema of the Subscriber.
+        """
+        super().__init__(schema)
+        self._publisher: Publisher = publisher
+        self.subscribe_to(self._publisher)
+
+    def on_next(self, signal: Publisher.Signal, value: Value):
+        self.unsubscribe_from(self._publisher)
 
 
 class AddConstantOperation(Operator.Operation):
