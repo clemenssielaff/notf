@@ -357,7 +357,6 @@ class Node:
         to this Node instance in the first place. This is why this method is instead called by `Node.create_child`.
         :param definition: Node Definition object to define this Node instance with.
         """
-        # TODO: automatic update when visible properties are updated
         self._properties = {name: Property(self, prop.value, *prop.operations)
                             for name, prop in definition.properties.items()}
         self._signals = {name: Publisher(signal.schema) for name, signal in definition.signals.items()}
@@ -744,6 +743,13 @@ Widget Properties are Operators. Instead of having a fixed min- or max or valida
 as Operators with a list of Operations that are applied to each new input.
 
 
+Dead Ends
+========= ==============================================================================================================
+*WARNING!* 
+The chapters below are only kept as reference of what doesn't make sense, so that I can look them up once I re-discover 
+the "brilliant" idea underlying each one. Each chapter has a closing paragraph on why it actually doesn't work.
+
+
 Multithreaded evaluation
 ------------------------
 The topic of true parallel execution of the Application Logic has been a difficult one. On the surface it seems like
@@ -801,4 +807,17 @@ Subscriber to react) and opening up a new thread for each one would be a massive
 record CRUD and analyse the records - more overhead. And we didn't even consider the cost of doing the same work twice 
 if a collision in the records is found. Combine that with the fact that we would need to keep track of *all* of the 
 state and must forbid the user to manage any of her own ... I say it is not worth it.
+
+
+Property Visibility
+-------------------
+In previous versions, Node Properties had a flag associated with their type called "visibility". A visible Property was
+one that, when changed, would update the visual representation of the Widget and would cause a redraw of its Design.
+I chose to get rid of this in favor of a more manual approach, where you have to call "redraw" in a Widget manually.
+Here is why the visibility idea was not good:
+    - Visibility only makes sense for Widgets, but all Nodes have Properties. Therefore all Nodes are tied to the 
+      concept of visibility even though it only applies to a sub-group.
+    - Sometimes, whether or not the Design changes is not a 1:1 correspondence on a Property update. For example, some
+      Properties might only affect the Design if they change a certain amount, or if they are an even number... or
+      whatever.
 """
