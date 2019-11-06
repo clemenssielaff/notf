@@ -1,133 +1,133 @@
 from typing import List, ClassVar, Optional, Tuple
 import sys
 
-from pynotf.logic import Operator, Subscriber, Publisher
+from pynotf.logic import Switch, Receiver, Emitter
 from pynotf.value import Value
 
 
-def count_live_subscribers(publisher: Publisher) -> int:
-    return len([sub for sub in publisher._subscribers if sub() is not None])
+def count_live_receivers(emitter: Emitter) -> int:
+    return len([rec for rec in emitter._receivers if rec() is not None])
 
 
-class NumberPublisher(Publisher):
+class NumberEmitter(Emitter):
     def __init__(self):
-        Publisher.__init__(self, Value(0).schema)
-        self.exceptions: List[Tuple[Subscriber, Exception]] = []
+        Emitter.__init__(self, Value(0).schema)
+        self.exceptions: List[Tuple[Receiver, Exception]] = []
 
-    def _handle_exception(self, subscriber: 'Subscriber', exception: Exception):
-        Publisher._handle_exception(self, subscriber, exception)  # for coverage
-        self.exceptions.append((subscriber, exception))
+    def _handle_exception(self, receiver: 'Receiver', exception: Exception):
+        Emitter._handle_exception(self, receiver, exception)  # for coverage
+        self.exceptions.append((receiver, exception))
 
 
-class NoopSubscriber(Subscriber):
+class NoopReceiver(Receiver):
     def __init__(self, schema: Value.Schema = Value(0).schema):
         super().__init__(schema)
 
-    def on_next(self, signal: Publisher.Signal, value: Value):
+    def on_next(self, signal: Emitter.Signal, value: Value):
         pass
 
-    def on_error(self, signal: Publisher.Signal, exception: Exception):
+    def on_error(self, signal: Emitter.Signal, exception: Exception):
         pass
 
-    def on_complete(self, signal: Publisher.Signal):
+    def on_complete(self, signal: Emitter.Signal):
         pass
 
 
-class ExceptionOnCompleteSubscriber(Subscriber):
+class ExceptionOnCompleteReceiver(Receiver):
     def __init__(self, schema: Value.Schema = Value(0).schema):
         super().__init__(schema)
 
-    def on_next(self, signal: Publisher.Signal, value: Value):
+    def on_next(self, signal: Emitter.Signal, value: Value):
         pass
 
-    def on_error(self, signal: Publisher.Signal, exception: Exception):
+    def on_error(self, signal: Emitter.Signal, exception: Exception):
         raise RuntimeError("I also want to err")
 
-    def on_complete(self, signal: Publisher.Signal):
+    def on_complete(self, signal: Emitter.Signal):
         raise RuntimeError("I am now also complete")
 
 
-class Recorder(Subscriber):
+class Recorder(Receiver):
     def __init__(self, schema: Value.Schema):
         super().__init__(schema)
         self.values: List[Value] = []
-        self.signals: List[Publisher.Signal] = []
+        self.signals: List[Emitter.Signal] = []
         self.completed: List[int] = []
         self.errors: List[Exception] = []
 
-    def on_next(self, signal: Publisher.Signal, value: Value):
+    def on_next(self, signal: Emitter.Signal, value: Value):
         self.values.append(value)
         self.signals.append(signal)
 
-    def on_error(self, signal: Publisher.Signal, exception: Exception):
-        Subscriber.on_error(self, signal, exception)  # just for coverage
+    def on_error(self, signal: Emitter.Signal, exception: Exception):
+        Receiver.on_error(self, signal, exception)  # just for coverage
         self.errors.append(exception)
 
-    def on_complete(self, signal: Publisher.Signal):
-        Subscriber.on_complete(self, signal)  # just for coverage
+    def on_complete(self, signal: Emitter.Signal):
+        Receiver.on_complete(self, signal)  # just for coverage
         self.completed.append(signal.source)
 
 
-def record(publisher: [Publisher, Operator]) -> Recorder:
-    recorder = Recorder(publisher.output_schema)
-    recorder.subscribe_to(publisher)
+def record(emitter: [Emitter, Switch]) -> Recorder:
+    recorder = Recorder(emitter.output_schema)
+    recorder.connect_to(emitter)
     return recorder
 
 
-class AddAnotherSubscriberSubscriber(Subscriber):
+class AddAnotherReceiverReceiver(Receiver):
     """
-    Whenever one of the three methods is called, this Subscriber creates a new (Noop) Subscriber and subscibes it to
-    the given Publisher.
+    Whenever one of the three methods is called, this Receiver creates a new (Noop) Receiver and connects it to
+    the given Emitter.
     """
 
-    def __init__(self, publisher: Publisher, modulus: int = sys.maxsize, schema: Value.Schema = Value(0).schema):
+    def __init__(self, emitter: Emitter, modulus: int = sys.maxsize, schema: Value.Schema = Value(0).schema):
         """
-        :param publisher: Publisher to subscribe new Subscribers to.
-        :param modulus: With n = number of subscribers, every time n % modulus = 0, delete all subscribers.
-        :param schema: Schema of the Subscriber.
+        :param emitter: Emitter to connect new Receivers to.
+        :param modulus: With n = number of Receivers, every time n % modulus = 0, delete all Receivers.
+        :param schema: Schema of the Receiver.
         """
         super().__init__(schema)
-        self._publisher: Publisher = publisher
+        self._emitter: Emitter = emitter
         self._modulus: int = modulus
-        self._subscribers: List[NoopSubscriber] = []  # to keep them alive
+        self._receivers: List[NoopReceiver] = []  # to keep them alive
 
     def _add_another(self):
-        if (len(self._subscribers) + 1) % self._modulus == 0:
-            self._subscribers.clear()
+        if (len(self._receivers) + 1) % self._modulus == 0:
+            self._receivers.clear()
         else:
-            subscriber: NoopSubscriber = NoopSubscriber(self.input_schema)
-            self._subscribers.append(subscriber)
-            subscriber.subscribe_to(self._publisher)
+            receiver: NoopReceiver = NoopReceiver(self.input_schema)
+            self._receivers.append(receiver)
+            receiver.connect_to(self._emitter)
 
-    def on_next(self, signal: Publisher.Signal, value: Value):
+    def on_next(self, signal: Emitter.Signal, value: Value):
         self._add_another()
 
-    def on_error(self, signal: Publisher.Signal, exception: Exception):
+    def on_error(self, signal: Emitter.Signal, exception: Exception):
         self._add_another()
 
-    def on_complete(self, signal: Publisher.Signal):
+    def on_complete(self, signal: Emitter.Signal):
         self._add_another()
 
 
-class UnsubscribeSubscriber(Subscriber):
+class DisconnectReceiver(Receiver):
     """
-    A Subscriber that unsubscribes whenever it gets a value.
+    A Receiver that disconnects whenever it gets a value.
     """
 
-    def __init__(self, publisher: Publisher, schema: Value.Schema = Value(0).schema):
+    def __init__(self, emitter: Emitter, schema: Value.Schema = Value(0).schema):
         """
-        :param publisher: Publisher to subscribe to.
-        :param schema: Schema of the Subscriber.
+        :param emitter: Emitter to connect to.
+        :param schema: Schema of the Receiver.
         """
         super().__init__(schema)
-        self._publisher: Publisher = publisher
-        self.subscribe_to(self._publisher)
+        self.emitter: Emitter = emitter
+        self.connect_to(self.emitter)
 
-    def on_next(self, signal: Publisher.Signal, value: Value):
-        self.unsubscribe_from(self._publisher)
+    def on_next(self, signal: Emitter.Signal, value: Value):
+        self.disconnect_from(self.emitter)
 
 
-class AddConstantOperation(Operator.Operation):
+class AddConstantOperation(Switch.Operation):
     _schema: ClassVar[Value.Schema] = Value(0).schema
 
     def __init__(self, addition: float):
@@ -145,7 +145,7 @@ class AddConstantOperation(Operator.Operation):
         return value.modified().set(value.as_number() + self._constant)
 
 
-class GroupTwoOperation(Operator.Operation):
+class GroupTwoOperation(Switch.Operation):
     _input_schema: ClassVar[Value.Schema] = Value(0).schema
     _output_prototype: ClassVar[Value] = Value({"x": 0, "y": 0})
 
@@ -169,7 +169,7 @@ class GroupTwoOperation(Operator.Operation):
             return result
 
 
-class ErrorOperation(Operator.Operation):
+class ErrorOperation(Switch.Operation):
     """
     An Operation that raises a ValueError if a certain number is passed.
     """
@@ -192,7 +192,7 @@ class ErrorOperation(Operator.Operation):
         return value
 
 
-class ClampOperation(Operator.Operation):
+class ClampOperation(Switch.Operation):
     """
     Clamps a numeric Value to a certain range.
     """
@@ -214,7 +214,7 @@ class ClampOperation(Operator.Operation):
         return value.modified().set(max(self._min, min(self._max, value.as_number())))
 
 
-class StringifyOperation(Operator.Operation):
+class StringifyOperation(Switch.Operation):
     """
     Converts a numeric Value into a string representation.
     """

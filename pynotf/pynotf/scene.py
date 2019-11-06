@@ -11,46 +11,46 @@ from uuid import uuid4 as uuid
 from weakref import ref as weak_ref
 
 from .value import Value
-from .logic import Publisher, Operator
+from .logic import Emitter, Switch
 
 
 ########################################################################################################################
 
 class HasNode:
     """
-    Interface class for subclasses of Subscriber that live on a Node.
-    By having this common interface, Publishers that may want to sort their Subscribers during a publish can identify
+    Interface class for subclasses of Receiver that live on a Node.
+    By having this common interface, Emitters that may want to sort their Receivers during a emit can identify
     those that are connected to a Node and can ask them for it.
     """
 
     def __init__(self, node: 'Node'):
         """
         Constructor.
-        :param node: Reference to the Node that this Subscriber lives on.
+        :param node: Reference to the Node that this Receiver lives on.
         """
         self._node: Node = node
 
     @property
     def node(self) -> 'Node':
         """
-        The Node that this Subscriber lives on.
+        The Node that this Receiver lives on.
         """
         return self._node
 
 
 ########################################################################################################################
 
-class Property(Operator, HasNode):
+class Property(Switch, HasNode):
     """
     Properties are values that combined fully define the state of the Node.
     If you take the entire Scene, take all Properties of all the Nodes, serialize the Scene alongside the Properties and
     re-load them, you have essentially restored the entire UI application at the point of serialization. Each Property
-    is an operator that produces a single Value.
+    is also a Switch that produces a single Value.
     The Operations that define how a Property transforms its input Value are fixed as they are an essential part of the
     Property type.
     """
 
-    def __init__(self, node: 'Node', value: Value, *operations: Operator.Operation):
+    def __init__(self, node: 'Node', value: Value, *operations: Switch.Operation):
         """
         Constructor.
         :param node: Node that this Property lives on.
@@ -63,10 +63,10 @@ class Property(Operator, HasNode):
         self._value: Value = value
 
         if len(operations) == 0:
-            # we need at least one Operator store provide Value Schemas for input and output
-            operations = (Operator.NoOp(self._value.schema),)
+            # we need at least one Switch store provide Value Schemas for input and output
+            operations = (Switch.NoOp(self._value.schema),)
 
-        Operator.__init__(self, *operations)
+        Switch.__init__(self, *operations)
         HasNode.__init__(self, node)
 
         if self.input_schema != self.output_schema:
@@ -109,18 +109,18 @@ class Property(Operator, HasNode):
         else:
             if result != self._value:
                 self._value = result
-                self.publish(self._value)
+                self.emit(self._value)
 
-    def on_next(self, publisher: Publisher, value: Optional[Value] = None):
+    def on_next(self, emitter: Emitter, value: Optional[Value] = None):
         """
-        Abstract method called by any upstream publisher.
+        Abstract method called by any upstream Emitter.
 
-        :param publisher    The Publisher publishing the value, for identification purposes only.
-        :param value        Published value, can be None (but this will throw in error for Properties).
+        :param emitter  The Emitter emitting the value, for identification purposes only.
+        :param value    Emitted value, can be None (but this will throw in error for Properties).
         """
         self.value = value
 
-    def on_error(self, publisher: Publisher, exception: Exception):
+    def on_error(self, emitter: Emitter, exception: Exception):
         pass  # Properties do not care about upstream errors
 
     def complete(self):
@@ -129,7 +129,7 @@ class Property(Operator, HasNode):
 
 ########################################################################################################################
 
-class Slot(Operator, HasNode):
+class Slot(Switch, HasNode):
     """
     A Slot is just a Relay that has an associated Node.
     """
@@ -140,7 +140,7 @@ class Slot(Operator, HasNode):
         :param node: Node that this Slot lives on.
         :param schema: Schema of the Value accepted by this Slot.
         """
-        Operator.__init__(self, Operator.NoOp(schema))
+        Switch.__init__(self, Switch.NoOp(schema))
         HasNode.__init__(self, node)
 
 
@@ -156,13 +156,12 @@ class Node:
         2. Signals
         3. Slots
 
-    Signals are Publishers that live on the Node and than can be invoked to propagate non-Property Values into the
+    Signals are Emitters that live on the Node and than can be invoked to propagate non-Property Values into the
     Logic as needed. They are public, meaning that they can be triggered from everywhere, although most will probably
     be triggered from code living on the Node itself.
 
-    Slots are Subscribers that live on the Node and keep a reference to their Node. Publishers that sort their
-    Subscribers based on their Node (if they have one) make use of that reference to establish an order for each new
-    Publication.
+    Slots are Receivers that live on the Node and keep a reference to their Node. Emitters that sort their Receivers
+    based on their Node (if they have one) make use of that reference to establish an order for each new Signal.
 
     Node instances are uniquely identified by an UUID which persists even through serialization/deserialization.
     """
@@ -179,7 +178,7 @@ class Node:
 
         class PropertyArgs(NamedTuple):
             value: Value
-            operations: Tuple[Operator.Operation] = tuple()
+            operations: Tuple[Switch.Operation] = tuple()
 
         class SignalArgs(NamedTuple):
             schema: Value.Schema = Value.Schema()
@@ -207,7 +206,7 @@ class Node:
         def slots(self):
             return self._slots
 
-        def add_property(self, name: str, value: Any, *operations: Operator.Operation):
+        def add_property(self, name: str, value: Any, *operations: Switch.Operation):
             """
             Stores the arguments need to construct a Property instance on the node.
             :param name: Node-unique name of the Property.
@@ -223,7 +222,7 @@ class Node:
             """
             Stores the arguments need to construct a Signal instance on the node.
             :param name: Node-unique name of the Signal.
-            :param schema: Scheme of the Value published by the Signal.
+            :param schema: Scheme of the Value emitted by the Signal.
             :raise NameError: If the Node already has a Property, Signal or Slot with the given name.
             """
             if not self._is_name_available(name):
@@ -262,7 +261,7 @@ class Node:
         self._parent: Node = parent
         self._children: List[Node] = []
         self._properties: Dict[str, Property] = {}
-        self._signals: Dict[str, Publisher] = {}
+        self._signals: Dict[str, Emitter] = {}
         self._slots: Dict[str, Slot] = {}
         self._uuid: uuid = uuid()
         self._name: Optional[str] = name  # in C++ this could be a raw pointer to the name inside the Scene's registry
@@ -295,12 +294,12 @@ class Node:
                 self._properties.keys())))
         return prop
 
-    def get_signal(self, name: str) -> Publisher:
+    def get_signal(self, name: str) -> Emitter:
         """
         Returns the Signal requested by name.
         :raises KeyError: If this Node kind has no Signal by the given name.
         """
-        signal: Optional[Publisher] = self._signals.get(name, None)
+        signal: Optional[Emitter] = self._signals.get(name, None)
         if signal is None:
             raise KeyError("Node has no Signal named: {}. Available Signal names are: {}".format(name, ", ".join(
                 self._signals.keys())))
@@ -359,7 +358,7 @@ class Node:
         """
         self._properties = {name: Property(self, prop.value, *prop.operations)
                             for name, prop in definition.properties.items()}
-        self._signals = {name: Publisher(signal.schema) for name, signal in definition.signals.items()}
+        self._signals = {name: Emitter(signal.schema) for name, signal in definition.signals.items()}
         self._slots = {name: Slot(self, slot.schema) for name, slot in definition.slots.items()}
 
     # TODO: remove Nodes
@@ -571,7 +570,7 @@ class Executor:
 
     def _cleanup(self):
         """
-        Since the order in which the Logic publishes values is essentially random, we cannot outright delete Nodes when
+        Since the order in which the Logic emits values is essentially random, we cannot outright delete Nodes when
         they are first marked for removal. Instead, we need to remove them after the loop has finished a turn and no
         change is currently handled.
         This method does that.
@@ -609,13 +608,13 @@ class Executor:
 
 ########################################################################################################################
 
-class Fact(Publisher):
+class Fact(Emitter):
     """
     Facts represent changeable, external truths that the Application Logic can react to.
-    To the Application Logic they appear as simple Publishers that are owned and managed by a single Service in a
+    To the Application Logic they appear as simple Emitters that are owned and managed by a single Service in a
     thread-safe fashion. The Service will update the Fact as new information becomes available, completes the Fact's
-    Publisher when the Service is stopped or the Fact has expired (for example, when a sensor is disconnected) and
-    forwards appropriate exceptions to the Subscribers of the Fact should an error occur.
+    Emitter when the Service is stopped or the Fact has expired (for example, when a sensor is disconnected) and
+    forwards appropriate exceptions to the Receivers of the Fact should an error occur.
     Examples of Facts are:
         - the latest reading of a sensor
         - the user performed a mouse click (incl. position, button and modifiers)
@@ -626,44 +625,33 @@ class Fact(Publisher):
     """
 
     def __init__(self, executor: Executor, schema: Value.Schema = Value.Schema()):
-        Publisher.__init__(self, schema)
+        Emitter.__init__(self, schema)
         self._executor: Executor = executor
 
-    def publish(self, value: Any = Value()):
+    def emit(self, value: Any = Value()):
         """
-        Push the given value to all active Subscribers.
-        :param value: Value to publish, can be empty if this Publisher does not publish a meaningful value.
+        Push the given value to all active Receivers.
+        :param value: Value to emit, can be empty if this Emitter does not emit a meaningful value.
         """
-        self._executor.schedule(Publisher.publish, self, value)
+        self._executor.schedule(Emitter.emit, self, value)
 
     def _error(self, exception: Exception):
         """
-        Failure method, completes the Publisher.
+        Failure method, completes the Emitter.
         :param exception:   The exception that has occurred.
         """
-        self._executor.schedule(Publisher._error, self, exception)
+        self._executor.schedule(Emitter._error, self, exception)
 
     def _complete(self):
         """
-        Completes the Publisher successfully.
+        Completes the Emitter successfully.
         """
-        self._executor.schedule(Publisher._complete, self)
+        self._executor.schedule(Emitter._complete, self)
 
 
 ########################################################################################################################
 
 """
-Ideas
-=====
-
-Rename Publisher to Signal?
---------------------------
-A Signal is a Publisher, but the word "Publisher" feels wrong when talking about a Signal. However, a Signal could well
-be a term used for a Publisher as well. I guess "Subscriber" would then be an "Observer"? A "Slot" would still be its
-own term, since it also implements the "HasNode"-interface.
-Of course, the thing that is published by a Signal cannot itself be named "Signal"...
-
-
 Additional Thoughts
 ===================
 
@@ -687,20 +675,20 @@ waiting on some asynchronous event to take place. This leads to follow up questi
     1.) Do we switch to new coroutines immediately and run them until they halt? Or Are they scheduled to run 
         immediately after the non-concurrent code has finished?
     2.) How are Signals accepted or blocked with async code?
-Actually, those two questions sound like the same one. If we only have Publishers that do not care about the order in 
-which their Subscribers get updated, then it shouldn't matter whether an asynchronous subscriber is called immediately
-or after all other subscribers have been called. It might actually even be better to delay all asynchronous subscribers
+Actually, those two questions sound like the same one. If we only have Emitters that do not care about the order in 
+which their Receivers get updated, then it shouldn't matter whether an asynchronous Receiver is called immediately
+or after all other Receivers have been called. It might actually even be better to delay all asynchronous Receivers
 until after all synchronous ones have been handled, because async means "now or later" while synchronous means "now" and
 scheduling all coroutines for later would honor that meaning more than those that execute immediately.
 
 Therefore, a sync code sits behind async operators in the logic. Async operators ignore the upstream Signal and 
-propagate an unblockable downstream Signal, meaning accepting or blocking has to happen before. Publications downstream 
-of the async operator are scheduled to happen after the synchronous "parent" Publication.
+propagate an unblockable downstream Signal, meaning accepting or blocking has to happen before. Emits downstream of the
+async operator are scheduled to happen after the synchronous "parent" emit.
 
-It should never be acceptable to accept or block a publication in async code - if we'd allow that, then it would be 
-possible for an event to be delayed indefinitely by a sibling subscriber.
+It should never be acceptable to accept or block an emission in async code - if we'd allow that, then it would be 
+possible for an event to be delayed indefinitely by a sibling Receiver.
 Example: A mouse click is delivered to two unrelated widgets that happen to overlap on screen. If the top widget 
-receives the publication and waits for three seconds to decide whether to accept it or not, the bottom widget will do 
+receives the emission and waits for three seconds to decide whether to accept it or not, the bottom widget will do 
 nothing and only be able to respond after the three seconds have passed. This might be what you want in some weird edge 
 case, but generally accept/ ignore/block decisions should be instantaneous.
 
@@ -710,7 +698,7 @@ keyword and only then can you await.
 
 Widgets and Logic
 -----------------
-We have now established that Logic elements (Publisher and Subscribers) must be protected from removal while an update
+We have now established that Logic elements (Emitter and Receivers) must be protected from removal while an update
 is being handled. The update process is also protected from the unexpected addition of elements, but that does not 
 matter for the following question, which is about the relationship between logic elements and Widgets.
 
@@ -718,7 +706,7 @@ First off, Widgets own their logic elements. This is elementary and one of the f
 defined by the combined state of its Properties, while Signals and Slots are tied to the type of Widget like methods are
 to an C++ object. But do some logic elements also own their Widget? Properties should not, they are basically dumb 
 values that exist in the context of a Widget but are fully unaware of it. Signals do not, they are outward facing only
-and do not carry any additional state beyond that of what any Publisher has.
+and do not carry any additional state beyond that of what any Emitter has.
 Slots however can (and often will) require a strong reference to the Widget that they live on. What now if we face
 problem 1 from the chapter "Logic Modifications" and Widget B removes Widget C and vice-versa? 
 
@@ -782,7 +770,7 @@ the problems of racy reads and writes, but it will allow us to reason about depe
 So if we have event A and B (in that order), we handle both in parallel (based on the Logic as it presented itself at
 the start of the event loop) and afterwards find out that they touched completely different operators? We do nothing.
 There was no possible race condition and we can update the Logic using the CRUD (create, read, update, delete) records
-that both Events generated independently. If however we find an Operator that:
+that both Events generated independently. If however we find an Switch that:
     * A and B wrote to
     * A wrote to and B read
     * A destroyed and B read
@@ -802,8 +790,8 @@ The true question is: can we allow that? Or asked differently, do we gain enough
 manage her own state? 
 Probably not. The dream of true parallel Logic execution remains as alluring as it is elusive. It sure sounds good to 
 say that all events are executed in parallel, but that might well be a burden. It is not unlikely that most events will 
-be short or even ultra-short lived (by that I mean that they are published straight into Nirvana, without a single 
-Subscriber to react) and opening up a new thread for each one would be a massive overhead. On top of that, you'd have to
+be short or even ultra-short lived (by that I mean that they are emitted straight into Nirvana, without a single 
+Receiver to react) and opening up a new thread for each one would be a massive overhead. On top of that, you'd have to
 record CRUD and analyse the records - more overhead. And we didn't even consider the cost of doing the same work twice 
 if a collision in the records is found. Combine that with the fact that we would need to keep track of *all* of the 
 state and must forbid the user to manage any of her own ... I say it is not worth it.

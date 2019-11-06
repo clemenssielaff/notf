@@ -4,11 +4,11 @@ from enum import Enum
 from typing import List
 from weakref import ref as weak
 
-from pynotf.logic import Operator, Subscriber, Publisher
+from pynotf.logic import Switch, Receiver, Emitter
 from pynotf.value import Value
 
-from tests.utils import NumberPublisher, Recorder, record, ErrorOperation, AddConstantOperation, GroupTwoOperation, \
-    ExceptionOnCompleteSubscriber, AddAnotherSubscriberSubscriber, count_live_subscribers, UnsubscribeSubscriber
+from tests.utils import NumberEmitter, Recorder, record, ErrorOperation, AddConstantOperation, GroupTwoOperation, \
+    ExceptionOnCompleteReceiver, AddAnotherReceiverReceiver, count_live_receivers, DisconnectReceiver
 
 
 ########################################################################################################################
@@ -24,238 +24,238 @@ class TestCase(unittest.TestCase):
     def tearDown(self):
         logging.disable(logging.NOTSET)
 
-    def test_publisher_schema(self):
-        publisher = NumberPublisher()
-        self.assertEqual(publisher.output_schema, Value(0).schema)
+    def test_emitter_schema(self):
+        emitter = NumberEmitter()
+        self.assertEqual(emitter.output_schema, Value(0).schema)
 
-    def test_publishing(self):
+    def test_emitting(self):
         class Nope:
             pass
 
-        publisher = NumberPublisher()
-        recorder = record(publisher)
+        emitter = NumberEmitter()
+        recorder = record(emitter)
 
-        publisher.publish(Value(85))
+        emitter.emit(Value(85))
         self.assertEqual(len(recorder.values), 1)
         self.assertEqual(recorder.values[0].as_number(), 85)
 
-        publisher.publish(Value(254))
+        emitter.emit(Value(254))
         self.assertEqual(len(recorder.values), 2)
         self.assertEqual(recorder.values[1].as_number(), 254)
 
         with self.assertRaises(TypeError):
-            publisher.publish(None)  # empty (wrong) schema
+            emitter.emit(None)  # empty (wrong) schema
         with self.assertRaises(TypeError):
-            publisher.publish(Value({"x": 0, "y": 0}))  # wrong schema
+            emitter.emit(Value({"x": 0, "y": 0}))  # wrong schema
         with self.assertRaises(TypeError):
-            publisher.publish(Nope())  # not convertible to Value
+            emitter.emit(Nope())  # not convertible to Value
 
-        publisher._complete()
-        self.assertTrue(publisher.is_completed())
+        emitter._complete()
+        self.assertTrue(emitter.is_completed())
         with self.assertRaises(RuntimeError):
-            publisher.publish(0)  # completed
+            emitter.emit(0)  # completed
 
-    def test_subscribing_with_wrong_schema(self):
+    def test_connecting_with_wrong_schema(self):
         with self.assertRaises(TypeError):
-            publisher = NumberPublisher()
-            subscriber = Recorder(Value("String").schema)
-            subscriber.subscribe_to(publisher)
+            emitter = NumberEmitter()
+            receiver = Recorder(Value("String").schema)
+            receiver.connect_to(emitter)
 
-    def test_subscribing_to_completed_publisher(self):
-        publisher = NumberPublisher()
-        publisher._complete()
+    def test_connecting_to_completed_emitter(self):
+        emitter = NumberEmitter()
+        emitter._complete()
 
-        subscriber = Recorder(publisher.output_schema)
-        self.assertEqual(len(subscriber.completed), 0)
-        subscriber.subscribe_to(publisher)
-        self.assertEqual(len(subscriber.completed), 1)
+        receiver = Recorder(emitter.output_schema)
+        self.assertEqual(len(receiver.completed), 0)
+        receiver.connect_to(emitter)
+        self.assertEqual(len(receiver.completed), 1)
 
     def test_exception_on_error(self):
-        pub = NumberPublisher()
-        sub = ExceptionOnCompleteSubscriber()
-        sub.subscribe_to(pub)
-        pub._error(NameError())  # should be safely ignored
+        emt = NumberEmitter()
+        rec = ExceptionOnCompleteReceiver()
+        rec.connect_to(emt)
+        emt._error(NameError())  # should be safely ignored
 
     def test_exception_on_complete(self):
-        pub = NumberPublisher()
-        sub = ExceptionOnCompleteSubscriber()
-        sub.subscribe_to(pub)
-        pub._complete()  # should be safely ignored
+        emt = NumberEmitter()
+        rec = ExceptionOnCompleteReceiver()
+        rec.connect_to(emt)
+        emt._complete()  # should be safely ignored
 
-    def test_double_subscription(self):
-        publisher: Publisher = NumberPublisher()
+    def test_double_connection(self):
+        emitter: Emitter = NumberEmitter()
 
-        subscriber = Recorder(publisher.output_schema)
-        self.assertEqual(len(publisher._subscribers), 0)
+        receiver = Recorder(emitter.output_schema)
+        self.assertEqual(len(emitter._receivers), 0)
 
-        subscriber.subscribe_to(publisher)
-        self.assertEqual(len(publisher._subscribers), 1)
+        receiver.connect_to(emitter)
+        self.assertEqual(len(emitter._receivers), 1)
 
-        subscriber.subscribe_to(publisher)  # is ignored
-        self.assertEqual(len(publisher._subscribers), 1)
+        receiver.connect_to(emitter)  # is ignored
+        self.assertEqual(len(emitter._receivers), 1)
 
-        publisher.publish(46)
-        self.assertEqual(len(subscriber.values), 1)
+        emitter.emit(46)
+        self.assertEqual(len(receiver.values), 1)
 
-    def test_unsubscribe(self):
-        publisher: Publisher = NumberPublisher()
-        subscriber = record(publisher)
+    def test_disconnect(self):
+        emitter: Emitter = NumberEmitter()
+        receiver = record(emitter)
 
-        publisher.publish(98)
-        self.assertEqual(len(subscriber.values), 1)
-        self.assertEqual(subscriber.values[0].as_number(), 98)
+        emitter.emit(98)
+        self.assertEqual(len(receiver.values), 1)
+        self.assertEqual(receiver.values[0].as_number(), 98)
 
-        subscriber.unsubscribe_from(publisher)
-        publisher.publish(367)
-        self.assertEqual(len(subscriber.values), 1)
-        self.assertEqual(subscriber.values[0].as_number(), 98)
+        receiver.disconnect_from(emitter)
+        emitter.emit(367)
+        self.assertEqual(len(receiver.values), 1)
+        self.assertEqual(receiver.values[0].as_number(), 98)
 
-        not_a_subscriber = Recorder(publisher.output_schema)
-        not_a_subscriber.unsubscribe_from(publisher)
+        not_a_receiver = Recorder(emitter.output_schema)
+        not_a_receiver.disconnect_from(emitter)
 
-    def test_simple_operator(self):
+    def test_simple_switch(self):
         """
         0, 1, 2, 3 -> 7, 8, 9, 10 -> (7, 8), (9, 10) -> (7, 8), (9, 10)
         """
-        publisher = NumberPublisher()
-        operator = Operator(AddConstantOperation(7), GroupTwoOperation(),
-                            Operator.NoOp(GroupTwoOperation().output_schema))
-        operator.subscribe_to(publisher)
-        recorder = record(operator)
+        emitter = NumberEmitter()
+        switch = Switch(AddConstantOperation(7), GroupTwoOperation(),
+                        Switch.NoOp(GroupTwoOperation().output_schema))
+        switch.connect_to(emitter)
+        recorder = record(switch)
 
         for x in range(4):
-            publisher.publish(Value(x))
+            emitter.emit(Value(x))
 
         expected = [(7, 8), (9, 10)]
         for index, value in enumerate(recorder.values):
             self.assertEqual(expected[index], (value["x"].as_number(), value["y"].as_number()))
 
-    def test_operator_wrong_type(self):
-        operator = Operator(Operator.NoOp(Value(0).schema))
-        operator.on_next(Publisher.Signal(NumberPublisher()), Value("Not A Number"))
+    def test_switch_wrong_type(self):
+        switch = Switch(Switch.NoOp(Value(0).schema))
+        switch.on_next(Emitter.Signal(NumberEmitter()), Value("Not A Number"))
 
-    def test_operator_error(self):
-        publisher = NumberPublisher()
-        operator = Operator(ErrorOperation(4))
-        operator.subscribe_to(publisher)
-        recorder = record(operator)
+    def test_switch_error(self):
+        emitter = NumberEmitter()
+        switch = Switch(ErrorOperation(4))
+        switch.connect_to(emitter)
+        recorder = record(switch)
 
         with self.assertRaises(TypeError):
-            publisher.publish("Not A Number")
+            emitter.emit("Not A Number")
 
-        # it's not the ErrorOperation that fails, but trying to publish another value
+        # it's not the ErrorOperation that fails, but trying to emit another value
         for x in range(10):
-            publisher.publish(x)
-        self.assertTrue(len(publisher.exceptions) > 0)
-        self.assertTrue(operator.is_completed())
+            emitter.emit(x)
+        self.assertTrue(len(emitter.exceptions) > 0)
+        self.assertTrue(switch.is_completed())
 
         expected = [0, 1, 2, 3]
         self.assertEqual(len(recorder.values), len(expected))
         for i in range(len(expected)):
             self.assertEqual(expected[i], recorder.values[i].as_number())
 
-    def test_no_empty_operator(self):
+    def test_no_empty_switch(self):
         with self.assertRaises(ValueError):
-            _ = Operator()
+            _ = Switch()
 
     def test_mismatched_operations(self):
         with self.assertRaises(TypeError):
-            Operator(GroupTwoOperation(), AddConstantOperation(7))
+            Switch(GroupTwoOperation(), AddConstantOperation(7))
 
-    def test_subscriber_lifetime(self):
-        publisher: Publisher = NumberPublisher()
-        sub1 = record(publisher)
-        sub2 = record(publisher)
-        sub3 = record(publisher)
-        sub4 = record(publisher)
-        sub5 = record(publisher)
-        self.assertEqual(len(publisher._subscribers), 5)
+    def test_receiver_lifetime(self):
+        emitter: Emitter = NumberEmitter()
+        rec1 = record(emitter)
+        rec2 = record(emitter)
+        rec3 = record(emitter)
+        rec4 = record(emitter)
+        rec5 = record(emitter)
+        self.assertEqual(len(emitter._receivers), 5)
 
-        publisher.publish(23)
-        for sub in (sub1, sub2, sub3, sub4, sub5):
-            self.assertEqual(len(sub.values), 1)
-            self.assertEqual(sub.values[0].as_number(), 23)
-        del sub
+        emitter.emit(23)
+        for rec in (rec1, rec2, rec3, rec4, rec5):
+            self.assertEqual(len(rec.values), 1)
+            self.assertEqual(rec.values[0].as_number(), 23)
+        del rec
 
-        del sub1  # delete first
-        self.assertEqual(len(publisher._subscribers), 5)  # sub1 has expired but hasn't been removed yet
-        publisher.publish(54)  # remove sub1
-        self.assertEqual(len(publisher._subscribers), 4)
+        del rec1  # delete first
+        self.assertEqual(len(emitter._receivers), 5)  # rec1 has expired but hasn't been removed yet
+        emitter.emit(54)  # remove rec1
+        self.assertEqual(len(emitter._receivers), 4)
 
-        del sub5  # delete last
-        self.assertEqual(len(publisher._subscribers), 4)  # sub5 has expired but hasn't been removed yet
-        publisher.publish(25)  # remove sub5
-        self.assertEqual(len(publisher._subscribers), 3)
+        del rec5  # delete last
+        self.assertEqual(len(emitter._receivers), 4)  # rec5 has expired but hasn't been removed yet
+        emitter.emit(25)  # remove rec5
+        self.assertEqual(len(emitter._receivers), 3)
 
-        del sub3  # delete center
-        self.assertEqual(len(publisher._subscribers), 3)  # sub3 has expired but hasn't been removed yet
-        publisher.publish(-2)  # remove sub3
-        self.assertEqual(len(publisher._subscribers), 2)
+        del rec3  # delete center
+        self.assertEqual(len(emitter._receivers), 3)  # rec3 has expired but hasn't been removed yet
+        emitter.emit(-2)  # remove rec3
+        self.assertEqual(len(emitter._receivers), 2)
 
-        publisher._complete()
-        self.assertEqual(len(publisher._subscribers), 0)
+        emitter._complete()
+        self.assertEqual(len(emitter._receivers), 0)
 
-    def test_expired_subscriber_on_complete(self):
-        publisher: Publisher = NumberPublisher()
-        sub1 = record(publisher)
-        self.assertEqual(len(publisher._subscribers), 1)
-        del sub1
-        publisher._complete()
-        self.assertEqual(len(publisher._subscribers), 0)
+    def test_expired_receiver_on_complete(self):
+        emitter: Emitter = NumberEmitter()
+        rec1 = record(emitter)
+        self.assertEqual(len(emitter._receivers), 1)
+        del rec1
+        emitter._complete()
+        self.assertEqual(len(emitter._receivers), 0)
 
-    def test_expired_subscriber_on_failure(self):
-        publisher: Publisher = NumberPublisher()
-        sub1 = record(publisher)
-        self.assertEqual(len(publisher._subscribers), 1)
-        del sub1
-        publisher._error(ValueError())
-        self.assertEqual(len(publisher._subscribers), 0)
+    def test_expired_receiver_on_failure(self):
+        emitter: Emitter = NumberEmitter()
+        rec1 = record(emitter)
+        self.assertEqual(len(emitter._receivers), 1)
+        del rec1
+        emitter._error(ValueError())
+        self.assertEqual(len(emitter._receivers), 0)
 
-    def test_add_subscribers(self):
-        publisher: Publisher = NumberPublisher()
-        subscriber: AddAnotherSubscriberSubscriber = AddAnotherSubscriberSubscriber(publisher, modulus=3)
+    def test_add_receivers(self):
+        emitter: Emitter = NumberEmitter()
+        receiver: AddAnotherReceiverReceiver = AddAnotherReceiverReceiver(emitter, modulus=3)
 
-        subscriber.subscribe_to(publisher)
-        self.assertEqual(count_live_subscribers(publisher), 1)
-        publisher.publish(1)
-        self.assertEqual(count_live_subscribers(publisher), 2)
-        publisher.publish(2)
-        self.assertEqual(count_live_subscribers(publisher), 3)
-        publisher.publish(3)  # activates modulus
-        self.assertEqual(count_live_subscribers(publisher), 1)
+        receiver.connect_to(emitter)
+        self.assertEqual(count_live_receivers(emitter), 1)
+        emitter.emit(1)
+        self.assertEqual(count_live_receivers(emitter), 2)
+        emitter.emit(2)
+        self.assertEqual(count_live_receivers(emitter), 3)
+        emitter.emit(3)  # activates modulus
+        self.assertEqual(count_live_receivers(emitter), 1)
 
-        publisher.publish(4)
-        publisher._complete()  # this too tries to add a subscriber, but is rejected
-        self.assertEqual(count_live_subscribers(publisher), 0)
+        emitter.emit(4)
+        emitter._complete()  # this too tries to add a Receiver, but is rejected
+        self.assertEqual(count_live_receivers(emitter), 0)
 
-    def test_remove_subscribers(self):
-        publisher: Publisher = NumberPublisher()
-        sub1: Subscriber = UnsubscribeSubscriber(publisher)
+    def test_remove_receivers(self):
+        emitter: Emitter = NumberEmitter()
+        rec1: Receiver = DisconnectReceiver(emitter)
 
-        self.assertEqual(count_live_subscribers(publisher), 1)
-        publisher.publish(0)
-        self.assertEqual(count_live_subscribers(publisher), 0)
+        self.assertEqual(count_live_receivers(emitter), 1)
+        emitter.emit(0)
+        self.assertEqual(count_live_receivers(emitter), 0)
 
-        sub2: Subscriber = UnsubscribeSubscriber(publisher)
-        sub3: Subscriber = UnsubscribeSubscriber(publisher)
-        self.assertEqual(count_live_subscribers(publisher), 2)
-        publisher.publish(1)
-        self.assertEqual(count_live_subscribers(publisher), 0)
+        rec2: Receiver = DisconnectReceiver(emitter)
+        rec3: Receiver = DisconnectReceiver(emitter)
+        self.assertEqual(count_live_receivers(emitter), 2)
+        emitter.emit(1)
+        self.assertEqual(count_live_receivers(emitter), 0)
 
     def test_signal_source(self):
-        pub1: Publisher = NumberPublisher()
-        pub2: Publisher = NumberPublisher()
-        sub = record(pub1)
-        sub.subscribe_to(pub2)
+        emt1: Emitter = NumberEmitter()
+        emt2: Emitter = NumberEmitter()
+        rec = record(emt1)
+        rec.connect_to(emt2)
 
-        pub1.publish(1)
-        pub1.publish(2)
-        pub2.publish(1)
-        pub1.publish(3)
-        pub2.publish(2000)
+        emt1.emit(1)
+        emt1.emit(2)
+        emt2.emit(1)
+        emt1.emit(3)
+        emt2.emit(2000)
 
-        self.assertEqual([value.as_number() for value in sub.values], [1, 2, 1, 3, 2000])
-        self.assertEqual([signal.source for signal in sub.signals], [id(pub1), id(pub1), id(pub2), id(pub1), id(pub2)])
+        self.assertEqual([value.as_number() for value in rec.values], [1, 2, 1, 3, 2000])
+        self.assertEqual([signal.source for signal in rec.signals], [id(emt1), id(emt1), id(emt2), id(emt1), id(emt2)])
 
     def test_signal_status(self):
         class Ignore(Recorder):
@@ -266,7 +266,7 @@ class TestCase(unittest.TestCase):
             def __init__(self):
                 Recorder.__init__(self, Value(0).schema)
 
-            def on_next(self, signal: Publisher.Signal, value: Value):
+            def on_next(self, signal: Emitter.Signal, value: Value):
                 if signal.is_blockable() and not signal.is_accepted():
                     Recorder.on_next(self, signal, value)
 
@@ -278,7 +278,7 @@ class TestCase(unittest.TestCase):
             def __init__(self):
                 Recorder.__init__(self, Value(0).schema)
 
-            def on_next(self, signal: Publisher.Signal, value: Value):
+            def on_next(self, signal: Emitter.Signal, value: Value):
                 Recorder.on_next(self, signal, value)
                 if signal.is_blockable():
                     signal.accept()
@@ -291,16 +291,16 @@ class TestCase(unittest.TestCase):
             def __init__(self):
                 Recorder.__init__(self, Value(0).schema)
 
-            def on_next(self, signal: Publisher.Signal, value: Value):
+            def on_next(self, signal: Emitter.Signal, value: Value):
                 Recorder.on_next(self, signal, value)
                 signal.block()
                 signal.block()  # again ... for coverage
 
-        class Distributor(NumberPublisher):
-            def _publish(self, subscribers: List['Subscriber'], value: Value):
-                signal = Publisher.Signal(self, is_blockable=True)
-                for subscriber in subscribers:
-                    subscriber.on_next(signal, value)
+        class Distributor(NumberEmitter):
+            def _emit(self, receivers: List['Receiver'], value: Value):
+                signal = Emitter.Signal(self, is_blockable=True)
+                for receiver in receivers:
+                    receiver.on_next(signal, value)
                     if signal.is_blocked():
                         return
 
@@ -312,16 +312,16 @@ class TestCase(unittest.TestCase):
         block1: Blocker = Blocker()  # should record the same as accept1
         block2: Blocker = Blocker()  # should not record any values
 
-        # order matters here, as the subscribers are called in the order they subscribed
-        ignore1.subscribe_to(distributor)
-        accept1.subscribe_to(distributor)
-        ignore2.subscribe_to(distributor)
-        accept2.subscribe_to(distributor)
-        block1.subscribe_to(distributor)
-        block2.subscribe_to(distributor)
+        # order matters here, as the Receivers are called in the order they connected
+        ignore1.connect_to(distributor)
+        accept1.connect_to(distributor)
+        ignore2.connect_to(distributor)
+        accept2.connect_to(distributor)
+        block1.connect_to(distributor)
+        block2.connect_to(distributor)
 
         for x in range(1, 5):
-            distributor.publish(x)
+            distributor.emit(x)
 
         self.assertEqual([value.as_number() for value in ignore1.values], [1, 2, 3, 4])
         self.assertEqual([value.as_number() for value in accept1.values], [1, 2, 3, 4])
@@ -330,108 +330,108 @@ class TestCase(unittest.TestCase):
         self.assertEqual([value.as_number() for value in block1.values], [1, 2, 3, 4])
         self.assertEqual([value.as_number() for value in block2.values], [])
 
-    def test_subscription_during_publish(self):
-        class SubscribeOther(Recorder):
+    def test_connection_during_emit(self):
+        class ConnectOther(Recorder):
             """
-            Subscribes another Recorder when receiving a value.
+            Connects another Recorder when receiving a value.
             """
 
-            def __init__(self, publisher: Publisher, other: Recorder):
+            def __init__(self, emitter: Emitter, other: Recorder):
                 Recorder.__init__(self, Value(0).schema)
-                self._publisher = publisher
+                self._emitter = emitter
                 self._other = other
 
-            def on_next(self, signal: Publisher.Signal, value: Value):
-                self._other.subscribe_to(self._publisher)
+            def on_next(self, signal: Emitter.Signal, value: Value):
+                self._other.connect_to(self._emitter)
                 Recorder.on_next(self, signal, value)
 
-        pub: Publisher = NumberPublisher()
-        sub2 = Recorder(Value(0).schema)
-        sub1 = SubscribeOther(pub, sub2)
-        sub1.subscribe_to(pub)
+        emt: Emitter = NumberEmitter()
+        rec2 = Recorder(Value(0).schema)
+        rec1 = ConnectOther(emt, rec2)
+        rec1.connect_to(emt)
 
-        self.assertEqual(len(sub1.values), 0)
-        self.assertEqual(len(sub2.values), 0)
+        self.assertEqual(len(rec1.values), 0)
+        self.assertEqual(len(rec2.values), 0)
 
-        self.assertEqual(len(pub._subscribers), 1)
-        pub.publish(45)
-        self.assertEqual(len(pub._subscribers), 2)
-        self.assertEqual(len(sub1.values), 1)
-        self.assertEqual(sub1.values[0].as_number(), 45)
-        self.assertEqual(len(sub2.values), 0)
+        self.assertEqual(len(emt._receivers), 1)
+        emt.emit(45)
+        self.assertEqual(len(emt._receivers), 2)
+        self.assertEqual(len(rec1.values), 1)
+        self.assertEqual(rec1.values[0].as_number(), 45)
+        self.assertEqual(len(rec2.values), 0)
 
-        pub.publish(89)
-        self.assertEqual(len(sub1.values), 2)
-        self.assertEqual(sub1.values[1].as_number(), 89)
-        self.assertEqual(len(sub2.values), 1)
-        self.assertEqual(sub2.values[0].as_number(), 89)
+        emt.emit(89)
+        self.assertEqual(len(rec1.values), 2)
+        self.assertEqual(rec1.values[1].as_number(), 89)
+        self.assertEqual(len(rec2.values), 1)
+        self.assertEqual(rec2.values[0].as_number(), 89)
 
-    def test_unsubscribe_during_publish(self):
-        class UnsubscribeOther(Recorder):
+    def test_disconnect_during_emit(self):
+        class DisconnectOther(Recorder):
             """
-            Unsubscribes another Recorder when receiving a value.
+            Disconnects another Recorder when receiving a value.
             """
 
-            def __init__(self, publisher: Publisher, other: Recorder):
+            def __init__(self, emitter: Emitter, other: Recorder):
                 Recorder.__init__(self, Value(0).schema)
-                self._publisher = publisher
+                self._emitter = emitter
                 self._other = other
 
-            def on_next(self, signal: Publisher.Signal, value: Value):
-                self._other.unsubscribe_from(self._publisher)
+            def on_next(self, signal: Emitter.Signal, value: Value):
+                self._other.disconnect_from(self._emitter)
                 Recorder.on_next(self, signal, value)
 
-        pub: Publisher = NumberPublisher()
-        sub2 = Recorder(Value(0).schema)
-        sub1 = UnsubscribeOther(pub, sub2)
-        sub1.subscribe_to(pub)
-        sub2.subscribe_to(pub)
+        emt: Emitter = NumberEmitter()
+        rec2 = Recorder(Value(0).schema)
+        rec1 = DisconnectOther(emt, rec2)
+        rec1.connect_to(emt)
+        rec2.connect_to(emt)
 
-        self.assertEqual(len(sub1.values), 0)
-        self.assertEqual(len(sub2.values), 0)
+        self.assertEqual(len(rec1.values), 0)
+        self.assertEqual(len(rec2.values), 0)
 
-        self.assertEqual(len(pub._subscribers), 2)
-        pub.publish(45)
-        self.assertEqual(len(pub._subscribers), 1)
-        self.assertEqual(len(sub1.values), 1)
-        self.assertEqual(sub1.values[0].as_number(), 45)
-        self.assertEqual(len(sub2.values), 1)
-        self.assertEqual(sub2.values[0].as_number(), 45)
+        self.assertEqual(len(emt._receivers), 2)
+        emt.emit(45)
+        self.assertEqual(len(emt._receivers), 1)
+        self.assertEqual(len(rec1.values), 1)
+        self.assertEqual(rec1.values[0].as_number(), 45)
+        self.assertEqual(len(rec2.values), 1)
+        self.assertEqual(rec2.values[0].as_number(), 45)
 
-        pub.publish(89)
-        self.assertEqual(len(sub1.values), 2)
-        self.assertEqual(sub1.values[1].as_number(), 89)
-        self.assertEqual(len(sub2.values), 1)
+        emt.emit(89)
+        self.assertEqual(len(rec1.values), 2)
+        self.assertEqual(rec1.values[1].as_number(), 89)
+        self.assertEqual(len(rec2.values), 1)
 
-    def test_removal_during_publish(self):
+    def test_removal_during_emit(self):
         class RemoveOther(Recorder):
             """
             Removes another Recorder when receiving a value.
             """
 
-            def __init__(self, publisher: Publisher):
+            def __init__(self, emitter: Emitter):
                 Recorder.__init__(self, Value(0).schema)
-                self._publisher = publisher
+                self._emitter = emitter
                 self._other = Recorder(Value(0).schema)
-                self._other.subscribe_to(self._publisher)
+                self._other.connect_to(self._emitter)
 
-            def on_next(self, signal: Publisher.Signal, value: Value):
+            def on_next(self, signal: Emitter.Signal, value: Value):
                 self._other = None
                 Recorder.on_next(self, signal, value)
 
-        pub: Publisher = NumberPublisher()
-        sub = RemoveOther(pub)
-        sub.subscribe_to(pub)
+        emt: Emitter = NumberEmitter()
+        rec = RemoveOther(emt)
+        rec.connect_to(emt)
 
-        self.assertEqual(len(pub._subscribers), 2)
-        pub.publish(30)
-        self.assertEqual(len(pub._subscribers), 2)  # although one of them should have expired by now
+        self.assertEqual(len(emt._receivers), 2)
+        emt.emit(30)
+        self.assertEqual(len(emt._receivers), 2)  # although one of them should have expired by now
 
-        pub.publish(93)
-        self.assertEqual(len(pub._subscribers), 1)
+        emt.emit(93)
+        self.assertEqual(len(emt._receivers), 1)
 
     def test_sorting(self):
-        class NamedSubscriber(Subscriber):
+        class NamedReceiver(Receiver):
 
             class Status(Enum):
                 NOT_CALLED = 0
@@ -439,11 +439,11 @@ class TestCase(unittest.TestCase):
                 ACCEPTED = 2
 
             def __init__(self, name: str):
-                Subscriber.__init__(self, Value(0).schema)
+                Receiver.__init__(self, Value(0).schema)
                 self.name: str = name
                 self.status = self.Status.NOT_CALLED
 
-            def on_next(self, signal: Publisher.Signal, value: Value):
+            def on_next(self, signal: Emitter.Signal, value: Value):
                 if not signal.is_accepted():
                     self.status = self.Status.FIRST
                     signal.accept()
@@ -451,81 +451,81 @@ class TestCase(unittest.TestCase):
                     self.status = self.Status.ACCEPTED
                     signal.block()
 
-        class SortByName(NumberPublisher):
+        class SortByName(NumberEmitter):
 
-            def _publish(self, subscribers: List['Subscriber'], value: Value):
-                # split the subscribers into sortable and un-sortable
-                named_subs = []
-                other_subs = []
-                for sub in subscribers:
-                    if isinstance(sub, NamedSubscriber):
-                        named_subs.append(sub)
+            def _emit(self, receivers: List['Receiver'], value: Value):
+                # split the receivers into sortable and un-sortable
+                named_recs = []
+                other_recs = []
+                for rec in receivers:
+                    if isinstance(rec, NamedReceiver):
+                        named_recs.append(rec)
                     else:
-                        other_subs.append(sub)
-                named_subs: List = sorted(named_subs, key=lambda x: x.name)
+                        other_recs.append(rec)
+                named_recs: List = sorted(named_recs, key=lambda x: x.name)
 
-                # re-apply the order back to the Publisher
-                self._sort_subscribers([subscribers.index(x) for x in (named_subs + other_subs)])
+                # re-apply the order back to the Emitter
+                self._sort_receivers([receivers.index(x) for x in (named_recs + other_recs)])
 
-                # publish to the sorted subscribers first
-                signal = Publisher.Signal(self, is_blockable=True)
-                for named_sub in named_subs:
-                    named_sub.on_next(signal, value)
+                # emit to the sorted Receivers first
+                signal = Emitter.Signal(self, is_blockable=True)
+                for named_rec in named_recs:
+                    named_rec.on_next(signal, value)
                     if signal.is_blocked():
                         return
 
-                # unsorted Subscribers should not be able to block the publishing process
-                signal = Publisher.Signal(self, is_blockable=False)
-                for other_sub in other_subs:
-                    other_sub.on_next(signal, value)
+                # unsorted Receivers should not be able to block the emitting process
+                signal = Emitter.Signal(self, is_blockable=False)
+                for other_rec in other_recs:
+                    other_rec.on_next(signal, value)
 
-        a: NamedSubscriber = NamedSubscriber("a")
-        b: NamedSubscriber = NamedSubscriber("b")
-        c: NamedSubscriber = NamedSubscriber("c")
-        d: NamedSubscriber = NamedSubscriber("d")
+        a: NamedReceiver = NamedReceiver("a")
+        b: NamedReceiver = NamedReceiver("b")
+        c: NamedReceiver = NamedReceiver("c")
+        d: NamedReceiver = NamedReceiver("d")
         e: Recorder = Recorder(Value(0).schema)
 
-        # subscribe in random order
-        pub: Publisher = SortByName()
-        for subscriber in (e, c, b, a, d):
-            subscriber.subscribe_to(pub)
-        del subscriber
+        # connect in random order
+        emt: Emitter = SortByName()
+        for receiver in (e, c, b, a, d):
+            receiver.connect_to(emt)
+        del receiver
 
-        pub.publish(938)
-        self.assertEqual(a.status, NamedSubscriber.Status.FIRST)
-        self.assertEqual(b.status, NamedSubscriber.Status.ACCEPTED)
-        self.assertEqual(c.status, NamedSubscriber.Status.NOT_CALLED)
-        self.assertEqual(d.status, NamedSubscriber.Status.NOT_CALLED)
+        emt.emit(938)
+        self.assertEqual(a.status, NamedReceiver.Status.FIRST)
+        self.assertEqual(b.status, NamedReceiver.Status.ACCEPTED)
+        self.assertEqual(c.status, NamedReceiver.Status.NOT_CALLED)
+        self.assertEqual(d.status, NamedReceiver.Status.NOT_CALLED)
         self.assertEqual(len(e.values), 0)
-        self.assertEqual(pub._subscribers, [weak(x) for x in [a, b, c, d, e]])
+        self.assertEqual(emt._receivers, [weak(x) for x in [a, b, c, d, e]])
 
         # delete all but b and reset
         del a
-        b.status = NamedSubscriber.Status.NOT_CALLED
+        b.status = NamedReceiver.Status.NOT_CALLED
         del c
         del d
 
-        pub.publish(34)
-        self.assertEqual(b.status, NamedSubscriber.Status.FIRST)
+        emt.emit(34)
+        self.assertEqual(b.status, NamedReceiver.Status.FIRST)
         self.assertEqual(len(e.values), 1)
 
     def test_apply_invalid_order(self):
-        pub = NumberPublisher()
-        _ = record(pub)
-        _ = record(pub)
-        _ = record(pub)
+        emt = NumberEmitter()
+        _ = record(emt)
+        _ = record(emt)
+        _ = record(emt)
 
         with self.assertRaises(RuntimeError):
-            pub._sort_subscribers([])  # empty
+            emt._sort_receivers([])  # empty
         with self.assertRaises(RuntimeError):
-            pub._sort_subscribers([0, 1])  # too few indices
+            emt._sort_receivers([0, 1])  # too few indices
         with self.assertRaises(RuntimeError):
-            pub._sort_subscribers([0, 1, 2, 3])  # too many indices
+            emt._sort_receivers([0, 1, 2, 3])  # too many indices
         with self.assertRaises(RuntimeError):
-            pub._sort_subscribers([0, 1, 1])  # duplicate indices
+            emt._sort_receivers([0, 1, 1])  # duplicate indices
         with self.assertRaises(RuntimeError):
-            pub._sort_subscribers([1, 2, 3])  # wrong indices
-        pub._sort_subscribers([0, 1, 2])  # success
+            emt._sort_receivers([1, 2, 3])  # wrong indices
+        emt._sort_receivers([0, 1, 2])  # success
 
 
 if __name__ == '__main__':

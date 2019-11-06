@@ -7,10 +7,10 @@ from time import sleep
 from itertools import product
 
 from pynotf.value import Value
-from pynotf.logic import Publisher
+from pynotf.logic import Emitter
 from pynotf.scene import Executor, Fact, Scene, RootNode, Node, Property
 
-from tests.utils import record, ErrorOperation, ClampOperation, StringifyOperation, NumberPublisher
+from tests.utils import record, ErrorOperation, ClampOperation, StringifyOperation, NumberEmitter
 
 
 ########################################################################################################################
@@ -124,28 +124,28 @@ class TestCase(unittest.TestCase):
         scene = Scene()
         node = scene.root.create_child(TestNode)
         prop: Property = node.get_property("prop_number")
-        publisher1: Publisher = NumberPublisher()
-        publisher2: Publisher = NumberPublisher()
+        emitter1: Emitter = NumberEmitter()
+        emitter2: Emitter = NumberEmitter()
 
-        prop.subscribe_to(publisher1)
-        prop.subscribe_to(publisher2)
+        prop.connect_to(emitter1)
+        prop.connect_to(emitter2)
         self.assertEqual(prop.value.as_number(), 0)
 
-        publisher1.publish(2)
+        emitter1.emit(2)
         self.assertEqual(prop.value.as_number(), 2)
-        publisher2.publish(5)
+        emitter2.emit(5)
         self.assertEqual(prop.value.as_number(), 5)
-        publisher1.publish(3)
-        publisher2.publish(9)
-        publisher1.publish(8)
+        emitter1.emit(3)
+        emitter2.emit(9)
+        emitter1.emit(8)
         self.assertEqual(prop.value.as_number(), 8)
 
         self.assertFalse(prop.is_completed())
-        publisher1._complete()
+        emitter1._complete()
         self.assertFalse(prop.is_completed())
         prop.complete()
         self.assertFalse(prop.is_completed())
-        publisher2._error(RuntimeError())
+        emitter2._error(RuntimeError())
         self.assertFalse(prop.is_completed())
 
     def test_create_property_error(self):
@@ -307,15 +307,15 @@ class TestCase(unittest.TestCase):
         recorder2 = record(fact2)
         error = RuntimeError("Nope")
 
-        fact1.publish(2)
-        fact1.publish(7)
-        fact1.publish(-23)
+        fact1.emit(2)
+        fact1.emit(7)
+        fact1.emit(-23)
         fact1._complete()
-        fact1.publish(456)
+        fact1.emit(456)
 
-        fact2.publish(8234)
+        fact2.emit(8234)
         fact2._error(error)
-        fact2.publish(-6)
+        fact2.emit(-6)
 
         executor.finish()
 

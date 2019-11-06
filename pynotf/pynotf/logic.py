@@ -11,14 +11,13 @@ from .value import Value
 ########################################################################################################################
 
 
-class Publisher:
+class Emitter:
     """
-    A Publisher keeps a list of (weak references to) Subscribers that are called when a new value is published or the
-    Publisher completes, either through an error or successfully.
-    Publishers publish a single Value and contain additional checks to make sure their Subscribers are
-    compatible.
+    A Emitter keeps a list of (weak references to) Receivers that are called when a new value is emitted or the
+    Emitter completes, either through an error or successfully.
+    Emitters emit a single Value and contain additional checks to make sure their Receivers are compatible.
 
-    Note: This would usually be named an "Observable", while the Subscriber (below) would usually be called "Observer".
+    Note: This would usually be named an "Observable", while the Receiver (below) would usually be called "Observer".
     See: http://reactivex.io/documentation/observable.html
     However, these names are crap. Here is a comprehensive list why:
         - An Observable actively pushes its value downstream even though the name implies that it is purely passive.
@@ -28,43 +27,43 @@ class Publisher:
           completion without having to type more than half of the word.
         - When you add another qualifier (like "Value"), you end up with "ObservableValue" and "ValueObserver". Or
           "ValuedObservable" and "ValueObserver" if you want to keep the "Value" part up front. Both solutions are
-          inferior to "ValuePublisher" and "ValueSubscriber", two words that look distinct from each other and do not
+          inferior to "ValueEmitter" and "ValueReceiver", two words that look distinct from each other and do not
           require grammatical artistry to make sense.
         - Lastly, with "Observable" and "Observer", there is only one verb you can use to describe what they are doing:
           "to observe" / "to being observed" (because what else can they do?). This leads to incomprehensible sentences
           like: "All Observables contain weak references to each Observer that observes them, each Observer can observe
           multiple Observables while each Observables can be observed by multiple Observers".
-          The same sentence using the terms Publisher and Subscriber: "All Publishers contain weak references to each
-          Subscriber they publish to, each Subscriber can subscribe to multiple Publishers while each Publisher can
-          publish to multiple Subscribers". It's not great prose either way, but at least the second version doesn't
-          make me want to change my profession.
-    I am aware that the Publish-subscribe pattern (https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) is
+          The same sentence using the terms Emitter and Receiver: "All Emitters contain weak references to each
+          Receiver they emit to, each Receiver can connect to multiple Emitters while each Emitter can emit to multiple
+          Receivers". It's not great prose either way, but at least the second version doesn't make me want to change
+          my profession.
+    I am aware that the Publish-Subscribe pattern (https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) is
     generally understood to mean something different. And while I can understand that all easy names are already used in
-    the literature, I refuse to let that impact the quality of the code. Especially since the publisher-subscriber
+    the literature, I refuse to let that impact the quality of the code. Especially since the Emitter-Receiver
     relationship is an apt analogy to what is really happening in code (more so than observable-observer).
     </rant>
     """
 
     class Signal:
         """
-        Whenever a Publisher publishes a new Value, it passes along a "Signal" object containing additional information
+        Whenever a Emitter emits a new Value, it passes along a "Signal" object containing additional information
         about the source of the Signal and whether or not it can be blocked from being propagated further.
-        The Signal acts as meta-data, which provides essential information for some kind of Operators and the
+        The Signal acts as meta-data, which provides essential information for some kind of Switches and the
         Application Logic.
 
-        The "source" of the Signal is the Publisher that published the Value to the Subscriber. Since a Subscriber is
-        free to subscribe to any number of different Publishers, and the Value itself does not encode where it was
-        generated, without the source it would be impossible for example to have an Operator that collects values from
-        multiple Publishers in a list each until they complete and then publishes a single concatenated Value.
+        The "source" of the Signal is the Emitter that emitted the Value to the Receiver. Since a Receiver is
+        free to connect to any number of different Emitters, and the Value itself does not encode where it was
+        generated, without the source it would be impossible for example to have an Switch that collects values from
+        multiple Emitters in a list each until they complete and then emits a single concatenated Value.
 
-        The "status" of the Signal is relevant for distributing Operators, for example one that propagates a mouse click
+        The "status" of the Signal is relevant for distributing Switches, for example one that propagates a mouse click
         to all Widgets at that location, in the draw order from top to bottom. The first Widget to accept the click
         would set the status from "unhandled" to "accepted", notifying later widgets that they should not act unless the
-        programmer chooses to do so regardless. A "blocked" status signifies to the distributing Operator, that it
+        programmer chooses to do so regardless. A "blocked" status signifies to the distributing Switch, that it
         should halt further propagation and return immediately, if for example we want to put a grey overlay over a
         Widget to signify that this part of the interface has been temporarily disabled without explicitly adding a
         disabled-state to the lower Widgets.
-        Most Signals are "unblockable", meaning that the Subscriber is unable to interfere with their propagation.
+        Most Signals are "unblockable", meaning that the Receiver is unable to interfere with their propagation.
         """
 
         class Status(Enum):
@@ -80,16 +79,16 @@ class Publisher:
             ACCEPTED = auto()
             BLOCKED = auto()
 
-        def __init__(self, publisher: 'Publisher', is_blockable: bool = False):
-            self._publisher: Publisher = publisher
-            self._status: Publisher.Signal.Status = self.Status.UNHANDLED if is_blockable else self.Status.UNBLOCKABLE
+        def __init__(self, emitter: 'Emitter', is_blockable: bool = False):
+            self._emitter: Emitter = emitter
+            self._status: Emitter.Signal.Status = self.Status.UNHANDLED if is_blockable else self.Status.UNBLOCKABLE
 
         @property
         def source(self) -> int:
             """
-            Numeric ID of the publisher that published the value.
+            Numeric ID of the Emitter that emitted the value.
             """
-            return id(self._publisher)
+            return id(self._emitter)
 
         def is_blockable(self) -> bool:
             """
@@ -127,18 +126,18 @@ class Publisher:
     def __init__(self, schema: Value.Schema = Value.Schema()):
         """
         Constructor.
-        :param schema: Schema of the Value published by this Publisher, defaults to the empty Schema.
+        :param schema: Schema of the Value emitted by this Emitter, defaults to the empty Schema.
         """
 
-        self._subscribers: List[weak] = []
+        self._receivers: List[weak] = []
         """
-        Subscribers are unique but still stored in a list so we can be certain of their call order, which proves
+        Receivers are unique but still stored in a list so we can be certain of their call order, which proves
         convenient for testing.
         """
 
         self._is_completed: bool = False
         """
-        Once a Publisher is completed, it will no longer publish any values.
+        Once a Emitter is completed, it will no longer emit any values.
         """
 
         self._output_schema: Value.Schema = schema
@@ -149,177 +148,177 @@ class Publisher:
     @property
     def output_schema(self) -> Value.Schema:
         """
-        Schema of the published value. Can be the empty Schema if this Publisher does not publish a meaningful value.
+        Schema of the emitted value. Can be the empty Schema if this Emitter does not emit a meaningful value.
         """
         return self._output_schema
 
     def is_completed(self) -> bool:
         """
-        Returns true iff the Publisher has been completed, either through an error or normally.
+        Returns true iff the Emitter has been completed, either through an error or normally.
         """
         return self._is_completed
 
-    def publish(self, value: Any = Value()):
+    def emit(self, value: Any = Value()):
         """
-        Push the given value to all active Subscribers.
-        :param value: Value to publish, can be empty if this Publisher does not publish a meaningful value.
+        Push the given value to all active Receivers.
+        :param value: Value to emit, can be empty if this Emitter does not emit a meaningful value.
         :raise TypeError: If the Value's Schema doesn't match.
-        :raise RuntimeError: If the Publisher has already completed (either normally or though an error).
+        :raise RuntimeError: If the Emitter has already completed (either normally or though an error).
         """
-        # First, the Publisher needs to check if it is already completed. No point doing anything, if the Publisher is
-        # unable to publish anything. This should never happen, so raise an exception if it does.
+        # First, the Emitter needs to check if it is already completed. No point doing anything, if the Emitter is
+        # unable to emit anything. This should never happen, so raise an exception if it does.
         if self._is_completed:
-            raise RuntimeError("Cannot publish from a completed Publisher")
+            raise RuntimeError("Cannot emit from a completed Emitter")
 
-        # Check the given value to see if the Publisher is allowed to publish it. If it is not a Value, try to
+        # Check the given value to see if the Emitter is allowed to emit it. If it is not a Value, try to
         # build one out of it. If that doesn't work, or the Schema of the Value does not match that of the
-        # Publisher, raise an exception.
+        # Emitter, raise an exception.
         if not isinstance(value, Value):
             try:
                 value = Value(value)
             except ValueError:
-                raise TypeError("Publisher can only publish values that are implicitly convertible to a Value")
+                raise TypeError("Emitter can only emit values that are implicitly convertible to a Value")
         if value.schema != self.output_schema:
-            raise TypeError("Publisher cannot publish a value with the wrong Schema")
+            raise TypeError("Emitter cannot emit a value with the wrong Schema")
 
-        # Publish from the local list of strong references that we know will stay alive. The member field may change
-        # during the iteration because some Subscriber downstream might add to the subscriptions or even unsubscribe
-        # other Subscribers, but those changes will not affect the current publishing process.
-        self._publish(self._collect_subscribers(), value)
+        # Emit from the local list of strong references that we know will stay alive. The member field may change
+        # during the iteration because some Receiver downstream might add to the list of Receivers or even disconnect
+        # other Receivers, but those changes will not affect the current emitting process.
+        self._emit(self._collect_receivers(), value)
 
     def _error(self, exception: Exception):
         """
-        Failure method, completes the Publisher.
+        Failure method, completes the Emitter.
         This method would be protected in C++. It is not private, but should not be part of the public interface.
         :param exception:   The exception that has occurred.
         """
         print_error(format_exc())
 
-        signal: Publisher.Signal = Publisher.Signal(self, is_blockable=False)
-        for subscriber in self._collect_subscribers():
+        signal: Emitter.Signal = Emitter.Signal(self, is_blockable=False)
+        for receiver in self._collect_receivers():
             try:
-                subscriber.on_error(signal, exception)
+                receiver.on_error(signal, exception)
             except Exception as ex:
                 print_error(format_exc())
 
-        self._subscribers.clear()
+        self._receivers.clear()
         self._is_completed = True
 
     def _complete(self):
         """
-        Completes the Publisher successfully.
+        Completes the Emitter successfully.
         This method would be protected in C++. It is not private, but should not be part of the public interface.
         """
-        signal: Publisher.Signal = Publisher.Signal(self, is_blockable=False)
-        for subscriber in self._collect_subscribers():
+        signal: Emitter.Signal = Emitter.Signal(self, is_blockable=False)
+        for receiver in self._collect_receivers():
             try:
-                subscriber.on_complete(signal)
+                receiver.on_complete(signal)
             except Exception as ex:
                 print_error(format_exc())
 
-        self._subscribers.clear()
+        self._receivers.clear()
         self._is_completed = True
 
-    def _collect_subscribers(self) -> List['Subscriber']:
+    def _collect_receivers(self) -> List['Receiver']:
         """
-        Remove all expired Subscribers and return a list of strong references to the valid ones.
-        Note that the order of Subscribers does not change.
+        Remove all expired Receivers and return a list of strong references to the valid ones.
+        Note that the order of Receivers does not change.
         """
-        subscribers = []
+        receivers = []
         valid_index = 0
-        for current_index in range(len(self._subscribers)):
-            subscriber = self._subscribers[current_index]()
-            if subscriber is not None:
-                subscribers.append(subscriber)
-                self._subscribers[valid_index] = self._subscribers[current_index]  # would be a move or swap in C++
+        for current_index in range(len(self._receivers)):
+            receiver = self._receivers[current_index]()
+            if receiver is not None:
+                receivers.append(receiver)
+                self._receivers[valid_index] = self._receivers[current_index]  # would be a move or swap in C++
                 valid_index += 1
-        self._subscribers = self._subscribers[:valid_index]
-        return subscribers
+        self._receivers = self._receivers[:valid_index]
+        return receivers
 
-    def _publish(self, subscribers: List['Subscriber'], value: Value):
+    def _emit(self, receivers: List['Receiver'], value: Value):
         """
-        This method can be overwritten in subclasses to modify the publishing process.
-        At the point where this method is called, we have established that `value` can be published by this Publisher,
-        meaning its Schema matches the output Schema of this Publisher and the Publisher has not been completed. All
-        expired Subscribers have been removed from the subscriptions and the `subscribers` argument is a list of strong
-        references matching the `self._subscribers` weak list.
-        The default implementation of this method simply publishes an unblockable Signal to every Subscriber in order.
-        Subclasses can do further sorting and if they choose to, can re-apply that ordering to the `_subscribers`
-        member field in the hope to speed up sorting the same list in the future using the `_sort_subscribers` method.
-        :param subscribers: List of Subscribers to publish to.
-        :param value: Value to publish.
+        This method can be overwritten in subclasses to modify the emitting process.
+        At the point where this method is called, we have established that `value` can be emitted by this Emitter,
+        meaning its Schema matches the output Schema of this Emitter and the Emitter has not been completed. All
+        expired Receivers have been removed from the list of Receivers and the `receivers` argument is a list of strong
+        references matching the `self._receivers` weak list.
+        The default implementation of this method simply emits an unblockable Signal to every Receiver in order.
+        Subclasses can do further sorting and if they choose to, can re-apply that ordering to the `_receivers`
+        member field in the hope to speed up sorting the same list in the future using the `_sort_receivers` method.
+        :param receivers: List of Receivers to emit to.
+        :param value: Value to emit.
         """
-        signal = Publisher.Signal(self, is_blockable=False)
-        for subscriber in subscribers:
+        signal = Emitter.Signal(self, is_blockable=False)
+        for receiver in receivers:
             try:
-                subscriber.on_next(signal, value)
+                receiver.on_next(signal, value)
             except Exception as exception:
-                self._handle_exception(subscriber, exception)
+                self._handle_exception(receiver, exception)
 
-    def _sort_subscribers(self, order: List[int]):
+    def _sort_receivers(self, order: List[int]):
         """
-        Changes the order of the Subscribers of this Publisher without giving write access to the `_subscribers` field.
-        Example: Given Subscribers [a, b, c], then calling `self._sort_subscribers([2, 0, 1])` will change the order
+        Changes the order of the Receivers of this Emitter without giving write access to the `_receivers` field.
+        Example: Given Receivers [a, b, c], then calling `self._sort_receivers([2, 0, 1])` will change the order
         to [c, a, b]. Invalid orders will raise an exception.
-        :param order: New order of the subscribers.
+        :param order: New order of the receivers.
         :raise RuntimeError: If the given order is invalid.
         """
-        if sorted(order) != list(range(len(self._subscribers))):
-            raise RuntimeError(f"Invalid order: {order} for a Publisher with {len(self._subscribers)} Subscribers")
+        if sorted(order) != list(range(len(self._receivers))):
+            raise RuntimeError(f"Invalid order: {order} for a Emitter with {len(self._receivers)} Receivers")
 
-        self._subscribers = [self._subscribers[index] for index in order]
+        self._receivers = [self._receivers[index] for index in order]
 
-    def _subscribe(self, subscriber: 'Subscriber'):
+    def _connect(self, receiver: 'Receiver'):
         """
-        Adds a new Subscriber to receive published values.
-        :param subscriber: New Subscriber.
-        :raise TypeError: If the Subscriber's input Schema does not match.
+        Adds a new Receiver to receive emitted values.
+        :param receiver: New Receiver.
+        :raise TypeError: If the Receiver's input Schema does not match.
         """
-        if subscriber.input_schema != self.output_schema:
-            raise TypeError("Cannot subscribe to an Publisher with a different Schema")
+        if receiver.input_schema != self.output_schema:
+            raise TypeError("Cannot connect to an Emitter with a different Schema")
 
         if self._is_completed:
-            subscriber.on_complete(Publisher.Signal(self))
+            receiver.on_complete(Emitter.Signal(self))
 
         else:
-            weak_subscriber = weak(subscriber)
-            if weak_subscriber not in self._subscribers:
-                self._subscribers.append(weak_subscriber)
+            weak_receiver = weak(receiver)
+            if weak_receiver not in self._receivers:
+                self._receivers.append(weak_receiver)
 
-    def _unsubscribe(self, subscriber: 'Subscriber'):
+    def _disconnect(self, receiver: 'Receiver'):
         """
-        Removes the given Subscriber if it is subscribed. If not, the call is ignored.
-        :param subscriber: Subscriber to unsubscribe.
+        Removes the given Receiver if it is connected. If not, the call is ignored.
+        :param receiver: Receiver to disconnect.
         """
-        weak_subscriber = weak(subscriber)
-        if weak_subscriber in self._subscribers:
-            self._subscribers.remove(weak_subscriber)
+        weak_receiver = weak(receiver)
+        if weak_receiver in self._receivers:
+            self._receivers.remove(weak_receiver)
 
-    def _handle_exception(self, subscriber: 'Subscriber', exception: Exception):
+    def _handle_exception(self, receiver: 'Receiver', exception: Exception):
         """
-        This is a virtual method that Publishers can override in order to handle exceptions that occurred in their
-        Subscribers `on_next` method.
+        This is a virtual method that Emitters can override in order to handle exceptions that occurred in their
+        Receivers `on_next` method.
         The default implementation simply reports the exception but ultimately ignores it.
-        :param subscriber: Subscriber that raised the exception.
-        :param exception: Exception raised by subscriber.
+        :param receiver: Receiver that raised the exception.
+        :param exception: Exception raised by receiver.
         """
-        print_error("Subscriber {} failed during Logic evaluation.\nException caught by Publisher {}:\n{}".format(
-            id(subscriber), id(self), exception))
+        print_error("Receiver {} failed during Logic evaluation.\nException caught by Emitter {}:\n{}".format(
+            id(receiver), id(self), exception))
 
 
 ########################################################################################################################
 
-class Subscriber(metaclass=ABCMeta):
+class Receiver(metaclass=ABCMeta):
     """
-    Subscribers do not keep track of the Publishers they subscribe to.
-    An Subscriber can be subscribed to multiple Publishers.
+    Receivers do not keep track of the Emitters they connect to.
+    An Receiver can be connected to multiple Emitters.
     """
 
     def __init__(self, schema: Value.Schema = Value.Schema()):
         """
         Constructor.
-        :param schema:  Schema defining the Value expected by this Publisher.
-                        Can be empty if this Subscriber does not expect a meaningful value.
+        :param schema:  Schema defining the Value expected by this Emitter.
+                        Can be empty if this Receiver does not expect a meaningful value.
         """
         self._input_schema: Value.Schema = schema
         """
@@ -334,15 +333,15 @@ class Subscriber(metaclass=ABCMeta):
         return self._input_schema
 
     @abstractmethod
-    def on_next(self, signal: Publisher.Signal, value: Optional[Value]):
+    def on_next(self, signal: Emitter.Signal, value: Optional[Value]):
         """
-        Abstract method called by any upstream Publisher.
+        Abstract method called by any upstream Emitter.
         :param signal   The Signal associated with this call.
-        :param value    Published value, can be None.
+        :param value    Emitted value, can be None.
         """
         pass
 
-    def on_error(self, signal: Publisher.Signal, exception: Exception):
+    def on_error(self, signal: Emitter.Signal, exception: Exception):
         """
         Default implementation of the "error" method: does nothing.
         :param signal   The Signal associated with this call.
@@ -350,46 +349,47 @@ class Subscriber(metaclass=ABCMeta):
         """
         pass
 
-    def on_complete(self, signal: Publisher.Signal):
+    def on_complete(self, signal: Emitter.Signal):
         """
         Default implementation of the "complete" operation, does nothing.
         :param signal   The Signal associated with this call.
         """
         pass
 
-    def subscribe_to(self, publisher: Publisher):
+    def connect_to(self, emitter: Emitter):
         """
-        Subscribe to the given Publisher.
-        :param publisher:   Publisher to subscribe to. If this Subscriber is already subscribed, this does nothing.
-        :raise TypeError:   If the Publishers's input Schema does not match.
+        Connect to the given Emitter.
+        :param emitter:   Emitter to connect to. If this Receiver is already connected, this does nothing.
+        :raise TypeError:   If the Emitters's input Schema does not match.
         """
-        publisher._subscribe(self)
+        emitter._connect(self)
 
-    def unsubscribe_from(self, publisher: Publisher):
+    def disconnect_from(self, emitter: Emitter):
         """
-        Unsubscribes from the given Publisher.
-        :param publisher:   Publisher to unsubscribe from. If this Subscriber is not subscribed, this does nothing.
+        Disconnects from the given Emitter.
+        :param emitter:   Emitter to disconnect from. If this Receiver is not connected, this does nothing.
         """
-        publisher._unsubscribe(self)
+        emitter._disconnect(self)
 
 
 ########################################################################################################################
 
-class Operator(Subscriber, Publisher):
+class Switch(Receiver, Emitter):
     """
-    A Operator is Subscriber/Publisher that applies a sequence of Operations to an input value before publishing it.
-    If any Operation throws an exception, the Operator will fail as a whole. Operations are not able to complete the
-    Operator, other than through failure.
+    A Switch is Receiver/Emitter that applies a sequence of Operations to an input value before emitting it
+    (see https://en.wikipedia.org/wiki/Switch).
+    If any Operation throws an exception, the Switch will fail as a whole. Operations are not able to complete the
+    Switch, other than through failure.
     Not every input is guaranteed to produce an output as Operations are free to store or ignore input values.
     If an Operation returns a value, it is passed on to the next Operation and if the Operation was the last one in the
-    sequence, its return value is published by the Operator.
-    If any Operation does not return a value (returns None), the following Operations are not called and the Operator
-    does not publish anything.
+    sequence, its return value is emitted by the Switch.
+    If any Operation does not return a value (returns None), the following Operations are not called and the Switch
+    does not emit anything.
     """
 
     class Operation(metaclass=ABCMeta):
         """
-        Operations are Functors that can be part of a Operator.
+        Operations are Functors that can be part of a Switch.
         """
 
         @property
@@ -464,21 +464,21 @@ class Operator(Subscriber, Publisher):
     def __init__(self, *operations: Operation):
         """
         Constructor.
-        :param operations: All Operations that this Operator performs in order. Must not be empty.
+        :param operations: All Operations that this Switch performs in order. Must not be empty.
         :raise ValueError: If no Operations are passed.
         :raise TypeError: If two subsequent Operations have mismatched Schemas.
         """
         if len(operations) == 0:
-            raise ValueError("Cannot create a Operator without a single Operation")
+            raise ValueError("Cannot create a Switch without a single Operation")
 
         for i in range(len(operations) - 1):
             if operations[i].output_schema != operations[i + 1].input_schema:
                 raise TypeError(f"Operations {i} and {i + 1} have mismatched Value Schemas")
 
-        self._operations: Tuple[Operator.Operation] = operations
+        self._operations: Tuple[Switch.Operation] = operations
 
-        Subscriber.__init__(self, self._operations[0].input_schema)
-        Publisher.__init__(self, self._operations[-1].output_schema)
+        Receiver.__init__(self, self._operations[0].input_schema)
+        Emitter.__init__(self, self._operations[-1].output_schema)
 
     def _operate_on(self, value: Value) -> Optional[Value]:
         """
@@ -493,13 +493,13 @@ class Operator(Subscriber, Publisher):
                 break
         return value
 
-    def on_next(self, signal: Publisher.Signal, value: Value):
+    def on_next(self, signal: Emitter.Signal, value: Value):
         """
-        Performs the sequence of Operations on the given Value and publishes the result if one is produced.
-        Exceptions thrown by a Operation will cause the Operator to fail.
+        Performs the sequence of Operations on the given Value and emits the result if one is produced.
+        Exceptions thrown by a Operation will cause the Switch to fail.
 
         :param signal   The Signal associated with this call.
-        :param value    Input Value conforming to the Operator's input Schema.
+        :param value    Input Value conforming to the Switch's input Schema.
         """
         try:
             result = self._operate_on(value)
@@ -507,35 +507,20 @@ class Operator(Subscriber, Publisher):
             self._error(exception)
         else:
             if result is not None:
-                self.publish(result)
+                self.emit(result)
 
+
+# TODO: better Signals
+#   Maybe it would be a good idea to pack the <Value, Signal> pair into a single object called a `Publication` (because
+#   it is what is emitted by a Emitter). A Publication is non-copyable, but the value within it is. Publications itself
+#   can be ignored, handled or blocked, which frees up the term "Signal" for other uses. Also let's use "handled"
+#   instead of "accepted" ...?
 
 ########################################################################################################################
 
 """
 Ideas
 =====
-
-Publications
-------------
-Maybe it would be a good idea to pack the <Value, Signal> pair into a single object called a `Publication` (because it
-is what is published by a publisher). A Publication is non-copyable, but the value within it is. Publications itself
-can be ignored, handled or blocked, which frees up the term "Signal" for other uses. Also let's use "handled" instead
-of "accepted" ...?
-
-
-Emitters - Receivers
---------------------
-I am not too happy about Publisher/Subscriber at the moment. A Node "Signal" is basically just a Publisher, yet I feel
-like something named "Publisher" should not be part of something named "Node"... that is just mixing metaphors.
-And Publishers publishing "Signals" (or Publications) is also weird. 
-Instead, I would suggest the following renaming:
-    Publisher -> Emitter
-    Subscriber -> Receiver
-    Noop-Operator -> Relay
-    Operator -> Switch (? https://en.wikipedia.org/wiki/Switch)
-    Signal (stays, is not renamed to Publication) 
-
 
 Exceptions
 ----------
@@ -561,19 +546,19 @@ Additional Thoughts
 
 Ownership
 ---------
-In the Publisher-Subscriber relationship, who owns who? Clearly, the Publisher must have a set (or list) of weak or
-strong references to all of its Subscribers, but do Subscribers need to know their Publishers? And if so, do they need
+In the Emitter-Receiver relationship, who owns who? Clearly, the Emitter must have a set (or list) of weak or
+strong references to all of its Receivers, but do Receivers need to know their Emitters? And if so, do they need
 to keep them alive? 
 
-After some back and forth I now think that Subscribers do not need to know about the Publishers they are subscribed to. 
-If a Publisher goes out of scope, the Subscriber will receive a completed or failure message and that's that. The 
-Publishers in turn do not own their Subscribers either. If a Subscriber drops, the Publisher will simply remove it and 
-carry on. This puts the responsibility of ownership on entities outside the Publisher-Subscriber module. 
+After some back and forth I now think that Receivers do not need to know about the Emitters they are connected to. 
+If a Emitter goes out of scope, the Receiver will receive a completed or failure message and that's that. The 
+Emitters in turn do not own their Receivers either. If a Receiver drops, the Emitter will simply remove it and 
+carry on. This puts the responsibility of ownership on entities outside the Emitter-Receiver module. 
 
 
 Propagated Data & Signal
 --------------------------
-At some point I decided that the only thing to be handed out by Publishers should be Values to allow complete
+At some point I decided that the only thing to be handed out by Emitters should be Values to allow complete
 introspection of the system and to not have any types that are only accessible from C++, for example. This works fine,
 as long as the only thing that got passed around is pure, immutable data. Immutable being the weight bearing word here.
 
@@ -585,9 +570,9 @@ that they don't have to act if they don't want to.
 This of course requires the given data to be mutable, which isn't possible with Values.
 
 Here a (hopefully) comprehensive list of solutions to the problem:
-    1.`Subscriber.on_next` could return a bool to let the Scheduler know if it should continue propagating the event.
-    2.`Subscriber.on_next` could return the (optionally modified) Value to propagate further.
-    3. Add a mutable extra-argument to `Subscriber.on_next`, so the Value itself remains immutable.
+    1.`Receiver.on_next` could return a bool to let the Scheduler know if it should continue propagating the event.
+    2.`Receiver.on_next` could return the (optionally modified) Value to propagate further.
+    3. Add a mutable extra-argument to `Receiver.on_next`, so the Value itself remains immutable.
     4. Have a global / ApplicationLogic / Graph state for the currently handled Event that can be modified.
     5. Allow non-Value propagation and simply propagate classic Event objects.
     6. Make Event handling a separate "thing" from the Application Logic, effectively sidestepping the problem.
@@ -604,24 +589,24 @@ Discussion:
        so the "type" of Value will stay the same.
        However, it is really easy to mess around with the Event handling to a point where pinpointing errors could 
        become a hassle. There is no mechanism protecting handled Events to become unhandled again since Values do not
-       encode any internal logic. Additionally, this would have to be the general case, where each Subscriber would need
-       to return the Value even if no Event handling is happening. And since Subscribers (in the general case) are 
+       encode any internal logic. Additionally, this would have to be the general case, where each Receiver would need
+       to return the Value even if no Event handling is happening. And since Receivers (in the general case) are 
        called in essentially random order, passing on a possibly modified value from one to the next is a potential
        debugging nightmare.
-    3. This would work. Instead of the Publisher that publishes the value, we can pass a structure that has 
-       additional mutable and immutable information, like the publisher that published the value, but also whether or 
+    3. This would work. Instead of the Emitter that emits the value, we can pass a structure that has 
+       additional mutable and immutable information, like the Emitter that emitted the value, but also whether or 
        not the event was accepted. It would be nice to generalize this approach though, so we don't have to encode
        event acceptance into the Scheduler. Previously, this was part of the Event class, which is nice because if you
        want a different kind of behavior (maybe an event that can actually be blocked), you just add it to the specific
        Event type. But maybe handled or not is general enough?
     4. Possible, but each with drawbacks. A global state is easily accessible but does not work with multiple instances.
-       ApplicationLogic and Graph both require the Subscriber to keep a reference to them, even though they are hardly
+       ApplicationLogic and Graph both require the Receiver to keep a reference to them, even though they are hardly
        ever used.
     5. I wanted to avoid that in the general case, because it would be nice to a have a Logic DAG consisting of only 
        data flow, no additional logic encapsulated within the data, only in the Operators. Then again, allowing other 
        types than Values to be passed isn't really a "new" concept, it is more a generalization of an existing one. 
        It won't even change the behavior much, because Schemas act as quasi-typing for Values and so you were never 
-       allowed to just connect any two arbitrary Publisher/Subscriber pairs anyway. 
+       allowed to just connect any two arbitrary Emitter/Receiver pairs anyway. 
     6. Intriguing, but this would add yet another concept whereas I am trying to reduce the number of different concepts
        that make up the system.
 
@@ -632,7 +617,7 @@ Decision:
     3 again, hopefully for good this time.
     Here is the problem with number 5: It is probably the best solution for this special case: handling a well-defined
     (in this case a mouse-click) problem by introducing a new, well defined type is a straight-forward approach for 
-    every object oriented programmer. But it requires Subscribers and Publishers that are both aware of the type and 
+    every object oriented programmer. But it requires Receivers and Emitters that are both aware of the type and 
     know how to work with it. This if fine in this example alone, but the more I thought about it, the more I realized
     that we would need a truly general solution.
     
@@ -646,7 +631,7 @@ Decision:
                                                  | ------------- |    +-------------- +
                                               +---> Click Value  |    |  Distributor  |
         +-------------+    +---------------+  |  |   & count     |    | Single Click  |
-        |    Fact     |    |   Operator    |  |  | ------------- |    | ------------- |
+        |    Fact     |    |   Switch    |  |  | ------------- |    | ------------- |
         | Mouse Click |    | Click Counter |  |  |   Click Value +-----> Click Value  |           +------------+
         | ----------- |    | ------------- |  |  +---------------+    | ------------- |           |            |
         | Click Value +-----> Click Value  |  |                       |   Click Event +------------> Widget 1  |
@@ -667,7 +652,7 @@ Decision:
 
     At the beginning, there is the simple Fact that a mouse click has occurred, alongside some additional information
     like the position of the cursor and the button that was clicked. Whenever a click happens, it flows immediately into
-    the "Click Counter" Operator that counts the number of clicks within a given time in the past and adds that number
+    the "Click Counter" Switch that counts the number of clicks within a given time in the past and adds that number
     to the Click Value. Downstream of the counter, we have two filters that check the click count number, strip it from
     the output Value and fire only if it is a single click or a second click respectively. Both filters then flow into
     a dedicated Distributor each, which turns the Click Value into a (Double) Click Event and propagates it to the 
@@ -680,33 +665,33 @@ Decision:
     a click as well?
     The problem is that there are many different ways to interpret a system event like a "mouse up" and not all of them
     are as cleanly cut as "is this the second click in the last x milliseconds". In the example, there was a dedicated 
-    Operator to count clicks. This seems fairly general. But what about an Operator to decide whether this was a click, 
-    a gesture, etc? Suddenly, this Operator has a lot of logic inside, written as code. This is not the general solution 
+    Switch to count clicks. This seems fairly general. But what about an Switch to decide whether this was a click, 
+    a gesture, etc? Suddenly, this Switch has a lot of logic inside, written as code. This is not the general solution 
     that we want. 
-    What we need here is an "Ordered X-OR" Operator, or however you want to call it. It is a way to make sure that of n 
+    What we need here is an "Ordered X-OR" Switch, or however you want to call it. It is a way to make sure that of n 
     different Operators, at most one will actually generate a Value -- or in terms of the example: a mouse up event is 
     either a click, the end of a drag, the end of a gesture or something else. But it should not be more than one of 
-    these things. The Operator keeps its Subscribers ordered in a list and the first Subscriber to report that it has
+    these things. The Switch keeps its Receivers ordered in a list and the first Receiver to report that it has
     successfully accepted the Value, is the last one to receive it... sounds familiar. So maybe we should add another
     type, something like "Pre-Event", since at this point, the "mouse up" isn't yet what we called an Event earlier?
-    Of course, we'd need a dedicated Operator to spit out these "Pre-Event" values and all of the Subscribers need to
+    Of course, we'd need a dedicated Switch to spit out these "Pre-Event" values and all of the Receivers need to
     accept them.
     ... At this point I realized that option number 5 was a dead end as well.
     Which finally brings us to:
 
 Signal:
-    Early on, when designing a reactive module, I decided that Publishers should always pass their `this` pointer 
-    alongside the published value, for identification purposes only. This way the Subscriber was free to sort values
-    from different Publishers into different Buckets for example, and concatenate all of them when each Publisher had
+    Early on, when designing a reactive module, I decided that Emitters should always pass their `this` pointer 
+    alongside the emitted value, for identification purposes only. This way the Receiver was free to sort values
+    from different Emitters into different Buckets for example, and concatenate all of them when each Emitter had
     completed. I don't really know how else to implement this feature and it seems like a straightforward, easy and
     cheap thing to do.
-    With the need for some kind of feedback from the Subscriber back to the Publisher, I think I have found yet another
-    use-case for meta data to accompany any published value that will be ignored by some/most, but offers indispensable
-    features to others. And instead of adding yet another argument to the `Subscriber.on_next` function, it seems 
-    reasonable to replace the const pointer back to the Publisher with a mutable reference to what we shall call Signal. 
+    With the need for some kind of feedback from the Receiver back to the Emitter, I think I have found yet another
+    use-case for meta data to accompany any emitted value that will be ignored by some/most, but offers indispensable
+    features to others. And instead of adding yet another argument to the `Receiver.on_next` function, it seems 
+    reasonable to replace the const pointer back to the Emitter with a mutable reference to what we shall call Signal. 
     So far, it consists of only two things:
-        1. Some kind of ID that uniquely identifies the Publisher from all other possible Publishers that the Subscriber
-           might subscribe to. This ID is constant. It can be the memory address of the Publisher or some other integer.
+        1. Some kind of ID that uniquely identifies the Emitter from all other possible Emitters that the Receiver
+           might connect to. This ID is constant. It can be the memory address of the Emitter or some other integer.
         2. An enum that describes the Status of the Signal, encapsulated in an object to ensure that it follows the 
            state transition diagram outlined below:
             
@@ -718,9 +703,9 @@ Signal:
 
            The Status always starts out as either "Unhandled" or "Unblockable", with "Unblockable" being the default.
            An unblockable Signal cannot be stopped and calls to `set_handled()` or `block()` are ignored. If the Status
-           starts out as "Unhandled", then each Subscriber is free to mark the Status as handled or blocked. A handled
-           Signal is usually propagated further (depending on how the Publisher chooses to interpret what "handled" 
-           means in its specific use-case), whereas the Subscriber that marks its Signal as being blocked, is the last
+           starts out as "Unhandled", then each Receiver is free to mark the Status as handled or blocked. A handled
+           Signal is usually propagated further (depending on how the Emitter chooses to interpret what "handled" 
+           means in its specific use-case), whereas the Receiver that marks its Signal as being blocked, is the last
            one to receive it.  
      
 
@@ -736,10 +721,10 @@ Problem 1:
         |
         +-> C
     
-    Lets assume that B and C are Subscribers that are subscribed to updates from Publisher A. B reacts by removing C and
+    Lets assume that B and C are Receivers that are connected to updates from Emitter A. B reacts by removing C and
     adding the string "B" to a log file, while C reacts by removing B and adding "C" to a log file. Depending on which 
-    Subscriber receives the update first, the log file with either say "B" _or_ "C". Since not all Publishers adhere to 
-    an order in their Subscribers, the result of this setup is essentially random.
+    Receiver receives the update first, the log file with either say "B" _or_ "C". Since not all Emitters adhere to 
+    an order in their Receivers, the result of this setup is essentially random.
 
 Problem 2:
     
@@ -749,29 +734,29 @@ Problem 2:
 
     B is a Slot of a canvas-like Widget. Whenever the user clicks into the Widget, it will create a new child Widget C, 
     which an also be clicked on. Whenever the user clicks on C, it disappears. The problem arises when B receives an 
-    update from A, creates C and immediately subscribes C to A. Let's assume that this does not cause a problem with A's
-    list of subscribers changing its size mid-iteration. It is fair to assume that C will be updated by A after B has 
+    update from A, creates C and immediately connects C to A. Let's assume that this does not cause a problem with A's
+    list of Receivers changing its size mid-iteration. It is fair to assume that C will be updated by A after B has 
     been updated. Therefore, after B has been updated, the *same* click is immediately forwarded to C, which causes it 
     to disappear. In effect, C will never show up.
 
 There are multiple ways these problems could be addressed.
 Solution 1:
-    Have a Scheduler determine the order of all updates beforehand. During that step, all expired Subscribers are 
-    removed and a backup strong reference for all live Subscribers are stored in the Scheduler to ensure that they
-    survive (which mitigates Problem 1). Additionally, when new Subscribers are added to any Publisher during the update
+    Have a Scheduler determine the order of all updates beforehand. During that step, all expired Receivers are 
+    removed and a backup strong reference for all live Receivers are stored in the Scheduler to ensure that they
+    survive (which mitigates Problem 1). Additionally, when new Receivers are added to any Emitter during the update
     process, they will not be part of the Scheduler and are simply not called.
 
 Solution 2:
-    A two-phase update. In phase 1, all Publishers weed out expired Subscribers and keep an internal copy of strong
+    A two-phase update. In phase 1, all Emitters weed out expired Receivers and keep an internal copy of strong
     references to all live ones. In phase 2, this copy is then iterated and any changes to the original list of
-    Subscribers do not affect the update process.
+    Receivers do not affect the update process.
 
 Solution 3:
-    Do not allow the direct addition or removal ob subscriptions and instead record them in a buffer. This buffer is 
+    Do not allow the direct addition or removal of connections and instead record them in a buffer. This buffer is 
     then executed at the end of the update process, cleanly separating the old and the new DAG state.
 
-I have opted for solution 2, which allows us to keep the scheduling of Subscribers contained within the individual
-Publisher directly upstream. In order to make this work, publishing becomes a bit more complicated but not by a lot.
+I have opted for solution 2, which allows us to keep the scheduling of Receivers contained within the individual
+Emitter directly upstream. In order to make this work, emitting becomes a bit more complicated but not by a lot.
 
 
 Dead Ends
@@ -783,7 +768,7 @@ the "brilliant" idea underlying each one. Each chapter has a closing paragraph o
 
 Scheduling (Dead End)
 ---------------------
-When the application executor schedules a new value to be published, it could determine the effect of the change by
+When the application executor schedules a new value to be emitted, it could determine the effect of the change by
 traversing the dependency DAG prior to the actual change. Take the following DAG topology:
 
         +-> B ->+
@@ -811,7 +796,7 @@ eventually.
 Except...
 None of this makes sense in the context of streams. Every single value is as important as the next one and if D receives
 two downstream values from A, so be it. The order of values may change (which is it's very own topic discussed in the
-application logic), but that's why we pass the direct upstream publisher alongside the value: to allow the subscriber to
-apply an order per publisher on the absolute order in which it receives values.
+application logic), but that's why we pass the direct upstream Emitter alongside the value: to allow the Receiver to
+apply an order per Emitter on the absolute order in which it receives values.
 
 """
