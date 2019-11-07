@@ -1,6 +1,5 @@
-from typing import Any, Dict, Optional, List, Tuple, NamedTuple, Type
+from typing import Any, Dict, Optional, List, Type, Tuple, NamedTuple, TypeVar, Set
 from threading import Thread, Lock
-from abc import abstractmethod
 import asyncio
 from inspect import iscoroutinefunction
 from functools import partial
@@ -9,9 +8,12 @@ from logging import error as print_error
 from traceback import format_exc
 from uuid import uuid4 as uuid
 from weakref import ref as weak_ref
+from gc import collect as force_gc
 
 from .value import Value
 from .logic import Emitter, Switch
+
+NodeType = TypeVar('NodeType')
 
 
 ########################################################################################################################
@@ -249,20 +251,25 @@ class Node:
             """
             return not ((name in self._properties) or (name in self._signals) or (name in self._slots))
 
-    def __init__(self, scene: 'Scene', parent: 'Node', name: Optional[str] = None):
+    def __init__(self, parent: 'Node', definition: 'Node.Definition', name: Optional[str] = None):
         """
         Constructor.
-        :param scene: The Scene that this Node lives in.
         :param parent: The parent of this Node.
+        :param definition: Node Definition of this Node subclass.
         :param name: (Optional) Scene-unique name of the Node.
         :raise NameError: If another Node with the same (not-None) name is alive in the Scene.
         """
-        self._scene: Scene = scene
         self._parent: Node = parent
+        self._scene: Scene = self._parent._scene
         self._children: List[Node] = []
-        self._properties: Dict[str, Property] = {}
-        self._signals: Dict[str, Emitter] = {}
-        self._slots: Dict[str, Slot] = {}
+
+        self._properties: Dict[str, Property] = {name: Property(self, prop.value, *prop.operations)
+                                                 for name, prop in definition.properties.items()}
+        self._signals: Dict[str, Emitter] = {name: Emitter(signal.schema) for name, signal in
+                                             definition.signals.items()}
+        self._slots: Dict[str, Slot] = {name: Slot(self, slot.schema)
+                                        for name, slot in definition.slots.items()}
+
         self._uuid: uuid = uuid()
         self._name: Optional[str] = name  # in C++ this could be a raw pointer to the name inside the Scene's registry
 
@@ -282,6 +289,13 @@ class Node:
         Universally unique ID of this Node.
         """
         return self._uuid
+
+    @property
+    def parent(self) -> 'Node':
+        """
+        The parent of this Node.
+        """
+        return self._parent
 
     def get_property(self, name: str) -> Property:
         """
@@ -316,11 +330,10 @@ class Node:
                 self._slots.keys())))
         return slot
 
-    def create_child(self, node_type: Type['Node'], name: Optional[str] = None) -> 'Node':
+    def create_child(self, node_type: Type[NodeType], name: Optional[str] = None) -> NodeType:
         """
         Create a new child Node of this Node.
-        By tying Node creation to the existence of its parent, we can make sure that a Node can never not have a valid
-        parent. We can also call `_produce_definition` on the new instance after is has been constructed.
+        By tying Node creation to the existence of its parent we can make sure that a Node always has a valid parent.
         :param node_type: Subclass of Node to instantiate as a child of this Node.
         :param name: (Optional) Scene-unique name of the new Node.
         :return: The new child Node instance.
@@ -329,39 +342,18 @@ class Node:
             raise TypeError("Nodes can only have other Nodes as children")
 
         # create the node instance and define it
-        node = node_type(self._scene, self, name)
-        node._apply_definition(node._produce_definition())
+        node = node_type(self, name)
 
         # register the node as a new child of this one
         self._children.append(node)
 
         return node
 
-    @abstractmethod
-    def _produce_definition(self) -> 'Node.Definition':
+    def remove(self):
         """
-        Node subclasses should not be able to create Properties, Signals or Slots. Therefore, they are no methods like
-        `_add_property` etc. However, they still need a way to define the Properties, Signals and Slots what they need
-        in order to function.
-        This abstract method must be overwritten by a Node subtype and produce a `Definition` object that will be used
-        to define the instance of the new Node upon creation in `Node.create_child`.
-        :return: Node Definition object to define Nodes of the specific sub-type.
+        Schedules this Node to be removed at the end of the next loop.
         """
-        raise NotImplementedError()
-
-    def _apply_definition(self, definition: 'Node.Definition'):
-        """
-        This method cannot be called in the constructor, since (in general, meaning C++) you cannot call virtual methods
-        inside the constructor. And we need to call `_produce_definition` in order to get the Definition object to apply
-        to this Node instance in the first place. This is why this method is instead called by `Node.create_child`.
-        :param definition: Node Definition object to define this Node instance with.
-        """
-        self._properties = {name: Property(self, prop.value, *prop.operations)
-                            for name, prop in definition.properties.items()}
-        self._signals = {name: Emitter(signal.schema) for name, signal in definition.signals.items()}
-        self._slots = {name: Slot(self, slot.schema) for name, slot in definition.slots.items()}
-
-    # TODO: remove Nodes
+        self._scene._expired_nodes.add(self)
 
 
 ########################################################################################################################
@@ -372,15 +364,14 @@ class RootNode(Node):
     """
 
     def __init__(self, scene: 'Scene'):
-        Node.__init__(self, scene, self, '/')
+        self._scene: Scene = scene
+        """
+        This is a bit of a hack. A Node copies its Scene reference from its parent, but since the 
+        root is its own parent, we need to make sure that it has the Scene when it asks itself for 
+        it.
+        """
 
-    def _produce_definition(self):
-        """
-        Root Nodes have no Properties, Signals or Slots.
-        This method should never be called because the only way to get is is to try to add a Root Node as a child of
-        an existing Node.
-        """
-        raise RuntimeError("RootNodes cannot be a child of another Node")
+        Node.__init__(self, self, Node.Definition(), '/')
 
 
 ########################################################################################################################
@@ -407,8 +398,9 @@ class Scene:
         """
         Constructor.
         """
-        self._named_nodes: Dict[str: weak_ref] = {}
+        self._named_nodes: Dict[str: weak_ref] = dict()
         self._root: RootNode = RootNode(self)
+        self._expired_nodes: Set[Node] = set()
 
     @property
     def root(self) -> RootNode:
@@ -443,6 +435,19 @@ class Scene:
         elif existing_node != node:
             raise NameError('Cannot create another Node with the name "{}"'.format(name))
 
+    def remove_expired_nodes(self) -> bool:
+        """
+        Is called at the end of the event loop by an Executor to remove all expired Nodes.
+        :return: True iff any Nodes were removed.
+        """
+        if len(self._expired_nodes) == 0:
+            return False
+
+        for node in self._expired_nodes:
+            node.parent._children.remove(node)
+        self._expired_nodes.clear()
+        return True
+
 
 ########################################################################################################################
 
@@ -465,9 +470,14 @@ class Executor:
         STOPPING = auto()
         STOPPED = auto()
 
-    def __init__(self):
+    def __init__(self, scene: Scene):
         """
-        Default constructor.
+        Constructor.
+        :param scene: Scene to manage.
+        """
+        self._scene: Scene = scene
+        """
+        Scene managed by this Executor.
         """
 
         self._loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
@@ -494,11 +504,6 @@ class Executor:
         """
         Mutex protecting the status, in C++ an atomic value would do.
         """
-
-        # Inject a call to `self._cleanup` every time the event loop has run
-        # This is a dirty hack that relies on an implementation detail of CPython, but since this is proof-of-concept
-        # code only, I don't care.
-        self._loop._run_once = lambda: asyncio.BaseEventLoop._run_once(self._loop) or self._cleanup()
 
         # start the logic thread immediately
         self._thread.start()
@@ -528,6 +533,9 @@ class Executor:
             self._loop.call_soon_threadsafe(partial(self._loop.create_task, func(*args, **kwargs)))
         else:
             self._loop.call_soon_threadsafe(partial(func, *args, **kwargs))
+
+        # always clean up after yourself
+        self._loop.call_soon_threadsafe(self._cleanup)
 
     def finish(self):
         """
@@ -575,7 +583,12 @@ class Executor:
         change is currently handled.
         This method does that.
         """
-        pass  # TODO: Executor._cleanup
+        if self._scene.remove_expired_nodes():
+            # We really need those Nodes gone, and their signals, slots and properties with them.
+            # However, many Nodes own Receivers that in turn own references back to the Node, creating 
+            # cycles. Those cycles keep the Node and all of its dependents around until the gc comes
+            # around to collect them. We need to do that here.
+            force_gc()
 
     def _run(self):
         """

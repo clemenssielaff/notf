@@ -3,6 +3,7 @@ import sys
 
 from pynotf.logic import Switch, Receiver, Emitter
 from pynotf.value import Value
+from pynotf.scene import Executor, Fact
 
 
 def count_live_receivers(emitter: Emitter) -> int:
@@ -229,3 +230,13 @@ class StringifyOperation(Switch.Operation):
 
     def _perform(self, value: Value) -> Value:
         return Value(str(value.as_number()))
+
+
+class EmptyFact(Fact):
+    def __init__(self, executor: Executor):
+        Fact.__init__(self, executor)
+
+
+class NumberFact(Fact):
+    def __init__(self, executor: Executor):
+        Fact.__init__(self, executor, Value(0).schema)

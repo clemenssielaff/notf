@@ -1,16 +1,17 @@
 import unittest
 import asyncio
-from typing import List
+from typing import List, Optional
 from enum import Enum, auto
 import logging
 from time import sleep
 from itertools import product
 
 from pynotf.value import Value
-from pynotf.logic import Emitter
+from pynotf.logic import Emitter, Receiver
 from pynotf.scene import Executor, Fact, Scene, RootNode, Node, Property
 
-from tests.utils import record, ErrorOperation, ClampOperation, StringifyOperation, NumberEmitter
+from tests.utils import record, Recorder, ErrorOperation, ClampOperation, StringifyOperation, NumberEmitter, NumberFact, \
+    EmptyFact
 
 
 ########################################################################################################################
@@ -19,18 +20,38 @@ from tests.utils import record, ErrorOperation, ClampOperation, StringifyOperati
 
 
 class TestNode(Node):
-    def _produce_definition(self) -> 'Node.Definition':
+    def __init__(self, parent: 'Node', name: Optional[str] = None):
         definition: Node.Definition = Node.Definition()
         definition.add_property("prop_number", Value(0), ClampOperation(0., 10.), ErrorOperation(4))
         definition.add_property("prop_string", Value(""))
-        definition.add_signal("signal_number", Value(0).schema)
-        definition.add_slot("slot_number", Value(0).schema)
-        return definition
+        definition.add_signal("number_output", Value(0).schema)
+        definition.add_slot("number_input", Value(0).schema)
+        definition.add_slot("removal", )
+        Node.__init__(self, parent, definition, name)
 
+        # TODO: this is atrocious. Nodes should have a general-purpose keep-alive set for Receiver
 
-class IntFact(Fact):
-    def __init__(self, executor: Executor):
-        Fact.__init__(self, executor, Value(0).schema)
+        class DeleteMe(Receiver):
+            def __init__(self, target: TestNode):
+                super().__init__()
+                self.target = target
+
+            def on_next(self, signal: Emitter.Signal, value: Optional[Value]):
+                self.target.remove()
+
+        self._deleter = DeleteMe(self)
+        self._deleter.connect_to(self.get_slot("removal"))
+
+        class Passer(Receiver):
+            def __init__(self, target: TestNode):
+                super().__init__(Value(0).schema)
+                self.target = target
+
+            def on_next(self, signal: Emitter.Signal, value: Value):
+                self.target.get_signal("number_output").emit(value)
+
+        self._passer = Passer(self)
+        self._passer.connect_to(self.get_slot("number_input"))
 
 
 async def add_delayed(state: List[int], number: int):
@@ -78,8 +99,8 @@ class TestCase(unittest.TestCase):
 
         self.assertEqual(node.name, "Herbert")
         self.assertEqual(node.get_property("prop_number").value.as_number(), 0)
-        node.get_signal("signal_number")
-        node.get_slot("slot_number")
+        node.get_signal("number_output")
+        node.get_slot("number_input")
 
         with self.assertRaises(KeyError):
             node.get_property("Not a Property")
@@ -87,6 +108,26 @@ class TestCase(unittest.TestCase):
             node.get_signal("Not a Signal")
         with self.assertRaises(KeyError):
             node.get_slot("Not a SLot")
+
+    def test_remove_node(self):
+        scene: Scene = Scene()
+        executor: Executor = Executor(scene)
+        number_fact: Fact = NumberFact(executor)
+        removal_fact: Fact = EmptyFact(executor)
+
+        node: TestNode = scene.root.create_child(TestNode)
+        node.get_slot("number_input").connect_to(number_fact)
+        node.get_slot("removal").connect_to(removal_fact)
+        recorder: Recorder = record(node.get_signal("number_output"))
+        del node
+
+        number_fact.emit(34)
+        number_fact.emit(86)
+        removal_fact.emit()
+        number_fact.emit(678)
+
+        executor.stop()
+        self.assertEqual([v.as_number() for v in recorder.values], [34, 86])
 
     def test_property(self):
         scene = Scene()
@@ -150,16 +191,16 @@ class TestCase(unittest.TestCase):
 
     def test_create_property_error(self):
         class PropertyOperationsMustMatchValue(Node):
-            def _produce_definition(self) -> 'Node.Definition':
+            def __init__(self, parent: 'Node', name: Optional[str] = None):
                 definition: Node.Definition = Node.Definition()
                 definition.add_property("mismatch", Value(""), ClampOperation(0, 10))
-                return definition
+                Node.__init__(self, parent, definition, name)
 
         class PropertiesCannotConvert(Node):
-            def _produce_definition(self) -> 'Node.Definition':
+            def __init__(self, parent: 'Node', name: Optional[str] = None):
                 definition: Node.Definition = Node.Definition()
                 definition.add_property("stringify", Value(0), StringifyOperation())
-                return definition
+                Node.__init__(self, parent, definition, name)
 
         scene = Scene()
         with self.assertRaises(TypeError):
@@ -185,11 +226,11 @@ class TestCase(unittest.TestCase):
 
         def make_error_class(first_kind: Kind, second_kind: Kind):
             class ErrorClass(Node):
-                def _produce_definition(self) -> 'Node.Definition':
+                def __init__(self, parent: 'Node', name: Optional[str] = None):
                     definition: Node.Definition = Node.Definition()
                     Kind.to_func(first_kind)(definition, "duplicate name", Value(0))
                     Kind.to_func(second_kind)(definition, "duplicate name", Value(0))
-                    return definition
+                    Node.__init__(self, parent, definition, name)
 
             return ErrorClass
 
@@ -209,10 +250,6 @@ class TestCase(unittest.TestCase):
         scene = Scene()
         root: RootNode = scene.root
         self.assertIsInstance(root, RootNode)
-
-        with self.assertRaises(RuntimeError):
-            root._produce_definition()
-
         self.assertEqual(scene.get_node(root.name), root)
         self.assertEqual('/', root.name)
 
@@ -239,7 +276,7 @@ class TestCase(unittest.TestCase):
     def test_executor_stop(self):
         state: List[int] = []
 
-        executor = Executor()
+        executor = Executor(Scene())
         executor.schedule(add_delayed, state, 1)
         executor.schedule(add_delayed, state, 2)
         executor.schedule(add_immediate, state, 3)
@@ -257,7 +294,7 @@ class TestCase(unittest.TestCase):
     def test_executor_finish(self):
         state: List[int] = []
 
-        executor = Executor()
+        executor = Executor(Scene())
         executor.schedule(add_delayed, state, 1)
         executor.schedule(add_delayed, state, 2)
         executor.schedule(add_immediate, state, 3)
@@ -276,7 +313,7 @@ class TestCase(unittest.TestCase):
     def test_executor_failure(self):
         state: List[int] = []
 
-        executor = Executor()
+        executor = Executor(Scene())
         original_handler = executor.exception_handler
         executor.exception_handler = lambda: state.append(0 if original_handler() is None else 0)
 
@@ -298,12 +335,12 @@ class TestCase(unittest.TestCase):
         self.assertEqual(state, [2, 0, 4, 1, 3, 5, 0])
 
     def test_fact(self):
-        executor = Executor()
+        executor = Executor(Scene())
 
-        fact1 = IntFact(executor)
+        fact1 = NumberFact(executor)
         recorder1 = record(fact1)
 
-        fact2 = IntFact(executor)
+        fact2 = NumberFact(executor)
         recorder2 = record(fact2)
         error = RuntimeError("Nope")
 
