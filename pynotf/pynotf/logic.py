@@ -37,10 +37,9 @@ class Emitter:
           Receiver they emit to, each Receiver can connect to multiple Emitters while each Emitter can emit to multiple
           Receivers". It's not great prose either way, but at least the second version doesn't make me want to change
           my profession.
-    I am aware that the Publish-Subscribe pattern (https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) is
-    generally understood to mean something different. And while I can understand that all easy names are already used in
-    the literature, I refuse to let that impact the quality of the code. Especially since the Emitter-Receiver
-    relationship is an apt analogy to what is really happening in code (more so than observable-observer).
+
+    With Emitter-Receiver, we are going for an electrical switchboard kinda-vibe. It's only fitting that the thing being
+    transmitted is called a Signal and that things that ingest Signals and maybe output another one are called Switches.
     </rant>
     """
 
@@ -511,10 +510,8 @@ class Switch(Receiver, Emitter):
 
 
 # TODO: better Signals
-#   Maybe it would be a good idea to pack the <Value, Signal> pair into a single object called a `Publication` (because
-#   it is what is emitted by a Emitter). A Publication is non-copyable, but the value within it is. Publications itself
-#   can be ignored, handled or blocked, which frees up the term "Signal" for other uses. Also let's use "handled"
-#   instead of "accepted" ...?
+#   Maybe it would be a good idea to pack the <Value, Signal> pair into a single object called a `Signal`. A Signal
+#   is non-copyable, but the value within it is. Signals can be ignored, blocked or handled (instead of "accepted").
 
 ########################################################################################################################
 
