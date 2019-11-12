@@ -1,3 +1,68 @@
+"""
+The Application Logic
+=====================
+
+This module contains the relevant classes to build the Application *Logic*. We use the term Logic here, because it
+describes the application behavior in deterministic if-this-then-that terms (https://en.wikipedia.org/wiki/Logic).
+Whereas the Logic describes behavior in the abstract (as in: "the Logic is valid"), the actual implementation of a
+particular Logic uses a terms borrowed from signal processing and the design of electrical circuits (see
+https://en.wikipedia.org/wiki/Electrical_network). While we go into each term into detail, let us start with the an
+exhaustive list of terms for reference:
+
+Terminology
+-----------
+* Logic
+Describes the complete behavior space of the Application. At every point in time, the Logic is expressed through the
+Logic _Circuit_, but while a Circuit is mutable, the Logic itself is static. Similar to how a state machine is static,
+while the expressed state of the machine can change.
+* Circuit
+A Circuit is a concrete configuration of Emitters and Receivers arranged in a directed, acyclic graph (DAG).
+* Event
+An Event encompasses the introduction of a new Signal into a Circuit, its propagation and the modifications of the
+Circuit as a result. The Event is finished, once all Receivers have finished handling the input Signal and no more
+Signals are being emitted within the Circuit.
+* Signal
+Object at the front of the Event handling process. At the beginning of an Event, a single Signal is emitted into the
+Circuit by a single Emitter but as the Signal is propagated through, it can split into different Signals.
+* Emitter
+Is a Circuit object that emits a Signal into the Circuit. Emitters can be sources or relays of Signals, meaning they
+either introduce a new Signal into the circuit from somewhere outside the Logic (see Facts in the scene module) or they
+can create a Signals as a response to another Signal from within the Circuit.
+Emitters may contain a user-defined sorting function for their connected Receivers, but most will simply use the default
+implementation which is based on the order of connection and connection priorities.
+* Receiver
+Is the counter-object to an Emitter. A Receiver receives a Signal from an Emitter and handles it in a way appropriate to
+its type. The handler function of a Receiver is the main injection point for user-defined functionality.
+* Switch
+Anything that is both an Emitter and a Receiver of Signals. Note that not all Switches generate an output Signal for
+each input Signal.
+
+The Circuit
+===========
+
+Directed and Acyclic
+-----------------------
+The Circuit must be a directed, acyclic graph (DAG). Cycles would be okay, if we could guarantee that Switches did not
+hold any state (even though infinite loops would still be possible). However, since Switches are allowed to have
+arbitrary, user-defined state we cannot guarantee that the callback functions in every Switch are reentrant. Basically,
+if the same stateful Switch is emitting multiple times in parallel, it would need to have multiple states in parallel.
+
+Note that it is impossible to sort the Circuit statically (without executing it) since we are allowing user-defined
+callbacks within the Receivers that might react differently based on the Receiver's state. Instead, we have to allow
+for the possibility of user-introduced cycles at any point and handle it as gracefully as possible. To accomplish this,
+every Signal has encoded within it the path that it took from the original source to the current Switch. If the next
+Receiver in line is already part of the Signal's path, we have detected a cycle and can interrupt the emission before
+it happens.
+That said, we _can_ guarantee that cycles are impossible using static analysis on the Circuit. And even though a cycle
+detected during static analysis does not automatically mean that a cyclic dependency error will occur at runtime, its
+presence is highly dubious and should be reason for a warning at least.
+
+
+The Logic circuit must be a DAG. Cycles would be okay for Switches with no state (loops, basically) but if the same
+stateful Switch is emitting multiple times in parallel, it would need to have multiple states in parallel. And that is
+impossible. Since Switches can have states in the general case, we cannot have cycles.
+
+"""
 from typing import List, Optional, Any, Tuple
 from abc import ABCMeta, abstractmethod
 from enum import Enum, auto
@@ -510,8 +575,12 @@ class Switch(Receiver, Emitter):
 
 
 # TODO: better Signals
-#   Maybe it would be a good idea to pack the <Value, Signal> pair into a single object called a `Signal`. A Signal
+#   * Maybe it would be a good idea to pack the <Value, Signal> pair into a single object called a `Signal`. A Signal
 #   is non-copyable, but the value within it is. Signals can be ignored, blocked or handled (instead of "accepted").
+#   * Also, Signal emitter field should not be a single emitter but any ordered set of Emitters. Ordered, so you can
+#   recreate the path of the Signal to find out the latest emitter and for debugging, and a set to quickly check for
+#   loops at run-time
+
 
 ########################################################################################################################
 
@@ -521,7 +590,6 @@ Ideas
 
 Exceptions
 ----------
-(using the new terminology from above)
 With the introduction of user-written code, we inevitable open the door to user-written bugs. Therefore, during Logic 
 evaluation, all Receivers and Switches are expected to be able to fail at any time.
 Failure in this case means that the Receiver throws an exception instead of finishing normally. Internal errors are of
@@ -539,6 +607,8 @@ break once a failure occurs.
 
 Additional Thoughts
 ===================
+
+
 
 
 Ownership
@@ -754,6 +824,101 @@ Solution 3:
 
 I have opted for solution 2, which allows us to keep the scheduling of Receivers contained within the individual
 Emitter directly upstream. In order to make this work, emitting becomes a bit more complicated but not by a lot.
+
+
+Ordered Emissions
+-----------------
+(Side-note: At the time of this writing, these specs did not guarantee any order during Signal emission, meaning that 
+emission order was essentially random. "Essentially" because it did not have to be random, but there was no rule 
+prohibiting it either.)
+
+I already discussed the problem with the removal on nodes mid-event. To reiterate:
+Given one Emitter `E1` and two Slots `S1` and `S2` of different Nodes `N1` and `N2` arranged in the following circuit:
+
+```
+         +---> S1(N1) -> H1
+    E1 --+
+         +---> S2(N2) -> H2
+```
+
+Both `S1` and `S2` are connected to a Handler, let's call them `H1` and `H2`. Both Handlers are allowed to execute
+arbitrary user-code. The problem arises when `H1` removes `N2` and `H2` removes `H1`. Since the order in which `S1` and 
+`S2` receive the Signal from `E1` is essentially random, the event might either remove `N1` *or* `N2`, but never both
+and we don't know which it will be. This is confusing, hard to debug and certainly never what the user intended. 
+
+The solution to this particular problem was to delay the actual removal of Nodes until the very end of the event, when
+the Signal had time to fully propagate through the circuit. This works and I thought it was enough.
+
+However, it turns out that this problem is further reaching than I initially assumed. It is trivial to modify the 
+example above to achieve the same, uncertain result without involving Nodes.
+Given one Emitter `E1`, two Switches `A1` (that always adds two to the input number) and `A2` (that always adds three)
+and a special Switch `S1` that is connected to both `N1` and `N2`. The circuit is laid out as follows:
+
+```
+          +---> A1 (adds 2) ---+
+          |                     \
+    E1 ---+                      S1 
+          |                     /
+          +---> A2 (adds 3) ---+
+```
+
+The particular behavior of `S2` is that it ingests two numbers `x` and `y` and after receiving the second one, produces 
+`z` with `z = x - y`. It then resets and waits for the next pair. 
+The problem is that if `E1` propagates the number one first to either `N1` or `N2` (because, as of now the order is 
+essentially random), `x` will either be 3 or 4, while `y` will be the other one. That results in either `z = 3 - 4 = -1`
+or `z = 4 - 3 = 1`. Which one we get is as random as the order of propagation from `E1`.
+
+Unlike with the Node removal above, there is no way to delay here until the event is handled because it is the event 
+handling itself, that is broken. 
+... So where does that leave us?
+
+I think the only way to address the bigger problem is to get rid of the randomness. We already have a deterministic 
+order in some of the Emitters (the ones that sort by Node z-value) and that should be the default. Note that I did not
+say that the order must be fixed, the sorting Emitters for example will re-order their Receivers as the Scene Graph is
+modified and there might be other use-cases where dynamic sorting is appropriate. What I do say however is that the
+order must be fixed, inspectable and modifiable by the user. All of the problems, including the Node removal mid-event
+would be solved, if we place the responsibility of the order in which Signals are emitted on the user.
+Question is, how do we do that?
+
+The only way to relate independent Receivers to each other is through a common ranking system. Fortunately there is one:
+natural numbers, which basically means priorities. Whenever a Receiver connects to an Emitter, it has the opportunity
+to pass an optional priority number, with higher priority Receiver receiving Signals before lower priority Receiver. The 
+default priority is zero. Receivers with equal priority receive their Signals in the order in which they subscribed.
+This approach allows the user to ignore priorities in most cases (since in most cases, you should not care) and in
+the cases outlined above, the user has the ability to manually determine an order. The user is also free to define a
+total order for each Receiver, should that ever become an issue.
+New Receivers are ordered behind existing ones, not before them. You could make a point that prepending new ones to the
+list of Receivers would make sure that new Receivers always get the Signal and are not blocked, but I think that 
+argument is not very strong. A good argument for the other side is that appending new Receivers to the end means that
+the existing Logic is undisturbed, meaning there is as little (maybe no) change in how the circuit operates as a whole.
+That should be the default behavior. 
+
+Of course, this approach does not protect the user from the error cases outlined above - but it will make them 
+deterministic. I think it is a good trade-off though. By allowing user-injected, stateful code in our system, we not
+only pass power to the user but also responsibility (cue obligatory Spiderman joke). And it makes for a good use-case 
+for the notf Designer that allows the user to visualize the Logic circuit and Signal processing in detail...
+
+Addendum: 
+There is still the matter of Emitters keeping their connected Receivers alive during emission. This is actually only a 
+side effect of the original intend: to keep the list of receivers *fixed* during emission, meaning no  removals and no 
+additions. Now that we allow immediate removal and disconnection though, this might no longer feasible. If `A` deletes 
+`B` then `B` should no longer receive Signals. But what if `A` *adds* `B`? Should `B` then receive the Signal 
+immediately? I would say no.
+
+Actually either way, the current behaviour of keeping the list of receivers fixed during emission is not good enough. It
+might protect a single emitter, but what about connected emitters downstream? If we have 3 Switches `A`, `B` and `C` 
+with `A` connected to `B` and `C`. `A` emits to `B` first, then to `C`. `B` connects a new Switch `D` downstream of `C`.
+Since `C` is not currently emitting, this causes `C` to modify its list of receivers and emit the Signal to `D` right 
+away - within the same loop. If however `C` connected a new receiver `D'`to `B`, then `D'` would not receive anything 
+until the next time that `A` emitted. 
+This is correct and will work, but it could still be confusing. The alternative would be to say that all receiver lists 
+stay fixed. But then we couldn't remove mid-event either, which means that you cannot remove Nodes mid - event.
+
+I guess ultimately we should choose the easier option first. We need ordered evaluation and we need a rule whereby 
+Emitters, once emitting, can no longer change their Signal or list of Receivers to avoid a receiver type "dos"ing an 
+upstream Emitter.
+What about an Emitter A that emits to B and C, but B removes C? I guess the Emitter list is fixed, but should be 
+non-owning.
 
 
 Dead Ends
