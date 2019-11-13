@@ -3,45 +3,59 @@ The Application Logic
 =====================
 
 This module contains the relevant classes to build the Application *Logic*. We use the term Logic here, because it
-describes the application behavior in deterministic if-this-then-that terms (https://en.wikipedia.org/wiki/Logic).
+describes the application behavior in deterministic [if-this-then-that terms](https://en.wikipedia.org/wiki/Logic).
 Whereas the Logic describes behavior in the abstract (as in: "the Logic is valid"), the actual implementation of a
-particular Logic uses a terms borrowed from signal processing and the design of electrical circuits (see
-https://en.wikipedia.org/wiki/Electrical_network). While we go into each term into detail, let us start with the an
-exhaustive list of terms for reference:
+particular Logic uses a terms borrowed from signal processing and the design of
+[electrical circuits](https://en.wikipedia.org/wiki/Electrical_network). While we go into each term into detail, let
+us start with the an exhaustive list of terms for reference:
+
 
 Terminology
 -----------
-* Logic
-Describes the complete behavior space of the Application. At every point in time, the Logic is expressed through the
-Logic _Circuit_, but while a Circuit is mutable, the Logic itself is static. Similar to how a state machine is static,
-while the expressed state of the machine can change.
-* Circuit
-A Circuit is a concrete configuration of Emitters and Receivers arranged in a directed, acyclic graph (DAG).
-* Event
-An Event encompasses the introduction of a new Signal into a Circuit, its propagation and the modifications of the
-Circuit as a result. The Event is finished, once all Receivers have finished handling the input Signal and no more
-Signals are being emitted within the Circuit.
-* Signal
-Object at the front of the Event handling process. At the beginning of an Event, a single Signal is emitted into the
-Circuit by a single Emitter but as the Signal is propagated through, it can split into different Signals.
-* Emitter
-Is a Circuit object that emits a Signal into the Circuit. Emitters can be sources or relays of Signals, meaning they
-either introduce a new Signal into the circuit from somewhere outside the Logic (see Facts in the scene module) or they
-can create a Signals as a response to another Signal from within the Circuit.
-Emitters may contain a user-defined sorting function for their connected Receivers, but most will simply use the default
-implementation which is based on the order of connection and connection priorities.
-* Receiver
-Is the counter-object to an Emitter. A Receiver receives a Signal from an Emitter and handles it in a way appropriate to
-its type. The handler function of a Receiver is the main injection point for user-defined functionality.
-* Switch
-Anything that is both an Emitter and a Receiver of Signals. Note that not all Switches generate an output Signal for
-each input Signal.
 
-The Circuit
-===========
++ **Logic**
 
-Directed and Acyclic
------------------------
+ Describes the complete behavior space of the Application. At every point in time, the Logic is expressed through the
+ Logic *Circuit*, but while a Circuit is mutable, the Logic itself is static. Similar to how a state machine is static,
+ while the expressed state of the machine can change.
+
++ **Circuit**
+
+ A Circuit is a concrete configuration of Emitters and Receivers arranged in a directed, acyclic graph (DAG).
+
++ **Event**
+
+ An Event encompasses the introduction of a new Signal into a Circuit, its propagation and the modifications of the
+ Circuit as a result. The Event is finished, once all Receivers have finished handling the input Signal and no more
+ Signals are being emitted within the Circuit. Unlike in Qt, there are no "Event objects".
+
++ **Signal**
+
+ Object at the front of the Event handling process. At the beginning of an Event, a single Signal is emitted into the
+ Circuit by a single Emitter but as the Signal is propagated through, it can split into different Signals.
+
++ **Emitter**
+
+ Is a Circuit object that emits a Signal into the Circuit. Emitters can be sources or relays of Signals, meaning they
+ either introduce a new Signal into the circuit from somewhere outside the Logic (see Facts in the scene module) or
+ they can create a Signals as a response to another Signal from within the Circuit.
+ Emitters may contain a user-defined sorting function for their connected Receivers, but most will simply use the
+ default implementation which is based on the order of connection and connection priorities.
+
++ **Receiver**
+
+ Is the counter-object to an Emitter. A Receiver receives a Signal from an Emitter and handles it in a way appropriate
+ to its type. The handler function of a Receiver is the main injection point for user-defined functionality.
+
++ **Switch**
+
+ Anything that is both an Emitter and a Receiver of Signals. Note that not all Switches generate an output Signal for
+ each input Signal.
+
+
+The Circuit as a DAG
+--------------------
+
 The Circuit must be a directed, acyclic graph (DAG). Cycles would be okay, if we could guarantee that Switches did not
 hold any state (even though infinite loops would still be possible). However, since Switches are allowed to have
 arbitrary, user-defined state we cannot guarantee that the callback functions in every Switch are reentrant. Basically,
@@ -53,14 +67,53 @@ for the possibility of user-introduced cycles at any point and handle it as grac
 every Signal has encoded within it the path that it took from the original source to the current Switch. If the next
 Receiver in line is already part of the Signal's path, we have detected a cycle and can interrupt the emission before
 it happens.
-That said, we _can_ guarantee that cycles are impossible using static analysis on the Circuit. And even though a cycle
+That said, we *can* guarantee that cycles are impossible using static analysis on the Circuit. And even though a cycle
 detected during static analysis does not automatically mean that a cyclic dependency error will occur at runtime, its
 presence is highly dubious and should be reason for a warning at least.
 
 
-The Logic circuit must be a DAG. Cycles would be okay for Switches with no state (loops, basically) but if the same
-stateful Switch is emitting multiple times in parallel, it would need to have multiple states in parallel. And that is
-impossible. Since Switches can have states in the general case, we cannot have cycles.
+Ownership and Lifetimes
+-----------------------
+
+While it is obvious that Emitters must store a a list of references to their connected Receivers, whether or not 
+Receivers need to store references to their connected Emitters is a question of design requirements. Furthermore,
+references come in two flavors: strong and weak. Strong reference implying ownership of the referenced object, weak 
+ones do not. In order to avoid memory leaks we need to ensure that the graph of all strong references is a DAG.
+The other design consideration with strong references is that of object lifetime: ideally you want an object to stay
+around exactly as long as it is needed but no longer. 
+
+In the beginning, Receivers kept a set of strong references to their Emitters. The rationale for that decision assumed 
+that there were certain fixed points in the Circuit (Facts, for example) that were kept alive from the outside. 
+Receivers would spawn into the Circuit and with them a "pipeline" of Switches, that would connect to one or more of 
+these fixed points in order to generate a customized stream of data. Since the pipeline was tailor crafted for a
+Receiver, it made sense that the Receiver owned the pipeline and since a pipeline was a sequence of Switches, the
+obvious way to achieve this behavior was to have downstream Receivers own their upstream Emitters.
+
+Then we introduced Switch Operations, which offered an easy way to construct an entire pipeline in a single Circuit
+element. Instead of having n-Switches daisy chained together, you could now have a single Switch that produces the
+same result (and more efficiently so, at least in a compiled language).
+CONTINUE HERE
+
+After some back and forth I now think that Receivers do not need to know about the Emitters they are connected to. 
+If a Emitter goes out of scope, the Receiver will receive a completed or failure message and that's that. The 
+Emitters in turn do not own their Receivers either. If a Receiver drops, the Emitter will simply remove it and 
+carry on. This puts the responsibility of ownership on entities outside the Emitter-Receiver module. 
+
+
+Exception Handling
+------------------
+
+With the introduction of user-written code, we inevitable open the door to user-written bugs. Therefore, during Event 
+handling evaluation, all Receivers have the possibility of failing at any time. Failure in this case means that the
+Receiver throws an exception instead of returning normally. Internal errors, that are caught and handled internally,
+remain of course invisible to the Logic.
+
+In case of a failure, the exception thrown by the Receiver is caught by the Emitter upstream, that is currently in the
+process of emitting. The way that the Emitter reacts to the exception can be selected at runtime using the 
+[delegation pattern](https://en.wikipedia.org/wiki/Delegation_pattern). The default behavior is to acknowledge the
+exception by logging a warning, but ultimately to ignore it, for there is no general way to handle user code errors.
+Other delegates may opt to drop Receivers that fail once, fail multiple times in a row or in total, etc.
+
 
 """
 from typing import List, Optional, Any, Tuple
@@ -585,24 +638,6 @@ class Switch(Receiver, Emitter):
 ########################################################################################################################
 
 """
-Ideas
-=====
-
-Exceptions
-----------
-With the introduction of user-written code, we inevitable open the door to user-written bugs. Therefore, during Logic 
-evaluation, all Receivers and Switches are expected to be able to fail at any time.
-Failure in this case means that the Receiver throws an exception instead of finishing normally. Internal errors are of
-course invisible to us.
-In case of a failure, the Emitter upstream will acknowledge the error and ignore it for now.
-In the future, we might think of different policies, where the Emitter drops Receivers that fail once, multiple times
-in a row or in total or whatever.
-
-The alternative is that we keep track of the entire state of the application (meaning that user-defined code is no 
-longer allowed to keep any state of itself) and use event-sourcing in order to facility complete roll-backs of the state
-once a failure has occurred (make user-code transactional). This might be something else to think of in the future, but 
-I think that for now it might be best to assume that the user-programmer is capable of producing code that does not 
-break once a failure occurs.
 
 
 Additional Thoughts
@@ -611,16 +646,7 @@ Additional Thoughts
 
 
 
-Ownership
----------
-In the Emitter-Receiver relationship, who owns who? Clearly, the Emitter must have a set (or list) of weak or
-strong references to all of its Receivers, but do Receivers need to know their Emitters? And if so, do they need
-to keep them alive? 
 
-After some back and forth I now think that Receivers do not need to know about the Emitters they are connected to. 
-If a Emitter goes out of scope, the Receiver will receive a completed or failure message and that's that. The 
-Emitters in turn do not own their Receivers either. If a Receiver drops, the Emitter will simply remove it and 
-carry on. This puts the responsibility of ownership on entities outside the Emitter-Receiver module. 
 
 
 Propagated Data & Signal
