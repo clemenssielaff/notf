@@ -2,12 +2,7 @@
 The Application Logic
 =====================
 
-This module contains the relevant classes to build the Application *Logic*. We use the term Logic here, because it
-describes the application behavior in deterministic [if-this-then-that terms](https://en.wikipedia.org/wiki/Logic).
-Whereas the Logic describes behavior in the abstract (as in: "the Logic is valid"), the actual implementation of a
-particular Logic uses a terms borrowed from signal processing and the design of
-[electrical circuits](https://en.wikipedia.org/wiki/Electrical_network). While we go into each term into detail, let
-us start with the an exhaustive list of terms for reference:
+This module contains the relevant classes to build the Application *Logic*. We use the term Logic here, because itdescribes the application behavior in deterministic [if-this-then-that terms](https://en.wikipedia.org/wiki/Logic).Whereas the Logic describes behavior in the abstract (as in: "the Logic is valid"), the actual implementation of aparticular Logic uses a terms borrowed from signal processing and the design of[electrical circuits](https://en.wikipedia.org/wiki/Electrical_network). While we go into each term into detail, letus start with the an exhaustive list of terms for reference:
 
 
 Terminology
@@ -15,9 +10,7 @@ Terminology
 
 + **Logic**
 
- Describes the complete behavior space of the Application. At every point in time, the Logic is expressed through the
- Logic *Circuit*, but while a Circuit is mutable, the Logic itself is static. Similar to how a state machine is static,
- while the expressed state of the machine can change.
+ Describes the complete behavior space of the Application. At every point in time, the Logic is expressed through the Logic *Circuit*, but while a Circuit is mutable, the Logic itself is static. Similar to how a state machine is static, while the expressed state of the machine can change.
 
 + **Circuit**
 
@@ -25,96 +18,62 @@ Terminology
 
 + **Event**
 
- An Event encompasses the introduction of a new Signal into a Circuit, its propagation and the modifications of the
- Circuit as a result. The Event is finished, once all Receivers have finished handling the input Signal and no more
- Signals are being emitted within the Circuit. Unlike in Qt, there are no "Event objects".
+ An Event encompasses the introduction of a new Signal into a Circuit, its propagation and the modifications of the Circuit as a result. The Event is finished, once all Receivers have finished handling the input Signal and no more Signals are being emitted within the Circuit. Unlike in Qt, there are no "Event objects".
 
 + **Signal**
 
- Object at the front of the Event handling process. At the beginning of an Event, a single Signal is emitted into the
- Circuit by a single Emitter but as the Signal is propagated through, it can split into different Signals.
+ Object at the front of the Event handling process. At the beginning of an Event, a single Signal is emitted into the Circuit by a single Emitter but as the Signal is propagated through, it can split into different Signals.
 
 + **Emitter**
 
- Is a Circuit object that emits a Signal into the Circuit. Emitters can be sources or relays of Signals, meaning they
- either introduce a new Signal into the circuit from somewhere outside the Logic (see Facts in the scene module) or
- they can create a Signals as a response to another Signal from within the Circuit.
- Emitters may contain a user-defined sorting function for their connected Receivers, but most will simply use the
- default implementation which is based on the order of connection and connection priorities.
+ Is a Circuit object that emits a Signal into the Circuit. Emitters can be sources or relays of Signals, meaning they either introduce a new Signal into the circuit from somewhere outside the Logic (see Facts in the scene module) or they can create a Signals as a response to another Signal from within the Circuit. Emitters may contain a user-defined sorting function for their connected Receivers, but most will simply use the default implementation which is based on the order of connection and connection priorities.
 
 + **Receiver**
 
- Is the counter-object to an Emitter. A Receiver receives a Signal from an Emitter and handles it in a way appropriate
- to its type. The handler function of a Receiver is the main injection point for user-defined functionality.
+ Is the counter-object to an Emitter. A Receiver receives a Signal from an Emitter and handles it in a way appropriate to its type. The handler function of a Receiver is the main injection point for user-defined functionality.
 
 + **Switch**
 
- Anything that is both an Emitter and a Receiver of Signals. Note that not all Switches generate an output Signal for
- each input Signal.
+ Anything that is both an Emitter and a Receiver of Signals. Note that not all Switches generate an output Signal for each input Signal.
 
 
-The Circuit as a DAG
---------------------
+Directed Acyclic Circuit
+------------------------
 
-The Circuit must be a directed, acyclic graph (DAG). Cycles would be okay, if we could guarantee that Switches did not
-hold any state (even though infinite loops would still be possible). However, since Switches are allowed to have
-arbitrary, user-defined state we cannot guarantee that the callback functions in every Switch are reentrant. Basically,
-if the same stateful Switch is emitting multiple times in parallel, it would need to have multiple states in parallel.
+The Circuit must be a directed, acyclic graph (DAG). Cycles would be okay, if we could guarantee that Switches did nothold any state (even though infinite loops would still be possible). However, since Switches are allowed to havearbitrary, user-defined state we cannot guarantee that the callback functions in every Switch are reentrant. Basically,if the same stateful Switch is emitting multiple times in parallel, it would need to have multiple states in parallel.
 
-Note that it is impossible to sort the Circuit statically (without executing it) since we are allowing user-defined
-callbacks within the Receivers that might react differently based on the Receiver's state. Instead, we have to allow
-for the possibility of user-introduced cycles at any point and handle it as gracefully as possible. To accomplish this,
-every Signal has encoded within it the path that it took from the original source to the current Switch. If the next
-Receiver in line is already part of the Signal's path, we have detected a cycle and can interrupt the emission before
-it happens.
-That said, we *can* guarantee that cycles are impossible using static analysis on the Circuit. And even though a cycle
-detected during static analysis does not automatically mean that a cyclic dependency error will occur at runtime, its
-presence is highly dubious and should be reason for a warning at least.
+Note that it is impossible to sort the Circuit statically (without executing it) since we are allowing user-definedcallbacks within the Receivers that might react differently based on the Receiver's state. Instead, we have to allowfor the possibility of user-introduced cycles at any point and handle it as gracefully as possible. To accomplish this,every Signal has encoded within it the path that it took from the original source to the current Switch. If the nextReceiver in line is already part of the Signal's path, we have detected a cycle and can interrupt the emission beforeit happens.That said, we *can* guarantee that cycles are impossible using static analysis on the Circuit. And even though a cycledetected during static analysis does not automatically mean that a cyclic dependency error will occur at runtime, itspresence is highly dubious and should be reason for a warning at least.
 
 
 Ownership and Lifetimes
 -----------------------
 
-While it is obvious that Emitters must store a a list of references to their connected Receivers, whether or not 
-Receivers need to store references to their connected Emitters is a question of design requirements. Furthermore,
-references come in two flavors: strong and weak. Strong reference implying ownership of the referenced object, weak 
-ones do not. In order to avoid memory leaks we need to ensure that the graph of all strong references is a DAG.
-The other design consideration with strong references is that of object lifetime: ideally you want an object to stay
-around exactly as long as it is needed but no longer. 
+While it is obvious that Emitters must store a a list of references to their connected Receivers, whether or not Receivers need to store references to their connected Emitters is a question of design requirements. Furthermore,references come in two flavors: strong and weak. Strong reference implying ownership of the referenced object, weak ones do not. In order to avoid memory leaks we need to ensure that the graph of all strong references is a DAG.The other design consideration with strong references is that of object lifetime: ideally you want an object to stayaround exactly as long as it is needed but no longer. 
 
-In the beginning, Receivers kept a set of strong references to their Emitters. The rationale for that decision assumed 
-that there were certain fixed points in the Circuit (Facts, for example) that were kept alive from the outside. 
-Receivers would spawn into the Circuit and with them a "pipeline" of Switches, that would connect to one or more of 
-these fixed points in order to generate a customized stream of data. Since the pipeline was tailor crafted for a
-Receiver, it made sense that the Receiver owned the pipeline and since a pipeline was a sequence of Switches, the
-obvious way to achieve this behavior was to have downstream Receivers own their upstream Emitters.
+In the beginning, Receivers kept a set of strong references to their Emitters. The rationale for that decision assumed that there were certain fixed points in the Circuit (Facts, for example) that were kept alive from the outside. Receivers would spawn into the Circuit and with them a "pipeline" of Switches upstream, that would connect to one or more of these fixed points in order to generate a customized stream of data. Since the pipeline was tailor crafted for aReceiver, it made sense that the Receiver owned the pipeline and since a pipeline was a sequence of Switches, theobvious way to achieve this behavior was to have downstream Receivers own their upstream Emitters. 
+<br> Let's call this the *reverse ownership* approach, because the ownership goes in the opposite direction of the data flow.
 
-Then we introduced Switch Operations, which offered an easy way to construct an entire pipeline in a single Circuit
-element. Instead of having n-Switches daisy chained together, you could now have a single Switch that produces the
-same result (and more efficiently so, at least in a compiled language).
-CONTINUE HERE
+Then we introduced *Switch Operations*, which offered an easy way to construct an entire pipeline in a single Circuitelement. Instead of having n-Switches daisy-chained together, you could now have a single Switch that produces thesame result (and more efficiently so, at least in a compiled language). While this did not influence the question ofownership, it did result in Circuits with far fewer Switches. Suddenly it became feasable to burden the user with keeping track of an entire pipeline of Switches, something we considered before but ultimately deemed as too involved.
 
-After some back and forth I now think that Receivers do not need to know about the Emitters they are connected to. 
-If a Emitter goes out of scope, the Receiver will receive a completed or failure message and that's that. The 
-Emitters in turn do not own their Receivers either. If a Receiver drops, the Emitter will simply remove it and 
-carry on. This puts the responsibility of ownership on entities outside the Emitter-Receiver module. 
+Next, we started designing the *Scene* and its *Nodes*. Nodes own a set of Receivers (called *Slots*) and Emitters. Since the life time of a Node varies from the entire duration of the session down to less than a second, we had to consider the fact that Receivers would regularly outlive Nodes with Emitters upstream. Up to then, this meant that thedownstream Receiver would keep a part of the Node alive, or even the entire Node, depending on how Nodes were designed.This was counter to the idea that Nodes should appear as a unit and also dissappear as one. The second version of the Receiver design therefore did not own *any* references to the Emitters they were connected to. If an Emitter went out of scope, the Receiver would receive a completed or failure message and that was that. The Emitters in turn did not own their Receivers either. If a Receiver droped, the Emitter would simply remove it and carry on. This moved the responsibility of ownership entirely outside the Circuit. 
+<br> Let's call this the *external ownership* approach.
+
+Eventually I realized that if Node Emitters would always finish when the Node was removed, and all Receivers were guaranteed to disconnect from a finished Emitter, the *reverse ownership* approach would still work and it would be generalizeable, since a finished (either completed or failed) Emitter will never emit again. There is no reason to keep it around. With both models feasible, we had to settle on one.
+
+The *external ownership* approach has the advantage of being extremly light-weight. Only the bare minimum of data is stored in the circuit and since every Switch has to be owned externally (by a Node or some other mechanism), users are encouraged to keep the number of Switches reasonably small.
+<br> The same could be said of the *reverse ownership* approach, but through different means. By relieving the user of the burden of keeping Switches alive, it becomes easier to construct throw-away Switches and Emitters because they live just as long as they are needed and are automatically deleted when they have finished or have lost all of their Receivers. This could lead to more Switches, but it also encourages the re-use of existing Switches since their livetime is no longer tied to some external instance. 
+
+Overall, I think that the advantages of having the automatic lifetime management of the *reverse ownership* outweigh the space savings of the *external ownership* approach. Note that the *reverse ownership* does not have a runtime overhead, since the strong references from Receivers to Emitters do not take part in the propagation of Signals. And the space overhead is that of as many `shared_ptr`s as there are Emitters connected upstream...And I would suspect that that number is rather small.
 
 
 Exception Handling
 ------------------
 
-With the introduction of user-written code, we inevitable open the door to user-written bugs. Therefore, during Event 
-handling evaluation, all Receivers have the possibility of failing at any time. Failure in this case means that the
-Receiver throws an exception instead of returning normally. Internal errors, that are caught and handled internally,
-remain of course invisible to the Logic.
+With the introduction of user-written code, we inevitable open the door to user-written bugs. Therefore, during Event handling evaluation, all Receivers have the possibility of failing at any time. Failure in this case means that theReceiver throws an exception instead of returning normally. Internal errors, that are caught and handled internally,remain of course invisible to the Logic.
 
-In case of a failure, the exception thrown by the Receiver is caught by the Emitter upstream, that is currently in the
-process of emitting. The way that the Emitter reacts to the exception can be selected at runtime using the 
-[delegation pattern](https://en.wikipedia.org/wiki/Delegation_pattern). The default behavior is to acknowledge the
-exception by logging a warning, but ultimately to ignore it, for there is no general way to handle user code errors.
-Other delegates may opt to drop Receivers that fail once, fail multiple times in a row or in total, etc.
+In case of a failure, the exception thrown by the Receiver is caught by the Emitter upstream, that is currently in theprocess of emitting. The way that the Emitter reacts to the exception can be selected at runtime using the [delegation pattern](https://en.wikipedia.org/wiki/Delegation_pattern). The default behavior is to acknowledge theexception by logging a warning, but ultimately to ignore it, for there is no general way to handle user code errors.Other delegates may opt to drop Receivers that fail once, fail multiple times in a row or in total, etc.
 
-
+---
 """
 from typing import List, Optional, Any, Tuple
 from abc import ABCMeta, abstractmethod
