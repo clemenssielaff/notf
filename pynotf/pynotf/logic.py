@@ -483,6 +483,8 @@ class Switch(Receiver, Emitter):
             if result is not None:
                 self.emit(result)
 
+# TODO: can we move the Executor in here?
+
 """
 Logic Modifications
 -------------------
@@ -627,46 +629,4 @@ Emitters, once emitting, can no longer change their Signal or list of Receivers 
 upstream Emitter.
 What about an Emitter A that emits to B and C, but B removes C? I guess the Emitter list is fixed, but should be 
 non-owning.
-
-
-Dead Ends
-========= ==============================================================================================================
-*WARNING!* 
-The chapters below are only kept as reference of what doesn't make sense, so that I can look them up once I re-discover 
-the "brilliant" idea underlying each one. Each chapter has a closing paragraph on why it actually doesn't work.
-
-
-Scheduling (Dead End)
----------------------
-When the application executor schedules a new value to be emitted, it could determine the effect of the change by
-traversing the dependency DAG prior to the actual change. Take the following DAG topology:
-
-        +-> B ->+
-        |       |  
-    A --+       +-> D
-        |       |
-        +-> C ->+ 
-
-Whenever A changes, it will update B, which in turn will update D. A will then continue to update C, which will in turn
-update D a second time. This would have been avoided if we scheduled the downstream propagation and would have updated B
-and C before D.
-While this particular example could be fixed by simply doing a breadth-first traversal instead of a depth-first one, 
-this solution does not work in the general case, as can be seen with the following example:
-
-        +-> B --> E ->+
-        |             |  
-    A --+             +-> D
-        |             |
-        +-> C ------->+ 
-
-In order to guarantee the minimum amount of work, we will need a scheduler.
-However, this is an optimization only - even the worst possible execution order will still produce the correct result
-eventually.
-
-Except...
-None of this makes sense in the context of streams. Every single value is as important as the next one and if D receives
-two downstream values from A, so be it. The order of values may change (which is it's very own topic discussed in the
-application logic), but that's why we pass the direct upstream Emitter alongside the value: to allow the Receiver to
-apply an order per Emitter on the absolute order in which it receives values.
-
 """
