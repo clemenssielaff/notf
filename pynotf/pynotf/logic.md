@@ -1,7 +1,7 @@
 # The Application Logic
 
 This module contains the relevant classes to build the Application *Logic*. We use the term Logic here, because it describes the application behavior in deterministic [if-this-then-that terms](https://en.wikipedia.org/wiki/Logic).
-<br>Whereas the Logic describes behavior in the abstract (as in: "the Logic is valid"), the actual implementation of a particular Logic uses a terms borrowed from signal processing and the design of [electrical circuits](https://en.wikipedia.org/wiki/Electrical_network).
+<br>While the Logic describes behavior in the abstract (as in: "the Logic is valid"), the classes for an actual implementation of a particular Logic use terms borrowed from signal processing and the design of [electrical circuits](https://en.wikipedia.org/wiki/Electrical_network).
 
 
 ## Terminology
@@ -16,7 +16,7 @@ This module contains the relevant classes to build the Application *Logic*. We u
  An Event encompasses the introduction of a new Signal into a Circuit, its propagation and the modifications of the Circuit as a result. The Event is finished, once all Receivers have finished handling the input Signal and no more Signals are being emitted within the Circuit. Unlike in Qt, there are no "Event objects".
 
 + **Signal**
- Object at the front of the Event handling process. At the beginning of an Event, a single Signal is emitted into the Circuit by a single Emitter but as the Signal is propagated through, it can split into different Signals.
+ Object at the front of the Event handling process. At the beginning of an Event, a single Signal is emitted into the Circuit by a single Emitter but as the Signal is propagated through, it can multiply into different Signals.
 
 + **Emitter**
  Is a Circuit object that emits a Signal into the Circuit. Emitters can be sources or relays of Signals, meaning they either introduce a new Signal into the circuit from somewhere outside the Logic (see Facts in the scene module) or they can create a Signals as a response to another Signal from within the Circuit. Emitters may contain a user-defined sorting function for their connected Receivers, but most will simply use the default implementation which is based on the order of connection and connection priorities.
@@ -43,11 +43,11 @@ An experienced application programmer might find the implementation of some of t
 We started out with the assumption that the Circuit must not contain any cycles, meaning that the path that a Signal takes through the Circuit must never fold back onto itself. This is a safe requirement to make, since Switches contain user-defined code that may not be reentrant. It also rules out the possibility of the Signal cycling endlessly through the same loop, crashing the whole system. Lastly, it is also easy to prove that a graph does not contain cycles, which made the rule enforceable at runtime.
 <br>So why didn't we just leave it at that?
 
-First, we noted that reentrancy would not be a problem, because by the time an Switch emits a new Signal, all of the user-defined code has already completed. And the emission in turn does not require access to any of the Switches (user-defined) state that might change in a situation where the user-defined code is executed while the emission is still running.
+First, we noted that reentrancy would not be a problem because by the time an Switch emits a new Signal, all of the user-defined code has already completed. And the emission in turn does not require access to any of the Switches (user-defined) state that might change in a situation where the user-defined code is executed while the emission is still running.
 
 Next, it occurred to us that it was in fact possible to create create cyclic graphs that would never get stuck in an infinite loop because of the way their user-defined code would work. For example, a Switch that keeps two Receivers and emits the first value it receives to the first only and the second to the second only. If the circle was through the first Receiver but not through the second, the Logic as a whole would still work fine. 
 
-On the flip-side, the same user-defined code also makes it impossible to sort the elements in a Circuit statically (without executing it) since it might perform different based on the Switches' states. This meant that while it was still easy enough to prove that a Circuit did not have any cycles (if there was no cyclic connection there can not be a cycle, no matter what code the user injects), it was not possible to prove statically that Circuit *did* have cycles.
+On the flip-side, the same user-defined code also makes it impossible to sort the elements in a Circuit statically (without executing it) since it might perform different based on the Switches' states. This meant that while it was still easy enough to prove that a Circuit did not have any cycles (if there was no cyclic connection there can not be a cycle, no matter what code the user writes), it was not possible to prove statically that Circuit *did* have cycles.
 
 For a moment there we considered allowing cycles in the graph, since the only downside was the possibility of endless loops ...though you can do that in every programming language and still people somehow manage.
 An additional advantage of simply allowing cycles was that we did not have to check for them anymore. Because even though proving the absence of cycles in a graph is a simple topological sort of the graph, graphs could grow arbitrarily large (although in practice, we expect them to be in the hundreds of elements and rather shallow). Plus the fact that the Circuit has the ability to modify itself during event handling meant that we would have to re-check every time a Receiver connected to an Emitter mid-event. Quite a bit of overhead to check for something that should not happen anyway.
@@ -74,12 +74,51 @@ Then we introduced *Switch Operations*, which offered an easy way to construct a
 Next, we started designing the *Scene* and its *Nodes*. Nodes own a set of Receivers (called *Slots*) and Emitters. Since the life time of a Node varies from the entire duration of the session down to less than a second, we had to consider the fact that Receivers would regularly outlive Nodes with Emitters upstream. Up to then, this meant that the downstream Receiver would keep a part of the Node alive, or even the entire Node, depending on how Nodes were designed. This was counter to the idea that Nodes should appear as a unit and also disappear as one. The second version of the Receiver design therefore did not own *any* references to the Emitters they were connected to. If an Emitter went out of scope, the Receiver would receive a completed or failure message and that was that. The Emitters in turn did not own their Receivers either. If a Receiver dropped, the Emitter would simply remove it and carry on. This moved the responsibility of ownership entirely outside the Circuit. 
 <br> Let's call this the *external ownership* approach.
 
-Eventually I realized that if Node Emitters would always finish when the Node was removed, and all Receivers were guaranteed to disconnect from a finished Emitter, the *reverse ownership* approach would still work and it would be generalizable, since a finished (either completed or failed) Emitter will never emit again. There is no reason to keep it around. With both models feasible, we had to settle on one.
+Eventually we realized that if Node Emitters would always finish when the Node was removed, and all Receivers were guaranteed to disconnect from a finished Emitter, the *reverse ownership* approach would still work and it would be generalizable, since a finished (either completed or failed) Emitter will never emit again. There is no reason to keep it around. With both models feasible, we had to settle on one.
 
 The *external ownership* approach has the advantage of being extremely light-weight. Only the bare minimum of data is stored in the circuit and since every Switch has to be owned externally (by a Node or some other mechanism), users are encouraged to keep the number of Switches reasonably small.
 <br> The same could be said of the *reverse ownership* approach, but through different means. By relieving the user of the burden of keeping Switches alive, it becomes easier to construct throw-away Switches and Emitters because they live just as long as they are needed and are automatically deleted when they have finished or have lost all of their Receivers. This could lead to more Switches, but it also encourages the re-use of existing Switches since their lifetime is no longer tied to some external instance. 
 
 Overall, I think that the advantages of having the automatic lifetime management of the *reverse ownership* outweigh the space savings of the *external ownership* approach. Note that the *reverse ownership* does not have a runtime overhead, since the strong references from Receivers to Emitters do not take part in the propagation of Signals. And the space overhead is that of as many `shared_ptr`s as there are Emitters connected upstream...And I would suspect that that number is rather small.
+
+
+## Ordered Emission
+
+Originally, we did not assume any order in the emission process. Every Emitter was free to choose the order in which it iterated its Receivers. Conceptually, the Signals should flow through the Circuit like they do in a real electrical circuit: all at the same time. Since we don't actually employ parallelism during Event handling, the computer needed some (hidden) order to do things, but that should not matter. We called it "essentially random". Meaning it wasn't really random, but it might as well have been and if someone would implement an Emitter that used actual randomness to shuffle its Receivers around, then that was fine by us.
+
+It was a solid ideal, but we soon found the first potential problems that arose from introducing "essential randomness" into the event handling: First, we found that it was easy to have the randomness of emission "infect" the entire Circuit, as seen in the following example
+
+```
+         +---> S1
+    E1 --+
+         +---> S2
+```
+
+Emitter `E1` is connected to Switches `S1` and `S2` downstream. As Switches are allowed to hold state and execute user-defined code, it is trivial to set them up in a way where `S1` deletes `S2` and `S2` deletes `S1`. Now, whoever is emitted to first, deletes the other one. After just one run of the event loop, the whole Circuit is in an "essential random" state. This is confusing, hard to debug and certainly never what the user intended. 
+
+One solution to this problem was to delay the actual removal of Circuit elements until the very end of the Event, when all Signals had time to fully propagate through the Circuit (see Logic Modification for a whole chapter on this). However, it soon turned out to be trivial to modify the example to achieve a similar, uncertain result without involving the deletion or creation of Circuit elements:
+<br> Given one Emitter `E1`, two Switches `A1` (that always adds two to the input number) and `A2` (that always adds three) and a special Switch `S1` that is connected to both `A1` and `A2`. The Circuit is laid out as follows:
+
+```
+          +---> A1 (adds 2) ---+
+          |                     \
+    E1 ---+                      S1 
+          |                     /
+          +---> A2 (adds 3) ---+
+```
+
+The behavior of `S1` is that it receives and stores two numbers into its local state `x` and `y` and after receiving the second one, produces `z` with `z = x - y`. It then resets and waits for the next pair. 
+<br> The problem is that if `E1` propagates the number one first to either `A1` or `A2` (because, as of now the order is essentially random), `x` will either be 3 or 4, while `y` will be the other one. That results in either `z = 3 - 4 = -1` or `z = 4 - 3 = 1`. Which one we get is as random as the order of propagation from `E1`.
+
+Therefore, we decided to get rid of randomness and guarantee that the order in which Emitters emit Values to their Receives is deterministic. Note that that does not mean that the order must be fixed. We already had the concept of a deterministic emission order in one Emitter that sorts by Node z-value. What it does mean however is that the order must be replicable, inspectable and modifiable by the user. All of the problems introduced through randomness, including the Node removal mid-event, would be solved if we place the responsibility of the order in which Signals are emitted on the user. 
+<br> Question is, how do we do that?
+
+The only way to relate independent Receivers to each other is through a common ranking system. Fortunately there is one: natural numbers, which basically means priorities. Whenever a Receiver connects to an Emitter, it has the opportunity to pass an optional priority number, with higher priority Receiver receiving Signals before lower priority Receiver. The default priority is zero. Receivers with equal priority receive their Signals in the order in which they subscribed. This approach allows the user to ignore priorities in most cases (since in most cases, you should not care) and in the cases outlined above, the user has the ability to manually determine an order. The user is also free to define a total order for each Receiver, should that ever become an issue.
+
+New Receivers are ordered behind existing ones, not before them. You could make a point that prepending new ones to the list of Receivers would make sure that new Receivers always get the Signal and are not blocked, but we think that argument is not very strong. A good argument for the other side is that appending new Receivers to the end means that the existing Logic is undisturbed, meaning there is as little (maybe no) change in how the circuit operates as a whole.
+<br> That should be the default behavior. 
+
+Of course, this approach does not protect the user from the error cases outlined above - but it will make them at least deterministic. I think it is a good trade-off though. By allowing user-injected, stateful code in our system, we not only give power to the user but also responsibility (cue obligatory Spiderman joke).
 
 
 ## What is in a Signal
@@ -157,7 +196,7 @@ What we need here is an "Ordered X-OR" Switch, or however you want to call it. I
 
 ### The Fat Signal
 
-Early on we decided that Emitters should always pass their `this` pointer alongside the emitted Value as a second argument for identification purposes only. This way the Receiver was free to sort values from different Emitters into different Buckets for example, and concatenate all of them when each Emitter had completed. There was no obvious better way to implement this feature and it seems like a straightforward, easy and cheap thing to do.
+From the start we decided that Emitters should always pass their `this` pointer alongside the emitted Value as a second argument for identification purposes. This way the Receiver was free to sort values from different Emitters into different Buckets for example, and concatenate all of them when each Emitter had completed. There was no obvious better way to implement this feature and it seems like a straightforward, easy and cheap thing to do.
 
 With the need for some kind of feedback from the Receiver back to the Emitter, there was yet another use-case for meta data to accompany any emitted value. It will be ignored by some/most, but offers indispensable features to others. And instead of adding another argument to the `Receiver.on_next` function, it seemed reasonable to replace Value/Id-pair with a mutable reference to what we shall call the (fat) *Signal*. _Fat_, because in addition to the Value, it encodes additional information for the Circuit. 
 
@@ -180,6 +219,6 @@ Note that the "completion" Signal only contains the Emitter ID, while the "failu
 
 ## Exception Handling
 
-With the introduction of user-written code, we inevitable open the door to user-written bugs. Therefore, during Event handling evaluation, all Receivers have the possibility of failing at any time. Failure in this case means that theReceiver throws an exception instead of returning normally. Internal errors, that are caught and handled internally,remain of course invisible to the Logic.
+With the introduction of user-written code, we inevitable open the door to user-written bugs. Therefore, during Event handling evaluation, all Receivers have the possibility of failing at any time. Failure in this case means that the Receiver throws an exception instead of returning normally. Internal errors, that are caught and handled internally, remain of course invisible to the Logic.
 
-In case of a failure, the exception thrown by the Receiver is caught by the Emitter upstream, that is currently in the process of emitting. The way that the Emitter reacts to the exception can be selected at runtime using the [delegation pattern](https://en.wikipedia.org/wiki/Delegation_pattern). The default behavior is to acknowledge the exception by logging a warning, but ultimately to ignore it, for there is no general way to handle user code errors.Other delegates may opt to drop Receivers that fail once, fail multiple times in a row or in total, etc.
+In case of a failure, the exception thrown by the Receiver is caught by the Emitter upstream, that is currently in the process of emitting. The way that the Emitter reacts to the exception can be selected at runtime using the [delegation pattern](https://en.wikipedia.org/wiki/Delegation_pattern). The default behavior is to acknowledge the exception by logging a warning, but ultimately to ignore it, for there is no general way to handle user code errors. Other delegates may opt to drop Receivers that fail once, fail multiple times in a row or in total, etc.

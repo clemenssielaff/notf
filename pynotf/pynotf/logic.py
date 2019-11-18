@@ -489,21 +489,7 @@ class Switch(Receiver, Emitter):
 Logic Modifications
 -------------------
 Unlike static DAGs, we allow Operators and other callbacks to modify the Logic "in flight", while an event is processed. 
-This can lead to several problems.
-Problem 1:
-    
-        +-> B 
-        |
-    A --+
-        |
-        +-> C
-    
-    Lets assume that B and C are Receivers that are connected to updates from Emitter A. B reacts by removing C and
-    adding the string "B" to a log file, while C reacts by removing B and adding "C" to a log file. Depending on which 
-    Receiver receives the update first, the log file with either say "B" _or_ "C". Since not all Emitters adhere to 
-    an order in their Receivers, the result of this setup is essentially random.
-
-Problem 2:
+This can lead to the following Problem:
     
     A +--> B
       | 
@@ -536,79 +522,6 @@ I have opted for solution 2, which allows us to keep the scheduling of Receivers
 Emitter directly upstream. In order to make this work, emitting becomes a bit more complicated but not by a lot.
 
 
-Ordered Emissions
------------------
-(Side-note: At the time of this writing, these specs did not guarantee any order during Signal emission, meaning that 
-emission order was essentially random. "Essentially" because it did not have to be random, but there was no rule 
-prohibiting it either.)
-
-I already discussed the problem with the removal on nodes mid-event. To reiterate:
-Given one Emitter `E1` and two Slots `S1` and `S2` of different Nodes `N1` and `N2` arranged in the following circuit:
-
-```
-         +---> S1(N1) -> H1
-    E1 --+
-         +---> S2(N2) -> H2
-```
-
-Both `S1` and `S2` are connected to a Handler, let's call them `H1` and `H2`. Both Handlers are allowed to execute
-arbitrary user-code. The problem arises when `H1` removes `N2` and `H2` removes `H1`. Since the order in which `S1` and 
-`S2` receive the Signal from `E1` is essentially random, the event might either remove `N1` *or* `N2`, but never both
-and we don't know which it will be. This is confusing, hard to debug and certainly never what the user intended. 
-
-The solution to this particular problem was to delay the actual removal of Nodes until the very end of the event, when
-the Signal had time to fully propagate through the circuit. This works and I thought it was enough.
-
-However, it turns out that this problem is further reaching than I initially assumed. It is trivial to modify the 
-example above to achieve the same, uncertain result without involving Nodes.
-Given one Emitter `E1`, two Switches `A1` (that always adds two to the input number) and `A2` (that always adds three)
-and a special Switch `S1` that is connected to both `N1` and `N2`. The circuit is laid out as follows:
-
-```
-          +---> A1 (adds 2) ---+
-          |                     \
-    E1 ---+                      S1 
-          |                     /
-          +---> A2 (adds 3) ---+
-```
-
-The particular behavior of `S2` is that it ingests two numbers `x` and `y` and after receiving the second one, produces 
-`z` with `z = x - y`. It then resets and waits for the next pair. 
-The problem is that if `E1` propagates the number one first to either `N1` or `N2` (because, as of now the order is 
-essentially random), `x` will either be 3 or 4, while `y` will be the other one. That results in either `z = 3 - 4 = -1`
-or `z = 4 - 3 = 1`. Which one we get is as random as the order of propagation from `E1`.
-
-Unlike with the Node removal above, there is no way to delay here until the event is handled because it is the event 
-handling itself, that is broken. 
-... So where does that leave us?
-
-I think the only way to address the bigger problem is to get rid of the randomness. We already have a deterministic 
-order in some of the Emitters (the ones that sort by Node z-value) and that should be the default. Note that I did not
-say that the order must be fixed, the sorting Emitters for example will re-order their Receivers as the Scene Graph is
-modified and there might be other use-cases where dynamic sorting is appropriate. What I do say however is that the
-order must be fixed, inspectable and modifiable by the user. All of the problems, including the Node removal mid-event
-would be solved, if we place the responsibility of the order in which Signals are emitted on the user.
-Question is, how do we do that?
-
-The only way to relate independent Receivers to each other is through a common ranking system. Fortunately there is one:
-natural numbers, which basically means priorities. Whenever a Receiver connects to an Emitter, it has the opportunity
-to pass an optional priority number, with higher priority Receiver receiving Signals before lower priority Receiver. The 
-default priority is zero. Receivers with equal priority receive their Signals in the order in which they subscribed.
-This approach allows the user to ignore priorities in most cases (since in most cases, you should not care) and in
-the cases outlined above, the user has the ability to manually determine an order. The user is also free to define a
-total order for each Receiver, should that ever become an issue.
-New Receivers are ordered behind existing ones, not before them. You could make a point that prepending new ones to the
-list of Receivers would make sure that new Receivers always get the Signal and are not blocked, but I think that 
-argument is not very strong. A good argument for the other side is that appending new Receivers to the end means that
-the existing Logic is undisturbed, meaning there is as little (maybe no) change in how the circuit operates as a whole.
-That should be the default behavior. 
-
-Of course, this approach does not protect the user from the error cases outlined above - but it will make them 
-deterministic. I think it is a good trade-off though. By allowing user-injected, stateful code in our system, we not
-only pass power to the user but also responsibility (cue obligatory Spiderman joke). And it makes for a good use-case 
-for the notf Designer that allows the user to visualize the Logic circuit and Signal processing in detail...
-
-Addendum: 
 There is still the matter of Emitters keeping their connected Receivers alive during emission. This is actually only a 
 side effect of the original intend: to keep the list of receivers *fixed* during emission, meaning no  removals and no 
 additions. Now that we allow immediate removal and disconnection though, this might no longer feasible. If `A` deletes 
