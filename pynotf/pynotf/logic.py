@@ -43,9 +43,9 @@ class Emitter:
         class Status(Enum):
             """
             Status of the Signal with the following state transition diagram:
-                --> Unhandled --> Accepted --> Blocked
-                        |                        ^
-                        +------------------------+
+                --> Ignored --> Accepted --> Blocked
+                        |                       ^
+                        +-----------------------+
                 --> Unblockable
             """
             UNBLOCKABLE = 0
@@ -484,62 +484,3 @@ class Switch(Receiver, Emitter):
                 self.emit(result)
 
 # TODO: can we move the Executor in here?
-
-"""
-Logic Modifications
--------------------
-Unlike static DAGs, we allow Operators and other callbacks to modify the Logic "in flight", while an event is processed. 
-This can lead to the following Problem:
-    
-    A +--> B
-      | 
-      +..> C
-
-    B is a Slot of a canvas-like Widget. Whenever the user clicks into the Widget, it will create a new child Widget C, 
-    which an also be clicked on. Whenever the user clicks on C, it disappears. The problem arises when B receives an 
-    update from A, creates C and immediately connects C to A. Let's assume that this does not cause a problem with A's
-    list of Receivers changing its size mid-iteration. It is fair to assume that C will be updated by A after B has 
-    been updated. Therefore, after B has been updated, the *same* click is immediately forwarded to C, which causes it 
-    to disappear. In effect, C will never show up.
-
-There are multiple ways these problems could be addressed.
-Solution 1:
-    Have a Scheduler determine the order of all updates beforehand. During that step, all expired Receivers are 
-    removed and a backup strong reference for all live Receivers are stored in the Scheduler to ensure that they
-    survive (which mitigates Problem 1). Additionally, when new Receivers are added to any Emitter during the update
-    process, they will not be part of the Scheduler and are simply not called.
-
-Solution 2:
-    A two-phase update. In phase 1, all Emitters weed out expired Receivers and keep an internal copy of strong
-    references to all live ones. In phase 2, this copy is then iterated and any changes to the original list of
-    Receivers do not affect the update process.
-
-Solution 3:
-    Do not allow the direct addition or removal of connections and instead record them in a buffer. This buffer is 
-    then executed at the end of the update process, cleanly separating the old and the new DAG state.
-
-I have opted for solution 2, which allows us to keep the scheduling of Receivers contained within the individual
-Emitter directly upstream. In order to make this work, emitting becomes a bit more complicated but not by a lot.
-
-
-There is still the matter of Emitters keeping their connected Receivers alive during emission. This is actually only a 
-side effect of the original intend: to keep the list of receivers *fixed* during emission, meaning no  removals and no 
-additions. Now that we allow immediate removal and disconnection though, this might no longer feasible. If `A` deletes 
-`B` then `B` should no longer receive Signals. But what if `A` *adds* `B`? Should `B` then receive the Signal 
-immediately? I would say no.
-
-Actually either way, the current behaviour of keeping the list of receivers fixed during emission is not good enough. It
-might protect a single emitter, but what about connected emitters downstream? If we have 3 Switches `A`, `B` and `C` 
-with `A` connected to `B` and `C`. `A` emits to `B` first, then to `C`. `B` connects a new Switch `D` downstream of `C`.
-Since `C` is not currently emitting, this causes `C` to modify its list of receivers and emit the Signal to `D` right 
-away - within the same loop. If however `C` connected a new receiver `D'`to `B`, then `D'` would not receive anything 
-until the next time that `A` emitted. 
-This is correct and will work, but it could still be confusing. The alternative would be to say that all receiver lists 
-stay fixed. But then we couldn't remove mid-event either, which means that you cannot remove Nodes mid - event.
-
-I guess ultimately we should choose the easier option first. We need ordered evaluation and we need a rule whereby 
-Emitters, once emitting, can no longer change their Signal or list of Receivers to avoid a receiver type "dos"ing an 
-upstream Emitter.
-What about an Emitter A that emits to B and C, but B removes C? I guess the Emitter list is fixed, but should be 
-non-owning.
-"""

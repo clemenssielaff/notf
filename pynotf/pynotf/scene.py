@@ -694,7 +694,7 @@ or after all other Receivers have been called. It might actually even be better 
 until after all synchronous ones have been handled, because async means "now or later" while synchronous means "now" and
 scheduling all coroutines for later would honor that meaning more than those that execute immediately.
 
-Therefore, a sync code sits behind async operators in the logic. Async operators ignore the upstream Signal and 
+Therefore, async code sits behind "async operators" in the logic. Async operators ignore the upstream Signal and 
 propagate an unblockable downstream Signal, meaning accepting or blocking has to happen before. Emits downstream of the
 async operator are scheduled to happen after the synchronous "parent" emit.
 

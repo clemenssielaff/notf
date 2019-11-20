@@ -30,6 +30,8 @@ This module contains the relevant classes to build the Application *Logic*. We u
 
 ## Reactive Logic
 
+> TODO: why did we choose the reactive component model anyway?
+
 An experienced application programmer might find the implementation of some of these patterns familiar. In fact, what we call an _Emitter_ and _Receiver_ could just as well be called an _Observable_ and _Observer_ to follow the _ReactiveX_ naming scheme (see [reactivex.io](http://reactivex.io/documentation/observable.html))).
 <br> However, these names are not very programmer-friendly so we chose to go with our own naming. Here is a comprehensive list why:
 * An Observable actively pushes its value downstream even though the name implies that it is purely passive. The Observer, respectively, doesn't do much observing at all (no polling etc.) but is instead the passive one.
@@ -82,50 +84,12 @@ The *external ownership* approach has the advantage of being extremely light-wei
 Overall, I think that the advantages of having the automatic lifetime management of the *reverse ownership* outweigh the space savings of the *external ownership* approach. Note that the *reverse ownership* does not have a runtime overhead, since the strong references from Receivers to Emitters do not take part in the propagation of Signals. And the space overhead is that of as many `shared_ptr`s as there are Emitters connected upstream...And I would suspect that that number is rather small.
 
 
-## Ordered Emission
-
-Originally, we did not assume any order in the emission process. Every Emitter was free to choose the order in which it iterated its Receivers. Conceptually, the Signals should flow through the Circuit like they do in a real electrical circuit: all at the same time. Since we don't actually employ parallelism during Event handling, the computer needed some (hidden) order to do things, but that should not matter. We called it "essentially random". Meaning it wasn't really random, but it might as well have been and if someone would implement an Emitter that used actual randomness to shuffle its Receivers around, then that was fine by us.
-
-It was a solid ideal, but we soon found the first potential problems that arose from introducing "essential randomness" into the event handling: First, we found that it was easy to have the randomness of emission "infect" the entire Circuit, as seen in the following example
-
-```
-         +---> S1
-    E1 --+
-         +---> S2
-```
-
-Emitter `E1` is connected to Switches `S1` and `S2` downstream. As Switches are allowed to hold state and execute user-defined code, it is trivial to set them up in a way where `S1` deletes `S2` and `S2` deletes `S1`. Now, whoever is emitted to first, deletes the other one. After just one run of the event loop, the whole Circuit is in an "essential random" state. This is confusing, hard to debug and certainly never what the user intended. 
-
-One solution to this problem was to delay the actual removal of Circuit elements until the very end of the Event, when all Signals had time to fully propagate through the Circuit (see Logic Modification for a whole chapter on this). However, it soon turned out to be trivial to modify the example to achieve a similar, uncertain result without involving the deletion or creation of Circuit elements:
-<br> Given one Emitter `E1`, two Switches `A1` (that always adds two to the input number) and `A2` (that always adds three) and a special Switch `S1` that is connected to both `A1` and `A2`. The Circuit is laid out as follows:
-
-```
-          +---> A1 (adds 2) ---+
-          |                     \
-    E1 ---+                      S1 
-          |                     /
-          +---> A2 (adds 3) ---+
-```
-
-The behavior of `S1` is that it receives and stores two numbers into its local state `x` and `y` and after receiving the second one, produces `z` with `z = x - y`. It then resets and waits for the next pair. 
-<br> The problem is that if `E1` propagates the number one first to either `A1` or `A2` (because, as of now the order is essentially random), `x` will either be 3 or 4, while `y` will be the other one. That results in either `z = 3 - 4 = -1` or `z = 4 - 3 = 1`. Which one we get is as random as the order of propagation from `E1`.
-
-Therefore, we decided to get rid of randomness and guarantee that the order in which Emitters emit Values to their Receives is deterministic. Note that that does not mean that the order must be fixed. We already had the concept of a deterministic emission order in one Emitter that sorts by Node z-value. What it does mean however is that the order must be replicable, inspectable and modifiable by the user. All of the problems introduced through randomness, including the Node removal mid-event, would be solved if we place the responsibility of the order in which Signals are emitted on the user. 
-<br> Question is, how do we do that?
-
-The only way to relate independent Receivers to each other is through a common ranking system. Fortunately there is one: natural numbers, which basically means priorities. Whenever a Receiver connects to an Emitter, it has the opportunity to pass an optional priority number, with higher priority Receiver receiving Signals before lower priority Receiver. The default priority is zero. Receivers with equal priority receive their Signals in the order in which they subscribed. This approach allows the user to ignore priorities in most cases (since in most cases, you should not care) and in the cases outlined above, the user has the ability to manually determine an order. The user is also free to define a total order for each Receiver, should that ever become an issue.
-
-New Receivers are ordered behind existing ones, not before them. You could make a point that prepending new ones to the list of Receivers would make sure that new Receivers always get the Signal and are not blocked, but we think that argument is not very strong. A good argument for the other side is that appending new Receivers to the end means that the existing Logic is undisturbed, meaning there is as little (maybe no) change in how the circuit operates as a whole.
-<br> That should be the default behavior. 
-
-Of course, this approach does not protect the user from the error cases outlined above - but it will make them at least deterministic. I think it is a good trade-off though. By allowing user-injected, stateful code in our system, we not only give power to the user but also responsibility (cue obligatory Spiderman joke).
-
-
 ## What is in a Signal
 
 Early on, we decided that the only thing to emitted by Emitters should be Values, instead of built-in or user-defined types. This would allow complete introspection of the system in any environment, and would allow the seamless interaction of Circuit elements defined in compiled languages like C++ and interpreted ones like Python. This approach works fine, as long as the only thing that gets passed around is pure, immutable data. Immutable being the weight bearing word here.
 
-Then it came time to think about how basic basic events like a mouse click are propagated through the Circuit. In previous versions, we had taken the Qt approach of using dedicated event objects that were passed to each applicable Widget in draw stack-order. Widgets higher up would receive the event first and lower Widgets later. Every Widget could "accept" the event, which would set a flag on the event object itself notifying later Widgets that the event was already handled. This way they could act differently (or not at all), depending on whether the event has already been accepted or not. This of course requires the given event to be mutable, which isn't possible with Values.
+Then it came time to think about how basic basic events like a mouse click are propagated through the Circuit. Let us assume for now, that we have a mechanism in place to propagate an event (however structured) to each applicable Slots in draw stack-order of their associated Widget. There is a whole chapter on this topic alone (see Ordered Emission)
+<br> In previous versions, we had taken the Qt approach of using dedicated event objects. Widgets higher up would receive the event first and lower Widgets later. Every Widget could "accept" the event, which would set a flag on the event object itself notifying later Widgets that the event was already handled. This way they could act differently (or not at all), depending on whether the event has already been accepted or not. This of course requires the given event to be mutable, which isn't possible with Values.
 
 Here a (hopefully) complete list of possible solutions to the problem:
 1. `Receiver.on_next` could return a bool to let an external scheduler know if it should continue propagating the event.
@@ -210,15 +174,131 @@ It consists of 3 things:
     --> Ignored --> Accepted --> Blocked 
             |                       ^
             +-----------------------+
-            
     --> Unblockable
     ```
     The Status always starts out as either "Ignored" or "Unblockable", with "Unblockable" being the default. An unblockable Signal cannot be stopped and calls to `accept()` or `block()` are ignored. If the Status starts out as "Ignored", then each Receiver is free to mark the Status as accepted or blocked. An accepted Signal is usually propagated further (depending on how the Emitter chooses to interpret what "accepted" means in its specific use-case), whereas the Receiver that marks its Signal as being blocked is guaranteed to be the last one to receive it.  
 
 Note that the "completion" Signal only contains the Emitter ID, while the "failure" Signal contains the Emitter ID and the exception.
 
+
 ## Exception Handling
 
 With the introduction of user-written code, we inevitable open the door to user-written bugs. Therefore, during Event handling evaluation, all Receivers have the possibility of failing at any time. Failure in this case means that the Receiver throws an exception instead of returning normally. Internal errors, that are caught and handled internally, remain of course invisible to the Logic.
 
 In case of a failure, the exception thrown by the Receiver is caught by the Emitter upstream, that is currently in the process of emitting. The way that the Emitter reacts to the exception can be selected at runtime using the [delegation pattern](https://en.wikipedia.org/wiki/Delegation_pattern). The default behavior is to acknowledge the exception by logging a warning, but ultimately to ignore it, for there is no general way to handle user code errors. Other delegates may opt to drop Receivers that fail once, fail multiple times in a row or in total, etc.
+
+
+## Switches and Operations
+
+TODO
+
+## Logic Modification
+
+This chapter is best read together with the next one "Ordered Emission", as they overlap quite a bit and each assume decisions described in the other one.
+
+One thing that is quite unique to the Circuit is that it allows the for modification of itself by user-code while an Event is being processed. We have pondered whether or not this is a bug or a feature and have come up with quite a few thoughts on the topic.
+
+There are only 4 basic operations that can happen in the Circuit, all together forming the acronym CRUD:
+
+* *Create* a new connection between Circuit elements
+* *Read* a value from state stored somewhere in the Circuit
+* *Update* the combined state of the Circuit (any variable in any of the elements)
+* *Delete* a connection between Circuit elements
+
+Of course you can also create and delete circuit elements, but an element without a connection is of no consequence to the Logic expressed through the Circuit. Therefore we focus on the creation and deletion of connections.
+
+First off, reading the state of the Circuit does not pose any problem whatsoever. This is an easy one.
+
+Updating any value within the Circuit are also trivial. Whenever a Switch gets a new Value from a Signal, it should be able to use it to update its own state before deciding how, to whom and if to emit a new Signal to the connected Receivers. Updates must be immediate to have any meaningful impact on the Circuit.
+
+Creating and Deleting connections however, is where we started to encounter non-trivial questions. Let's take the following toy problem:
+
+```
+    A +-------> B
+      | 
+      +-(new)-> C
+```
+
+Let `B` be a Slot of a Widget that reacts to mouse up Signals emitted from `A`. Whenever the user clicks into the Widget, `B` will create a new child Widget with new Slot `C` that also connects to `A`. When `C` is called, the new child Widget will hide.
+<br> The problem arises since `A` is still emitting and `C` is later in the list than `B`, `C` will receive the same mouse-up event immediately and hide the child Widget... which will effectively never appear, no matter how ofter `B` is clicked.
+
+Another problem deals with a similar problem, this time deleting a connection:
+
+```
+         +---> S1
+    E1 --+
+         +---> S2
+```
+
+Emitter `E1` is connected to downstream Switches `S1` and `S2`. As Switches are allowed to hold state and execute user-defined code, it is trivial to set them up in a way where `S1` deletes `S2` and `S2` deletes `S1`. Whoever is emitted to first deletes the other one. 
+
+There are multiple ways that these problems could be addressed:
+
+1. Have a Scheduler determine the order of all updates before beginning the Event processing. During the scheduling step, all expired Receivers are removed and a list of strong reference for all live Receivers are stored in the Scheduler to ensure that they survive (which solves problem 2). Additionally, when new Receivers are added to any Emitter during the update process, they will not be part of the Scheduler and are simply not called (solves problem 1).
+
+2. When an Emitter iterates through its Receivers to propagate a Signal, it should create a list of weak references to its Receivers first and iterate that instead of the member field. All changes to the list of Receivers would occur in the member list and not affect the emission process.
+
+3. Do not allow the direct addition or removal of connections and instead record them in a buffer. This buffer is then executed at the end of the update process, cleanly separating the old and the new DAG state.
+
+Solution 1 would require the introduction of a heavy new concept, the scheduler. It would also require a two-phase Event processing: in the first phase we would simply establish the order in which Signals are emitted from where to where, and then the second phase where the propagation actually takes place. Since we have a lot of user-code within Switches, there is no way to statically determine the order without executing dedicated code for each phase. That means that each Switch now has two instead of one user-defined function.
+<br> All of this sounds like a last-resort measure and a quite hacky one at that.
+
+Solution 2 is the one that we stuck with for the longest time. Basically what it does is fix the list of iteration for each active Emitter. Whenever a new connection is added, it will not show up in the list of Receivers to emit to, mitigating the first problem. And you can ignore the second problem, if you accept that the order in which Signals are sent is part of the Circuit and therefore the responsibility of the user (see the next chapter: "Ordered Emission"). In that case, `S1` would always receive the Signal first and remove `S2`. Since the emission keeps a list of *weak* references only, when it comes time to emit to `S2`, it will already have been deleted. No ambiguity left. 
+
+Solution 3 is an interesting one. What it means is that no matter if you add or delete a connection, the effect of the change will not influence the current Event handling at all. Only the next event will pass through the modified Circuit. This might sound unnecessarily complicated at first, but instead it comes with a few very nice guarantees:
+
+* You can always be sure that a newly created connection will not be used during the current event. With solution 2, this is not guaranteed. It is deterministic, but hard to design correctly as only the *currently active* Emitters have a fixed list of Receivers. All others do not. This allows for the following scenario:
+
+  ```
+           +---> S3
+      E2 --+
+           +---> S4 -(new)-> R1
+  ```
+  
+  Let's say `E2` emits to `S3` and `S4` in that order. `S3` creates a new Receiver `R1` and connects it to `S4`. Since `S4` is not currently emitting, it will update its list of Receivers and once the Signal from `E2` arrives, `S4` will immediately emit to `R1`.  
+  <br> Now, let's say that instead of the order above, `S4` happened to connect to `E2` one event loop *before* `S3`:
+
+  ```
+           +---> S4 -(new)-> R1
+      E2 --+
+           +---> S3 
+  ```
+  
+  In this case, every Switch will work exactly the same, but since `S3` receives the Signal *after* `S4`, `R1` will not receive a Signal this time. Note that the order in which connections are made is still in the hand of the user so technically, both cases are "correct". However, especially if S3 is a Circuit Element that is removed and added back in on a regular basis (maybe a Widget in a Dialog that opens and closes regularly?), this will make for some hard-to-debug cases where the act of removing and immediately recreating a Switch can vastly alter the behavior of the Logic.
+
+* You can be sure that if a Receiver `R` is connected to an Emitter and is alive at the time that that Emitter emits an (unblockable, as is the default) Signal - the `R` will get it eventually, even if some earlier Receivers decide to delete `R`. The reason that is good is the same as in the example above. Maybe you don't know the rest of the state of the UI at any point. Maybe there is another Receiver that wants to delete `R` and depending on how the user clicked through the interface it might have either connected before or after `R` was connected. We will discuss another solution to this problem later on (emission priorities) but they might not be applicable in all situations.
+
+So, solution number 3 it is. In order for this to work, all Circuit elements must store a reference to their Circuit or some other central instance to register connection additions and deletions. We considered to pass the Circuit as a part of the Signal instead, that would introduce quite a bit of overhead passing the Circuit reference from one Signal to the next. Also, Circuit elements *are* part of the Circuit, it is only natural for them to keep a (non-owning) reference.
+
+## Ordered Emission
+
+Originally, we did not assume any order in the emission process. Conceptually, the Signals should flow through the Circuit like they do in a real electrical circuit: all at the same time. One important property of this approach was, that the order in which Receivers were connected to Emitters did not matter. In a way, you could say that Circuit element was to be [commutative](https://en.wikipedia.org/wiki/Commutative_property). This was important because the same set of (functionally unrelated) connections might have a completely different effect on the overall Logic, if their order happened to be different (see previous chapter on "Logic Modification")
+<br> Since we don't actually employ parallelism during Event handling, the computer needed some (hidden) order to do things, but that should not matter. We called it "essentially random", meaning it wasn't really random, but it might as well have been and if someone would implement an Emitter that used actual randomness to shuffle its Receivers around, then that was fine by us.
+
+It was a solid ideal, but we soon found the first potential problems that arose from introducing "essential randomness" into the event handling:
+<br> Given one Emitter `E1`, two Switches `A1` (that always adds two to the input number) and `A2` (that always adds three) and a special Switch `S1` that is connected to both `A1` and `A2`. The Circuit is laid out as follows:
+
+```
+          +---> A1 (adds 2) ---+
+          |                     \
+    E1 ---+                      S1 
+          |                     /
+          +---> A2 (adds 3) ---+
+```
+
+The behavior of `S1` is that it receives and stores two numbers into its local state `x` and `y` and after receiving the second one, produces `z` with `z = x - y`. It then resets and waits for the next pair. 
+<br> The problem is that if `E1` propagates the number one first to either `A1` or `A2` (because, as of now the order is essentially random), `x` will either be 3 or 4, while `y` will be the other one. That results in either `z = 3 - 4 = -1` or `z = 4 - 3 = 1`. Which one we get is as random as the order of propagation from `E1`.
+
+Therefore, we decided to get rid of randomness and guarantee that the order in which Emitters emit Values to their Receives is deterministic. Note that that does not mean that the order must be fixed. It can be dynamic, for example determined by the z-value of the Nodes attached to Slots. What it does mean however is that the order must be replicable, inspectable and modifiable by the user. All of the problems introduced through randomness, including the Node removal mid-event, would be solved if we place the responsibility of the order in which Signals are emitted on the user. 
+<br> Question is, how do we do that?
+
+The only way to relate independent Receivers to each other is through a common ranking system. Fortunately there is one: integers. Whenever a Receiver connects to an Emitter, it has the opportunity to pass an optional priority integer, with higher priority Receiver receiving Signals before lower priority Receiver. The default priority is zero. Receivers with equal priority receive their Signals in the order in which they subscribed. This approach allows the user to ignore priorities in most cases (since in most cases, you should not care) and in the cases outlined above, the user has the ability to manually determine an order. The user is also free to define a total order for each Receiver, should that ever become an issue.
+
+New Receivers are ordered behind existing ones, not before them. You could make a point that prepending new ones to the list of Receivers would make sure that new Receivers always get the Signal and are not blocked, but we think that argument is not very strong. A good argument for the other side is that appending new Receivers to the end means that the existing Logic is undisturbed, meaning there is as little (maybe no) change in how the circuit operates as a whole.
+<br> That should be the default behavior. 
+
+Of course, this approach does not protect the user from the error cases outlined above - but it will make them at least deterministic. I think it is a good trade-off though. By allowing user-injected, stateful code in our system, we not only give power to the user but also responsibility (cue obligatory Spiderman joke).
+
+### Dynamic Order
+
+Emitters are free to choose the order in which they emit to their connected Receivers and have a virtual function to do so. That also means that they are free to interpret emission priority how they see fit, as long as Receivers with a higher priority are guaranteed to receive a Signal no later than ones with a lower one.
