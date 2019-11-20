@@ -1,7 +1,10 @@
 # The Application Logic
 
-This module contains the relevant classes to build the Application *Logic*. We use the term Logic here, because it describes the application behavior in deterministic [if-this-then-that terms](https://en.wikipedia.org/wiki/Logic).
-<br>While the Logic describes behavior in the abstract (as in: "the Logic is valid"), the classes for an actual implementation of a particular Logic use terms borrowed from signal processing and the design of [electrical circuits](https://en.wikipedia.org/wiki/Electrical_network).
+One of the big issues with Qt is the way that custom widgets tend to contain code that is not only related to the individual widget itself (how to draw it, what kind of data it stores, what interface it has to the outside world), but also application behavior. "If you click this button, then we will remove _these_ widgets, disable _these_ and create a new dialog that blocks the rest of the UI until _that_ button has also been clicked". We are not saying that this approach doesn't work, it clearly does, but it makes it hard to build a complex UI with lots of interlocking parts just because you don't always know where stuff is happening. Maybe it's happening in the button that you just clicked? Maybe the event falls through to one of the parent Widgets? Maybe it's happening in an event handler installed by a completely different widget? ... who knows? 
+
+With notf, we wanted to make sure that the way the _entire_ application behaves is separated from the way individual elements of the UI behave. This idea resulted in the concept of the abstract "Application Logic", some way to describe the behavior of the entire application at once. We use the term Logic here, because it describes the application behavior in deterministic [if-this-then-that terms](https://en.wikipedia.org/wiki/Logic). This text tries to document the thought processes that lead to the decisions that ultimately shaped the `logic` module.
+
+Note that while the Logic describes behavior in the abstract (as in: "the Logic is valid"), the classes for an actual implementation of a particular Logic use terms borrowed from signal processing and the design of [electrical circuits](https://en.wikipedia.org/wiki/Electrical_network).
 
 
 ## Terminology
