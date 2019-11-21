@@ -168,7 +168,7 @@ With the need for some kind of feedback from the Receiver back to the Emitter, t
 It consists of 3 things:
 1. The constant **Value** of the Signal.
 
-2. An **Emitter ID** that unique identifies the upstream Emitter that produced the Signal. IDs are unique and constant, for example the memory address of the Emitter or some other integer. 
+2. An **Emitter ID** that unique identifies the upstream Emitter that produced the Signal. IDs are unique and constant, for example the memory address of the Emitter or some other integer. Signals with an ID of another Emitter than the Receiver is connected to should trigger an assert.
 
 3. An enum that describes the **Status** of the Signal, encapsulated in an object to ensure that it follows the state transition diagram outlined below:
     ```
