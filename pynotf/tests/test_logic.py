@@ -3,17 +3,65 @@ import logging
 from enum import Enum
 from typing import List
 from weakref import ref as weak
+from random import randint
 
 from pynotf.logic import Switch, Receiver, Emitter
 from pynotf.value import Value
 
-from tests.utils import NumberEmitter, Recorder, record, ErrorOperation, AddConstantOperation, GroupTwoOperation, \
-    ExceptionOnCompleteReceiver, AddAnotherReceiverReceiver, count_live_receivers, DisconnectReceiver
-
+from tests.utils import *
 
 ########################################################################################################################
 # TEST CASE
 ########################################################################################################################
+
+"""
+
+Circuit
+* create and remove x2 to ensure that no global state is destroyed at the end of the first
+* create two circuits at the same time, make sure that they are separate things
+
+Emitters and Receivers
+* finish an emitter through complete or failure and check that receivers disconnect
+* create a linear circuit
+* create a branching circuit
+
+Ownership
+* create an emitter whose ownership is passed from one subscriber to another one and make sure it is deleted afterwards
+* create an emitter with on outside reference who outlives multiple receiver popping in and out of existence
+* create a receiver that creates multiple emitters in sequence for a single slot (thereby dropping the old one)
+
+Signal
+* create a receiver that used the signal ID to differentiate between emitters, two signal ids from the same emitter should match
+* create an emitter with a list of receivers to play through the signal state:
+    - unblockable signal, tries to get blocked or accepted along the way
+    - blockable signal, is ignored, then checked, then accepted, then checked, then blocked
+
+Exceptions
+* create a receiver that throws an exception and let the emitter handle it
+* create a custom exception handler (unsubscribe after 2nd exception) for an emitter class and exchange the default one for that at runtime
+
+Switches and Operations
+
+Circles
+* create a circuit with an unapproved loop (error)
+* create a circuit with an allowed loop
+    - loop once
+    - loop multiple times
+    - be infinite (still an error)
+
+Logic modification
+* create a circuit that adds a new connection
+    - before the current
+    - after the current
+* create a circuit that removes an active connection
+    - before the current
+    - after the current
+
+Ordered Emission
+* ensure new receivers are emitted to last (check example that produces 1 or -1)
+* connect multiple receivers with different priorities
+* create emitter that sorts receivers based on some arbitrary value
+"""
 
 
 class TestCase(unittest.TestCase):
@@ -24,36 +72,66 @@ class TestCase(unittest.TestCase):
     def tearDown(self):
         logging.disable(logging.NOTSET)
 
+    # EMITTER ##########################################################################################################
+
     def test_emitter_schema(self):
-        emitter = NumberEmitter()
-        self.assertEqual(emitter.output_schema, Value(0).schema)
+        """
+        Tests whether the output Schema of an Emitter is set correctly
+        """
+        for schema in basic_schemas:
+            emitter: Emitter = create_emitter(schema)
+            self.assertEqual(emitter.get_output_schema(), schema)
 
     def test_emitting(self):
-        class Nope:
-            pass
+        """
+        Test the emission process over a lifetime of an Emitter.
+        Is run twice, once with the emitter completing, once with it failing.
+        """
+        for phase in ["complete", "error"]:
+            with self.subTest(phase=phase):
+                # create an emitter and a receiver
+                emitter: Emitter = create_emitter(number_schema)
+                recorder: Recorder = record(emitter)
 
-        emitter = NumberEmitter()
-        recorder = record(emitter)
+                # emit a few number values and check that they are received
+                numbers: List[int] = []
+                for i in range(randint(3, 8)):
+                    number: int = randint(0, 100)
+                    numbers.append(number)
+                    emitter.emit(number)
+                self.assertEqual(len(recorder.values), len(numbers))
+                self.assertEqual([recorder.values[i].as_number() for i in range(len(numbers))], numbers)
 
-        emitter.emit(Value(85))
-        self.assertEqual(len(recorder.values), 1)
-        self.assertEqual(recorder.values[0].as_number(), 85)
+                # emit a number and have it converted to a value implicitly
+                number: int = randint(0, 100)
+                emitter.emit(number)
+                self.assertEqual(len(recorder.values), len(numbers))
+                self.assertEqual(recorder.values[-1].as_number(), number)
 
-        emitter.emit(Value(254))
-        self.assertEqual(len(recorder.values), 2)
-        self.assertEqual(recorder.values[1].as_number(), 254)
+                # make sure that you cannot emit anything that is not a number
+                with self.assertRaises(TypeError):
+                    emitter.emit(None)  # wrong schema
+                with self.assertRaises(TypeError):
+                    emitter.emit(Value([]))  # not convertible to number
+                with self.assertRaises(TypeError):
+                    emitter.emit(Nope())  # not convertible to value
 
-        with self.assertRaises(TypeError):
-            emitter.emit(None)  # empty (wrong) schema
-        with self.assertRaises(TypeError):
-            emitter.emit(Value({"x": 0, "y": 0}))  # wrong schema
-        with self.assertRaises(TypeError):
-            emitter.emit(Nope())  # not convertible to Value
+                # either complete or fail
+                if phase == "complete":
+                    emitter._complete()
+                else:
+                    emitter._error(RuntimeError())
 
-        emitter._complete()
-        self.assertTrue(emitter.is_completed())
-        with self.assertRaises(RuntimeError):
-            emitter.emit(0)  # completed
+                # either way, the emitter is now completed
+                self.assertTrue(emitter.is_completed())
+
+                # emitting any further values will result in an error
+                with self.assertRaises(RuntimeError):
+                    emitter.emit(randint(0, 100))
+
+                # with completing, the receiver has now disconnected from the emitter
+                self.assertEqual(len(recorder._upstream), 0)
+
 
     def test_connecting_with_wrong_schema(self):
         with self.assertRaises(TypeError):

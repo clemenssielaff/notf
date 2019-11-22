@@ -271,6 +271,8 @@ Solution 3 is an interesting one. What it means is that no matter if you add or 
 
 So, solution number 3 it is. In order for this to work, all Circuit elements must store a reference to their Circuit or some other central instance to register connection additions and deletions. We considered to pass the Circuit as a part of the Signal instead, that would introduce quite a bit of overhead passing the Circuit reference from one Signal to the next. Also, Circuit elements *are* part of the Circuit, it is only natural for them to keep a (non-owning) reference.
 
+> Okay, what about if only callbacks within a Node can add or remove connections? That's quite natural isn't it, considering that Switches (and all pure Circuit-elements) are really just for transforming data streams and *not* for modifying the Circuit around themselves. But wait, if that is the case, then all of the connection creation and removal might as well be handled by the *Scene* instead.
+
 ## Ordered Emission
 
 Originally, we did not assume any order in the emission process. Conceptually, the Signals should flow through the Circuit like they do in a real electrical circuit: all at the same time. One important property of this approach was, that the order in which Receivers were connected to Emitters did not matter. In a way, you could say that Circuit element was to be [commutative](https://en.wikipedia.org/wiki/Commutative_property). This was important because the same set of (functionally unrelated) connections might have a completely different effect on the overall Logic, if their order happened to be different (see previous chapter on "Logic Modification")

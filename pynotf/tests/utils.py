@@ -1,9 +1,59 @@
 from typing import List, ClassVar, Optional, Tuple
 import sys
 
-from pynotf.logic import Switch, Receiver, Emitter
+from pynotf.logic import Switch, Receiver, Emitter, Signal, Circuit
 from pynotf.value import Value
-from pynotf.scene import Executor, Fact
+
+# from pynotf.scene import Fact
+
+number_schema: Value.Schema = Value(0).schema
+string_schema: Value.Schema = Value("").schema
+list_schema: Value.Schema = Value([]).schema
+dict_schema: Value.Schema = Value({}).schema
+
+basic_schemas = (number_schema, string_schema, list_schema, dict_schema)
+"""
+The four basic Value Schemas.
+"""
+
+
+class Nope:
+    """
+    A useless class that is never the correct type.
+    """
+    pass
+
+
+def create_emitter(schema: Value.Schema):
+    """
+    Creates an instance of an anonymous Emitter class that can emit values of the given schema.
+    :param schema: Schema of the values to emit.
+    :return: New instance of the Emitter class.
+    """
+
+    class AnonymousEmitter(Emitter):
+        def __init__(self):
+            Emitter.__init__(self, schema)
+
+    return AnonymousEmitter()
+
+
+def create_receiver(schema: Value.Schema):
+    """
+    Creates an instance of an anonymous Receiver class that can receive values of the given schema.
+    :param schema: Schema of the values to receive.
+    :return: New instance of the Receiver class.
+    """
+
+    class AnonymousReceiver(Receiver):
+        def __init__(self):
+            Receiver.__init__(self, schema)
+            self.callback = lambda signal: None
+
+        def on_next(self, *args, **kwargs):
+            self.callback(*args, **kwargs)
+
+    return AnonymousReceiver()
 
 
 def count_live_receivers(emitter: Emitter) -> int:
@@ -231,12 +281,11 @@ class StringifyOperation(Switch.Operation):
     def _perform(self, value: Value) -> Value:
         return Value(str(value.as_number()))
 
-
-class EmptyFact(Fact):
-    def __init__(self, executor: Executor):
-        Fact.__init__(self, executor)
-
-
-class NumberFact(Fact):
-    def __init__(self, executor: Executor):
-        Fact.__init__(self, executor, Value(0).schema)
+# class EmptyFact(Fact):
+#     def __init__(self, executor: Executor):
+#         Fact.__init__(self, executor)
+#
+#
+# class NumberFact(Fact):
+#     def __init__(self, executor: Executor):
+#         Fact.__init__(self, executor, Value(0).schema)
