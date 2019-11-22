@@ -191,7 +191,10 @@ In case of a failure, the exception thrown by the Receiver is caught by the Emit
 
 ## Switches and Operations
 
-TODO
+A Switch is Receiver/Emitter that applies a sequence of Operations to an input value before emitting it (see https://en.wikipedia.org/wiki/Switch). If any Operation throws an exception, the Switch will fail as a whole. Operations are not able to complete the Switch, other than through failure.
+
+Not every input is guaranteed to produce an output as Operations are free to store or ignore input values. If an Operation returns a value, it is passed on to the next Operation and if the Operation was the last one in the sequence, its return value is emitted by the Switch.
+<br> If any Operation does not return a value (returns None), the following Operations are not called and the Switch does not emit anything.
 
 ## Logic Modification
 
@@ -272,6 +275,10 @@ Solution 3 is an interesting one. What it means is that no matter if you add or 
 So, solution number 3 it is. In order for this to work, all Circuit elements must store a reference to their Circuit or some other central instance to register connection additions and deletions. We considered to pass the Circuit as a part of the Signal instead, that would introduce quite a bit of overhead passing the Circuit reference from one Signal to the next. Also, Circuit elements *are* part of the Circuit, it is only natural for them to keep a (non-owning) reference.
 
 > Okay, what about if only callbacks within a Node can add or remove connections? That's quite natural isn't it, considering that Switches (and all pure Circuit-elements) are really just for transforming data streams and *not* for modifying the Circuit around themselves. But wait, if that is the case, then all of the connection creation and removal might as well be handled by the *Scene* instead.
+> The only problem with this obvious solution is that we cannot guarantee that the user will never be able to get a hold of a raw Receiver or Emitter in any user-defined code. Or put differently: as long as we allow user-defined code in Switches, we need to make sure that connection removal/addition is delayed properly.
+> This way, the question becomes: Can we provide all the Switches that the user needs? Well, the reactivex libraries seem to think so. But I don't like it. I want our built-in stuff to be as minimal as possible. Sure, you can put a standard library on top and that can contain all the Switches that you want, but you could also write your entire UI without the standard library and program all of your switches yourself. So I *do* want user-defined code.
+> Then again, there is no way to ensure that the user won't fuck things up as soon as he stores references to other Circuit elements. This would either screw with the lifetime of the referenced element (if it is an owning reference) or it would open up the user-code to segfaults, if it is a non-owning one. The only way to safely cross-reference unconnected Circuit elements from each other is through weak references. 
+> Of course, as soon as the user gets his hands on a weak reference, there is no reason to stop him from turning into a strong one... **I think the only way to be sure is to forbid manual ownership of Circuit elements. All of them have to be owned by a Node or by downstream Elements.** Services could be Nodes as well, managing Facts as child-Nodes, each with their own Property.
 
 ## Ordered Emission
 
