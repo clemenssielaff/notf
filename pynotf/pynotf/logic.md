@@ -42,6 +42,15 @@ An experienced application programmer might find the implementation of some of t
 * When you add another qualifier (like "Value"), you end up with "ObservableValue" and "ValueObserver". Or "ValuedObservable" and "ValueObserver" if you want to keep the "Value" part up front. Both solutions are inferior to "ValueEmitter" and "ValueReceiver", two words that look distinct from each other and do not require grammatical artistry to make sense.
 * Lastly, with "Observable" and "Observer", there is only one verb you can use to describe what they are doing: "to observe" / "to being observed" (because what else can they do?). This leads to incomprehensible sentences like: "All Observables contain weak references to each Observer that observes them, each Observer can observe multiple Observables while each Observables can be observed by multiple Observers". The same sentence using the terms Emitter and Receiver: "All Emitters contain weak references to each Receiver they emit to, each Receiver can connect to multiple Emitters while each Emitter can emit to multiple Receivers". It's not great prose either way, but at least the second version doesn't make me want to change my profession.
 
+### Switches and Operations
+
+A Switch is Receiver/Emitter that applies a sequence of Operations to an input value before emitting it (see https://en.wikipedia.org/wiki/Switch). If any Operation throws an exception, the Switch will fail as a whole. Operations are not able to complete the Switch, other than through failure.
+
+Not every input is guaranteed to produce an output as Operations are free to store or ignore input values. If an Operation returns a value, it is passed on to the next Operation and if the Operation was the last one in the sequence, its return value is emitted by the Switch.
+<br> If any Operation does not return a value (returns None), the following Operations are not called and the Switch does not emit anything.
+
+Side question: do we even need user-defined code in Switches? Can't we just provide all the Switches that the user needs? Well, the reactivex libraries seem to think so. At the time of this writing, its [documentation](http://reactivex.io/documentation/operators.html#alphabetical) lists 70 reactive components. But we would instead like our built-ins to be as minimal as possible. Sure, you can put a standard library on top and that can contain all the Switches you could think of, but you could also write your entire UI without the standard library and program all of your switches yourself. So we *do* want user-defined code in our Switches.
+
 
 ## Cycles in the Circuit
 
@@ -69,6 +78,8 @@ Note that we still not able to catch all infinite loops. Namely those that span 
 
 While it is obvious that Emitters must store a a list of references to their connected Receivers, whether or not Receivers need to store references to their connected Emitters is a question of design requirements. Furthermore, references come in two flavors: strong and weak. Strong reference imply ownership of the referenced object, weak ones do not. In order to avoid memory leaks we need to ensure that the graph of all strong references is a DAG. The other design consideration with strong references is that of object lifetime: ideally you want an object to stay around exactly as long as it is needed but no longer. 
 
+### External and Reverse Ownership
+
 In the beginning, Receivers kept a set of strong references to their Emitters. The rationale for that decision assumed that there were certain fixed points in the Circuit (Facts, for example) that were kept alive from the outside. Receivers would spawn into the Circuit and with them a "pipeline" of Switches upstream, that would connect to one or more of these fixed points in order to generate a customized stream of data. Since the pipeline was tailor crafted for a Receiver, it made sense that the Receiver owned the pipeline and since a pipeline was a sequence of Switches, the obvious way to achieve this behavior was to have downstream Receivers own their upstream Emitters. 
 <br> Let's call this the *reverse ownership* approach, because the ownership goes in the opposite direction of the data flow.
 
@@ -83,6 +94,26 @@ The *external ownership* approach has the advantage of being extremely light-wei
 <br> The same could be said of the *reverse ownership* approach, but through different means. By relieving the user of the burden of keeping Switches alive, it becomes easier to construct throw-away Switches and Emitters because they live just as long as they are needed and are automatically deleted when they have finished or have lost all of their Receivers. This could lead to more Switches, but it also encourages the re-use of existing Switches since their lifetime is no longer tied to some external instance. 
 
 Overall, I think that the advantages of having the automatic lifetime management of the *reverse ownership* outweigh the space savings of the *external ownership* approach. Note that the *reverse ownership* does not have a runtime overhead, since the strong references from Receivers to Emitters do not take part in the propagation of Signals. And the space overhead is that of as many `shared_ptr`s as there are Emitters connected upstream...And I would suspect that that number is rather small.
+
+### The Life of a Switch
+
+This chapter preempts a later chapter "Logic Modification", but since this is mostly about ownership, we still decided to put it here.
+
+The question is: who owns a Circuit element? In the previous chapter we already established that downstream Circuit elements own their upstream elements and while this is so, it is not the whole truth. Someone has to own the sink element as well, otherwise the whole chain would expire immediately. The only entity that we allow the ownership of sink elements are Nodes.
+
+The special thing about Nodes is that they are at the same time user-definable and known to us (the notf system). The user can say "I want to create a Node with 3 integer Receivers (Slots)" and that's what we deliver. And when it comes time to delete the Node, we know exactly what Slots there are and when to delete them. This is fundamentally different from user-defined code, which is entirely unknowable to the system. If Circuit elements were free to be managed by user-defined code, they might be created and removed all over the place and we would never know.
+<br> Why is that problematic? As we discuss in "Logic Modification", the creation and destruction of connections in a Circuit must not happen immediately, but instead be put into a queue and delayed until the end of the event. Without some sort of oversight of connection creation/removal in the Circuit, we cannot guarantee that events will be propagated correctly. 
+
+At the same time, we want to enable the user to create new Switches (no Emitters or Receivers, only Switches) at runtime, for example to transform a Fact into a data stream that is usable to the Node. These Switches are not part of the Node type and are therefore unknown to us. How do we do that?
+<br> Well, the Switch constructor must not be part of its public API so it remains inaccessible from user-defined code. Nodes are able to create Switches, but they don't have any place to store them and we certainly don't want to hand the Switch back to the user. So instead, we only allow Slots to create and connect to a (user-defined) Switch immediately. You can think of Switches growing out to the left of Nodes like roots, to connect to existing sources of data upstream. All the user gets back is a reference of a non-copyable, non-movable object. Of course, this won't stop the adventurous to store raw pointers to the Switch but you have to assume that these brave souls will [dilbert principle](https://en.wikipedia.org/wiki/Dilbert_principle) their way out of our user-base eventually.
+
+The observant reader might have noticed a slight-of-hand here. While the "create-and-connect" approach is successful in creating arbitrary Switches without ever handing back ownership to the user, we are in fact creating untracked connections from user-defined code. Which is exactly what we wanted to avoid.
+<br> Fortunately, this is handled internally by the Circuit elements, without the user even knowing about it. Every Receiver (a Switch is-a Receiver) has a reference back to a central `Circuit` object, which stores a queue of all new and deleted connections during an event. At the end of the event loop, all new connections are created first, then all deleted ones are removed. The order is important because an Emitter without outgoing connections would be destroyed before new connections had the chance to keep it alive.
+<br> The Circuit is owned by a Scene, which is in turn referenced by the Node, which is visible from the Slot. When the Slot creates-and-connects to an upstream Switch, it can pass the Circuit as argument to the Switches constructor. Similarly, when a Switch creates-and-connects to a new upstream Switch, it will pass its own Circuit as argument. This way, we can offer the user convenient modification functions through the downstream Circuit elements and still have complete visibility.
+
+There is however another place in the architecture that allows user-defined code: Switches. Or actually, Operations within Switches... And that is already the end of the discussion as Operations have no more access to their containing Switch than they have access to any other Switch in the Circuit.
+ 
+ One more thing: should it be allowed to share Switches? And if so, how to we keep track of them? Meaning, how can a Node find the Switch of another Node and then connect to it? Well, Nodes are searchable by name within the Scene, so it should already be possible to find the Node that owns the Switch in question. However ... we said that the Node should not keep a reference to the dynamic Switches it creates ... (TODO: how do we resolve this?)
 
 
 ## What is in a Signal
@@ -189,13 +220,6 @@ With the introduction of user-written code, we inevitable open the door to user-
 In case of a failure, the exception thrown by the Receiver is caught by the Emitter upstream, that is currently in the process of emitting. The way that the Emitter reacts to the exception can be selected at runtime using the [delegation pattern](https://en.wikipedia.org/wiki/Delegation_pattern). The default behavior is to acknowledge the exception by logging a warning, but ultimately to ignore it, for there is no general way to handle user code errors. Other delegates may opt to drop Receivers that fail once, fail multiple times in a row or in total, etc.
 
 
-## Switches and Operations
-
-A Switch is Receiver/Emitter that applies a sequence of Operations to an input value before emitting it (see https://en.wikipedia.org/wiki/Switch). If any Operation throws an exception, the Switch will fail as a whole. Operations are not able to complete the Switch, other than through failure.
-
-Not every input is guaranteed to produce an output as Operations are free to store or ignore input values. If an Operation returns a value, it is passed on to the next Operation and if the Operation was the last one in the sequence, its return value is emitted by the Switch.
-<br> If any Operation does not return a value (returns None), the following Operations are not called and the Switch does not emit anything.
-
 ## Logic Modification
 
 This chapter is best read together with the next one "Ordered Emission", as they overlap quite a bit and each assume decisions described in the other one.
@@ -274,11 +298,6 @@ Solution 3 is an interesting one. What it means is that no matter if you add or 
 
 So, solution number 3 it is. In order for this to work, all Circuit elements must store a reference to their Circuit or some other central instance to register connection additions and deletions. We considered to pass the Circuit as a part of the Signal instead, that would introduce quite a bit of overhead passing the Circuit reference from one Signal to the next. Also, Circuit elements *are* part of the Circuit, it is only natural for them to keep a (non-owning) reference.
 
-> Okay, what about if only callbacks within a Node can add or remove connections? That's quite natural isn't it, considering that Switches (and all pure Circuit-elements) are really just for transforming data streams and *not* for modifying the Circuit around themselves. But wait, if that is the case, then all of the connection creation and removal might as well be handled by the *Scene* instead.
-> The only problem with this obvious solution is that we cannot guarantee that the user will never be able to get a hold of a raw Receiver or Emitter in any user-defined code. Or put differently: as long as we allow user-defined code in Switches, we need to make sure that connection removal/addition is delayed properly.
-> This way, the question becomes: Can we provide all the Switches that the user needs? Well, the reactivex libraries seem to think so. But I don't like it. I want our built-in stuff to be as minimal as possible. Sure, you can put a standard library on top and that can contain all the Switches that you want, but you could also write your entire UI without the standard library and program all of your switches yourself. So I *do* want user-defined code.
-> Then again, there is no way to ensure that the user won't fuck things up as soon as he stores references to other Circuit elements. This would either screw with the lifetime of the referenced element (if it is an owning reference) or it would open up the user-code to segfaults, if it is a non-owning one. The only way to safely cross-reference unconnected Circuit elements from each other is through weak references. 
-> Of course, as soon as the user gets his hands on a weak reference, there is no reason to stop him from turning into a strong one... **I think the only way to be sure is to forbid manual ownership of Circuit elements. All of them have to be owned by a Node or by downstream Elements.** Services could be Nodes as well, managing Facts as child-Nodes, each with their own Property.
 
 ## Ordered Emission
 
