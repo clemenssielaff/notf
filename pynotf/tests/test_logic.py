@@ -21,9 +21,17 @@ Circuit
 * create two circuits at the same time, make sure that they are separate things
 
 Emitters and Receivers
+* create a receiver and a receiver and push some values through until finishing through
+    - completion
+    - error
 * finish an emitter through complete or failure and check that receivers disconnect
-* create a linear circuit
-* create a branching circuit
+* create a branching circuit and check that all receivers get the same value
+
+Switches and Operations
+* test a noop switch
+* test a switch that always does one thing and produces the same output type, make it so the sequence has to be ordered correctly produce the correct value
+* test a switch that completes through failure
+* test a switch that only produces a value every second time and produces a different output type
 
 Ownership
 * create an emitter whose ownership is passed from one subscriber to another one and make sure it is deleted afterwards
@@ -40,14 +48,13 @@ Exceptions
 * create a receiver that throws an exception and let the emitter handle it
 * create a custom exception handler (unsubscribe after 2nd exception) for an emitter class and exchange the default one for that at runtime
 
-Switches and Operations
-
 Circles
 * create a circuit with an unapproved loop (error)
 * create a circuit with an allowed loop
-    - loop once
-    - loop multiple times
+    - loop once (one direction the first time - going into a loop, next direction the second time)
+    - loop multiple times (break loop through the internal state)
     - be infinite (still an error)
+* test a Switch with allowed loop but not reentrant code and check that no reentrancy occurs
 
 Logic modification
 * create a circuit that adds a new connection

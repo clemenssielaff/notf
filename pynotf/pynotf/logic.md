@@ -1,6 +1,6 @@
 # The Application Logic
 
-One of the big issues with Qt is the way that custom widgets tend to contain code that is not only related to the individual widget itself (how to draw it, what kind of data it stores, what interface it has to the outside world), but also application behavior. "If you click this button, then we will remove _these_ widgets, disable _these_ and create a new dialog that blocks the rest of the UI until _that_ button has also been clicked". We are not saying that this approach doesn't work, it clearly does, but it makes it hard to build a complex UI with lots of interlocking parts just because you don't always know where stuff is happening. Maybe it's happening in the button that you just clicked? Maybe the event falls through to one of the parent Widgets? Maybe it's happening in an event handler installed by a completely different widget? ... who knows? 
+One of the big issues that we identified with existing frameworks is the way that custom widgets tend to contain code that is not only related to the individual widget itself (how to draw it, what kind of data it stores, what interface it has to the outside world), but also application behavior. "If you click this button, then we will remove _these_ widgets, disable _these_ and create a new dialog that blocks the rest of the UI until _that_ button has also been clicked". We are not saying that this approach doesn't work, it clearly does, but it makes it hard to build a complex UI with lots of interlocking parts just because you don't always know where stuff is happening. Maybe it's happening in the button that you just clicked? Maybe the event falls through to one of the parent Widgets? Maybe it's happening in an event handler installed by a completely different widget? ... who knows? 
 
 With notf, we wanted to make sure that the way the _entire_ application behaves is separated from the way individual elements of the UI behave. This idea resulted in the concept of the abstract "Application Logic", some way to describe the behavior of the entire application at once. One important aspect of that is that event propagation and -handling should *not* be a separate thing, whether a timer times out, the user presses a key or an asynchronous data base request has finished - everything is handled in the logic.
 
@@ -27,9 +27,77 @@ This text tries to document the thought processes that lead to the decisions tha
 + **Receiver**
  Is the counter-object to an Emitter. A Receiver receives a Signal from an Emitter and handles it in a way appropriate to its type. The handler function of a Receiver is the main injection point for user-defined functionality.
 
-+ **Switch**
- Anything that is both an Emitter and a Receiver of Signals. Note that not all Switches generate an output Signal for each input Signal all the time.
++ **Operator**
+ Anything that is both an Emitter and a Receiver of Signals that contains user-defined code to modify the input value. Usually maps one or more inputs to an output but note that not all Switches generate an output Signal for each input Signal all the time.
 
+
+# Logic Elements
+
+## Emitter
+* Keep a list of weak references to Receivers connected downstream.
+* Allow subclasses to re-order Receivers without given them write-access to the member field.
+* Has an output Value type which is constant and readable.
+* Has 3 protected methods: `next`, `complete` and `fail`.
+* Once `complete` or `fail` are called, the Emitter is "finished" and will never emit again.
+* Has a function pointer to an exception handler that is called during emission, if a Receiver should throw.
+* Has a signed recursion counter, -1 means no recursion allowed, anything else is the current recursion.
+* New Receivers are appended to the list.
+
+## Receiver
+* Keeps a set of strong references to Emitters connected upstream.
+* Automatically disconnects from Emitters that complete or fail.
+* Has an input Value type which is constant and readable.
+* Constructor takes a Circuit and input Value type. 
+* Has 3 public methods `on_next`, `on_complete` and `on_fail`.
+* `on_next` is purely virtual.
+* Can connect to existing upstream Emitters.
+* Can create-connect upstream Operators.
+* Connections and disconnections don't happen immediately but are queued in the Circuit.
+* Stores a pointer to its Circuit. 
+
+## Signal
+* ValueSignal, 
+    * Stores a Value, a state (unblockable, ignored, accepted, blocked) and a pointer to the Emitter.
+    * State is the only mutable part of any Signal.
+    * Constructor requires initial state, is "unblockable" by default but may also be "ignored".
+    * Accepted Signals are just marked as such, blocked Signals are not propagated further.
+* FailSignal.
+    * Stores the exception and a pointer to the Emitter.
+* CompleteSignal
+    * Stores the pointer to the Emitter.
+
+## Circuit
+* Keeps a queue of delayed connections/disconnections to perform after an event has finished.
+* Stores an optional function pointer with no arguments, no return value that is called after the Circuit has performed post-event cleanup.
+
+## Operator
+* Derives from Emitter and Receiver.
+* Has a public, nested Subclass `Operation` with a virtual destructor and call function.
+* Constructor takes the input value type, an output value type and an instance of Operation by r-value.
+* Can only be created by Receivers.
+* The Operation call signature takes a Signal as only argument while returning a variant of <Value, Complete, Exception>.
+* The entries in the returned variant trigger the three corresponding Emitter methods.
+* Before the returned Value is accepted, its schema is checked against the Emitter's output schema.
+
+## Node
+
+## Slot
+* Is-a Receiver that forwards ValueSignals to 0-1 method of their associated Node object.
+* Has a single, constant Node object associated with it.
+* Which method is forwarded to can be changed by the associated Node.
+
+## Property
+
+## Scene
+* Keeps a queue of Nodes to delete after an event has finished.
+* Owns a Circuit object.
+* Has a post-event cleanup method that it registers with its Circuit object.
+
+## Fact
+
+## Service
+
+====
 
 ## Reactive Logic
 
@@ -42,35 +110,38 @@ An experienced application programmer might find the implementation of some of t
 * When you add another qualifier (like "Value"), you end up with "ObservableValue" and "ValueObserver". Or "ValuedObservable" and "ValueObserver" if you want to keep the "Value" part up front. Both solutions are inferior to "ValueEmitter" and "ValueReceiver", two words that look distinct from each other and do not require grammatical artistry to make sense.
 * Lastly, with "Observable" and "Observer", there is only one verb you can use to describe what they are doing: "to observe" / "to being observed" (because what else can they do?). This leads to incomprehensible sentences like: "All Observables contain weak references to each Observer that observes them, each Observer can observe multiple Observables while each Observables can be observed by multiple Observers". The same sentence using the terms Emitter and Receiver: "All Emitters contain weak references to each Receiver they emit to, each Receiver can connect to multiple Emitters while each Emitter can emit to multiple Receivers". It's not great prose either way, but at least the second version doesn't make me want to change my profession.
 
-### Switches and Operations
+### Operators
 
-A Switch is Receiver/Emitter that applies a sequence of Operations to an input value before emitting it (see https://en.wikipedia.org/wiki/Switch). If any Operation throws an exception, the Switch will fail as a whole. Operations are not able to complete the Switch, other than through failure.
+An Operator is Receiver/Emitter that, generally speaking, maps an input value to an output value of the same or a different type (see https://en.wikipedia.org/wiki/Operator_(mathematics)).
 
-Not every input is guaranteed to produce an output as Operations are free to store or ignore input values. If an Operation returns a value, it is passed on to the next Operation and if the Operation was the last one in the sequence, its return value is emitted by the Switch.
-<br> If any Operation does not return a value (returns None), the following Operations are not called and the Switch does not emit anything.
+Not every input is guaranteed to produce an output as Operators are free to store or ignore input values. The user-defined code within an Operator takes a Signal and returns a variant of [Value, COMPLETED, Exception], which map to the three emission functions. If the user-defined code returns COMPLETED or an exception, the Emitter superclass will complete or fail respectively.
 
-Side question: do we even need user-defined code in Switches? Can't we just provide all the Switches that the user needs? Well, the reactivex libraries seem to think so. At the time of this writing, its [documentation](http://reactivex.io/documentation/operators.html#alphabetical) lists 70 reactive components. But we would instead like our built-ins to be as minimal as possible. Sure, you can put a standard library on top and that can contain all the Switches you could think of, but you could also write your entire UI without the standard library and program all of your switches yourself. So we *do* want user-defined code in our Switches.
+Side question: do we even need user-defined code in Operators? Can't we just provide all the Operators that the user needs? Well, the reactivex libraries seem to think so. At the time of this writing, its [documentation](http://reactivex.io/documentation/operators.html#alphabetical) lists around 70 reactive components. But we would instead like our built-ins to be as minimal as possible. Sure, you can put a standard library on top and that can contain all the Operators you could think of, but you could also write your entire UI without the standard library and program all of your Operators yourself. So we *do* want user-defined code in our Operators.
 
+### Slots
+
+Slots are Receivers that have an associated node and than forward their received Signal to a method of a Node subclass. Which method that is depends on the state of the Node.
 
 ## Cycles in the Circuit
 
-We started out with the assumption that the Circuit must not contain any cycles, meaning that the path that a Signal takes through the Circuit must never fold back onto itself. This is a safe requirement to make, since Switches contain user-defined code that may not be reentrant. It also rules out the possibility of the Signal cycling endlessly through the same loop, crashing the whole system. Lastly, it is also easy to prove that a graph does not contain cycles, which made the rule enforceable at runtime.
-<br>So why didn't we just leave it at that?
+We started out with the assumption that the Circuit must not contain any cycles, meaning that the path that a Signal takes through the Circuit must never fold back onto itself. This is a safe requirement to make, since Emitters (either directly or through Operators or Slot callbacks) may contain user-defined code that may not be reentrant. It also rules out the possibility of the Signal cycling endlessly through the same loop, crashing the whole system. Lastly, it is also easy to prove that a graph does not contain cycles, which made the rule enforceable at runtime.
+<br> So why didn't we just leave it at that?
 
-First, we noted that reentrancy would not be a problem because by the time an Switch emits a new Signal, all of the user-defined code has already completed. And the emission in turn does not require access to any of the Switches (user-defined) state that might change in a situation where the user-defined code is executed while the emission is still running.
+First, we noted that reentrancy would not be a problem because by the time an Emitter emits a new Signal, all of the user-defined code has already completed. And the emission in turn does not require access to any of the user-defined state that might change in a situation where the user-defined code is executed while the emission is still running.
 
-Next, it occurred to us that it was in fact possible to create create cyclic graphs that would never get stuck in an infinite loop because of the way their user-defined code would work. For example, a Switch that keeps two Receivers and emits the first value it receives to the first only and the second to the second only. If the circle was through the first Receiver but not through the second, the Logic as a whole would still work fine. 
+Next, it occurred to us that it was in fact possible to create create cyclic graphs that would never get stuck in an infinite loop because of the way their user-defined code would work. For example, an Emitter that keeps two Receivers and emits the first value it receives to the first only and the second to the second only. If the circle was through the first Receiver but not through the second, the Logic as a whole would still work fine. 
 
-On the flip-side, the same user-defined code also makes it impossible to sort the elements in a Circuit statically (without executing it) since it might perform different based on the Switches' states. This meant that while it was still easy enough to prove that a Circuit did not have any cycles (if there was no cyclic connection there can not be a cycle, no matter what code the user writes), it was not possible to prove statically that Circuit *did* have cycles.
+On the flip-side, the same user-defined code also makes it impossible to sort the elements in a Circuit statically (without executing it) since it might perform different based on user defined states. This meant that while it was still easy enough to prove that a Circuit did not have any cycles (if there was no cyclic connection there can not be a cycle, no matter what code the user writes), it was not possible to prove statically that Circuit *did* have cycles.
 
 This is where we started considered allowing cycles in the graph, since the only downside was the possibility of endless loops ...though you can do that in every programming language and still people somehow manage.
 An additional advantage of simply allowing cycles was that we did not have to check for them anymore. Because even though proving the absence of cycles in a graph is a simple topological sort of the graph, graphs could grow arbitrarily large (although in practice, we expect them to be in the hundreds of elements and rather shallow). Plus the fact that the Circuit has the ability to modify itself during event handling meant that we would have to re-check every time a Receiver connected to an Emitter mid-event. Quite a bit of overhead to check for something that should not happen anyway.
 
 Then we realized that you could reliably check for cycles simply by adding an additional flag to each Emitter that is set right before emission starts and cleared immediately afterwards. If any Emitter starts emitting and finds its flag already set, we know that we have hit a loop and can throw an exception (which would be picked up by the Emitter upstream, reported and ignored).
 <br> This approach allows for cheap and easy loop-detection that does not require any re-sorting when the Circuit changes. It only works at runtime, but then again the Circuit is mutable at runtime anyway, so a static solution would not be very useful.
-<br> Furthermore, it opens up the possibility for restricting reentrant emission to a selected few Switches only. Instead of a flag, we would need a flag denoting whether or not this Switch allows reentrancy and a loop counter (or the two folded into one). You could then specify a global limit like 1000 and be certain that a true infinite loop would still be caught. 
+<br> Furthermore, it opens up the possibility for restricting reentrant emission to a selected few Emitters only. Instead of a flag, we would need a flag denoting whether or not this Emitter allows reentrancy and a loop counter (or the two folded into one). You could then specify a global limit like 1000 and be certain that a true infinite loop would still be caught. 
+<br> With all of that, we decided to make all Emitters not reentrant by default (meaning a loop is an immediate error), but leave it to the user to manually mark an Emitter as reentrant, thereby allowing up to GLOBAL_RECURSION_LIMIT loops. 
 
-Note that we still not able to catch all infinite loops. Namely those that span more than one Event. Let's say that `A` schedules a Signal to be emitted from `B`, which schedules a Signal to be emitted from `C` and `C` then back to `A`. This way, every Event (`A`->`B`, `B`->`C` and `C`->`A`) sees every Switch only once an has no way of detecting the cycle. This is what we would call a [livelock](https://en.wikipedia.org/wiki/Deadlock#Livelock).
+Note that we still not able to catch all infinite loops. Namely those that span more than one Event. Let's say that `A` schedules a Signal to be emitted from `B`, which schedules a Signal to be emitted from `C` and `C` then back to `A`. This way, every Event (`A`->`B`, `B`->`C` and `C`->`A`) sees every Emitter only once an has no way of detecting the cycle. This is what we would call a [livelock](https://en.wikipedia.org/wiki/Deadlock#Livelock).
 <br> Then again, even though this would lead to the event loop spinning 100% of the time, it would not actually lock the system up. Since there is nothing we can do to stop the inclined developer to fall down this particular hole and the effects are annoying but not critical, we just leave it at that. If a livelock ever turns out to be an actual problem, we are sure you could detect them, maybe using heuristics and a little introspection... but until then any effort spend will not be worth it.
 
 
@@ -80,22 +151,22 @@ While it is obvious that Emitters must store a a list of references to their con
 
 ### External and Reverse Ownership
 
-In the beginning, Receivers kept a set of strong references to their Emitters. The rationale for that decision assumed that there were certain fixed points in the Circuit (Facts, for example) that were kept alive from the outside. Receivers would spawn into the Circuit and with them a "pipeline" of Switches upstream, that would connect to one or more of these fixed points in order to generate a customized stream of data. Since the pipeline was tailor crafted for a Receiver, it made sense that the Receiver owned the pipeline and since a pipeline was a sequence of Switches, the obvious way to achieve this behavior was to have downstream Receivers own their upstream Emitters. 
+In the beginning, Receivers kept a set of strong references to their Emitters. The rationale for that decision assumed that there were certain fixed points in the Circuit (Facts, for example) that were kept alive from the outside. Receivers would spawn into the Circuit and with them a "pipeline" of Operators upstream, that would connect to one or more of these fixed points in order to generate a customized stream of data. Since the pipeline was tailor crafted for a Receiver, it made sense that the Receiver owned the pipeline and since a pipeline was a sequence of Operators, the obvious way to achieve this behavior was to have downstream Receivers own their upstream Emitters. 
 <br> Let's call this the *reverse ownership* approach, because the ownership goes in the opposite direction of the data flow.
 
-Then we introduced *Switch Operations*, which offered an easy way to construct an entire pipeline in a single Circuit element. Instead of having n-Switches daisy-chained together, you could now have a single Switch that produces the same result (and more efficiently so, at least in a compiled language). While this did not influence the question of ownership, it did result in Circuits with far fewer Switches. Suddenly it became feasible to burden the user with keeping track of an entire pipeline of Switches, something we considered before but ultimately deemed as too involved.
+Then we introduced *partial Operations*, which offered an easy way to construct an entire pipeline in a single Circuit element. Instead of having n-Operators daisy-chained together, you could now have a single Operator that produces the same result (and more efficiently so, at least in a compiled language). While this did not influence the question of ownership, it did result in Circuits with far fewer Operators. Suddenly it became feasible to burden the user with keeping track of an entire pipeline of Operators, something we considered before but ultimately deemed as too involved.
 
 Next, we started designing the *Scene* and its *Nodes*. Nodes own a set of Receivers (called *Slots*) and Emitters. Since the life time of a Node varies from the entire duration of the session down to less than a second, we had to consider the fact that Receivers would regularly outlive Nodes with Emitters upstream. Up to then, this meant that the downstream Receiver would keep a part of the Node alive, or even the entire Node, depending on how Nodes were designed. This was counter to the idea that Nodes should appear as a unit and also disappear as one. The second version of the Receiver design therefore did not own *any* references to the Emitters they were connected to. If an Emitter went out of scope, the Receiver would receive a completed or failure message and that was that. The Emitters in turn did not own their Receivers either. If a Receiver dropped, the Emitter would simply remove it and carry on. This moved the responsibility of ownership entirely outside the Circuit. 
 <br> Let's call this the *external ownership* approach.
 
 Eventually we realized that if Node Emitters would always finish when the Node was removed, and all Receivers were guaranteed to disconnect from a finished Emitter, the *reverse ownership* approach would still work and it would be generalizable, since a finished (either completed or failed) Emitter will never emit again. There is no reason to keep it around. With both models feasible, we had to settle on one.
 
-The *external ownership* approach has the advantage of being extremely light-weight. Only the bare minimum of data is stored in the circuit and since every Switch has to be owned externally (by a Node or some other mechanism), users are encouraged to keep the number of Switches reasonably small.
-<br> The same could be said of the *reverse ownership* approach, but through different means. By relieving the user of the burden of keeping Switches alive, it becomes easier to construct throw-away Switches and Emitters because they live just as long as they are needed and are automatically deleted when they have finished or have lost all of their Receivers. This could lead to more Switches, but it also encourages the re-use of existing Switches since their lifetime is no longer tied to some external instance. 
+The *external ownership* approach has the advantage of being extremely light-weight. Only the bare minimum of data is stored in the circuit and since every Operator has to be owned externally (by a Node or some other mechanism), users are encouraged to keep the number of Operators reasonably small.
+<br> The same could be said of the *reverse ownership* approach, but through different means. By relieving the user of the burden of keeping Operators alive, it becomes easier to construct throw-away Operators and Emitters because they live just as long as they are needed and are automatically deleted when they have finished or have lost all of their Receivers. This could lead to more Operators, but it also encourages the re-use of existing Operators since their lifetime is no longer tied to some external instance. 
 
 Overall, I think that the advantages of having the automatic lifetime management of the *reverse ownership* outweigh the space savings of the *external ownership* approach. Note that the *reverse ownership* does not have a runtime overhead, since the strong references from Receivers to Emitters do not take part in the propagation of Signals. And the space overhead is that of as many `shared_ptr`s as there are Emitters connected upstream...And I would suspect that that number is rather small.
 
-### The Life of a Switch
+### The Life of an Operator
 
 This chapter preempts a later chapter "Logic Modification", but since this is mostly about ownership, we still decided to put it here.
 
@@ -104,17 +175,15 @@ The question is: who owns a Circuit element? In the previous chapter we already 
 The special thing about Nodes is that they are at the same time user-definable and known to us (the notf system). The user can say "I want to create a Node with 3 integer Receivers (Slots)" and that's what we deliver. And when it comes time to delete the Node, we know exactly what Slots there are and when to delete them. This is fundamentally different from user-defined code, which is entirely unknowable to the system. If Circuit elements were free to be managed by user-defined code, they might be created and removed all over the place and we would never know.
 <br> Why is that problematic? As we discuss in "Logic Modification", the creation and destruction of connections in a Circuit must not happen immediately, but instead be put into a queue and delayed until the end of the event. Without some sort of oversight of connection creation/removal in the Circuit, we cannot guarantee that events will be propagated correctly. 
 
-At the same time, we want to enable the user to create new Switches (no Emitters or Receivers, only Switches) at runtime, for example to transform a Fact into a data stream that is usable to the Node. These Switches are not part of the Node type and are therefore unknown to us. How do we do that?
-<br> Well, the Switch constructor must not be part of its public API so it remains inaccessible from user-defined code. Nodes are able to create Switches, but they don't have any place to store them and we certainly don't want to hand the Switch back to the user. So instead, we only allow Slots to create and connect to a (user-defined) Switch immediately. You can think of Switches growing out to the left of Nodes like roots, to connect to existing sources of data upstream. All the user gets back is a reference of a non-copyable, non-movable object. Of course, this won't stop the adventurous to store raw pointers to the Switch but you have to assume that these brave souls will [dilbert principle](https://en.wikipedia.org/wiki/Dilbert_principle) their way out of our user-base eventually.
+At the same time, we want to enable the user to create new Operators (no Emitters or Receivers, only Operators) at runtime, for example to transform the Value of a Fact into a Value that is useful to a Slot. These Operators are not part of the Node type and are therefore unknown to us. How do we do that?
+<br> Well, the Operator constructor must not be part of its public API so it remains inaccessible from user-defined code. Nodes are able to create Operators, but they don't have any place to store them and we certainly don't want to hand the Operator back to the user. So instead, we only allow Slots to create and connect to a (user-defined) Operator immediately. You can think of Operators growing out to the left of Nodes like roots, to connect to existing sources of data upstream. All the user gets back is a reference of a non-copyable, non-movable object. Of course, this won't stop the adventurous to store raw pointers to the Operator but you have to assume that these brave souls will [dilbert principle](https://en.wikipedia.org/wiki/Dilbert_principle) their way out of our user-base eventually.
 
-The observant reader might have noticed a slight-of-hand here. While the "create-and-connect" approach is successful in creating arbitrary Switches without ever handing back ownership to the user, we are in fact creating untracked connections from user-defined code. Which is exactly what we wanted to avoid.
-<br> Fortunately, this is handled internally by the Circuit elements, without the user even knowing about it. Every Receiver (a Switch is-a Receiver) has a reference back to a central `Circuit` object, which stores a queue of all new and deleted connections during an event. At the end of the event loop, all new connections are created first, then all deleted ones are removed. The order is important because an Emitter without outgoing connections would be destroyed before new connections had the chance to keep it alive.
-<br> The Circuit is owned by a Scene, which is in turn referenced by the Node, which is visible from the Slot. When the Slot creates-and-connects to an upstream Switch, it can pass the Circuit as argument to the Switches constructor. Similarly, when a Switch creates-and-connects to a new upstream Switch, it will pass its own Circuit as argument. This way, we can offer the user convenient modification functions through the downstream Circuit elements and still have complete visibility.
+The observant reader might have noticed a slight-of-hand here. While the "create-and-connect" approach is successful in creating arbitrary Operators without ever handing back ownership to the user, we are in fact creating untracked connections from user-defined code. Which is exactly what we wanted to avoid.
+<br> Fortunately, this is handled internally by the Circuit elements, without the user even knowing about it. Every Receiver (a Operator is-a Receiver) has a reference back to a central `Circuit` object, which stores a queue of all new and deleted connections during an event. At the end of the event loop, all new connections are created first, then all deleted ones are removed. The order is important because an Emitter without outgoing connections would be destroyed before new connections had the chance to keep it alive.
+<br> The Circuit is owned by a Scene, which is in turn referenced by the Node, which is visible from the Slot. When the Slot creates-and-connects to an upstream Operator, it can pass the Circuit as argument to the Operator's constructor. Similarly, when a Operator creates-and-connects to a new upstream Operator, it will pass its own Circuit as argument. This way, we can offer the user convenient modification functions through the downstream Circuit elements and still have complete visibility.
 
-There is however another place in the architecture that allows user-defined code: Switches. Or actually, Operations within Switches... And that is already the end of the discussion as Operations have no more access to their containing Switch than they have access to any other Switch in the Circuit.
+There is however another place in the architecture that allows user-defined code: Operators. Or actually, a functor with a default constructor and well defined "call" implementation taking a Signal and returning a Variant... And that is already the end of the discussion as Operations have no more access to their containing Operators than they have access to any other Operator in the Circuit.
  
- One more thing: should it be allowed to share Switches? And if so, how to we keep track of them? Meaning, how can a Node find the Switch of another Node and then connect to it? Well, Nodes are searchable by name within the Scene, so it should already be possible to find the Node that owns the Switch in question. However ... we said that the Node should not keep a reference to the dynamic Switches it creates ... (TODO: how do we resolve this?)
-
 
 ## What is in a Signal
 
@@ -142,7 +211,7 @@ Here a (hopefully) complete list of possible solutions to the problem:
 
 4. Possible, but each with drawbacks. A global state is easily accessible but does not work with multiple instances. Logic and Scene both require the Receiver to keep a reference to them, even though they are hardly ever used.
 
-5. I wanted to avoid that in the general case, because it would be nice to a have a Logic DAG consisting of only data flow, no additional logic encapsulated within the data, only in the Switches. Then again, allowing other types than Values to be passed isn't really a "new" concept, it is more a generalization of an existing one. It won't even change the behavior much, because Schemas act as quasi-typing for Values and so you were never allowed to just connect any two arbitrary Emitter/Receiver pairs anyway. 
+5. I wanted to avoid that in the general case, because it would be nice to a have a Logic DAG consisting of only data flow, no additional logic encapsulated within the data, only in the Operators. Then again, allowing other types than Values to be passed isn't really a "new" concept, it is more a generalization of an existing one. It won't even change the behavior much, because Schemas act as quasi-typing for Values and so you were never allowed to just connect any two arbitrary Emitter/Receiver pairs anyway. 
 
 6. Intriguing, but this would add yet another concept whereas we were trying to reduce the number of different concepts that make up the system.
 
@@ -160,7 +229,7 @@ To illustrate the problem, let's take the simple example from above: a simple mo
                                              | ------------- |    +-------------- +
                                           +---> Click Value  |    |  Distributor  |
     +-------------+    +---------------+  |  |   & count     |    | Single Click  |
-    |    Fact     |    |    Switch     |  |  | ------------- |    | ------------- |
+    |    Fact     |    |    Operator   |  |  | ------------- |    | ------------- |
     | Mouse Click |    | Click Counter |  |  |   Click Value +-----> Click Value  |           +------------+
     | ----------- |    | ------------- |  |  +---------------+    | ------------- |           |            |
     | Click Value +-----> Click Value  |  |                       |   Click Event +------------> Widget 1  |
@@ -180,13 +249,13 @@ To illustrate the problem, let's take the simple example from above: a simple mo
                                                                                               +------------+
 ```
 
-At the very left of the Circuit, there is the simple Fact that a mouse click has occurred alongside some additional information like the position of the cursor and the button that was clicked. Whenever a click happens, it flows immediately into the "Click Counter" Switch that counts the number of clicks within a given time in the past and adds that number to the Click Value. Downstream of the counter, we have two filters that check the click count number, strip it from the output Value and fire only if it is a single click or a second click respectively. Both filters then flow into a dedicated Distributor each, which turns the Click Value into a (Double) Click Event and propagates it to the interested Widgets according to their draw order. Widget 1 is only interested in single click events, Widget 3 only in double-clicks and Widget 2 in both.
+At the very left of the Circuit, there is the simple Fact that a mouse click has occurred alongside some additional information like the position of the cursor and the button that was clicked. Whenever a click happens, it flows immediately into the "Click Counter" Operator that counts the number of clicks within a given time in the past and adds that number to the Click Value. Downstream of the counter, we have two filters that check the click count number, strip it from the output Value and fire only if it is a single click or a second click respectively. Both filters then flow into a dedicated Distributor each, which turns the Click Value into a (Double) Click Event and propagates it to the interested Widgets according to their draw order. Widget 1 is only interested in single click events, Widget 3 only in double-clicks and Widget 2 in both.
 
 Looks good so far. We could even easily add a triple-click event and wouldn't have to change the existing network at all. What this story misses however, is that we don't get "click" messages, we only get "mouse up" messages. This only translates into a "click" if the mouse wasn't moved while it was down ... or is it a "click" regardless? What if the mouse was held down for a significant amount of time? Maybe to select a span in a playing audio file? Is this a click as well?
 
-The problem is that there are many different ways to interpret a system event like a "mouse up" and not all of them are as cleanly cut as "is this the second click in the last x milliseconds" *or not*. In the example, there was a dedicated Switch to count clicks. This seems fairly general. But what about an Switch to decide whether this was a click, a gesture, etc. especially if it could be multiple of these things? What if you need to decide which of the things should be propagated to the target Widget? Suddenly, this Switch (and the event object it produces) has a lot of logic inside, written as code. for This is not the general solution that we want.
+The problem is that there are many different ways to interpret a system event like a "mouse up" and not all of them are as cleanly cut as "is this the second click in the last x milliseconds" *or not*. In the example, there was a dedicated Operator to count clicks. This seems fairly general. But what about an Operator to decide whether this was a click, a gesture, etc. especially if it could be multiple of these things? What if you need to decide which of the things should be propagated to the target Widget? Suddenly, this Operator (and the event object it produces) has a lot of logic inside, written as code. for This is not the general solution that we want.
 
-What we need here is an "Ordered X-OR" Switch, or however you want to call it. It is a way to make sure that of n different Switches, at most one will actually generate a Value - or in terms of the example: a mouse up event is either a click, the end of a drag, the end of a gesture or something else. But it should not be more than one of these things. The Ordered X-OR Switch keeps its Receivers ordered in a list and the first Receiver to report that it has successfully accepted the Value is the last one to receive it... sounds familiar. So maybe we should add another type, something like "Pre-Event", since at this point, the "mouse up" isn't yet what we called an Event earlier? Of course, we'd need a dedicated Switch to spit out these "Pre-Event" values and all of the Receivers need to accept them.
+What we need here is an "Ordered X-OR" Operator, or however you want to call it. It is a way to make sure that of n different Operators, at most one will actually generate a Value - or in terms of the example: a mouse up event is either a click, the end of a drag, the end of a gesture or something else. But it should not be more than one of these things. The Ordered X-OR Operator keeps its Receivers ordered in a list and the first Receiver to report that it has successfully accepted the Value is the last one to receive it... sounds familiar. So maybe we should add another type, something like "Pre-Event", since at this point, the "mouse up" isn't yet what we called an Event earlier? Of course, we'd need a dedicated Operator to spit out these "Pre-Event" values and all of the Receivers need to accept them.
 <br> ... At this point, we realized that option number 5 was a dead end as well.
 <br> Which finally brings us to:
 
@@ -237,9 +306,9 @@ Of course you can also create and delete circuit elements, but an element withou
 
 First off, reading the state of the Circuit does not pose any problem whatsoever. This is an easy one.
 
-Updating any value within the Circuit are also trivial. Whenever a Switch gets a new Value from a Signal, it should be able to use it to update its own state before deciding how, to whom and if to emit a new Signal to the connected Receivers. Updates must be immediate to have any meaningful impact on the Circuit.
+Updating any value within the Circuit is also trivial. Whenever an Operator gets a new Value from a Signal, it should be able to use it to update its own state before deciding how, to whom and if to emit a new Signal to the connected Receivers. Updates must be immediate to have any meaningful impact on the Circuit.
 
-Creating and Deleting connections however, is where we started to encounter non-trivial questions. Let's take the following toy problem:
+Creating and Deleting connections however is where we started to encounter non-trivial questions. Let's take the following toy problem:
 
 ```
     A +-------> B
@@ -258,7 +327,7 @@ Another problem deals with a similar problem, this time deleting a connection:
          +---> S2
 ```
 
-Emitter `E1` is connected to downstream Switches `S1` and `S2`. As Switches are allowed to hold state and execute user-defined code, it is trivial to set them up in a way where `S1` deletes `S2` and `S2` deletes `S1`. Whoever is emitted to first deletes the other one. 
+Emitter `E1` is connected to downstream Operators `S1` and `S2`. As Operators are allowed to hold state and execute user-defined code, it is trivial to set them up in a way where `S1` deletes `S2` and `S2` deletes `S1`. Whoever is emitted to first deletes the other one. 
 
 There are multiple ways that these problems could be addressed:
 
@@ -268,7 +337,7 @@ There are multiple ways that these problems could be addressed:
 
 3. Do not allow the direct addition or removal of connections and instead record them in a buffer. This buffer is then executed at the end of the update process, cleanly separating the old and the new DAG state.
 
-Solution 1 would require the introduction of a heavy new concept, the scheduler. It would also require a two-phase Event processing: in the first phase we would simply establish the order in which Signals are emitted from where to where, and then the second phase where the propagation actually takes place. Since we have a lot of user-code within Switches, there is no way to statically determine the order without executing dedicated code for each phase. That means that each Switch now has two instead of one user-defined function.
+Solution 1 would require the introduction of a heavy new concept, the scheduler. It would also require a two-phase Event processing: in the first phase we would simply establish the order in which Signals are emitted from where to where, and then the second phase where the propagation actually takes place. Since we have a lot of user-code within Operators, there is no way to statically determine the order without executing dedicated code for each phase. That means that each Operator now has two instead of one user-defined function.
 <br> All of this sounds like a last-resort measure and a quite hacky one at that.
 
 Solution 2 is the one that we stuck with for the longest time. Basically what it does is fix the list of iteration for each active Emitter. Whenever a new connection is added, it will not show up in the list of Receivers to emit to, mitigating the first problem. And you can ignore the second problem, if you accept that the order in which Signals are sent is part of the Circuit and therefore the responsibility of the user (see the next chapter: "Ordered Emission"). In that case, `S1` would always receive the Signal first and remove `S2`. Since the emission keeps a list of *weak* references only, when it comes time to emit to `S2`, it will already have been deleted. No ambiguity left. 
@@ -292,7 +361,7 @@ Solution 3 is an interesting one. What it means is that no matter if you add or 
            +---> S3 
   ```
   
-  In this case, every Switch will work exactly the same, but since `S3` receives the Signal *after* `S4`, `R1` will not receive a Signal this time. Note that the order in which connections are made is still in the hand of the user so technically, both cases are "correct". However, especially if S3 is a Circuit Element that is removed and added back in on a regular basis (maybe a Widget in a Dialog that opens and closes regularly?), this will make for some hard-to-debug cases where the act of removing and immediately recreating a Switch can vastly alter the behavior of the Logic.
+  In this case, every Operator will work exactly the same, but since `S3` receives the Signal *after* `S4`, `R1` will not receive a Signal this time. Note that the order in which connections are made is still in the hand of the user so technically, both cases are "correct". However, especially if S3 is a Circuit Element that is removed and added back in on a regular basis (maybe a Widget in a Dialog that opens and closes regularly?), this will make for some hard-to-debug cases where the act of removing and immediately recreating a Operator can vastly alter the behavior of the Logic.
 
 * You can be sure that if a Receiver `R` is connected to an Emitter and is alive at the time that that Emitter emits an (unblockable, as is the default) Signal - the `R` will get it eventually, even if some earlier Receivers decide to delete `R`. The reason that is good is the same as in the example above. Maybe you don't know the rest of the state of the UI at any point. Maybe there is another Receiver that wants to delete `R` and depending on how the user clicked through the interface it might have either connected before or after `R` was connected. We will discuss another solution to this problem later on (emission priorities) but they might not be applicable in all situations.
 
@@ -305,7 +374,7 @@ Originally, we did not assume any order in the emission process. Conceptually, t
 <br> Since we don't actually employ parallelism during Event handling, the computer needed some (hidden) order to do things, but that should not matter. We called it "essentially random", meaning it wasn't really random, but it might as well have been and if someone would implement an Emitter that used actual randomness to shuffle its Receivers around, then that was fine by us.
 
 It was a solid ideal, but we soon found the first potential problems that arose from introducing "essential randomness" into the event handling:
-<br> Given one Emitter `E1`, two Switches `A1` (that always adds two to the input number) and `A2` (that always adds three) and a special Switch `S1` that is connected to both `A1` and `A2`. The Circuit is laid out as follows:
+<br> Given one Emitter `E1`, two Operators `A1` (that always adds two to the input number) and `A2` (that always adds three) and a special Operator `S1` that is connected to both `A1` and `A2`. The Circuit is laid out as follows:
 
 ```
           +---> A1 (adds 2) ---+
@@ -322,6 +391,8 @@ Therefore, we decided to get rid of randomness and guarantee that the order in w
 <br> Question is, how do we do that?
 
 The only way to relate independent Receivers to each other is through a common ranking system. Fortunately there is one: integers. Whenever a Receiver connects to an Emitter, it has the opportunity to pass an optional priority integer, with higher priority Receiver receiving Signals before lower priority Receiver. The default priority is zero. Receivers with equal priority receive their Signals in the order in which they subscribed. This approach allows the user to ignore priorities in most cases (since in most cases, you should not care) and in the cases outlined above, the user has the ability to manually determine an order. The user is also free to define a total order for each Receiver, should that ever become an issue.
+
+> I don't think we need that anymore, now that connection/disconnection is delayed until the end of the event. The example outlined above is just not very good code.
 
 New Receivers are ordered behind existing ones, not before them. You could make a point that prepending new ones to the list of Receivers would make sure that new Receivers always get the Signal and are not blocked, but we think that argument is not very strong. A good argument for the other side is that appending new Receivers to the end means that the existing Logic is undisturbed, meaning there is as little (maybe no) change in how the circuit operates as a whole.
 <br> That should be the default behavior. 
