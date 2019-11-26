@@ -37,11 +37,12 @@ This text tries to document the thought processes that lead to the decisions tha
 * Keep a list of weak references to Receivers connected downstream.
 * Allow subclasses to re-order Receivers without given them write-access to the member field.
 * Has an output Value type which is constant and readable.
-* Has 3 protected methods: `next`, `complete` and `fail`.
+* Has 3 protected methods: `emit`, `fail` and `complete`.
 * Once `complete` or `fail` are called, the Emitter is "finished" and will never emit again.
 * Has a function pointer to an exception handler that is called during emission, if a Receiver should throw.
 * Has a signed recursion counter, -1 means no recursion allowed, anything else is the current recursion.
 * New Receivers are appended to the list.
+* Has a method to check if it has any Receivers at all.
 
 ## Receiver
 * Keeps a set of strong references to Emitters connected upstream.
