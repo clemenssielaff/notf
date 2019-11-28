@@ -2,11 +2,10 @@ from abc import ABCMeta, abstractmethod
 from enum import Enum
 from inspect import signature
 from logging import error as print_error
-from typing import Any, Optional, List, Callable, Tuple
+from typing import Any, Optional, List, Callable, Tuple, Union, Iterable, Set
 from weakref import ref as weak_ref
 
 from .value import Value
-from .orderable_set import OrderableSet
 
 
 ########################################################################################################################
@@ -141,14 +140,121 @@ class Emitter:
     Is non-copyable and may only be owned by downstream Receivers and Nodes.
     """
 
-    def __init__(self, schema: Value.Schema = Value.Schema()):
+    class _OrderableReceivers:
+        def __init__(self, receivers: List['Receiver']):
+            """
+            Constructor.
+            :param receivers: Receivers to sort.
+            """
+            self._receivers: List[Receiver] = receivers
+
+        def __len__(self) -> int:
+            """
+            :return: Number of elements in the list.
+            """
+            return len(self._receivers)
+
+        def __getitem__(self, index: Union[int, slice]) -> 'Receiver':
+            """
+            [] access operator.
+            :param index: Index (-slice) to return.
+            :raise IndexError: If the index is illegal.
+            :return: Element/s at the requested index/indices.
+            """
+            return self._receivers[index]
+
+        def __iter__(self) -> Iterable['Receiver']:
+            """
+            :return: Iterator through the list.
+            """
+            yield from self._receivers
+
+        def __reversed__(self) -> Iterable['Receiver']:
+            """
+            :return Reverse-iterator through the list:
+            """
+            return reversed(self._receivers)
+
+        def index(self, item: 'Receiver', start: Optional[int] = None, end: Optional[int] = None) -> int:
+            """
+            :param item: Item to look for.
+            :param start: Start index to start limit the search space to the left.
+            :param end: End index to limit the search space to the right.
+            :raise ValueError: If no entry equal to item was found in the inspected subsequence.
+            :return: Return zero-based index in the list of the first entry that is equal to item.
+            """
+            return self._receivers.index(item,
+                                         start if start is not None else 0,
+                                         end if end is not None else len(self._receivers))
+
+        def move_to_front(self, item: 'Receiver'):
+            """
+            :param item: Moves this item to the front of the list.
+            :raise ValueError: If no such item is in the list.
+            """
+            self._rotate(0, self.index(item) + 1, 1)
+
+        def move_to_back(self, item: 'Receiver'):
+            """
+            :param item: Moves this item to the back of the list.
+            :raise ValueError: If no such item is in the list.
+            """
+            self._rotate(self.index(item), len(self._receivers), -1)
+
+        def move_in_front_of(self, item: 'Receiver', other: 'Receiver'):
+            """
+            :param item: Moves this item right in front of the other.
+            :param other: Other item to move in front of.
+            :raise ValueError: If either item is not in the list.
+            """
+            item_index: int = self.index(item)
+            other_index: int = self.index(other)
+            if item_index == other_index:
+                return
+            elif item_index > other_index:
+                self._rotate(other_index, item_index + 1, 1)
+            else:
+                self._rotate(item_index, other_index, -1)
+
+        def move_behind_of(self, item: 'Receiver', other: 'Receiver'):
+            """
+            :param item: Moves this item right behind the other.
+            :param other: Other item to move behind.
+            :raise ValueError: If either item is not in the list.
+            """
+            item_index: int = self.index(item)
+            other_index: int = self.index(other)
+            if item_index == other_index:
+                return
+            elif item_index > other_index:
+                self._rotate(other_index + 1, item_index + 1, 1)
+            else:
+                self._rotate(item_index, other_index + 1, -1)
+
+        def _rotate(self, start: int, end: int, steps: int):
+            """
+            Rotates the given sequence to the right.
+            Example:
+                my_list = [0, 1, 2, 3, 4, 5, 6]
+                _rotate(my_list, 2, 5, 1)  # returns [0, 1, 4, 2, 3, 5, 6]
+            :param start:       First index of the rotated subsequence.
+            :param end:         One-past the last index of the rotated subsequence.
+            :param steps:       Number of steps to rotate.
+            :return:            The modified list.
+            """
+            pivot: int = (end if steps >= 0 else start) - steps
+            self._receivers = (self._receivers[0:start] + self._receivers[pivot:end] +
+                               self._receivers[start:pivot] + self._receivers[end:])
+
+    def __init__(self, schema: Value.Schema = Value.Schema(), is_blockable: bool = False):
         """
         Constructor.
         :param schema:          Schema of the Value emitted by this Emitter, defaults to empty.
+        :param is_blockable:    Whether or not Signals from this Emitter can be blocked.
         """
-        self._downstream: OrderableSet[weak_ref] = OrderableSet()  # subclasses may only change the order
+        self._downstream: List[weak_ref] = []  # subclasses may only change the order
         self._output_schema: Value.Schema = schema  # is constant
-        self._is_blockable: bool = False  # unblockable by default, but can be changed
+        self._is_blockable: bool = is_blockable  # is constant
         self._is_completed: bool = False  # once a Emitter is completed, it can no longer emit any values
         self._is_emitting: bool = False  # is set to true during emission to catch cyclic dependency errors
         self._error_handler: Callable = self._default_error_handler  # cannot be empty
@@ -178,18 +284,6 @@ class Emitter:
         """
         return len(self._downstream) > 0
 
-    def is_blockable(self) -> bool:
-        """
-        :return: Whether or not Signals from this Emitter can be blocked or not.
-        """
-        return self._is_blockable
-
-    def set_is_blockable(self, is_blockable: bool):
-        """
-        :param is_blockable: Whether or not Signals from this Emitter can be blocked or not.
-        """
-        self._is_blockable = is_blockable
-
     def set_error_handler(self, error_handler: Optional[Callable]):
         """
         Installs a new error handler callback on this Emitter.
@@ -216,10 +310,7 @@ class Emitter:
         :raise TypeError: If the Value's Schema doesn't match.
         :raise RuntimeError: If the Emitter has already completed (either normally or though an error).
         """
-        # First, the Emitter needs to check if it is already completed. No point doing anything, if the Emitter is
-        # unable to emit anything. This should never happen, so raise an exception if it does.
-        if self.is_completed():
-            raise RuntimeError("Cannot emit from a completed Emitter")
+        assert not self.is_completed()
 
         # Check the given value to see if the Emitter is allowed to emit it. If it is not a Value, try to
         # build one out of it. If that doesn't work, or the Schema of the Value does not match that of the
@@ -233,107 +324,120 @@ class Emitter:
             raise TypeError("Emitter cannot emit a value with the wrong Schema")
 
         # make sure that we are not already emitting
-        if self._is_emitting:
-            raise RuntimeError("Circuit cyclic dependency detected in Emitter {}. An emission "
-                               "from the Emitter triggered another emission on itself.".format(self.get_id()))
+        if self._is_emitting:  # this would be the job of a RAII guard in C++
+            raise RuntimeError("Cyclic dependency detected during emission from Emitter {}.".format(self.get_id()))
         self._is_emitting = True
 
-        # pre-emission allowing user-code to prepare the Emitter (change the order of receivers, for example)
-        self._prepare_emission()
+        try:
+            # sort out invalid receivers and compile a list of strong references to live ones
+            receivers: List[Receiver] = []
+            highest_valid_index: int = 0
+            for weak_receiver in self._downstream:
+                receiver: Optional[Receiver] = weak_receiver()
+                if receiver is not None:
+                    receivers.append(receiver)
+                    self._downstream[highest_valid_index] = weak_receiver  # could be a move or swap in C++
+                    highest_valid_index += 1
+            self._downstream = self._downstream[:highest_valid_index]
 
-        # create the signal to emit
-        signal = ValueSignal(self.get_id(), value, self._is_blockable)
+            # pre-emission allowing user-code to prepare the Emitter (change the order of receivers, for example)
+            self._sort_receivers(self._OrderableReceivers(receivers))
 
-        # emit and sort out invalid receivers without changing the order
-        highest_valid_index: int = 0
-        for weak_receiver in self._downstream:
-            receiver: Optional[Receiver] = weak_receiver()
-            if receiver is None:
-                continue
+            # create the signal to emit
+            signal = ValueSignal(self.get_id(), value, self._is_blockable)
 
-            # emit and pass exceptions to the assigned error handle
-            try:
-                receiver.on_next(signal)
-            except Exception as exception:
-                self._error_handler(self.get_id(), receiver.get_id(), exception)
+            # emit to all receivers in order
+            for receiver in receivers:
+                try:
+                    receiver.on_next(signal)
+                # pass exceptions to the assigned error handle
+                except Exception as exception:
+                    self._error_handler(self.get_id(), receiver.get_id(), exception)
 
-            # keep track of invalid receivers without touching those that haven't been iterated
-            self._downstream[highest_valid_index] = weak_receiver  # could be a move or swap in C++
-            highest_valid_index += 1
-        self._downstream = self._downstream[:highest_valid_index]
+                # stop the emission if the Signal was blocked
+                if signal.is_blocked():
+                    break
 
-        # reset the emission flag
-        self._is_emitting = False
+        finally:
+            # reset the emission flag
+            self._is_emitting = False
 
     def _fail(self, error: Exception):
         """
         Failure method, completes the Emitter while letting the downstream Receivers inspect the error.
         :param error:   The error that has occurred.
         """
+        assert not self.is_completed()
+
         # make sure that we are not already emitting
         if self._is_emitting:
-            raise RuntimeError("Circuit cyclic dependency detected in Emitter {}. An emission "
-                               "from the Emitter triggered another emission on itself.".format(self.get_id()))
+            raise RuntimeError("Cyclic dependency detected during emission from Emitter {}.".format(self.get_id()))
         self._is_emitting = True
 
-        # create the signal
-        signal: FailureSignal = FailureSignal(self.get_id(), error)
+        try:
+            # create the signal
+            signal: FailureSignal = FailureSignal(self.get_id(), error)
 
-        # emit to all receivers, ignore expired ones but don't remove them
-        for weak_receiver in self._downstream:
-            receiver: Optional[Receiver] = weak_receiver()
-            if receiver is None:
-                continue
+            # emit to all receivers, ignore expired ones but don't remove them
+            for weak_receiver in self._downstream:
+                receiver: Optional[Receiver] = weak_receiver()
+                if receiver is None:
+                    continue
 
-            # emit and pass exceptions to the assigned error handle
-            try:
-                receiver.on_error(signal)
-            except Exception as exception:
-                self._error_handler(self.get_id(), receiver.get_id(), exception)
+                # emit and pass exceptions to the assigned error handle
+                try:
+                    receiver.on_failure(signal)
+                except Exception as exception:
+                    self._error_handler(self.get_id(), receiver.get_id(), exception)
 
-        # complete the emitter
-        self._downstream.clear()
-        self._is_completed = True
+        finally:
+            # complete the emitter
+            self._downstream.clear()
+            self._is_completed = True
 
-        # reset the emission flag
-        self._is_emitting = False
+            # reset the emission flag
+            self._is_emitting = False
 
     def _complete(self):
         """
         Completes the Emitter successfully.
         """
+        assert not self.is_completed()
+
         # make sure that we are not already emitting
         if self._is_emitting:
-            raise RuntimeError("Circuit cyclic dependency detected in Emitter {}. An emission "
-                               "from the Emitter triggered another emission on itself.".format(self.get_id()))
+            raise RuntimeError("Cyclic dependency detected during emission from Emitter {}.".format(self.get_id()))
         self._is_emitting = True
 
-        # create the signal
-        signal: CompletionSignal = CompletionSignal(self.get_id())
+        try:
+            # create the signal
+            signal: CompletionSignal = CompletionSignal(self.get_id())
 
-        # emit to all receivers, ignore expired ones but don't remove them
-        for weak_receiver in self._downstream:
-            receiver: Optional[Receiver] = weak_receiver()
-            if receiver is None:
-                continue
+            # emit to all receivers, ignore expired ones but don't remove them
+            for weak_receiver in self._downstream:
+                receiver: Optional[Receiver] = weak_receiver()
+                if receiver is None:
+                    continue
 
-            # emit and pass exceptions to the assigned error handle
-            try:
-                receiver.on_complete(signal)
-            except Exception as exception:
-                self._error_handler(self.get_id(), receiver.get_id(), exception)
+                # emit and pass exceptions to the assigned error handle
+                try:
+                    receiver.on_completion(signal)
+                except Exception as exception:
+                    self._error_handler(self.get_id(), receiver.get_id(), exception)
 
-        # complete the emitter
-        self._downstream.clear()
-        self._is_completed = True
+        finally:
+            # complete the emitter
+            self._downstream.clear()
+            self._is_completed = True
 
-        # reset the emission flag
-        self._is_emitting = False
+            # reset the emission flag
+            self._is_emitting = False
 
     # private
-    def _prepare_emission(self):
+    def _sort_receivers(self, receivers: _OrderableReceivers):
         """
         Virtual method to allow user-defined code to re-order the Receivers prior to the emission of a value.
+        :param receivers: Receivers of this Emitter, can only be re-ordered.
         """
         pass
 
@@ -343,11 +447,11 @@ class Emitter:
         This method is only called from `Receiver.connect_to` and we can be sure that the Schemas match.
         :param receiver: New Receiver.
         """
-        assert receiver.get_input_schema() != self.get_output_schema()
+        assert receiver.get_input_schema() == self.get_output_schema()
         assert not self._is_emitting
 
         if self.is_completed():
-            receiver.on_complete(CompletionSignal(self.get_id()))
+            receiver.on_completion(CompletionSignal(self.get_id()))
 
         else:
             weak_receiver = weak_ref(receiver)
@@ -360,8 +464,7 @@ class Emitter:
         :param receiver: Receiver to disconnect.
         """
         assert not self._is_emitting
-        weak_receiver = weak_ref(receiver)
-        self._downstream.remove(weak_receiver)
+        self._downstream.remove(weak_ref(receiver))
 
     @staticmethod
     def _default_error_handler(emitter_id: int, receiver_id: int, error: Exception):
@@ -380,25 +483,27 @@ class Emitter:
 
 class Receiver(metaclass=ABCMeta):
 
-    def __init__(self, schema: Value.Schema = Value.Schema()):
+    def __init__(self, circuit: 'Circuit', schema: Value.Schema = Value.Schema()):
         """
         Constructor.
+        :param circuit: The Circuit that this Receiver is a part of.
         :param schema:  Schema defining the Value expected by this Receiver, defaults to empty.
         """
-        self._upstream: List[Emitter] = []  # Emitters are ordered but unique
-        self._input_schema: Value.Schema = schema  # Is constant
-
-    def get_input_schema(self) -> Value.Schema:
-        """
-        Schema of expected values. Can be the empty Schema.
-        """
-        return self._input_schema
+        self._circuit: Circuit = circuit  # is constant
+        self._input_schema: Value.Schema = schema  # is constant
+        self._upstream: Set[Emitter] = set()
 
     def get_id(self) -> int:
         """
         Unique identifier of this Circuit element.
         """
         return id(self)
+
+    def get_input_schema(self) -> Value.Schema:
+        """
+        Schema of expected values. Can be the empty Schema.
+        """
+        return self._input_schema
 
     def on_next(self, signal: ValueSignal):
         """
@@ -415,27 +520,27 @@ class Receiver(metaclass=ABCMeta):
         # pass the signal along to the user-defined handler
         self._on_next(signal)
 
-    def on_error(self, signal: ErrorSignal):
+    def on_failure(self, signal: FailureSignal):
         """
         Called when an upstream Emitter has failed.
         :param signal       The ErrorSignal associated with this call.
         """
         # disconnect from the completed emitter
-        self._disconnect_from(signal.get_source())
+        self.disconnect_from(signal.get_source())
 
         # pass the signal along to the user-defined handler
-        self._on_error(signal)
+        self._on_failure(signal)
 
-    def on_complete(self, signal: CompletionSignal):
+    def on_completion(self, signal: CompletionSignal):
         """
         Called when an upstream Emitter has finished successfully.
         :param signal       The CompletionSignal associated with this call.
         """
         # disconnect from the completed emitter
-        self._disconnect_from(signal.get_source())
+        self.disconnect_from(signal.get_source())
 
         # pass the signal along to the user-defined handler
-        self._on_complete(signal)
+        self._on_completion(signal)
 
     def connect_to(self, emitter: Emitter):
         """
@@ -451,21 +556,28 @@ class Receiver(metaclass=ABCMeta):
         if self.get_input_schema() != emitter.get_output_schema():
             raise TypeError("Cannot connect an Emitter to a Receiver with a different Value Schema")
 
-        # if the emitter is already completed, it will call `on_complete` right away, so we need to store the emitter
+        # if the emitter is already completed, it will call `on_completion` right away, so we need to store the emitter
         # before connecting to it
-        self._upstream.append(emitter)
+        self._upstream.add(emitter)
+        # if emitter.is_completed():
+        #     self._on_completion(CompletionSignal(emitter.get_id()))
+
 
         # connect to the emitter
         emitter._connect(self)
 
-    def disconnect_from(self, emitter: Emitter):
+    def disconnect_from(self, emitter: Union[int, Emitter]):
         """
         Disconnects from the given Emitter.
-        :param emitter:     Emitter to disconnect from. If this Receiver is not connected, this does nothing.
+        :param emitter: The emitter (or its id) to disconnect from.
         """
-        # do nothing if the emitter is not connected in the first place
-        if emitter not in self._upstream:
-            return
+        # find the emitter to disconnect from
+        if isinstance(emitter, int):
+            for candidate in self._upstream:
+                if candidate.get_id() == emitter:
+                    emitter: Emitter = candidate
+                    break
+        assert emitter in self._upstream
 
         # disconnect first, because removing the emitter may cause it to be deleted
         emitter._disconnect(self)
@@ -483,7 +595,7 @@ class Receiver(metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
-    def _on_error(self, signal: ErrorSignal):
+    def _on_failure(self, signal: FailureSignal):
         """
         Default implementation of the "error" method called when an upstream Emitter has failed.
         By the time that this function is called, the Emitter is already disconnected.
@@ -491,7 +603,7 @@ class Receiver(metaclass=ABCMeta):
         """
         pass
 
-    def _on_complete(self, signal: CompletionSignal):
+    def _on_completion(self, signal: CompletionSignal):
         """
         Default implementation of the "complete" method called when an upstream Emitter has finished successfully.
         By the time that this function is called, the Emitter is already disconnected.
@@ -499,22 +611,29 @@ class Receiver(metaclass=ABCMeta):
         """
         pass
 
-    def _disconnect_from(self, emitter_id: int):
-        """
-        Both `on_error` and `on_complete` automatically disconnect from the Emitter that produced the Signal.
-        :param emitter_id: ID of the Emitter to disconnect from.
-        """
-        # find the completed emitter by the id contained in the signal
-        for candidate_emitter in self._upstream:
-            if candidate_emitter.get_id() == emitter_id:
-                emitter = candidate_emitter
-                break
-        else:
-            # the emitter must be connected to this receiver
-            assert False
 
-        # disconnect from the completed emitter
-        self.disconnect_from(emitter)
+########################################################################################################################
+
+class Circuit:
+    def __init__(self):
+        self._connections_to_remove: Set[Tuple[Emitter, Receiver]] = set()
+        self._connections_to_create: Set[Tuple[Emitter, Receiver]] = set()
+
+    def create_connection(self, emitter: Emitter, receiver: Receiver):
+        self._connections_to_create.add((emitter, receiver))
+
+    def remove_connection(self, emitter: Emitter, receiver: Receiver):
+        self._connections_to_remove.add((emitter, receiver))
+
+    def _create_connection(self, emitter: Emitter, receiver: Receiver):
+        # multiple connections between the same Emitter-Receiver pair are not allowed
+        if emitter in receiver._upstream:
+            return
+
+
+    def cleanup(self):
+        # first add new connections because removing some might destroy Emitters
+
 
 
 ########################################################################################################################
@@ -606,7 +725,7 @@ class Switch(Receiver, Emitter):
         try:
             result = self._operate_on(signal.get_value())
         except Exception as exception:
-            self._error(exception)
+            self._fail(exception)
         else:
             if result is not None:
-                self.emit(result)
+                self._emit(result)
