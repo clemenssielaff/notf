@@ -16,7 +16,7 @@ This text tries to document the thought processes that lead to the decisions tha
  A Circuit is a concrete configuration of Emitters and Receivers arranged in a directed, acyclic graph.
 
 + **Event**
- An Event encompasses the introduction of a new Signal into a Circuit, its propagation and the modifications of the Circuit as a result. The Event is finished, once all Receivers have finished handling the input Signal and no more Signals are being emitted within the Circuit. Unlike in Qt, there are no "Event objects".
+An Event is an object that is passed to the Circuit to be handled. It references a single Emitter and a variant \[Value, Exception, Complete] containing the arguments for one of the three emission methods to call. Events are queued and handled in the order they arrive. Handling an Event encompasses the introduction of a new Signal into a Circuit, its propagation and the modifications of the Circuit as a result. The Event is finished, once all Receivers have finished handling the input Signal and no more Signals are being emitted within the Circuit.
 
 + **Signal**
  Object at the front of the Event handling process. At the beginning of an Event, a single Signal is emitted into the Circuit by a single Emitter but as the Signal is propagated through, it can multiply into different Signals.
@@ -93,6 +93,8 @@ This text tries to document the thought processes that lead to the decisions tha
 * Keeps a queue of Nodes to delete after an event has finished.
 * Owns a Circuit object.
 * Has a post-event cleanup method that it registers with its Circuit object.
+
+## Event
 
 ## Fact
 
