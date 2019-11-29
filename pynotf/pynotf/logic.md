@@ -158,6 +158,12 @@ This leaves the question on whether we want to catch cyclic dependency errors in
 Note that we still not able to catch all infinite loops. Namely those that span more than one Event. Let's say that `A` schedules a Signal to be emitted from `B`, which schedules a Signal to be emitted from `C` and `C` then back to `A`. This way, every Event (`A`->`B`, `B`->`C` and `C`->`A`) sees every Emitter only once an has no way of detecting the cycle. This is what we would call a [livelock](https://en.wikipedia.org/wiki/Deadlock#Livelock).
 <br> Then again, even though this would lead to the event loop spinning 100% of the time, it would not actually lock the system up. Since there is nothing we can do to stop the inclined developer to fall down this particular hole and the effects are annoying but not critical, we just leave it at that. If a livelock ever turns out to be an actual problem, we are sure you could detect them, maybe using heuristics and a little introspection... but until then any effort spend will not be worth it.
 
+### Can we enforce acyclicity?
+
+Unfortunately it is impossible to enforce acyclicity in the graph. Even if we limited each Receiver to connect to a single Emitter only, this does not ensure that no cycles can ever happen. We will have to live with the fact that it will always be possible to modify the Circuit at runtime to a point where it becomes invalid.
+
+Even if we were able to enumerate all possible configurations (`A` *might* connect to `B` and/or `C`, even if the connection does not currently exist) we could only determine that a loop was impossible, not that it existed. And since we cannot inspect user-code, we would have to trust the self-reporting of the user to give us a full enumeration. And maybe the user doesn't know either? We could be facing a code that randomly selects upstream Emitters to connect to? It would suck, but it would still be valid code...
+
 
 ## Ownership and Lifetimes
 
