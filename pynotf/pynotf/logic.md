@@ -34,15 +34,18 @@ An Event is an object that is passed to the Circuit to be handled. It references
 # Logic Elements
 
 ## Emitter
-* Keep a list of weak references to Receivers connected downstream.
-* Allow subclasses to re-order Receivers without given them write-access to the member field.
-* Has an output Value type which is constant and readable.
-* Has 3 protected methods: `emit`, `fail` and `complete`.
-* Once `complete` or `fail` are called, the Emitter is "finished" and will never emit again.
-* Has a function pointer to an exception handler that is called during emission, if a Receiver should throw.
-* Has a signed recursion counter, -1 means no recursion allowed, anything else is the current recursion.
-* New Receivers are appended to the list.
-* Has a method to check if it has any Receivers at all.
+- [X] Keep a list of weak references to Receivers connected downstream.
+- [X] Allow subclasses to re-order Receivers without given them write-access to the member field.
+- [X] Has an output Value type which is constant and readable, only emits Values of that type.
+- [X] Has 3 protected methods: `emit`, `fail` and `complete`.
+- [X] Once `complete` or `fail` are called, the Emitter is "finished" and will never emit again.
+- [X] Has a virtual function to handle exceptions, if a Receiver should throw.
+- [X] Has a reentrancy flag that is set just prior to emission and must be false at the start (can be part of a "state" enum including "complete").
+- [X] New Receivers are appended to the list.
+- [X] Has a method to check if it has any Receivers at all (to avoid expensive Value creation for a pointless emission).
+- [X] Has a method to check whether it has completed.
+- [X] Emits Signals that are always either blockable or not & has a method to check which type it is.
+- [X] Has a Circuit-unique ID
 
 ## Receiver
 * Keeps a set of strong references to Emitters connected upstream.
@@ -298,13 +301,14 @@ It consists of 3 things:
     --> Unblockable
     ```
     The Status always starts out as either "Ignored" or "Unblockable", with "Unblockable" being the default. An unblockable Signal cannot be stopped and calls to `accept()` or `block()` are ignored. If the Status starts out as "Ignored", then each Receiver is free to mark the Status as accepted or blocked. An accepted Signal is usually propagated further (depending on how the Emitter chooses to interpret what "accepted" means in its specific use-case), whereas the Receiver that marks its Signal as being blocked is guaranteed to be the last one to receive it.  
+    We also thought of making unblockable Signals acceptable (just not blockable)... that might also be something to think about. 
 
 Note that the "completion" Signal only contains the Emitter ID, while the "failure" Signal contains the Emitter ID and the exception.
 
 This of course leaves the question of where to decide whether a Signal is blockable or unblockable. Our initial assumption was that the Emitter contained a virtual method in which the programmer would just create the Signal to emit and then push it to a protected emission function.
 <br> Turns out, we don't really want that. We don't want to let the user create the Signal since that would allow modifying the Value or passing another Emitter as source. We also don't want to ask the user to handle the emission, especially the error-handling part. And if a Signal is blockable, then it must really be blocked (which means, no user-code deciding whether it is blocked or not). The only part that has to be decided by the user is whether or not a Signal is blockable and the order in which the emission takes place.
 <br> Let's put the ordering aside for now. There are two possibilities: either whether or not a Signal is blockable is part of the Emitter type or it can change due to the user-defined state of the Emitter. But wait, Emitters don't really have user-defined state, do they? Operators do, but non of that state is allowed to influence the emission process to allow reentrancy (even though we forbid cycles, but that's an orthogonal decision). Actually, that doesn't matter because the Emitter could still decide based on the Receivers that it emits to whether or not the Signal is blockable... but it shouldn't. I imagine looking at the Circuit in a graphical representation and I want to know which Emitters emit blockable Signals and which don't. I certainly don't want any "sometimes yes, sometimes no", just as I don't want that with recursive functions (sometimes they cycle, sometimes they don't).
-Therfore, whether or not a Signal is blockable depends on the type of Emitter and must not change, which means that we need to set it once inside the Emitter constructor and then leave it. I ran a benchmark (http://quick-bench.com/76pAs0xDDThJ45qwKwu0v0KvlDI) comparing a stored boolean to a virtual function call and while I am pleased to report that there is absolutely no difference between the two (because of 100% correct branch prediction I guess?) it occurred to me that a virtual function is actually not useful if we want to ensure that we get the same result every time.
+Therefore, whether or not a Signal is blockable depends on the type of Emitter and must not change, which means that we need to set it once inside the Emitter constructor and then leave it. I ran a benchmark (http://quick-bench.com/76pAs0xDDThJ45qwKwu0v0KvlDI) comparing a stored boolean to a virtual function call and while I am pleased to report that there is absolutely no difference between the two (because of 100% correct branch prediction I guess?) it occurred to me that a virtual function is actually not useful if we want to ensure that we get the same result every time.
 
 
 ## Exception Handling
