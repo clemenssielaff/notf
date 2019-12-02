@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from logging import error as print_error
+from logging import error as print_error, warning as print_warning
 from typing import Any, Optional, List, Tuple, Union, Iterable, Set
 from weakref import ref as weak_ref
 
@@ -9,7 +9,54 @@ from .value import Value
 
 ########################################################################################################################
 
-class ValueSignal:
+class CompletionSignal:
+    """
+    Signal emitted by an Emitter that produced the last value in its data stream.
+    This is the last Signal to be emitted by that Emitter.
+    """
+
+    def __init__(self, emitter_id: int):
+        """
+        Constructor.
+        :param emitter_id:      ID of the Emitter that emitted the Signal.
+        """
+        self._emitter_id: int = emitter_id  # is constant
+
+    def get_source(self) -> int:
+        """
+        ID of the Emitter that emitted the Signal.
+        """
+        return self._emitter_id
+
+
+########################################################################################################################
+
+class FailureSignal(CompletionSignal):  # protected inheritance in C++
+    """
+    Signal emitted by an Emitter that failed to produce the next value in its data stream.
+    This is the last Signal to be emitted by that Emitter.
+    """
+
+    def __init__(self, emitter_id: int, error: Exception):
+        """
+        Constructor.
+        :param emitter_id:      ID of the Emitter that emitted the Signal.
+        :param error:           Exception produced by the Emitter.
+        """
+        CompletionSignal.__init__(self, emitter_id)
+
+        self._error: Exception = error  # is constant
+
+    def get_error(self) -> Exception:
+        """
+        The exception produced by the Emitter.
+        """
+        return self._error
+
+
+########################################################################################################################
+
+class ValueSignal(CompletionSignal):  # protected inheritance in C++
     class _Status(Enum):
         """
         Status of the Signal with the following state transition diagram:
@@ -31,15 +78,10 @@ class ValueSignal:
         :param value:           Immutable Value contained in the Signal.
         :param is_blockable:    Whether or not the Signal can be accepted and blocked by Receivers.
         """
-        self._emitter_id: int = emitter_id  # is constant
+        CompletionSignal.__init__(self, emitter_id)
+
         self._value: Value = value  # is constant
         self._status: ValueSignal._Status = self._Status.UNHANDLED if is_blockable else self._Status.UNBLOCKABLE
-
-    def get_source(self) -> int:
-        """
-        ID of the Emitter that emitted the Signal.
-        """
-        return self._emitter_id
 
     def get_value(self) -> Value:
         """
@@ -78,58 +120,6 @@ class ValueSignal:
         """
         if self._status in (self._Status.UNHANDLED, self._Status.ACCEPTED):
             self._status = self._Status.BLOCKED
-
-
-########################################################################################################################
-
-class FailureSignal:
-    """
-    Signal emitted by an Emitter that failed to produce the next value in its data stream.
-    This is the last Signal to be emitted by that Emitter.
-    """
-
-    def __init__(self, emitter_id: int, error: Exception):
-        """
-        Constructor.
-        :param emitter_id:      ID of the Emitter that emitted the Signal.
-        :param error:           Exception produced by the Emitter.
-        """
-        self._emitter_id: int = emitter_id  # is constant
-        self._error: Exception = error  # is constant
-
-    def get_source(self) -> int:
-        """
-        ID of the Emitter that emitted the Signal.
-        """
-        return self._emitter_id
-
-    def get_error(self) -> Exception:
-        """
-        The exception produced by the Emitter.
-        """
-        return self._error
-
-
-########################################################################################################################
-
-class CompletionSignal:
-    """
-    Signal emitted by an Emitter that produced the last value in its data stream.
-    This is the last Signal to be emitted by that Emitter.
-    """
-
-    def __init__(self, emitter_id: int):
-        """
-        Constructor.
-        :param emitter_id:      ID of the Emitter that emitted the Signal.
-        """
-        self._emitter_id: int = emitter_id  # is constant
-
-    def get_source(self) -> int:
-        """
-        ID of the Emitter that emitted the Signal.
-        """
-        return self._emitter_id
 
 
 ########################################################################################################################
@@ -315,10 +305,10 @@ class Emitter:
         :param schema:          Schema of the Value emitted by this Emitter, defaults to empty.
         :param is_blockable:    Whether or not Signals from this Emitter can be blocked.
         """
-        self._downstream: List[weak_ref] = []  # subclasses may only change the order
+        self._downstream: List[weak_ref[Receiver]] = []  # subclasses may only change the order
         self._output_schema: Value.Schema = schema  # is constant
         self._is_blockable: bool = is_blockable  # is constant
-        self._state: Emitter._Status = self._Status.IDLE
+        self._status: Emitter._Status = self._Status.IDLE
 
     def get_id(self) -> int:
         """
@@ -342,7 +332,7 @@ class Emitter:
         """
         Returns true iff the Emitter has been completed, either through an error or normally.
         """
-        return self._state == self._Status.COMPLETED
+        return self._status == self._Status.COMPLETED
 
     def has_downstream(self) -> bool:
         """
@@ -376,9 +366,9 @@ class Emitter:
             raise TypeError("Emitter cannot emit a value with the wrong Schema")
 
         # Make sure that we are not already emitting.
-        if self._state != self._Status.IDLE:  # this would be the job of a RAII guard in C++
+        if self._status != self._Status.IDLE:  # this would be the job of a RAII guard in C++
             raise RuntimeError(f"Cyclic dependency detected during emission from Emitter {self.get_id()}.")
-        self._state = self._Status.EMITTING
+        self._status = self._Status.EMITTING
 
         try:
             # sort out invalid receivers and compile a list of strong valid references
@@ -408,7 +398,7 @@ class Emitter:
             # emit to all live receivers in order
             for receiver in receivers:
                 try:
-                    receiver.on_next(signal)
+                    receiver.on_value(signal)
                 # pass exceptions to the assigned error handle
                 except Exception as exception:
                     self._handle_error(receiver.get_id(), exception)
@@ -420,7 +410,7 @@ class Emitter:
 
         finally:
             # reset the emission flag
-            self._state = self._Status.IDLE
+            self._status = self._Status.IDLE
 
     def _fail(self, error: Exception):
         """
@@ -434,9 +424,9 @@ class Emitter:
             raise RuntimeError(f"Emitter {self.get_id()} has already completed")
 
         # make sure that we are not already emitting
-        if self._state != self._Status.IDLE:
+        if self._status != self._Status.IDLE:
             raise RuntimeError(f"Cyclic dependency detected during emission from Emitter {self.get_id()}.")
-        self._state = self._Status.FAILING
+        self._status = self._Status.FAILING
 
         try:
             # create the signal
@@ -457,7 +447,7 @@ class Emitter:
         finally:
             # complete the emitter
             self._downstream.clear()
-            self._state = self._Status.COMPLETED
+            self._status = self._Status.COMPLETED
 
     def _complete(self):
         """
@@ -470,9 +460,9 @@ class Emitter:
             raise RuntimeError(f"Emitter {self.get_id()} has already completed")
 
         # make sure that we are not already emitting
-        if self._state != self._Status.IDLE:
+        if self._status != self._Status.IDLE:
             raise RuntimeError(f"Cyclic dependency detected during emission from Emitter {self.get_id()}.")
-        self._state = self._Status.COMPLETING
+        self._status = self._Status.COMPLETING
 
         try:
             # create the signal
@@ -493,33 +483,33 @@ class Emitter:
         finally:
             # complete the emitter
             self._downstream.clear()
-            self._state = self._Status.COMPLETED
+            self._status = self._Status.COMPLETED
 
-    def _get_state(self) -> 'Emitter._Status':
+    def _get_status(self) -> 'Emitter._Status':
         """
         The current state of the Emitter, can be used by `_handle_error` overloads to determine in what context the
         error occurred.
         Is not part of the public interface since the internal state of the Emitter is of no interest to the user.
         """
-        return self._state
+        return self._status
 
-    def _handle_error(self, receiver_id: int, error: Exception):
+    def _handle_error(self, receiver_id: int, error: Exception):  # virtual
         """
-        Default (virtual) error handler.
+        Default error handler.
         Writes a comprehensive error message to std::err.
         Is protected so that overrides of can call the base class implementation.
         :param receiver_id: ID of the Receiver that produced the error.
         :param error:       The exception object.
         """
-        assert self._get_state() != self._Status.COMPLETED
+        assert self._get_status() != self._Status.COMPLETED
 
         # determine what the Emitter was doing when the error occurred
-        if self._get_state() == self._Status.EMITTING:
+        if self._get_status() == self._Status.EMITTING:
             state = "emitting a Value"
-        elif self._get_state() == self._Status.FAILING:
+        elif self._get_status() == self._Status.FAILING:
             state = "failing"
         else:
-            assert self._get_state() == self._Status.COMPLETING
+            assert self._get_status() == self._Status.COMPLETING
             state = "completing"
 
         # print out the error message
@@ -528,37 +518,40 @@ class Emitter:
                     f"{error}")
 
     # private
-    def _sort_receivers(self, receivers: _OrderableReceivers):
+    def _sort_receivers(self, receivers: _OrderableReceivers):  # virtual
         """
-        Virtual method to allow user-defined code to re-order the Receivers prior to the emission of a value.
+        Method to allow user-defined code to re-order the Receivers prior to the emission of a value.
         :param receivers: Receivers of this Emitter, can only be re-ordered.
         """
         pass
 
-    def _connect(self, receiver: 'Receiver'):
-        """
-        Connects a new Receiver downstream.
-        This method is only called from `Receiver.connect_to` and we can be sure that the Schemas match.
-        :param receiver: New Receiver.
-        """
-        assert receiver.get_input_schema() == self.get_output_schema()
-        assert self._state in (self._Status.IDLE, self._Status.COMPLETED)
-
-        if self.is_completed():
-            receiver.on_completion(CompletionSignal(self.get_id()))
-
-        else:
-            weak_receiver = weak_ref(receiver)
-            assert weak_receiver not in self._downstream
-            self._downstream.append(weak_receiver)
-
-    def _disconnect(self, receiver: 'Receiver'):
-        """
-        Removes the given Receiver if it is connected. If not, the call is ignored.
-        :param receiver: Receiver to disconnect.
-        """
-        assert self._state in (self._Status.IDLE, self._Status.COMPLETED)
-        self._downstream.remove(weak_ref(receiver))
+    # def _connect(self, receiver: 'Receiver'):
+    #     """
+    #     Connects a new Receiver downstream.
+    #     This method is only called from `Receiver.connect_to` and we can be sure that the Schemas match.
+    #     :param receiver: New Receiver.
+    #     """
+    #     assert receiver.get_input_schema() == self.get_output_schema()
+    #     assert self._status in (self._Status.IDLE, self._Status.COMPLETED)
+    #
+    #     if self.is_completed():
+    #         # if the Emitter has already completed, schedule a CompletionSignal as a continuation of this Event.
+    #         receiver.on_completion(CompletionSignal(self.get_id()))
+    #         # TODO: if the Emitter has already completed, schedule a CompletionSignal as a continuation of this Event.
+    #
+    #     else:
+    #         # if the Emitter is still alive, add the Receiver as a downstream
+    #         weak_receiver = weak_ref(receiver)
+    #         assert weak_receiver not in self._downstream  # the Receiver should ensure that no prior connection exists
+    #         self._downstream.append(weak_receiver)
+    #
+    # def _disconnect(self, receiver: 'Receiver'):
+    #     """
+    #     Removes the given Receiver if it is connected. If not, the call is ignored.
+    #     :param receiver: Receiver to disconnect.
+    #     """
+    #     assert self._status in (self._Status.IDLE, self._Status.COMPLETED)
+    #     self._downstream.remove(weak_ref(receiver))
 
 
 ########################################################################################################################
@@ -587,17 +580,13 @@ class Receiver(metaclass=ABCMeta):
         """
         return self._input_schema
 
-    def on_next(self, signal: ValueSignal):
+    def on_value(self, signal: ValueSignal):
         """
         Called when an upstream Emitter has produced a new Value.
         :param signal   The Signal associated with this call.
         """
         # assert that the emitter is connected to this receiver
-        for emitter in self._upstream:
-            if emitter.get_id() == signal.get_source():
-                break
-        else:
-            assert False
+        assert any(emitter.get_id() == signal.get_source() for emitter in self._upstream)
 
         # pass the signal along to the user-defined handler
         self._on_next(signal)
@@ -607,22 +596,32 @@ class Receiver(metaclass=ABCMeta):
         Called when an upstream Emitter has failed.
         :param signal       The ErrorSignal associated with this call.
         """
-        # disconnect from the completed emitter
-        self.disconnect_from(signal.get_source())
+        # assert that the emitter is connected to this receiver
+        assert any(emitter.get_id() == signal.get_source() for emitter in self._upstream)
 
-        # pass the signal along to the user-defined handler
-        self._on_failure(signal)
+        try:
+            # pass the signal along to the user-defined handler
+            self._on_failure(signal)
+
+        finally:
+            # always disconnect from the completed emitter
+            self.disconnect_from(signal.get_source())
 
     def on_completion(self, signal: CompletionSignal):
         """
         Called when an upstream Emitter has finished successfully.
         :param signal       The CompletionSignal associated with this call.
         """
-        # disconnect from the completed emitter
-        self.disconnect_from(signal.get_source())
+        # assert that the emitter is connected to this receiver
+        assert any(emitter.get_id() == signal.get_source() for emitter in self._upstream)
 
-        # pass the signal along to the user-defined handler
-        self._on_completion(signal)
+        try:
+            # pass the signal along to the user-defined handler
+            self._on_completion(signal)
+
+        finally:
+            # always disconnect from the completed emitter
+            self.disconnect_from(signal.get_source())
 
     def connect_to(self, emitter: Emitter):
         """
@@ -630,65 +629,64 @@ class Receiver(metaclass=ABCMeta):
         :param emitter:     Emitter to connect to. If this Receiver is already connected, this does nothing.
         :raise TypeError:   If the Emitters's input Schema does not match.
         """
-        # multiple connections between the same Emitter-Receiver pair are not allowed
+        # multiple connections between the same Emitter-Receiver pair are ignored
         if emitter in self._upstream:
+            print_warning(f"Ignoring additional connection between Emitter {emitter.get_id()} "
+                          f"and Receiver {self.get_id()}")
             return
 
-        # check here that the schemas match, the emitter will assert that this is the case
+        # fail immediately if the schemas don't match
         if self.get_input_schema() != emitter.get_output_schema():
-            raise TypeError("Cannot connect an Emitter to a Receiver with a different Value Schema")
+            raise TypeError(f"Cannot connect a Emitter {emitter.get_id()} to Receiver {self.get_id()} "
+                            f"which has a different Value Schema")
 
-        # if the emitter is already completed, it will call `on_completion` right away, so we need to store the emitter
-        # before connecting to it
-        self._upstream.add(emitter)
-        # if emitter.is_completed():
-        #     self._on_completion(CompletionSignal(emitter.get_id()))
+        # # if the emitter is already completed, it will call `on_completion` right away, so we need to store the emitter
+        # # before connecting to it
+        # self._upstream.add(emitter)
+        #
+        # # connect to the emitter
+        # emitter._connect(self)
 
-        # connect to the emitter
-        emitter._connect(self)
-
-    def disconnect_from(self, emitter: Union[int, Emitter]):
-        """
-        Disconnects from the given Emitter.
-        :param emitter: The emitter (or its id) to disconnect from.
-        """
-        # find the emitter to disconnect from
-        if isinstance(emitter, int):
-            for candidate in self._upstream:
-                if candidate.get_id() == emitter:
-                    emitter: Emitter = candidate
-                    break
-        assert emitter in self._upstream
-
-        # disconnect first, because removing the emitter may cause it to be deleted
-        emitter._disconnect(self)
-
-        # remove the emitter, potentially deleting it
-        self._upstream.remove(emitter)
+    # def disconnect_from(self, emitter: Union[int, Emitter]):
+    #     """
+    #     Disconnects from the given Emitter.
+    #     :param emitter: The emitter (or its id) to disconnect from.
+    #     """
+    #     # find the emitter to disconnect from
+    #     if isinstance(emitter, int):
+    #         for candidate in self._upstream:
+    #             if candidate.get_id() == emitter:
+    #                 emitter: Emitter = candidate
+    #                 break
+    #     assert emitter in self._upstream
+    #
+    #     # disconnect first, because removing the emitter may cause it to be deleted
+    #     emitter._disconnect(self)
+    #
+    #     # remove the emitter, potentially deleting it
+    #     self._upstream.remove(emitter)
 
     # private
-    @abstractmethod
-    def _on_next(self, signal: ValueSignal):
+    def _on_next(self, signal: ValueSignal):  # virtual
         """
-        Abstract method called by an upstream Emitter whenever a new Signal was produced.
-        Would be pure virtual in C++.
-        :param signal   The Signal associated with this call.
-        """
-        raise NotImplementedError()
-
-    def _on_failure(self, signal: FailureSignal):
-        """
-        Default implementation of the "error" method called when an upstream Emitter has failed.
-        By the time that this function is called, the Emitter is already disconnected.
-        :param signal       The ErrorSignal associated with this call.
+        Default implementation of the "value" method called whenever an upstream Emitter emitted a new Value.
+        :param signal   The ValueSignal associated with this call.
         """
         pass
 
-    def _on_completion(self, signal: CompletionSignal):
+    def _on_failure(self, signal: FailureSignal):  # virtual
+        """
+        Default implementation of the "error" method called when an upstream Emitter has failed.
+        After this function has finished, the Emitter will be disconnected.
+        :param signal   The ErrorSignal associated with this call.
+        """
+        pass
+
+    def _on_completion(self, signal: CompletionSignal):  # virtual
         """
         Default implementation of the "complete" method called when an upstream Emitter has finished successfully.
-        By the time that this function is called, the Emitter is already disconnected.
-        :param signal       The CompletionSignal associated with this call.
+        After this function has finished, the Emitter will be disconnected.
+        :param signal   The CompletionSignal associated with this call.
         """
         pass
 
@@ -696,9 +694,71 @@ class Receiver(metaclass=ABCMeta):
 ########################################################################################################################
 
 class Circuit:
+    """
+
+    """
+
+    class CompletionEvent:
+        def __init__(self, emitter: weak_ref):
+            self._emitter: weak_ref = emitter
+
+        def get_emitter(self) -> Optional[Emitter]:
+            return self._emitter()
+
+    class FailureEvent(CompletionEvent):  # protected inheritance in C++
+        def __init__(self, emitter: weak_ref, error: Exception):
+            emt = emitter()
+
+            Circuit.CompletionEvent.__init__(self, emitter)
+
+            self._error: Exception = error
+
+        def get_error(self) -> Exception:
+            return self._error
+
+    class ValueEvent(CompletionEvent):  # protected inheritance in C++
+        def __init__(self, emitter: weak_ref, value: Value = Value()):
+            Circuit.CompletionEvent.__init__(self, emitter)
+
+            self._value: Value = value
+
+            # ensure that the value can be emitted by the Emitter
+            strong_emitter: Emitter = self.get_emitter()
+            if strong_emitter is not None:
+                assert isinstance(strong_emitter, Emitter)
+                if strong_emitter.get_output_schema() != self.get_value().schema:
+                    raise TypeError(f"Cannot emit Value from Emitter {strong_emitter.get_id()}."
+                                    f"  Emitter schema: {strong_emitter.get_output_schema()}"
+                                    f"  Value schema: {self.get_value().schema}")
+
+        def get_value(self) -> Value:
+            return self._value
+
+    class ConnectionEvent:
+        def __init__(self, emitter: weak_ref, receiver: weak_ref):
+            self._emitter: weak_ref = emitter
+            self._receiver: weak_ref = receiver
+
+        def get_connection(self) -> Optional[Tuple[Emitter, Receiver]]:
+            emitter: Optional[Emitter] = self._emitter()
+            if not emitter:
+                return None
+
+            receiver: Optional[Receiver] = self._receiver()
+            if not receiver:
+                return None
+
+            # if both are still alive, return the pair
+            return emitter, receiver
+
+    class DisconnectionEvent(ConnectionEvent):  # protected inheritance in C++
+        def __init__(self, emitter: weak_ref, receiver: weak_ref):
+            Circuit.ConnectionEvent.__init__(self, emitter, receiver)
+
+    Event = Union[ValueEvent, FailureEvent, CompletionEvent, ConnectionEvent, DisconnectionEvent]
+
     def __init__(self):
-        self._connections_to_remove: Set[Tuple[Emitter, Receiver]] = set()
-        self._connections_to_create: Set[Tuple[Emitter, Receiver]] = set()
+        self._events: List[Circuit.Event] = []
 
     def create_connection(self, emitter: Emitter, receiver: Receiver):
         self._connections_to_create.add((emitter, receiver))

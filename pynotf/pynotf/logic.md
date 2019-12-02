@@ -33,6 +33,17 @@ An Event is an object that is passed to the Circuit to be handled. It references
 
 # Logic Elements
 
+## Signal
+- [X] ValueSignal, 
+    * Stores a Value, a state (unblockable, ignored, accepted, blocked) and a pointer to the Emitter.
+    * State is the only mutable part of any Signal.
+    * Constructor requires initial state, is "unblockable" by default but may also be "ignored".
+    * Accepted Signals are just marked as such, blocked Signals are not propagated further.
+- [X] FailSignal.
+    * Stores the exception and a pointer to the Emitter.
+- [X] CompleteSignal
+    * Stores the pointer to the Emitter.
+
 ## Emitter
 - [X] Keep a list of weak references to Receivers connected downstream.
 - [X] Allow subclasses to re-order Receivers without given them write-access to the member field.
@@ -48,54 +59,43 @@ An Event is an object that is passed to the Circuit to be handled. It references
 - [X] Has a Circuit-unique ID
 
 ## Receiver
-* Keeps a set of strong references to Emitters connected upstream.
-* Automatically disconnects from Emitters that complete or fail.
-* Has an input Value type which is constant and readable.
-* Constructor takes a Circuit and input Value type. 
-* Has 3 public methods `on_next`, `on_complete` and `on_fail`.
-* `on_next` is purely virtual.
-* Can connect to existing upstream Emitters.
-* Can create-connect upstream Operators.
-* Connections and disconnections don't happen immediately but are queued in the Circuit.
-* Stores a pointer to its Circuit. 
-
-## Signal
-* ValueSignal, 
-    * Stores a Value, a state (unblockable, ignored, accepted, blocked) and a pointer to the Emitter.
-    * State is the only mutable part of any Signal.
-    * Constructor requires initial state, is "unblockable" by default but may also be "ignored".
-    * Accepted Signals are just marked as such, blocked Signals are not propagated further.
-* FailSignal.
-    * Stores the exception and a pointer to the Emitter.
-* CompleteSignal
-    * Stores the pointer to the Emitter.
+- [X] Keeps a set of strong references to Emitters connected upstream.
+- [X] Automatically disconnects from Emitters that complete or fail.
+- [X] Has an input Value type which is constant and readable.
+- [X] Constructor takes a Circuit and input Value type. 
+- [X] Has 3 public methods `on_value`, `on_complete` and `on_fail`.
+- [ ] Can connect to existing upstream Emitters.
+- [ ] Can disconnect from upstream Emitters.
+- [ ] Can create-connect upstream Operators.
+- [ ] Connections and disconnections don't happen immediately but are queued in the Circuit.
+- [X] Stores a pointer to its Circuit. 
 
 ## Circuit
-* Keeps a queue of delayed connections/disconnections to perform after an event has finished.
-* Stores an optional function pointer with no arguments, no return value that is called after the Circuit has performed post-event cleanup.
+- [ ] Keeps a queue of delayed connections/disconnections to perform after an event has finished.
+- [ ] Stores an optional function pointer with no arguments, no return value that is called after the Circuit has performed post-event cleanup.
 
 ## Operator
-* Derives from Emitter and Receiver.
-* Has a public, nested Subclass `Operation` with a virtual destructor and call function.
-* Constructor takes the input value type, an output value type and an instance of Operation by r-value.
-* Can only be created by Receivers.
-* The Operation call signature takes a Signal as only argument while returning a variant of <Value, Complete, Exception>.
-* The entries in the returned variant trigger the three corresponding Emitter methods.
-* Before the returned Value is accepted, its schema is checked against the Emitter's output schema.
+- [ ] Derives from Emitter and Receiver.
+- [ ] Has a public, nested Subclass `Operation` with a virtual destructor and call function.
+- [ ] Constructor takes the input value type, an output value type and an instance of Operation by r-value.
+- [ ] Can only be created by Receivers.
+- [ ] The Operation call signature takes a Signal as only argument while returning a variant of <Value, Complete, Exception>.
+- [ ] The entries in the returned variant trigger the three corresponding Emitter methods.
+- [ ] Before the returned Value is accepted, its schema is checked against the Emitter's output schema.
 
 ## Node
 
 ## Slot
-* Is-a Receiver that forwards ValueSignals to 0-1 method of their associated Node object.
-* Has a single, constant Node object associated with it.
-* Which method is forwarded to can be changed by the associated Node.
+- [ ] Is-a Receiver that forwards ValueSignals to 0-1 method of their associated Node object.
+- [ ] Has a single, constant Node object associated with it.
+- [ ] Which method is forwarded to can be changed by the associated Node.
 
 ## Property
 
 ## Scene
-* Keeps a queue of Nodes to delete after an event has finished.
-* Owns a Circuit object.
-* Has a post-event cleanup method that it registers with its Circuit object.
+- [ ] Keeps a queue of Nodes to delete after an event has finished.
+- [ ] Owns a Circuit object.
+- [ ] Has a post-event cleanup method that it registers with its Circuit object.
 
 ## Event
 
@@ -216,9 +216,9 @@ Then it came time to think about how basic basic events like a mouse click are p
 <br> In previous versions, we had taken the Qt approach of using dedicated event objects. Widgets higher up would receive the event first and lower Widgets later. Every Widget could "accept" the event, which would set a flag on the event object itself notifying later Widgets that the event was already handled. This way they could act differently (or not at all), depending on whether the event has already been accepted or not. This of course requires the given event to be mutable, which isn't possible with Values.
 
 Here a (hopefully) complete list of possible solutions to the problem:
-1. `Receiver.on_next` could return a bool to let an external scheduler know if it should continue propagating the event.
-2. `Receiver.on_next` could return the (optionally modified) Value to propagate further.
-3. Add a mutable extra-argument to `Receiver.on_next`, so the Value itself remains immutable.
+1. `Receiver.on_value` could return a bool to let an external scheduler know if it should continue propagating the event.
+2. `Receiver.on_value` could return the (optionally modified) Value to propagate further.
+3. Add a mutable extra-argument to `Receiver.on_value`, so the Value itself remains immutable.
 4. Have a global / Logic / Scene state for the currently handled event that can be modified.
 5. Allow non-Value propagation and simply propagate classic event objects.
 6. Make event handling a separate "thing" from the Logic, effectively sidestepping the problem.
@@ -286,7 +286,7 @@ What we need here is an "Ordered X-OR" Operator, or however you want to call it.
 
 From the start we decided that Emitters should always pass their `this` pointer alongside the emitted Value as a second argument for identification purposes. This way the Receiver was free to sort values from different Emitters into different Buckets for example, and concatenate all of them when each Emitter had completed. There was no obvious better way to implement this feature and it seems like a straightforward, easy and cheap thing to do.
 
-With the need for some kind of feedback from the Receiver back to the Emitter, there was yet another use-case for meta data to accompany any emitted value. It will be ignored by some/most, but offers indispensable features to others. And instead of adding another argument to the `Receiver.on_next` function, it seemed reasonable to replace Value/Id-pair with a mutable reference to what we shall call the (fat) *Signal*. _Fat_, because in addition to the Value, it encodes additional information for the Circuit. 
+With the need for some kind of feedback from the Receiver back to the Emitter, there was yet another use-case for meta data to accompany any emitted value. It will be ignored by some/most, but offers indispensable features to others. And instead of adding another argument to the `Receiver.on_value` function, it seemed reasonable to replace Value/Id-pair with a mutable reference to what we shall call the (fat) *Signal*. _Fat_, because in addition to the Value, it encodes additional information for the Circuit. 
 
 It consists of 3 things:
 1. The constant **Value** of the Signal.

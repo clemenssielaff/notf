@@ -113,7 +113,7 @@ class Property(Switch, HasNode):
                 self._value = result
                 self.emit(self._value)
 
-    def on_next(self, emitter: Emitter, value: Optional[Value] = None):
+    def on_value(self, emitter: Emitter, value: Optional[Value] = None):
         """
         Abstract method called by any upstream Emitter.
 

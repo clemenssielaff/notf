@@ -217,7 +217,7 @@ class TestCase(unittest.TestCase):
 
     def test_switch_wrong_type(self):
         switch = Switch(Switch.NoOp(Value(0).schema))
-        switch.on_next(Emitter.Signal(NumberEmitter()), Value("Not A Number"))
+        switch.on_value(Emitter.Signal(NumberEmitter()), Value("Not A Number"))
 
     def test_switch_error(self):
         emitter = NumberEmitter()
@@ -351,9 +351,9 @@ class TestCase(unittest.TestCase):
             def __init__(self):
                 Recorder.__init__(self, Value(0).schema)
 
-            def on_next(self, signal: Emitter.Signal, value: Value):
+            def on_value(self, signal: Emitter.Signal, value: Value):
                 if signal.is_blockable() and not signal.is_accepted():
-                    Recorder.on_next(self, signal, value)
+                    Recorder.on_value(self, signal, value)
 
         class Accept(Recorder):
             """
@@ -363,8 +363,8 @@ class TestCase(unittest.TestCase):
             def __init__(self):
                 Recorder.__init__(self, Value(0).schema)
 
-            def on_next(self, signal: Emitter.Signal, value: Value):
-                Recorder.on_next(self, signal, value)
+            def on_value(self, signal: Emitter.Signal, value: Value):
+                Recorder.on_value(self, signal, value)
                 if signal.is_blockable():
                     signal.accept()
 
@@ -376,8 +376,8 @@ class TestCase(unittest.TestCase):
             def __init__(self):
                 Recorder.__init__(self, Value(0).schema)
 
-            def on_next(self, signal: Emitter.Signal, value: Value):
-                Recorder.on_next(self, signal, value)
+            def on_value(self, signal: Emitter.Signal, value: Value):
+                Recorder.on_value(self, signal, value)
                 signal.block()
                 signal.block()  # again ... for coverage
 
@@ -385,7 +385,7 @@ class TestCase(unittest.TestCase):
             def _emit(self, receivers: List['Receiver'], value: Value):
                 signal = Emitter.Signal(self, is_blockable=True)
                 for receiver in receivers:
-                    receiver.on_next(signal, value)
+                    receiver.on_value(signal, value)
                     if signal.is_blocked():
                         return
 
@@ -426,9 +426,9 @@ class TestCase(unittest.TestCase):
                 self._emitter = emitter
                 self._other = other
 
-            def on_next(self, signal: Emitter.Signal, value: Value):
+            def on_value(self, signal: Emitter.Signal, value: Value):
                 self._other.connect_to(self._emitter)
-                Recorder.on_next(self, signal, value)
+                Recorder.on_value(self, signal, value)
 
         emt: Emitter = NumberEmitter()
         rec2 = Recorder(Value(0).schema)
@@ -462,9 +462,9 @@ class TestCase(unittest.TestCase):
                 self._emitter = emitter
                 self._other = other
 
-            def on_next(self, signal: Emitter.Signal, value: Value):
+            def on_value(self, signal: Emitter.Signal, value: Value):
                 self._other.disconnect_from(self._emitter)
-                Recorder.on_next(self, signal, value)
+                Recorder.on_value(self, signal, value)
 
         emt: Emitter = NumberEmitter()
         rec2 = Recorder(Value(0).schema)
@@ -500,9 +500,9 @@ class TestCase(unittest.TestCase):
                 self._other = Recorder(Value(0).schema)
                 self._other.connect_to(self._emitter)
 
-            def on_next(self, signal: Emitter.Signal, value: Value):
+            def on_value(self, signal: Emitter.Signal, value: Value):
                 self._other = None
-                Recorder.on_next(self, signal, value)
+                Recorder.on_value(self, signal, value)
 
         emt: Emitter = NumberEmitter()
         rec = RemoveOther(emt)
@@ -528,7 +528,7 @@ class TestCase(unittest.TestCase):
                 self.name: str = name
                 self.status = self.Status.NOT_CALLED
 
-            def on_next(self, signal: Emitter.Signal, value: Value):
+            def on_value(self, signal: Emitter.Signal, value: Value):
                 if not signal.is_accepted():
                     self.status = self.Status.FIRST
                     signal.accept()
@@ -555,14 +555,14 @@ class TestCase(unittest.TestCase):
                 # emit to the sorted Receivers first
                 signal = Emitter.Signal(self, is_blockable=True)
                 for named_rec in named_recs:
-                    named_rec.on_next(signal, value)
+                    named_rec.on_value(signal, value)
                     if signal.is_blocked():
                         return
 
                 # unsorted Receivers should not be able to block the emitting process
                 signal = Emitter.Signal(self, is_blockable=False)
                 for other_rec in other_recs:
-                    other_rec.on_next(signal, value)
+                    other_rec.on_value(signal, value)
 
         a: NamedReceiver = NamedReceiver("a")
         b: NamedReceiver = NamedReceiver("b")

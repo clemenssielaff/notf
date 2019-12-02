@@ -36,7 +36,7 @@ class TestNode(Node):
                 super().__init__()
                 self.target = target
 
-            def on_next(self, signal: Emitter.Signal, value: Optional[Value]):
+            def on_value(self, signal: Emitter.Signal, value: Optional[Value]):
                 self.target.remove()
 
         self._deleter = DeleteMe(self)
@@ -47,7 +47,7 @@ class TestNode(Node):
                 super().__init__(Value(0).schema)
                 self.target = target
 
-            def on_next(self, signal: Emitter.Signal, value: Value):
+            def on_value(self, signal: Emitter.Signal, value: Value):
                 self.target.get_signal("number_output").emit(value)
 
         self._passer = Passer(self)

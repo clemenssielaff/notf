@@ -50,7 +50,7 @@ def create_receiver(schema: Value.Schema):
             Receiver.__init__(self, schema)
             self.callback = lambda signal: None
 
-        def on_next(self, *args, **kwargs):
+        def on_value(self, *args, **kwargs):
             self.callback(*args, **kwargs)
 
     return AnonymousReceiver()
@@ -74,7 +74,7 @@ class NoopReceiver(Receiver):
     def __init__(self, schema: Value.Schema = Value(0).schema):
         super().__init__(schema)
 
-    def on_next(self, signal: Emitter.Signal, value: Value):
+    def on_value(self, signal: Emitter.Signal, value: Value):
         pass
 
     def on_error(self, signal: Emitter.Signal, exception: Exception):
@@ -88,7 +88,7 @@ class ExceptionOnCompleteReceiver(Receiver):
     def __init__(self, schema: Value.Schema = Value(0).schema):
         super().__init__(schema)
 
-    def on_next(self, signal: Emitter.Signal, value: Value):
+    def on_value(self, signal: Emitter.Signal, value: Value):
         pass
 
     def on_error(self, signal: Emitter.Signal, exception: Exception):
@@ -106,7 +106,7 @@ class Recorder(Receiver):
         self.completed: List[int] = []
         self.errors: List[Exception] = []
 
-    def on_next(self, signal: Emitter.Signal, value: Value):
+    def on_value(self, signal: Emitter.Signal, value: Value):
         self.values.append(value)
         self.signals.append(signal)
 
@@ -150,7 +150,7 @@ class AddAnotherReceiverReceiver(Receiver):
             self._receivers.append(receiver)
             receiver.connect_to(self._emitter)
 
-    def on_next(self, signal: Emitter.Signal, value: Value):
+    def on_value(self, signal: Emitter.Signal, value: Value):
         self._add_another()
 
     def on_error(self, signal: Emitter.Signal, exception: Exception):
@@ -174,7 +174,7 @@ class DisconnectReceiver(Receiver):
         self.emitter: Emitter = emitter
         self.connect_to(self.emitter)
 
-    def on_next(self, signal: Emitter.Signal, value: Value):
+    def on_value(self, signal: Emitter.Signal, value: Value):
         self.disconnect_from(self.emitter)
 
 
