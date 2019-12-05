@@ -1,7 +1,9 @@
 from abc import ABCMeta, abstractmethod
+from collections import deque
 from enum import Enum
-from logging import error as print_error, warning as print_warning
-from typing import Any, Optional, List, Tuple, Union, Iterable, Set
+from logging import error as print_error
+from threading import Lock
+from typing import Any, Optional, List, Tuple, Union, Iterable, Set, Deque
 from weakref import ref as weak_ref
 
 from .value import Value
@@ -305,7 +307,7 @@ class Emitter:
         :param schema:          Schema of the Value emitted by this Emitter, defaults to empty.
         :param is_blockable:    Whether or not Signals from this Emitter can be blocked.
         """
-        self._downstream: List[weak_ref[Receiver]] = []  # subclasses may only change the order
+        self._downstream: List[weak_ref] = []  # subclasses may only change the order
         self._output_schema: Value.Schema = schema  # is constant
         self._is_blockable: bool = is_blockable  # is constant
         self._status: Emitter._Status = self._Status.IDLE
@@ -525,34 +527,6 @@ class Emitter:
         """
         pass
 
-    # def _connect(self, receiver: 'Receiver'):
-    #     """
-    #     Connects a new Receiver downstream.
-    #     This method is only called from `Receiver.connect_to` and we can be sure that the Schemas match.
-    #     :param receiver: New Receiver.
-    #     """
-    #     assert receiver.get_input_schema() == self.get_output_schema()
-    #     assert self._status in (self._Status.IDLE, self._Status.COMPLETED)
-    #
-    #     if self.is_completed():
-    #         # if the Emitter has already completed, schedule a CompletionSignal as a continuation of this Event.
-    #         receiver.on_completion(CompletionSignal(self.get_id()))
-    #         # TODO: if the Emitter has already completed, schedule a CompletionSignal as a continuation of this Event.
-    #
-    #     else:
-    #         # if the Emitter is still alive, add the Receiver as a downstream
-    #         weak_receiver = weak_ref(receiver)
-    #         assert weak_receiver not in self._downstream  # the Receiver should ensure that no prior connection exists
-    #         self._downstream.append(weak_receiver)
-    #
-    # def _disconnect(self, receiver: 'Receiver'):
-    #     """
-    #     Removes the given Receiver if it is connected. If not, the call is ignored.
-    #     :param receiver: Receiver to disconnect.
-    #     """
-    #     assert self._status in (self._Status.IDLE, self._Status.COMPLETED)
-    #     self._downstream.remove(weak_ref(receiver))
-
 
 ########################################################################################################################
 
@@ -623,48 +597,29 @@ class Receiver(metaclass=ABCMeta):
             # always disconnect from the completed emitter
             self.disconnect_from(signal.get_source())
 
+    # TODO: this requires that the user handles an actual Emitter object, which won't fly
     def connect_to(self, emitter: Emitter):
         """
         Connect to the given Emitter.
         :param emitter:     Emitter to connect to. If this Receiver is already connected, this does nothing.
         :raise TypeError:   If the Emitters's input Schema does not match.
         """
-        # multiple connections between the same Emitter-Receiver pair are ignored
-        if emitter in self._upstream:
-            print_warning(f"Ignoring additional connection between Emitter {emitter.get_id()} "
-                          f"and Receiver {self.get_id()}")
-            return
-
         # fail immediately if the schemas don't match
         if self.get_input_schema() != emitter.get_output_schema():
             raise TypeError(f"Cannot connect a Emitter {emitter.get_id()} to Receiver {self.get_id()} "
                             f"which has a different Value Schema")
 
-        # # if the emitter is already completed, it will call `on_completion` right away, so we need to store the emitter
-        # # before connecting to it
-        # self._upstream.add(emitter)
-        #
-        # # connect to the emitter
-        # emitter._connect(self)
+        # schedule the creation of the connection
+        self._circuit.create_connection(emitter.get_id(), self)
 
-    # def disconnect_from(self, emitter: Union[int, Emitter]):
-    #     """
-    #     Disconnects from the given Emitter.
-    #     :param emitter: The emitter (or its id) to disconnect from.
-    #     """
-    #     # find the emitter to disconnect from
-    #     if isinstance(emitter, int):
-    #         for candidate in self._upstream:
-    #             if candidate.get_id() == emitter:
-    #                 emitter: Emitter = candidate
-    #                 break
-    #     assert emitter in self._upstream
-    #
-    #     # disconnect first, because removing the emitter may cause it to be deleted
-    #     emitter._disconnect(self)
-    #
-    #     # remove the emitter, potentially deleting it
-    #     self._upstream.remove(emitter)
+    def disconnect_from(self, emitter_id: int):
+        """
+        Disconnects from the given Emitter.
+        :param emitter_id: ID of the emitter to disconnect from.
+        """
+        # at this point the receiver might not even be connected to the emitter yet
+        # this is why we have to schedule a disconnection event and check then whether the connection exists at all
+        self._circuit.remove_connection(emitter_id, self)
 
     # private
     def _on_next(self, signal: ValueSignal):  # virtual
@@ -735,47 +690,114 @@ class Circuit:
             return self._value
 
     class ConnectionEvent:
-        def __init__(self, emitter: weak_ref, receiver: weak_ref):
-            self._emitter: weak_ref = emitter
+        def __init__(self, emitter_id: int, receiver: weak_ref):
+            self._emitter_id: int = emitter_id
             self._receiver: weak_ref = receiver
 
         def get_connection(self) -> Optional[Tuple[Emitter, Receiver]]:
-            emitter: Optional[Emitter] = self._emitter()
-            if not emitter:
+            # check if the receiver is still alive
+            receiver: Optional[Receiver] = self._receiver()
+            if receiver is None:
                 return None
 
-            receiver: Optional[Receiver] = self._receiver()
-            if not receiver:
+            # find the emitter to disconnect from
+            for candidate in receiver._upstream:
+                if candidate.get_id() == self._emitter_id:
+                    emitter: Emitter = candidate
+                    break
+            else:
                 return None
 
             # if both are still alive, return the pair
             return emitter, receiver
 
     class DisconnectionEvent(ConnectionEvent):  # protected inheritance in C++
-        def __init__(self, emitter: weak_ref, receiver: weak_ref):
-            Circuit.ConnectionEvent.__init__(self, emitter, receiver)
+        def __init__(self, emitter_id: int, receiver: weak_ref):
+            Circuit.ConnectionEvent.__init__(self, emitter_id, receiver)
 
-    Event = Union[ValueEvent, FailureEvent, CompletionEvent, ConnectionEvent, DisconnectionEvent]
+    class SecondaryCompletion:
+        """
+        Secondary event created when a Receiver connects to a completed Emitter.
+        Instead of having the (now completed) Emitter emit their CompletionSignal again (which they are not allowed to),
+        just create a CompletionSignal out of thin air, put the completed Emitter as source and fire it to the Receiver.
+        """
+        def __init__(self, emitter_id: int, receiver: weak_ref):
+            self._emitter_id: int = emitter_id
+            self._receiver: weak_ref = receiver
+
+        def fire(self):
+            receiver: Optional[Receiver] = self._receiver()
+            if receiver is not  None:
+                receiver.on_completion(CompletionSignal(self._emitter_id))
+
+    Event = Union[ValueEvent, FailureEvent, CompletionEvent, ConnectionEvent, DisconnectionEvent, SecondaryCompletion]
 
     def __init__(self):
-        self._events: List[Circuit.Event] = []
 
-    def create_connection(self, emitter: Emitter, receiver: Receiver):
-        self._connections_to_create.add((emitter, receiver))
+        self._events: Deque[Circuit.Event] = deque()  # main event queue
+        self._event_mutex: Lock = Lock()  # mutex protecting the main queue, we don't need a mutex for the secondary
+        self._secondaries: Deque[Circuit.Event] = deque()  # secondary queue for events resulting from main events
 
-    def remove_connection(self, emitter: Emitter, receiver: Receiver):
-        self._connections_to_remove.add((emitter, receiver))
+    def emit_value(self, emitter: Emitter, value: Value = Value()):
+        with self._event_mutex:
+            self._events.append(Circuit.ValueEvent(weak_ref(emitter), value))
 
-    def _create_connection(self, emitter: Emitter, receiver: Receiver):
-        # multiple connections between the same Emitter-Receiver pair are not allowed
-        if emitter in receiver._upstream:
-            return
+    def emit_failure(self, emitter: Emitter, error: Exception):
+        with self._event_mutex:
+            self._events.append(Circuit.FailureEvent(weak_ref(emitter), error))
 
-    def cleanup(self):
+    def emit_completion(self, emitter: Emitter):
+        with self._event_mutex:
+            self._events.append(Circuit.CompletionEvent(weak_ref(emitter)))
+
+    def create_connection(self, emitter_id: int, receiver: Receiver):
+        with self._event_mutex:
+            self._events.append(Circuit.ConnectionEvent(emitter_id, weak_ref(receiver)))
+
+    def remove_connection(self, emitter_id: int, receiver: Receiver):
+        with self._event_mutex:
+            self._events.append(Circuit.DisconnectionEvent(emitter_id, weak_ref(receiver)))
+
+    # private
+
+    def _handle_events(self):
         pass
 
+    def _create_connection(self, event: ConnectionEvent):
+        # check if the two ends of the connection are still valid
+        connection: Optional[Tuple[Emitter, Receiver]] = event.get_connection()
+        if connection is None:
+            return
+        emitter, receiver = connection
+        weak_receiver = weak_ref(receiver)
 
-# first add new connections because removing some might destroy Emitters
+        # multiple connections between the same Emitter-Receiver pair are ignored
+        if weak_receiver in emitter._downstream:  # can only be true if the emitter has not completed
+            return
+
+        # It is possible that the Receiver already has a strong reference to the Emitter if it just created it.
+        receiver._upstream.add(emitter)
+
+        # if the Emitter has already completed, schedule a CompletionSignal as a continuation of this Event.
+        if emitter.is_completed():
+            self._secondaries.append(Circuit.CompletionEvent(weak_ref(emitter)))
+
+        # if however the Emitter is still alive, add the Receiver as a downstream
+        else:
+            emitter._downstream.append(weak_receiver)
+
+    @staticmethod
+    def _remove_connection(event: DisconnectionEvent):
+        # the connection might not even exist
+        connection: Optional[Tuple[Emitter, Receiver]] = event.get_connection()
+        if connection is None:
+            return
+        emitter, receiver = connection
+
+        # remove the connection by removing the mutual references
+        receiver._upstream.remove(emitter)
+        emitter._downstream.remove(weak_ref(receiver))
+        # TODO: maybe keep emitter around if it would be deleted here, so you can clean all garbage on idle
 
 
 ########################################################################################################################

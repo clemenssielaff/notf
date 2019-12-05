@@ -64,10 +64,10 @@ An Event is an object that is passed to the Circuit to be handled. It references
 - [X] Has an input Value type which is constant and readable.
 - [X] Constructor takes a Circuit and input Value type. 
 - [X] Has 3 public methods `on_value`, `on_complete` and `on_fail`.
-- [ ] Can connect to existing upstream Emitters.
-- [ ] Can disconnect from upstream Emitters.
+- [X] Can connect to existing upstream Emitters.
+- [X] Can disconnect from upstream Emitters.
 - [ ] Can create-connect upstream Operators.
-- [ ] Connections and disconnections don't happen immediately but are queued in the Circuit.
+- [X] Connections and disconnections don't happen immediately but are queued in the Circuit.
 - [X] Stores a pointer to its Circuit. 
 
 ## Circuit
