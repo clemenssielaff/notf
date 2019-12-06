@@ -68,10 +68,15 @@ An Event is an object that is passed to the Circuit to be handled. It references
 - [X] Can disconnect from upstream Emitters.
 - [ ] Can create-connect upstream Operators.
 - [X] Connections and disconnections don't happen immediately but are queued in the Circuit.
-- [X] Stores a pointer to its Circuit. 
+- [X] Stores a pointer to its Circuit.
+- [ ] Can request existing Operators by name from the Circuit.
 
 ## Circuit
-- [ ] Keeps a queue of delayed connections/disconnections to perform after an event has finished.
+- [X] Keeps a thread-safe queue of Events to perform in order.
+- [ ] Executes all events up to now or when a timeout is reached.
+- [ ] Keeps a map of weak references to named Operators that can be requested 
+
+## EventLoop
 - [ ] Stores an optional function pointer with no arguments, no return value that is called after the Circuit has performed post-event cleanup.
 
 ## Operator
@@ -160,6 +165,8 @@ This leaves the question on whether we want to catch cyclic dependency errors in
 
 Note that we still not able to catch all infinite loops. Namely those that span more than one Event. Let's say that `A` schedules a Signal to be emitted from `B`, which schedules a Signal to be emitted from `C` and `C` then back to `A`. This way, every Event (`A`->`B`, `B`->`C` and `C`->`A`) sees every Emitter only once an has no way of detecting the cycle. This is what we would call a [livelock](https://en.wikipedia.org/wiki/Deadlock#Livelock).
 <br> Then again, even though this would lead to the event loop spinning 100% of the time, it would not actually lock the system up. Since there is nothing we can do to stop the inclined developer to fall down this particular hole and the effects are annoying but not critical, we just leave it at that. If a livelock ever turns out to be an actual problem, we are sure you could detect them, maybe using heuristics and a little introspection... but until then any effort spend will not be worth it.
+
+Interestingly, there is yet another case where we are not able to catch livelock cycles: when you connect a Receiver to a completed emitter, the connection will not be made until the epilogue of the current event. This triggers the Receiver's "on_complete" function, which in turn might call user-defined code to re-connect to the still completed Receiver and so on. At no point do we have any reentrancy and still this is an infinite loop.  
 
 ### Can we enforce acyclicity?
 
@@ -431,3 +438,13 @@ Of course, this approach does not protect the user from the error cases outlined
 ### Dynamic Order
 
 Emitters are free to choose the order in which they emit to their connected Receivers and have a virtual function to do so. That also means that they are free to interpret emission priority how they see fit, as long as Receivers with a higher priority are guaranteed to receive a Signal no later than ones with a lower one.
+
+> This is out of date: write here about the flat map in Receivers and how the virtual method can be used to select and order members
+
+
+## Events and the Circuit
+
+The Circuit has a thread-safe deque of Events. Events are a variant of everything that would change the topology of the Circuit, public versions of the three reactive Functions to allow Services running on other threads to push values into the Circuit from the outside and a few special Events, that are not available to the user.
+
+One of these special Events is the `AlreadyCompletedEvent`, an Event type that is emitted whenever a Receiver connects
+to an Emitter that has completed at the time of the event's epilogue. We could simply add the Receiver to the (already completed) Emitter and let it complete again, but that would violate the assumption that a completed Emitter will never fire. What this Event does instead is that a CompletionSignal with the completed Emitter as source is forwarded to the Receiver, without it ever being connected to the Emitter in the first place. This is more of an implementation artifact, but one that follows from the design rather than from any particular programming language.

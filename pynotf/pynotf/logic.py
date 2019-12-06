@@ -3,7 +3,7 @@ from collections import deque
 from enum import Enum
 from logging import error as print_error
 from threading import Lock
-from typing import Any, Optional, List, Tuple, Union, Iterable, Set, Deque
+from typing import Any, Optional, List, Tuple, Union, Iterable, Set, Deque, Dict
 from weakref import ref as weak_ref
 
 from .value import Value
@@ -131,6 +131,22 @@ class Emitter:
     Circuit element pushing a Signal downstream.
     Is non-copyable and may only be owned by downstream Receivers and Nodes.
     """
+
+    class Handle:
+        """
+        An opaque handle to an Emitter that is returned whenever you want to connect to one.
+        We cannot just hand over raw references to the actual Emitter object because the user might store them, use
+        them to call emit, fail and complete at unexpected times and generally and break a a lot of assumptions that are
+        inherent in the design.
+        In C++ Handles would be uncopyable.
+        """
+
+        def __init__(self, emitter: 'Emitter'):
+            """
+            Constructor.
+            :param emitter: Strong reference to the Emitter represented by this handle.
+            """
+            self._emitter: weak_ref = weak_ref(emitter)
 
     class _OrderableReceivers:
         """
@@ -554,6 +570,14 @@ class Receiver(metaclass=ABCMeta):
         """
         return self._input_schema
 
+    def has_upstream(self) -> bool:
+        """
+        Checks if the Receiver has any Emitter connected upstream.
+        Useful for overrides of `_on_failure` and `_on_complete` to find out whether the completed Emitter was the last
+        connected one.
+        """
+        return len(self._upstream) != 0
+
     def on_value(self, signal: ValueSignal):
         """
         Called when an upstream Emitter has produced a new Value.
@@ -571,15 +595,20 @@ class Receiver(metaclass=ABCMeta):
         :param signal       The ErrorSignal associated with this call.
         """
         # assert that the emitter is connected to this receiver
-        assert any(emitter.get_id() == signal.get_source() for emitter in self._upstream)
+        for candidate in self._upstream:
+            if candidate.get_id() == signal.get_source():
+                emitter: Emitter = candidate
+                break
+        else:
+            assert False  # received Signal from an Emitter that is not connected
 
-        try:
-            # pass the signal along to the user-defined handler
-            self._on_failure(signal)
+        # since the emitter has already completed, there is no reason to delay disconnecting
+        # it will never emit again anyway
+        self._upstream.remove(emitter)
+        # TODO: maybe delay the removal of the emitter here and wait for an idle cleanup?
 
-        finally:
-            # always disconnect from the completed emitter
-            self.disconnect_from(signal.get_source())
+        # pass the signal along to the user-defined handler
+        self._on_failure(signal)
 
     def on_completion(self, signal: CompletionSignal):
         """
@@ -587,30 +616,90 @@ class Receiver(metaclass=ABCMeta):
         :param signal       The CompletionSignal associated with this call.
         """
         # assert that the emitter is connected to this receiver
-        assert any(emitter.get_id() == signal.get_source() for emitter in self._upstream)
+        for candidate in self._upstream:
+            if candidate.get_id() == signal.get_source():
+                emitter: Emitter = candidate
+                break
+        else:
+            assert False  # received Signal from an Emitter that is not connected
 
-        try:
-            # pass the signal along to the user-defined handler
-            self._on_completion(signal)
+        # since the emitter has already completed, there is no reason to delay disconnecting
+        # it will never emit again anyway
+        self._upstream.remove(emitter)
+        # TODO: maybe delay the removal of the emitter here and wait for an idle cleanup?
 
-        finally:
-            # always disconnect from the completed emitter
-            self.disconnect_from(signal.get_source())
+        # pass the signal along to the user-defined handler
+        self._on_completion(signal)
 
-    # TODO: this requires that the user handles an actual Emitter object, which won't fly
-    def connect_to(self, emitter: Emitter):
+    def connect_to(self, emitter: Emitter.Handle):
         """
         Connect to the given Emitter.
+        In C++, the emitter argument would need to be an r-value, because handles are non-copyable.
         :param emitter:     Emitter to connect to. If this Receiver is already connected, this does nothing.
         :raise TypeError:   If the Emitters's input Schema does not match.
         """
+        # if the Emitter from the Handle is already expired, do nothing
+        strong_emitter: Optional[Emitter] = emitter._emitter()
+        if strong_emitter is None:
+            return
+
         # fail immediately if the schemas don't match
-        if self.get_input_schema() != emitter.get_output_schema():
-            raise TypeError(f"Cannot connect a Emitter {emitter.get_id()} to Receiver {self.get_id()} "
+        if self.get_input_schema() != strong_emitter.get_output_schema():
+            raise TypeError(f"Cannot connect a Emitter {strong_emitter.get_id()} to Receiver {self.get_id()} "
                             f"which has a different Value Schema")
 
         # schedule the creation of the connection
-        self._circuit.create_connection(emitter.get_id(), self)
+        self._circuit.create_connection(strong_emitter.get_id(), self)
+
+    def create_operator(self, operation: 'Operator.Operation', name: str = ""):
+        """
+        Creates and connects to a new Operator upstream.
+        :param operation: Operation defining the Operator.
+        :param name: Name under which the Operator should be registered.
+        :raise TypeError: If the output type of the Operation does not match this Receiver's.
+        :raise NameError: If another Operator with the same name is already registered.
+        """
+        # fail immediately if the schemas don't match
+        if self.get_input_schema() != operation.get_output_schema():
+            raise TypeError(f"Cannot create an Operation to connect to Receiver {self.get_id()} "
+                            f"which has a different Value Schema")
+
+        # make sure the name is not already taken by a living Operator
+        if name:
+            existing: Optional[weak_ref] = self._circuit._named_operators.get(name, None)
+            if existing is not None and existing() is not None:
+                raise NameError(f"Failed to create an upstream Operator from Circuit element {self.get_id()}. "
+                                f"Another Operator with the name {name} already exists.")
+
+        # create the Operator
+        operator: Operator = Operator(self._circuit, operation)
+
+        # store the operator right away to keep it alive, this does not count as a connection yet
+        self._upstream.add(operator)
+
+        # register a named operator with the circuit
+        if name:
+            self._circuit._named_operators[name] = weak_ref(operator)
+
+        # the connection is delayed until the end of the event
+        self._circuit.create_connection(operator.get_id(), self)
+
+    def find_operator(self, name: str) -> Optional[Emitter.Handle]:
+        """
+        Finds and returns a named Operator from the Circuit, if one exists.
+        :param name:    Name of the Operator to find.
+        :return:        The requested Operator or None.
+        """
+        weak_operator: Optional[weak_ref] = self._circuit._named_operators.get(name, None)
+        if weak_operator is None:
+            return None  # no Operator by that name
+
+        operator: Optional[Operator] = weak_operator()
+        if operator is None:
+            del self._circuit._named_operators[name]
+            return None  # Operator has expired
+
+        return Emitter.Handle(operator)
 
     def disconnect_from(self, emitter_id: int):
         """
@@ -632,7 +721,7 @@ class Receiver(metaclass=ABCMeta):
     def _on_failure(self, signal: FailureSignal):  # virtual
         """
         Default implementation of the "error" method called when an upstream Emitter has failed.
-        After this function has finished, the Emitter will be disconnected.
+        By the time this function is called, the completed Emitter has already been disconnected.
         :param signal   The ErrorSignal associated with this call.
         """
         pass
@@ -640,10 +729,147 @@ class Receiver(metaclass=ABCMeta):
     def _on_completion(self, signal: CompletionSignal):  # virtual
         """
         Default implementation of the "complete" method called when an upstream Emitter has finished successfully.
-        After this function has finished, the Emitter will be disconnected.
+        By the time this function is called, the completed Emitter has already been disconnected.
         :param signal   The CompletionSignal associated with this call.
         """
         pass
+
+
+########################################################################################################################
+
+
+class Operator(Receiver, Emitter):
+    """
+    Operators are use-defined functions in the Circuit that take a Value and maybe produce one. Not all input values
+    generate an output value though.
+    Operators will complete once all upstream Emitters have completed or through failure.
+    """
+
+    class CreatorHandle:
+        """
+        A special kind of handle that is returned when you create an Operator from a Receiver.
+        It allows you to continue the chain of Operators upstream if you want to split your calculation into multiple,
+        re-usable parts.
+        """
+
+        def __init__(self, operator: 'Operator'):
+            """
+            :param operator: Strong reference to the Operator represented by this handle.
+            """
+            self._operator: weak_ref = weak_ref(operator)
+
+        def connect_to(self, emitter: Emitter.Handle):
+            """
+            Connects this newly created Operator to an existing Emitter upstream.
+            Does nothing if the Handle has expired.
+            :param emitter:     Emitter to connect to. If this Receiver is already connected, this does nothing.
+            :raise TypeError:   If the Emitters's input Schema does not match.
+            """
+            operator: Optional[Operator] = self._operator()
+            if operator is not None:
+                operator.connect_to(emitter)
+
+        def create_operator(self, operation: 'Operator.Operation', name: str = ""):
+            """
+            Creates and connects this newly created Operator to another new Operator upstream.
+            Does nothing if the Handle has expired.
+            :param operation: Operation defining the Operator.
+            :param name: Name under which the Operator should be registered.
+            :raise TypeError: If the output type of the Operation does not match this Receiver's.
+            :raise NameError: If another Operator with the same name is already registered.
+            """
+            operator: Optional[Operator] = self._operator()
+            if operator is not None:
+                operator.create_operator(operation, name)
+
+    class Operation(metaclass=ABCMeta):
+        """
+        Operations are Functors that define an Operator.
+        """
+
+        @abstractmethod
+        def get_input_schema(self) -> Value.Schema:
+            """
+            The Schema of an input value of the Operation.
+            """
+            pass
+
+        @abstractmethod
+        def get_output_schema(self) -> Value.Schema:
+            """
+            The Schema of an output value of the Operation.
+            """
+            pass
+
+        def __call__(self, value: Value) -> Optional[Value]:
+            """
+            Perform the Operation on a given value.
+            :param value: Input value, must conform to the Schema specified by the `input_schema` property.
+            :return: Either a new output value (conforming to the Schema specified by the `output_schema` property)
+                or None.
+            :raise TypeError: If either the input or output Value does not conform to its expected Schema.
+            """
+            if not isinstance(value, Value) or value.schema != self.get_input_schema():
+                raise TypeError("Value does not conform to the Operator's input Schema")
+            result: Optional[Value] = self._perform(value)
+            if result is not None and result.schema != self.get_output_schema():
+                raise TypeError("Value does not conform to the Operator's input Schema")
+            return result
+
+        # private
+        @abstractmethod
+        def _perform(self, value: Value) -> Optional[Value]:
+            """
+            Operation implementation.
+            If this function returns a Value, it will be emitted by the Operator.
+            If this function returns None, no emission will take place.
+            Exceptions thrown by this function will cause the Operator to fail.
+            :param value: Input value, conforms to the input Schema.
+            :return: Either a new output value conforming to the output Schema or None.
+            """
+            pass
+
+    def __init__(self, circuit: 'Circuit', operation: Operation):
+        """
+        Constructor.
+        :param circuit: The Circuit that this Operator is a part of.
+        :param operation: The Operation performed by this Operator.
+        """
+        Receiver.__init__(self, circuit, operation.get_input_schema())
+        Emitter.__init__(self, operation.get_output_schema())
+
+        self._operation: Operator.Operation = operation  # is constant
+
+    # private
+    def _on_next(self, signal: ValueSignal):  # virtual
+        """
+        Performs the Operation on the given Value and emits the result if one is produced.
+        Exceptions thrown by the Operation will cause the Operator to fail.
+        :param signal   The ValueSignal associated with this call.
+        """
+        try:
+            result = self._operation(signal.get_value())
+        except Exception as exception:
+            self._fail(exception)
+        else:
+            if result is not None:
+                self._emit(result)
+
+    def _on_failure(self, signal: FailureSignal):  # virtual
+        """
+        If the failed Emitter was the last connected one, this Operator also completes.
+        :param signal   The ErrorSignal associated with this call.
+        """
+        if not self.has_upstream():
+            self._complete()
+
+    def _on_completion(self, signal: CompletionSignal):  # virtual
+        """
+        If the completed Emitter was the last connected one, this Operator also completes.
+        :param signal   The CompletionSignal associated with this call.
+        """
+        if not self.has_upstream():
+            self._complete()
 
 
 ########################################################################################################################
@@ -653,27 +879,29 @@ class Circuit:
 
     """
 
-    class CompletionEvent:
+    # private
+
+    class _CompletionEvent:
         def __init__(self, emitter: weak_ref):
             self._emitter: weak_ref = emitter
 
         def get_emitter(self) -> Optional[Emitter]:
             return self._emitter()
 
-    class FailureEvent(CompletionEvent):  # protected inheritance in C++
+    class _FailureEvent(_CompletionEvent):  # protected inheritance in C++
         def __init__(self, emitter: weak_ref, error: Exception):
             emt = emitter()
 
-            Circuit.CompletionEvent.__init__(self, emitter)
+            Circuit._CompletionEvent.__init__(self, emitter)
 
             self._error: Exception = error
 
         def get_error(self) -> Exception:
             return self._error
 
-    class ValueEvent(CompletionEvent):  # protected inheritance in C++
+    class _ValueEvent(_CompletionEvent):  # protected inheritance in C++
         def __init__(self, emitter: weak_ref, value: Value = Value()):
-            Circuit.CompletionEvent.__init__(self, emitter)
+            Circuit._CompletionEvent.__init__(self, emitter)
 
             self._value: Value = value
 
@@ -689,7 +917,7 @@ class Circuit:
         def get_value(self) -> Value:
             return self._value
 
-    class ConnectionEvent:
+    class _ConnectionEvent:
         def __init__(self, emitter_id: int, receiver: weak_ref):
             self._emitter_id: int = emitter_id
             self._receiver: weak_ref = receiver
@@ -711,59 +939,70 @@ class Circuit:
             # if both are still alive, return the pair
             return emitter, receiver
 
-    class DisconnectionEvent(ConnectionEvent):  # protected inheritance in C++
+    class _DisconnectionEvent(_ConnectionEvent):  # protected inheritance in C++
         def __init__(self, emitter_id: int, receiver: weak_ref):
-            Circuit.ConnectionEvent.__init__(self, emitter_id, receiver)
+            Circuit._ConnectionEvent.__init__(self, emitter_id, receiver)
 
-    class SecondaryCompletion:
+    class _AlreadyCompletedEvent:
         """
         Secondary event created when a Receiver connects to a completed Emitter.
         Instead of having the (now completed) Emitter emit their CompletionSignal again (which they are not allowed to),
         just create a CompletionSignal out of thin air, put the completed Emitter as source and fire it to the Receiver.
         """
+
         def __init__(self, emitter_id: int, receiver: weak_ref):
             self._emitter_id: int = emitter_id
             self._receiver: weak_ref = receiver
 
         def fire(self):
             receiver: Optional[Receiver] = self._receiver()
-            if receiver is not  None:
+            if receiver is not None:
                 receiver.on_completion(CompletionSignal(self._emitter_id))
 
-    Event = Union[ValueEvent, FailureEvent, CompletionEvent, ConnectionEvent, DisconnectionEvent, SecondaryCompletion]
+    _Event = Union[
+        # three reactive functions
+        _ValueEvent, _FailureEvent, _CompletionEvent,
+        # circuit topology changes
+        _ConnectionEvent, _DisconnectionEvent,
+        # special case
+        _AlreadyCompletedEvent]
+
+    # public
 
     def __init__(self):
-
-        self._events: Deque[Circuit.Event] = deque()  # main event queue
-        self._event_mutex: Lock = Lock()  # mutex protecting the main queue, we don't need a mutex for the secondary
-        self._secondaries: Deque[Circuit.Event] = deque()  # secondary queue for events resulting from main events
+        """
+        Constructor.
+        """
+        self._events: Deque[Circuit._Event] = deque()  # main event queue
+        self._mutex: Lock = Lock()  # mutex protecting the event queue
+        self._named_operators: Dict[str, weak_ref] = {}  # weak references to named Operators by name
 
     def emit_value(self, emitter: Emitter, value: Value = Value()):
-        with self._event_mutex:
-            self._events.append(Circuit.ValueEvent(weak_ref(emitter), value))
+        with self._mutex:
+            self._events.append(Circuit._ValueEvent(weak_ref(emitter), value))
 
     def emit_failure(self, emitter: Emitter, error: Exception):
-        with self._event_mutex:
-            self._events.append(Circuit.FailureEvent(weak_ref(emitter), error))
+        with self._mutex:
+            self._events.append(Circuit._FailureEvent(weak_ref(emitter), error))
 
     def emit_completion(self, emitter: Emitter):
-        with self._event_mutex:
-            self._events.append(Circuit.CompletionEvent(weak_ref(emitter)))
+        with self._mutex:
+            self._events.append(Circuit._CompletionEvent(weak_ref(emitter)))
 
     def create_connection(self, emitter_id: int, receiver: Receiver):
-        with self._event_mutex:
-            self._events.append(Circuit.ConnectionEvent(emitter_id, weak_ref(receiver)))
+        with self._mutex:
+            self._events.append(Circuit._ConnectionEvent(emitter_id, weak_ref(receiver)))
 
     def remove_connection(self, emitter_id: int, receiver: Receiver):
-        with self._event_mutex:
-            self._events.append(Circuit.DisconnectionEvent(emitter_id, weak_ref(receiver)))
+        with self._mutex:
+            self._events.append(Circuit._DisconnectionEvent(emitter_id, weak_ref(receiver)))
 
     # private
 
     def _handle_events(self):
         pass
 
-    def _create_connection(self, event: ConnectionEvent):
+    def _create_connection(self, event: _ConnectionEvent):
         # check if the two ends of the connection are still valid
         connection: Optional[Tuple[Emitter, Receiver]] = event.get_connection()
         if connection is None:
@@ -780,14 +1019,15 @@ class Circuit:
 
         # if the Emitter has already completed, schedule a CompletionSignal as a continuation of this Event.
         if emitter.is_completed():
-            self._secondaries.append(Circuit.CompletionEvent(weak_ref(emitter)))
+            with self._mutex:
+                self._events.append(Circuit._AlreadyCompletedEvent(emitter.get_id(), weak_receiver))
 
         # if however the Emitter is still alive, add the Receiver as a downstream
         else:
             emitter._downstream.append(weak_receiver)
 
     @staticmethod
-    def _remove_connection(event: DisconnectionEvent):
+    def _remove_connection(event: _DisconnectionEvent):
         # the connection might not even exist
         connection: Optional[Tuple[Emitter, Receiver]] = event.get_connection()
         if connection is None:
@@ -798,98 +1038,3 @@ class Circuit:
         receiver._upstream.remove(emitter)
         emitter._downstream.remove(weak_ref(receiver))
         # TODO: maybe keep emitter around if it would be deleted here, so you can clean all garbage on idle
-
-
-########################################################################################################################
-
-class Switch(Receiver, Emitter):
-    class Operation(metaclass=ABCMeta):
-        """
-        Operations are Functors that can be part of a Switch.
-        """
-
-        @abstractmethod
-        def get_input_schema(self) -> Value.Schema:
-            """
-            The Schema of an input value of the Operation.
-            """
-            pass
-
-        @abstractmethod
-        def get_output_schema(self) -> Value.Schema:
-            """
-            The Schema of an output value of the Operation.
-            """
-
-        def __call__(self, value: Value) -> Optional[Value]:
-            """
-            Perform the Operation on a given value.
-            :param value: Input value, must conform to the Schema specified by the `input_schema` property.
-            :return: Either a new output value (conforming to the Schema specified by the `output_schema` property)
-                or None.
-            :raise TypeError: If the input Value does not conform to this Operation's input Schema.
-            """
-            if not isinstance(value, Value) or value.schema != self.get_input_schema():
-                raise TypeError("Value does not conform to the Operation's input Schema")
-            result: Optional[Value] = self._perform(value)
-            if result is not None:
-                assert result.schema == self.get_output_schema()
-            return result
-            pass
-
-        # private
-        @abstractmethod
-        def _perform(self, value: Value) -> Optional[Value]:
-            """
-            Operation implementation.
-            :param value: Input value, conforms to the input Schema.
-            :return: Either a new output value conforming to the output Schema or None.
-            """
-            pass
-
-    def __init__(self, *operations: Operation):
-        """
-        Constructor.
-        :param operations: All Operations that this Switch performs in order. Must not be empty.
-        :raise ValueError: If no Operations are passed.
-        :raise TypeError: If two subsequent Operations have mismatched Schemas.
-        """
-        if len(operations) == 0:
-            raise ValueError("Cannot create a Switch without a single Operation")
-
-        for i in range(len(operations) - 1):
-            if operations[i].output_schema != operations[i + 1].input_schema:
-                raise TypeError(f"Operations {i} and {i + 1} have mismatched Value Schemas")
-
-        self._operations: Tuple[Switch.Operation] = operations
-
-        Receiver.__init__(self, self._operations[0].get_input_schema())
-        Emitter.__init__(self, self._operations[-1].get_output_schema())
-
-    def _operate_on(self, value: Value) -> Optional[Value]:
-        """
-        Performs the sequence of Operations on the given Value and returns it or None.
-        Exceptions thrown by a Operation will propagate back to the caller.
-        :param value: Input value.
-        :return: Output of the last Operation or None.
-        """
-        for operation in self._operations:
-            value = operation(value)
-            if value is None:
-                break
-        return value
-
-    def _on_next(self, signal: ValueSignal):
-        """
-        Performs the sequence of Operations on the given Value and emits the result if one is produced.
-        Exceptions thrown by a Operation will cause the Switch to fail.
-
-        :param signal   The Signal associated with this call.
-        """
-        try:
-            result = self._operate_on(signal.get_value())
-        except Exception as exception:
-            self._fail(exception)
-        else:
-            if result is not None:
-                self._emit(result)
