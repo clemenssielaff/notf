@@ -74,7 +74,8 @@ An Event is an object that is passed to the Circuit to be handled. It references
 
 ## Circuit
 - [X] Keeps a thread-safe queue of Events to perform in order.
-- [ ] Executes all events up to now or when a timeout is reached.
+- [ ] Handles one event at a time.
+- [X] Keeps a list of topology changes that are delayed until the event epilogue.
 - [X] Keeps a map of weak references to named Operators that can be queried by Receivers 
 - [X] Stores a simple list of all expired Emitters so they are not deleted mid-event but cleaned up when the app is idle
 
@@ -436,7 +437,9 @@ Solution 3 is an interesting one. What it means is that no matter if you add or 
 
 So, solution number 3 it is. In order for this to work, all Circuit elements must store a reference to their Circuit or some other central instance to register connection additions and deletions. We considered to pass the Circuit as a part of the Signal instead, that would introduce quite a bit of overhead passing the Circuit reference from one Signal to the next. Also, Circuit elements *are* part of the Circuit, it is only natural for them to keep a (non-owning) reference.
 
-
+Another thing to consider is what will happen, if a user repeatedly adds and removes the same Connection. Our first approach was to perform all new connections first at the end of the Event and existing ones removed next. This way, we were able to ensure that Emitters do not go out of scope when the last Receiver disconnects from them, even though a new connection is already scheduled. This however also meant that if you create and remove / remove and create the same connection during a single Event, the connection will always end up being removed, even if the "create connection" call was the last one to execute.
+As we establish in "Ordered Emission", there is no way for us to avoid issues with execution order as long as we allow user-defined code. This is basically another example of that. Our solution was therefore to create a single list of topology changes that are filled in the order in which the user-defined code is executed. This way, if you create-remove a connection, it will be removed and remove-create one, it will be created at the end of the event. 
+        
 ## Ordered Emission
 
 Originally, we did not assume any order in the emission process. Conceptually, the Signals should flow through the Circuit like they do in a real electrical circuit: all at the same time. One important property of this approach was, that the order in which Receivers were connected to Emitters did not matter. In a way, you could say that Circuit element was to be [commutative](https://en.wikipedia.org/wiki/Commutative_property). This was important because the same set of (functionally unrelated) connections might have a completely different effect on the overall Logic, if their order happened to be different (see previous chapter on "Logic Modification")
