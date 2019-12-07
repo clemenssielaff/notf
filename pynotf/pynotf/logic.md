@@ -63,18 +63,20 @@ An Event is an object that is passed to the Circuit to be handled. It references
 - [X] Automatically disconnects from Emitters that complete or fail.
 - [X] Has an input Value type which is constant and readable.
 - [X] Constructor takes a Circuit and input Value type. 
-- [X] Has 3 public methods `on_value`, `on_complete` and `on_fail`.
+- [X] Has 3 public methods `on_value`, `on_failure` and `on_completion`.
+- [X] Has 3 corresponding private, virtual methods that don't do anything by default.
 - [X] Can connect to existing upstream Emitters.
 - [X] Can disconnect from upstream Emitters.
-- [ ] Can create-connect upstream Operators.
-- [X] Connections and disconnections don't happen immediately but are queued in the Circuit.
+- [X] Can create-connect upstream Operators.
+- [X] User issued connections and disconnections don't happen immediately but are queued in the Circuit.
 - [X] Stores a pointer to its Circuit.
-- [ ] Can request existing Operators by name from the Circuit.
+- [X] Can request existing Operators by name from the Circuit.
 
 ## Circuit
 - [X] Keeps a thread-safe queue of Events to perform in order.
 - [ ] Executes all events up to now or when a timeout is reached.
-- [ ] Keeps a map of weak references to named Operators that can be requested 
+- [X] Keeps a map of weak references to named Operators that can be queried by Receivers 
+- [X] Stores a simple list of all expired Emitters so they are not deleted mid-event but cleaned up when the app is idle
 
 ## EventLoop
 - [ ] Stores an optional function pointer with no arguments, no return value that is called after the Circuit has performed post-event cleanup.
@@ -112,7 +114,38 @@ An Event is an object that is passed to the Circuit to be handled. It references
 
 ## Reactive Logic
 
-> TODO: why did we choose the reactive component model anyway?
+Here are some thoughts on circuit elements, and why we choose a functional reactive programming style to begin with.
+At the beginning, we started with a classical signalling system: Signals exist somewhere, Nodes can connect callbacks to them.
+Nodes were also able to have Properties, which are basically single values that are publicly write and readable and that fire a Signal whenever they change.
+We then noticed, that often times we would like to chain Signals together in a way that would transform a value.
+For example, take a floating point, clamp it into the range [0, 1] and multiply it by 100 to get a percentage value.
+All of that could of course happen within the callback, but what if we need the percentage at multiple places? 
+Our solution for that was to have global Properties, that could be dynamically created and that would act as common value providers.
+
+Then it came time to think of (what we called then) event propagation.
+In Qt, events are completely separate from Signal / Slots - at least on the level where users would usually interact with QObjects.
+We didn't like that, because events were basically values as well.
+A "mouse click event" is another value in a stream of values that denotes a new place (and time and modifiers etc.) where the mouse was clicked.
+At the same time, we solidified the design of what we now call a Node (uppercase N): a container with a fixed set of properties, signals and slots (we call them Emitter and Receiver now).
+...And then we discovered Functional Reactive Programming (https://en.wikipedia.org/wiki/Functional_reactive_programming).
+The most common library used for FRP seems to be ReactiveX (http://reactivex.io/) and their website makes it sound like magic.
+All of our problems solved!
+
+Well, to some point.
+The more I read about "pure" Functional Reactive Programming, the more I grew disappointed by the academic nature of many of the discussions surrounding it even though the basic concepts seem so simple:
+
+* Think of Signals not as independent occurrences, but as a (discrete) stream of data.
+* Data flows from from the source to one or more sinks in a directed, acyclic fashion. 
+* On the way, the data passes Operators that can modify the data, combine it with other/previous data or halt its propagation downstream.
+* Operators are completely independent of each other, share no state and have no public methods other than those required for handling data.
+* Data streams have a start and end time, although the start time is somewhat fuzzy (with some, the first value you get is the first one emitted after you connect, others might store all of their values and provide you with a burst of all previous values on connection).
+* A data stream ends when it completes voluntarily or when a failure occurs in one of the Operators.
+
+Yet, some academics rather discuss whether FRP requires streams to be discrete (in our case: yes), claim that FRP is not functional at all (I honestly don't care) or that FRP is not equivalent to a DAG (true, but it helps to think of one that way). IDK.
+I tried to read everything but eventually decided to just use the concepts that make sense to me in the larger context of the architecture.
+In fact, leading metaphor for what we have is a simple node graph where every Node has a single output plug and a single input plug.
+Both input and output plugs can connect to multiple other plugs. 
+That is what we now call the Circuit.
 
 An experienced application programmer might find the implementation of some of these patterns familiar. In fact, what we call an _Emitter_ and _Receiver_ could just as well be called an _Observable_ and _Observer_ to follow the _ReactiveX_ naming scheme (see [reactivex.io](http://reactivex.io/documentation/observable.html)).
 <br> However, these names are not very programmer-friendly so we chose to go with our own naming. Here is a comprehensive list why:
