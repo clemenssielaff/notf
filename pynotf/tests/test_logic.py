@@ -2,10 +2,10 @@ import unittest
 import logging
 from enum import Enum
 from typing import List
-from weakref import ref as weak
+from weakref import ref as weak_ref
 from random import randint
 
-from pynotf.logic import Switch, Receiver, Emitter
+from pynotf.logic import Receiver, Emitter
 from pynotf.value import Value
 
 from tests.utils import *
@@ -15,30 +15,27 @@ from tests.utils import *
 ########################################################################################################################
 
 """
+All test cases have an implicit last step to clean up after themselves if necessary
 
 Circuit
 * create and remove x2 to ensure that no global state is destroyed at the end of the first
 * create two circuits at the same time, make sure that they are separate things
 
 Emitters and Receivers
-* create a receiver and a receiver and push some values through until finishing through
-    - completion
-    - error
+(the reentrancy flag can also check that the list of receivers is not change mid-iteration)
 * finish an emitter through complete or failure and check that receivers disconnect
-* create a branching circuit and check that all receivers get the same value
-
-Switches and Operations
-* test a noop switch
-* test a switch that always does one thing and produces the same output type, make it so the sequence has to be ordered correctly produce the correct value
-* test a switch that completes through failure
-* test a switch that only produces a value every second time and produces a different output type
+* create a linear circuit
+* create a branching circuit
 
 Ownership
 * create an emitter whose ownership is passed from one subscriber to another one and make sure it is deleted afterwards
-* create an emitter with on outside reference who outlives multiple receiver popping in and out of existence
-* create a receiver that creates multiple emitters in sequence for a single slot (thereby dropping the old one)
+* create an emitter with an outside reference who outlives multiple receiver popping in and out of existence
+* create a Receiver and repeatedly connect and disconnect new emitters
+* create a chain of emitter - switch - switch - receiver and make sure everything stays alive through the last strong reference only
+    - with that setup, create a strong reference to a switch inside the chain and drop the old receiver to see if the rest survives
 
 Signal
+
 * create a receiver that used the signal ID to differentiate between emitters, two signal ids from the same emitter should match
 * create an emitter with a list of receivers to play through the signal state:
     - unblockable signal, tries to get blocked or accepted along the way
@@ -48,13 +45,15 @@ Exceptions
 * create a receiver that throws an exception and let the emitter handle it
 * create a custom exception handler (unsubscribe after 2nd exception) for an emitter class and exchange the default one for that at runtime
 
+Switches and Operations
+
 Circles
+(assert that when a switch emits, all user-defined code has finished and that emission does not require access to the switch's state, add the "allow reentrancy" flag)
 * create a circuit with an unapproved loop (error)
 * create a circuit with an allowed loop
-    - loop once (one direction the first time - going into a loop, next direction the second time)
-    - loop multiple times (break loop through the internal state)
+    - loop once
+    - loop multiple times
     - be infinite (still an error)
-* test a Switch with allowed loop but not reentrant code and check that no reentrancy occurs
 
 Logic modification
 * create a circuit that adds a new connection
@@ -68,6 +67,12 @@ Ordered Emission
 * ensure new receivers are emitted to last (check example that produces 1 or -1)
 * connect multiple receivers with different priorities
 * create emitter that sorts receivers based on some arbitrary value
+
+Exceptions
+* have a Receiver throw an exception and let it be handled by the Emitter
+* change the error handler of an emitter to drop the receiver after the second error
+* change the error handler than change it back
+
 """
 
 
@@ -139,7 +144,6 @@ class TestCase(unittest.TestCase):
                 # with completing, the receiver has now disconnected from the emitter
                 self.assertEqual(len(recorder._upstream), 0)
 
-
     def test_connecting_with_wrong_schema(self):
         with self.assertRaises(TypeError):
             emitter = NumberEmitter()
@@ -198,54 +202,54 @@ class TestCase(unittest.TestCase):
         not_a_receiver = Recorder(emitter.output_schema)
         not_a_receiver.disconnect_from(emitter)
 
-    def test_simple_switch(self):
-        """
-        0, 1, 2, 3 -> 7, 8, 9, 10 -> (7, 8), (9, 10) -> (7, 8), (9, 10)
-        """
-        emitter = NumberEmitter()
-        switch = Switch(AddConstantOperation(7), GroupTwoOperation(),
-                        Switch.NoOp(GroupTwoOperation().output_schema))
-        switch.connect_to(emitter)
-        recorder = record(switch)
-
-        for x in range(4):
-            emitter.emit(Value(x))
-
-        expected = [(7, 8), (9, 10)]
-        for index, value in enumerate(recorder.values):
-            self.assertEqual(expected[index], (value["x"].as_number(), value["y"].as_number()))
-
-    def test_switch_wrong_type(self):
-        switch = Switch(Switch.NoOp(Value(0).schema))
-        switch.on_value(Emitter.Signal(NumberEmitter()), Value("Not A Number"))
-
-    def test_switch_error(self):
-        emitter = NumberEmitter()
-        switch = Switch(ErrorOperation(4))
-        switch.connect_to(emitter)
-        recorder = record(switch)
-
-        with self.assertRaises(TypeError):
-            emitter.emit("Not A Number")
-
-        # it's not the ErrorOperation that fails, but trying to emit another value
-        for x in range(10):
-            emitter.emit(x)
-        self.assertTrue(len(emitter.exceptions) > 0)
-        self.assertTrue(switch.is_completed())
-
-        expected = [0, 1, 2, 3]
-        self.assertEqual(len(recorder.values), len(expected))
-        for i in range(len(expected)):
-            self.assertEqual(expected[i], recorder.values[i].as_number())
-
-    def test_no_empty_switch(self):
-        with self.assertRaises(ValueError):
-            _ = Switch()
-
-    def test_mismatched_operations(self):
-        with self.assertRaises(TypeError):
-            Switch(GroupTwoOperation(), AddConstantOperation(7))
+    # def test_simple_switch(self):
+    #     """
+    #     0, 1, 2, 3 -> 7, 8, 9, 10 -> (7, 8), (9, 10) -> (7, 8), (9, 10)
+    #     """
+    #     emitter = NumberEmitter()
+    #     switch = Operator(AddConstantOperation(7), GroupTwoOperation(),
+    #                     Switch.NoOp(GroupTwoOperation().output_schema))
+    #     switch.connect_to(emitter)
+    #     recorder = record(switch)
+    #
+    #     for x in range(4):
+    #         emitter.emit(Value(x))
+    #
+    #     expected = [(7, 8), (9, 10)]
+    #     for index, value in enumerate(recorder.values):
+    #         self.assertEqual(expected[index], (value["x"].as_number(), value["y"].as_number()))
+    #
+    # def test_switch_wrong_type(self):
+    #     switch = Switch(Switch.NoOp(Value(0).schema))
+    #     switch.on_value(Emitter.Signal(NumberEmitter()), Value("Not A Number"))
+    #
+    # def test_switch_error(self):
+    #     emitter = NumberEmitter()
+    #     switch = Switch(ErrorOperation(4))
+    #     switch.connect_to(emitter)
+    #     recorder = record(switch)
+    #
+    #     with self.assertRaises(TypeError):
+    #         emitter.emit("Not A Number")
+    #
+    #     # it's not the ErrorOperation that fails, but trying to emit another value
+    #     for x in range(10):
+    #         emitter.emit(x)
+    #     self.assertTrue(len(emitter.exceptions) > 0)
+    #     self.assertTrue(switch.is_completed())
+    #
+    #     expected = [0, 1, 2, 3]
+    #     self.assertEqual(len(recorder.values), len(expected))
+    #     for i in range(len(expected)):
+    #         self.assertEqual(expected[i], recorder.values[i].as_number())
+    #
+    # def test_no_empty_switch(self):
+    #     with self.assertRaises(ValueError):
+    #         _ = Switch()
+    #
+    # def test_mismatched_operations(self):
+    #     with self.assertRaises(TypeError):
+    #         Switch(GroupTwoOperation(), AddConstantOperation(7))
 
     def test_receiver_lifetime(self):
         emitter: Emitter = NumberEmitter()
@@ -582,7 +586,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(c.status, NamedReceiver.Status.NOT_CALLED)
         self.assertEqual(d.status, NamedReceiver.Status.NOT_CALLED)
         self.assertEqual(len(e.values), 0)
-        self.assertEqual(emt._receivers, [weak(x) for x in [a, b, c, d, e]])
+        self.assertEqual(emt._receivers, [weak_ref(x) for x in [a, b, c, d, e]])
 
         # delete all but b and reset
         del a
