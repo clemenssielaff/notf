@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections import deque
 from enum import Enum
 from logging import error as print_error
-from threading import Lock
+from threading import Lock, Condition
 from typing import Any, Optional, List, Tuple, Union, Iterable, Set, Deque, Dict
 from weakref import ref as weak_ref
 
@@ -1080,10 +1080,9 @@ class Circuit:
         """
         self._events: Deque[Circuit._Event] = deque()  # main event queue
         self._event_mutex: Lock = Lock()  # mutex protecting the event queue
-        # TODO: we need a condition variable here to notify watchers that there are new events to handle
+        self._event_condition: Condition = Condition(self._event_mutex)  # notifies watchers when a new event arrives
 
         self._named_operators: Dict[str, weak_ref] = {}  # weak references to named Operators by name
-
         self._topology_changes: List[Circuit._TopologyChange] = []  # changes to the topology during an event in order
 
         self._expired_emitters: List[Emitter] = []  # all expired Emitters kept around for delayed cleanup on idle
@@ -1096,8 +1095,9 @@ class Circuit:
         :param value:       Value to emit.
         :raise TypeError:   If the Value schema does not match the Emitter's.
         """
-        with self._event_mutex:
+        with self._event_condition:
             self._events.append(Circuit._ValueEvent(weak_ref(emitter), value))
+            self._event_condition.notify_all()
 
     def emit_failure(self, emitter: Emitter, error: Exception):
         """
@@ -1105,16 +1105,18 @@ class Circuit:
         :param emitter: Emitter to fail.
         :param error:   Error causing the failure.
         """
-        with self._event_mutex:
+        with self._event_condition:
             self._events.append(Circuit._FailureEvent(weak_ref(emitter), error))
+            self._event_condition.notify_all()
 
     def emit_completion(self, emitter: Emitter):
         """
         Schedules the voluntary completion of an Emitter in the Circuit.
         :param emitter: Emitter to complete.
         """
-        with self._event_mutex:
+        with self._event_condition:
             self._events.append(Circuit._CompletionEvent(weak_ref(emitter)))
+            self._event_condition.notify_all()
 
     def cleanup(self):
         """
@@ -1155,16 +1157,23 @@ class Circuit:
         with self._cleanup_mutex:
             self._expired_emitters.append(emitter)
 
-    def handle_next_event(self):
+    def await_event(self, timeout: Optional[float] = None) -> Optional[_Event]:
+        """
+        Blocks the calling thread until a time where at least one new event has been queued in the Circuit.
+        Should only be called by the EventLoop.
+        :param timeout: Optional timeout in seconds.
+        """
+        with self._event_condition:
+            if not self._event_condition.wait_for(lambda: len(self._events) > 0, timeout):
+                return None
+            return self._events.popleft()
+
+    def handle_event(self, event: 'Circuit._Event'):
         """
         Handles the next event, if one exists.
+        Should only be called by the EventLoop.
+        :param event: Event to handle.
         """
-        # pop the next event from the queue
-        with self._event_mutex:
-            if len(self._events) == 0:
-                return
-            event: Circuit._Event = self._events.popleft()
-
         # at this point, we should have no outstanding topology changes to perform
         assert len(self._topology_changes) == 0
 
@@ -1207,8 +1216,9 @@ class Circuit:
 
         # if the Emitter has already completed, schedule a CompletionSignal as a continuation of this Event.
         if emitter.is_completed():
-            with self._event_mutex:
+            with self._event_condition:
                 self._events.append(Circuit._AlreadyCompletedEvent(emitter.get_id(), weak_receiver))
+                self._event_condition.notify_all()
 
         # if however the Emitter is still alive, add the Receiver as a downstream
         else:
