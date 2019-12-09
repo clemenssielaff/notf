@@ -152,6 +152,22 @@ class Emitter:
             """
             self._emitter: weak_ref = weak_ref(emitter)
 
+        def is_valid(self) -> bool:
+            """
+            Checks if the handle is still valid.
+            """
+            return self._emitter() is not None
+
+        def get_output_schema(self) -> Optional[Value.Schema]:
+            """
+            Returns the output schema of the Emitter or None, if the handle is no longer valid.
+            """
+            emitter: Emitter = self._emitter()
+            if emitter is None:
+                return None
+            else:
+                return emitter.get_output_schema()
+
     class _OrderableReceivers:
         """
         Passed in `Emitter._sort_receivers` to allow subclasses to inspect and re-order the list of Receivers without
@@ -325,7 +341,7 @@ class Emitter:
         """
         Constructor.
         :param schema:          Schema of the Value emitted by this Emitter, defaults to empty.
-        :param is_blockable:    Whether or not Signals from this Emitter can be blocked.
+        :param is_blockable:    Whether or not Signals from this Emitter can be blocked, defaults to False.
         """
         self._downstream: List[weak_ref] = []  # subclasses may only change the order
         self._output_schema: Value.Schema = schema  # is constant
@@ -367,6 +383,7 @@ class Emitter:
     def _emit(self, value: Any = Value()):
         """
         Push the given value to all active Receivers.
+        We offer implicit conversion to a Value here since this code can be called from subclasses by the user.
         :param value:           Value to emit, can be empty if this Emitter does not emit a meaningful value.
         :raise TypeError:       If the Value's Schema doesn't match.
         :raise RuntimeError:    If the Emitter has already completed (either normally or though an error).
@@ -383,9 +400,13 @@ class Emitter:
             try:
                 value = Value(value)
             except ValueError:
-                raise TypeError("Emitter can only emit values that are implicitly convertible to a Value")
+                raise TypeError("Emitters can only emit Values or things that are implicitly convertible to one")
         if value.schema != self.get_output_schema():
             raise TypeError("Emitter cannot emit a value with the wrong Schema")
+
+        # early out if there wouldn't be a point of emitting anyway
+        if not self.has_downstream():
+            return
 
         # Make sure that we are not already emitting.
         if self._status != self._Status.IDLE:  # this would be the job of a RAII guard in C++
@@ -595,6 +616,9 @@ class Receiver:
         """
         # assert that the emitter is connected to this receiver
         assert any(emitter.get_id() == signal.get_source() for emitter in self._upstream)
+
+        # it should be impossible to emit a value of the wrong type
+        assert signal.get_value().schema == self.get_input_schema()
 
         # pass the signal along to the user-defined handler
         self._on_next(signal)
@@ -974,16 +998,10 @@ class Circuit:
             :param emitter: Emitter targeted by the event.
             :param value:   Emitted Value.
             """
-            Circuit._CompletionEvent.__init__(self, emitter)
+            # by this point, the value's schema should match the Emitter's
+            assert emitter().get_output_schema() == value.schema
 
-            # ensure that the value can be emitted by the Emitter
-            strong_emitter: Emitter = self._get_emitter()
-            if strong_emitter is not None:
-                assert isinstance(strong_emitter, Emitter)
-                if strong_emitter.get_output_schema() != value.schema:
-                    raise TypeError(f"Cannot emit Value from Emitter {strong_emitter.get_id()}."
-                                    f"  Emitter schema: {strong_emitter.get_output_schema()}"
-                                    f"  Value schema: {value.schema}")
+            Circuit._CompletionEvent.__init__(self, emitter)
 
             self._value: Value = value  # is constant
 
@@ -1088,13 +1106,27 @@ class Circuit:
         self._expired_emitters: List[Emitter] = []  # all expired Emitters kept around for delayed cleanup on idle
         self._cleanup_mutex: Lock = Lock()  # mutex protecting the expired emitters list
 
-    def emit_value(self, emitter: Emitter, value: Value = Value()):
+    def emit_value(self, emitter: Emitter, value: Any = Value()):
         """
         Schedules the emission of a Value in the Circuit.
         :param emitter:     Emitter to emit from.
         :param value:       Value to emit.
         :raise TypeError:   If the Value schema does not match the Emitter's.
         """
+        # implicit value conversion
+        if not isinstance(value, Value):
+            try:
+                value = Value(value)
+            except ValueError:
+                raise TypeError("Emitters can only emit Values or things that are implicitly convertible to one")
+
+        # ensure that the value can be emitted by the Emitter
+        if emitter.get_output_schema() != value.schema:
+            raise TypeError(f"Cannot emit Value from Emitter {emitter.get_id()}."
+                            f"  Emitter schema: {emitter.get_output_schema()}"
+                            f"  Value schema: {value.schema}")
+
+        # schedule the event
         with self._event_condition:
             self._events.append(Circuit._ValueEvent(weak_ref(emitter), value))
             self._event_condition.notify_all()
@@ -1206,6 +1238,9 @@ class Circuit:
         :param emitter: Emitter at the source of the connection.
         :param receiver: Receiver at the target of the connection.
         """
+        # never create a connection mid-event
+        assert emitter._status in (Emitter._Status.IDLE, Emitter._Status.COMPLETED)
+
         # multiple connections between the same Emitter-Receiver pair are ignored
         weak_receiver = weak_ref(receiver)
         if weak_receiver in emitter._downstream:  # can only be true if the emitter has not completed
