@@ -879,7 +879,7 @@ class Operator(Receiver, Emitter):
         self._operation: Operator.Operation = operation  # is constant
 
     # private
-    def _on_next(self, signal: ValueSignal):  # virtual
+    def _on_next(self, signal: ValueSignal):  # final
         """
         Performs the Operation on the given Value and emits the result if one is produced.
         Exceptions thrown by the Operation will cause the Operator to fail.
@@ -893,7 +893,7 @@ class Operator(Receiver, Emitter):
             if result is not None:
                 self._emit(result)
 
-    def _on_failure(self, signal: FailureSignal):  # virtual
+    def _on_failure(self, signal: FailureSignal):  # final
         """
         If the failed Emitter was the last connected one, this Operator also completes.
         :param signal   The ErrorSignal associated with this call.
@@ -901,7 +901,7 @@ class Operator(Receiver, Emitter):
         if not self.has_upstream():
             self._complete()
 
-    def _on_completion(self, signal: CompletionSignal):  # virtual
+    def _on_completion(self, signal: CompletionSignal):  # final
         """
         If the completed Emitter was the last connected one, this Operator also completes.
         :param signal   The CompletionSignal associated with this call.

@@ -1,16 +1,47 @@
 from typing import List, ClassVar, Optional, Tuple, Union, Callable
 import sys
+from random import randint as random_int, choice as random_choice
 
 from pynotf.logic import Operator, Receiver, Emitter, Circuit, ValueSignal, FailureSignal, CompletionSignal
 from pynotf.value import Value
 
-__all__ = ["AddAnotherReceiverReceiver", "AddConstantOperation", "ClampOperation", "DisconnectReceiver",
-           "ErrorOperation", "GroupTwoOperation", "Nope",
-           "NumberEmitter", "Recorder", "StringifyOperation", "basic_schemas", "count_live_receivers",
-           "create_receiver", "number_schema", "string_schema", "create_emitter"]
+number_schema: Value.Schema = Value(0).schema
+"""
+Schema consisting of a single number.
+"""
+
+string_schema: Value.Schema = Value("").schema
+"""
+Schema consisting of a single string.
+"""
 
 
-# TODO: create random schemas
+def random_schema(depth: int = 4, width: int = 3) -> Value.Schema:
+    """
+    Produces a random Value Schema.
+    :param depth: Maximum depth of the Schema.
+    :param width: Maximum number of elements in a map.
+    """
+    # ensure sane inputs
+    depth = max(0, depth)
+    width = max(1, width)
+
+    def random_element(remaining_depth: int = 4):
+        # if the schema can not get any deeper, return a leaf element
+        # even if the schema is allowed to get deeper, there is a change that it won't
+        if random_int(0, remaining_depth) == 0:  # will always be true if _depth == 0
+            return random_choice((0, ""))
+
+        # we are going deeper, which means that this level needs to be a list or a map
+        if random_choice((True, False)):  # list
+            return [random_element(remaining_depth - 1)]
+        else:  # map
+            return {
+                "key{}".format(index): random_element(remaining_depth - 1) for index in range(random_int(1, width))
+            }
+
+    return Value.Schema(random_element(depth))
+
 
 class Recorder(Receiver):
     """
@@ -58,24 +89,24 @@ class Recorder(Receiver):
                 result.append(signal.get_value())
         return result
 
-    def get_errors(self) -> List[Exception]:
+    def get_failures(self) -> List[FailureSignal]:
         """
         All errors that the Recorder received so far.
         """
-        result: List[Exception] = []
+        result: List[FailureSignal] = []
         for signal in self.signals:
             if isinstance(signal, FailureSignal):
-                result.append(signal.get_error())
+                result.append(signal)
         return result
 
-    def get_completions(self) -> List[int]:
+    def get_completions(self) -> List[CompletionSignal]:
         """
         All completion that the Recorder received so far.
         """
-        result: List[int] = []
+        result: List[CompletionSignal] = []
         for signal in self.signals:
             if isinstance(signal, CompletionSignal):
-                result.append(signal.get_source())
+                result.append(signal)
         return result
 
 
@@ -139,22 +170,37 @@ def create_receiver(circuit: Circuit, schema: Value.Schema,
     return AnonymousReceiver()
 
 
+def create_operator(circuit: Circuit,
+                    schema: Value.Schema,
+                    operation: Callable,
+                    output_schema: Optional[Value.Schema] = None):
+    """
+    Creates an instance of an anonymous Operator class that can operate on values of the given schema.
+    :param circuit:         Circuit to contain the Operator.
+    :param schema:          Schema of the Values ingested by the Operation.
+    :param operation:       Operation to perform on given Values.
+    :param output_schema:   (Optional) Schema of the output Value if different from the input.
+    :return:                New instance of the Operator class.
+    """
+
+    class AnonymousOperation(Operator.Operation):
+        def get_input_schema(self) -> Value.Schema:
+            return schema
+
+        def get_output_schema(self) -> Value.Schema:
+            return schema if output_schema is None else output_schema
+
+        def _perform(self, value: Value) -> Optional[Value]:
+            return operation(value)
+
+    class AnonymousOperator(Operator):
+        def __init__(self):
+            Operator.__init__(self, circuit, AnonymousOperation())
+
+    return AnonymousOperator()
+
+
 #####################################################################################################
-
-number_schema: Value.Schema = Value(0).schema
-string_schema: Value.Schema = Value("").schema
-
-basic_schemas = (number_schema, string_schema)
-"""
-The basic Value Schemas.
-"""
-
-
-class Nope:
-    """
-    A useless class that is never the correct type.
-    """
-    pass
 
 
 def count_live_receivers(emitter: Emitter) -> int:
@@ -224,101 +270,3 @@ class DisconnectReceiver(Receiver):
 
     def on_value(self, signal: ValueSignal):
         self.disconnect_from(self.emitter.get_id())
-
-
-class AddConstantOperation(Operator.Operation):
-    def __init__(self, addition: float):
-        self._constant: float = addition
-
-    def get_input_schema(self) -> Value.Schema:
-        return number_schema
-
-    def get_output_schema(self) -> Value.Schema:
-        return number_schema
-
-    def _perform(self, value: Value) -> Value:
-        return value.modified().set(value.as_number() + self._constant)
-
-
-class GroupTwoOperation(Operator.Operation):
-    _output_prototype: ClassVar[Value] = Value({"x": 0, "y": 0})
-
-    def __init__(self):
-        self._last_value: Optional[float] = None
-
-    def get_input_schema(self) -> Value.Schema:
-        return number_schema
-
-    def get_output_schema(self) -> Value.Schema:
-        return self._output_prototype.schema
-
-    def _perform(self, value: Value) -> Optional[Value]:
-        if self._last_value is None:
-            self._last_value = value.as_number()
-        else:
-            result = self._output_prototype.modified().set({"x": self._last_value, "y": value.as_number()})
-            self._last_value = None
-            return result
-
-
-class ErrorOperation(Operator.Operation):
-    """
-    An Operation that raises a ValueError if a certain number is passed.
-    """
-
-    def __init__(self, err_on_number: float):
-        self._err_on_number: float = err_on_number
-
-    def get_input_schema(self) -> Value.Schema:
-        return number_schema
-
-    def get_output_schema(self) -> Value.Schema:
-        return number_schema
-
-    def _perform(self, value: Value) -> Optional[Value]:
-        if value.as_number() == self._err_on_number:
-            raise ValueError("The error condition has occurred")
-        return value
-
-
-class ClampOperation(Operator.Operation):
-    """
-    Clamps a numeric Value to a certain range.
-    """
-
-    def __init__(self, min_value: float, max_value: float):
-        self._min: float = min_value
-        self._max: float = max_value
-
-    def get_input_schema(self) -> Value.Schema:
-        return number_schema
-
-    def get_output_schema(self) -> Value.Schema:
-        return number_schema
-
-    def _perform(self, value: Value) -> Value:
-        return value.modified().set(max(self._min, min(self._max, value.as_number())))
-
-
-class StringifyOperation(Operator.Operation):
-    """
-    Converts a numeric Value into a string representation.
-    """
-
-    def get_input_schema(self) -> Value.Schema:
-        return number_schema
-
-    def get_output_schema(self) -> Value.Schema:
-        return string_schema
-
-    def _perform(self, value: Value) -> Value:
-        return Value(str(value.as_number()))
-
-# class EmptyFact(Fact):
-#     def __init__(self, executor: Executor):
-#         Fact.__init__(self, executor)
-#
-#
-# class NumberFact(Fact):
-#     def __init__(self, executor: Executor):
-#         Fact.__init__(self, executor, number_schema)

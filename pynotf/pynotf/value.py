@@ -104,7 +104,7 @@ class Kind(IntEnum):
             return Kind.NONE
         elif isinstance(element, str):
             return Kind.STRING
-        elif isinstance(element, float):
+        elif isinstance(element, (int, float)):
             return Kind.NUMBER
         elif isinstance(element, list):
             return Kind.LIST
@@ -724,7 +724,7 @@ class Value:
         """
         return self._schema.is_empty()
 
-    def modified(self) -> Writer:
+    def modified(self) -> Writer:  # TODO: I had to look up what "modified" means here, maybe rename it to "write"?
         """
         Write access to this Value instance.
         """

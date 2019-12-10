@@ -1,12 +1,13 @@
 import unittest
 import logging
-from typing import List
+from typing import List, Optional, ClassVar
 from random import randint
 
-from pynotf.logic import Receiver, Emitter, Circuit, FailureSignal, CompletionSignal, ValueSignal
+from pynotf.logic import Receiver, Emitter, Circuit, FailureSignal, CompletionSignal, ValueSignal, Operator
 from pynotf.value import Value
 
-from tests.utils import *
+from tests.utils import number_schema, string_schema, Recorder, random_schema, create_emitter, create_receiver, \
+    create_operator
 
 ########################################################################################################################
 # TEST CASE
@@ -51,14 +52,7 @@ Logic modification
 
 Ordered Emission
 * ensure new receivers are emitted to last (check example that produces 1 or -1)
-* connect multiple receivers with different priorities
 * create emitter that sorts receivers based on some arbitrary value
-
-Exceptions
-* have a Receiver throw an exception and let it be handled by the Emitter
-* change the error handler of an emitter to drop the receiver after the second error
-* change the error handler than change it back
-
 """
 
 
@@ -99,7 +93,7 @@ class SimpleTestCase(BaseTestCase):
         """
         Tests whether the input Schema of an Receiver is set correctly
         """
-        for schema in basic_schemas:
+        for schema in (random_schema() for _ in range(4)):
             receiver: Receiver = create_receiver(self.circuit, schema)
             self.assertEqual(receiver.get_input_schema(), schema)
 
@@ -107,7 +101,7 @@ class SimpleTestCase(BaseTestCase):
         """
         Tests whether the output Schema of an Emitter is set correctly
         """
-        for schema in basic_schemas:
+        for schema in (random_schema() for _ in range(4)):
             emitter: Emitter = Emitter(schema)
             self.assertEqual(emitter.get_output_schema(), schema)
 
@@ -168,6 +162,9 @@ class SimpleTestCase(BaseTestCase):
         self.assertEqual(completions, recorder1.get_completions())
 
     def test_double_connection(self):
+        """
+        Create two connections between the same Emitter/Receiver pair.
+        """
         # create an emitter without connecting any receivers
         emitter: Emitter = Emitter(number_schema)
         self.assertFalse(emitter.has_downstream())
@@ -335,6 +332,144 @@ class SimpleTestCase(BaseTestCase):
         # ake sure that the error handler got called and everything is in order
         self.assertTrue(error_handler_called)
 
+    def test_simple_operator(self):
+        """
+        0, 1, 2, 3 -> multiply by two -> 0, 2, 4, 6
+        """
+        # set up the Circuit
+        emitter: Emitter = Emitter(number_schema)
+        operator: Operator = create_operator(self.circuit, number_schema,
+                                             lambda value: value.modified().set(value.as_number() * 2)
+                                             )
+        operator.connect_to(Emitter.Handle(emitter))
+        recorder: Recorder = Recorder.record(operator)
+        self.assertEqual(self._handle_events(), 2)
+
+        # emit 0, 1, 2, 3
+        for number in range(4):
+            self.circuit.emit_value(emitter, number)
+        self.assertEqual(self._handle_events(), 4)
+
+        # check that the operator did what it promised
+        self.assertEqual([v.as_number() for v in recorder.get_values()], [0, 2, 4, 6])
+
+    def test_conversion_operator(self):
+        """
+        0, 1, 2, 3 -> stringify -> "0", "1", "2", "3"
+        """
+        # set up the Circuit
+        emitter: Emitter = Emitter(number_schema)
+        operator: Operator = create_operator(self.circuit, number_schema,
+                                             lambda value: Value(str(value.as_number())),
+                                             output_schema=string_schema)
+        operator.connect_to(Emitter.Handle(emitter))
+        recorder: Recorder = Recorder.record(operator)
+        self.assertEqual(self._handle_events(), 2)
+
+        # emit 0, 1, 2, 3
+        for number in range(4):
+            self.circuit.emit_value(emitter, number)
+        self.assertEqual(self._handle_events(), 4)
+
+        # check that the operator did what it promised
+        self.assertEqual([v.as_string() for v in recorder.get_values()], ["0", "1", "2", "3"])
+
+    def test_stateful_operator(self):
+        """
+        0, 1, 2, 3 -> group two -> (0, 1), (2, 3)
+        """
+
+        class GroupTwo(Operator.Operation):
+            """
+            Groups two subsequent numbers into a pair.
+            """
+            _output_prototype: ClassVar[Value] = Value({"x": 0, "y": 0})
+
+            def __init__(self):
+                self._last_value: Optional[float] = None
+
+            def get_input_schema(self) -> Value.Schema:
+                return number_schema
+
+            def get_output_schema(self) -> Value.Schema:
+                return self._output_prototype.schema
+
+            def _perform(self, value: Value) -> Optional[Value]:
+                if self._last_value is None:
+                    self._last_value = value.as_number()
+                else:
+                    result = self._output_prototype.modified().set({"x": self._last_value, "y": value.as_number()})
+                    self._last_value = None
+                    return result
+
+        # set up the Circuit
+        emitter: Emitter = Emitter(number_schema)
+        operator: Operator = Operator(self.circuit, GroupTwo())
+        operator.connect_to(Emitter.Handle(emitter))
+        recorder: Recorder = Recorder.record(operator)
+        self.assertEqual(self._handle_events(), 2)
+
+        # emit 0, 1, 2, 3
+        for number in range(4):
+            self.circuit.emit_value(emitter, number)
+        self.assertEqual(self._handle_events(), 4)
+
+        # check that the operator did what it promised
+        self.assertEqual(recorder.get_values(), [Value([0, 1]), Value([2, 3])])
+
+    def test_failing_operation(self):
+        """
+        Tests an Operation that will fail given a certain input.
+        """
+
+        def raise_on(trigger: int):
+            """
+            Function factory that produces a function that fails if a certain input is given.
+            :param trigger: Number at which the exception is thrown.
+            """
+
+            def anonymous_func(value: Value) -> Value:
+                if value.as_number() == trigger:
+                    raise RuntimeError()
+                return value
+
+            return anonymous_func
+
+        # set up the circuit
+        emitter: Emitter = Emitter(number_schema)
+        operator: Operator = create_operator(self.circuit, number_schema, raise_on(4))
+        operator.connect_to(Emitter.Handle(emitter))
+        recorder: Recorder = Recorder.record(operator)
+        self.assertEqual(self._handle_events(), 2)
+
+        # try to emit all numbers [0, 10)
+        for number in range(10):
+            self.circuit.emit_value(emitter, number)
+        self.assertEqual(self._handle_events(), 10)
+
+        # even though we handled 10 events, the operator failed while handling input 4
+        self.assertEqual([signal.get_source() for signal in recorder.get_failures()], [operator.get_id()])
+        self.assertEqual([value.as_number() for value in recorder.get_values()], [0, 1, 2, 3])
+
+    def test_bad_operator(self):
+        """
+        Test for Operators that don't deliver the Value types that they promise.
+        """
+        # set up the circuit
+        emitter: Emitter = Emitter(number_schema)
+        operator: Operator = create_operator(self.circuit, number_schema, lambda value: value, string_schema)
+        operator.connect_to(Emitter.Handle(emitter))
+        recorder: Recorder = Recorder.record(operator)
+        self.assertEqual(self._handle_events(), 2)
+
+        # the operator should fail during emission
+        self.circuit.emit_value(emitter, 234)
+        with self.assertRaises(TypeError):
+            self._handle_events()
+
+        # make sure that it has emitted its failure
+        self.assertEqual([signal.get_source() for signal in recorder.get_failures()], [operator.get_id()])
+
 
 class EmitterRecorderCircuit(BaseTestCase):
     """
@@ -387,8 +522,8 @@ class EmitterRecorderCircuit(BaseTestCase):
         self.assertEqual(received_values, self.recorder2.get_values())
 
         # make sure that the receivers have not received an error yet
-        self.assertEqual(len(self.recorder1.get_errors()), 0)
-        self.assertEqual(len(self.recorder2.get_errors()), 0)
+        self.assertEqual(len(self.recorder1.get_failures()), 0)
+        self.assertEqual(len(self.recorder2.get_failures()), 0)
 
         # emit failure
         error = RuntimeError()
@@ -399,10 +534,10 @@ class EmitterRecorderCircuit(BaseTestCase):
         self.assertTrue(self.emitter.is_completed())
 
         # ensure that the error has been received
-        received_errors = self.recorder1.get_errors()
-        self.assertEqual(len(received_errors), 1)
-        self.assertEqual(received_errors[0], error)
-        self.assertEqual(received_errors, self.recorder2.get_errors())
+        received_failures = self.recorder1.get_failures()
+        self.assertEqual(len(received_failures), 1)
+        self.assertEqual(received_failures[0].get_error(), error)
+        self.assertEqual(received_failures, self.recorder2.get_failures())
 
         # emitting any further values will result in an error
         self.circuit.emit_value(self.emitter, 3)
@@ -445,7 +580,7 @@ class EmitterRecorderCircuit(BaseTestCase):
         # ensure that the error has been received
         received_completions = self.recorder1.get_completions()
         self.assertEqual(len(received_completions), 1)
-        self.assertEqual(received_completions[0], self.emitter.get_id())
+        self.assertEqual(received_completions[0].get_source(), self.emitter.get_id())
         self.assertEqual(received_completions, self.recorder2.get_completions())
 
         # emitting any further values will result in an error
@@ -503,51 +638,6 @@ class EmitterRecorderCircuit(BaseTestCase):
 
     ######################
 
-    # def test_simple_switch(self):
-    #     """
-    #     0, 1, 2, 3 -> 7, 8, 9, 10 -> (7, 8), (9, 10) -> (7, 8), (9, 10)
-    #     """
-    #     emitter = NumberEmitter()
-    #     switch = Operator(AddConstantOperation(7), GroupTwoOperation(),
-    #                     Switch.NoOp(GroupTwoOperation().output_schema))
-    #     switch.connect_to(emitter)
-    #     recorder = record(switch)
-    #
-    #     for x in range(4):
-    #         emitter.emit(Value(x))
-    #
-    #     expected = [(7, 8), (9, 10)]
-    #     for index, value in enumerate(recorder.values):
-    #         self.assertEqual(expected[index], (value["x"].as_number(), value["y"].as_number()))
-    #
-    # def test_switch_wrong_type(self):
-    #     switch = Switch(Switch.NoOp(Value(0).schema))
-    #     switch.on_value(Emitter.Signal(NumberEmitter()), Value("Not A Number"))
-    #
-    # def test_switch_error(self):
-    #     emitter = NumberEmitter()
-    #     switch = Switch(ErrorOperation(4))
-    #     switch.connect_to(emitter)
-    #     recorder = record(switch)
-    #
-    #     with self.assertRaises(TypeError):
-    #         emitter.emit("Not A Number")
-    #
-    #     # it's not the ErrorOperation that fails, but trying to emit another value
-    #     for x in range(10):
-    #         emitter.emit(x)
-    #     self.assertTrue(len(emitter.exceptions) > 0)
-    #     self.assertTrue(switch.is_completed())
-    #
-    #     expected = [0, 1, 2, 3]
-    #     self.assertEqual(len(recorder.values), len(expected))
-    #     for i in range(len(expected)):
-    #         self.assertEqual(expected[i], recorder.values[i].as_number())
-    #
-    # def test_no_empty_switch(self):
-    #     with self.assertRaises(ValueError):
-    #         _ = Switch()
-    #
     # def test_receiver_lifetime(self):
     #     emitter: Emitter = NumberEmitter()
     #     rec1 = record(emitter)
@@ -802,102 +892,6 @@ class EmitterRecorderCircuit(BaseTestCase):
     #     emt.emit(93)
     #     self.assertEqual(len(emt._receivers), 1)
     #
-    # def test_sorting(self):
-    #     class NamedReceiver(Receiver):
-    #
-    #         class Status(Enum):
-    #             NOT_CALLED = 0
-    #             FIRST = 1
-    #             ACCEPTED = 2
-    #
-    #         def __init__(self, name: str):
-    #             Receiver.__init__(self, Value(0).schema)
-    #             self.name: str = name
-    #             self.status = self.Status.NOT_CALLED
-    #
-    #         def on_value(self, signal: Emitter.Signal, value: Value):
-    #             if not signal.is_accepted():
-    #                 self.status = self.Status.FIRST
-    #                 signal.accept()
-    #             else:
-    #                 self.status = self.Status.ACCEPTED
-    #                 signal.block()
-    #
-    #     class SortByName(NumberEmitter):
-    #
-    #         def _emit(self, receivers: List['Receiver'], value: Value):
-    #             # split the receivers into sortable and un-sortable
-    #             named_recs = []
-    #             other_recs = []
-    #             for rec in receivers:
-    #                 if isinstance(rec, NamedReceiver):
-    #                     named_recs.append(rec)
-    #                 else:
-    #                     other_recs.append(rec)
-    #             named_recs: List = sorted(named_recs, key=lambda x: x.name)
-    #
-    #             # re-apply the order back to the Emitter
-    #             self._sort_receivers([receivers.index(x) for x in (named_recs + other_recs)])
-    #
-    #             # emit to the sorted Receivers first
-    #             signal = Emitter.Signal(self, is_blockable=True)
-    #             for named_rec in named_recs:
-    #                 named_rec.on_value(signal, value)
-    #                 if signal.is_blocked():
-    #                     return
-    #
-    #             # unsorted Receivers should not be able to block the emitting process
-    #             signal = Emitter.Signal(self, is_blockable=False)
-    #             for other_rec in other_recs:
-    #                 other_rec.on_value(signal, value)
-    #
-    #     a: NamedReceiver = NamedReceiver("a")
-    #     b: NamedReceiver = NamedReceiver("b")
-    #     c: NamedReceiver = NamedReceiver("c")
-    #     d: NamedReceiver = NamedReceiver("d")
-    #     e: Recorder = Recorder(Value(0).schema)
-    #
-    #     # connect in random order
-    #     emt: Emitter = SortByName()
-    #     for receiver in (e, c, b, a, d):
-    #         receiver.connect_to(emt)
-    #     del receiver
-    #
-    #     emt.emit(938)
-    #     self.assertEqual(a.status, NamedReceiver.Status.FIRST)
-    #     self.assertEqual(b.status, NamedReceiver.Status.ACCEPTED)
-    #     self.assertEqual(c.status, NamedReceiver.Status.NOT_CALLED)
-    #     self.assertEqual(d.status, NamedReceiver.Status.NOT_CALLED)
-    #     self.assertEqual(len(e.values), 0)
-    #     self.assertEqual(emt._receivers, [weak_ref(x) for x in [a, b, c, d, e]])
-    #
-    #     # delete all but b and reset
-    #     del a
-    #     b.status = NamedReceiver.Status.NOT_CALLED
-    #     del c
-    #     del d
-    #
-    #     emt.emit(34)
-    #     self.assertEqual(b.status, NamedReceiver.Status.FIRST)
-    #     self.assertEqual(len(e.values), 1)
-    #
-    # def test_apply_invalid_order(self):
-    #     emt = NumberEmitter()
-    #     _ = record(emt)
-    #     _ = record(emt)
-    #     _ = record(emt)
-    #
-    #     with self.assertRaises(RuntimeError):
-    #         emt._sort_receivers([])  # empty
-    #     with self.assertRaises(RuntimeError):
-    #         emt._sort_receivers([0, 1])  # too few indices
-    #     with self.assertRaises(RuntimeError):
-    #         emt._sort_receivers([0, 1, 2, 3])  # too many indices
-    #     with self.assertRaises(RuntimeError):
-    #         emt._sort_receivers([0, 1, 1])  # duplicate indices
-    #     with self.assertRaises(RuntimeError):
-    #         emt._sort_receivers([1, 2, 3])  # wrong indices
-    #     emt._sort_receivers([0, 1, 2])  # success
 
 
 if __name__ == '__main__':
