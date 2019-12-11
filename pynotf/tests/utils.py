@@ -70,13 +70,13 @@ class Recorder(Receiver):
         recorder.connect_to(Emitter.Handle(emitter))
         return recorder
 
-    def on_value(self, signal: ValueSignal):
+    def _on_value(self, signal: ValueSignal):
         self.signals.append(signal)
 
-    def on_failure(self, signal: FailureSignal):
+    def _on_failure(self, signal: FailureSignal):
         self.signals.append(signal)
 
-    def on_completion(self, signal: CompletionSignal):
+    def _on_completion(self, signal: CompletionSignal):
         self.signals.append(signal)
 
     def get_values(self) -> List[Value]:
@@ -105,7 +105,7 @@ class Recorder(Receiver):
         """
         result: List[CompletionSignal] = []
         for signal in self.signals:
-            if isinstance(signal, CompletionSignal):
+            if type(signal) == CompletionSignal:
                 result.append(signal)
         return result
 
