@@ -23,6 +23,6 @@ SCENARIO("Matrix3", "[common][arithmetic][geo][matrix3]") {
 
         const auto random_translation = random_tested<V2d>();
         REQUIRE((random_v2 * M3d::translation(random_translation) * M3d::translation(-random_translation))
-                    .is_approx(random_v2));
+                    .is_approx(random_v2, precision_low<double>()));
     }
 }
