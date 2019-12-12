@@ -9,52 +9,10 @@ from pynotf.value import Value
 from tests.utils import number_schema, string_schema, Recorder, random_schema, create_emitter, create_receiver, \
     create_operator
 
+
 ########################################################################################################################
 # TEST CASE
 ########################################################################################################################
-
-"""
-Ownership
-* create an emitter whose ownership is passed from one subscriber to another one and make sure it is deleted afterwards
-* create an emitter with an outside reference who outlives multiple receiver popping in and out of existence
-* create a Receiver and repeatedly connect and disconnect new emitters
-* create a chain of emitter - switch - switch - receiver and make sure everything stays alive through the last strong reference only
-    - with that setup, create a strong reference to a switch inside the chain and drop the old receiver to see if the rest survives
-
-Signal
-
-* create a receiver that used the signal ID to differentiate between emitters, two signal ids from the same emitter should match
-* create an emitter with a list of receivers to play through the signal state:
-    - unblockable signal, tries to get blocked or accepted along the way
-    - blockable signal, is ignored, then checked, then accepted, then checked, then blocked
-
-Exceptions
-* create a receiver that throws an exception and let the emitter handle it
-* create a custom exception handler (unsubscribe after 2nd exception) for an emitter class and exchange the default one for that at runtime
-
-Switches and Operations
-
-Circles
-(assert that when a switch emits, all user-defined code has finished and that emission does not require access to the switch's state, add the "allow reentrancy" flag)
-* create a circuit with an unapproved loop (error)
-* create a circuit with an allowed loop
-    - loop once
-    - loop multiple times
-    - be infinite (still an error)
-
-Logic modification
-* create a circuit that adds a new connection
-    - before the current
-    - after the current
-* create a circuit that removes an active connection
-    - before the current
-    - after the current
-
-Ordered Emission
-* ensure new receivers are emitted to last (check example that produces 1 or -1)
-* create emitter that sorts receivers based on some arbitrary value
-"""
-
 
 class BaseTestCase(unittest.TestCase):
     """
