@@ -853,8 +853,7 @@ class Operator(Receiver, Emitter):
                 or None.
             :raise TypeError: If either the input or output Value does not conform to its expected Schema.
             """
-            if not isinstance(value, Value) or value.schema != self.get_input_schema():
-                raise TypeError("Value does not conform to the Operator's input Schema")
+            assert value.schema == self.get_input_schema()
             result: Optional[Value] = self._perform(value)
             if result is not None and result.schema != self.get_output_schema():
                 raise TypeError("Value does not conform to the Operator's input Schema")
@@ -876,6 +875,7 @@ class Operator(Receiver, Emitter):
     def __init__(self, circuit: 'Circuit', operation: Operation):
         """
         Constructor.
+        It should only be possible to create-connect an Operator from a Receiver. 
         :param circuit: The Circuit that this Operator is a part of.
         :param operation: The Operation performed by this Operator.
         """

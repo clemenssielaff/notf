@@ -74,22 +74,21 @@ An Event is an object that is passed to the Circuit to be handled. It references
 
 ## Circuit
 - [X] Keeps a thread-safe queue of Events to perform in order.
-- [ ] Handles one event at a time.
+- [X] Handles one event at a time.
 - [X] Keeps a list of topology changes that are delayed until the event epilogue.
 - [X] Keeps a map of weak references to named Operators that can be queried by Receivers 
-- [X] Stores a simple list of all expired Emitters so they are not deleted mid-event but cleaned up when the app is idle
+- [X] Stores a simple list of all expired Emitters so they are not deleted mid-event but cleaned up when the app is idle.
+
+## Operator
+- [X] Derives from Emitter and Receiver.
+- [X] Has a public, nested Subclass `Operation` with a virtual destructor and call function.
+- [X] Constructor takes an instance of Operation by r-value.
+- [X] Can only be created by Receivers.
+- [X] The Operation call signature takes a Value as only argument while returning an Optional[Value]>.
+- [X] Before the returned Value is accepted, its schema is checked against the Emitter's output schema.
 
 ## EventLoop
 - [ ] Stores an optional function pointer with no arguments, no return value that is called after the Circuit has performed post-event cleanup.
-
-## Operator
-- [ ] Derives from Emitter and Receiver.
-- [ ] Has a public, nested Subclass `Operation` with a virtual destructor and call function.
-- [ ] Constructor takes the input value type, an output value type and an instance of Operation by r-value.
-- [ ] Can only be created by Receivers.
-- [ ] The Operation call signature takes a Signal as only argument while returning a variant of <Value, Complete, Exception>.
-- [ ] The entries in the returned variant trigger the three corresponding Emitter methods.
-- [ ] Before the returned Value is accepted, its schema is checked against the Emitter's output schema.
 
 ## Node
 
@@ -247,6 +246,9 @@ The observant reader might have noticed a slight-of-hand here. While the "create
 <br> The Circuit is owned by a Scene, which is in turn referenced by the Node, which is visible from the Slot. When the Slot creates-and-connects to an upstream Operator, it can pass the Circuit as argument to the Operator's constructor. Similarly, when a Operator creates-and-connects to a new upstream Operator, it will pass its own Circuit as argument. This way, we can offer the user convenient modification functions through the downstream Circuit elements and still have complete visibility.
 
 There is however another place in the architecture that allows user-defined code: Operators. Or actually, a functor with a default constructor and well defined "call" implementation taking a Signal and returning a Variant... And that is already the end of the discussion as Operations have no more access to their containing Operators than they have access to any other Operator in the Circuit.
+
+Note that it must never be possible to delete an incomplete Operators mid-event. You can disconnect from them, but that is a topology change that is delayed until the event epilogue. Completion through failure does disconnect the downstream immediately, but failure is only possible if the Operator is currently active (meaning, an upstream Emitter is currently emitting to it and therefore holding a strong reference to it) so the Operator will still not be destroyed. And even after the end of the emission, it is only put into the "to delete" pile in the Circuit and not destroyed right away.
+It is possible to delete a Node and its Operators, but that is also delayed until the end of the Event.
  
 
 ## What is in a Signal
