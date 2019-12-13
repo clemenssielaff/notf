@@ -1,5 +1,4 @@
-from typing import List, ClassVar, Optional, Tuple, Union, Callable
-import sys
+from typing import List, Optional, Union, Callable
 from random import randint as random_int, choice as random_choice
 
 from pynotf.logic import Operator, Receiver, Emitter, Circuit, ValueSignal, FailureSignal, CompletionSignal
@@ -198,75 +197,3 @@ def create_operator(circuit: Circuit,
             Operator.__init__(self, circuit, AnonymousOperation())
 
     return AnonymousOperator()
-
-
-#####################################################################################################
-
-
-def count_live_receivers(emitter: Emitter) -> int:
-    return len([rec for rec in emitter._downstream if rec() is not None])
-
-
-class NumberEmitter(Emitter):
-    def __init__(self):
-        Emitter.__init__(self, Value(0).schema)
-        self.errors: List[Tuple[int, Exception]] = []
-
-    def _handle_error(self, receiver_id: int, error: Exception):
-        Emitter._handle_error(self, receiver_id, error)  # for coverage
-        self.errors.append((receiver_id, error))
-
-
-class AddAnotherReceiverReceiver(Receiver):
-    """
-    Whenever one of the three methods is called, this Receiver creates a new (Noop) Receiver and connects it to
-    the given Emitter.
-    """
-
-    def __init__(self, circuit: Circuit, emitter: Emitter, modulus: int = sys.maxsize,
-                 schema: Value.Schema = Value(0).schema):
-        """
-        :param circuit: Circuit containing the Receiver.
-        :param emitter: Emitter to connect new Receivers to.
-        :param modulus: With n = number of Receivers, every time n % modulus = 0, delete all Receivers.
-        :param schema:  Schema of the Receiver.
-        """
-        super().__init__(circuit, schema)
-        self._emitter: Emitter = emitter
-        self._modulus: int = modulus
-        self._receivers: List[NoopReceiver] = []  # to keep them alive
-
-    def _add_another(self):
-        if (len(self._receivers) + 1) % self._modulus == 0:
-            self._receivers.clear()
-        else:
-            receiver: NoopReceiver = NoopReceiver(self._circuit, self.get_input_schema())
-            self._receivers.append(receiver)
-            receiver.connect_to(Emitter.Handle(self._emitter))
-
-    def on_value(self, signal: ValueSignal):
-        self._add_another()
-
-    def on_failure(self, signal: FailureSignal):
-        self._add_another()
-
-    def on_completion(self, signal: CompletionSignal):
-        self._add_another()
-
-
-class DisconnectReceiver(Receiver):
-    """
-    A Receiver that disconnects whenever it gets a value.
-    """
-
-    def __init__(self, circuit: Circuit, emitter: Emitter, schema: Value.Schema = Value(0).schema):
-        """
-        :param emitter: Emitter to connect to.
-        :param schema: Schema of the Receiver.
-        """
-        super().__init__(circuit, schema)
-        self.emitter: Emitter = emitter
-        self.connect_to(Emitter.Handle(self.emitter))
-
-    def on_value(self, signal: ValueSignal):
-        self.disconnect_from(self.emitter.get_id())

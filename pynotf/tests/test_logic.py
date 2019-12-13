@@ -1,7 +1,7 @@
 import unittest
 import logging
 from typing import List, Optional, ClassVar
-from random import randint
+from random import randint as random_int
 
 from pynotf.logic import Receiver, Emitter, Circuit, FailureSignal, CompletionSignal, ValueSignal, Operator
 from pynotf.value import Value
@@ -442,6 +442,71 @@ class SimpleTestCase(BaseTestCase):
         # make sure that it has emitted its failure
         self.assertEqual([signal.get_source() for signal in recorder.get_failures()], [operator.get_id()])
 
+    def test_expired_receiver_on_value(self):
+        emitter: Emitter = Emitter(number_schema)
+        rec1 = Recorder.record(emitter, self.circuit)
+        rec2 = Recorder.record(emitter, self.circuit)
+        rec3 = Recorder.record(emitter, self.circuit)
+        rec4 = Recorder.record(emitter, self.circuit)
+        rec5 = Recorder.record(emitter, self.circuit)
+        self.assertEqual(self._apply_topology_changes(), 5)
+        self.assertEqual(len(emitter._downstream), 5)
+
+        self.circuit.emit_value(emitter, 23)
+        self.assertEqual(self._handle_events(), 1)
+        for rec in (rec1, rec2, rec3, rec4, rec5):
+            self.assertEqual(len(rec.signals), 1)
+            self.assertEqual(rec.get_values()[0].as_number(), 23)
+        del rec
+
+        del rec1  # delete first
+        self.assertEqual(len(emitter._downstream), 5)  # rec1 has expired but hasn't been removed yet
+        self.circuit.emit_value(emitter, 54)  # remove rec1
+        self.assertEqual(self._handle_events(), 1)
+        self.assertEqual(len(emitter._downstream), 4)
+
+        del rec5  # delete last
+        self.assertEqual(len(emitter._downstream), 4)  # rec5 has expired but hasn't been removed yet
+        self.circuit.emit_value(emitter, 25)  # remove rec5
+        self.assertEqual(self._handle_events(), 1)
+        self.assertEqual(len(emitter._downstream), 3)
+
+        del rec3  # delete center
+        self.assertEqual(len(emitter._downstream), 3)  # rec3 has expired but hasn't been removed yet
+        self.circuit.emit_value(emitter, -2)  # remove rec3
+        self.assertEqual(self._handle_events(), 1)
+        self.assertEqual(len(emitter._downstream), 2)
+
+        # complete
+        self.circuit.emit_completion(emitter)
+        self.assertEqual(self._handle_events(), 1)
+        self.assertEqual(len(emitter._downstream), 0)
+
+    def test_expired_receiver_on_complete(self):
+        """
+        While it is not possible to remove Receivers mid-event, they are removed at some point (during the event
+        epilogue) and will not notify their upstream because it will either be destroyed with them, or notice that
+        they are gone the next time any upstream Emitter tries to emit.
+        """
+        emitter: Emitter = Emitter(number_schema)
+        recorder: Recorder = Recorder(self.circuit, number_schema)
+        recorder.connect_to(Emitter.Handle(emitter))
+        self.assertEqual(self._apply_topology_changes(), 1)
+        self.assertEqual(len(emitter._downstream), 1)
+        del recorder
+        emitter._complete()
+        self.assertEqual(len(emitter._downstream), 0)
+
+    def test_expired_receiver_on_failure(self):
+        emitter: Emitter = Emitter(number_schema)
+        recorder: Recorder = Recorder(self.circuit, number_schema)
+        recorder.connect_to(Emitter.Handle(emitter))
+        self.assertEqual(self._apply_topology_changes(), 1)
+        self.assertEqual(len(emitter._downstream), 1)
+        del recorder
+        emitter._fail(ValueError())
+        self.assertEqual(len(emitter._downstream), 0)
+
 
 class EmitterRecorderCircuit(BaseTestCase):
     """
@@ -467,8 +532,8 @@ class EmitterRecorderCircuit(BaseTestCase):
         """
         # create a random list of random numbers
         numbers: List[int] = []
-        for i in range(randint(0, 8)):
-            numbers.append(randint(0, 100))
+        for i in range(random_int(0, 8)):
+            numbers.append(random_int(0, 100))
 
         # emit all numbers in order (generating events)
         for number in numbers:
@@ -604,289 +669,149 @@ class EmitterRecorderCircuit(BaseTestCase):
         self.assertEqual([value.as_number() for value in self.recorder1.get_values()], [0, 1])
         self.assertEqual([value.as_number() for value in self.recorder2.get_values()], [0])
 
-    #
-    # class NamedOperatorCircuit(BaseTestCase):
-    #     """
-    #     Emitter(Number) --> Operator(Number, name="bob")
-    #     """
-    #
-    #     def setUp(self):
-    #         super().setUp()
-    #
-    #         # create the circuit
-    #         self.emitter: Emitter = Emitter(number_schema)
-    #         self.recorder: Recorder = Recorder(self.circuit, number_schema)
-    #         self.named_operator:
-    #         self.named_operator: Operator = create_operator(self.circuit, number_schema, )
-    #         self.recorder1: Recorder = Recorder.record(self.emitter, self.circuit)
-    #         self.recorder2: Recorder = Recorder.record(self.emitter, self.circuit)
-    #
-    #     def test_connection_mid_event(self):
-    #         """
-    #         Changes in Circuit topology are performed in the Event epilogue, which means that they might happen after user-
-    #         defined code that was executed later.
-    #         """
-    #
-    #
-    #         class ConnectAnother(Operator.Operation):
-    #             """
-    #             Creats a new Operator that connects to the named Emitter
-    #             """
-    #             _output_prototype: ClassVar[Value] = Value({"x": 0, "y": 0})
-    #
-    #             def __init__(self):
-    #                 self._last_value: Optional[float] = None
-    #
-    #             def get_input_schema(self) -> Value.Schema:
-    #                 return number_schema
-    #
-    #             def get_output_schema(self) -> Value.Schema:
-    #                 return self._output_prototype.schema
-    #
-    #             def _perform(self, value: Value) -> Optional[Value]:
-    #                 if self._last_value is None:
-    #                     self._last_value = value.as_number()
-    #                 else:
-    #                     result = self._output_prototype.modified().set({"x": self._last_value, "y": value.as_number()})
-    #                     self._last_value = None
-    #                     return result
+    def test_signal_status(self):
 
-    # def test_connection_during_emit(self):
-    #     class ConnectOther(Recorder):
-    #         """
-    #         Connects another Recorder when receiving a value.
-    #         """
-    #
-    #         def __init__(self, emitter: Emitter, other: Recorder):
-    #             Recorder.__init__(self, Value(0).schema)
-    #             self._emitter = emitter
-    #             self._other = other
-    #
-    #         def on_value(self, signal: Emitter.Signal, value: Value):
-    #             self._other.connect_to(self._emitter)
-    #             Recorder.on_value(self, signal, value)
-    #
-    #     emt: Emitter = NumberEmitter()
-    #     rec2 = Recorder(Value(0).schema)
-    #     rec1 = ConnectOther(emt, rec2)
-    #     rec1.connect_to(emt)
-    #
-    #     self.assertEqual(len(rec1.values), 0)
-    #     self.assertEqual(len(rec2.values), 0)
-    #
-    #     self.assertEqual(len(emt._receivers), 1)
-    #     emt.emit(45)
-    #     self.assertEqual(len(emt._receivers), 2)
-    #     self.assertEqual(len(rec1.values), 1)
-    #     self.assertEqual(rec1.values[0].as_number(), 45)
-    #     self.assertEqual(len(rec2.values), 0)
-    #
-    #     emt.emit(89)
-    #     self.assertEqual(len(rec1.values), 2)
-    #     self.assertEqual(rec1.values[1].as_number(), 89)
-    #     self.assertEqual(len(rec2.values), 1)
-    #     self.assertEqual(rec2.values[0].as_number(), 89)
-    #
+        circuit: Circuit = self.circuit
+
+        class Ignore(Recorder):
+            """
+            Records the value if it has not been accepted yet, but doesn't modify the Signal.
+            """
+
+            def __init__(self):
+                Recorder.__init__(self, circuit, number_schema)
+
+            def _on_value(self, signal: ValueSignal):
+                if signal.is_blockable() and not signal.is_accepted():
+                    Recorder._on_value(self, signal)
+
+        class Accept(Recorder):
+            """
+            Always records the value, and accepts the Signal.
+            """
+
+            def __init__(self):
+                Recorder.__init__(self, circuit, number_schema)
+
+            def _on_value(self, signal: ValueSignal):
+                Recorder._on_value(self, signal)
+                if signal.is_blockable():
+                    signal.accept()
+
+        class Blocker(Recorder):
+            """
+            Always records the value, and blocks the Signal.
+            """
+
+            def __init__(self):
+                Recorder.__init__(self, circuit, number_schema)
+
+            def _on_value(self, signal: ValueSignal):
+                Recorder._on_value(self, signal)
+                signal.block()
+                signal.block()  # again ... for coverage
+
+        distributor: Emitter = Emitter(number_schema, is_blockable=True)
+        ignore1: Ignore = Ignore()  # records all values
+        accept1: Accept = Accept()  # records and accepts all values
+        ignore2: Ignore = Ignore()  # should not record any since all are accepted
+        accept2: Accept = Accept()  # should record the same as accept1
+        block1: Blocker = Blocker()  # should record the same as accept1
+        block2: Blocker = Blocker()  # should not record any values
+
+        # order matters here as the Receivers are called in the order they connected
+        distributor_handle: Emitter.Handle = Emitter.Handle(distributor)
+        ignore1.connect_to(distributor_handle)
+        accept1.connect_to(distributor_handle)
+        ignore2.connect_to(distributor_handle)
+        accept2.connect_to(distributor_handle)
+        block1.connect_to(distributor_handle)
+        block2.connect_to(distributor_handle)
+        self.assertEqual(self._apply_topology_changes(), 6)
+
+        for x in range(1, 5):
+            self.circuit.emit_value(distributor, x)
+        self.assertEqual(self._handle_events(), 4)
+
+        self.assertEqual([value.as_number() for value in ignore1.get_values()], [1, 2, 3, 4])
+        self.assertEqual([value.as_number() for value in accept1.get_values()], [1, 2, 3, 4])
+        self.assertEqual([value.as_number() for value in ignore2.get_values()], [])
+        self.assertEqual([value.as_number() for value in accept2.get_values()], [1, 2, 3, 4])
+        self.assertEqual([value.as_number() for value in block1.get_values()], [1, 2, 3, 4])
+        self.assertEqual([value.as_number() for value in block2.get_values()], [])
+
+
+class NamedEmitterCircuit(BaseTestCase):
+    """
+    NamedEmitter(Number, "Bob") --> ...
+    """
+
+    def setUp(self):
+        super().setUp()
+
+        # create the circuit
+        self.emitter: Emitter = self.circuit.create_emitter(number_schema, name="bob")
+
+    def test_connection_mid_event(self):
+        """
+        Changes in Circuit topology are performed in the Event epilogue, which means that they might happen after user-
+        defined code that was executed later.
+        """
+        operators: List[Operator] = []  # we need to keep the created receivers alive until the end of the test
+
+        def create_another_operator(_: ValueSignal):
+            operator: Operator = create_operator(self.circuit, number_schema, lambda value: value)
+            operators.append(operator)
+            emitter: Optional[Emitter.Handle] = operator.find_emitter('bob')
+            self.assertIsNotNone(emitter)
+            operator.connect_to(emitter)
+
+        # create a custom receiver and connect it to the circuit's emitter
+        receiver: Receiver = create_receiver(self.circuit, number_schema, on_value=create_another_operator)
+        receiver.connect_to(Emitter.Handle(self.emitter))
+        self.assertEqual(self._apply_topology_changes(), 1)
+        self.assertEqual(len([rec for rec in self.emitter._downstream if rec() is not None]), 1)
+
+        # emit a random number of value signals and make sure that there is an equal number of new operators
+        event_count: int = random_int(1, 6)
+        for number in range(event_count):
+            self.circuit.emit_value(self.emitter, number)
+        self.assertEqual(self._handle_events(), event_count)
+        self.assertEqual(len([rec for rec in self.emitter._downstream if rec() is not None]), event_count + 1)
+
     def test_disconnection_mid_event(self):
         """
         Changes in Circuit topology are performed in the Event epilogue, which means that they might happen after user-
         defined code that was executed later.
         """
-        pass  # TODO
 
-    # def test_disconnect_during_emit(self):
-    #     class DisconnectOther(Recorder):
-    #         """
-    #         Disconnects another Recorder when receiving a value.
-    #         """
-    #
-    #         def __init__(self, emitter: Emitter, other: Recorder):
-    #             Recorder.__init__(self, Value(0).schema)
-    #             self._emitter = emitter
-    #             self._other = other
-    #
-    #         def on_value(self, signal: Emitter.Signal, value: Value):
-    #             self._other.disconnect_from(self._emitter)
-    #             Recorder.on_value(self, signal, value)
-    #
-    #     emt: Emitter = NumberEmitter()
-    #     rec2 = Recorder(Value(0).schema)
-    #     rec1 = DisconnectOther(emt, rec2)
-    #     rec1.connect_to(emt)
-    #     rec2.connect_to(emt)
-    #
-    #     self.assertEqual(len(rec1.values), 0)
-    #     self.assertEqual(len(rec2.values), 0)
-    #
-    #     self.assertEqual(len(emt._receivers), 2)
-    #     emt.emit(45)
-    #     self.assertEqual(len(emt._receivers), 1)
-    #     self.assertEqual(len(rec1.values), 1)
-    #     self.assertEqual(rec1.values[0].as_number(), 45)
-    #     self.assertEqual(len(rec2.values), 1)
-    #     self.assertEqual(rec2.values[0].as_number(), 45)
-    #
-    #     emt.emit(89)
-    #     self.assertEqual(len(rec1.values), 2)
-    #     self.assertEqual(rec1.values[1].as_number(), 89)
-    #     self.assertEqual(len(rec2.values), 1)
+        class DisconnectOnValue(Receiver):
+            def __init__(self, circuit: Circuit):
+                Receiver.__init__(self, circuit, number_schema)
 
-    ######################
+            def _on_value(self, signal: ValueSignal):  # virtual
+                self._circuit.remove_connection(signal.get_source(), self)
 
-    # def test_receiver_lifetime(self):
-    #     emitter: Emitter = NumberEmitter()
-    #     rec1 = record(emitter)
-    #     rec2 = record(emitter)
-    #     rec3 = record(emitter)
-    #     rec4 = record(emitter)
-    #     rec5 = record(emitter)
-    #     self.assertEqual(len(emitter._receivers), 5)
-    #
-    #     emitter.emit(23)
-    #     for rec in (rec1, rec2, rec3, rec4, rec5):
-    #         self.assertEqual(len(rec.values), 1)
-    #         self.assertEqual(rec.values[0].as_number(), 23)
-    #     del rec
-    #
-    #     del rec1  # delete first
-    #     self.assertEqual(len(emitter._receivers), 5)  # rec1 has expired but hasn't been removed yet
-    #     emitter.emit(54)  # remove rec1
-    #     self.assertEqual(len(emitter._receivers), 4)
-    #
-    #     del rec5  # delete last
-    #     self.assertEqual(len(emitter._receivers), 4)  # rec5 has expired but hasn't been removed yet
-    #     emitter.emit(25)  # remove rec5
-    #     self.assertEqual(len(emitter._receivers), 3)
-    #
-    #     del rec3  # delete center
-    #     self.assertEqual(len(emitter._receivers), 3)  # rec3 has expired but hasn't been removed yet
-    #     emitter.emit(-2)  # remove rec3
-    #     self.assertEqual(len(emitter._receivers), 2)
-    #
-    #     emitter._complete()
-    #     self.assertEqual(len(emitter._receivers), 0)
-    #
-    # def test_expired_receiver_on_complete(self):
-    #     emitter: Emitter = NumberEmitter()
-    #     rec1 = record(emitter)
-    #     self.assertEqual(len(emitter._receivers), 1)
-    #     del rec1
-    #     emitter._complete()
-    #     self.assertEqual(len(emitter._receivers), 0)
-    #
-    # def test_expired_receiver_on_failure(self):
-    #     emitter: Emitter = NumberEmitter()
-    #     rec1 = record(emitter)
-    #     self.assertEqual(len(emitter._receivers), 1)
-    #     del rec1
-    #     emitter._error(ValueError())
-    #     self.assertEqual(len(emitter._receivers), 0)
-    #
-    # def test_add_receivers(self):
-    #     emitter: Emitter = NumberEmitter()
-    #     receiver: AddAnotherReceiverReceiver = AddAnotherReceiverReceiver(emitter, modulus=3)
-    #
-    #     receiver.connect_to(emitter)
-    #     self.assertEqual(count_live_receivers(emitter), 1)
-    #     emitter.emit(1)
-    #     self.assertEqual(count_live_receivers(emitter), 2)
-    #     emitter.emit(2)
-    #     self.assertEqual(count_live_receivers(emitter), 3)
-    #     emitter.emit(3)  # activates modulus
-    #     self.assertEqual(count_live_receivers(emitter), 1)
-    #
-    #     emitter.emit(4)
-    #     emitter._complete()  # this too tries to add a Receiver, but is rejected
-    #     self.assertEqual(count_live_receivers(emitter), 0)
-    #
-    # def test_remove_receivers(self):
-    #     emitter: Emitter = NumberEmitter()
-    #     rec1: Receiver = DisconnectReceiver(emitter)
-    #
-    #     self.assertEqual(count_live_receivers(emitter), 1)
-    #     emitter.emit(0)
-    #     self.assertEqual(count_live_receivers(emitter), 0)
-    #
-    #     rec2: Receiver = DisconnectReceiver(emitter)
-    #     rec3: Receiver = DisconnectReceiver(emitter)
-    #     self.assertEqual(count_live_receivers(emitter), 2)
-    #     emitter.emit(1)
-    #     self.assertEqual(count_live_receivers(emitter), 0)
-    #
+        # we need to keep the created receivers alive until the end of the test
+        receivers: List[Receiver] = []
+        for index in range(3):
+            # create receivers and monkey patch their on_value method
+            receiver: Receiver = DisconnectOnValue(self.circuit)
+            receivers.append(receiver)
 
-    # def test_signal_status(self):
-    #     class Ignore(Recorder):
-    #         """
-    #         Records the value if it has not been accepted yet, but doesn't modify the Signal.
-    #         """
-    #
-    #         def __init__(self):
-    #             Recorder.__init__(self, Value(0).schema)
-    #
-    #         def on_value(self, signal: Emitter.Signal, value: Value):
-    #             if signal.is_blockable() and not signal.is_accepted():
-    #                 Recorder.on_value(self, signal, value)
-    #
-    #     class Accept(Recorder):
-    #         """
-    #         Always records the value, and accepts the Signal.
-    #         """
-    #
-    #         def __init__(self):
-    #             Recorder.__init__(self, Value(0).schema)
-    #
-    #         def on_value(self, signal: Emitter.Signal, value: Value):
-    #             Recorder.on_value(self, signal, value)
-    #             if signal.is_blockable():
-    #                 signal.accept()
-    #
-    #     class Blocker(Recorder):
-    #         """
-    #         Always records the value, and blocks the Signal.
-    #         """
-    #
-    #         def __init__(self):
-    #             Recorder.__init__(self, Value(0).schema)
-    #
-    #         def on_value(self, signal: Emitter.Signal, value: Value):
-    #             Recorder.on_value(self, signal, value)
-    #             signal.block()
-    #             signal.block()  # again ... for coverage
-    #
-    #     class Distributor(NumberEmitter):
-    #         def _emit(self, receivers: List['Receiver'], value: Value):
-    #             signal = Emitter.Signal(self, is_blockable=True)
-    #             for receiver in receivers:
-    #                 receiver.on_value(signal, value)
-    #                 if signal.is_blocked():
-    #                     return
-    #
-    #     distributor: Distributor = Distributor()
-    #     ignore1: Ignore = Ignore()  # records all values
-    #     accept1: Accept = Accept()  # records and accepts all values
-    #     ignore2: Ignore = Ignore()  # should not record any since all are accepted
-    #     accept2: Accept = Accept()  # should record the same as accept1
-    #     block1: Blocker = Blocker()  # should record the same as accept1
-    #     block2: Blocker = Blocker()  # should not record any values
-    #
-    #     # order matters here, as the Receivers are called in the order they connected
-    #     ignore1.connect_to(distributor)
-    #     accept1.connect_to(distributor)
-    #     ignore2.connect_to(distributor)
-    #     accept2.connect_to(distributor)
-    #     block1.connect_to(distributor)
-    #     block2.connect_to(distributor)
-    #
-    #     for x in range(1, 5):
-    #         distributor.emit(x)
-    #
-    #     self.assertEqual([value.as_number() for value in ignore1.values], [1, 2, 3, 4])
-    #     self.assertEqual([value.as_number() for value in accept1.values], [1, 2, 3, 4])
-    #     self.assertEqual([value.as_number() for value in ignore2.values], [])
-    #     self.assertEqual([value.as_number() for value in accept2.values], [1, 2, 3, 4])
-    #     self.assertEqual([value.as_number() for value in block1.values], [1, 2, 3, 4])
-    #     self.assertEqual([value.as_number() for value in block2.values], [])
-    #
+            # connect each operator to the emitter
+            emitter: Optional[Emitter.Handle] = receiver.find_emitter('bob')
+            self.assertIsNotNone(emitter)
+            receiver.connect_to(emitter)
+
+        # make sure the emitter sees all of the receivers
+        self.assertEqual(self._apply_topology_changes(), len(receivers))
+        self.assertEqual(len([rec for rec in self.emitter._downstream if rec() is not None]), len(receivers))
+
+        # emit a value and all operators should disconnect
+        self.circuit.emit_value(self.emitter, 0)
+        self.assertEqual(self._handle_events(), 1)
+        self.assertEqual(len([rec for rec in self.emitter._downstream if rec() is not None]), 0)
 
 
 if __name__ == '__main__':
