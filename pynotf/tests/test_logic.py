@@ -3,7 +3,8 @@ import logging
 from typing import List, Optional, ClassVar
 from random import randint as random_int
 
-from pynotf.logic import Receiver, Emitter, Circuit, FailureSignal, CompletionSignal, ValueSignal, Operator
+from pynotf.logic import Receiver, Emitter, Circuit, FailureSignal, CompletionSignal, ValueSignal, Operator, \
+    CyclicDependencyError
 from pynotf.value import Value
 
 from tests.utils import number_schema, string_schema, Recorder, random_schema, create_emitter, create_receiver, \
@@ -72,6 +73,21 @@ class SimpleTestCase(BaseTestCase):
         for schema in (random_schema() for _ in range(4)):
             emitter: Emitter = Emitter(schema)
             self.assertEqual(emitter.get_output_schema(), schema)
+
+    def test_emitter_handle(self):
+        """
+        Check if an Emitter handle behaves correctly.
+        """
+        emitter_handle: Optional[Emitter.Handle] = None
+        for schema in (random_schema() for _ in range(4)):
+            emitter: Emitter = Emitter(schema)
+            emitter_handle = Emitter.Handle(emitter)
+            self.assertTrue(emitter_handle.is_valid())
+            self.assertEqual(emitter_handle.get_output_schema(), schema)
+        del emitter
+        self.assertIsNotNone(emitter_handle)
+        self.assertFalse(emitter_handle.is_valid())
+        self.assertIsNone(emitter_handle.get_output_schema())
 
     def test_emit_wrong_values(self):
         """
@@ -423,6 +439,40 @@ class SimpleTestCase(BaseTestCase):
         self.assertEqual([signal.get_source() for signal in recorder.get_failures()], [operator.get_id()])
         self.assertEqual([value.as_number() for value in recorder.get_values()], [0, 1, 2, 3])
 
+    def test_bad_emitter(self):
+        """
+        Test for Emitters that try to emit Value types that they cannot.
+        """
+        emitter: Emitter = Emitter(number_schema)
+        recorder: Recorder = Recorder.record(emitter, self.circuit)
+        self.assertTrue(self._apply_topology_changes(), 1)
+
+        # emit a value to make sure everything works
+        emitter._emit(Value(98))
+        self.assertEqual(len(recorder.signals), 1)
+        self.assertEqual(recorder.signals[0].get_value().as_number(), 98)
+
+        # emitting anything that can be casted to the right value type works as well
+        emitter._emit(9436)
+        self.assertEqual(len(recorder.signals), 2)
+        self.assertEqual(recorder.signals[1].get_value().as_number(), 9436)
+
+        # emitting wrong value types will throw an exception
+        with self.assertRaises(TypeError):
+            emitter._emit(Value("nope"))
+        self.assertEqual(len(recorder.signals), 2)
+
+        # same goes for anything that cannot be cast to the right value type
+        with self.assertRaises(TypeError):
+            emitter._emit(None)
+        with self.assertRaises(TypeError):
+            emitter._emit(TypeError())
+        with self.assertRaises(TypeError):
+            emitter._emit("string")
+        with self.assertRaises(TypeError):
+            emitter._emit("0.1")
+        self.assertEqual(len(recorder.signals), 2)
+
     def test_bad_operator(self):
         """
         Test for Operators that don't deliver the Value types that they promise.
@@ -443,6 +493,11 @@ class SimpleTestCase(BaseTestCase):
         self.assertEqual([signal.get_source() for signal in recorder.get_failures()], [operator.get_id()])
 
     def test_expired_receiver_on_value(self):
+        """
+        While it is not possible to remove Receivers mid-event, they are removed at some point (during the event
+        epilogue) and will not notify their upstream because it will either be destroyed with them, or notice that
+        they are gone the next time any upstream Emitter tries to emit.
+        """
         emitter: Emitter = Emitter(number_schema)
         rec1 = Recorder.record(emitter, self.circuit)
         rec2 = Recorder.record(emitter, self.circuit)
@@ -484,9 +539,7 @@ class SimpleTestCase(BaseTestCase):
 
     def test_expired_receiver_on_complete(self):
         """
-        While it is not possible to remove Receivers mid-event, they are removed at some point (during the event
-        epilogue) and will not notify their upstream because it will either be destroyed with them, or notice that
-        they are gone the next time any upstream Emitter tries to emit.
+        See test_expired_receiver_on_value
         """
         emitter: Emitter = Emitter(number_schema)
         recorder: Recorder = Recorder(self.circuit, number_schema)
@@ -498,6 +551,9 @@ class SimpleTestCase(BaseTestCase):
         self.assertEqual(len(emitter._downstream), 0)
 
     def test_expired_receiver_on_failure(self):
+        """
+        See test_expired_receiver_on_value
+        """
         emitter: Emitter = Emitter(number_schema)
         recorder: Recorder = Recorder(self.circuit, number_schema)
         recorder.connect_to(Emitter.Handle(emitter))
@@ -506,6 +562,123 @@ class SimpleTestCase(BaseTestCase):
         del recorder
         emitter._fail(ValueError())
         self.assertEqual(len(emitter._downstream), 0)
+
+    def test_signal_status(self):
+        """
+        Checks that the Signal status mechanism.
+        """
+
+        circuit: Circuit = self.circuit
+
+        class Ignore(Recorder):
+            """
+            Records the value if it has not been accepted yet, but doesn't modify the Signal.
+            """
+
+            def __init__(self):
+                Recorder.__init__(self, circuit, number_schema)
+
+            def _on_value(self, signal: ValueSignal):
+                if signal.is_blockable() and not signal.is_accepted():
+                    Recorder._on_value(self, signal)
+
+        class Accept(Recorder):
+            """
+            Always records the value, and accepts the Signal.
+            """
+
+            def __init__(self):
+                Recorder.__init__(self, circuit, number_schema)
+
+            def _on_value(self, signal: ValueSignal):
+                Recorder._on_value(self, signal)
+                if signal.is_blockable():
+                    signal.accept()
+
+        class Blocker(Recorder):
+            """
+            Always records the value, and blocks the Signal.
+            """
+
+            def __init__(self):
+                Recorder.__init__(self, circuit, number_schema)
+
+            def _on_value(self, signal: ValueSignal):
+                Recorder._on_value(self, signal)
+                signal.block()
+                signal.block()  # again ... for coverage
+
+        distributor: Emitter = Emitter(number_schema, is_blockable=True)
+        ignore1: Ignore = Ignore()  # records all values
+        accept1: Accept = Accept()  # records and accepts all values
+        ignore2: Ignore = Ignore()  # should not record any since all are accepted
+        accept2: Accept = Accept()  # should record the same as accept1
+        block1: Blocker = Blocker()  # should record the same as accept1
+        block2: Blocker = Blocker()  # should not record any values
+
+        # order matters here as the Receivers are called in the order they connected
+        distributor_handle: Emitter.Handle = Emitter.Handle(distributor)
+        ignore1.connect_to(distributor_handle)
+        accept1.connect_to(distributor_handle)
+        ignore2.connect_to(distributor_handle)
+        accept2.connect_to(distributor_handle)
+        block1.connect_to(distributor_handle)
+        block2.connect_to(distributor_handle)
+        self.assertEqual(self._apply_topology_changes(), 6)
+
+        for x in range(1, 5):
+            self.circuit.emit_value(distributor, x)
+        self.assertEqual(self._handle_events(), 4)
+
+        self.assertEqual([value.as_number() for value in ignore1.get_values()], [1, 2, 3, 4])
+        self.assertEqual([value.as_number() for value in accept1.get_values()], [1, 2, 3, 4])
+        self.assertEqual([value.as_number() for value in ignore2.get_values()], [])
+        self.assertEqual([value.as_number() for value in accept2.get_values()], [1, 2, 3, 4])
+        self.assertEqual([value.as_number() for value in block1.get_values()], [1, 2, 3, 4])
+        self.assertEqual([value.as_number() for value in block2.get_values()], [])
+
+    def test_early_cyclic_dependency(self):
+        """
+        +------------------------------------------+
+        |                    +--> Recorder1        |
+        |                    |                     |
+        +--> Noop1(Number) --+--> Noop2(Number) -->+
+                             |
+                             +--> Recorder2
+                             |
+                             +--> Noop3(Number) --> Recorder3
+        """
+        error_producer: Optional[int] = None
+
+        def report_error(receiver_id: int, error: Exception):
+            nonlocal error_producer
+            self.assertIsInstance(error, CyclicDependencyError)
+            error_producer = receiver_id
+
+        # create the Circuit
+        noop1: Operator = create_operator(self.circuit, number_schema, lambda value: value)
+        recorder1: Recorder = Recorder.record(noop1)
+        noop2: Operator = create_operator(self.circuit, number_schema, lambda value: value)
+        noop2._handle_error = report_error  # monkey patch error handling method
+        recorder2: Recorder = Recorder.record(noop1)
+        noop3: Operator = create_operator(self.circuit, number_schema, lambda value: value)
+        recorder3: Recorder = Recorder.record(noop3)
+        noop2.connect_to(Emitter.Handle(noop1))
+        noop3.connect_to(Emitter.Handle(noop1))
+        noop1.connect_to(Emitter.Handle(noop2))
+        self.assertEqual(self._apply_topology_changes(), 6)  # so far so good
+        self.assertEqual(len(recorder1.signals), 0)
+        self.assertEqual(len(recorder2.signals), 0)
+        self.assertEqual(len(recorder3.signals), 0)
+        self.assertIsNone(error_producer)
+
+        # emit a value
+        self.circuit.emit_value(noop1, 666)
+        self.assertEqual(self._handle_events(), 1)
+        self.assertEqual(len(recorder1.signals), 1)  # the event will only be propagated until the cycle is closed
+        self.assertEqual(len(recorder2.signals), 1)
+        self.assertEqual(len(recorder3.signals), 1)
+        self.assertEqual(error_producer, noop1.get_id())
 
 
 class EmitterRecorderCircuit(BaseTestCase):
@@ -577,10 +750,9 @@ class EmitterRecorderCircuit(BaseTestCase):
         self.assertEqual(received_failures[0].get_error(), error)
         self.assertEqual(received_failures, self.recorder2.get_failures())
 
-        # emitting any further values will result in an error
+        # emitting any further values will do nothing
         self.circuit.emit_value(self.emitter, 3)
-        with self.assertRaises(RuntimeError):
-            self.assertEqual(self._handle_events(), 1)
+        self.assertEqual(self._handle_events(), 1)
         self.assertEqual(received_values, self.recorder1.get_values())
         self.assertEqual(received_values, self.recorder2.get_values())
 
@@ -621,10 +793,9 @@ class EmitterRecorderCircuit(BaseTestCase):
         self.assertEqual(received_completions[0].get_source(), self.emitter.get_id())
         self.assertEqual(received_completions, self.recorder2.get_completions())
 
-        # emitting any further values will result in an error
+        # emitting any further values will do nothing
         self.circuit.emit_value(self.emitter, 3)
-        with self.assertRaises(RuntimeError):
-            self.assertEqual(self._handle_events(), 1)
+        self.assertEqual(self._handle_events(), 1)
         self.assertEqual(received_values, self.recorder1.get_values())
         self.assertEqual(received_values, self.recorder2.get_values())
 
@@ -668,77 +839,6 @@ class EmitterRecorderCircuit(BaseTestCase):
         # this time, nobody should have gotten the value
         self.assertEqual([value.as_number() for value in self.recorder1.get_values()], [0, 1])
         self.assertEqual([value.as_number() for value in self.recorder2.get_values()], [0])
-
-    def test_signal_status(self):
-
-        circuit: Circuit = self.circuit
-
-        class Ignore(Recorder):
-            """
-            Records the value if it has not been accepted yet, but doesn't modify the Signal.
-            """
-
-            def __init__(self):
-                Recorder.__init__(self, circuit, number_schema)
-
-            def _on_value(self, signal: ValueSignal):
-                if signal.is_blockable() and not signal.is_accepted():
-                    Recorder._on_value(self, signal)
-
-        class Accept(Recorder):
-            """
-            Always records the value, and accepts the Signal.
-            """
-
-            def __init__(self):
-                Recorder.__init__(self, circuit, number_schema)
-
-            def _on_value(self, signal: ValueSignal):
-                Recorder._on_value(self, signal)
-                if signal.is_blockable():
-                    signal.accept()
-
-        class Blocker(Recorder):
-            """
-            Always records the value, and blocks the Signal.
-            """
-
-            def __init__(self):
-                Recorder.__init__(self, circuit, number_schema)
-
-            def _on_value(self, signal: ValueSignal):
-                Recorder._on_value(self, signal)
-                signal.block()
-                signal.block()  # again ... for coverage
-
-        distributor: Emitter = Emitter(number_schema, is_blockable=True)
-        ignore1: Ignore = Ignore()  # records all values
-        accept1: Accept = Accept()  # records and accepts all values
-        ignore2: Ignore = Ignore()  # should not record any since all are accepted
-        accept2: Accept = Accept()  # should record the same as accept1
-        block1: Blocker = Blocker()  # should record the same as accept1
-        block2: Blocker = Blocker()  # should not record any values
-
-        # order matters here as the Receivers are called in the order they connected
-        distributor_handle: Emitter.Handle = Emitter.Handle(distributor)
-        ignore1.connect_to(distributor_handle)
-        accept1.connect_to(distributor_handle)
-        ignore2.connect_to(distributor_handle)
-        accept2.connect_to(distributor_handle)
-        block1.connect_to(distributor_handle)
-        block2.connect_to(distributor_handle)
-        self.assertEqual(self._apply_topology_changes(), 6)
-
-        for x in range(1, 5):
-            self.circuit.emit_value(distributor, x)
-        self.assertEqual(self._handle_events(), 4)
-
-        self.assertEqual([value.as_number() for value in ignore1.get_values()], [1, 2, 3, 4])
-        self.assertEqual([value.as_number() for value in accept1.get_values()], [1, 2, 3, 4])
-        self.assertEqual([value.as_number() for value in ignore2.get_values()], [])
-        self.assertEqual([value.as_number() for value in accept2.get_values()], [1, 2, 3, 4])
-        self.assertEqual([value.as_number() for value in block1.get_values()], [1, 2, 3, 4])
-        self.assertEqual([value.as_number() for value in block2.get_values()], [])
 
 
 class NamedEmitterCircuit(BaseTestCase):

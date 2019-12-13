@@ -3,10 +3,16 @@ from collections import deque
 from enum import Enum
 from logging import error as print_error
 from threading import Lock, Condition
-from typing import Any, Optional, List, Tuple, Union, Iterable, Set, Deque, Dict
+from typing import Any, Optional, List, Tuple, Set, Deque, Dict
 from weakref import ref as weak_ref
 
 from .value import Value
+
+
+########################################################################################################################
+
+class CyclicDependencyError(Exception):
+    pass
 
 
 ########################################################################################################################
@@ -169,151 +175,7 @@ class Emitter:
                 return emitter.get_output_schema()
 
     class _OrderableReceivers:
-        """
-        Passed in `Emitter._sort_receivers` to allow subclasses to inspect and re-order the list of Receivers without
-        being able to add or remote to it.
-        """
-
-        def __init__(self, receivers: List['Receiver']):
-            """
-            Constructor.
-            :param receivers: Receivers to sort, would be a mutable reference in C++.
-            """
-            self._receivers: List[Receiver] = receivers
-            self._has_changed: bool = False
-
-        def __len__(self) -> int:
-            """
-            :return: Number of elements in the list.
-            """
-            return len(self._receivers)
-
-        def __getitem__(self, index: Union[int, slice]) -> 'Receiver':
-            """
-            [] access operator.
-            :param index: Index (-slice) to return.
-            :raise IndexError: If the index is illegal.
-            :return: Element/s at the requested index/indices.
-            """
-            return self._receivers[index]
-
-        def __iter__(self) -> Iterable['Receiver']:
-            """
-            :return: Iterator through the list.
-            """
-            yield from self._receivers
-
-        def __reversed__(self) -> Iterable['Receiver']:
-            """
-            :return Reverse-iterator through the list:
-            """
-            return reversed(self._receivers)
-
-        def index(self, item: 'Receiver', start: Optional[int] = None, end: Optional[int] = None) -> int:
-            """
-            :param item: Item to look for.
-            :param start: Start index to start limit the search space to the left.
-            :param end: End index to limit the search space to the right.
-            :raise ValueError: If no entry equal to item was found in the inspected subsequence.
-            :return: Return zero-based index in the list of the first entry that is equal to item.
-            """
-            return self._receivers.index(item,
-                                         start if start is not None else 0,
-                                         end if end is not None else len(self._receivers))
-
-        def has_changed(self) -> bool:
-            """
-            Whether or not the user used this instance to change the order of the Receivers.
-            Note that we do not detect if two changes cancel each other out, as soon as any re-ordering is performed,
-            this method will report true. This is because we expect the user to either perform meaningful changes to the
-            order some times but most of the times no changes at all. If we were to copy the original order so that we
-            can compare it against the new one, we might as well not bother with this optimization.
-            """
-            return self._has_changed
-
-        def move_to_front(self, item: 'Receiver'):
-            """
-            :param item: Moves this item to the front of the list.
-            :raise ValueError: If no such item is in the list.
-            """
-            if self._receivers[0] == item:
-                return
-
-            # perform the re-order
-            self._rotate(0, self.index(item) + 1, 1)
-            self._has_changed = True
-
-        def move_to_back(self, item: 'Receiver'):
-            """
-            :param item: Moves this item to the back of the list.
-            :raise ValueError: If no such item is in the list.
-            """
-            # early out if the item is already in place
-            if self._receivers[-1] == item:
-                return
-
-            # perform the re-order
-            self._rotate(self.index(item), len(self._receivers), -1)
-            self._has_changed = True
-
-        def move_in_front_of(self, item: 'Receiver', other: 'Receiver'):
-            """
-            :param item: Moves this item right in front of the other.
-            :param other: Other item to move in front of.
-            :raise ValueError: If either item is not in the list.
-            """
-            item_index: int = self.index(item)
-            other_index: int = self.index(other)
-
-            # early out if both items are equal or already in place
-            if item_index == other_index:
-                return
-            if item_index + 1 == other_index:
-                return
-
-            # perform the re-order
-            if item_index > other_index:
-                self._rotate(other_index, item_index + 1, 1)
-            else:
-                self._rotate(item_index, other_index, -1)
-            self._has_changed = True
-
-        def move_behind_of(self, item: 'Receiver', other: 'Receiver'):
-            """
-            :param item: Moves this item right behind the other.
-            :param other: Other item to move behind.
-            :raise ValueError: If either item is not in the list.
-            """
-            item_index: int = self.index(item)
-            other_index: int = self.index(other)
-
-            # early out if both items are equal or already in place
-            if item_index == other_index:
-                return
-            if other_index + 1 == item_index:
-                return
-
-            # perform the re-order
-            if item_index > other_index:
-                self._rotate(other_index + 1, item_index + 1, 1)
-            else:
-                self._rotate(item_index, other_index + 1, -1)
-            self._has_changed = True
-
-        def _rotate(self, start: int, end: int, steps: int):
-            """
-            Rotates the given sequence to the right.
-            Example:
-                my_list = [0, 1, 2, 3, 4, 5, 6]
-                _rotate(my_list, 2, 5, 1)  # returns [0, 1, 4, 2, 3, 5, 6]
-            :param start:       First index of the rotated subsequence.
-            :param end:         One-past the last index of the rotated subsequence.
-            :param steps:       Number of steps to rotate.
-            :return:            The modified list.
-            """
-            pivot: int = (end if steps >= 0 else start) - steps
-            self._receivers = (self._receivers[0:start] + self._receivers[pivot:end] +
-                               self._receivers[start:pivot] + self._receivers[end:])
+        pass
 
     class _Status(Enum):
         """
@@ -385,14 +247,13 @@ class Emitter:
         """
         Push the given value to all active Receivers.
         We offer implicit conversion to a Value here since this code can be called from subclasses by the user.
-        :param value:           Value to emit, can be empty if this Emitter does not emit a meaningful value.
-        :raise TypeError:       If the Value's Schema doesn't match.
-        :raise RuntimeError:    If the Emitter has already completed (either normally or though an error).
-                                Or if the Emitter is already emitting (cyclic dependency detected).
+        :param value:                   Value to emit, can be empty if this Emitter does not emit a meaningful value.
+        :raise TypeError:               If the Value's Schema doesn't match.
+        :raise CyclicDependencyError:   If the Emitter is already emitting (cyclic dependency detected).
         """
         # Make sure we can never emit once the Emitter has completed.
         if self.is_completed():
-            raise RuntimeError(f"Emitter {self.get_id()} has already completed")
+            return
 
         # Check the given value to see if the Emitter is allowed to emit it. If it is not a Value, try to
         # build one out of it. If that doesn't work, or the Schema of the Value does not match that of the
@@ -411,7 +272,7 @@ class Emitter:
 
         # Make sure that we are not already emitting.
         if self._status != self._Status.IDLE:  # this would be the job of a RAII guard in C++
-            raise RuntimeError(f"Cyclic dependency detected during emission from Emitter {self.get_id()}.")
+            raise CyclicDependencyError(f"Cyclic dependency detected during emission from Emitter {self.get_id()}.")
         self._status = self._Status.EMITTING
 
         try:
@@ -426,15 +287,15 @@ class Emitter:
                     highest_valid_index += 1
 
             # pre-emission allowing user-code to prepare the Emitter (change the order of receivers, for example)
-            receiver_order = self._OrderableReceivers(receivers)
+            receiver_order = self._OrderableReceivers()
             self._sort_receivers(receiver_order)
 
             # if the user changed the order of the strong references, re-apply that order to the member field
-            if receiver_order.has_changed():
-                self._downstream = [weak_ref(receiver) for receiver in receivers]
-            else:
-                # if not, just remove all dead receivers
-                self._downstream = self._downstream[:highest_valid_index]
+            # if receiver_order.has_changed():
+            #     self._downstream = [weak_ref(receiver) for receiver in receivers]
+            # else:
+            # if not, just remove all dead receivers
+            self._downstream = self._downstream[:highest_valid_index]
 
             # create the signal to emit
             signal = ValueSignal(self.get_id(), value, self.is_blockable())  # in C++ w would move the value here
