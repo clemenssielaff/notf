@@ -187,8 +187,6 @@ class Emitter:
         To emit a FailureSignal or a CompletionSignal, the Emitter will switch to the respective FAILING or COMPLETING
         state. Once it has finished its `_fail` or `_complete` methods, it will permanently change its state to
         COMPLETED and will not emit anything again.
-        We differentiate between EMITTING, FAILING and COMPLETING so that the virtual function `_handle_error` can
-        respond differently, depending on the state that the Emitter is currently in.
 
             --> IDLE <-> EMITTING
                   |
