@@ -360,6 +360,81 @@ With the introduction of user-written code, we inevitable open the door to user-
 
 In case of a failure, the exception thrown by the Receiver is caught by the Emitter upstream, that is currently in the process of emitting. The way that the Emitter reacts to the exception can be selected at runtime using the [delegation pattern](https://en.wikipedia.org/wiki/Delegation_pattern). The default behavior is to acknowledge the exception by logging a warning, but ultimately to ignore it, for there is no general way to handle user code errors. Other delegates may opt to drop Receivers that fail once, fail multiple times in a row or in total, etc.
 
+Since Circuit elements can execute user-defined code, it is possible for them to throw exceptions. They might do all
+sorts of other errors as well, but since there is not mechanism to handle those we focus on exceptions exclusively.
+All Circuit elements only get to run their code during an Event, when an upstream Emitter emits a Signal to them.
+That means, we can be fairly certain that most user-errors will be happening at the bottom of a call stack that includes
+at least one call to Emitter._emit above it. The only way to have the user throw an error anywhere else is inside the
+_emit function itself, but injection points for user-defined code in there are rare as well and can also be safeguarded
+by try-catch blocks.
+The question is, how do we handle those errors? Let's enumerate:
+
+1. Have a virtual function `_handle_error` that is called whenever an exception is caught during emission. That is how
+   we are currently doing it. This function contains more user-defined code that determines how to handle that
+   particular error. Since the Emitter should not have any knowledge of the Receivers that connect to it, it cannot
+   anticipate the kind of error and cannot really do anything except reporting it.
+   The Emitter *could* disconnect, but currently there is no way to expose that functionality to user-defined code
+   without passing a strong reference to the Receiver back to the user. Also, the idea of catching exceptions thrown in
+   user-defined code using more user-defined code is ... brave?
+2. Report the error and let the user decide whether or not to disconnect from the Receiver. This could be another flag
+   on the Emitter type like `is_blockable`. This sounds like a good compromise at first, but I still don't see how you
+   would decide on a Emitter type-by-type basis. Why would one Emitter disconnect and the other wouldn't? Without any
+   more information about how the surrounding Circuit looks like, that is.
+3. Like 2, but the flag is not set by type, but by instance. It might default to "True" (disconnect on error) but you
+   can manually change it to "False", if you would rather keep the connection alive and try again with the next Signal.
+
+Well, here's the thing. Exceptions should be exceptional. Meaning, you should not have any in a well-formed program.
+Also, if they do occur, wouldn't the Receiver "fail" (if it was an Operator)? In that case, they are now complete and
+it doesn't make a difference whether they are connected or not.
+
+Actually, the whole question is wrong.
+The Emitter should *never* have to deal with an exception raised by a downstream Emitter. There is simply no context to
+do anything about it. Instead, it should always be the Receiver itself, that does the error handling. However, as stated
+in 1.: there is no point in having user-defined error handling code when the user-defined code itself is throwing an
+exception. If the user is capable to write error-handling code at one point, he should be able to do so in the code that
+is actually running. The Receiver only has *fallback* error handling code, that reports the error to a central location
+in the Circuit ... and then disconnects?
+
+- Do all Receivers disconnect from their complete upstream when the fallback error handler is called?
+    No. Operators should, but that is only because (unlike Receivers) they can complete. Completed Operators will never
+    call user-defined code again anyway, so it is save and right to disconnect all upstream. Downstream disconnection is
+    taken care off by the Receivers receiving the FailureSignal.
+    Well actually, by giving all downstream Receivers a FailureSignal, we expect them to remove their connections which
+    should then destroy the Operator as well. That will automatically destroy useless upstream elements that have no
+    more owners than the completed Operator and will leave those that have other downstream elements alone. Sure,
+    surviving upstream Operators might keep an expired weak reference to the failed Operator, but those are weeded out
+    the next time the upstream Operator emits. And I suspect it will be more performant to do the weeding "lazily" and
+    when the whole list of receivers is in cache anyway.
+    So ... the final answer is NO for everyone.
+
+- Should Emitters automatically disconnect from completed downstream?
+    No, the completed downstream Operator will itself cause its downstream to disconnect from it, destroying it in the
+    process. It should be save for Emitters to simply ignore completed Receivers.
+    However, it would be nice to ensure that a Receiver will not be completed on more than one occasion as that would
+    be wasteful and hint at some underling problem with the garbage collection. If Operators can only be owned by the
+    downstream, and if the downstream disconnects automatically on failure, then you should never come across the same
+    completed Operator twice in the same Emitter. Instead it should be marked for deletion after failing.
+
+- Can pure Receivers remain alive and connected after throwing an exception?
+    Yes. Since a pure Receiver cannot complete, there is no inherent reason for it to disconnect. Of course you could
+    argue that you don't want to be spammed with errors, if a very active Emitter keeps triggering exceptions in the
+    Receiver - but that's really the user's fault at this point. At least this way, the error is there, right up in
+    your face. If we disconnect in an attempt to "heal" the Circuit, the error will disappear and the user (who might
+    want to debug the Circuit) will be left wondering how the error happened in the first place, since the necessary
+    connection has disappeared.
+
+- What about cyclic dependency errors that are thrown from the three emission functions?
+    Well, one thing we can say for certain is that for a cyclic dependency to occur, there must be at least one call to
+    Emitter._emit further up in the call stack. Therefore it should be save to catch CyclicDependencyErrors in
+    either one of the tree emission functions and simply report the error using the strong reference to the receiver
+    that was just emitted to.
+
+- Will we get a problem if a cyclic dependency is caught during failure or completion?
+    I don't think we need to check for cyclic dependency errors during failure or completion as long as we make sure 
+    that the Emitter's state is set to COMPLETED and that a completed Emitter never emits again this should be enough
+    to break the loop.
+    That said, we need to make sure that it is okay for the emitter to call _fail or _complete while it is currently
+    emitting.
 
 ## Logic Modification
 
@@ -472,6 +547,33 @@ New Receivers are ordered behind existing ones, not before them. You could make 
 <br> That should be the default behavior. 
 
 Of course, this approach does not protect the user from the error cases outlined above - but it will make them at least deterministic. I think it is a good trade-off though. By allowing user-injected, stateful code in our system, we not only give power to the user but also responsibility (cue obligatory Spiderman joke).
+
+### Emitter Status
+
+It *is* possible for a completed Operator to be called more than once during the same emission.
+
+Behold:
+```
+    +--> B --+
+A --+        v
+    +------->C
+```
+We have two connections to `C` here: `A-->C` and `B-->C` and in order for the issue to appear, we need both of them active at the same time. For that, `A` emits to `B` first and then to `C`. This way, `A` and `B` are active at the same time. Assume that `C` is an Operator that fails as soon as it receives a Signal. When `B` calls `C`, it fails and completes immediately. `B` then finishes and `A` resumes its own emission, calling `C` for a second time, albeit now in a "completed" state.
+
+It is therefore possible to emit to a completed Operator in a completely valid Circuit, which is why this occurrence must be ignored instead of being treated as an error or even an assertion.
+
+We can also have a cycle in the Circuit which would be an error, but the second time around the operator completes or fails instead of emitting a value.
+
+```
++------------ +
+|    +--> B   |
+|    |        |
++--> A--> C-->+
+     |
+     +--> D
+```
+
+A emits to B, then to C. C emits to A which does not emit another value (which would be a NoDag error) but instead completes or fails. That again sends another competion/failure Signal to C, which now disconnects from A and without any upstream left completes itself. This completion signal then circles around to A, which will have to ignore it.
 
 ### Dynamic Order
 

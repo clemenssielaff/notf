@@ -1,8 +1,10 @@
-from typing import List, Optional, Union, Callable
-from random import randint as random_int, choice as random_choice
+from typing import List, Optional, Union, Callable, TypeVar
+from random import randint as random_int, choice as random_choice, shuffle
 
 from pynotf.logic import Operator, Receiver, Emitter, Circuit, ValueSignal, FailureSignal, CompletionSignal
 from pynotf.value import Value
+
+T = TypeVar('T')
 
 number_schema: Value.Schema = Value(0).schema
 """
@@ -40,6 +42,18 @@ def random_schema(depth: int = 4, width: int = 3) -> Value.Schema:
             }
 
     return Value.Schema(random_element(depth))
+
+
+def random_shuffle(*args: T) -> List[T]:
+    """
+    Random shuffle of a list in-place.
+    Is necessary because random.shuffle returns None and I want to be able to write:
+        for x in random_shuffle(1, 2, 3, 4):
+            print(x)  # returns 3, 4, 1, 2 for example
+    """
+    values = list(args)
+    shuffle(values)
+    return values
 
 
 class Recorder(Receiver):

@@ -236,7 +236,7 @@ class Emitter:
         """
         Returns true iff the Emitter has been completed, either through an error or normally.
         """
-        return self._status == self._Status.COMPLETED
+        return not (self._status == self._Status.IDLE or self._status == self._Status.EMITTING)
 
     def has_downstream(self) -> bool:
         """
@@ -329,6 +329,11 @@ class Emitter:
 
             # emit to all live receivers in order
             for receiver in receivers:
+                # highly unlikely, but can happen if there is a cycle in the circuit that caused this emitter to
+                # complete while it is in the process of emitting a value
+                if self.is_completed():
+                    return
+
                 receiver.on_value(signal)
 
                 # stop the emission if the Signal was blocked
@@ -337,24 +342,20 @@ class Emitter:
                     break
 
         finally:
-            # reset the emission flag
-            self._status = self._Status.IDLE
+            # reset the emission flag if we are still emitting
+            if self._status == self._Status.EMITTING:
+                self._status = self._Status.IDLE
 
     def _fail(self, error: Exception):
         """
         Failure method, completes the Emitter while letting the downstream Receivers inspect the error.
         :param error:       The error that has occurred.
-        :raise NoDagError:  If the Emitter is already emitting (cyclic dependency detected).
         """
         # Make sure we can never emit once the Emitter has completed.
         if self.is_completed():
-            # We cannot rule out that a subclass calls this method manually while a "CompletionEvent" is already queued
-            # in the Circuit. In that case, the Event might call this function again, in which case we do nothing.
             return
 
-        # make sure that we are not already emitting
-        if self._status != self._Status.IDLE:
-            raise NoDagError(f"Cyclic dependency detected during failure from Emitter {self.get_id()}.")
+        # we don't have to test for cyclic dependency errors here because this method will complete the emitter
         self._status = self._Status.FAILING
 
         try:
@@ -377,17 +378,12 @@ class Emitter:
     def _complete(self):
         """
         Completes the Emitter successfully.
-        :raise NoDagError:  If the Emitter is already emitting (cyclic dependency detected).
         """
         # Make sure we can never emit once the Emitter has completed.
         if self.is_completed():
-            # We cannot rule out that a subclass calls this method manually while a "CompletionEvent" is already queued
-            # in the Circuit. In that case, the Event might call this function again, in which case we do nothing.
             return
 
-        # make sure that we are not already emitting
-        if self._status != self._Status.IDLE:
-            raise NoDagError(f"Cyclic dependency detected during completion from Emitter {self.get_id()}.")
+        # we don't have to test for cyclic dependency errors here because this method will complete the emitter
         self._status = self._Status.COMPLETING
 
         try:
