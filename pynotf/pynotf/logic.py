@@ -3,7 +3,7 @@ from collections import deque
 from enum import Enum
 from logging import error as print_error
 from threading import Lock, Condition
-from typing import Any, Optional, List, Tuple, Set, Deque, Dict
+from typing import Any, Optional, List, Tuple, Set, Deque, Dict, Callable, NamedTuple
 from weakref import ref as weak_ref
 
 from .value import Value
@@ -11,7 +11,10 @@ from .value import Value
 
 ########################################################################################################################
 
-class CyclicDependencyError(Exception):
+class NoDagError(Exception):
+    """
+    Exception raised when a cyclic dependency was detected in the graph.
+    """
     pass
 
 
@@ -247,24 +250,48 @@ class Emitter:
         """
         Push the given value to all active Receivers.
         We offer implicit conversion to a Value here since this code can be called from subclasses by the user.
-        :param value:                   Value to emit, can be empty if this Emitter does not emit a meaningful value.
-        :raise TypeError:               If the Value's Schema doesn't match.
-        :raise CyclicDependencyError:   If the Emitter is already emitting (cyclic dependency detected).
+
+        It should be impossible for this method to throw an exception all the way out to the user.
+        Here is a list of all possible error cases:
+            1. Wrong value type.
+               Should be impossible as this method can only be called from two places (so far):
+                * Circuit.emit_value which has its own check in place
+                * Operator._on_value which also has its own check set up
+               In fact, instead of checking for the Value type, we just assert that we get the right one because
+               anything else at this point is a programming error on our part.
+            2. Whatever we decide to do with ordered receivers.
+               Since that will include user-defined code, there is a possibility there to throw an exception. However,
+               we have a way to deal with them: take any Receiver to get the Circuit and report the error, then return
+               without having emitted anything. Done.
+            3. Cyclic dependencies.
+               This one is a true error that can only be caught here. Fortunately, we have two ways of dealing with it.
+               The first one is to treat it similarly to errors with the ordered receivers, report it and return without
+               doing anything. The second is just to let the exception fall up through the call stack, since the
+               existence of a cyclic dependency necessitates a call to one of the three "on_X" methods on a Receiver,
+               that have error handling in place.
+            4. Whatever happens in Receiver.on_value.
+               We don't have to worry about that either, since that methods has its own generic error handling in place
+               and guarantees to not throw.
+        :param value:       Value to emit, can be empty if this Emitter does not emit a meaningful value.
         """
+        assert value.schema == self.get_output_schema()
+
         # Make sure we can never emit once the Emitter has completed.
+        # Note that it is possible in a completely valid Circuit to call a completed Emitter, which means that in
+        # general this is not an error.
+        # Example:
+        #       +-- B --+
+        #       |       v
+        #   A --+       D
+        #       |       ^
+        #       +-- C --+
+        # Let A emits first to B and then C, and both B and C to D. It is possible that C causes D to complete.
+        # If A then emits to C and C emits to D (which is still connected as the Event has not finished yet), then D is
+        # indeed called upon even though it has already completed.
+        # Note that it is not possible to check beforehand if the Emitter is completed, as Emitters emit to Receivers
+        # (Operators are Receivers as well) and Receivers cannot be completed.
         if self.is_completed():
             return
-
-        # Check the given value to see if the Emitter is allowed to emit it. If it is not a Value, try to
-        # build one out of it. If that doesn't work, or the Schema of the Value does not match that of the
-        # Emitter, raise an exception.
-        if not isinstance(value, Value):
-            try:
-                value = Value(value)
-            except ValueError:
-                raise TypeError("Emitters can only emit Values or things that are implicitly convertible to one")
-        if value.schema != self.get_output_schema():
-            raise TypeError("Emitter cannot emit a value with the wrong Schema")
 
         # early out if there wouldn't be a point of emitting anyway
         if not self.has_downstream():
@@ -272,7 +299,7 @@ class Emitter:
 
         # Make sure that we are not already emitting.
         if self._status != self._Status.IDLE:  # this would be the job of a RAII guard in C++
-            raise CyclicDependencyError(f"Cyclic dependency detected during emission from Emitter {self.get_id()}.")
+            raise NoDagError(f"Cyclic dependency detected during emission from Emitter {self.get_id()}.")
         self._status = self._Status.EMITTING
 
         try:
@@ -302,11 +329,7 @@ class Emitter:
 
             # emit to all live receivers in order
             for receiver in receivers:
-                try:
-                    receiver.on_value(signal)
-                # pass exceptions to the assigned error handle
-                except Exception as exception:
-                    self._handle_error(receiver.get_id(), exception)
+                receiver.on_value(signal)
 
                 # stop the emission if the Signal was blocked
                 # C++ will most likely be able to move this condition out of the loop
@@ -320,8 +343,8 @@ class Emitter:
     def _fail(self, error: Exception):
         """
         Failure method, completes the Emitter while letting the downstream Receivers inspect the error.
-        :param error:           The error that has occurred.
-        :raise RuntimeError:    If the Emitter is already emitting (cyclic dependency detected).
+        :param error:       The error that has occurred.
+        :raise NoDagError:  If the Emitter is already emitting (cyclic dependency detected).
         """
         # Make sure we can never emit once the Emitter has completed.
         if self.is_completed():
@@ -331,7 +354,7 @@ class Emitter:
 
         # make sure that we are not already emitting
         if self._status != self._Status.IDLE:
-            raise RuntimeError(f"Cyclic dependency detected during failure from Emitter {self.get_id()}.")
+            raise NoDagError(f"Cyclic dependency detected during failure from Emitter {self.get_id()}.")
         self._status = self._Status.FAILING
 
         try:
@@ -344,11 +367,7 @@ class Emitter:
                 if receiver is None:
                     continue
 
-                # emit and pass exceptions to the assigned error handle
-                try:
-                    receiver.on_failure(signal)
-                except Exception as exception:
-                    self._handle_error(receiver.get_id(), exception)
+                receiver.on_failure(signal)
 
         finally:
             # complete the emitter
@@ -358,7 +377,7 @@ class Emitter:
     def _complete(self):
         """
         Completes the Emitter successfully.
-        :raise RuntimeError:    If the Emitter is already emitting (cyclic dependency detected).
+        :raise NoDagError:  If the Emitter is already emitting (cyclic dependency detected).
         """
         # Make sure we can never emit once the Emitter has completed.
         if self.is_completed():
@@ -368,7 +387,7 @@ class Emitter:
 
         # make sure that we are not already emitting
         if self._status != self._Status.IDLE:
-            raise RuntimeError(f"Cyclic dependency detected during completion from Emitter {self.get_id()}.")
+            raise NoDagError(f"Cyclic dependency detected during completion from Emitter {self.get_id()}.")
         self._status = self._Status.COMPLETING
 
         try:
@@ -381,48 +400,12 @@ class Emitter:
                 if receiver is None:
                     continue
 
-                # emit and pass exceptions to the assigned error handle
-                try:
-                    receiver.on_completion(signal)
-                except Exception as exception:
-                    self._handle_error(receiver.get_id(), exception)
+                receiver.on_completion(signal)
 
         finally:
             # complete the emitter
             self._downstream.clear()
             self._status = self._Status.COMPLETED
-
-    def _get_status(self) -> 'Emitter._Status':
-        """
-        The current state of the Emitter, can be used by `_handle_error` overloads to determine in what context the
-        error occurred.
-        Is not part of the public interface since the internal state of the Emitter is of no interest to the user.
-        """
-        return self._status
-
-    def _handle_error(self, receiver_id: int, error: Exception):  # virtual
-        """
-        Default error handler.
-        Writes a comprehensive error message to std::err.
-        Is protected so that overrides of can call the base class implementation.
-        :param receiver_id: ID of the Receiver that produced the error.
-        :param error:       The exception object.
-        """
-        assert self._get_status() != self._Status.COMPLETED
-
-        # determine what the Emitter was doing when the error occurred
-        if self._get_status() == self._Status.EMITTING:
-            state = "emitting a Value"
-        elif self._get_status() == self._Status.FAILING:
-            state = "failing"
-        else:
-            assert self._get_status() == self._Status.COMPLETING
-            state = "completing"
-
-        # print out the error message
-        print_error(f"Receiver {receiver_id} failed during Logic evaluation.\n"
-                    f"Exception caught by Emitter {self.get_id()} while {state}:\n"
-                    f"{error}")
 
     # private
     def _sort_receivers(self, receivers: _OrderableReceivers):  # virtual
@@ -484,7 +467,11 @@ class Receiver:
         assert signal.get_value().schema == self.get_input_schema()
 
         # pass the signal along to the user-defined handler
-        self._on_value(signal)
+        try:
+            self._on_value(signal)
+        except Exception as error:
+            # noinspection PyCallByClass
+            self._circuit.handle_error(Circuit.Error(self.get_id(), weak_ref(self), error, "Receiver.on_value"))
 
     def on_failure(self, signal: FailureSignal):
         """
@@ -503,11 +490,15 @@ class Receiver:
         # it will never emit again anyway
         self._upstream.remove(emitter)
 
-        # mark the emitter as ready for deletion
+        # mark the emitter as a candidate for deletion
         self._circuit.expire_emitter(emitter)
 
         # pass the signal along to the user-defined handler
-        self._on_failure(signal)
+        try:
+            self._on_failure(signal)
+        except Exception as error:
+            # noinspection PyCallByClass
+            self._circuit.handle_error(Circuit.Error(self.get_id(), weak_ref(self), error, "Receiver.on_failure"))
 
     def on_completion(self, signal: CompletionSignal):
         """
@@ -530,7 +521,11 @@ class Receiver:
         self._circuit.expire_emitter(emitter)
 
         # pass the signal along to the user-defined handler
-        self._on_completion(signal)
+        try:
+            self._on_completion(signal)
+        except Exception as error:
+            # noinspection PyCallByClass
+            self._circuit.handle_error(Circuit.Error(self.get_id(), weak_ref(self), error, "Receiver.on_failure"))
 
     def connect_to(self, emitter: Emitter.Handle):
         """
@@ -706,32 +701,17 @@ class Operator(Receiver, Emitter):
             """
             pass
 
+        @abstractmethod
         def __call__(self, value: Value) -> Optional[Value]:
             """
             Perform the Operation on a given value.
-            :param value: Input value, must conform to the Schema specified by the `input_schema` property.
-            :return: Either a new output value (conforming to the Schema specified by the `output_schema` property)
-                or None.
-            :raise TypeError: If either the input or output Value does not conform to its expected Schema.
-            """
-            assert value.schema == self.get_input_schema()
-            result: Optional[Value] = self._perform(value)
-            if result is not None and result.schema != self.get_output_schema():
-                raise TypeError("Value does not conform to the Operator's input Schema")
-            return result
-
-        # private
-        @abstractmethod
-        def _perform(self, value: Value) -> Optional[Value]:
-            """
-            Operation implementation.
             If this function returns a Value, it will be emitted by the Operator.
             If this function returns None, no emission will take place.
             Exceptions thrown by this function will cause the Operator to fail.
             :param value: Input value, conforms to the input Schema.
             :return: Either a new output value conforming to the output Schema or None.
             """
-            pass
+            raise NotImplementedError()
 
     def __init__(self, circuit: 'Circuit', operation: Operation):
         """
@@ -753,9 +733,14 @@ class Operator(Receiver, Emitter):
         :param signal   The ValueSignal associated with this call.
         """
         try:
-            result = self._operation(signal.get_value())
+            value: Value = signal.get_value()
+            assert value.schema == self.get_input_schema()
+            result: Optional[Value] = self._operation(value)
+            if result is not None and result.schema != self.get_output_schema():
+                raise TypeError("Return Value of Operation does not conform to the Operator's output Schema")
         except Exception as exception:
             self._fail(exception)
+            raise  # raise the exception again to be reported by the "on_value" error handler
         else:
             if result is not None:
                 self._emit(result)
@@ -968,6 +953,15 @@ class Circuit:
             # if both are still alive, return the pair
             return emitter, receiver
 
+    class Error(NamedTuple):
+        """
+        Object wrapping any exception thrown (and caught) in the Circuit alongside additional information.
+        """
+        element_id: int  # in case the element itself goes out of scope
+        element: weak_ref  # weak reference to the element
+        error: Exception  # exception caught in the circuit
+        reporter: str  # name of the function reporting the error
+
     # public
 
     def __init__(self):
@@ -982,9 +976,8 @@ class Circuit:
         self._name_mutex: Lock = Lock()  # mutex protecting the named emitter dictionary
 
         self._topology_changes: List[Circuit._TopologyChange] = []  # changes to the topology during an event in order
-
         self._expired_emitters: List[Emitter] = []  # all expired Emitters kept around for delayed cleanup on idle
-        self._cleanup_mutex: Lock = Lock()  # mutex protecting the expired emitters list
+        self._error_callback: Optional[Callable] = None
 
     def emit_value(self, emitter: Emitter, value: Any = Value()):
         """
@@ -1034,10 +1027,7 @@ class Circuit:
         """
         Deletes of all expired Emitters in the Circuit.
         """
-        with self._cleanup_mutex:
-            expired_emitters: List[Emitter] = self._expired_emitters
-            self._expired_emitters = []
-        expired_emitters.clear()
+        self._expired_emitters.clear()
 
     # public for friends
     def create_emitter(self, schema: Value.Schema = Value.Schema(),
@@ -1102,8 +1092,7 @@ class Circuit:
         idle. If there are other owners of the Emitter, this does nothing.
         :param emitter: Emitter to expire (in C++ this would be an r-value).
         """
-        with self._cleanup_mutex:
-            self._expired_emitters.append(emitter)
+        self._expired_emitters.append(emitter)
 
     def await_event(self, timeout: Optional[float] = None) -> Optional[_Event]:
         """
@@ -1147,8 +1136,27 @@ class Circuit:
 
         self._topology_changes.clear()
 
-    # private
+    def set_error_callback(self, callback: Optional[Callable]):
+        """
+        Defines the function called whenever an error is caught in the Circuit.
+        :param callback:    Error callback, passing None will cause the Circuit to use the default error handler.
+        """
+        self._error_callback = callback
 
+    def handle_error(self, error: 'Circuit.Error'):
+        """
+        :param error: Error caught in the Circuit.
+        """
+        # if the user installed an error handler, use that to report the error
+        if self._error_callback is not None:
+            self._error_callback(error)
+
+        # otherwise just print an error message to stderr and hope for the best
+        else:
+            print_error(f"Circuit {error.element_id} failed during Event handling.\n"
+                        f"{error.error}")
+
+    # private
     def _create_connection(self, emitter: Emitter, receiver: Receiver):
         """
         Creates a new connection in the Circuit during the event epilogue.

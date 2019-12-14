@@ -189,7 +189,7 @@ def create_operator(circuit: Circuit,
         def get_output_schema(self) -> Value.Schema:
             return schema if output_schema is None else output_schema
 
-        def _perform(self, value: Value) -> Optional[Value]:
+        def __call__(self, value: Value) -> Optional[Value]:
             return operation(value)
 
     class AnonymousOperator(Operator):
