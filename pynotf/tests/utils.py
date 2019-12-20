@@ -1,7 +1,8 @@
 from typing import List, Optional, Union, Callable, TypeVar
 from random import randint as random_int, choice as random_choice, shuffle
 
-from pynotf.logic import Operator, Receiver, Emitter, Circuit, ValueSignal, FailureSignal, CompletionSignal
+from pynotf.logic import Operator, AbstractReceiver, AbstractEmitter, Circuit, ValueSignal, FailureSignal, \
+    CompletionSignal, Element
 from pynotf.value import Value
 
 T = TypeVar('T')
@@ -56,32 +57,32 @@ def random_shuffle(*args: T) -> List[T]:
     return values
 
 
-class Recorder(Receiver):
+class Recorder(AbstractReceiver):
     """
     A Recorder is a special Receiver for test cases that simply records all signals that it receives.
     """
 
-    def __init__(self, circuit: Circuit, schema: Value.Schema):
-        Receiver.__init__(self, circuit, schema)
+    def __init__(self, circuit: 'Circuit', element_id: Element.ID, schema: Value.Schema):
+        AbstractReceiver.__init__(self, schema)
+
+        self._circuit: Circuit = circuit  # is constant
+        self._element_id: Element.ID = element_id  # is constant
         self.signals: List[Union[ValueSignal, FailureSignal, CompletionSignal]] = []
 
     @classmethod
-    def record(cls, emitter: Emitter, circuit: Optional[Circuit] = None) -> 'Recorder':
+    def record(cls, emitter: AbstractEmitter) -> 'Recorder':
         """
         Convenience method to create and connect a matching Recorder to a given Emitter.
-        If the Emitter is an Operator, we will get the "circuit" argument from it.
-        If it is a pure Emitter you have to specify the Circuit as well.
         """
-        # find the circuit
-        if isinstance(emitter, Operator):
-            circuit = emitter._circuit
-        else:
-            assert circuit is not None
-
-        # create and connect the recorder
-        recorder = Recorder(circuit, emitter.get_output_schema())
-        recorder.connect_to(Emitter.Handle(emitter))
+        recorder: Recorder = emitter.get_circuit().create_element(Recorder, emitter.get_output_schema())
+        recorder.connect_to(make_handle(emitter))
         return recorder
+
+    def get_id(self) -> Element.ID:
+        return self._element_id
+
+    def get_circuit(self) -> 'Circuit':
+        return self._circuit
 
     def _on_value(self, signal: ValueSignal):
         self.signals.append(signal)
@@ -123,31 +124,37 @@ class Recorder(Receiver):
         return result
 
 
-def create_emitter(schema: Value.Schema, is_blockable: bool = False,
-                   handle_error: Optional[Callable] = None,
-                   sort_receivers: Optional[Callable] = None):
+def make_handle(emitter: AbstractEmitter) -> AbstractEmitter.Handle:
+    """
+    Convenience function to create a Handle around a strong reference of an Emitter.
+    :param emitter: Emitter to handle.
+    :return:        Handle to the given Emitter.
+    """
+    return AbstractEmitter.Handle(emitter)
+
+
+def create_emitter(circuit: Circuit, schema: Value.Schema, is_blockable: bool = False):
     """
     Creates an instance of an anonymous Emitter class that can emit values of the given schema.
+    :param circuit:         Circuit to contain the Emitter.
     :param schema:          Schema of the Value emitted by this Emitter, defaults to empty.
     :param is_blockable:    Whether or not Signals from this Emitter can be blocked, defaults to False.
-    :param handle_error:    (Optional) Callback for the `_handle_error` method.
-    :param sort_receivers:  (Optional) Callback for the `_sort_receivers` method.
     :return: New instance of the Emitter class.
     """
 
-    class AnonymousEmitter(Emitter):
-        def __init__(self):
-            Emitter.__init__(self, schema, is_blockable)
+    class AnonymousEmitter(AbstractEmitter):
+        def __init__(self, circuit_: 'Circuit', element_id: Element.ID):
+            AbstractEmitter.__init__(self, schema, is_blockable)
+            self._circuit: Circuit = circuit_  # is constant
+            self._element_id: Element.ID = element_id  # is constant
 
-        def _handle_error(self, receiver_id: int, error: Exception):
-            if handle_error:
-                handle_error(receiver_id, error)
+        def get_id(self) -> Element.ID:
+            return self._element_id
 
-        def _sort_receivers(self, receivers: Emitter._OrderableReceivers):
-            if sort_receivers:
-                sort_receivers(receivers)
+        def get_circuit(self) -> 'Circuit':
+            return self._circuit
 
-    return AnonymousEmitter()
+    return circuit.create_element(AnonymousEmitter)
 
 
 def create_receiver(circuit: Circuit, schema: Value.Schema,
@@ -164,23 +171,53 @@ def create_receiver(circuit: Circuit, schema: Value.Schema,
     :return: New instance of the Receiver class.
     """
 
-    class AnonymousReceiver(Receiver):
-        def __init__(self):
-            Receiver.__init__(self, circuit, schema)
+    class AnonymousReceiver(AbstractReceiver):
+        def __init__(self, circuit_: 'Circuit', element_id: Element.ID):
+            AbstractReceiver.__init__(self, schema)
+            self._circuit: Circuit = circuit_  # is constant
+            self._element_id: Element.ID = element_id  # is constant
 
-        def on_value(self, signal: ValueSignal):
+        def get_id(self) -> Element.ID:
+            return self._element_id
+
+        def get_circuit(self) -> 'Circuit':
+            return self._circuit
+
+        def _on_value(self, signal: ValueSignal):
             if on_value:
                 on_value(signal)
 
-        def on_failure(self, signal: FailureSignal):
+        def _on_failure(self, signal: FailureSignal):
             if on_failure:
                 on_failure(signal)
 
-        def on_completion(self, signal: CompletionSignal):
+        def _on_completion(self, signal: CompletionSignal):
             if on_completion:
                 on_completion(signal)
 
-    return AnonymousReceiver()
+    return circuit.create_element(AnonymousReceiver)
+
+
+def create_operation(schema: Value.Schema, operation: Callable, output_schema: Optional[Value.Schema] = None):
+    """
+    Creates an instance of an anonymous Operation class that can be used to create an Operator.
+    :param schema:          Schema of the Values ingested by the Operation.
+    :param operation:       Operation to perform on given Values.
+    :param output_schema:   (Optional) Schema of the output Value if different from the input.
+    :return:                New instance of the Operation class.
+        """
+
+    class AnonymousOperation(Operator.Operation):
+        def get_input_schema(self) -> Value.Schema:
+            return schema
+
+        def get_output_schema(self) -> Value.Schema:
+            return schema if output_schema is None else output_schema
+
+        def __call__(self, value: Value) -> Optional[Value]:
+            return operation(value)
+
+    return AnonymousOperation()
 
 
 def create_operator(circuit: Circuit,
@@ -196,18 +233,8 @@ def create_operator(circuit: Circuit,
     :return:                New instance of the Operator class.
     """
 
-    class AnonymousOperation(Operator.Operation):
-        def get_input_schema(self) -> Value.Schema:
-            return schema
-
-        def get_output_schema(self) -> Value.Schema:
-            return schema if output_schema is None else output_schema
-
-        def __call__(self, value: Value) -> Optional[Value]:
-            return operation(value)
-
     class AnonymousOperator(Operator):
-        def __init__(self):
-            Operator.__init__(self, circuit, AnonymousOperation())
+        def __init__(self, circuit_: 'Circuit', element_id: Element.ID):
+            Operator.__init__(self, circuit_, element_id, create_operation(schema, operation, output_schema))
 
-    return AnonymousOperator()
+    return circuit.create_element(AnonymousOperator)

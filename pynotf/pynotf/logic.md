@@ -46,17 +46,17 @@ An Event is an object that is passed to the Circuit to be handled. It references
 
 ## Emitter
 - [X] Keep a list of weak references to Receivers connected downstream.
-- [X] Allow subclasses to re-order Receivers without given them write-access to the member field.
+- [ ] Allow subclasses to filter and sort Receivers without given them write-access to the member field.
 - [X] Has an output Value type which is constant and readable, only emits Values of that type.
 - [X] Has 3 protected methods: `emit`, `fail` and `complete`.
-- [X] Once `complete` or `fail` are called, the Emitter is "finished" and will never emit again.
-- [X] Has a virtual function to handle exceptions, if a Receiver should throw.
-- [X] Has a reentrancy flag that is set just prior to emission and must be false at the start (can be part of a "state" enum including "complete").
-- [X] New Receivers are appended to the list.
+- [X] Once `complete` or `fail` are called, the Emitter is "completed" and will never emit again.
+- [X] Checks for cyclic dependencies in its `emit` function.
+- [X] New Receivers are emitted to last.
 - [X] Has a method to check if it has any Receivers at all (to avoid expensive Value creation for a pointless emission).
 - [X] Has a method to check whether it has completed.
 - [X] Emits Signals that are always either blockable or not & has a method to check which type it is.
-- [X] Has a Circuit-unique ID
+- [ ] Has a Circuit-unique ID by which it can be referred to for connection / disconnection.
+- [ ] ID can be passed in during construction but is not by default.
 
 ## Receiver
 - [X] Keeps a set of strong references to Emitters connected upstream.
@@ -70,7 +70,7 @@ An Event is an object that is passed to the Circuit to be handled. It references
 - [X] Can create-connect upstream Operators.
 - [X] User issued connections and disconnections don't happen immediately but are queued in the Circuit.
 - [X] Stores a pointer to its Circuit.
-- [X] Can request existing Operators by name from the Circuit.
+- [X] Can request existing Operators by ID from the Circuit.
 
 ## Circuit
 - [X] Keeps a thread-safe queue of Events to perform in order.
@@ -154,6 +154,19 @@ An experienced application programmer might find the implementation of some of t
 * When you add another qualifier (like "Value"), you end up with "ObservableValue" and "ValueObserver". Or "ValuedObservable" and "ValueObserver" if you want to keep the "Value" part up front. Both solutions are inferior to "ValueEmitter" and "ValueReceiver", two words that look distinct from each other and do not require grammatical artistry to make sense.
 * Lastly, with "Observable" and "Observer", there is only one verb you can use to describe what they are doing: "to observe" / "to being observed" (because what else can they do?). This leads to incomprehensible sentences like: "All Observables contain weak references to each Observer that observes them, each Observer can observe multiple Observables while each Observables can be observed by multiple Observers". The same sentence using the terms Emitter and Receiver: "All Emitters contain weak references to each Receiver they emit to, each Receiver can connect to multiple Emitters while each Emitter can emit to multiple Receivers". It's not great prose either way, but at least the second version doesn't make me want to change my profession.
 
+### Emitter completion
+
+Note that it is possible in a completely valid Circuit to call a completed Emitter, which means that in general this is not an error.
+Example:
+        +-- B --+
+        |       v
+    A --+       D
+        |       ^
+        +-- C --+
+Let A emits first to B and then C, and both B and C to D. It is possible that C causes D to complete.
+If A then emits to C and C emits to D (which is still connected as the Event has not finished yet), then D is indeed called upon even though it has already completed.
+Note that it is not possible to check beforehand if the Emitter is completed, as Emitters emit to Receivers (Operators are Receivers as well) and Receivers cannot be completed.
+
 ### Operators
 
 An Operator is Receiver/Emitter that, generally speaking, maps an input value to an output value of the same or a different type (see https://en.wikipedia.org/wiki/Operator_(mathematics)).
@@ -228,6 +241,56 @@ The *external ownership* approach has the advantage of being extremely light-wei
 <br> The same could be said of the *reverse ownership* approach, but through different means. By relieving the user of the burden of keeping Operators alive, it becomes easier to construct throw-away Operators and Emitters because they live just as long as they are needed and are automatically deleted when they have finished or have lost all of their Receivers. This could lead to more Operators, but it also encourages the re-use of existing Operators since their lifetime is no longer tied to some external instance. 
 
 Overall, I think that the advantages of having the automatic lifetime management of the *reverse ownership* outweigh the space savings of the *external ownership* approach. Note that the *reverse ownership* does not have a runtime overhead, since the strong references from Receivers to Emitters do not take part in the propagation of Signals. And the space overhead is that of as many `shared_ptr`s as there are Emitters connected upstream...And I would suspect that that number is rather small.
+
+### Circuit element IDs
+
+I think in order to support undo and serialization / deserialization of the complete Circuit, we will need a central map
+in the circuit of all elements. And all Elements will need a uuid. 
+This plays in the question whether or not the Circuit should be a single data structure. I mean, basically it comes down
+whether we want a complete dict of all Circuit elements, indexed by some sort of unique ID. This would allow us to use
+the ID as the handle everywhere, you could say "Connect to the Emitter with this ID" and the Circuit would know where
+to find it. Plus IDs are totally save, the user cannot do anything with them.
+Of course, the dictionary would only keep weak references, ownership is still managed by the downstream.
+
+
+What is the problem?
+Redoing certain commands requires the world to be in a very particular state. For example, if you want to recreate a connection between two Circuit elements, they must both be identifiable in a way that can be stored in the Command. You could store some kind of Circuit-unique ID to it, but what happens if one or both of the elements is deleted and then re-created? They will have some other ID and the reconnection will no longer work. You could of course restore the original id upon recreation...
+The approach that came to my mind was to use UUIDs instead.
+Another approach would be to store the removed element in the undo stack instead, but that means that you can no longer serialize the undo stack - and it could make lifetime management harder to do, so no.
+Okay, so we need some ID. Either circuit-unique or graph unique but I'll get to that later.
+Next question: 
+Do we need a central map from ID -> (weak) element?
+On the yes side, we could basically replace handles with serializable POD data structures that do not imply ownership and can be passed around as Value even ... 
+On the negative side, we have the fact that all resolves of handles now require a map lookup and no longer just a weak_ptr check. Then again, we should never have to do that on the critical path anyway and most likely not even in our own code base at all. All handle lookups should be initiated by the user and only in special circumstances, to connect to an existing emitter for example ... actually, that's the only example. Ah, disconnection as well, I suppose.
+But that shouldn't happen very often anyway.
+Okay, so that's a plus.
+Back to the question of whether we need a UUID or not. I think, in a trivial graph we do not. However, they are more logically "correct" as they identify the element itself, and not the element within the context of the Circuit. This will be helpful when we merge Circuits (maybe not so useful) or when we create branching undo queues, which *will* be very useful. Here you absolutely need UUIDs for each element, because you can no longer be sure that an undone command will be redone before the elements after it, meaning you could create a new element with the same ID as one that existed  in the undo queue while still having access to that undo queue...
+I don't know, I haven't thought that one through yet, but it sounds reasonable.
+Contrapoint: UUIDs are 128 bit long, while we could try to make Circuit IDs as small as 32 bit.
+... I don't think that's a good argument though. We are using weak_ptrs as handles currently, which are just as wide and even a raw pointer will be 64 bits on a modern system, so we are just paying for an additional pointer per element and getting universal uniqueness for the ID. That sounds like a good tradeoff.
+Then again, we will have to re-map IDs anyway when you merge a Circuit, because you might have already merged the same one previously.
+But for the undo queue, it becomes more difficult. Okay, slowly:
+It would be annoying whenever you create an element to check whether another element with the same id is currently alive (that easy) but then *also* having to check whether there ever was an element named that way in the undo queue. We could simply increase the id and never decrease it, which would be fine until the ID wraps or we loose the counter.
+Well, loosing the counter is not really a thing. And wrapping ... well, if we ever wrap it should be pretty simple to update the counter to a 128 bit value as well, which will be just as wide as a UUID but even less likely to run out because we will use every single digit.
+So maybe a simple counter is the right approach.
+Let's say 64 bit wide, because that will give us (2**64)/10000000/60/60/24/366 = 58334.421402896514 years runtime without a wrap if we create 10'000'000 (ten million) new elements every second.
+If we use 32 bit, we only get (2**32)/1000/60/60/24 = 49.710269629629636 days. About 50 days if we create 1000 new elements every second. That is still a huge number and wildly unrealistic, but technically not impossible (like the 64 bit number is).
+I guess, by having this a number in the first place, it should be fairly easy to compile for either width.
+
+Decisions:
+* Every Circuit Element (?) needs a numeric ID.
+* Element IDs can be used to identify the element in the Circuit (when you want to connect/disconnect to it).
+* Element IDs should be an ever increasing number, 64 bit wide.
+
+Questions:
+* Do Receivers also need an ID?
+I am going to say no. The reason here is that Operators derive from both Emitters and Receivers, so it would be ambiguous which ID would be used for the Element. Also, we don't really need them since an Emitter cannot connect to a Receiver and everyone else who might have an interest in a Receiver (a Node for example) will already own it.
+Actually, the answer is yes because in order to serialize connections between emitters and receivers, we need an ID for both of them.
+Also, we cannot use the memory address of an Circuit Element as an ID because the memory address is tied to the lifetime of the Element and when we merge undo stacks or whatever, it would be nice if the IDs in the undo stack map to the correct Element. That's why it's an IDentifier, not a reference or pointer.
+
+In C++, we'd have a virtual empty base interface "Element" with an pure virtual function get_id. Both AbstractEmitter and AbstractReceiver are interface classes that inherit virtually from Element and themselves have pure virtual methods. Only concrete classes Emitter, Receiver, Operator etc. define and store an ElementID and implement their get_id methods.
+
+Last thing: when you load a serialized Circuit, all Element IDs should be mapped to new ones, meaning that the counter is not actually serialized with the Circuit. This way, we cannot have people injecting faulty counters into a serialized Circuit and then causing runtime errors when the counter wraps. No! The only way to get an overrun is to let the counter increment in a running program. I want to see the criminal (?) energy in the person who does that over a few thousand years.
 
 ### The Life of an Operator
 
@@ -573,7 +636,7 @@ We can also have a cycle in the Circuit which would be an error, but the second 
      +--> D
 ```
 
-A emits to B, then to C. C emits to A which does not emit another value (which would be a NoDag error) but instead completes or fails. That again sends another competion/failure Signal to C, which now disconnects from A and without any upstream left completes itself. This completion signal then circles around to A, which will have to ignore it.
+A emits to B, then to C. C emits to A which does not emit another value (which would be a NoDag error) but instead completes or fails. That again sends another completion/failure Signal to C, which now disconnects from A and without any upstream left completes itself. This completion signal then circles around to A, which will have to ignore it.
 
 ### Dynamic Order
 

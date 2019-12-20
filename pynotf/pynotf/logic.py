@@ -3,19 +3,61 @@ from collections import deque
 from enum import Enum
 from logging import error as print_error
 from threading import Lock, Condition
-from typing import Any, Optional, List, Tuple, Set, Deque, Dict, Callable, NamedTuple
+from typing import Any, Optional, List, Tuple, Set, Deque, Dict, Callable, NamedTuple, NewType, TypeVar, Type
 from weakref import ref as weak_ref
 
 from .value import Value
 
+T = TypeVar('T')
+
 
 ########################################################################################################################
 
-class NoDagError(Exception):
+class Error(NamedTuple):
     """
-    Exception raised when a cyclic dependency was detected in the graph.
+    Object wrapping any exception thrown (and caught) in the Circuit alongside additional information.
     """
-    pass
+
+    class Kind(Enum):
+        NO_DAG = 1  # Exception raised when a cyclic dependency was detected in the graph.
+        WRONG_VALUE_SCHEMA = 2
+        USER_CODE_EXCEPTION = 3
+
+    element: weak_ref  # weak reference to the element
+    kind: Kind  # kind of error caught in the circuit
+    message: str  # error message
+
+
+########################################################################################################################
+
+ID = NewType('ID', int)
+"""
+The Emitter ID is a 64bit wide, ever-increasing unsigned integer that is unique in the Circuit.
+"""
+
+
+class Element(ABC):
+    """
+    Base class for all Circuit Elements.
+    This is an empty abstract base class that is inherited by the AbstractEmitter and AbstractReceiver interfaces.
+    Only concrete classes (that are no longer derived from) should implement the abstract Element methods.
+    """
+
+    ID = ID
+
+    @abstractmethod
+    def get_id(self) -> 'Element.ID':
+        """
+        The Circuit-unique identification number of this Element.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_circuit(self) -> 'Circuit':
+        """
+        The Circuit containing this Element.
+        """
+        raise NotImplementedError()
 
 
 ########################################################################################################################
@@ -26,14 +68,14 @@ class CompletionSignal:
     This is the last Signal to be emitted by that Emitter.
     """
 
-    def __init__(self, emitter_id: int):
+    def __init__(self, emitter_id: Element.ID):
         """
         Constructor.
         :param emitter_id:      ID of the Emitter that emitted the Signal.
         """
-        self._emitter_id: int = emitter_id  # is constant
+        self._emitter_id: Element.ID = emitter_id  # is constant
 
-    def get_source(self) -> int:
+    def get_source(self) -> Element.ID:
         """
         ID of the Emitter that emitted the Signal.
         """
@@ -42,13 +84,13 @@ class CompletionSignal:
 
 ########################################################################################################################
 
-class FailureSignal(CompletionSignal):  # protected inheritance in C++
+class FailureSignal(CompletionSignal):  # public inheritance in C++ ... failure is-a kind of completion
     """
     Signal emitted by an Emitter that failed to produce the next value in its data stream.
     This is the last Signal to be emitted by that Emitter.
     """
 
-    def __init__(self, emitter_id: int, error: Exception):
+    def __init__(self, emitter_id: Element.ID, error: Exception):
         """
         Constructor.
         :param emitter_id:      ID of the Emitter that emitted the Signal.
@@ -67,7 +109,7 @@ class FailureSignal(CompletionSignal):  # protected inheritance in C++
 
 ########################################################################################################################
 
-class ValueSignal(CompletionSignal):  # protected inheritance in C++
+class ValueSignal(CompletionSignal):  # protected inheritance only for the get_source function but no is-a relationship
     """
     Signal emitted by an Emitter containing the next value in its data stream.
     """
@@ -86,7 +128,7 @@ class ValueSignal(CompletionSignal):  # protected inheritance in C++
         ACCEPTED = 2
         BLOCKED = 3
 
-    def __init__(self, emitter_id: int, value: Value, is_blockable: bool = False):
+    def __init__(self, emitter_id: Element.ID, value: Value, is_blockable: bool = False):
         """
         Constructor.
         :param emitter_id:      ID of the Emitter that emitted the Signal.
@@ -138,10 +180,10 @@ class ValueSignal(CompletionSignal):  # protected inheritance in C++
 
 
 ########################################################################################################################
-
-class Emitter:
+# noinspection PyAbstractClass
+class AbstractEmitter(Element):
     """
-    Circuit element pushing a Signal downstream.
+    Virtual interface class for Circuit Elements that emit Signals.
     Is non-copyable and may only be owned by downstream Receivers and Nodes.
     """
 
@@ -154,31 +196,38 @@ class Emitter:
         In C++ Handles would be uncopyable.
         """
 
-        def __init__(self, emitter: 'Emitter'):
+        def __init__(self, emitter: 'AbstractEmitter'):
             """
             Constructor.
             :param emitter: Strong reference to the Emitter represented by this handle.
             """
-            self._emitter: weak_ref = weak_ref(emitter)
+            self._element: weak_ref = weak_ref(emitter)
 
         def is_valid(self) -> bool:
             """
             Checks if the handle is still valid.
             """
-            return self._emitter() is not None
+            return self._element() is not None
+
+        def get_id(self) -> Optional[Element.ID]:
+            """
+            Returns the Element ID of the Emitter or None if the handle has expired.
+            """
+            emitter: AbstractEmitter = self._element()
+            if emitter is None:
+                return None
+            else:
+                return emitter.get_id()
 
         def get_output_schema(self) -> Optional[Value.Schema]:
             """
-            Returns the output schema of the Emitter or None, if the handle is no longer valid.
+            Returns the output schema of the Emitter or None, if the handle has expired.
             """
-            emitter: Emitter = self._emitter()
+            emitter: AbstractEmitter = self._element()
             if emitter is None:
                 return None
             else:
                 return emitter.get_output_schema()
-
-    class _OrderableReceivers:
-        pass
 
     class _Status(Enum):
         """
@@ -186,57 +235,52 @@ class Emitter:
         If an Emitter tries to emit but is already in EMITTING state, we know that we have caught a cyclic dependency.
         To emit a FailureSignal or a CompletionSignal, the Emitter will switch to the respective FAILING or COMPLETING
         state. Once it has finished its `_fail` or `_complete` methods, it will permanently change its state to
-        COMPLETED and will not emit anything again.
+        COMPLETED or FAILED and will not emit anything again.
 
             --> IDLE <-> EMITTING
                   |
-                  +--> FAILING -----+
-                  |                 |
-                  +--> COMPLETING --+--> COMPLETE
+                  +--> FAILING --> FAILED
+                  |
+                  +--> COMPLETING --> COMPLETE
         """
         IDLE = 0
         EMITTING = 1
         FAILING = 2
-        COMPLETING = 3
-        COMPLETED = 4
+        FAILED = 3
+        COMPLETING = 4
+        COMPLETED = 5
 
     def __init__(self, schema: Value.Schema = Value.Schema(), is_blockable: bool = False):
         """
         Constructor.
-        Should only be called by `Circuit.create_emitter` and the Operator constructor.
+        Should only be called by `Circuit.create_emitter` - directly or indirectly through subclasses.
         :param schema:          Schema of the Value emitted by this Emitter, defaults to empty.
         :param is_blockable:    Whether or not Signals from this Emitter can be blocked, defaults to False.
         """
         self._downstream: List[weak_ref] = []  # subclasses may only change the order
         self._output_schema: Value.Schema = schema  # is constant
         self._is_blockable: bool = is_blockable  # is constant
-        self._status: Emitter._Status = self._Status.IDLE
+        self._status: AbstractEmitter._Status = self._Status.IDLE
 
-    def get_id(self) -> int:
-        """
-        Unique identifier of this Circuit element.
-        """
-        return id(self)
-
-    def get_output_schema(self) -> Value.Schema:
+    def get_output_schema(self) -> Value.Schema:  # noexcept
         """
         Schema of the emitted value. Can be the empty Schema if this Emitter does not emit a meaningful value.
         """
         return self._output_schema
 
-    def is_blockable(self) -> bool:
+    def is_blockable(self) -> bool:  # noexcept
         """
         Whether Signals emitted by this Emitter are blockable or not.
         """
         return self._is_blockable
 
-    def is_completed(self) -> bool:
+    def is_completed(self) -> bool:  # noexcept
         """
         Returns true iff the Emitter has been completed, either through an error or normally.
         """
         return not (self._status == self._Status.IDLE or self._status == self._Status.EMITTING)
 
-    def has_downstream(self) -> bool:
+    def has_downstream(self) -> bool:  # noexcept
         """
         Checks if emitting a Value through this Emitter reaches any Receivers downstream.
         This way you can skip expensive calculations of Values if there is nobody to receive them anyway.
@@ -244,50 +288,15 @@ class Emitter:
         return len(self._downstream) > 0
 
     # protected
-    def _emit(self, value: Any = Value()):
+    def _emit(self, value: Any = Value()):  # noexcept
         """
         Push the given value to all active Receivers.
-        We offer implicit conversion to a Value here since this code can be called from subclasses by the user.
 
-        It should be impossible for this method to throw an exception all the way out to the user.
-        Here is a list of all possible error cases:
-            1. Wrong value type.
-               Should be impossible as this method can only be called from two places (so far):
-                * Circuit.emit_value which has its own check in place
-                * Operator._on_value which also has its own check set up
-               In fact, instead of checking for the Value type, we just assert that we get the right one because
-               anything else at this point is a programming error on our part.
-            2. Whatever we decide to do with ordered receivers.
-               Since that will include user-defined code, there is a possibility there to throw an exception. However,
-               we have a way to deal with them: take any Receiver to get the Circuit and report the error, then return
-               without having emitted anything. Done.
-            3. Cyclic dependencies.
-               This one is a true error that can only be caught here. Fortunately, we have two ways of dealing with it.
-               The first one is to treat it similarly to errors with the ordered receivers, report it and return without
-               doing anything. The second is just to let the exception fall up through the call stack, since the
-               existence of a cyclic dependency necessitates a call to one of the three "on_X" methods on a Receiver,
-               that have error handling in place.
-            4. Whatever happens in Receiver.on_value.
-               We don't have to worry about that either, since that methods has its own generic error handling in place
-               and guarantees to not throw.
         :param value:       Value to emit, can be empty if this Emitter does not emit a meaningful value.
         """
         assert value.schema == self.get_output_schema()
 
-        # Make sure we can never emit once the Emitter has completed.
-        # Note that it is possible in a completely valid Circuit to call a completed Emitter, which means that in
-        # general this is not an error.
-        # Example:
-        #       +-- B --+
-        #       |       v
-        #   A --+       D
-        #       |       ^
-        #       +-- C --+
-        # Let A emits first to B and then C, and both B and C to D. It is possible that C causes D to complete.
-        # If A then emits to C and C emits to D (which is still connected as the Event has not finished yet), then D is
-        # indeed called upon even though it has already completed.
-        # Note that it is not possible to check beforehand if the Emitter is completed, as Emitters emit to Receivers
-        # (Operators are Receivers as well) and Receivers cannot be completed.
+        # make sure we can never emit once the Emitter has completed
         if self.is_completed():
             return
 
@@ -295,35 +304,30 @@ class Emitter:
         if not self.has_downstream():
             return
 
-        # Make sure that we are not already emitting.
-        if self._status != self._Status.IDLE:  # this would be the job of a RAII guard in C++
-            raise NoDagError(f"Cyclic dependency detected during emission from Emitter {self.get_id()}.")
+        # make sure that we are not already emitting
+        if self._status != self._Status.IDLE:
+            return self.get_circuit().handle_error(Error(
+                weak_ref(self),
+                Error.Kind.NO_DAG,
+                f"Cyclic dependency detected during emission from Emitter {self.get_id()}."))
         self._status = self._Status.EMITTING
 
         try:
             # sort out invalid receivers and compile a list of strong valid references
-            receivers: List[Receiver] = []
+            receivers: List[AbstractReceiver] = []
             highest_valid_index: int = 0
             for weak_receiver in self._downstream:
-                receiver: Optional[Receiver] = weak_receiver()
+                receiver: Optional[AbstractReceiver] = weak_receiver()
                 if receiver is not None:
                     receivers.append(receiver)
                     self._downstream[highest_valid_index] = weak_receiver  # could be a move or swap in C++
                     highest_valid_index += 1
 
-            # pre-emission allowing user-code to prepare the Emitter (change the order of receivers, for example)
-            receiver_order = self._OrderableReceivers()
-            self._sort_receivers(receiver_order)
-
-            # if the user changed the order of the strong references, re-apply that order to the member field
-            # if receiver_order.has_changed():
-            #     self._downstream = [weak_ref(receiver) for receiver in receivers]
-            # else:
-            # if not, just remove all dead receivers
+            # remove all dead receivers
             self._downstream = self._downstream[:highest_valid_index]
 
             # create the signal to emit
-            signal = ValueSignal(self.get_id(), value, self.is_blockable())  # in C++ w would move the value here
+            signal = ValueSignal(self.get_id(), value, self.is_blockable())  # in C++ the value would be moved
 
             # emit to all live receivers in order
             for receiver in receivers:
@@ -340,16 +344,16 @@ class Emitter:
                     break
 
         finally:
-            # reset the emission flag if we are still emitting
+            # reset the emission flag if we are still emitting, his would be the job of a RAII guard in C++
             if self._status == self._Status.EMITTING:
                 self._status = self._Status.IDLE
 
-    def _fail(self, error: Exception):
+    def _fail(self, error: Exception):  # noexcept
         """
         Failure method, completes the Emitter while letting the downstream Receivers inspect the error.
         :param error:       The error that has occurred.
         """
-        # Make sure we can never emit once the Emitter has completed.
+        # make sure we can never emit once the Emitter has completed
         if self.is_completed():
             return
 
@@ -362,7 +366,7 @@ class Emitter:
 
             # emit to all receivers, ignore expired ones but don't remove them
             for weak_receiver in self._downstream:
-                receiver: Optional[Receiver] = weak_receiver()
+                receiver: Optional[AbstractReceiver] = weak_receiver()
                 if receiver is None:
                     continue
 
@@ -371,13 +375,13 @@ class Emitter:
         finally:
             # complete the emitter
             self._downstream.clear()
-            self._status = self._Status.COMPLETED
+            self._status = self._Status.FAILED
 
-    def _complete(self):
+    def _complete(self):  # noexcept
         """
         Completes the Emitter successfully.
         """
-        # Make sure we can never emit once the Emitter has completed.
+        # make sure we can never emit once the Emitter has completed
         if self.is_completed():
             return
 
@@ -390,7 +394,7 @@ class Emitter:
 
             # emit to all receivers, ignore expired ones but don't remove them
             for weak_receiver in self._downstream:
-                receiver: Optional[Receiver] = weak_receiver()
+                receiver: Optional[AbstractReceiver] = weak_receiver()
                 if receiver is None:
                     continue
 
@@ -401,53 +405,112 @@ class Emitter:
             self._downstream.clear()
             self._status = self._Status.COMPLETED
 
-    # private
-    def _sort_receivers(self, receivers: _OrderableReceivers):  # virtual
-        """
-        Method to allow user-defined code to re-order the Receivers prior to the emission of a value.
-        :param receivers: Receivers of this Emitter, can only be re-ordered.
-        """
-        pass
-
 
 ########################################################################################################################
-
-class Receiver:
+# noinspection PyAbstractClass
+class AbstractReceiver(Element):
     """
-    Circuit element receiving a Signal from upstream.
+    Virtual interface class for Circuit Elements that receive Signals.
     Is non-copyable and may only be owned by other Receivers downstream and Nodes.
     """
 
-    def __init__(self, circuit: 'Circuit', schema: Value.Schema = Value.Schema()):
+    def __init__(self, schema: Value.Schema = Value.Schema()):  # noexcept
         """
         Constructor.
         Should only be called by `Circuit.create_receiver` and the Operator constructor.
-        :param circuit: The Circuit that this Receiver is a part of.
         :param schema:  Schema defining the Value expected by this Receiver, defaults to empty.
         """
-        self._circuit: Circuit = circuit  # is constant
         self._input_schema: Value.Schema = schema  # is constant
-        self._upstream: Set[Emitter] = set()
+        self._upstream: Set[AbstractEmitter] = set()
 
-    def get_id(self) -> int:
-        """
-        Unique identifier of this Circuit element.
-        """
-        return id(self)
-
-    def get_input_schema(self) -> Value.Schema:
+    def get_input_schema(self) -> Value.Schema:  # noexcept
         """
         Schema of expected values. Can be the empty Schema.
         """
         return self._input_schema
 
-    def has_upstream(self) -> bool:
+    def has_upstream(self) -> bool:  # noexcept
         """
         Checks if the Receiver has any Emitter connected upstream.
         Useful for overrides of `_on_failure` and `_on_complete` to find out whether the completed Emitter was the last
         connected one.
         """
         return len(self._upstream) != 0
+
+    def create_operator(self, operation: 'Operator.Operation') -> Optional['Operator.CreatorHandle']:  # noexcept
+        """
+        Creates and connects to a new Operator upstream.
+        :param operation: Operation defining the Operator.
+        :returns: New Operator or None if the output type of the Operation does not match this Receiver's.
+        """
+        # fail immediately if the schemas don't match
+        if self.get_input_schema() != operation.get_output_schema():
+            return self.get_circuit().handle_error(Error(
+                weak_ref(self),
+                Error.Kind.WRONG_VALUE_SCHEMA,
+                f"Cannot create an Operator with the output Value Schema {operation.get_output_schema()} "
+                f"from a Receiver with the input Value Schema {self.get_input_schema()}"))
+
+        # create the Operator
+        operator: Operator = self.get_circuit().create_element(Operator, operation)
+
+        # store the operator right away to keep it alive, this does not count as a connection yet
+        self._upstream.add(operator)
+
+        # the actual connection is delayed until the end of the event
+        self.get_circuit().create_connection(operator, self)
+
+        # return a handle to the freshly created Operator
+        return Operator.CreatorHandle(operator)
+
+    def connect_to(self, emitter_handle: AbstractEmitter.Handle):  # noexcept
+        """
+        Connect to the given Emitter.
+        If the Emitter is invalid or this Receiver is already connected to it, this does nothing.
+        :param emitter_handle: Handle of the Emitter to connect to.
+        """
+        # get the emitter to connect to, if it is still alive
+        emitter: Optional[AbstractEmitter] = emitter_handle._element()
+        if emitter is None:
+            return
+
+        # fail immediately if the schemas don't match
+        if self.get_input_schema() != emitter.get_output_schema():
+            return self.get_circuit().handle_error(Error(
+                weak_ref(self),
+                Error.Kind.WRONG_VALUE_SCHEMA,
+                f"Cannot connect Emitter {emitter.get_id()} "
+                f"with the output Value Schema {emitter.get_output_schema()} "
+                f"to a Receiver with the input Value Schema {self.get_input_schema()}"))
+
+        # store the operator right away to keep it alive
+        # as the emitter does not know about this, it does not count as a connection yet
+        self._upstream.add(emitter)
+
+        # schedule the creation of the connection
+        self.get_circuit().create_connection(emitter, self)
+
+    def disconnect_from(self, emitter_handle: AbstractEmitter.Handle):
+        """
+        Disconnects from the given Emitter.
+        :param emitter_handle:  Handle of the emitter to disconnect from.
+        """
+        # get the emitter to disconnect from, if it is still alive
+        emitter: Optional[AbstractEmitter] = emitter_handle._element()
+        if emitter is None:
+            return
+
+        # At this point the receiver might not even be connected to the emitter yet, if the connection was created as
+        # part of the same event as this call to disconnect.
+        # This is why we have to schedule a disconnection event and check then whether the connection exists at all.
+        self.get_circuit().remove_connection(emitter, self)
+
+    def disconnect_upstream(self):
+        """
+        Removes all upstream connections of this Receiver.
+        """
+        for emitter in self._upstream:
+            self.get_circuit().remove_connection(emitter, self)
 
     def on_value(self, signal: ValueSignal):
         """
@@ -464,8 +527,7 @@ class Receiver:
         try:
             self._on_value(signal)
         except Exception as error:
-            # noinspection PyCallByClass
-            self._circuit.handle_error(Circuit.Error(self.get_id(), weak_ref(self), error, "Receiver.on_value"))
+            self.get_circuit().handle_error(Error(weak_ref(self), Error.Kind.USER_CODE_EXCEPTION, str(error)))
 
     def on_failure(self, signal: FailureSignal):
         """
@@ -475,7 +537,7 @@ class Receiver:
         # assert that the emitter is connected to this receiver
         for candidate in self._upstream:
             if candidate.get_id() == signal.get_source():
-                emitter: Emitter = candidate
+                emitter: AbstractEmitter = candidate
                 break
         else:
             assert False  # received Signal from an Emitter that is not connected
@@ -485,14 +547,13 @@ class Receiver:
         self._upstream.remove(emitter)
 
         # mark the emitter as a candidate for deletion
-        self._circuit.expire_emitter(emitter)
+        self.get_circuit().expire_emitter(emitter)
 
         # pass the signal along to the user-defined handler
         try:
             self._on_failure(signal)
         except Exception as error:
-            # noinspection PyCallByClass
-            self._circuit.handle_error(Circuit.Error(self.get_id(), weak_ref(self), error, "Receiver.on_failure"))
+            self.get_circuit().handle_error(Error(weak_ref(self), Error.Kind.USER_CODE_EXCEPTION, str(error)))
 
     def on_completion(self, signal: CompletionSignal):
         """
@@ -502,7 +563,7 @@ class Receiver:
         # assert that the emitter is connected to this receiver
         for candidate in self._upstream:
             if candidate.get_id() == signal.get_source():
-                emitter: Emitter = candidate
+                emitter: AbstractEmitter = candidate
                 break
         else:
             assert False  # received Signal from an Emitter that is not connected
@@ -512,99 +573,26 @@ class Receiver:
         self._upstream.remove(emitter)
 
         # mark the emitter as ready for deletion
-        self._circuit.expire_emitter(emitter)
+        self.get_circuit().expire_emitter(emitter)
 
         # pass the signal along to the user-defined handler
         try:
             self._on_completion(signal)
         except Exception as error:
-            # noinspection PyCallByClass
-            self._circuit.handle_error(Circuit.Error(self.get_id(), weak_ref(self), error, "Receiver.on_failure"))
-
-    def connect_to(self, emitter: Emitter.Handle):
-        """
-        Connect to the given Emitter.
-        In C++, the emitter argument would need to be an r-value, because handles are non-copyable.
-        :param emitter:     Emitter to connect to. If this Receiver is already connected, this does nothing.
-        :raise TypeError:   If the Emitters's input Schema does not match.
-        """
-        # if the Emitter from the Handle is already expired, do nothing
-        strong_emitter: Optional[Emitter] = emitter._emitter()
-        if strong_emitter is None:
-            return
-
-        # fail immediately if the schemas don't match
-        if self.get_input_schema() != strong_emitter.get_output_schema():
-            raise TypeError(f"Cannot connect a Emitter {strong_emitter.get_id()} to Receiver {self.get_id()} "
-                            f"which has a different Value Schema")
-
-        # store the operator right away to keep it alive, this does not count as a connection yet
-        self._upstream.add(strong_emitter)
-
-        # schedule the creation of the connection
-        self._circuit.create_connection(strong_emitter.get_id(), self)
-
-    def create_operator(self, operation: 'Operator.Operation', name: str = ""):
-        """
-        Creates and connects to a new Operator upstream.
-        :param operation: Operation defining the Operator.
-        :param name: Name under which the Operator should be registered.
-        :raise TypeError: If the output type of the Operation does not match this Receiver's.
-        :raise NameError: If another Operator with the same name is already registered.
-        """
-        # fail immediately if the schemas don't match
-        if self.get_input_schema() != operation.get_output_schema():
-            raise TypeError(f"Cannot create an Operation to connect to Receiver {self.get_id()} "
-                            f"which has a different Value Schema")
-
-        # create the Operator
-        operator: Operator = Operator(self._circuit, operation)
-
-        # make sure the name is not already taken by another living Emitter
-        if name:
-            with self._circuit._name_mutex:
-                existing: Optional[weak_ref] = self._circuit._named_emitters.get(name, None)
-                if existing is not None and existing() is not None:
-                    raise NameError(f"Failed to create an upstream Operator from Circuit element {self.get_id()}. "
-                                    f"Another Emitter with the name {name} already exists.")
-                else:
-                    # register a named emitter with the circuit
-                    self._circuit._named_emitters[name] = weak_ref(operator)
-
-        # store the operator right away to keep it alive, this does not count as a connection yet
-        self._upstream.add(operator)
-
-        # the actual connection is delayed until the end of the event
-        self._circuit.create_connection(operator.get_id(), self)
-
-    def find_emitter(self, name: str) -> Optional[Emitter.Handle]:
-        """
-        Finds and returns a named Emitter from the Circuit, if one exists.
-        :param name:    Name of the Emitter to find.
-        :return:        The requested Emitter or None.
-        """
-        with self._circuit._name_mutex:
-            weak_emitter: Optional[weak_ref] = self._circuit._named_emitters.get(name, None)
-            if weak_emitter is None:
-                return None  # no Emitter by that name
-
-            emitter: Optional[Emitter] = weak_emitter()
-            if emitter is None:
-                del self._circuit._named_emitters[name]
-                return None  # Emitter has expired
-
-        return Emitter.Handle(emitter)
-
-    def disconnect_from(self, emitter_id: int):
-        """
-        Disconnects from the given Emitter.
-        :param emitter_id: ID of the emitter to disconnect from.
-        """
-        # at this point the receiver might not even be connected to the emitter yet
-        # this is why we have to schedule a disconnection event and check then whether the connection exists at all
-        self._circuit.remove_connection(emitter_id, self)
+            self.get_circuit().handle_error(Error(weak_ref(self), Error.Kind.USER_CODE_EXCEPTION, str(error)))
 
     # private
+    def _find_emitter(self, emitter_id: AbstractEmitter.ID) -> Optional[AbstractEmitter.Handle]:
+        """
+        Finds and returns an Emitter.Handle of any Emitter in the Circuit.
+        :param emitter_id:  ID of the Emitter to find.
+        :return:            A (non-owning) handle to the requested Emitter or NOne.
+        """
+        element: Optional[Element] = self.get_circuit().get_element(emitter_id)
+        if element is None or not isinstance(element, AbstractEmitter):
+            return None
+        return AbstractEmitter.Handle(element)
+
     def _on_value(self, signal: ValueSignal):  # virtual
         """
         Default implementation of the "value" method called whenever an upstream Emitter emitted a new Value.
@@ -632,14 +620,14 @@ class Receiver:
 ########################################################################################################################
 
 
-class Operator(Receiver, Emitter):
+class Operator(AbstractReceiver, AbstractEmitter):  # final
     """
     Operators are use-defined functions in the Circuit that take a Value and maybe produce one. Not all input values
     generate an output value though.
     Operators will complete automatically once all upstream Emitters have completed or through failure.
     """
 
-    class CreatorHandle:
+    class CreatorHandle(AbstractEmitter.Handle):
         """
         A special kind of handle that is returned when you create an Operator from a Receiver.
         It allows you to continue the chain of Operators upstream if you want to split your calculation into multiple,
@@ -650,31 +638,29 @@ class Operator(Receiver, Emitter):
             """
             :param operator: Strong reference to the Operator represented by this handle.
             """
-            self._operator: weak_ref = weak_ref(operator)
+            AbstractEmitter.Handle.__init__(self, operator)
 
-        def connect_to(self, emitter: Emitter.Handle):
+        def connect_to(self, emitter_handle: AbstractEmitter.Handle):
             """
             Connects this newly created Operator to an existing Emitter upstream.
             Does nothing if the Handle has expired.
-            :param emitter:     Emitter to connect to. If this Receiver is already connected, this does nothing.
-            :raise TypeError:   If the Emitters's input Schema does not match.
+            :param emitter_handle:  Emitter to connect to. If this Receiver is already connected, this does nothing.
             """
-            operator: Optional[Operator] = self._operator()
+            operator: Optional[Operator] = self._element()
             if operator is not None:
-                operator.connect_to(emitter)
+                assert isinstance(operator, Operator)
+                operator.connect_to(emitter_handle)
 
-        def create_operator(self, operation: 'Operator.Operation', name: str = ""):
+        def create_operator(self, operation: 'Operator.Operation') -> Optional['Operator.CreatorHandle']:  # noexcept
             """
             Creates and connects this newly created Operator to another new Operator upstream.
             Does nothing if the Handle has expired.
             :param operation: Operation defining the Operator.
-            :param name: Name under which the Operator should be registered.
-            :raise TypeError: If the output type of the Operation does not match this Receiver's.
-            :raise NameError: If another Operator with the same name is already registered.
             """
-            operator: Optional[Operator] = self._operator()
+            operator: Optional[Operator] = self._element()
             if operator is not None:
-                operator.create_operator(operation, name)
+                assert isinstance(operator, Operator)
+                return operator.create_operator(operation)
 
     class Operation(ABC):
         """
@@ -707,17 +693,32 @@ class Operator(Receiver, Emitter):
             """
             raise NotImplementedError()
 
-    def __init__(self, circuit: 'Circuit', operation: Operation):
+    def __init__(self, circuit: 'Circuit', element_id: Element.ID, operation: Operation):
         """
         Constructor.
         It should only be possible to create-connect an Operator from a Receiver. 
-        :param circuit: The Circuit that this Operator is a part of.
-        :param operation: The Operation performed by this Operator.
+        :param circuit:     The Circuit containing this Element.
+        :param element_id:  The Circuit-unique identification number of this Element.
+        :param operation:   The Operation performed by this Operator.
         """
-        Receiver.__init__(self, circuit, operation.get_input_schema())
-        Emitter.__init__(self, operation.get_output_schema())
+        AbstractReceiver.__init__(self, operation.get_input_schema())
+        AbstractEmitter.__init__(self, operation.get_output_schema())
 
+        self._circuit: Circuit = circuit  # is constant
+        self._element_id: Element.ID = element_id  # is constant
         self._operation: Operator.Operation = operation  # is constant
+
+    def get_id(self) -> Element.ID:  # final, noexcept
+        """
+        The Circuit-unique identification number of this Element.
+        """
+        return self._element_id
+
+    def get_circuit(self) -> 'Circuit':  # final, noexcept
+        """
+        The Circuit containing this Element.
+        """
+        return self._circuit
 
     # private
     def _on_value(self, signal: ValueSignal):  # final
@@ -726,18 +727,31 @@ class Operator(Receiver, Emitter):
         Exceptions thrown by the Operation will cause the Operator to fail.
         :param signal   The ValueSignal associated with this call.
         """
+        value: Value = signal.get_value()
+        assert value.schema == self.get_input_schema()
+
+        # invoke the operation to produce a result or an error
+        error: Optional[Exception] = None
+        result: Optional[Value] = None
         try:
-            value: Value = signal.get_value()
-            assert value.schema == self.get_input_schema()
-            result: Optional[Value] = self._operation(value)
-            if result is not None and result.schema != self.get_output_schema():
-                raise TypeError("Return Value of Operation does not conform to the Operator's output Schema")
+            result = self._operation(value)
         except Exception as exception:
-            self._fail(exception)
-            raise  # raise the exception again to be reported by the "on_value" error handler
+            error = exception
         else:
-            if result is not None:
-                self._emit(result)
+            # if no error occurred, but no result was produced either, there's nothing left to do
+            if result is None:
+                return
+            elif result.schema != self.get_output_schema():
+                error = TypeError("Return Value of Operation does not conform to the Operator's output Schema")
+
+        # if any error occurred, the Operator will complete through failure
+        if error is not None:
+            self.get_circuit().handle_error(Error(weak_ref(self), Error.Kind.USER_CODE_EXCEPTION, str(error)))
+            self._fail(error)
+
+        # if a valid result was produced successfully, emit it
+        else:
+            self._emit(result)
 
     def _on_failure(self, signal: FailureSignal):  # final
         """
@@ -765,6 +779,8 @@ class Circuit:
     Its main objective is to provide the handling of individual events and act as a central repository for named
     Operators.
     """
+
+    Error = Error
 
     # private
     class _Event(ABC):  # in C++ we can think of using a variant instead, as long as the number of subclasses is small
@@ -805,14 +821,14 @@ class Circuit:
             Handles this event.
             :returns: False on noop, if the Circuit elements have expired for example. True otherwise.
             """
-            emitter: Optional[Emitter] = self._get_emitter()
+            emitter: Optional[AbstractEmitter] = self._get_emitter()
             if emitter is None:
                 return False
             emitter._complete()
             return True
 
         # protected
-        def _get_emitter(self) -> Optional[Emitter]:
+        def _get_emitter(self) -> Optional[AbstractEmitter]:
             """
             Emitter that is targeted by the event.
             """
@@ -838,7 +854,7 @@ class Circuit:
             Handles this event.
             :returns: False on noop, if the Circuit elements have expired for example. True otherwise.
             """
-            emitter: Optional[Emitter] = self._get_emitter()
+            emitter: Optional[AbstractEmitter] = self._get_emitter()
             if emitter is None:
                 return False
             emitter._fail(self._error)
@@ -867,7 +883,7 @@ class Circuit:
             Handles this event.
             :returns: False on noop, if the Circuit elements have expired for example. True otherwise.
             """
-            emitter: Optional[Emitter] = self._get_emitter()
+            emitter: Optional[AbstractEmitter] = self._get_emitter()
             if emitter is None:
                 return False
             emitter._emit(self._value)
@@ -877,16 +893,16 @@ class Circuit:
         """
         Internal event created when a Receiver connects to a completed Emitter.
         Instead of having the (now completed) Emitter emit their CompletionSignal again (which they are not allowed to),
-        just create a CompletionSignal out of thin air, put the completed Emitter as source and fire it to the Receiver.
+        just create a CompletionSignal out of thin air, put the completed Emitter as source and hand it to the Receiver.
         """
 
-        def __init__(self, emitter_id: int, receiver: weak_ref):
+        def __init__(self, emitter_id: Element.ID, receiver: weak_ref):
             """
             Constructor.
             :param emitter_id:  ID of the completed Emitter.
             :param receiver:    Receiver that connected to the Emitter with the given ID.
             """
-            self._emitter_id: int = emitter_id
+            self._emitter_id: Element.ID = emitter_id
             self._receiver: weak_ref = receiver
 
         def handle(self) -> bool:
@@ -894,7 +910,7 @@ class Circuit:
             Handles this event.
             :returns: False on noop, if the Circuit elements have expired for example. True otherwise.
             """
-            receiver: Optional[Receiver] = self._receiver()
+            receiver: Optional[AbstractReceiver] = self._receiver()
             if receiver is None:
                 return False
             receiver.on_completion(CompletionSignal(self._emitter_id))
@@ -909,14 +925,14 @@ class Circuit:
             CREATE_CONNECTION = 0
             REMOVE_CONNECTION = 1
 
-        def __init__(self, emitter_id: int, receiver: weak_ref, kind: Kind):
+        def __init__(self, emitter: weak_ref, receiver: weak_ref, kind: Kind):
             """
             Constructor.
-            :param emitter_id:  ID of the emitter at the source of the connection
+            :param emitter:     Emitter at the source of the connection.
             :param receiver:    Receiver at the target of the connection.
             :param kind:        Kind of topology change.
             """
-            self._emitter_id: int = emitter_id  # is constant
+            self._emitter: weak_ref = emitter  # is constant
             self._receiver: weak_ref = receiver  # is constant
             self._kind = kind  # is constant
 
@@ -926,38 +942,25 @@ class Circuit:
             """
             return self._kind
 
-        def get_endpoints(self) -> Optional[Tuple[Emitter, Receiver]]:
+        def get_endpoints(self) -> Optional[Tuple[AbstractEmitter, AbstractReceiver]]:
             """
             Returns a tuple (Emitter, Receiver) denoting the end-points of the Connection or None, if any one of the
             two has expired
             """
             # check if the receiver is still alive
-            receiver: Optional[Receiver] = self._receiver()
+            receiver: Optional[AbstractReceiver] = self._receiver()
             if receiver is None:
                 return None
 
-            # find the emitter
-            for candidate in receiver._upstream:
-                if candidate.get_id() == self._emitter_id:
-                    emitter: Emitter = candidate
-                    break
-            else:
+            # check if the emitter is still alive
+            emitter: Optional[AbstractEmitter] = self._emitter()
+            if emitter is None:
                 return None
 
             # if both are still alive, return the pair
             return emitter, receiver
 
-    class Error(NamedTuple):
-        """
-        Object wrapping any exception thrown (and caught) in the Circuit alongside additional information.
-        """
-        element_id: int  # in case the element itself goes out of scope
-        element: weak_ref  # weak reference to the element
-        error: Exception  # exception caught in the circuit
-        reporter: str  # name of the function reporting the error
-
     # public
-
     def __init__(self):
         """
         Constructor.
@@ -966,14 +969,16 @@ class Circuit:
         self._event_mutex: Lock = Lock()  # mutex protecting the event queue
         self._event_condition: Condition = Condition(self._event_mutex)  # notifies watchers when a new event arrives
 
-        self._named_emitters: Dict[str, weak_ref] = {}  # weak references to named Emitters by name
-        self._name_mutex: Lock = Lock()  # mutex protecting the named emitter dictionary
+        self._elements: Dict[Element.ID, weak_ref] = {}  # all elements in the Circuit by their ID
+        self._element_mutex: Lock = Lock()
+        self._next_id: int = 1  # next available element ID
 
+        # these members should not require a mutex
         self._topology_changes: List[Circuit._TopologyChange] = []  # changes to the topology during an event in order
-        self._expired_emitters: List[Emitter] = []  # all expired Emitters kept around for delayed cleanup on idle
+        self._expired_elements: List[Element] = []  # all expired Elements kept around for delayed cleanup on idle
         self._error_callback: Optional[Callable] = None
 
-    def emit_value(self, emitter: Emitter, value: Any = Value()):
+    def emit_value(self, emitter: AbstractEmitter, value: Any = Value()):
         """
         Schedules the emission of a Value in the Circuit.
         :param emitter:     Emitter to emit from.
@@ -998,7 +1003,7 @@ class Circuit:
             self._events.append(Circuit._ValueEvent(weak_ref(emitter), value))
             self._event_condition.notify_all()
 
-    def emit_failure(self, emitter: Emitter, error: Exception):
+    def emit_failure(self, emitter: AbstractEmitter, error: Exception):
         """
         Schedules the failure of an Emitter in the Circuit.
         :param emitter: Emitter to fail.
@@ -1008,7 +1013,7 @@ class Circuit:
             self._events.append(Circuit._FailureEvent(weak_ref(emitter), error))
             self._event_condition.notify_all()
 
-    def emit_completion(self, emitter: Emitter):
+    def emit_completion(self, emitter: AbstractEmitter):
         """
         Schedules the voluntary completion of an Emitter in the Circuit.
         :param emitter: Emitter to complete.
@@ -1021,72 +1026,68 @@ class Circuit:
         """
         Deletes of all expired Emitters in the Circuit.
         """
-        self._expired_emitters.clear()
+        self._expired_elements.clear()
 
     # public for friends
-    def create_emitter(self, schema: Value.Schema = Value.Schema(),
-                       is_blockable: bool = False,
-                       name: str = "") -> Emitter:
-        """
-        Creates a new Emitter in the Circuit.
-        This method should only be called by classes that we have full control over (Nodes and Services?), because it
-        returns a strong reference to an Emitter.
-        :param schema:          Schema of the Value emitted by this Emitter, defaults to empty.
-        :param is_blockable:    Whether or not Signals from this Emitter can be blocked, defaults to False.
-        :param name:            (Optional) Name under which the Emitter should be registered with the Circuit.
-        :raise NameError:       If another Emitter with the same name is already registered.
-        """
-        # create the Emitter so you can store a weak reference to it, if the user provided a name
-        emitter: Emitter = Emitter(schema, is_blockable)
+    def create_element(self, element_type: Type[T], *args, **kwargs) -> T:
+        assert issubclass(element_type, Element)
 
-        # make sure the name is not already taken by another living Emitter
-        if name:
-            with self._name_mutex:
-                existing: Optional[weak_ref] = self._named_emitters.get(name, None)
-                if existing is not None and existing() is not None:
-                    raise NameError(f"Failed to create Emitter {name} as another Emitter with the name already exists")
-                else:
-                    # register the emitter with the circuit
-                    self._named_emitters[name] = weak_ref(emitter)
+        # always increase the counter even if the Element hasn't been built yet
+        with self._element_mutex:
+            element_id: Element.ID = Element.ID(self._next_id)
+            self._next_id += 1  # in C++ this could be an atomic
 
-        return emitter
+        # create the new element
+        element: T = element_type(self, element_id, *args, **kwargs)
 
-    def create_receiver(self, schema: Value.Schema = Value.Schema()) -> Receiver:
+        # register the new element with the circuit
+        with self._element_mutex:
+            self._elements[element_id] = weak_ref(element)
+
+        return element
+
+    def get_element(self, element_id: Element.ID) -> Optional[Element]:
         """
-        Creates a new Receiver in the Circuit.
-        This method should only be called by classes that we have full control over (Nodes and Services?), because it
-        returns a strong reference to a Receiver.
-        :param schema:          Schema of the Value emitted by this Emitter, defaults to empty.
+        Queries a Circuit Element by ID.
+        :param element_id:  ID of the requested Element.
+        :return:            The requested Element or None if no live Element exists with the given ID.
         """
-        return Receiver(self, schema)
+        with self._element_mutex:
+            weak_element: Optional[weak_ref] = self._elements.get(element_id, None)
+            if weak_element is None:
+                return None
+            element: Optional[Element] = weak_element()
+            if element is None:
+                del self._elements[element_id]
+            return element
 
-    def create_connection(self, emitter_id: int, receiver: Receiver):
+    def create_connection(self, emitter: AbstractEmitter, receiver: AbstractReceiver):
         """
         Schedules the addition of a connection in the Circuit.
         This method should only be called by a Receiver from within the Event loop.
-        :param emitter_id:  ID of the emitter at the source of the connection
+        :param emitter:     Emitter at the source of the connection.
         :param receiver:    Receiver at the target of the connection.
         """
-        self._topology_changes.append(
-            Circuit._TopologyChange(emitter_id, weak_ref(receiver), Circuit._TopologyChange.Kind.CREATE_CONNECTION))
+        self._topology_changes.append(Circuit._TopologyChange(weak_ref(emitter), weak_ref(receiver),
+                                                              Circuit._TopologyChange.Kind.CREATE_CONNECTION))
 
-    def remove_connection(self, emitter_id: int, receiver: Receiver):
+    def remove_connection(self, emitter: AbstractEmitter, receiver: AbstractReceiver):
         """
         Schedules the removal of a connection in the Circuit.
         This method should only be called by a Receiver from within the Event loop.
-        :param emitter_id:  ID of the emitter at the source of the connection
+        :param emitter:     Emitter at the source of the connection.
         :param receiver:    Receiver at the target of the connection.
         """
-        self._topology_changes.append(
-            Circuit._TopologyChange(emitter_id, weak_ref(receiver), Circuit._TopologyChange.Kind.REMOVE_CONNECTION))
+        self._topology_changes.append(Circuit._TopologyChange(weak_ref(emitter), weak_ref(receiver),
+                                                              Circuit._TopologyChange.Kind.REMOVE_CONNECTION))
 
-    def expire_emitter(self, emitter: Emitter):
+    def expire_emitter(self, emitter: AbstractEmitter):
         """
         Passes ownership of a (potentially) expired Emitter to the Circuit so it can be deleted when the application is
         idle. If there are other owners of the Emitter, this does nothing.
         :param emitter: Emitter to expire (in C++ this would be an r-value).
         """
-        self._expired_emitters.append(emitter)
+        self._expired_elements.append(emitter)
 
     def await_event(self, timeout: Optional[float] = None) -> Optional[_Event]:
         """
@@ -1116,17 +1117,16 @@ class Circuit:
         # perform all delayed changes to the topology of the circuit
         for change in self._topology_changes:
             # the affected topology might not even exist anymore
-            connection: Optional[Tuple[Emitter, Receiver]] = change.get_endpoints()
+            connection: Optional[Tuple[AbstractEmitter, AbstractReceiver]] = change.get_endpoints()
             if connection is None:
                 continue
 
             # perform the topology change
             if change.get_kind() == Circuit._TopologyChange.Kind.CREATE_CONNECTION:
                 self._create_connection(*connection)
-            elif change.get_kind() == Circuit._TopologyChange.Kind.REMOVE_CONNECTION:
-                self._remove_connection(*connection)
             else:
-                assert False
+                assert change.get_kind() == Circuit._TopologyChange.Kind.REMOVE_CONNECTION
+                self._remove_connection(*connection)
 
         self._topology_changes.clear()
 
@@ -1137,7 +1137,7 @@ class Circuit:
         """
         self._error_callback = callback
 
-    def handle_error(self, error: 'Circuit.Error'):
+    def handle_error(self, error: Error):
         """
         :param error: Error caught in the Circuit.
         """
@@ -1147,18 +1147,21 @@ class Circuit:
 
         # otherwise just print an error message to stderr and hope for the best
         else:
-            print_error(f"Circuit {error.element_id} failed during Event handling.\n"
-                        f"{error.error}")
+            print_error(f"Circuit failed during Event handling.\n"
+                        f"{error.message}")
 
     # private
-    def _create_connection(self, emitter: Emitter, receiver: Receiver):
+
+    def _create_connection(self, emitter: AbstractEmitter, receiver: AbstractReceiver):
         """
         Creates a new connection in the Circuit during the event epilogue.
         :param emitter: Emitter at the source of the connection.
         :param receiver: Receiver at the target of the connection.
         """
         # never create a connection mid-event
-        assert emitter._status in (Emitter._Status.IDLE, Emitter._Status.COMPLETED)
+        assert emitter._status in (AbstractEmitter._Status.IDLE,
+                                   AbstractEmitter._Status.FAILED,
+                                   AbstractEmitter._Status.COMPLETED)
 
         # multiple connections between the same Emitter-Receiver pair are ignored
         weak_receiver = weak_ref(receiver)
@@ -1178,7 +1181,7 @@ class Circuit:
         else:
             emitter._downstream.append(weak_receiver)
 
-    def _remove_connection(self, emitter: Emitter, receiver: Receiver):
+    def _remove_connection(self, emitter: AbstractEmitter, receiver: AbstractReceiver):
         """
         Removes a connection in the Circuit during the event epilogue.
         :param emitter: Emitter at the source of the connection.
