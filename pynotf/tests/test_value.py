@@ -323,6 +323,43 @@ class TestCase(unittest.TestCase):
         modified = test_value.modified()["coords"].set([])
         self.assertEqual(len(modified["coords"]), 0)
 
+    def test_schema_as_list(self):
+        # number turns into a list of numbers
+        self.assertEqual(Value.Schema([0]), Value.Schema(0).as_list())
+
+        # string turns into a list of strings
+        self.assertEqual(Value.Schema([""]), Value.Schema("").as_list())
+
+        # list turns into a list of lists
+        self.assertEqual(Value.Schema([[0]]), Value.Schema([0]).as_list())
+
+        # map turns into a list of maps
+        self.assertEqual(Value.Schema([{"x": 0}]), Value.Schema({"x": 0}).as_list())
+
+    def test_list_initialize_numbers(self):
+        zero: Value = Value(0)
+        twenty: Value = Value(20)
+        nineteen: Value = Value(19)
+        list_initialized: Value = Value([zero, twenty, nineteen])
+        element_initialized: Value = Value([0, 20, 19])
+        self.assertEqual(list_initialized.schema, element_initialized.schema)
+        self.assertEqual(list_initialized._buffer, element_initialized._buffer)
+        self.assertEqual(list_initialized._dictionary, element_initialized._dictionary)
+
+    def test_list_initialize_lists(self):
+        one: Value = Value([1])
+        five: Value = Value([1, 2, 3, 4, 5])
+        three: Value = Value([1, 2, 3])
+        list_initialized: Value = Value([one, five, three])
+        element_initialized: Value = Value([[1], [1, 2, 3, 4, 5], [1, 2, 3]])
+        self.assertEqual(list_initialized.schema, element_initialized.schema)
+        self.assertEqual(list_initialized._buffer, element_initialized._buffer)
+        self.assertEqual(list_initialized._dictionary, element_initialized._dictionary)
+
+    def test_bad_list_initializer(self):
+        with self.assertRaises(ValueError):
+            Value([Value(0), Value("")])
+
 
 if __name__ == '__main__':
     unittest.main()

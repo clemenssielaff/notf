@@ -1,6 +1,7 @@
 import sys
 from enum import IntEnum, auto
 from copy import copy
+from itertools import chain
 from typing import NewType, List, Dict, Union, Optional, Sequence, Any
 
 Element = NewType('Element', Union[float, str, List["Element"], Dict[str, "Element"]])
@@ -228,6 +229,12 @@ class Schema(tuple, Sequence[int]):
                     result += "→ {}".format(index + x)
             result += "\n"
         return result
+
+    def as_list(self) -> 'Schema':
+        """
+        Creates a Schema that is a list containing elements of this Schema.
+        """
+        return super().__new__(Schema, [int(Kind.LIST), *self])
 
 
 Buffer = List[Union[float, int, str, List['Buffer']]]
@@ -639,6 +646,26 @@ class Value:
             schema: Schema = source
             buffer: Buffer = produce_buffer(schema)
             dictionary = None
+
+        # initialize from list of values
+        elif isinstance(source, (tuple, list)) and len(source) > 0 and isinstance(source[0], Value):
+            # check the schema
+            reference_schema: Schema = source[0].schema
+            for other_value in source[1:]:
+                if not other_value.schema == reference_schema:
+                    raise ValueError("Cannot construct a list from Values with different Schemas")
+
+            # the schema of this value is a list of all others
+            schema: Schema = reference_schema.as_list()
+            if Kind.is_ground(reference_schema[0]):
+                # if the reference value kind is ground, we can collapse the individual buffers into one
+                buffer: Buffer = [len(source), *chain(*[value._buffer for value in source])]
+            else:
+                # if the reference value kind is not ground, we store each buffer in the new one
+                buffer: Buffer = [len(source), *[value._buffer for value in source]]
+            dictionary = None
+
+        # TODO: initialize from dict of values?
 
         # value-initialize from Element
         else:
