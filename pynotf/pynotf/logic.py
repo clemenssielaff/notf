@@ -1030,6 +1030,11 @@ class Circuit:
 
     # public for friends
     def create_element(self, element_type: Type[T], *args, **kwargs) -> T:
+        """
+        Creates a new Circuit Element and return it to the caller.
+        :param element_type:    Type of Element to create.
+        :returns:               New Circuit Element with a unique ID.
+        """
         assert issubclass(element_type, Element)
 
         # always increase the counter even if the Element hasn't been built yet
@@ -1187,9 +1192,12 @@ class Circuit:
         :param emitter: Emitter at the source of the connection.
         :param receiver: Receiver at the target of the connection.
         """
-        # remove the connection by removing the mutual references
-        receiver._upstream.remove(emitter)
-        emitter._downstream.remove(weak_ref(receiver))
+        if emitter in receiver._upstream:
+            receiver._upstream.remove(emitter)
 
-        # mark the emitter as ready for deletion
-        self.expire_emitter(emitter)
+            # mark the emitter as a candidate for deletion
+            self.expire_emitter(emitter)
+
+        weak_receiver: weak_ref = weak_ref(receiver)
+        if weak_receiver in emitter._downstream:
+            emitter._downstream.remove(weak_ref(receiver))

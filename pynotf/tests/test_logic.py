@@ -2,7 +2,7 @@ import unittest
 import logging
 import sys
 from copy import copy
-from typing import List, Optional, ClassVar, Dict
+from typing import List, Optional, ClassVar, Dict, Any
 from random import randint as random_int
 from weakref import ref as weak_ref
 
@@ -104,6 +104,16 @@ class SimpleTestCase(BaseTestCase):
         self.assertFalse(handle.is_valid())
         self.assertIsNone(handle.get_id())
         self.assertIsNone(handle.get_output_schema())
+
+    def test_default_error_handling(self):
+        """
+        ... just for coverage, really
+        """
+        self.circuit.set_error_callback(None)
+        error: Circuit.Error = Circuit.Error(weak_ref(self.create_receiver(number_schema)),
+                                             Circuit.Error.Kind.NO_DAG,
+                                             "test error")
+        self.circuit.handle_error(error)
 
     def test_emit_wrong_values(self):
         """
@@ -337,6 +347,30 @@ class SimpleTestCase(BaseTestCase):
         self.assertEqual(self._handle_events(), 1)
         self.assertEqual([value.as_number() for value in recorder.get_values()], [83])  # unchanged
 
+    def test_disconnect_from_unconnected(self):
+        """
+        Fail gracefully when attempting to disconnect from an Emitter handle that has expired.
+        """
+        emitter1: AbstractEmitter = self.create_emitter(number_schema)
+        emitter2: AbstractEmitter = self.create_emitter(number_schema)
+        handle1: AbstractEmitter.Handle = make_handle(emitter1)
+        handle2: AbstractEmitter.Handle = make_handle(emitter2)
+
+        receiver: AbstractReceiver = self.create_receiver(number_schema)
+        receiver.connect_to(handle1)
+        self.assertEqual(self._apply_topology_changes(), 1)
+        self.assertTrue(receiver.has_upstream())
+
+        # disconnecting from a not-connected emitter will be ignored
+        receiver.disconnect_from(handle2)
+        self.assertEqual(self._apply_topology_changes(), 1)
+        self.assertTrue(receiver.has_upstream())
+
+        # disconnecting from an expired handle won't even cause a topology change
+        del emitter2
+        receiver.disconnect_from(handle2)
+        self.assertEqual(self._apply_topology_changes(), 0)
+
     def test_signal_source(self):
         """
         Checks that a Receiver is able to identify which upstream Emitter a Signal originated from.
@@ -376,7 +410,7 @@ class SimpleTestCase(BaseTestCase):
             raise RuntimeError()
 
         # create a custom receiver
-        receiver: AbstractReceiver = create_receiver(self.circuit, number_schema, on_value=throw_exception)
+        receiver: AbstractReceiver = self.create_receiver(number_schema, on_value=throw_exception)
 
         # error handling callback for the circuit
         error_handler_called: bool = False
@@ -464,6 +498,23 @@ class SimpleTestCase(BaseTestCase):
 
         # ake sure that the error handler got called and everything is in order
         self.assertTrue(error_handler_called)
+
+    def test_double_completion(self):
+        """
+        Make sure that an Emitter, once completed, can never emit any signal again.
+        """
+        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        recorder: Recorder = Recorder.record(emitter)
+        self.assertEqual(self._apply_topology_changes(), 1)
+
+        self.circuit.emit_completion(emitter)
+        self.circuit.emit_value(emitter, 1)
+        self.circuit.emit_failure(emitter, ValueError())
+        self.circuit.emit_completion(emitter)
+        self.assertEqual(self._handle_events(), 4)
+
+        self.assertEqual(len(recorder.signals), 1)
+        self.assertIsInstance(recorder.signals[0], CompletionSignal)
 
     def test_simple_operator(self):
         """
@@ -583,6 +634,72 @@ class SimpleTestCase(BaseTestCase):
         # even though we handled 10 events, the operator failed while handling input 4
         self.assertEqual([signal.get_source() for signal in recorder.get_failures()], [operator.get_id()])
         self.assertEqual([value.as_number() for value in recorder.get_values()], [0, 1, 2, 3])
+
+    def test_create_connect_bad_operator(self):
+        """
+        Check that a Receiver of Schema X cannot create-connect an upstream Operator with Schema Y
+        """
+        receiver: AbstractReceiver = self.create_receiver(number_schema)
+
+        self.assertEqual(len(self.errors), 0)
+        result: Any = receiver.create_operator(create_operation(string_schema, lambda v: v))
+        self.assertIsNone(result)
+        self.assertEqual(len(self.errors), 1)
+        self.assertEqual(self.errors[0].kind, Circuit.Error.Kind.WRONG_VALUE_SCHEMA)
+
+    def test_operator_autocomplete_on_complete(self):
+        """
+        Operators automatically complete, once they have no upstream left.
+        """
+        emitter1: AbstractEmitter = self.create_emitter(number_schema)
+        emitter2: AbstractEmitter = self.create_emitter(number_schema)
+        recorder: Recorder = self.create_recorder(number_schema)
+        operator_handle: Operator.CreatorHandle = recorder.create_operator(create_operation(number_schema, lambda v: v))
+        operator_handle.connect_to(make_handle(emitter1))
+        operator_handle.connect_to(make_handle(emitter2))
+        operator: Operator = operator_handle._element()
+        self.assertIsNotNone(operator)
+        self.assertEqual(self._apply_topology_changes(), 3)
+
+        self.assertFalse(operator.is_completed())
+        self.assertEqual(len(operator._upstream), 2)
+        self.circuit.emit_completion(emitter1)
+        self.assertEqual(self._handle_events(), 1)
+
+        self.assertFalse(operator.is_completed())
+        self.assertEqual(len(operator._upstream), 1)
+        self.circuit.emit_completion(emitter2)
+        self.assertEqual(self._handle_events(), 1)
+
+        self.assertTrue(operator.is_completed())
+        self.assertEqual(len(operator._upstream), 0)
+
+    def test_operator_autocomplete_on_failure(self):
+        """
+        Operators automatically complete, once they have no upstream left.
+        """
+        emitter1: AbstractEmitter = self.create_emitter(number_schema)
+        emitter2: AbstractEmitter = self.create_emitter(number_schema)
+        recorder: Recorder = self.create_recorder(number_schema)
+        operator_handle: Operator.CreatorHandle = recorder.create_operator(create_operation(number_schema, lambda v: v))
+        operator_handle.connect_to(make_handle(emitter1))
+        operator_handle.connect_to(make_handle(emitter2))
+        operator: Operator = operator_handle._element()
+        self.assertIsNotNone(operator)
+        self.assertEqual(self._apply_topology_changes(), 3)
+
+        self.assertFalse(operator.is_completed())
+        self.assertEqual(len(operator._upstream), 2)
+        self.circuit.emit_failure(emitter1, ValueError())
+        self.assertEqual(self._handle_events(), 1)
+
+        self.assertFalse(operator.is_completed())
+        self.assertEqual(len(operator._upstream), 1)
+        self.circuit.emit_failure(emitter2, ValueError())
+        self.assertEqual(self._handle_events(), 1)
+
+        self.assertTrue(operator.is_completed())
+        self.assertEqual(len(operator._upstream), 0)
 
     def test_bad_emitter(self):
         """
@@ -709,6 +826,19 @@ class SimpleTestCase(BaseTestCase):
         del recorder
         emitter._fail(ValueError())
         self.assertEqual(len(emitter._downstream), 0)
+
+    def test_connect_to_expired_handle(self):
+        """
+        Fail gracefully when attempting to connect to an Emitter handle that has expired.
+        """
+        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        handle: AbstractEmitter.Handle = make_handle(emitter)
+        del emitter
+
+        receiver: AbstractReceiver = self.create_receiver(number_schema)
+        receiver.connect_to(handle)
+        self.assertEqual(self._apply_topology_changes(), 0)
+        self.assertFalse(receiver.has_upstream())
 
     def test_early_cyclic_dependency(self):
         """
@@ -898,6 +1028,111 @@ class SimpleTestCase(BaseTestCase):
         self.assertEqual(len(recorder.signals), 3)
         self.assertEqual(len(recorder.get_values()), 3)
         self.assertEqual(recorder.get_values()[2], Value(b_values))
+
+    def test_emit_value_with_expired_emitter(self):
+        """
+        Makes sure that Events fail gracefully if they encounter an expired Handle.
+        """
+        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        self.circuit.emit_value(emitter, 234)
+        del emitter
+        self.assertEqual(self._handle_events(), 1)
+
+    def test_emit_failure_with_expired_emitter(self):
+        """
+        Makes sure that Events fail gracefully if they encounter an expired Handle.
+        """
+        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        self.circuit.emit_failure(emitter, ValueError())
+        del emitter
+        self.assertEqual(self._handle_events(), 1)
+
+    def test_emit_completion_with_expired_emitter(self):
+        """
+        Makes sure that Events fail gracefully if they encounter an expired Handle.
+        """
+        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        self.circuit.emit_completion(emitter)
+        del emitter
+        self.assertEqual(self._handle_events(), 1)
+
+    def test_connection_with_expired_emitter(self):
+        """
+        Makes sure that Events fail gracefully if they encounter an expired Handle.
+        Note that this should be impossible for the user to achieve since you need to call the Circuit method directly,
+        without going through the Receiver.
+        """
+        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        receiver: AbstractReceiver = self.create_receiver(number_schema)
+        self.circuit.create_connection(emitter, receiver)
+        del emitter
+        self.assertEqual(self._apply_topology_changes(), 1)
+        self.assertFalse(receiver.has_upstream())
+
+    def test_connection_with_expired_receiver(self):
+        """
+        Makes sure that Events fail gracefully if they encounter an expired Handle.
+        Note that this should be impossible for the user to achieve since you need to call the Circuit method directly,
+        without going through the Receiver.
+        """
+        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        receiver: AbstractReceiver = self.create_receiver(number_schema)
+        self.circuit.create_connection(emitter, receiver)
+        del receiver
+        self.assertEqual(self._apply_topology_changes(), 1)
+        self.assertFalse(emitter.has_downstream())
+
+    def test_already_completed_connection_with_expired_receiver(self):
+        """
+        Makes sure that Events fail gracefully if they encounter an expired Handle.
+        Note that this should be impossible for the user to achieve since you need to call the Circuit method directly,
+        without going through the Receiver.
+        """
+        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        receiver: AbstractReceiver = self.create_receiver(number_schema)
+        self.circuit.emit_completion(emitter)
+        self.assertEqual(self._handle_events(), 1)
+        self.circuit.create_connection(emitter, receiver)
+        self.assertEqual(self._apply_topology_changes(), 1)
+        del receiver
+        self.assertEqual(self._handle_events(), 1)
+        self.assertFalse(emitter.has_downstream())
+
+    def test_creator_handle_with_expired_element(self):
+        """
+        Makes sure that Events fail gracefully if they encounter an expired Handle.
+        """
+        receiver: AbstractReceiver = self.create_receiver(number_schema)
+        operation: Operator.Operation = create_operation(number_schema, lambda v: v)
+        handle: Operator.CreatorHandle = receiver.create_operator(operation)
+        self.assertEqual(self._apply_topology_changes(), 1)
+        del receiver
+
+        # connect_to
+        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        handle.connect_to(make_handle(emitter))
+        self.assertEqual(self._apply_topology_changes(), 0)
+        self.assertFalse(emitter.has_downstream())
+
+        # create_operator
+        result: Any = handle.create_operator(operation)
+        self.assertIsNone(result)
+
+    def test_fake_signals(self):
+        """
+        Since the on_X methods are public, I guess you could try to call them with foreign Signals? Of course, in C++
+        you couldn't create instances of Signals in the first place, that would be restricted to Emitters ... but for
+        coverage let's pretend like you can create your own Signals and are desperate to try to mess with the Receiver.
+        """
+        receiver: AbstractReceiver = self.create_receiver(number_schema)
+        receiver.create_operator(create_operation(number_schema, lambda v: v))
+
+        with self.assertRaises(AssertionError):
+            receiver.on_value(ValueSignal(123, Value(0)))
+        with self.assertRaises(AssertionError):
+            receiver.on_failure(FailureSignal(123, ValueError()))
+        with self.assertRaises(AssertionError):
+            receiver.on_completion(CompletionSignal(123))
 
 
 ########################################################################################################################
