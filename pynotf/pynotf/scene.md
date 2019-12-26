@@ -18,22 +18,6 @@ The way thing are set up now, we could turn the Widget -> Node relationship from
 Meaning instead Widget deriving from Node, we could simply contain a Node as a field in Widget. Usually this is preferable, if not for one thing: discoverability. What I mean is that you can find a Node using its name in a Scene, but if the Node knows nothing about Widgets (or potential other Node-subclasses), then you don't get to a Widget from a Node. Instead, when a Widget *is-a* Node, the Node class can still be kept in the dark about the existence of a Widget class, but you will be able to `dynamic_cast` from the Node to a Widget.
 
 
-# Asynchronous Operations
-
-Many languages allow await/async syntax, Python is among them. I want to do something similar in the general case, using fibers in C++. Where in the Logic graph do we allow for asynchronous code to run? One easy answer is to put them behind dedicated "async-operations", that take a value + Signal and spawn a new coroutine that can be suspended while waiting on some asynchronous event to take place. This leads to follow up questions:
-
-1. Do we switch to new coroutines immediately and run them until they halt? Or Are they scheduled to run immediately after the non-concurrent code has finished?
-2. How are Signals accepted or blocked with async code?
-  Actually, those two questions sound like the same one. If we only have Emitters that do not care about the order in which their Receivers get updated, then it shouldn't matter whether an asynchronous Receiver is called immediately or after all other Receivers have been called. It might actually even be better to delay all asynchronous Receivers until after all synchronous ones have been handled, because async means "now or later" while synchronous means "now" and scheduling all coroutines for later would honor that meaning more than those that execute immediately.
-
-Therefore, async code sits behind "async operators" in the logic. Async operators ignore the upstream Signal and propagate an unblockable downstream Signal, meaning accepting or blocking has to happen before. Emits downstream of the async operator are scheduled to happen after the synchronous "parent" emit.
-
-It should never be acceptable to accept or block an emission in async code - if we'd allow that, then it would be possible for an event to be delayed indefinitely by a sibling Receiver.
-Example: A mouse click is delivered to two unrelated widgets that happen to overlap on screen. If the top widget receives the emission and waits for three seconds to decide whether to accept it or not, the bottom widget will do nothing and only be able to respond after the three seconds have passed. This might be what you want in some weird edge case, but generally accept/ ignore/block decisions should be instantaneous.
-
-Interestingly this mirrors the way Python handles its own async code: You have to mark async functions with the async keyword and only then can you await.
-
-
 # Widgets and Logic
 
 We have now established that Logic elements (Emitter and Receivers) must be protected from removal while an update is being handled. The update process is also protected from the unexpected addition of elements, but that does not matter for the following question, which is about the relationship between logic elements and Widgets.
@@ -50,8 +34,7 @@ The same goes for anything else that might be used as "removal light", like remo
 
 ## Properties
 
-Widget Properties are Operators. Instead of having a fixed min- or max or validation function, we can simply define them
-as Operators with a list of Operations that are applied to each new input.
+Widget Properties act like Operators. Instead of having a fixed min- or max or validation function, we can simply define an Operations that is applied to each new input.
 
 
 Dead Ends

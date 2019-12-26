@@ -651,3 +651,19 @@ The Circuit has a thread-safe deque of Events. Events are a variant of everythin
 
 One of these special Events is the `AlreadyCompletedEvent`, an Event type that is emitted whenever a Receiver connects
 to an Emitter that has completed at the time of the event's epilogue. We could simply add the Receiver to the (already completed) Emitter and let it complete again, but that would violate the assumption that a completed Emitter will never fire. What this Event does instead is that a CompletionSignal with the completed Emitter as source is forwarded to the Receiver, without it ever being connected to the Emitter in the first place. This is more of an implementation artifact, but one that follows from the design rather than from any particular programming language.
+
+# Asynchronous Operations
+
+Many languages allow await/async syntax, Python is among them. I want to do something similar in the general case, using fibers in C++. Where in the Logic graph do we allow for asynchronous code to run? One easy answer is to put them behind dedicated "async-operations", that take a value + Signal and spawn a new coroutine that can be suspended while waiting on some asynchronous event to take place. This leads to follow up questions:
+
+1. Do we switch to new coroutines immediately and run them until they halt? Or Are they scheduled to run immediately after the non-concurrent code has finished?
+2. How are Signals accepted or blocked with async code?
+  Actually, those two questions sound like the same one. If we only have Emitters that do not care about the order in which their Receivers get updated, then it shouldn't matter whether an asynchronous Receiver is called immediately or after all other Receivers have been called. It might actually even be better to delay all asynchronous Receivers until after all synchronous ones have been handled, because async means "now or later" while synchronous means "now" and scheduling all coroutines for later would honor that meaning more than those that execute immediately.
+
+Therefore, async code sits behind "async operators" in the logic. Async operators ignore the upstream Signal and propagate an unblockable downstream Signal, meaning accepting or blocking has to happen before. Emits downstream of the async operator are scheduled to happen after the synchronous "parent" emit.
+
+It should never be acceptable to accept or block an emission in async code - if we'd allow that, then it would be possible for an event to be delayed indefinitely by a sibling Receiver.
+Example: A mouse click is delivered to two unrelated widgets that happen to overlap on screen. If the top widget receives the emission and waits for three seconds to decide whether to accept it or not, the bottom widget will do nothing and only be able to respond after the three seconds have passed. This might be what you want in some weird edge case, but generally accept/ ignore/block decisions should be instantaneous.
+
+Interestingly this mirrors the way Python handles its own async code: You have to mark async functions with the async keyword and only then can you await.
+
