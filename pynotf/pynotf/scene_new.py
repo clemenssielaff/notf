@@ -3,12 +3,12 @@ from typing import List, Optional, Dict, Set, Type as Class, Any
 from weakref import ref as weak_ref
 
 from .value import Value
-from .logic import Circuit, Element, ValueSignal, Operation, AbstractEmitter, AbstractReceiver
+from .logic import Circuit, Element, ValueSignal, Operation, Emitter, Receiver
 
 
 #######################################################################################################################
 
-class Property(AbstractReceiver, AbstractEmitter):  # final
+class Property(Receiver, Emitter):  # final
     """
     Properties are values that combined fully define the state of the Node.
     If you take the entire Scene, take all Properties of all the Nodes, serialize the Scene alongside the Properties and
@@ -28,8 +28,8 @@ class Property(AbstractReceiver, AbstractEmitter):  # final
         """
         assert value.schema == operation.get_input_schema()
         assert value.schema == operation.get_output_schema()
-        AbstractReceiver.__init__(self, operation.get_input_schema())
-        AbstractEmitter.__init__(self, operation.get_output_schema())
+        Receiver.__init__(self, operation.get_input_schema())
+        Emitter.__init__(self, operation.get_output_schema())
 
         self._circuit: Circuit = circuit  # is constant
         self._element_id: Element.ID = element_id  # is constant

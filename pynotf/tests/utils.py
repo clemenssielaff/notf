@@ -1,7 +1,7 @@
 from typing import List, Optional, Union, Callable, TypeVar
 from random import randint as random_int, choice as random_choice, shuffle
 
-from pynotf.logic import Operator, AbstractReceiver, AbstractEmitter, Circuit, ValueSignal, FailureSignal, \
+from pynotf.logic import Operator, Receiver, Emitter, Circuit, ValueSignal, FailureSignal, \
     CompletionSignal, Operation
 from pynotf.value import Value
 
@@ -57,20 +57,20 @@ def random_shuffle(*args: T) -> List[T]:
     return values
 
 
-class Recorder(AbstractReceiver):
+class Recorder(Receiver):
     """
     A Recorder is a special Receiver for test cases that simply records all signals that it receives.
     """
 
     def __init__(self, circuit: 'Circuit', element_id: Circuit.Element.ID, schema: Value.Schema):
-        AbstractReceiver.__init__(self, schema)
+        Receiver.__init__(self, schema)
 
         self._circuit: Circuit = circuit  # is constant
         self._element_id: Circuit.Element.ID = element_id  # is constant
         self.signals: List[Union[ValueSignal, FailureSignal, CompletionSignal]] = []
 
     @classmethod
-    def record(cls, emitter: AbstractEmitter) -> 'Recorder':
+    def record(cls, emitter: Emitter) -> 'Recorder':
         """
         Convenience method to create and connect a matching Recorder to a given Emitter.
         """
@@ -124,13 +124,13 @@ class Recorder(AbstractReceiver):
         return result
 
 
-def make_handle(emitter: AbstractEmitter) -> AbstractEmitter.Handle:
+def make_handle(emitter: Emitter) -> Emitter.Handle:
     """
     Convenience function to create a Handle around a strong reference of an Emitter.
     :param emitter: Emitter to handle.
     :return:        Handle to the given Emitter.
     """
-    return AbstractEmitter.Handle(emitter)
+    return Emitter.Handle(emitter)
 
 
 def create_emitter(circuit: Circuit, schema: Value.Schema, is_blockable: bool = False):
@@ -142,9 +142,9 @@ def create_emitter(circuit: Circuit, schema: Value.Schema, is_blockable: bool = 
     :return: New instance of the Emitter class.
     """
 
-    class AnonymousEmitter(AbstractEmitter):
+    class AnonymousEmitter(Emitter):
         def __init__(self, circuit_: 'Circuit', element_id: Circuit.Element.ID):
-            AbstractEmitter.__init__(self, schema, is_blockable)
+            Emitter.__init__(self, schema, is_blockable)
             self._circuit: Circuit = circuit_  # is constant
             self._element_id: Circuit.Element.ID = element_id  # is constant
 
@@ -171,9 +171,9 @@ def create_receiver(circuit: Circuit, schema: Value.Schema,
     :return: New instance of the Receiver class.
     """
 
-    class AnonymousReceiver(AbstractReceiver):
+    class AnonymousReceiver(Receiver):
         def __init__(self, circuit_: 'Circuit', element_id: Circuit.Element.ID):
-            AbstractReceiver.__init__(self, schema)
+            Receiver.__init__(self, schema)
             self._circuit: Circuit = circuit_  # is constant
             self._element_id: Circuit.Element.ID = element_id  # is constant
 

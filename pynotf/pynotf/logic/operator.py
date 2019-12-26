@@ -4,8 +4,8 @@ from weakref import ref as weak_ref
 
 from ..value import Value
 
-from .receiver import AbstractReceiver
-from .emitter import AbstractEmitter
+from .receiver import Receiver
+from .emitter import Emitter
 from .circuit import Circuit
 from .signals import ValueSignal, FailureSignal, CompletionSignal
 
@@ -48,14 +48,14 @@ class Operation(ABC):
 ########################################################################################################################
 
 
-class Operator(AbstractReceiver, AbstractEmitter):  # final
+class Operator(Receiver, Emitter):  # final
     """
     Operators are use-defined functions in the Circuit that take a Value and maybe produce one. Not all input values
     generate an output value though.
     Operators will complete automatically once all upstream Emitters have completed or through failure.
     """
 
-    class CreatorHandle(AbstractEmitter.Handle):
+    class CreatorHandle(Emitter.Handle):
         """
         A special kind of handle that is returned when you create an Operator from a Receiver.
         It allows you to continue the chain of Operators upstream if you want to split your calculation into multiple,
@@ -66,9 +66,9 @@ class Operator(AbstractReceiver, AbstractEmitter):  # final
             """
             :param operator: Strong reference to the Operator represented by this handle.
             """
-            AbstractEmitter.Handle.__init__(self, operator)
+            Emitter.Handle.__init__(self, operator)
 
-        def connect_to(self, emitter_handle: AbstractEmitter.Handle):
+        def connect_to(self, emitter_handle: Emitter.Handle):
             """
             Connects this newly created Operator to an existing Emitter upstream.
             Does nothing if the Handle has expired.
@@ -98,8 +98,8 @@ class Operator(AbstractReceiver, AbstractEmitter):  # final
         :param element_id:  The Circuit-unique identification number of this Element.
         :param operation:   The Operation performed by this Operator.
         """
-        AbstractReceiver.__init__(self, operation.get_input_schema())
-        AbstractEmitter.__init__(self, operation.get_output_schema())
+        Receiver.__init__(self, operation.get_input_schema())
+        Emitter.__init__(self, operation.get_output_schema())
 
         self._circuit: Circuit = circuit  # is constant
         self._element_id: Circuit.Element.ID = element_id  # is constant

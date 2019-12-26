@@ -24,7 +24,7 @@ The Emitter ID is a 64bit wide, ever-increasing unsigned integer that is unique 
 class Element(ABC):
     """
     Base class for all Circuit Elements.
-    This is an empty abstract base class that is inherited by the AbstractEmitter and AbstractReceiver interfaces.
+    This is an empty abstract base class that is inherited by the Emitter and Receiver interfaces.
     Only concrete classes (that are no longer derived from) should implement the abstract Element methods.
     """
 
@@ -114,14 +114,14 @@ class Circuit:
             Handles this event.
             :returns: False on noop, if the Circuit elements have expired for example. True otherwise.
             """
-            emitter: Optional[AbstractEmitter] = self._get_emitter()
+            emitter: Optional[Emitter] = self._get_emitter()
             if emitter is None:
                 return False
             emitter._complete()
             return True
 
         # protected
-        def _get_emitter(self) -> Optional['AbstractEmitter']:
+        def _get_emitter(self) -> Optional['Emitter']:
             """
             Emitter that is targeted by the event.
             """
@@ -147,7 +147,7 @@ class Circuit:
             Handles this event.
             :returns: False on noop, if the Circuit elements have expired for example. True otherwise.
             """
-            emitter: Optional[AbstractEmitter] = self._get_emitter()
+            emitter: Optional[Emitter] = self._get_emitter()
             if emitter is None:
                 return False
             emitter._fail(self._error)
@@ -176,7 +176,7 @@ class Circuit:
             Handles this event.
             :returns: False on noop, if the Circuit elements have expired for example. True otherwise.
             """
-            emitter: Optional[AbstractEmitter] = self._get_emitter()
+            emitter: Optional[Emitter] = self._get_emitter()
             if emitter is None:
                 return False
             emitter._emit(self._value)
@@ -203,7 +203,7 @@ class Circuit:
             Handles this event.
             :returns: False on noop, if the Circuit elements have expired for example. True otherwise.
             """
-            receiver: Optional[AbstractReceiver] = self._receiver()
+            receiver: Optional[Receiver] = self._receiver()
             if receiver is None:
                 return False
             receiver.on_completion(CompletionSignal(self._emitter_id))
@@ -235,18 +235,18 @@ class Circuit:
             """
             return self._kind
 
-        def get_endpoints(self) -> Optional[Tuple['AbstractEmitter', 'AbstractReceiver']]:
+        def get_endpoints(self) -> Optional[Tuple['Emitter', 'Receiver']]:
             """
             Returns a tuple (Emitter, Receiver) denoting the end-points of the Connection or None, if any one of the
             two has expired
             """
             # check if the receiver is still alive
-            receiver: Optional[AbstractReceiver] = self._receiver()
+            receiver: Optional[Receiver] = self._receiver()
             if receiver is None:
                 return None
 
             # check if the emitter is still alive
-            emitter: Optional[AbstractEmitter] = self._emitter()
+            emitter: Optional[Emitter] = self._emitter()
             if emitter is None:
                 return None
 
@@ -271,7 +271,7 @@ class Circuit:
         self._expired_elements: List[Element] = []  # all expired Elements kept around for delayed cleanup on idle
         self._error_callback: Optional[Callable] = None
 
-    def emit_value(self, emitter: 'AbstractEmitter', value: Any = Value()):
+    def emit_value(self, emitter: 'Emitter', value: Any = Value()):
         """
         Schedules the emission of a Value in the Circuit.
         :param emitter:     Emitter to emit from.
@@ -296,7 +296,7 @@ class Circuit:
             self._events.append(Circuit._ValueEvent(weak_ref(emitter), value))
             self._event_condition.notify_all()
 
-    def emit_failure(self, emitter: 'AbstractEmitter', error: Exception):
+    def emit_failure(self, emitter: 'Emitter', error: Exception):
         """
         Schedules the failure of an Emitter in the Circuit.
         :param emitter: Emitter to fail.
@@ -306,7 +306,7 @@ class Circuit:
             self._events.append(Circuit._FailureEvent(weak_ref(emitter), error))
             self._event_condition.notify_all()
 
-    def emit_completion(self, emitter: 'AbstractEmitter'):
+    def emit_completion(self, emitter: 'Emitter'):
         """
         Schedules the voluntary completion of an Emitter in the Circuit.
         :param emitter: Emitter to complete.
@@ -359,7 +359,7 @@ class Circuit:
                 del self._elements[element_id]
             return element
 
-    def create_connection(self, emitter: 'AbstractEmitter', receiver: 'AbstractReceiver'):
+    def create_connection(self, emitter: 'Emitter', receiver: 'Receiver'):
         """
         Schedules the addition of a connection in the Circuit.
         This method should only be called by a Receiver from within the Event loop.
@@ -369,7 +369,7 @@ class Circuit:
         self._topology_changes.append(Circuit._TopologyChange(weak_ref(emitter), weak_ref(receiver),
                                                               Circuit._TopologyChange.Kind.CREATE_CONNECTION))
 
-    def remove_connection(self, emitter: 'AbstractEmitter', receiver: 'AbstractReceiver'):
+    def remove_connection(self, emitter: 'Emitter', receiver: 'Receiver'):
         """
         Schedules the removal of a connection in the Circuit.
         This method should only be called by a Receiver from within the Event loop.
@@ -379,7 +379,7 @@ class Circuit:
         self._topology_changes.append(Circuit._TopologyChange(weak_ref(emitter), weak_ref(receiver),
                                                               Circuit._TopologyChange.Kind.REMOVE_CONNECTION))
 
-    def expire_emitter(self, emitter: 'AbstractEmitter'):
+    def expire_emitter(self, emitter: 'Emitter'):
         """
         Passes ownership of a (potentially) expired Emitter to the Circuit so it can be deleted when the application is
         idle. If there are other owners of the Emitter, this does nothing.
@@ -415,7 +415,7 @@ class Circuit:
         # perform all delayed changes to the topology of the circuit
         for change in self._topology_changes:
             # the affected topology might not even exist anymore
-            connection: Optional[Tuple[AbstractEmitter, AbstractReceiver]] = change.get_endpoints()
+            connection: Optional[Tuple[Emitter, Receiver]] = change.get_endpoints()
             if connection is None:
                 continue
 
@@ -450,16 +450,16 @@ class Circuit:
 
     # private
 
-    def _create_connection(self, emitter: 'AbstractEmitter', receiver: 'AbstractReceiver'):
+    def _create_connection(self, emitter: 'Emitter', receiver: 'Receiver'):
         """
         Creates a new connection in the Circuit during the event epilogue.
         :param emitter: Emitter at the source of the connection.
         :param receiver: Receiver at the target of the connection.
         """
         # never create a connection mid-event
-        assert emitter._status in (AbstractEmitter._Status.IDLE,
-                                   AbstractEmitter._Status.FAILED,
-                                   AbstractEmitter._Status.COMPLETED)
+        assert emitter._status in (Emitter._Status.IDLE,
+                                   Emitter._Status.FAILED,
+                                   Emitter._Status.COMPLETED)
 
         # multiple connections between the same Emitter-Receiver pair are ignored
         weak_receiver = weak_ref(receiver)
@@ -479,7 +479,7 @@ class Circuit:
         else:
             emitter._downstream.append(weak_receiver)
 
-    def _remove_connection(self, emitter: 'AbstractEmitter', receiver: 'AbstractReceiver'):
+    def _remove_connection(self, emitter: 'Emitter', receiver: 'Receiver'):
         """
         Removes a connection in the Circuit during the event epilogue.
         :param emitter: Emitter at the source of the connection.
@@ -496,6 +496,8 @@ class Circuit:
             emitter._downstream.remove(weak_ref(receiver))
 
 
-from .emitter import AbstractEmitter
-from .receiver import AbstractReceiver
+########################################################################################################################
+
+from .emitter import Emitter
+from .receiver import Receiver
 from .signals import CompletionSignal

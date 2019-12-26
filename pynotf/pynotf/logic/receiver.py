@@ -10,7 +10,7 @@ from .signals import ValueSignal, FailureSignal, CompletionSignal
 
 ########################################################################################################################
 # noinspection PyAbstractClass
-class AbstractReceiver(Circuit.Element):
+class Receiver(Circuit.Element):
     """
     Virtual interface class for Circuit Elements that receive Signals.
     Is non-copyable and may only be owned by other Receivers downstream and Nodes.
@@ -23,7 +23,7 @@ class AbstractReceiver(Circuit.Element):
         :param schema:  Schema defining the Value expected by this Receiver, defaults to empty.
         """
         self._input_schema: Value.Schema = schema  # is constant
-        self._upstream: Set[AbstractEmitter] = set()
+        self._upstream: Set[Emitter] = set()
 
     def get_input_schema(self) -> Value.Schema:  # noexcept
         """
@@ -65,14 +65,14 @@ class AbstractReceiver(Circuit.Element):
         # return a handle to the freshly created Operator
         return Operator.CreatorHandle(operator)
 
-    def connect_to(self, emitter_handle: AbstractEmitter.Handle):  # noexcept
+    def connect_to(self, emitter_handle: Emitter.Handle):  # noexcept
         """
         Connect to the given Emitter.
         If the Emitter is invalid or this Receiver is already connected to it, this does nothing.
         :param emitter_handle: Handle of the Emitter to connect to.
         """
         # get the emitter to connect to, if it is still alive
-        emitter: Optional[AbstractEmitter] = emitter_handle._element()
+        emitter: Optional[Emitter] = emitter_handle._element()
         if emitter is None:
             return
 
@@ -92,13 +92,13 @@ class AbstractReceiver(Circuit.Element):
         # schedule the creation of the connection
         self.get_circuit().create_connection(emitter, self)
 
-    def disconnect_from(self, emitter_handle: AbstractEmitter.Handle):
+    def disconnect_from(self, emitter_handle: Emitter.Handle):
         """
         Disconnects from the given Emitter.
         :param emitter_handle:  Handle of the emitter to disconnect from.
         """
         # get the emitter to disconnect from, if it is still alive
-        emitter: Optional[AbstractEmitter] = emitter_handle._element()
+        emitter: Optional[Emitter] = emitter_handle._element()
         if emitter is None:
             return
 
@@ -140,7 +140,7 @@ class AbstractReceiver(Circuit.Element):
         # assert that the emitter is connected to this receiver
         for candidate in self._upstream:
             if candidate.get_id() == signal.get_source():
-                emitter: AbstractEmitter = candidate
+                emitter: Emitter = candidate
                 break
         else:
             assert False  # received Signal from an Emitter that is not connected
@@ -167,7 +167,7 @@ class AbstractReceiver(Circuit.Element):
         # assert that the emitter is connected to this receiver
         for candidate in self._upstream:
             if candidate.get_id() == signal.get_source():
-                emitter: AbstractEmitter = candidate
+                emitter: Emitter = candidate
                 break
         else:
             assert False  # received Signal from an Emitter that is not connected
@@ -187,16 +187,16 @@ class AbstractReceiver(Circuit.Element):
                 Circuit.Error(weak_ref(self), Circuit.Error.Kind.USER_CODE_EXCEPTION, str(error)))
 
     # private
-    def _find_emitter(self, emitter_id: AbstractEmitter.ID) -> Optional[AbstractEmitter.Handle]:
+    def _find_emitter(self, emitter_id: Emitter.ID) -> Optional[Emitter.Handle]:
         """
         Finds and returns an Emitter.Handle of any Emitter in the Circuit.
         :param emitter_id:  ID of the Emitter to find.
         :return:            A (non-owning) handle to the requested Emitter or NOne.
         """
         element: Optional[Circuit.Element] = self.get_circuit().get_element(emitter_id)
-        if element is None or not isinstance(element, AbstractEmitter):
+        if element is None or not isinstance(element, Emitter):
             return None
-        return AbstractEmitter.Handle(element)
+        return Emitter.Handle(element)
 
     def _on_value(self, signal: ValueSignal):  # virtual
         """
@@ -222,5 +222,7 @@ class AbstractReceiver(Circuit.Element):
         pass
 
 
-from .emitter import AbstractEmitter
+########################################################################################################################
+
+from .emitter import Emitter
 from .operator import Operator, Operation

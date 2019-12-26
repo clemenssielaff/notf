@@ -6,7 +6,7 @@ from typing import List, Optional, ClassVar, Dict, Any
 from random import randint as random_int
 from weakref import ref as weak_ref
 
-from pynotf.logic import AbstractReceiver, AbstractEmitter, Circuit, FailureSignal, CompletionSignal, ValueSignal, \
+from pynotf.logic import Receiver, Emitter, Circuit, FailureSignal, CompletionSignal, ValueSignal, \
     Operator, Operation
 from pynotf.value import Value
 
@@ -77,7 +77,7 @@ class SimpleTestCase(BaseTestCase):
         Tests whether the input Schema of an Receiver is set correctly
         """
         for schema in (random_schema() for _ in range(4)):
-            receiver: AbstractReceiver = self.create_receiver(schema)
+            receiver: Receiver = self.create_receiver(schema)
             self.assertEqual(receiver.get_input_schema(), schema)
 
     def test_emitter_schema(self):
@@ -85,7 +85,7 @@ class SimpleTestCase(BaseTestCase):
         Tests whether the output Schema of an Emitter is set correctly
         """
         for schema in (random_schema() for _ in range(4)):
-            emitter: AbstractEmitter = self.create_emitter(schema)
+            emitter: Emitter = self.create_emitter(schema)
             self.assertEqual(emitter.get_output_schema(), schema)
             self.assertEqual(make_handle(emitter).get_output_schema(), schema)
 
@@ -93,9 +93,9 @@ class SimpleTestCase(BaseTestCase):
         """
         Tests whether the output Schema of an Emitter is set correctly
         """
-        handle: Optional[AbstractEmitter.Handle] = None
+        handle: Optional[Emitter.Handle] = None
         for schema in (random_schema() for _ in range(4)):
-            emitter: AbstractEmitter = self.create_emitter(schema)
+            emitter: Emitter = self.create_emitter(schema)
             handle = make_handle(emitter)
             self.assertTrue(handle.is_valid())
             self.assertEqual(handle.get_id(), emitter.get_id())
@@ -134,8 +134,8 @@ class SimpleTestCase(BaseTestCase):
         Tests that an appropriate exception is thrown should you try to connect a Receiver to an Emitter with an
         incompatible Value schema.
         """
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
-        receiver: AbstractReceiver = self.create_receiver(string_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
+        receiver: Receiver = self.create_receiver(string_schema)
 
         self.assertEqual(len(self.errors), 0)
         receiver.connect_to(make_handle(emitter))
@@ -187,7 +187,7 @@ class SimpleTestCase(BaseTestCase):
         Checks that connecting to a completed Emitter triggers a single completion Event only for the Receiver.
         """
         # set up an emitter and connect a recorder
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         recorder1: Recorder = Recorder.record(emitter)
         self.assertEqual(self._apply_topology_changes(), 1)
         self.assertEqual(len(recorder1.signals), 0)
@@ -221,8 +221,8 @@ class SimpleTestCase(BaseTestCase):
         """
         Checks if a emitter found by ID is the same as the one returned on creation.
         """
-        receiver: AbstractReceiver = self.create_receiver(number_schema)
-        operator: AbstractEmitter.Handle = receiver.create_operator(create_operation(number_schema, lambda v: v))
+        receiver: Receiver = self.create_receiver(number_schema)
+        operator: Emitter.Handle = receiver.create_operator(create_operation(number_schema, lambda v: v))
         self.assertEqual(self._apply_topology_changes(), 1)
         self.assertEqual(receiver._find_emitter(operator.get_id())._element, operator._element)
         self.assertIsNone(receiver._find_emitter(587658765))
@@ -231,8 +231,8 @@ class SimpleTestCase(BaseTestCase):
         """
         Make sure that named emitters are no longer found when they have been removed.
         """
-        receiver: AbstractReceiver = self.create_receiver(number_schema)
-        operator: AbstractEmitter.Handle = receiver.create_operator(create_operation(number_schema, lambda v: v))
+        receiver: Receiver = self.create_receiver(number_schema)
+        operator: Emitter.Handle = receiver.create_operator(create_operation(number_schema, lambda v: v))
         operator_id: Circuit.Element.ID = operator.get_id()
         self.assertEqual(self._apply_topology_changes(), 1)
         receiver.disconnect_upstream()
@@ -249,7 +249,7 @@ class SimpleTestCase(BaseTestCase):
         recorder1: Recorder = self.create_recorder(number_schema)
         recorder2: Recorder = self.create_recorder(number_schema)
         operator: Operator.CreatorHandle = recorder1.create_operator(create_operation(number_schema, lambda v: v))
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         recorder2.connect_to(operator)
         operator.connect_to(make_handle(emitter))
         self.assertEqual(self._apply_topology_changes(), 3)
@@ -289,7 +289,7 @@ class SimpleTestCase(BaseTestCase):
         Create two connections between the same Emitter/Receiver pair.
         """
         # create an emitter without connecting any receivers
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         self.assertFalse(emitter.has_downstream())
 
         # connect a receiver
@@ -318,7 +318,7 @@ class SimpleTestCase(BaseTestCase):
         We have opted to keep all topology changes in the same queue to make sure that creation and removal of the same
         edge in one event is handled correctly.
         """
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         recorder: Recorder = self.create_recorder(number_schema)
 
         # connect - disconnect => disconnected
@@ -351,12 +351,12 @@ class SimpleTestCase(BaseTestCase):
         """
         Fail gracefully when attempting to disconnect from an Emitter handle that has expired.
         """
-        emitter1: AbstractEmitter = self.create_emitter(number_schema)
-        emitter2: AbstractEmitter = self.create_emitter(number_schema)
-        handle1: AbstractEmitter.Handle = make_handle(emitter1)
-        handle2: AbstractEmitter.Handle = make_handle(emitter2)
+        emitter1: Emitter = self.create_emitter(number_schema)
+        emitter2: Emitter = self.create_emitter(number_schema)
+        handle1: Emitter.Handle = make_handle(emitter1)
+        handle2: Emitter.Handle = make_handle(emitter2)
 
-        receiver: AbstractReceiver = self.create_receiver(number_schema)
+        receiver: Receiver = self.create_receiver(number_schema)
         receiver.connect_to(handle1)
         self.assertEqual(self._apply_topology_changes(), 1)
         self.assertTrue(receiver.has_upstream())
@@ -375,8 +375,8 @@ class SimpleTestCase(BaseTestCase):
         """
         Checks that a Receiver is able to identify which upstream Emitter a Signal originated from.
         """
-        emitter1: AbstractEmitter = self.create_emitter(number_schema)
-        emitter2: AbstractEmitter = self.create_emitter(number_schema)
+        emitter1: Emitter = self.create_emitter(number_schema)
+        emitter2: Emitter = self.create_emitter(number_schema)
         recorder: Recorder = self.create_recorder(number_schema)
 
         # connect the recorder to the two emitters and check that nothing else has happened
@@ -410,7 +410,7 @@ class SimpleTestCase(BaseTestCase):
             raise RuntimeError()
 
         # create a custom receiver
-        receiver: AbstractReceiver = self.create_receiver(number_schema, on_value=throw_exception)
+        receiver: Receiver = self.create_receiver(number_schema, on_value=throw_exception)
 
         # error handling callback for the circuit
         error_handler_called: bool = False
@@ -422,7 +422,7 @@ class SimpleTestCase(BaseTestCase):
         self.circuit.set_error_callback(error_handling)
 
         # create a custom emitter and connect the receiver to it
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         receiver.connect_to(make_handle(emitter))
         self.assertEqual(self._apply_topology_changes(), 1)
 
@@ -443,7 +443,7 @@ class SimpleTestCase(BaseTestCase):
             raise signal.get_error()
 
         # create a custom receiver
-        receiver: AbstractReceiver = create_receiver(self.circuit, number_schema, on_failure=throw_exception)
+        receiver: Receiver = create_receiver(self.circuit, number_schema, on_failure=throw_exception)
 
         # error handling callback for the circuit
         error_handler_called: bool = False
@@ -455,7 +455,7 @@ class SimpleTestCase(BaseTestCase):
         self.circuit.set_error_callback(error_handling)
 
         # create a custom emitter and connect the receiver to it
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         receiver.connect_to(make_handle(emitter))
         self.assertEqual(self._apply_topology_changes(), 1)
 
@@ -476,7 +476,7 @@ class SimpleTestCase(BaseTestCase):
             raise RuntimeError()
 
         # create a custom receiver
-        receiver: AbstractReceiver = self.create_receiver(number_schema, on_completion=throw_exception)
+        receiver: Receiver = self.create_receiver(number_schema, on_completion=throw_exception)
 
         # error handling callback for the circuit
         error_handler_called: bool = False
@@ -488,7 +488,7 @@ class SimpleTestCase(BaseTestCase):
         self.circuit.set_error_callback(error_handling)
 
         # create a custom emitter and connect the receiver to it
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         receiver.connect_to(make_handle(emitter))
         self.assertEqual(self._apply_topology_changes(), 1)
 
@@ -503,7 +503,7 @@ class SimpleTestCase(BaseTestCase):
         """
         Make sure that an Emitter, once completed, can never emit any signal again.
         """
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         recorder: Recorder = Recorder.record(emitter)
         self.assertEqual(self._apply_topology_changes(), 1)
 
@@ -521,7 +521,7 @@ class SimpleTestCase(BaseTestCase):
         0, 1, 2, 3 -> multiply by two -> 0, 2, 4, 6
         """
         # set up the Circuit
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         operator: Operator = create_operator(self.circuit, number_schema,
                                              lambda value: value.modified().set(value.as_number() * 2)
                                              )
@@ -542,7 +542,7 @@ class SimpleTestCase(BaseTestCase):
         0, 1, 2, 3 -> stringify -> "0", "1", "2", "3"
         """
         # set up the Circuit
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         operator: Operator = create_operator(self.circuit, number_schema,
                                              lambda value: Value(str(value.as_number())),
                                              output_schema=string_schema)
@@ -587,7 +587,7 @@ class SimpleTestCase(BaseTestCase):
                     return result
 
         # set up the Circuit
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         operator: Operator = self.circuit.create_element(Operator, GroupTwo())
         operator.connect_to(make_handle(emitter))
         recorder: Recorder = Recorder.record(operator)
@@ -620,7 +620,7 @@ class SimpleTestCase(BaseTestCase):
             return anonymous_func
 
         # set up the circuit
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         operator: Operator = create_operator(self.circuit, number_schema, raise_on(4))
         operator.connect_to(make_handle(emitter))
         recorder: Recorder = Recorder.record(operator)
@@ -639,7 +639,7 @@ class SimpleTestCase(BaseTestCase):
         """
         Check that a Receiver of Schema X cannot create-connect an upstream Operator with Schema Y
         """
-        receiver: AbstractReceiver = self.create_receiver(number_schema)
+        receiver: Receiver = self.create_receiver(number_schema)
 
         self.assertEqual(len(self.errors), 0)
         result: Any = receiver.create_operator(create_operation(string_schema, lambda v: v))
@@ -651,8 +651,8 @@ class SimpleTestCase(BaseTestCase):
         """
         Operators automatically complete, once they have no upstream left.
         """
-        emitter1: AbstractEmitter = self.create_emitter(number_schema)
-        emitter2: AbstractEmitter = self.create_emitter(number_schema)
+        emitter1: Emitter = self.create_emitter(number_schema)
+        emitter2: Emitter = self.create_emitter(number_schema)
         recorder: Recorder = self.create_recorder(number_schema)
         operator_handle: Operator.CreatorHandle = recorder.create_operator(create_operation(number_schema, lambda v: v))
         operator_handle.connect_to(make_handle(emitter1))
@@ -678,8 +678,8 @@ class SimpleTestCase(BaseTestCase):
         """
         Operators automatically complete, once they have no upstream left.
         """
-        emitter1: AbstractEmitter = self.create_emitter(number_schema)
-        emitter2: AbstractEmitter = self.create_emitter(number_schema)
+        emitter1: Emitter = self.create_emitter(number_schema)
+        emitter2: Emitter = self.create_emitter(number_schema)
         recorder: Recorder = self.create_recorder(number_schema)
         operator_handle: Operator.CreatorHandle = recorder.create_operator(create_operation(number_schema, lambda v: v))
         operator_handle.connect_to(make_handle(emitter1))
@@ -705,7 +705,7 @@ class SimpleTestCase(BaseTestCase):
         """
         Test for Emitters that try to emit Value types that they cannot.
         """
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         recorder: Recorder = Recorder.record(emitter)
         self.assertTrue(self._apply_topology_changes(), 1)
 
@@ -742,7 +742,7 @@ class SimpleTestCase(BaseTestCase):
         Test for Operators that don't deliver the Value types that they promise.
         """
         # set up the circuit
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         operator: Operator = create_operator(self.circuit, number_schema, lambda value: value, string_schema)
         operator.connect_to(make_handle(emitter))
         recorder: Recorder = Recorder.record(operator)
@@ -762,7 +762,7 @@ class SimpleTestCase(BaseTestCase):
         epilogue) and will not notify their upstream because it will either be destroyed with them, or notice that
         they are gone the next time any upstream Emitter tries to emit.
         """
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         rec1 = Recorder.record(emitter)
         rec2 = Recorder.record(emitter)
         rec3 = Recorder.record(emitter)
@@ -805,7 +805,7 @@ class SimpleTestCase(BaseTestCase):
         """
         See test_expired_receiver_on_value
         """
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         recorder: Recorder = self.create_recorder(number_schema)
         recorder.connect_to(make_handle(emitter))
         self.assertEqual(self._apply_topology_changes(), 1)
@@ -818,7 +818,7 @@ class SimpleTestCase(BaseTestCase):
         """
         See test_expired_receiver_on_value
         """
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         recorder: Recorder = self.create_recorder(number_schema)
         recorder.connect_to(make_handle(emitter))
         self.assertEqual(self._apply_topology_changes(), 1)
@@ -831,11 +831,11 @@ class SimpleTestCase(BaseTestCase):
         """
         Fail gracefully when attempting to connect to an Emitter handle that has expired.
         """
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
-        handle: AbstractEmitter.Handle = make_handle(emitter)
+        emitter: Emitter = self.create_emitter(number_schema)
+        handle: Emitter.Handle = make_handle(emitter)
         del emitter
 
-        receiver: AbstractReceiver = self.create_receiver(number_schema)
+        receiver: Receiver = self.create_receiver(number_schema)
         receiver.connect_to(handle)
         self.assertEqual(self._apply_topology_changes(), 0)
         self.assertFalse(receiver.has_upstream())
@@ -932,7 +932,7 @@ class SimpleTestCase(BaseTestCase):
         Proof-of-concept test case
         """
 
-        class Sorter(AbstractReceiver, AbstractEmitter):
+        class Sorter(Receiver, Emitter):
             """
             The sorter is a special kind of Circuit element, that sorts ValueSignals by their Emitter ID and
             emits them as a list when that Emitter has completed.
@@ -944,8 +944,8 @@ class SimpleTestCase(BaseTestCase):
                 :param circuit: Circuit owning this Circuit element.
                 :param input_schema: Schema of the input value to the sorter.
                 """
-                AbstractReceiver.__init__(self, input_schema)
-                AbstractEmitter.__init__(self, input_schema.as_list())
+                Receiver.__init__(self, input_schema)
+                Emitter.__init__(self, input_schema.as_list())
 
                 self._circuit: Circuit = circuit  # is constant
                 self._element_id: Circuit.Element.ID = element_id  # is constant
@@ -977,9 +977,9 @@ class SimpleTestCase(BaseTestCase):
                 self._on_completion(signal)
 
         # create the circuit
-        a: AbstractEmitter = self.create_emitter(number_schema)
-        b: AbstractEmitter = self.create_emitter(number_schema)
-        c: AbstractEmitter = self.create_emitter(number_schema)
+        a: Emitter = self.create_emitter(number_schema)
+        b: Emitter = self.create_emitter(number_schema)
+        c: Emitter = self.create_emitter(number_schema)
         sorter: Sorter = self.circuit.create_element(Sorter, number_schema)
         recorder: Recorder = self.create_recorder(Value([0]).schema)
         recorder.connect_to(make_handle(sorter))
@@ -1033,7 +1033,7 @@ class SimpleTestCase(BaseTestCase):
         """
         Makes sure that Events fail gracefully if they encounter an expired Handle.
         """
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         self.circuit.emit_value(emitter, 234)
         del emitter
         self.assertEqual(self._handle_events(), 1)
@@ -1042,7 +1042,7 @@ class SimpleTestCase(BaseTestCase):
         """
         Makes sure that Events fail gracefully if they encounter an expired Handle.
         """
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         self.circuit.emit_failure(emitter, ValueError())
         del emitter
         self.assertEqual(self._handle_events(), 1)
@@ -1051,7 +1051,7 @@ class SimpleTestCase(BaseTestCase):
         """
         Makes sure that Events fail gracefully if they encounter an expired Handle.
         """
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         self.circuit.emit_completion(emitter)
         del emitter
         self.assertEqual(self._handle_events(), 1)
@@ -1062,8 +1062,8 @@ class SimpleTestCase(BaseTestCase):
         Note that this should be impossible for the user to achieve since you need to call the Circuit method directly,
         without going through the Receiver.
         """
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
-        receiver: AbstractReceiver = self.create_receiver(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
+        receiver: Receiver = self.create_receiver(number_schema)
         self.circuit.create_connection(emitter, receiver)
         del emitter
         self.assertEqual(self._apply_topology_changes(), 1)
@@ -1075,8 +1075,8 @@ class SimpleTestCase(BaseTestCase):
         Note that this should be impossible for the user to achieve since you need to call the Circuit method directly,
         without going through the Receiver.
         """
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
-        receiver: AbstractReceiver = self.create_receiver(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
+        receiver: Receiver = self.create_receiver(number_schema)
         self.circuit.create_connection(emitter, receiver)
         del receiver
         self.assertEqual(self._apply_topology_changes(), 1)
@@ -1088,8 +1088,8 @@ class SimpleTestCase(BaseTestCase):
         Note that this should be impossible for the user to achieve since you need to call the Circuit method directly,
         without going through the Receiver.
         """
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
-        receiver: AbstractReceiver = self.create_receiver(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
+        receiver: Receiver = self.create_receiver(number_schema)
         self.circuit.emit_completion(emitter)
         self.assertEqual(self._handle_events(), 1)
         self.circuit.create_connection(emitter, receiver)
@@ -1102,14 +1102,14 @@ class SimpleTestCase(BaseTestCase):
         """
         Makes sure that Events fail gracefully if they encounter an expired Handle.
         """
-        receiver: AbstractReceiver = self.create_receiver(number_schema)
+        receiver: Receiver = self.create_receiver(number_schema)
         operation: Operation = create_operation(number_schema, lambda v: v)
         handle: Operator.CreatorHandle = receiver.create_operator(operation)
         self.assertEqual(self._apply_topology_changes(), 1)
         del receiver
 
         # connect_to
-        emitter: AbstractEmitter = self.create_emitter(number_schema)
+        emitter: Emitter = self.create_emitter(number_schema)
         handle.connect_to(make_handle(emitter))
         self.assertEqual(self._apply_topology_changes(), 0)
         self.assertFalse(emitter.has_downstream())
@@ -1124,7 +1124,7 @@ class SimpleTestCase(BaseTestCase):
         you couldn't create instances of Signals in the first place, that would be restricted to Emitters ... but for
         coverage let's pretend like you can create your own Signals and are desperate to try to mess with the Receiver.
         """
-        receiver: AbstractReceiver = self.create_receiver(number_schema)
+        receiver: Receiver = self.create_receiver(number_schema)
         receiver.create_operator(create_operation(number_schema, lambda v: v))
 
         with self.assertRaises(AssertionError):
@@ -1149,7 +1149,7 @@ class EmitterRecorderCircuit(BaseTestCase):
         super().setUp()
 
         # create the circuit
-        self.emitter: AbstractEmitter = self.create_emitter(number_schema)
+        self.emitter: Emitter = self.create_emitter(number_schema)
         self.recorder1: Recorder = Recorder.record(self.emitter)
         self.recorder2: Recorder = Recorder.record(self.emitter)
         self._apply_topology_changes()
@@ -1305,7 +1305,7 @@ class NamedEmitterCircuit(BaseTestCase):
         super().setUp()
 
         # create the circuit
-        self.emitter: AbstractEmitter = self.create_emitter(number_schema)
+        self.emitter: Emitter = self.create_emitter(number_schema)
 
     def test_connection_mid_event(self):
         """
@@ -1317,12 +1317,12 @@ class NamedEmitterCircuit(BaseTestCase):
         def create_another_operator(_: ValueSignal):
             operator: Operator = create_operator(self.circuit, number_schema, lambda value: value)
             operators.append(operator)
-            emitter: Optional[AbstractEmitter.Handle] = operator._find_emitter(self.emitter.get_id())
+            emitter: Optional[Emitter.Handle] = operator._find_emitter(self.emitter.get_id())
             self.assertIsNotNone(emitter)
             operator.connect_to(emitter)
 
         # create a custom receiver and connect it to the circuit's emitter
-        receiver: AbstractReceiver = create_receiver(self.circuit, number_schema, on_value=create_another_operator)
+        receiver: Receiver = create_receiver(self.circuit, number_schema, on_value=create_another_operator)
         receiver.connect_to(make_handle(self.emitter))
         self.assertEqual(self._apply_topology_changes(), 1)
         self.assertEqual(len([rec for rec in self.emitter._downstream if rec() is not None]), 1)
@@ -1340,9 +1340,9 @@ class NamedEmitterCircuit(BaseTestCase):
         defined code that was executed later.
         """
 
-        class DisconnectOnValue(AbstractReceiver):
+        class DisconnectOnValue(Receiver):
             def __init__(self, circuit: 'Circuit', element_id: Circuit.Element.ID):
-                AbstractReceiver.__init__(self, number_schema)
+                Receiver.__init__(self, number_schema)
 
                 self._circuit: Circuit = circuit  # is constant
                 self._element_id: Circuit.Element.ID = element_id  # is constant
@@ -1354,19 +1354,19 @@ class NamedEmitterCircuit(BaseTestCase):
                 return self._circuit
 
             def _on_value(self, signal: ValueSignal):  # virtual
-                emitter_handle: Optional[AbstractEmitter.Handle] = self._find_emitter(signal.get_source())
+                emitter_handle: Optional[Emitter.Handle] = self._find_emitter(signal.get_source())
                 if emitter_handle is not None:
                     self.disconnect_from(emitter_handle)
 
         # we need to keep the created receivers alive until the end of the test
-        receivers: List[AbstractReceiver] = []
+        receivers: List[Receiver] = []
         for index in range(3):
             # create receivers and monkey patch their on_value method
-            receiver: AbstractReceiver = self.circuit.create_element(DisconnectOnValue)
+            receiver: Receiver = self.circuit.create_element(DisconnectOnValue)
             receivers.append(receiver)
 
             # connect each operator to the emitter
-            emitter: Optional[AbstractEmitter.Handle] = receiver._find_emitter(self.emitter.get_id())
+            emitter: Optional[Emitter.Handle] = receiver._find_emitter(self.emitter.get_id())
             self.assertIsNotNone(emitter)
             receiver.connect_to(emitter)
 
@@ -1407,7 +1407,7 @@ class OrderedEmissionTestCase(BaseTestCase):
                     return Value(result)
 
         # create the Circuit
-        self.a: AbstractEmitter = self.create_emitter(number_schema)
+        self.a: Emitter = self.create_emitter(number_schema)
         self.b: Operator = create_operator(self.circuit, number_schema, lambda value: Value(value.as_number() + 2))
         self.c: Operator = create_operator(self.circuit, number_schema, lambda value: Value(value.as_number() + 3))
         self.d: Operator = self.circuit.create_element(Operator, NodeDOp())
@@ -1517,7 +1517,7 @@ class SignalStatusTestCase(BaseTestCase):
         """
         Checks that the Signal status mechanism.
         """
-        distributor: AbstractEmitter = self.create_emitter(number_schema, is_blockable=True)
+        distributor: Emitter = self.create_emitter(number_schema, is_blockable=True)
         ignore1: Recorder = self._create_ignorer()  # records all values
         accept1: Recorder = self._create_accepter()  # records and accepts all values
         ignore2: Recorder = self._create_ignorer()  # should not record any since all are accepted
@@ -1526,7 +1526,7 @@ class SignalStatusTestCase(BaseTestCase):
         block2: Recorder = self._create_blocker()  # should not record any values
 
         # order matters here as the receivers are called in the order they connected
-        distributor_handle: AbstractEmitter.Handle = make_handle(distributor)
+        distributor_handle: Emitter.Handle = make_handle(distributor)
         ignore1.connect_to(distributor_handle)
         accept1.connect_to(distributor_handle)
         ignore2.connect_to(distributor_handle)
@@ -1547,14 +1547,14 @@ class SignalStatusTestCase(BaseTestCase):
         self.assertEqual([value.as_number() for value in block2.get_values()], [])
 
     def test_unblockable_signal(self):
-        distributor: AbstractEmitter = self.create_emitter(number_schema)  # default, unblockable signal
+        distributor: Emitter = self.create_emitter(number_schema)  # default, unblockable signal
         ignorer: Recorder = self._create_ignorer()  # records all values
         accepter: Recorder = self._create_accepter()  # records and accepts all values without effect
         blocker: Recorder = self._create_blocker()  # record and blocks all values without effect
         recorder: Recorder = self.create_recorder(number_schema)  # should record all values emitted from distributor
 
         # order matters here as the receivers are called in the order they connected
-        distributor_handle: AbstractEmitter.Handle = make_handle(distributor)
+        distributor_handle: Emitter.Handle = make_handle(distributor)
         ignorer.connect_to(distributor_handle)
         accepter.connect_to(distributor_handle)
         blocker.connect_to(distributor_handle)

@@ -288,7 +288,7 @@ I am going to say no. The reason here is that Operators derive from both Emitter
 Actually, the answer is yes because in order to serialize connections between emitters and receivers, we need an ID for both of them.
 Also, we cannot use the memory address of an Circuit Element as an ID because the memory address is tied to the lifetime of the Element and when we merge undo stacks or whatever, it would be nice if the IDs in the undo stack map to the correct Element. That's why it's an IDentifier, not a reference or pointer.
 
-In C++, we'd have a virtual empty base interface "Element" with an pure virtual function get_id. Both AbstractEmitter and AbstractReceiver are interface classes that inherit virtually from Element and themselves have pure virtual methods. Only concrete classes Emitter, Receiver, Operator etc. define and store an ElementID and implement their get_id methods.
+In C++, we'd have a virtual empty base interface "Element" with an pure virtual function get_id. Both Emitter and Receiver are interface classes that inherit virtually from Element and themselves have pure virtual methods. Only concrete classes Emitter, Receiver, Operator etc. define and store an ElementID and implement their get_id methods.
 
 Last thing: when you load a serialized Circuit, all Element IDs should be mapped to new ones, meaning that the counter is not actually serialized with the Circuit. This way, we cannot have people injecting faulty counters into a serialized Circuit and then causing runtime errors when the counter wraps. No! The only way to get an overrun is to let the counter increment in a running program. I want to see the criminal (?) energy in the person who does that over a few thousand years.
 

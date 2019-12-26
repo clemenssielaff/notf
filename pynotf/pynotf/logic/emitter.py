@@ -10,7 +10,7 @@ from .signals import ValueSignal, FailureSignal, CompletionSignal
 
 ########################################################################################################################
 # noinspection PyAbstractClass
-class AbstractEmitter(Circuit.Element):
+class Emitter(Circuit.Element):
     """
     Virtual interface class for Circuit Elements that emit Signals.
     Is non-copyable and may only be owned by downstream Receivers and Nodes.
@@ -25,7 +25,7 @@ class AbstractEmitter(Circuit.Element):
         In C++ Handles would be uncopyable.
         """
 
-        def __init__(self, emitter: 'AbstractEmitter'):
+        def __init__(self, emitter: 'Emitter'):
             """
             Constructor.
             :param emitter: Strong reference to the Emitter represented by this handle.
@@ -42,7 +42,7 @@ class AbstractEmitter(Circuit.Element):
             """
             Returns the Element ID of the Emitter or None if the handle has expired.
             """
-            emitter: AbstractEmitter = self._element()
+            emitter: Emitter = self._element()
             if emitter is None:
                 return None
             else:
@@ -52,7 +52,7 @@ class AbstractEmitter(Circuit.Element):
             """
             Returns the output schema of the Emitter or None, if the handle has expired.
             """
-            emitter: AbstractEmitter = self._element()
+            emitter: Emitter = self._element()
             if emitter is None:
                 return None
             else:
@@ -89,7 +89,7 @@ class AbstractEmitter(Circuit.Element):
         self._downstream: List[weak_ref] = []  # subclasses may only change the order
         self._output_schema: Value.Schema = schema  # is constant
         self._is_blockable: bool = is_blockable  # is constant
-        self._status: AbstractEmitter._Status = self._Status.IDLE
+        self._status: Emitter._Status = self._Status.IDLE
 
     def get_output_schema(self) -> Value.Schema:  # noexcept
         """
@@ -143,10 +143,10 @@ class AbstractEmitter(Circuit.Element):
 
         try:
             # sort out invalid receivers and compile a list of strong valid references
-            receivers: List[AbstractReceiver] = []
+            receivers: List[Receiver] = []
             highest_valid_index: int = 0
             for weak_receiver in self._downstream:
-                receiver: Optional[AbstractReceiver] = weak_receiver()
+                receiver: Optional[Receiver] = weak_receiver()
                 if receiver is not None:
                     receivers.append(receiver)
                     self._downstream[highest_valid_index] = weak_receiver  # could be a move or swap in C++
@@ -195,7 +195,7 @@ class AbstractEmitter(Circuit.Element):
 
             # emit to all receivers, ignore expired ones but don't remove them
             for weak_receiver in self._downstream:
-                receiver: Optional[AbstractReceiver] = weak_receiver()
+                receiver: Optional[Receiver] = weak_receiver()
                 if receiver is None:
                     continue
 
@@ -223,7 +223,7 @@ class AbstractEmitter(Circuit.Element):
 
             # emit to all receivers, ignore expired ones but don't remove them
             for weak_receiver in self._downstream:
-                receiver: Optional[AbstractReceiver] = weak_receiver()
+                receiver: Optional[Receiver] = weak_receiver()
                 if receiver is None:
                     continue
 
@@ -235,4 +235,6 @@ class AbstractEmitter(Circuit.Element):
             self._status = self._Status.COMPLETED
 
 
-from .receiver import AbstractReceiver
+########################################################################################################################
+
+from .receiver import Receiver
