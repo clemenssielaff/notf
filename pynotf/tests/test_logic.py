@@ -7,7 +7,7 @@ from random import randint as random_int
 from weakref import ref as weak_ref
 
 from pynotf.logic import AbstractReceiver, AbstractEmitter, Circuit, FailureSignal, CompletionSignal, ValueSignal, \
-    Operator, Element, Operation
+    Operator, Operation
 from pynotf.value import Value
 
 from tests.utils import number_schema, string_schema, Recorder, random_schema, create_emitter, create_receiver, \
@@ -233,7 +233,7 @@ class SimpleTestCase(BaseTestCase):
         """
         receiver: AbstractReceiver = self.create_receiver(number_schema)
         operator: AbstractEmitter.Handle = receiver.create_operator(create_operation(number_schema, lambda v: v))
-        operator_id: Element.ID = operator.get_id()
+        operator_id: Circuit.Element.ID = operator.get_id()
         self.assertEqual(self._apply_topology_changes(), 1)
         receiver.disconnect_upstream()
         self.assertEqual(self._apply_topology_changes(), 1)
@@ -938,7 +938,7 @@ class SimpleTestCase(BaseTestCase):
             emits them as a list when that Emitter has completed.
             """
 
-            def __init__(self, circuit: 'Circuit', element_id: Element.ID, input_schema: Value.Schema):
+            def __init__(self, circuit: 'Circuit', element_id: Circuit.Element.ID, input_schema: Value.Schema):
                 """
                 Constructor.
                 :param circuit: Circuit owning this Circuit element.
@@ -948,10 +948,10 @@ class SimpleTestCase(BaseTestCase):
                 AbstractEmitter.__init__(self, input_schema.as_list())
 
                 self._circuit: Circuit = circuit  # is constant
-                self._element_id: Element.ID = element_id  # is constant
+                self._element_id: Circuit.Element.ID = element_id  # is constant
                 self._storage: Dict[int, List[Value]] = {}
 
-            def get_id(self) -> Element.ID:  # final, noexcept
+            def get_id(self) -> Circuit.Element.ID:  # final, noexcept
                 return self._element_id
 
             def get_circuit(self) -> 'Circuit':  # final, noexcept
@@ -1341,13 +1341,13 @@ class NamedEmitterCircuit(BaseTestCase):
         """
 
         class DisconnectOnValue(AbstractReceiver):
-            def __init__(self, circuit: 'Circuit', element_id: Element.ID):
+            def __init__(self, circuit: 'Circuit', element_id: Circuit.Element.ID):
                 AbstractReceiver.__init__(self, number_schema)
 
                 self._circuit: Circuit = circuit  # is constant
-                self._element_id: Element.ID = element_id  # is constant
+                self._element_id: Circuit.Element.ID = element_id  # is constant
 
-            def get_id(self) -> Element.ID:  # final, noexcept
+            def get_id(self) -> Circuit.Element.ID:  # final, noexcept
                 return self._element_id
 
             def get_circuit(self) -> 'Circuit':  # final, noexcept
@@ -1470,7 +1470,7 @@ class SignalStatusTestCase(BaseTestCase):
 
         class Ignorer(Recorder):
 
-            def __init__(self, circuit: Circuit, element_id: Element.ID):
+            def __init__(self, circuit: Circuit, element_id: Circuit.Element.ID):
                 Recorder.__init__(self, circuit, element_id, number_schema)
 
             def _on_value(self, signal: ValueSignal):
@@ -1486,7 +1486,7 @@ class SignalStatusTestCase(BaseTestCase):
 
         class Accepter(Recorder):
 
-            def __init__(self, circuit: Circuit, element_id: Element.ID):
+            def __init__(self, circuit: Circuit, element_id: Circuit.Element.ID):
                 Recorder.__init__(self, circuit, element_id, number_schema)
 
             def _on_value(self, signal: ValueSignal):
@@ -1502,7 +1502,7 @@ class SignalStatusTestCase(BaseTestCase):
 
         class Blocker(Recorder):
 
-            def __init__(self, circuit: Circuit, element_id: Element.ID):
+            def __init__(self, circuit: Circuit, element_id: Circuit.Element.ID):
                 Recorder.__init__(self, circuit, element_id, number_schema)
 
             def _on_value(self, signal: ValueSignal):

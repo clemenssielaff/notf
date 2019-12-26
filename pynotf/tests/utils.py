@@ -2,7 +2,7 @@ from typing import List, Optional, Union, Callable, TypeVar
 from random import randint as random_int, choice as random_choice, shuffle
 
 from pynotf.logic import Operator, AbstractReceiver, AbstractEmitter, Circuit, ValueSignal, FailureSignal, \
-    CompletionSignal, Element, Operation
+    CompletionSignal, Operation
 from pynotf.value import Value
 
 T = TypeVar('T')
@@ -62,11 +62,11 @@ class Recorder(AbstractReceiver):
     A Recorder is a special Receiver for test cases that simply records all signals that it receives.
     """
 
-    def __init__(self, circuit: 'Circuit', element_id: Element.ID, schema: Value.Schema):
+    def __init__(self, circuit: 'Circuit', element_id: Circuit.Element.ID, schema: Value.Schema):
         AbstractReceiver.__init__(self, schema)
 
         self._circuit: Circuit = circuit  # is constant
-        self._element_id: Element.ID = element_id  # is constant
+        self._element_id: Circuit.Element.ID = element_id  # is constant
         self.signals: List[Union[ValueSignal, FailureSignal, CompletionSignal]] = []
 
     @classmethod
@@ -78,7 +78,7 @@ class Recorder(AbstractReceiver):
         recorder.connect_to(make_handle(emitter))
         return recorder
 
-    def get_id(self) -> Element.ID:
+    def get_id(self) -> Circuit.Element.ID:
         return self._element_id
 
     def get_circuit(self) -> 'Circuit':
@@ -143,12 +143,12 @@ def create_emitter(circuit: Circuit, schema: Value.Schema, is_blockable: bool = 
     """
 
     class AnonymousEmitter(AbstractEmitter):
-        def __init__(self, circuit_: 'Circuit', element_id: Element.ID):
+        def __init__(self, circuit_: 'Circuit', element_id: Circuit.Element.ID):
             AbstractEmitter.__init__(self, schema, is_blockable)
             self._circuit: Circuit = circuit_  # is constant
-            self._element_id: Element.ID = element_id  # is constant
+            self._element_id: Circuit.Element.ID = element_id  # is constant
 
-        def get_id(self) -> Element.ID:
+        def get_id(self) -> Circuit.Element.ID:
             return self._element_id
 
         def get_circuit(self) -> 'Circuit':
@@ -172,12 +172,12 @@ def create_receiver(circuit: Circuit, schema: Value.Schema,
     """
 
     class AnonymousReceiver(AbstractReceiver):
-        def __init__(self, circuit_: 'Circuit', element_id: Element.ID):
+        def __init__(self, circuit_: 'Circuit', element_id: Circuit.Element.ID):
             AbstractReceiver.__init__(self, schema)
             self._circuit: Circuit = circuit_  # is constant
-            self._element_id: Element.ID = element_id  # is constant
+            self._element_id: Circuit.Element.ID = element_id  # is constant
 
-        def get_id(self) -> Element.ID:
+        def get_id(self) -> Circuit.Element.ID:
             return self._element_id
 
         def get_circuit(self) -> 'Circuit':
@@ -234,7 +234,7 @@ def create_operator(circuit: Circuit,
     """
 
     class AnonymousOperator(Operator):
-        def __init__(self, circuit_: 'Circuit', element_id: Element.ID):
+        def __init__(self, circuit_: 'Circuit', element_id: Circuit.Element.ID):
             Operator.__init__(self, circuit_, element_id, create_operation(schema, operation, output_schema))
 
     return circuit.create_element(AnonymousOperator)
