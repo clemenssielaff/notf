@@ -12,7 +12,6 @@ from .signals import ValueSignal, FailureSignal, CompletionSignal
 
 ########################################################################################################################
 
-
 class Operation(ABC):
     """
     Operations are Functors that define an Operator.
@@ -46,7 +45,6 @@ class Operation(ABC):
 
 
 ########################################################################################################################
-
 
 class Operator(Receiver, Emitter):  # final
     """

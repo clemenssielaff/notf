@@ -53,9 +53,9 @@ class Error(NamedTuple):
     """
 
     class Kind(Enum):
-        NO_DAG = 1  # Exception raised when a cyclic dependency was detected in the graph.
-        WRONG_VALUE_SCHEMA = 2
-        USER_CODE_EXCEPTION = 3
+        NO_DAG = 1  # a cycle was detected during Event handling
+        WRONG_VALUE_SCHEMA = 2  # the Schema of a Value did not match the expected
+        USER_CODE_EXCEPTION = 3  # an exception was propagated out of user-defined Code
 
     element: weak_ref  # weak reference to the element
     kind: Kind  # kind of error caught in the circuit

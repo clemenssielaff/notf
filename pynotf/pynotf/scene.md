@@ -1,7 +1,35 @@
 # The Scene
 
 
-# Nodes and User-Code
+# The Node
+
+* Have IPlugs and OPlugs
+* Have Properties
+* Have a state machine
+* Have a private data Value
+* Have a dict of named Callbacks
+* Have a single, constant and always valid parent Node (except the Root)
+* Have 0-n children in a data structure that can produce a strong order of children
+* Have a name, that is unique in their parent node
+* Can be accessed using absolute or relative paths
+
+Nodes have input and output plugs, special Receiver and Emitters that that allow the Node to communicate with the rest of the Circuit. Input Plugs (IPlugs) take a ValueSignal and ignore all others (apart from disconnecting, which a Receiver does automatically). They then forward the ValueSignal to a Callback inside the Node. Which callback they forward to can be changed at runtime as part of the Node's state machine.
+
+Nodes can only be created by a parent and only be removed by a parent. When a parent removes a Node, it will first remove all of its children in turn before calling user - defined or any other self - removal code. This way we can guarantee that child nodes sways have a valid, fully initialized parent for their entire lifetime.
+
+Properties are basically Operators with a state-less Operation.
+
+## Node Paths
+
+Instead of a central name register, every node has a path. This way, you can request child nodes in user-code or any node in the graph that you know the absolute or relative path to, actually - plus if the path is a string it can be put into a value
+
+IPlugs, OPlugs and Properties share the same namespace, each can be addressed as part of the node using the syntax "/first_ancestor/.../node:property" (or :iplug, :oplug)
+
+Nodes cannot be reparented
+Imagine they could, and you had an Emitter that sorts receivers by depth using a quad tree. Every time you iterate, you'd need to rebuild the tree - because you would never know whether an existing receiver had changed its location in the scene. That's quite a bit of overhead. 
+This also means, you cannot move nodes in the list of children of the parent once they are in there. You can insert new nodes in between but the relative order between existing siblings must not change
+
+## Nodes and User-Code
 
 Nodes are *the* place to build the UI through user-defined code. Of course, the code cannot be just injected anywhere, we have a specific place for it: Callbacks. A Callback is something that can be connected to an Input Plug (IPlug), the connection can be modified at run-time. This Callback receives a Value from the IPlug, but in order to work effectively, it also needs access to other members of the Node - some of which might have been user-defined as well. What are these things?
 
@@ -11,6 +39,34 @@ Nodes are *the* place to build the UI through user-defined code. Of course, the 
 4. Self, in order to create or remove child nodes.
 
 That looks like a function signature (self, ValueSignal) to me. A Callback has a name, which can be registered with the IPlug. An IPlug can only call a single or no Callback - we don't allow multiple connected Callbacks. Of course, you can set up the one Callback to call two other ones, but that's your responsibility.
+
+## Private Node Data
+
+Original question: *Should properties always emit a pair of old/ new value?*
+ 
+The reason why I thought this might be a good idea is that otherwise you could have functions that require both values, for example to check if the value changed from positive to negative or whatever. If you only provide the one value, the Node must store the previous value somewhere. 
+
+Then again, I guess we could just allow a single Value as state of the Node, one that is not a Property and is private to the Node itself. 
+
+## Node State Machine
+
+### State Switching
+
+The question right now is if Receivers always call their new callbacks right away or not - and if they do, in which order?
+
+My first instinct was to say "Whenever a Callback is reassigned, the new one is called immediately with the latest Value". Then I realized, that during a State change this would mean that the first Callback is called before the last Callback in the State change has a change to switch leading to weird race-conditions where one Callback somehow triggers others (through Properties) even though they are currently undergoing a State change.
+The next step was to say, after a State change, all new Callbacks are called once, this way we don't have any in-transition calls. This sounds like it is required for a working system but not sufficient yet. After all, the order in which the Callbacks are called is also important. Ideally, it shouldn't but I am not sure if I can rely on orthogonality between Callbacks.
+
+Actually, I can be sure that they are not orthogonal. What about a Node that has different Callbacks for "mouse down" and "mouse up"? Even though it isn't specified anywhere in the Node, it is reasonable to expect "mouse down" to be the first call and a corresponding "mouse up" before the next one.
+
+Maybe then, this idea of re-emitting Values from IPlugs and Properties is a bad idea to begin with? 
+Yes it is.
+Instead, a State change should go like this:
+
+1. StateA:Enter function is called. StateA is the entry State of the Node.
+2. Somehow a transition to StateB is triggered.
+3. StateA:Exit function is called
+4. StateB:Enter function is called
 
 ## Is a Widget a Node?
 
@@ -35,75 +91,6 @@ The same goes for anything else that might be used as "removal light", like remo
 ## Properties
 
 Widget Properties act like Operators. Instead of having a fixed min- or max or validation function, we can simply define an Operations that is applied to each new input.
-
-
-Dead Ends
-========= ==============================================================================================================
-*WARNING!* 
-The chapters below are only kept as reference of what doesn't make sense, so that I can look them up once I re-discover 
-the "brilliant" idea underlying each one. Each chapter has a closing paragraph on why it actually doesn't work.
-
-
-## Multithreaded evaluation
-
-The topic of true parallel execution of the Application Logic has been a difficult one. On the surface it seems like
-it should be possible - after all, what is the Logic but a DAG? And parallel graph execution has been done countless 
-times. The problem however is twofold:
-    1. Logic operations are allowed to add, move or remove other operations in the Logic graph.
-    2. Since we allow user-defined code to execute in the Logic (be that dynamically through scripting or statically 
-       at compile time), we cannot be certain what dependencies an operation has.
-Actually, looking at the problems - it is really just one: User-defined code. 
-
-This all means that it is impossible to statically determine the topology of the graph. Even if you propagate an Event 
-once, you cannot be certain that the same Event with a different Value would reach the same child operations, since any
-Operation could contain a simply if-statement for any specific case which would be transparent from the outside. And
-event with the same Value you might get a different result, as long as the user defined code is allowed to store its own
-state.
-Without a fixed topology, you do not have multithreaded execution.
-
-However ...  
-There is this idea called "Event Sourcing" (https://martinfowler.com/eaaDev/EventSourcing.html) that basically says that
-instead of storing the state of something, we only store all the events that modify that something and then, if someone
-asks, use the events to generate the state that we need. For example, instead of storing the amount of money in the bank
-account, we assume that it starts with zero and only store transactions. Then, if you want to look up your current
-balance, we replay all transactions and generate the answer.
-That alone does not help here though. Our problem is not the state of the Logic, but its lack of visibility. We only
-know which Logic operators were read, written, created or destroyed *after* the event has been processed. Since there
-is no way to know that in advance, we cannot schedule multiple threads executing the Logic in parallel without creating
-race conditions.
-But what if we keep a record of ever read, write, creation or destruction that ever event triggered? This will not solve
-the problems of racy reads and writes, but it will allow us to reason about dependencies of events after the fact.
-So if we have event A and B (in that order), we handle both in parallel (based on the Logic as it presented itself at
-the start of the event loop) and afterwards find out that they touched completely different operators? We do nothing.
-There was no possible race condition and we can update the Logic using the CRUD (create, read, update, delete) records
-that both Events generated independently. If however we find an Switch that:
-    * A and B wrote to
-    * A wrote to and B read
-    * A destroyed and B read
-we must assume that the records from B are invalid, as it was run on an outdated Logic graph. Now we need to re-run B, 
-after applying the changes from A. 
-And yes, that does mean that we might have to do some work twice. It also means that we  have to keep track of child 
-events, so they too can be destroyed should their parent (B in the example) be found out to be invalid; otherwise B 
-might spawn invalid and/or duplicate child events. But on the plus side, if enough events are independent (which I 
-assume they will be) we can have true parallel execution for most Events.
-Whether or not this is actually useful is left to be determined through profiling.
-
-Okay, counterpoint: Since we have user-defined code; *state-full* user-defined code, how can we guarantee that the 
-effect of an Event can be truly reversible? Meaning, if we do find that B is invalid, how can we restore the complete
-state of the Logic graph to before B was run? "complete" being the weight-bearing word here. The point is: we can not.
-Not, as long as the user is able to keep her own state around that we don't know anything about.
-The true question is: can we allow that? Or asked differently, do we gain enough by cutting the user's ability to 
-manage her own state? 
-Probably not. The dream of true parallel Logic execution remains as alluring as it is elusive. It sure sounds good to 
-say that all events are executed in parallel, but that might well be a burden. It is not unlikely that most events will 
-be short or even ultra-short lived (by that I mean that they are emitted straight into Nirvana, without a single 
-Receiver to react) and opening up a new thread for each one would be a massive overhead. On top of that, you'd have to
-record CRUD and analyse the records - more overhead. And we didn't even consider the cost of doing the same work twice 
-if a collision in the records is found. Combine that with the fact that we would need to keep track of *all* of the 
-state and must forbid the user to manage any of her own ... I say it is not worth it.
-
-
-## Property Visibility
 
 In previous versions, Node Properties had a flag associated with their type called "visibility". A visible Property was
 one that, when changed, would update the visual representation of the Widget and would cause a redraw of its Design.

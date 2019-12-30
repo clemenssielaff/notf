@@ -654,6 +654,8 @@ to an Emitter that has completed at the time of the event's epilogue. We could s
 
 # Asynchronous Operations
 
+## Revision Number 1
+
 Many languages allow await/async syntax, Python is among them. I want to do something similar in the general case, using fibers in C++. Where in the Logic graph do we allow for asynchronous code to run? One easy answer is to put them behind dedicated "async-operations", that take a value + Signal and spawn a new coroutine that can be suspended while waiting on some asynchronous event to take place. This leads to follow up questions:
 
 1. Do we switch to new coroutines immediately and run them until they halt? Or Are they scheduled to run immediately after the non-concurrent code has finished?
@@ -667,3 +669,57 @@ Example: A mouse click is delivered to two unrelated widgets that happen to over
 
 Interestingly this mirrors the way Python handles its own async code: You have to mark async functions with the async keyword and only then can you await.
 
+## Revision Number 2
+
+Like Facts, I suspect there could be a new type of Circuit Element, one that acts like an Operator, but one that does not emit a new Signal right away. Instead, what it would do is ingest a value and then kick off some sort of asynchronous function that is scheduled in the async loop supported by the system. I suppose that could be fibers in C++, in Python that will be asyncio.
+Like an Operator, this Async Operator should be both a Receiver and an Emitter, it should have a private data Value and ... three functions?
+
+1. Async prologue: Synchronous function that takes the new value, can accept or reject the signal and then decide between three outcomes: 
+    1. Do nothing
+    2. Skip the asynchronous function and go to the epilogue immediately
+    3. Invoke the asynchronous function
+2. A asynchronous function that sits between the prologue and epilogue. Conceptually (maybe really?), it runs on a different thread than the logic thread and must be a pure function, as in that it only receives a single Value and can only return a single Value or None. An Operation basically. For it to work like an operation, it should also get a copy of the AsyncOperator's private data Value ... okay, so it takes *two* arguments: state (Operator data) and the new Value and return an Optional[Value].
+3. Async Prologue: Synchronous function that is invoked on the function returned by the async function if it returned a Value and not None. I suppose this method will most likely be empty for most implementations, so by default it should just take the Value and emit it. We still need this method through, to implement caching, for example. In that scenario, the AsyncOperator would do a look-up in a list of values, that can be accessed by index. Every time the user asks for the data of a new index, the prologue would take the index and look it up in the cache of previously checked indices. If it is there, it will skip the async function and go to the epilogue immediately. If it isn't there, it will invoke the async function which will return eventually and let the epilogue know that there is a new value to cache. 
+
+Of course, this entails that we need to keep track of multiple Value Schemas:
+
+1. Input of the prologue
+2. Input of the async function
+3. Output of the async function / Input of the epilogue
+4. Output of the epilogue
+
+The output of the prologue can therefore be either 2. or 3. ... I think that is acceptable, if a bit smelly? Not really, though, the Value does not decide which path is taken and for each path (async or epilogue) there is only one accepted Schema.
+
+In the example above, we have the following:
+
+1. number
+2. number
+3. {"status": number, "record": {"name": string, "year": number}}
+4. {"name": string, "year": number}
+
+With number 3 including both the record as well as additional information for the epilogue, whether the value is new, updated or from cache (or however the logic goes).
+
+This approach also sidesteps the question whether asynchronous code should execute immediately or be delayed until the end of the end (the second, but the point is: it doesn't matter) because the AsyncOperator epilogue is a new Event that is executed only after the current one has completed.
+
+## Revision Number 3
+
+The approach from Rev. 2 assumed, that the Operator was able to perform some sort of scheduling asynchronous calls itself - however, it cannot. At least not without access to some sort of lower-level scheduling mechanism. There is one place for exactly those things though: and that is Services. Services (be they Nodes or something else) are made to provide asynchronous interfaces to the outside world. And they cannot function without access to some low-level machinery, so I suppose they are outside the scope of the UI frontend.
+
+This brings up the question of how an Operator (or anybody for that matter) is able to communicate with Services. From a high-level perspective, I like the idea of having Async Operators, but they too need some way to communicate with Services in-code. And in order to do that, I think strings are the way to go. That's how the web works, that's how SQL works, I think we can make it work as well.
+
+So, in this third revision, instead of having an async function in the AsyncOperator, we instead only have the prologue and epilogue and leave the async stuff to a Service. This simplifies the number of Value Schemas to:
+
+1. Input of the prologue
+2. Input of the epilogue
+3. Output of the epilogue
+
+whereas 3. == 2. by default. That's only one additional Schema to a synchronous Operator, which sounds appropriate. The prologue returns either a String or Value for the epilogue, plus an additional signifier, which one of the two paths to take, since the input of the epilogue might also be a String. Maybe we can make it so that by default, the async function is called (because that's why you put an AsyncOperator there in the first place), but you can optionally skip it by supplying an extra flag or something..?
+
+Note that the user-defined code still isn't allowed to call the Service directly, instead the name (or some other identifier, depending on how that ends up working) of the Service is passed to the AsyncOperator on Construction time, so it can be safely invoked from our code.
+
+Another thought: Not every call to the prologue is matched to a call to the epilogue and vice-versa. Instead, I can imagine a scenario in which you ask for some thing that is changing (maybe the temperature reading of some sensor). Here, you would set up the AsyncOperator to take a sensor ID as input and then expect the AO to emit, whenever a new reading has become available. So you have one input and n outputs.
+In another Scenario, you are waiting forever for an async operation to finish but would like to have some default value right away. Something like "I am expecting this Value to be X (which is the input number), let me know whenever it changes." Here, you might want to have the epilogue emit X immediately, since a new Value might never be emitted. Of course, you know X already so it doesn't make much sense *for you* to get X back right away, but other Receivers might not know X yet and are listening to the Operator to provide the value.
+
+The second scenario is actually a good case for the prologue not returning a Service-String *or* a Value for the epilogue, but both. Meaning, the epilogue can always be called right away on top of whatever the async Service emits later on. Of course, you should also be able to inhibit both calls, so I guess the final signature of the prologue return object is:  
+Tuple[Optional[String], Optional[Value]]  
+with the first String being the Service string and the Value the input for the epilogue function. If you pass (None, None) then nothing happens.
