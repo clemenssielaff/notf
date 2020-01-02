@@ -39,7 +39,7 @@ class Receiver(Circuit.Element):
         """
         return len(self._upstream) != 0
 
-    def create_operator(self, operation: 'Operation') -> Optional['Operator.CreatorHandle']:  # noexcept
+    def create_operator(self, operation: 'Operator.Operation') -> Optional['Operator.CreatorHandle']:  # noexcept
         """
         Creates and connects to a new Operator upstream.
         :param operation: Operation defining the Operator.
@@ -225,4 +225,4 @@ class Receiver(Circuit.Element):
 ########################################################################################################################
 
 from .emitter import Emitter
-from .operator import Operator, Operation
+from .operator import Operator

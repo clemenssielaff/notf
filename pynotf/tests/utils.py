@@ -2,7 +2,7 @@ from typing import List, Optional, Union, Callable, TypeVar
 from random import randint as random_int, choice as random_choice, shuffle
 
 from pynotf.logic import Operator, Receiver, Emitter, Circuit, ValueSignal, FailureSignal, \
-    CompletionSignal, Operation
+    CompletionSignal
 from pynotf.value import Value
 
 T = TypeVar('T')
@@ -207,7 +207,7 @@ def create_operation(schema: Value.Schema, operation: Callable, output_schema: O
     :return:                New instance of the Operation class.
         """
 
-    class AnonymousOperation(Operation):
+    class AnonymousOperation(Operator.Operation):
         def get_input_schema(self) -> Value.Schema:
             return schema
 

@@ -8,7 +8,7 @@ from itertools import product
 
 from pynotf.value import Value
 from pynotf.logic import Emitter, Receiver
-from pynotf.scene import Executor, Fact, Scene, RootNode, Node, Property
+from pynotf.scene import Executor, Fact, Scene, RootNode, Widget, Property
 
 from tests.utils import record, Recorder, ErrorOperation, ClampOperation, StringifyOperation, NumberEmitter, NumberFact, \
     EmptyFact
@@ -19,15 +19,15 @@ from tests.utils import record, Recorder, ErrorOperation, ClampOperation, String
 ########################################################################################################################
 
 
-class TestNode(Node):
-    def __init__(self, parent: 'Node', name: Optional[str] = None):
-        definition: Node.Definition = Node.Definition()
+class TestNode(Widget):
+    def __init__(self, parent: 'Widget', name: Optional[str] = None):
+        definition: Widget.Definition = Widget.Definition()
         definition.add_property("prop_number", Value(0), ClampOperation(0., 10.), ErrorOperation(4))
         definition.add_property("prop_string", Value(""))
         definition.add_signal("number_output", Value(0).schema)
         definition.add_slot("number_input", Value(0).schema)
         definition.add_slot("removal", )
-        Node.__init__(self, parent, definition, name)
+        Widget.__init__(self, parent, definition, name)
 
         # TODO: this is atrocious. Nodes should have a general-purpose keep-alive set for Receiver
 
@@ -190,17 +190,17 @@ class TestCase(unittest.TestCase):
         self.assertFalse(prop.is_completed())
 
     def test_create_property_error(self):
-        class PropertyOperationsMustMatchValue(Node):
-            def __init__(self, parent: 'Node', name: Optional[str] = None):
-                definition: Node.Definition = Node.Definition()
+        class PropertyOperationsMustMatchValue(Widget):
+            def __init__(self, parent: 'Widget', name: Optional[str] = None):
+                definition: Widget.Definition = Widget.Definition()
                 definition.add_property("mismatch", Value(""), ClampOperation(0, 10))
-                Node.__init__(self, parent, definition, name)
+                Widget.__init__(self, parent, definition, name)
 
-        class PropertiesCannotConvert(Node):
-            def __init__(self, parent: 'Node', name: Optional[str] = None):
-                definition: Node.Definition = Node.Definition()
+        class PropertiesCannotConvert(Widget):
+            def __init__(self, parent: 'Widget', name: Optional[str] = None):
+                definition: Widget.Definition = Widget.Definition()
                 definition.add_property("stringify", Value(0), StringifyOperation())
-                Node.__init__(self, parent, definition, name)
+                Widget.__init__(self, parent, definition, name)
 
         scene = Scene()
         with self.assertRaises(TypeError):
@@ -217,20 +217,20 @@ class TestCase(unittest.TestCase):
             @staticmethod
             def to_func(kind):
                 if kind is Kind.PROP:
-                    return Node.Definition.add_property
+                    return Widget.Definition.add_property
                 elif kind is Kind.SLOT:
-                    return Node.Definition.add_slot
+                    return Widget.Definition.add_slot
                 elif kind is Kind.SIGN:
-                    return Node.Definition.add_signal
+                    return Widget.Definition.add_signal
                 assert False
 
         def make_error_class(first_kind: Kind, second_kind: Kind):
-            class ErrorClass(Node):
-                def __init__(self, parent: 'Node', name: Optional[str] = None):
-                    definition: Node.Definition = Node.Definition()
+            class ErrorClass(Widget):
+                def __init__(self, parent: 'Widget', name: Optional[str] = None):
+                    definition: Widget.Definition = Widget.Definition()
                     Kind.to_func(first_kind)(definition, "duplicate name", Value(0))
                     Kind.to_func(second_kind)(definition, "duplicate name", Value(0))
-                    Node.__init__(self, parent, definition, name)
+                    Widget.__init__(self, parent, definition, name)
 
             return ErrorClass
 

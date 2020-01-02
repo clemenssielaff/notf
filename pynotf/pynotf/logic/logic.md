@@ -87,28 +87,7 @@ An Event is an object that is passed to the Circuit to be handled. It references
 - [X] The Operation call signature takes a Value as only argument while returning an Optional[Value]>.
 - [X] Before the returned Value is accepted, its schema is checked against the Emitter's output schema.
 
-## EventLoop
-- [ ] Stores an optional function pointer with no arguments, no return value that is called after the Circuit has performed post-event cleanup.
-
-## Node
-
-## Slot
-- [ ] Is-a Receiver that forwards ValueSignals to 0-1 method of their associated Node object.
-- [ ] Has a single, constant Node object associated with it.
-- [ ] Which method is forwarded to can be changed by the associated Node.
-
-## Property
-
-## Scene
-- [ ] Keeps a queue of Nodes to delete after an event has finished.
-- [ ] Owns a Circuit object.
-- [ ] Has a post-event cleanup method that it registers with its Circuit object.
-
-## Event
-
 ## Fact
-
-## Service
 
 ====
 

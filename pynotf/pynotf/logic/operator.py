@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional
 from weakref import ref as weak_ref
@@ -12,46 +13,43 @@ from .signals import ValueSignal, FailureSignal, CompletionSignal
 
 ########################################################################################################################
 
-class Operation(ABC):
-    """
-    Operations are Functors that define an Operator.
-    """
-
-    @abstractmethod
-    def get_input_schema(self) -> Value.Schema:
-        """
-        The Schema of an input value of the Operation.
-        """
-        pass
-
-    @abstractmethod
-    def get_output_schema(self) -> Value.Schema:
-        """
-        The Schema of an output value of the Operation.
-        """
-        pass
-
-    @abstractmethod
-    def __call__(self, value: Value) -> Optional[Value]:
-        """
-        Perform the Operation on a given value.
-        If this function returns a Value, it will be emitted by the Operator.
-        If this function returns None, no emission will take place.
-        Exceptions thrown by this function will cause the Operator to fail.
-        :param value: Input value, conforms to the input Schema.
-        :return: Either a new output value conforming to the output Schema or None.
-        """
-        raise NotImplementedError()
-
-
-########################################################################################################################
-
 class Operator(Receiver, Emitter):  # final
     """
     Operators are use-defined functions in the Circuit that take a Value and maybe produce one. Not all input values
     generate an output value though.
     Operators will complete automatically once all upstream Emitters have completed or through failure.
     """
+
+    class Operation(ABC):
+        """
+        Operations are Functors that define an Operator.
+        """
+
+        @abstractmethod
+        def get_input_schema(self) -> Value.Schema:
+            """
+            The Schema of an input value of the Operation.
+            """
+            pass
+
+        @abstractmethod
+        def get_output_schema(self) -> Value.Schema:
+            """
+            The Schema of an output value of the Operation.
+            """
+            pass
+
+        @abstractmethod
+        def __call__(self, value: Value) -> Optional[Value]:
+            """
+            Perform the Operation on a given value.
+            If this function returns a Value, it will be emitted by the Operator.
+            If this function returns None, no emission will take place.
+            Exceptions thrown by this function will cause the Operator to fail.
+            :param value: Input value, conforms to the input Schema.
+            :return: Either a new output value conforming to the output Schema or None.
+            """
+            raise NotImplementedError()
 
     class CreatorHandle(Emitter.Handle):
         """
@@ -77,7 +75,7 @@ class Operator(Receiver, Emitter):  # final
                 assert isinstance(operator, Operator)
                 operator.connect_to(emitter_handle)
 
-        def create_operator(self, operation: 'Operation') -> Optional['Operator.CreatorHandle']:  # noexcept
+        def create_operator(self, operation: Operator.Operation) -> Optional[Operator.CreatorHandle]:  # noexcept
             """
             Creates and connects this newly created Operator to another new Operator upstream.
             Does nothing if the Handle has expired.
@@ -101,7 +99,7 @@ class Operator(Receiver, Emitter):  # final
 
         self._circuit: Circuit = circuit  # is constant
         self._element_id: Circuit.Element.ID = element_id  # is constant
-        self._operation: Operation = operation  # is constant
+        self._operation: Operator.Operation = operation  # is constant
 
     def get_id(self) -> Circuit.Element.ID:  # final, noexcept
         """

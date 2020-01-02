@@ -57,8 +57,8 @@ class FailureSignal(CompletionSignal):  # public inheritance in C++ ... failure 
 class ValueSignal(CompletionSignal):  # protected inheritance only for the get_source function but no is-a relationship
     """
     Signal emitted by an Emitter containing the next value in its data stream.
-    Must be copyable, so that Node Callbacks can work on a copy and the change is only applied to the original Signal if
-    the Callback succeeded. It doesn't need to be assignable though.
+    Must be copyable, so that Widget Callbacks can work on a copy and the change is only applied to the original Signal
+    if the Callback succeeded. It doesn't need to be assignable though.
     """
 
     class _Status(Enum):

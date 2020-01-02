@@ -6,8 +6,7 @@ from typing import List, Optional, ClassVar, Dict, Any
 from random import randint as random_int
 from weakref import ref as weak_ref
 
-from pynotf.logic import Receiver, Emitter, Circuit, FailureSignal, CompletionSignal, ValueSignal, \
-    Operator, Operation
+from pynotf.logic import Receiver, Emitter, Circuit, FailureSignal, CompletionSignal, ValueSignal, Operator
 from pynotf.value import Value
 
 from tests.utils import number_schema, string_schema, Recorder, random_schema, create_emitter, create_receiver, \
@@ -563,7 +562,7 @@ class SimpleTestCase(BaseTestCase):
         0, 1, 2, 3 -> group two -> (0, 1), (2, 3)
         """
 
-        class GroupTwo(Operation):
+        class GroupTwo(Operator.Operation):
             """
             Groups two subsequent numbers into a pair.
             """
@@ -1103,7 +1102,7 @@ class SimpleTestCase(BaseTestCase):
         Makes sure that Events fail gracefully if they encounter an expired Handle.
         """
         receiver: Receiver = self.create_receiver(number_schema)
-        operation: Operation = create_operation(number_schema, lambda v: v)
+        operation: Operator.Operation = create_operation(number_schema, lambda v: v)
         handle: Operator.CreatorHandle = receiver.create_operator(operation)
         self.assertEqual(self._apply_topology_changes(), 1)
         del receiver
@@ -1388,7 +1387,7 @@ class OrderedEmissionTestCase(BaseTestCase):
     def setUp(self):
         BaseTestCase.setUp(self)
 
-        class NodeDOp(Operation):
+        class NodeDOp(Operator.Operation):
             def __init__(self):
                 self.first: Optional[float] = None
 
