@@ -2,18 +2,22 @@
 
 The Scene takes its name from the "Scene Graph" that is inherit in many game engines or DCC tools. It is older than the Circuit in its conception but has now been delegated to serve "only" ownership and management functionality.  The Scene is conceptually somewhat orthogonal to the Logic, but the Scene module depends on the Logic module and not the other way around.
 
-Basically, a Scene is a tree (which is technically a graph, but a Circuit is even more "graph-like", hence we dropped the "Graph" entire) of Widgets. There is one root Widget in a Scene, and like every other Widget, it can have 0-n children. Every Widget has a single parent that outlives it and cannot be changed. The Scene object itself is mostly used for reference and is otherwise just a container for the root Widget. Most of this document deals with the intricacies of Widget. When the Scene is removed, it will safely destroy all of the Widgets from the leaf Widgets up, meaning that the root is the last to go.
+Basically, a Scene is a tree of Widgets. There is one root Widget in a Scene, and like every other Widget, it can have 0-n children. Every Widget has a single parent that outlives it and cannot be changed. When the Scene is removed, it will safely destroy all of the Widgets from the leaf Widgets up, meaning that the root is the last to go.
 
-A Scene owns a Circuit and manages it, you could say that the Scene is like a managed Circuit that allows the user to inject user-defined code at very specific places that are as expressive as possible while still being safe. All modification of a Scene (and its Circuit) is confined to the Logic thread and is assumed to be single threaded. You can have parallel loops or similar approaches where they make sense, but they must operate on local data only.
+A Scene owns a Circuit and manages it in a way that allows the user to inject user-defined code at very specific places that are as expressive as possible while still being safe. All modification of a Scene (and its Circuit) is confined to the Logic thread and is assumed to be single threaded. You can have parallel loops or similar approaches where they make sense, but they must operate on local data only. Much like Circuit Elements, the removal of Widget in the Scene is delayed until the end of an Event.
 
 # Quick Facts
 
 ## Scene
-- [ ] Owns the root of the Widget hierarchy and safely deletes it up on destruction.
-- [ ] Owns the Circuit that contains all Widgets' Circuit Elements (Input/Output Plugs and Properties).
-- [ ] Keeps a queue of Widgets to delete after an event has finished.
+- [X] Owns the root of the Widget hierarchy and safely deletes it up on destruction.
+- [X] Owns the Circuit that contains all Widgets' Circuit Elements (Input/Output Plugs and Properties).
+- [X] Keeps a queue of Widget.Handles to delete after an event has finished.
+- [X] Can create first-level Widgets that are direct children of the root.
+- [X] Can safely remove all expired Widgets, with children deleted before their parents.
+- [ ] Can find and return Widgets using absolute paths
 
 ## Widget
+- [X] Are constructed from a Widget.Type object
 - [ ] Have Input and Output Plugs
 - [ ] Have Properties
 - [ ] Have a state machine
@@ -39,9 +43,20 @@ A Scene owns a Circuit and manages it, you could say that the Scene is like a ma
 - [X] Can emit a Value, either from within or from the outside of their owner Widget.
 
 ## Property
-
+- [X] Have an associated Widget
+- [X] Store a single Value, whose Schema is constant
+- [X] Property Values cannot be None
+- [X] Have an optional, constant Operations that is applied to each new value
+- [X] Property.Operations have a private data Value
+- [X] Property.Operations have access to a Widget.View of the Widget owning the Property
+- [X] Never accept or block Signals
+- [X] Have an optional, mutable Property.Callback that is invoked after each Value change
+- [X] PropertyCallbacks have access to a Widget.Self handle of the Widget owning the Property
+- [X] PropertyCallbacks must guard against infinite cycles
 
 # The Widget
+
+A Widget's parent is constant and is guaranteed to be valid at all times. That means, you can not re-parent a Widget in the Scene as this would change its path. You can however change its position among its siblings, see "The Z-Value", which does not influence its path at all.
 
 > **When Widgets were Nodes**  
 > Originally, the Scene was designed to contain abstract "Nodes", instead of Widgets. A Node could be anything that lives within the Scene hierarchy and that would live and die with its parent Node. I assumed that Services, Resources, Layouts and Controller objects would all share the same hierarchy.
@@ -58,6 +73,9 @@ A Scene owns a Circuit and manages it, you could say that the Scene is like a ma
 >
 > Now that there is no difference anymore, this discussion is mute of course, but still an interesting though in its historic context.
 
+## Widget Type
+
+Widget Types are objects that describe the Widget, much like a Schema describes a Value. You can create new Widget Types at runtime, by constructing a Widget.Definition object, populating its fields and registering it with the Scene. Every Widget.Type has a name that is unique in the Scene. It can be used to construct a new Widget of that type and Widget instances return it as their type identifier.
 
 ## Output Plug
 
@@ -65,16 +83,50 @@ Output Plugs (OPlugs) are Emitters that live on the Widget and than can be invok
 
 Unlike IPlugs, OPlugs are public -- meaning that they can be triggered from everywhere, although most will probably be triggered from code living on the Widget itself. The reason why we allow them to be triggered from outside of the Widget is that they themselves do not depend on the Widget itself, nor do they modify it in any way. It is therefore feasible to have for example a single Node with an OPlug "FormChanged" which is triggered from the various form elements as needed.
 
+## The Z-Value
+
+Widgets can and do overlap a lot on the screen. Children always overlap their parent Widgets but (depending on the parent's Layout) can also overlap with siblings. The order in which Widgets are drawn on screen and the order in which they receive "top-down" events like mouse clicks is determined by their "Z-Value", a single floating point number that identifies a Widget's "depth" among all other Widgets. Unlike the sibling order, which is only relevant to the parent, the Z Value is global, meaning two Widgets can compare their values to determine their relative placement, no matter where in the hierarchy they are.
+
+The root Widget has the Z-Value zero by definition, all other Z-values can be calculated by the following (recursive) Python snippet:
+
+```python
+    def get_z_value(node):
+        # child widgets are drawn on top of (with a higher z-value than) their parents
+        parent: Optional[Node] = node.get_parent()
+        if parent is None:
+            return 0  # node is the root
+        parent_z_value: float = parent.get_z_value()
+        
+        # the available space for child widgets is the difference between the parent's and the next uncle's z-value
+        grandparent: Optional[Node] = parent.get_parent()
+        if grandparent is None:
+            available_space: float = 1
+        else:
+            available_space: float = 1 / (grandparent.get_child_count() + 1)
+        
+        # the z-value of a child widget is determined by its position within its siblings and the number of siblings
+        # the lowest index is a 1, otherwise we'd have a z-value of zero for all nodes on the left edge of the tree
+        # we use sibling count plus 1, otherwise nodes on the right edge of the tree could have a z-value greater than 1
+        local_z_value: float = (parent.get_child_index(node) + 1) / (parent.get_child_count() + 1)
+        return parent_z_value + (local_z_value * available_space) 
+```
+
+Whenever a Widget changes the order of its children, the Z-values of all affected child Widgets must be recalculated. I would think that it might be better to just do it right away, since it should not happen very often (every second maybe, instead of every millisecond) and the calculation itself is not very complicated. It's just a lot of jumping around in memory. Maybe we could fix that by passing in all required values up-front (basically everything that needs to be "gotten" in the snippet above) and do a breadth-first traversal of the descendants of the Widget that changed its child order? Whenever you hit upon a child whose z-value did not change, the traversal of that sub-tree can be cut short.
+What's going to be more of a problem (expense-wise) is the introduction or removal of child Widgets, since that means recalculating all z-values of all descendants... Maybe the z-value is something that we can calculate on-the-fly as needed?
+Jup .. that sounds like a good idea - calculate it on the fly every time you need it. You don't even need it to iterate in order as that is completely different.
+
 
 ## Properties
 
-Widget Properties are Values associated with a Widget instance. They are determined by the Widget.Definition and are basically member fields. Every Property has a name that is unique in its Node.Definition and also unique among Input and Output Plugs. Properties must be Values, which has the advantage that their content can be emitted and received through the Circuit and that they can be serialized automatically. Properties have an associated Value Schema that cannot be changed. Widgets store no data other than what is stored in their Properties (see "Private Data or not?" for a discussion of an alternative). Properties cannot store empty Values.
+Widget Properties are Values associated with a Widget instance. They are determined by the Widget.Definition and are basically member fields. Every Property has a name that is unique in its Node.Definition and also unique among Input and Output Plugs. Properties must be Values, which has the advantage that their content can be emitted and received through the Circuit and that they can be serialized automatically. Properties have an associated Value Schema that cannot be changed. Widgets store no data other than what is stored in their Properties (see "Private Data or not?" for a discussion of an alternative). If you take the entire Scene, take all Properties of all the Nodes, serialize the Scene alongside the Properties and re-load them, you have essentially restored the entire UI application at the point of serialization. Properties cannot store empty Values.
 
 ### Property Operation
 
-Apart from their Value Schema and name, a Property is defined by an optional Operation that is performed on every new Value. Like in an Operator, the Operation can either choose to return the input Value unmodified, change it in some way (clamp it, round it to the nearest integer ...) before returning it or returning None, in which case the existing value of the Property remains unchanged. Unlike Operator.Operations, Property.Operations have access to a Widget.PropertyReader object. This way, Operation are able to read other Properties of the same Widget which allows for a Property which is a number that is clamped between two others, for example.
+Apart from their Value Schema and name, a Property is defined by an optional Operation that is performed on every new Value. Like in an Operator, the Operation can either choose to return the input Value unmodified, change it in some way (clamp it, round it to the nearest integer ...) before returning it or returning None, in which case the existing value of the Property remains unchanged. Unlike Operator.Operations, Property.Operations have access to a Widget.View object. This way, Operation are able to read other Properties of the same Widget which allows for a Property which is a number that is clamped between two others, for example.
 
 Property Operations cannot be changed as they are as much part of the Property "type" as its Value Schema.
+
+Like Operator Operations, Property Operations are allowed to store an arbitrary Value as private data. This actually fixes the problem I had with "private" Properties that were used only to act as support data for other Properties (See "Private Data or not?").
 
 ### Property Callback
 
@@ -98,6 +150,11 @@ Here are all the ways that we could do this:
 
 Nr. 3 it is.
 
+### Property Visibility
+
+In previous versions, Properties had a flag associated with their type called "visibility". A visible Property was one that, when changed, would update the visual representation of the Widget and would cause a redraw of its Design.
+I chose to get rid of this in favor of a more manual approach, where you have to call "redraw" in a Widget manually, because whether or not the Design changes is not a 1:1 correspondence on a Property update. Some Properties, for example, might only affect the Design if they change a certain amount, or if they are an even number... or whatever.
+
 ### Private Data or not?
 
 In the beginning, it was planned that all data stored in a Widget would have to be a Property. This is similar to the Python approach of "public everything", where you can access all of an objects members from the outside with only a naming convention as guide (members starting with "_" are private).  
@@ -118,11 +175,6 @@ What I am more worried about is that users that write code for a Widget will con
  The problem with this approach is that I explicitly set out to "fix" the problem I saw in Qt, where certain values are not accessible from the outside even though I am sure are stored somewhere in the Widget (I cannot think of the example from the top of my head now though). By making everything public by default, we can be certain that the implementer of a Widget will not hide important information from the outside -- may that be by accident or by making everything private-first because that's what you do in OOP.
 
 Another aspect and another reason *for* forcing all data to live in Properties is that with that approach you can actually get the best of both worlds: just have a map Value Property called "_data" that stores all of the private data. This way, it is not hidden from the outside but it is stored in a format that makes it appropriately difficult to get any meaningful content out of it. And it is safe to do so, because even though you can *read* all of the "private" Properties on a Widget, you cannot *write* to any of them.
-
-### Property Visibility
-
-In previous versions, Properties had a flag associated with their type called "visibility". A visible Property was one that, when changed, would update the visual representation of the Widget and would cause a redraw of its Design.
-I chose to get rid of this in favor of a more manual approach, where you have to call "redraw" in a Widget manually, because whether or not the Design changes is not a 1:1 correspondence on a Property update. Some Properties, for example, might only affect the Design if they change a certain amount, or if they are an even number... or whatever.
 
 
 ---
@@ -191,37 +243,7 @@ Instead, a State change should go like this:
 3. StateA:Exit function is called
 4. StateB:Enter function is called
 
-## The Z Value
 
-Widgets can and do overlap a lot on the screen. Children always overlap their parent Widgets but (depending on the parent's Layout) can also overlap with siblings. The order in which Widgets are drawn on screen and the order in which they receive "top-down" events like mouse clicks is determined by their "Z-Value", a single floating point number that identifies a Widget's "depth" among all other Widgets. Unlike the sibling order, which is only relevant to the parent, the Z Value is global, meaning two Widgets can compare their values to determine their relative placement, no matter where in the hierarchy they are.
-
-The root Widget has the Z-Value zero by definition, all other Z-values can be calculated by the following (recursive) Python snippet:
-
-```python
-    def get_z_value(node):
-        # child widgets are drawn on top of (with a higher z-value than) their parents
-        parent: Optional[Node] = node.get_parent()
-        if parent is None:
-            return 0  # node is the root
-        parent_z_value: float = parent.get_z_value()
-        
-        # the available space for child widgets is the difference between the parent's and the next uncle's z-value
-        grandparent: Optional[Node] = parent.get_parent()
-        if grandparent is None:
-            available_space: float = 1
-        else:
-            available_space: float = 1 / (grandparent.get_child_count() + 1)
-        
-        # the z-value of a child widget is determined by its position within its siblings and the number of siblings
-        # the lowest index is a 1, otherwise we'd have a z-value of zero for all nodes on the left edge of the tree
-        # we use sibling count plus 1, otherwise nodes on the right edge of the tree could have a z-value greater than 1
-        local_z_value: float = (parent.get_child_index(node) + 1) / (parent.get_child_count() + 1)
-        return parent_z_value + (local_z_value * available_space) 
-```
-
-Whenever a Widget changes the order of its children, the Z-values of all affected child Widgets must be recalculated. I would think that it might be better to just do it right away, since it should not happen very often (every second maybe, instead of every millisecond) and the calculation itself is not very complicated. It's just a lot of jumping around in memory. Maybe we could fix that by passing in all required values up-front (basically everything that needs to be "gotten" in the snippet above) and do a breadth-first traversal of the descendants of the Widget that changed its child order? Whenever you hit upon a child whose z-value did not change, the traversal of that sub-tree can be cut short.
-What's going to be more of a problem (expense-wise) is the introduction or removal of child Widgets, since that means recalculating all z-values of all descendants... Maybe the z-value is something that we can calculate on-the-fly as needed?
-Jup .. that sounds like a good idea - calculate it on the fly every time you need it. You don't even need it to iterate in order as that is completely different.
 
 # Widgets and Logic
 

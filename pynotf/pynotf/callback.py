@@ -20,30 +20,29 @@ class Callback:
     _empty_line = compile_regex(r"^\s*?$")  # regex to find out whether a given string only contains whitespace
     _trailing_whitespace = compile_regex(r"\s*?$")  # regex to find trailing whitespace on a line
 
-    def __init__(self, signature: Dict[str, Type], return_type: Optional[Type], source: str) -> None:
+    def __init__(self, signature: Dict[str, Type], source: str, environment: Optional[Dict[str, Any]] = None):
         """
         Constructor.
         Example:
-            callback: Callback = Callback(dict(a=int, b=float), float, "return float(a + b)")
+            callback: Callback = Callback(dict(a=int, b=float), "return float(a + b)")
         :param signature: Signature of the Callback. Is used to define the internal function header.
-        :param return_type: The Callback's return type. The source code must return a value of this type, otherwise the
-                            Callback will raise a TypeError when called.
         :param source: Source string defining the body of the Callback's function. Must be valid Python code.
+        :param: environment: Additional Python objects that are relevant to execute the function.
         """
 
         # store the return type to ensure that the callback returns the correct type
-        self._signature: Dict[str, Type] = signature  # is ordered, is constant
-        self._return_type: Optional[Type] = return_type  # is constant
+        self._signature: Dict[str, Type] = signature  # is ordered, const
 
         # wrap the given source in a function, that we we can call with the given signature
         self._source: str = '\n'.join((
-            f"def {self._function_name}({self._get_parameter_list()}) -> {self._get_return_type()}:",
+            f"def {self._function_name}({self._get_parameter_list()}):",
             self._normalize_body(source),
             ''))  # add an empty line at the end to close the function
 
         # create the Python function object by executing the source in a new environment
         # and then extracting the function by its name from the environment
         env = {}
+        env.update(environment or {})
         code: CodeType = compile(self._source, "<string>", "exec", optimize=1)
         exec(code, env)
         self._callback: Callable = env[self._function_name]
@@ -77,16 +76,6 @@ class Callback:
         # invoke the callback
         result: Any = self._callback(*args)
 
-        # check the return type
-        if self._return_type is None:
-            is_result_valid: bool = result is None
-        else:
-            is_result_valid: bool = isinstance(result, self._return_type)
-        if not is_result_valid:
-            raise TypeError(
-                f'Callback did not return the promised return type "{self._get_return_type()}", '
-                f'but "{result.__class__.__name__}" instead')
-
         # return the valid result
         return result
 
@@ -105,15 +94,14 @@ class Callback:
         # compile the comma-separated list in the return string
         return ', '.join(f"{arg_name}: {arg_type}" for arg_name, arg_type in arguments.items())
 
-    def _get_return_type(self) -> str:
+    @staticmethod
+    def _get_type_name(type_: Optional[Type]) -> str:
         """
-        The name of the Callbacks' return type.
+        The name of a given type.
         """
-        # if the return type has a name use that for type hints (None has no __name__ attribute)
-        return_type: Optional[str] = getattr(self._return_type, "__name__")
-        if return_type is None:
-            return_type = 'NoneType'
-        return return_type
+        if type_ is None:
+            return 'NoneType'
+        return type_.__name__
 
     @classmethod
     def _normalize_body(cls, source: str) -> str:

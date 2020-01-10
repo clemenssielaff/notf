@@ -60,6 +60,7 @@ def check_element(raw: Any, allow_empty_lists: bool) -> Element:
         return elements
 
     raise ValueError("Cannot construct a Value.Element from a {}".format(type(raw).__name__))
+    # TODO: Cannot construct a Value.Element from a Value
 
 
 class Kind(IntEnum):
