@@ -33,18 +33,25 @@ class Scene:
         return self._circuit
 
     def register_widget_type(self, type_name: str, definition: 'Widget.Definition'):
+        """
+        Register a new Widget Type with the Scene.
+        :param type_name: Name of the new Widget Type.
+        :param definition: Definition of the Type.
+        """
         if type_name in self._widget_types:
             raise NameError(f'Another Widget type with the name "{type_name}" exists already in the Scene')
         else:
             self._widget_types[type_name] = Widget.Type(type_name, definition)
 
-    # def get_widget(self, path: Widget.Path) -> Optional[Widget.Handle]:
-    #     """
-    #
-    #     :param path:
-    #     :return:
-    #     """
-    #     return self._root.find_widget(path)
+    def find_widget(self, path: 'Widget.Path') -> Optional['Widget.Handle']:
+        """
+        Find a Widget from an absolute Path.
+        :param path: Absolute Path of the Widget to find.
+        :return: Handle of the Widget or None if the Path doesn't point to a Widget.
+        """
+        if path.is_relative():
+            raise Widget.Path.Error(f'Cannot query a Widget from the Scene with relative path "{str(path)}"')
+        return self._root._find_widget(path, 0)
 
     def create_widget(self, type_name: str, name: str) -> 'Widget.Handle':
         """
@@ -75,7 +82,7 @@ class Scene:
         for widget in expired_roots:
             parent_handle: Optional[Widget.Handle] = widget.get_parent()
             assert parent_handle is not None  # root removal is handled manually at the destruction of the Scene
-            parent: Optional[Widget] = parent_handle._node()
+            parent: Optional[Widget] = parent_handle._widget()
             assert parent is not None
             parent._remove_child(widget)
             del parent

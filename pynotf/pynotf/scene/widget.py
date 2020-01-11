@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Dict, Any, NamedTuple
+from typing import Optional, Dict, Any, NamedTuple, List
 from weakref import ref as weak_ref
 
 from pynotf.value import Value
@@ -164,22 +164,32 @@ class Widget:
             return prop.get_value()
 
     class Handle:
-        def __init__(self, node: 'Widget'):
-            assert isinstance(node, Widget)
-            self._node: Optional[weak_ref] = weak_ref(node)
+        def __init__(self, widget: Widget):
+            assert isinstance(widget, Widget)
+            self._widget: Optional[weak_ref] = weak_ref(widget)
 
         def is_valid(self) -> bool:
-            return self._node() is not None
+            return self._widget() is not None
+
+        def get_type(self) -> Optional[str]:
+            widget: Widget = self._widget()
+            if widget is not None:
+                return widget.get_type()
 
         def get_name(self) -> Optional[str]:
-            node: Widget = self._node()
-            if node is not None:
-                return node.get_name()
+            widget: Widget = self._widget()
+            if widget is not None:
+                return widget.get_name()
+
+        def get_path(self) -> Optional[Path]:
+            widget: Widget = self._widget()
+            if widget is not None:
+                return widget.get_path()
 
         def get_parent(self) -> Optional[Widget.Handle]:
-            node: Widget = self._node()
-            if node is not None:
-                return node.get_parent()
+            widget: Widget = self._widget()
+            if widget is not None:
+                return widget.get_parent()
 
     class Self:
         """
@@ -230,6 +240,23 @@ class Widget:
         """
         return self._type
 
+    def get_name(self) -> str:
+        """
+        The parent-unique name of this Widget instance.
+        """
+        return self._name
+
+    def get_path(self) -> Widget.Path:
+        """
+        Returns the absolute Path of this Widget.
+        """
+        path: List[str] = []
+        next_widget: Optional[Widget] = self
+        while next_widget is not None:
+            path.append(next_widget.get_name())
+            next_widget = next_widget._parent
+        return Path.create(list(reversed(path)))
+
     def get_parent(self) -> Optional[Widget.Handle]:
         """
         The parent of this Widget, is only None if this is the root Widget.
@@ -239,14 +266,16 @@ class Widget:
         else:
             return Widget.Handle(self._parent)
 
-    def get_name(self) -> str:
+    def find_widget(self, path: Widget.Path) -> Optional[Widget.Handle]:
         """
-        The parent-unique name of this Widget instance.
+        Tries to find a Widget in the Scene from a given Path.
+        :param path: Path of the Widget to find.
+        :return: Handle of the Widget or None if the Path doesn't point to a Widget.
         """
-        return self._name
-
-    def get_path(self) -> Widget.Path:
-        return self.Path()  # TODO: get_path
+        if path.is_absolute():
+            return self._scene.find_widget(path)  # absolute paths start from the scene
+        else:
+            return self._find_widget(path, 0)  # start following the relative path starting here
 
     def create_child(self, type_name: str, child_name: str) -> Widget.Handle:
         """
@@ -257,6 +286,11 @@ class Widget:
         :raise NameError:           If the Scene does not know a Type of the given type name.
         :raise Widget.Path.Error:   If the Widget already has a child Widget with the given name.
         """
+        # validate the name
+        if not self._validate_name(child_name):
+            raise Widget.Path.Error(f'Cannot create a Widget with an invalid name "{child_name}".\n'
+                                    f'Widget names must be alphanumeric and cannot be empty.')
+
         # ensure the name is unique
         if child_name in self._children:
             raise Widget.Path.Error(f'Cannot create another child Widget of "{self.get_path()}" named "{child_name}"')
@@ -280,12 +314,40 @@ class Widget:
         self._scene._expired_widgets.add(Widget.Handle(self))
 
     # private for Scene
+    def _find_widget(self, path: Widget.Path, step: int) -> Optional[Widget.Handle]:
+        """
+        Recursive implementation to follow a Path to a particular Widget.
+        :param path: Path of the Widget to find.
+        :param step: Current position in the Path.
+        :return: Handle of the Widget or None if the Path doesn't point to a Widget.
+        """
+        # if this is the final step, we have reached the target widget
+        if step == len(path):
+            assert path.get_widget(len(path) - 1) == self._name
+            return Widget.Handle(self)
+
+        # if this is not the final step, get the next step
+        next_child: Optional[str] = path.get_widget(step)
+        assert next_child is not None
+
+        # the two dots are a special instruction to go up one level in the hierarchy
+        if next_child == '..':
+            return self._parent._find_widget(path, step + 1)
+
+        # if the next widget from the path is not a child of this one, return None
+        child_widget: Optional[Widget] = self._children.get(next_child)
+        if child_widget is None:
+            return None
+
+        # if the child widget is found, advance to the next step in the path and let the child continue the search
+        return child_widget._find_widget(path, step + 1)
+
     def _remove_child(self, node_handle: 'Widget.Handle'):
         """
         Removes a child of this Widget.
         :param node_handle:     Child Widget to remove.
         """
-        node: Optional[Widget] = node_handle._node()
+        node: Optional[Widget] = node_handle._widget()
         assert node is not None
         assert node in self._children
         node._remove_self()
@@ -303,6 +365,15 @@ class Widget:
         for child in self._children.values():
             child._remove_self()
         self._children.clear()
+
+    @staticmethod
+    def _validate_name(name: str) -> bool:
+        """
+        Tests whether the given name is valid Widget name.
+        :param name: Name to test.
+        :return: True if the name is valid.
+        """
+        return name.isalnum()
 
 
 #######################################################################################################################

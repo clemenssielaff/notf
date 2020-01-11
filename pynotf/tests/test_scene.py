@@ -59,6 +59,14 @@ class TestPath(unittest.TestCase):
         self.assertEqual(Path('two/down/../../../sibling/..'), Path('..'))
         self.assertEqual(Path('three/steps/down/../../../../../'), Path('../..'))
 
+    def test_factory(self):
+        self.assertEqual(Path.create(['test', 'this'], True, 'path'), Path("/test/this:path"))
+        self.assertEqual(Path.create(['test', 'this'], property_name='path'), Path("/test/this:path"))
+        self.assertEqual(Path.create(['test', 'this'], is_absolute=False), Path("test/this"))
+        self.assertEqual(Path.create(['test', 'this']), Path("/test/this"))
+        self.assertEqual(Path.create([], is_absolute=True), Path('/'))
+        self.assertEqual(Path.create([], is_absolute=False), Path())
+
     def test_widget_following_property(self):
         with self.assertRaises(Path.Error):
             Path("test/node:property/wrong")

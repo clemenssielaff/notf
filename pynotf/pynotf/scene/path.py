@@ -9,7 +9,13 @@ class Path:
     Every Path is immutable, and guaranteed consistent (albeit not necessarily valid) if the construction succeeded.
     """
 
+    _widget_delimiter: str = '/'  # delimiter character used to separate widgets in the path
+    _property_delimiter: str = ':'  # delimiter character used to denote a final property token in the path.
+
     class Error(Exception):
+        """
+        Error thrown during the construction of a Path object.
+        """
         @classmethod
         def show_location(cls, path: str, error_position: int, error_length: int, message: str) -> Path.Error:
             return Path.Error('Error when constructing a Path from a string:\n'
@@ -20,10 +26,27 @@ class Path:
                                              error_position + error_length,
                                              message))
 
-    _widget_delimiter: str = '/'  # delimiter character used to separate widgets in the path
-    _property_delimiter: str = ':'  # delimiter character used to denote a final property token in the path.
+    @staticmethod
+    def create(widgets: List[str], is_absolute: bool = True, property_name: Optional[str] = None):
+        """
+        Manual Path factory.
+        :param widgets: All widgets in the Path.
+        :param is_absolute: Whether or not the Path is absolute or not (default = True).
+        :param property_name: Optional target Property of the last Widget in the Path (default = None).
+        :return: A new Path.
+        """
+        path: Path = Path()
+        path._widgets = widgets
+        path._property = property_name
+        path._is_absolute = is_absolute
+        path._normalize()
+        return path
 
     def __init__(self, string: str = ''):
+        """
+        Constructor.
+        :param string: String from which to construct the Path.
+        """
         # initialize member defaults
         self._widgets: List[str] = []
         self._property: Optional[str] = None
@@ -38,9 +61,9 @@ class Path:
         if self._is_absolute:
             string = string[1:]
 
-        # return early if this path is the root path
-        if len(string) == 0:
-            return
+            # return early if this path is the root path
+            if len(string) == 0:
+                return
 
         # test whether this is a path to a property
         property_delimiter_pos: int = string.find(self._property_delimiter)
@@ -65,9 +88,9 @@ class Path:
             last_widget, self._property = self._widgets[-1].split(self._property_delimiter)
             self._widgets[-1] = last_widget
 
-        self._normalize_tokens()
+        self._normalize()
 
-    def _normalize_tokens(self):
+    def _normalize(self):
         normalized_tokens: List[str] = []
 
         path: str = str(self)
@@ -193,12 +216,7 @@ class Path:
         if other.is_absolute():
             raise Path.Error(f'Cannot add path "{str(other)}" because it is absolute"')
 
-        path: Path = Path()
-        path._is_absolute = self.is_absolute()
-        path._widgets = self._widgets + other._widgets
-        path._property = other._property
-        path._normalize_tokens()
-        return path
+        return Path.create(self._widgets + other._widgets, self.is_absolute(), other._property)
 
     def __iadd__(self, other: Path) -> Path:
         """
@@ -212,5 +230,5 @@ class Path:
 
         self._widgets.extend(other._widgets)
         self._property = other._property
-        self._normalize_tokens()
+        self._normalize()
         return self
