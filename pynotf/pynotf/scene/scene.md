@@ -90,25 +90,25 @@ Widgets can and do overlap a lot on the screen. Children always overlap their pa
 The root Widget has the Z-Value zero by definition, all other Z-values can be calculated by the following (recursive) Python snippet:
 
 ```python
-    def get_z_value(node):
-        # child widgets are drawn on top of (with a higher z-value than) their parents
-        parent: Optional[Node] = node.get_parent()
-        if parent is None:
-            return 0  # node is the root
-        parent_z_value: float = parent.get_z_value()
-        
-        # the available space for child widgets is the difference between the parent's and the next uncle's z-value
-        grandparent: Optional[Node] = parent.get_parent()
-        if grandparent is None:
-            available_space: float = 1
-        else:
-            available_space: float = 1 / (grandparent.get_child_count() + 1)
-        
-        # the z-value of a child widget is determined by its position within its siblings and the number of siblings
-        # the lowest index is a 1, otherwise we'd have a z-value of zero for all nodes on the left edge of the tree
-        # we use sibling count plus 1, otherwise nodes on the right edge of the tree could have a z-value greater than 1
-        local_z_value: float = (parent.get_child_index(node) + 1) / (parent.get_child_count() + 1)
-        return parent_z_value + (local_z_value * available_space) 
+def get_z_value(node):
+    # child widgets are drawn on top of (with a higher z-value than) their parents
+    parent: Optional[Node] = node.get_parent()
+    if parent is None:
+        return 0  # node is the root
+    parent_z_value: float = parent.get_z_value()
+    
+    # the available space for child widgets is the difference between the parent's and the next uncle's z-value
+    grandparent: Optional[Node] = parent.get_parent()
+    if grandparent is None:
+        available_space: float = 1
+    else:
+        available_space: float = 1 / (grandparent.get_child_count() + 1)
+    
+    # the z-value of a child widget is determined by its position within its siblings and the number of siblings
+    # the lowest index is a 1, otherwise we'd have a z-value of zero for all nodes on the left edge of the tree
+    # we use sibling count plus 1, otherwise nodes on the right edge of the tree could have a z-value greater than 1
+    local_z_value: float = (parent.get_child_index(node) + 1) / (parent.get_child_count() + 1)
+    return parent_z_value + (local_z_value * available_space) 
 ```
 
 Whenever a Widget changes the order of its children, the Z-values of all affected child Widgets must be recalculated. I would think that it might be better to just do it right away, since it should not happen very often (every second maybe, instead of every millisecond) and the calculation itself is not very complicated. It's just a lot of jumping around in memory. Maybe we could fix that by passing in all required values up-front (basically everything that needs to be "gotten" in the snippet above) and do a breadth-first traversal of the descendants of the Widget that changed its child order? Whenever you hit upon a child whose z-value did not change, the traversal of that sub-tree can be cut short.
@@ -176,6 +176,23 @@ What I am more worried about is that users that write code for a Widget will con
 
 Another aspect and another reason *for* forcing all data to live in Properties is that with that approach you can actually get the best of both worlds: just have a map Value Property called "_data" that stores all of the private data. This way, it is not hidden from the outside but it is stored in a format that makes it appropriately difficult to get any meaningful content out of it. And it is safe to do so, because even though you can *read* all of the "private" Properties on a Widget, you cannot *write* to any of them.
 
+# notf vs. Redux
+
+The first of [the three principles of Redux](https://redux.js.org/introduction/three-principles) is the idea that the entire application state is a single object. This, combined with an immutable object model allows for easy implementation of complete application serialization / undo-redo / copy / diffing etc. (as seen in the quite brilliant talk [Postmodern immutable data structures](https://www.youtube.com/watch?v=sPhpelUfu8Q)). And we _do_ use immutability extensively throughout the notf architecture. However, our application state is not a single object but rather a wild collection of Widgets and free Circuit Elements.  
+How can we live with ourselves in 2020, where the world has seemingly moved on from this entangled web of interconnected objects into the  promised land of the unidirectional data flow? 
+
+Well, we know the pros, but what about the cons? Let us imagine how our application state would work in a single value:
+
+* Instead of pointers, we now have to do a look-up every time one object references another one. 
+* References do not influence ownership anymore and in order to clean up dead objects you have to do your own garbage collection.
+* The undo/redo "pro" argument doesn't actually apply, because undoing a change in the UI alone is pointless, if the underlying model is not also affected.
+* We have a potential large application state and a lot of small changes. Right now, these changes are local to individual Values only, if we always create a new application state for every Value change, we will end up creating a lot of unnecessary work.
+* We can already serialize and deserialize the entire application - the fact that the serialized representation looks different from the runtime representation is not a bug, it's actually a feature.
+
+On the actual pro side: diffing a complete application would be very nice to do if we ever go ahead and do multithreaded event handling. However, that itself would add even more overhead to a feature that I had already dismissed because of overhead concerns.
+
+So no, for now we are not storing the application into a single object.  
+Maybe my view on this will change in the future, after we have a working alpha version? I expect that the effects of some design decisions will only become apparent then and it will be interesting to see how they stack up against the current hotness in web development.
 
 ---
 
@@ -194,7 +211,7 @@ It consists of:
 9. A child container type (?)
 
 **Properties**  
-Properties are a single Value that determines some aspect of the Node that might be of interest to the rest of the Circuit. They are both Receivers and Emitters, meaning they can change automatically based on Values upstream from the Circuit and they can influence downstream Elements in the Circuit as well. Additionall
+Properties are a single Value that determines some aspect of the Node that might be of interest to the rest of the Circuit. They are both Receivers and Emitters, meaning they can change automatically based on Values upstream from the Circuit and they can influence downstream Elements in the Circuit as well.
 
 Nodes have input and output plugs, special Receiver and Emitters that that allow the Node to communicate with the rest of the Circuit. Input Plugs (IPlugs) take a ValueSignal and ignore all others (apart from disconnecting, which a Receiver does automatically). They then forward the ValueSignal to a Callback inside the Node. Which callback they forward to can be changed at runtime as part of the Node's state machine.
 
