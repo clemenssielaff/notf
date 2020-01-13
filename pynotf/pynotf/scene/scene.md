@@ -207,7 +207,7 @@ It consists of:
 5. A dict of named State Enter/Optional[Exit] Callback pairs
 6. A set of (named State, named State) pairs that define allowed State Transitions
 7. The name of the entry state
-8. The Schema for a private data Value
+8. ~The Schema for a private data Value~
 9. A child container type (?)
 
 **Properties**  

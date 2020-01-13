@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Dict, Any, NamedTuple, List
+from typing import Optional, Dict, NamedTuple, List
 from weakref import ref as weak_ref
 
 from pynotf.value import Value
@@ -11,133 +11,111 @@ from .path import Path
 
 #######################################################################################################################
 
+class PropertyDefinition(NamedTuple):
+    default_value: Value
+    operation: Optional[Property.Operation] = None
+
+
+class WidgetDefinition(NamedTuple):
+
+    # the Scene-unique name of the Widget Type
+    # cannot be empty and must not contain Path control symbols like '/' and '.' so the type of a widget is a valid
+    # default name for an instance
+    type_name: str
+
+    # all Properties and input/output Plugs share the same namespace
+    # names cannot be empty and must not contain Path control symbols like '/' and '.'
+    properties: Dict[str, PropertyDefinition]
+    input_plugs: Dict[str, Value.Schema]
+    output_plugs: Dict[str, Value.Schema]
+
+    # callbacks that can be attached to an input plug
+    plug_callbacks: Dict[str, InputPlug.Callback]
+
+    # callbacks that can be attached to a property
+    property_callbacks: Dict[str, Property.Callback]
+
+    # state machine of the Widget
+    state_machine: StateMachine
+
+
+class WidgetType(WidgetDefinition):
+    """
+    Instead of implementing  `_add_property`, `_add_input` and `_add_output` methods in the Widget class, a Widget
+    must be fully defined on construction, by passing in a Widget.Type object. Like a Schema describes a type of
+    Value, the Widget.Type describes a type of Widget without making any assumptions about the actual state of the
+    Widget.
+
+    A Widget.Type is equivalent to a Widget.Definition - the only difference between the two is that the Type has been
+    validated whereas Widget.Definitions can be created in an invalid state.
+    """
+
+    class ConsistencyError(Exception):
+        """
+        Error raised when a Widget.Definition failed to validate.
+        """
+        pass
+
+    @classmethod
+    def create(cls, definition: WidgetDefinition) -> WidgetType:
+        """
+        Widget Type Factory.
+        Takes and validates a Widget Definition.
+        Only the Scene should be able to create a Widget.Type from a Widget.Definition.
+        :param definition: Widget Definition to build the Type from. Would be an r-value in C++.
+        """
+        forbidden_symbols: List[str] = [Path.get_widget_delimiter(), Path.get_property_delimiter()]
+
+        # type name
+        if len(definition.type_name) == 0:
+            raise cls.ConsistencyError('The name of a Widget Type cannot be empty.')
+        for forbidden_symbol in forbidden_symbols:
+            if forbidden_symbol in definition.type_name:
+                raise cls.ConsistencyError('Name "{} "is invalid because it contains "{}".\n'
+                                           "Widget Type names may not contain symbols '{}'".format(
+                    definition.type_name, forbidden_symbol, "', '".join(forbidden_symbols))
+                )
+
+        # property default values
+        for name, property_definition in definition.properties.items():
+            if property_definition.default_value.is_none():
+                raise cls.ConsistencyError(f'Invalid Property "{name}", Properties can not store a None Value.')
+
+        # shared namespace of properties and plugs
+        for source, kind in ((definition.properties, "Property"),
+                             (definition.input_plugs, "Input Plug"),
+                             (definition.output_plugs, "Output Plug")):
+            for name, target_definition in source.items():
+                for forbidden_symbol in forbidden_symbols:
+                    if forbidden_symbol in name:
+                        raise cls.ConsistencyError(
+                            "{} names may not contain '{}'".format(kind, "', '".join(forbidden_symbols)))
+                if name in definition.properties and source is not definition.properties:
+                    raise cls.ConsistencyError(f'Cannot add {kind} "{name}" to Widget Type {definition.type_name} '
+                                               f'because it already contains a Property with the same name.')
+                if name in definition.input_plugs and source is not definition.input_plugs:
+                    raise cls.ConsistencyError(f'Cannot add {kind} "{name}" to Widget Type {definition.type_name} '
+                                               f'because it already contains an Input Plug with the same name.')
+                if name in definition.output_plugs and source is not definition.output_plugs:
+                    raise cls.ConsistencyError(f'Cannot add {kind} "{name}" to Widget Type {definition.type_name} '
+                                               f'because it already contains an Output Plug with the same name.')
+
+        return WidgetType(*definition)
+
+
+#######################################################################################################################
+
 class Widget:
-    class Definition:
-        """
-       Instead of implementing `_add_property`, `_add_input` and `_add_output` methods in the Widget class, a Widget
-       must be fully defined on construction, by passing in a Widget.Type object. Like a Schema describes a type of
-       Value, the Widget.Type describes a type of Widget without making any assumptions about the actual state of the
-       Widget.
-       A Widget.Definition object is used to describe a Type and is mutable, because the Type object itself is const.
+    """
 
-       Properties and IPlugs must be constructed with a reference to the Widget instance that they live on. Therefore,
-       we only store the construction arguments here and build the object in the Widget constructor.
-
-       Widget Types have a name which stored in the Scene to ensure that no two Types with the same name can exist at
-       the same time.
-
-       All methods of this class are not thread-safe.
-       """
-
-        class PropertyDefinition(NamedTuple):
-            default: Value
-            operation: Optional[Property.Operation]
-
-        def __init__(self):
-            """
-            Default Constructor.
-            """
-            self._properties: Dict[str, Widget.Definition.PropertyDefinition] = {}
-            self._input_plugs: Dict[str, Value.Schema] = {}
-            self._output_plugs: Dict[str, Value.Schema] = {}
-
-        def add_property(self, name: str, default: Any, operation: Optional[Property.Operation] = None):
-            """
-            Stores the arguments need to construct a Property on the node.
-            :param name: Widget-unique name of the Property.
-            :param default:     Initial value of the Property.
-            :param operation:   Operation applied to every new Value of this Property.
-            :raise NameError:   If the Widget already has a Property, IPlug or OPlug with the given name.
-            """
-            if not self._is_name_available(name):
-                raise NameError(f'Widget already has a member named "{name}"')
-
-            # implicit value conversion
-            if not isinstance(default, Value):
-                try:
-                    default = Value(default)
-                except ValueError:
-                    raise TypeError(f"Cannot convert {str(default)} to a Property default Value")
-
-            # property values cannot be None
-            if default.is_none():
-                raise ValueError("Properties can not store a None value")
-
-            # noinspection PyCallByClass
-            self._properties[name] = Widget.Definition.PropertyDefinition(default, operation)
-
-        def add_input(self, name: str, schema: Value.Schema = Value.Schema()):
-            """
-            Stores the arguments need to construct a Slot instance on the node.
-            :param name: Widget-unique name of the Slot.
-            :param schema: Scheme of the Value received by the Slot.
-            :raise NameError: If the Widget already has a Property, Signal or Slot with the given name.
-            """
-            if not self._is_name_available(name):
-                raise NameError(f'Widget already has a member named "{name}"')
-            self._input_plugs[name] = schema
-
-        def add_output(self, name: str, schema: Value.Schema = Value.Schema()):
-            """
-            Stores the arguments need to construct a Output Plug instance on the node.
-            :param name:        Widget-unique name of the OPlug.
-            :param schema:      Scheme of the Value emitted by the OPlug.
-            :raise NameError:   If the Widget already has a Property, Signal or Slot with the given name.
-            """
-            if not self._is_name_available(name):
-                raise NameError(f'Widget already has a member named "{name}"')
-            self._output_plugs[name] = schema
-
-        def _is_name_available(self, name: str) -> bool:
-            """
-            Properties, Signals and Slots share the same namespace on a Widget. Therefore we need to check whether any
-            one of the three dictionaries already contains a given name before it can be accepted as new.
-            :param name: Name to test
-            :return: Whether or not the given name would be a valid new name for a Property, Signal or Slot.
-            """
-            return (name not in self._input_plugs and
-                    name not in self._output_plugs and
-                    name not in self._properties)
-
-    class Type:
-        """
-        Type objects should only be created by the Scene.
-        """
-
-        def __init__(self, name: str, definition: Widget.Definition):  # noexcept
-            """
-            Constructor.
-            :param name: All Widgets created with this Definition will return this name as their type identifier.
-            :param definition: Widget Definition to build the Type from. Would be an r-value in C++.
-            """
-            self._name: str = name  # is constant
-            self._properties: Dict[str, Widget.Definition.PropertyDefinition] = definition._properties  # is constant
-            self._input_plugs: Dict[str, Value.Schema] = definition._input_plugs  # is constant
-            self._output_plugs: Dict[str, Value.Schema] = definition._output_plugs  # is constant
-
-        def get_name(self) -> str:
-            """
-            Scene-unique name of the Widget type.
-            """
-            return self._name
-
-        def get_properties(self) -> Dict[str, Widget.Definition.PropertyDefinition]:
-            """
-            All Properties defined for this Widget Type.
-            """
-            return self._properties
-
-        def get_input_plugs(self) -> Dict[str, Value.Schema]:
-            """
-            All Input Plugs defined for this Widget Type.
-            """
-            return self._input_plugs
-
-        def get_output_plugs(self) -> Dict[str, Value.Schema]:
-            """
-            All Output Plugs defined for this Widget Type.
-            """
-            return self._output_plugs
+    """
+    Definition = WidgetDefinition
+    Type = WidgetType
+    Path = Path
+    StateMachine = StateMachine
+    Property = Property
+    InputPlug = InputPlug
+    OutputPlug = OutputPlug
 
     class View:
         """
@@ -200,9 +178,7 @@ class Widget:
         def __init__(self, widget: Widget):
             self._widget: Widget = widget
 
-    Path = Path
-
-    def __init__(self, definition: Widget.Type, parent: Optional[Widget], scene: 'Scene', name: str):
+    def __init__(self, definition: Type, parent: Optional[Widget], scene: 'Scene', name: str):
         """
         Constructor.
         :param definition: Widget Definition that determines the Type of this Widget.
@@ -215,23 +191,23 @@ class Widget:
         self._parent: Optional[Widget] = parent  # is constant
         self._scene: Scene = scene  # is constant
         self._name: str = name  # is constant
-        self._type: str = definition.get_name()  # is constant
+        self._type: str = definition.type_name  # is constant
 
         self._children: Dict[str, Widget] = {}
 
         # apply widget.definition
         circuit: Circuit = self._scene.get_circuit()
         self._properties: Dict[str, Property] = {
-            name: circuit.create_element(Property, self, prop.default, prop.operation)
-            for name, prop in definition.get_properties().items()
+            name: circuit.create_element(Property, self, prop.default_value, prop.operation)
+            for name, prop in definition.properties.items()
         }
         self._input_plugs: Dict[str, InputPlug] = {
             name: circuit.create_element(InputPlug, self, schema)
-            for name, schema in definition.get_input_plugs().items()
+            for name, schema in definition.input_plugs.items()
         }
         self._output_plugs: Dict[str, OutputPlug] = {
             name: circuit.create_element(OutputPlug, schema)
-            for name, schema in definition.get_output_plugs().items()
+            for name, schema in definition.output_plugs.items()
         }
 
     def get_type(self) -> str:
@@ -296,7 +272,7 @@ class Widget:
             raise Widget.Path.Error(f'Cannot create another child Widget of "{self.get_path()}" named "{child_name}"')
 
         # get the widget type from the scene
-        widget_type: Optional[Widget.Type] = self._scene._get_widget_type(type_name)
+        widget_type: Optional[WidgetType] = self._scene._get_widget_type(type_name)
         if widget_type is None:
             raise NameError(f'No Widget Type named "{type_name}" is registered with the Scene')
 
@@ -381,3 +357,4 @@ class Widget:
 from .scene import Scene
 from .property import Property
 from .input_plug import InputPlug
+from .statemachine import StateMachine

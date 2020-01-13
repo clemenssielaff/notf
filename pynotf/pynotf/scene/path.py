@@ -9,9 +9,6 @@ class Path:
     Every Path is immutable, and guaranteed consistent (albeit not necessarily valid) if the construction succeeded.
     """
 
-    _widget_delimiter: str = '/'  # delimiter character used to separate widgets in the path
-    _property_delimiter: str = ':'  # delimiter character used to denote a final property token in the path.
-
     class Error(Exception):
         """
         Error thrown during the construction of a Path object.
@@ -26,6 +23,20 @@ class Path:
                                              error_position + error_length,
                                              message))
 
+    @staticmethod
+    def get_widget_delimiter() -> str:
+        """
+        Delimiter character used to separate Widgets in the Path.
+        """
+        return '/'
+
+    @staticmethod
+    def get_property_delimiter() -> str:
+        """
+        Delimiter character used to denote a final token in the Path.
+        """
+        return '/'
+    
     @staticmethod
     def create(widgets: List[str], is_absolute: bool = True, property_name: Optional[str] = None):
         """
@@ -57,7 +68,7 @@ class Path:
             return
 
         # absolute paths begin with the widget delimiter
-        self._is_absolute = (string[0] == self._widget_delimiter)
+        self._is_absolute = (string[0] == self.get_widget_delimiter())
         if self._is_absolute:
             string = string[1:]
 
@@ -66,7 +77,7 @@ class Path:
                 return
 
         # test whether this is a path to a property
-        property_delimiter_pos: int = string.find(self._property_delimiter)
+        property_delimiter_pos: int = string.find(self.get_property_delimiter())
         if property_delimiter_pos != -1:
             # empty property names are not allowed
             if property_delimiter_pos == len(string) - 1:
@@ -74,18 +85,18 @@ class Path:
                                                "Empty Property names are not allowed")
 
             # additional delimiters of any kind after the property delimiter are not allowed
-            extra_delimiter_pos: int = max(string.find(self._widget_delimiter, property_delimiter_pos + 1),
-                                           string.find(self._property_delimiter, property_delimiter_pos + 1))
+            extra_delimiter_pos: int = max(string.find(self.get_widget_delimiter(), property_delimiter_pos + 1),
+                                           string.find(self.get_property_delimiter(), property_delimiter_pos + 1))
             if extra_delimiter_pos != -1:
                 raise Path.Error.show_location(string, extra_delimiter_pos + 1, len(string) - extra_delimiter_pos,
                                                "Delimiters in the Property name are not allowed")
 
         # split the path into widget tokens
-        self._widgets: List[str] = string.split(self._widget_delimiter)
+        self._widgets: List[str] = string.split(self.get_widget_delimiter())
 
         # if this is a property path split the last token into widget:property
         if property_delimiter_pos != -1:
-            last_widget, self._property = self._widgets[-1].split(self._property_delimiter)
+            last_widget, self._property = self._widgets[-1].split(self.get_property_delimiter())
             self._widgets[-1] = last_widget
 
         self._normalize()
@@ -191,12 +202,12 @@ class Path:
             return ''
 
         elif self.is_property_path():
-            return f'{self._widget_delimiter if self._is_absolute else ""}' \
-                   f'{self._widget_delimiter.join(self._widgets)}' \
+            return f'{self.get_widget_delimiter() if self._is_absolute else ""}' \
+                   f'{self.get_widget_delimiter().join(self._widgets)}' \
                    f':{self._property}'
         else:
-            return f'{self._widget_delimiter if self._is_absolute else ""}' \
-                   f'{self._widget_delimiter.join(self._widgets)}'
+            return f'{self.get_widget_delimiter() if self._is_absolute else ""}' \
+                   f'{self.get_widget_delimiter().join(self._widgets)}'
 
     def __eq__(self, other: Path):
         """

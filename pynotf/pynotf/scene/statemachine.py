@@ -44,6 +44,8 @@ class State:
 
 
 class StateMachineDescription:
+    # TODO: replace StateMachineDescription with a single NamedTuple that is validated by the StateMachine constructor
+    #       like a Widget.Type and .Definition
 
     class ConsistencyError(Exception):
         pass
