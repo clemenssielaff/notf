@@ -10,7 +10,7 @@ class StateMachineCallback(CallbackBase):
     Callbacks called when a State is entered/exited.
     """
     def __init__(self, source: str):
-        CallbackBase.__init__(self, dict(widget=Widget.Self), source)
+        CallbackBase.__init__(self, dict(widget=Widget.Handle), source)
 
 
 class State:

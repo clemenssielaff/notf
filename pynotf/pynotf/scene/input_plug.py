@@ -20,7 +20,7 @@ class InputPlug(Receiver):
         """
 
         def __init__(self, source: str):
-            CallbackBase.__init__(self, dict(signal=ValueSignal, widget=Widget.Self), source)
+            CallbackBase.__init__(self, dict(signal=ValueSignal, widget=Widget.Handle), source)
 
     def __init__(self, circuit: Circuit, element_id: Circuit.Element.ID, widget: 'Widget', schema: Value.Schema):
         """
@@ -52,7 +52,7 @@ class InputPlug(Receiver):
 
     def set_callback(self, callback: Optional[InputPlug.Callback]):
         """
-        Callbacks must take two arguments (ValueSignal, Widget.Self) and return nothing.
+        Callbacks must take two arguments (ValueSignal, Widget.Handle) and return nothing.
         :param callback:    New Callback to call when a new Value is received or None to uninstall the Callback.
         """
         self._callback = callback
@@ -80,7 +80,7 @@ class InputPlug(Receiver):
 
         # perform the callback
         try:
-            self._callback(Widget.Self(self._widget), signal_copy)
+            self._callback(Widget.Handle(self._widget), signal_copy)
 
         # report any exception that might escape the user-defined code
         except Exception as exception:

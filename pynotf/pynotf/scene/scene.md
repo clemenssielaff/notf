@@ -33,7 +33,7 @@ A Scene owns a Circuit and manages it in a way that allows the user to inject us
 ## Input Plug
 - [X] Concrete implementation of the Receiver interface.
 - [X] Store a constant raw reference to their owner Widget that is always valid.
-- [X] Optionally forwards ValueSignals to a Widget.InputCallback, passing a Widget.Self handle to the owner Widget.
+- [X] Optionally forwards ValueSignals to a Widget.InputCallback, passing a Widget.Handle handle to the owner Widget.
 - [X] Which method is forwarded to can be changed by the owner Widget.
 - [X] If the Callback throws an exception, the ValueSignal will remain unmodified. 
 
@@ -51,7 +51,7 @@ A Scene owns a Circuit and manages it in a way that allows the user to inject us
 - [X] Property.Operations have access to a Widget.View of the Widget owning the Property
 - [X] Never accept or block Signals
 - [X] Have an optional, mutable Property.Callback that is invoked after each Value change
-- [X] PropertyCallbacks have access to a Widget.Self handle of the Widget owning the Property
+- [X] PropertyCallbacks have access to a Widget.Handle handle of the Widget owning the Property
 - [X] PropertyCallbacks must guard against infinite cycles
 
 # The Widget
@@ -130,7 +130,7 @@ Like Operator Operations, Property Operations are allowed to store an arbitrary 
 
 ### Property Callback
 
-Like Input Plugs, Properties also have an optional Callback function that is invoked after the Property has been updated. Unlike the Property Operation, which is only allowed to operate on the value, the Callback has full access to a Widget.Self handle, which allows it to update Properties and emit from Output Plugs. Of course, you have to take care not to create any infinite loops between Callbacks, just like you would in the Circuit. If a Property Callback of a Property would set the same Property again, it would create an infinite loop and an immediate deadlock if it was not for the reentrancy check in a Property's `Emitter._emit` methods that will catch this case and fail gracefully. The same goes for the "wider" cycle, in which two Properties keep changing each other's value forever.
+Like Input Plugs, Properties also have an optional Callback function that is invoked after the Property has been updated. Unlike the Property Operation, which is only allowed to operate on the value, the Callback has full access to a Widget.Handle handle, which allows it to update Properties and emit from Output Plugs. Of course, you have to take care not to create any infinite loops between Callbacks, just like you would in the Circuit. If a Property Callback of a Property would set the same Property again, it would create an infinite loop and an immediate deadlock if it was not for the reentrancy check in a Property's `Emitter._emit` methods that will catch this case and fail gracefully. The same goes for the "wider" cycle, in which two Properties keep changing each other's value forever.
 
 However, there is one exception to the "no cycle" rule, one that is only possible because of the separation between the Property Operation and -Callback: Imagine a Widget with two Properties `A` and `B` that need to be kept in sync. Let's say that `B=A+2` must hold at all times. Whenever you set `A` to `x`, its Callback will also set `B` to `x+2`. But there is no way to differentiate this case from one where you changed `B` instead of `A` and so `B` will continue to update `A` as well ...which would cause a NoDag exception. But while this is a cycle, it is clearly not an infinite one. In fact, after touching both `A` and `B` once (no matter which one is set by the user), no further progress will be made. We can catch this case with a simple all-purpose optimization: check whether the new value is equal to the existing one *prior* to checking for cycles. If the value is the same, just do nothing and return. In this case, setting `A`  to `x` will change `B` to `x+2` which will in turn cause `A` to update to `x` again. But since at this point, `A` already has the value `x`, it will simply return nothing and the cycle is broken.
 
@@ -168,7 +168,7 @@ With the current implementation, we have 16 * 600 * 72 = 691200 bytes = 675Kib [
 Then again, it is not nothing. And 600 Widgets might actually be quite reasonable if you count Widgets that are invisible, maybe cropped, maybe hidden behind others. And having private data would mean that the user is better able to keep the public interface of a Widget clean from implementation details. This sounds especially relevant, when you start versioning Widget Definitions.
 
 Okay, let's say have have this private Data Value. It will most likely be a map. Does the map share the namespace of its keys with the namespace of the Widgets I/OPLugs and Properties?  
-No. In order to access the data, you need a Widget.Self handle that has a special method to access the private data, maybe called `data(name)`.  To make this work consistently, we could enforce that the data is indeed always a map. With this special method, you don't need to worry about accessing anything but the private data, so there is no need to share the namespace. 
+No. In order to access the data, you need a Widget.Handle handle that has a special method to access the private data, maybe called `data(name)`.  To make this work consistently, we could enforce that the data is indeed always a map. With this special method, you don't need to worry about accessing anything but the private data, so there is no need to share the namespace. 
 
 That "stable interface" argument almost had me there, but you could also simply put an underscore in front of the name to denote it as "private" (like in Python). While it is true that some user of that Widget might still depend on a private Property, he does so with the implied understanding that this Property may be renamed, or removed in the future.  
 What I am more worried about is that users that write code for a Widget will constantly have to think about whether this one value is stored in a Property or if it is stored in the private data. I certainly would, especially since you can have both a Property named "Foo" and a private data Value of the same name. I think this would lead me to favor one over the other and since I am always for private-first, I would probably end up using mostly private data and only occasionally public properties whenever I see an obvious use-case.  
@@ -236,7 +236,7 @@ Nodes are *the* place to build the UI through user-defined code. Of course, the 
 1. Properties
 2. Output Plugs
 3. Existing child Nodes
-4. Self, in order to create or remove child nodes.
+4. Handle, in order to create or remove child nodes.
 
 That looks like a function signature (self, ValueSignal) to me. A Callback has a name, which can be registered with the IPlug. An IPlug can only call a single or no Callback - we don't allow multiple connected Callbacks. Of course, you can set up the one Callback to call two other ones, but that's your responsibility.
 

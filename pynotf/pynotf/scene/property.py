@@ -87,7 +87,7 @@ class Property(Receiver, Emitter):  # final
         """
 
         def __init__(self, source: str):
-            CallbackBase.__init__(self, dict(value=Value, widget=Widget.Self), source)
+            CallbackBase.__init__(self, dict(value=Value, widget=Widget.Handle), source)
 
     def __init__(self, circuit: Circuit, element_id: Circuit.Element.ID, widget: 'Widget', value: Value,
                  operation: Optional[Operation]):
@@ -134,7 +134,7 @@ class Property(Receiver, Emitter):  # final
 
     def set_callback(self, callback: Optional[Property.Callback]):
         """
-        Callbacks must take two arguments (Value, Widget.Self) and return nothing.
+        Callbacks must take two arguments (Value, Widget.Handle) and return nothing.
         :param callback:    New Callback to call when the Property changes its Value.
         """
         self._callback = callback
@@ -174,7 +174,7 @@ class Property(Receiver, Emitter):  # final
 
         # invoke the registered callback, if there is one
         if self._callback is not None:
-            self._callback(self._value, Widget.Self(self._widget))
+            self._callback(self._value, Widget.Handle(self._widget))
 
         # lastly, emit the changed value into the circuit
         self._emit(self._value)

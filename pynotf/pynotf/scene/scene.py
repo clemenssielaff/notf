@@ -13,7 +13,7 @@ class Scene:
         """
         # Expired Widgets are kept around until the end of an Event.
         # We store Handles here to keep ownership contained to the parent Widget only.
-        self._expired_widgets: Set[Widget.Handle] = set()
+        self._expired_widgets: Set[Widget] = set()
 
         self._root: Widget = Widget(Widget.Type("", Widget.Definition()), None, self, '/')  # is constant
         self._circuit: Circuit = Circuit()  # is constant
@@ -43,7 +43,7 @@ class Scene:
         else:
             self._widget_types[type_name] = Widget.Type(type_name, definition)
 
-    def find_widget(self, path: 'Widget.Path') -> Optional['Widget.Handle']:
+    def find_widget(self, path: 'Widget.Path') -> Optional['Widget']:
         """
         Find a Widget from an absolute Path.
         :param path: Absolute Path of the Widget to find.
@@ -53,7 +53,7 @@ class Scene:
             raise Widget.Path.Error(f'Cannot query a Widget from the Scene with relative path "{str(path)}"')
         return self._root._find_widget(path, 0)
 
-    def create_widget(self, type_name: str, name: str) -> 'Widget.Handle':
+    def create_widget(self, type_name: str, name: str) -> 'Widget':
         """
         Creates a new first-level Widget directly underneath the root.
         :param type_name:   Name of the Type of the Widget to create
@@ -68,9 +68,9 @@ class Scene:
         """
         # first, we need to make sure we find the expired root(s), so we do not delete a child node before its parent
         # if they both expired during the same event
-        expired_roots: Set[Widget.Handle] = set()
+        expired_roots: Set[Widget] = set()
         for widget in self._expired_widgets:
-            parent: Optional[Widget.Handle] = widget.get_parent()
+            parent: Optional[Widget] = widget.get_parent()
             while parent is not None:
                 if parent in self._expired_widgets:
                     break
@@ -80,10 +80,8 @@ class Scene:
 
         # delete all expired nodes in the correct order
         for widget in expired_roots:
-            parent_handle: Optional[Widget.Handle] = widget.get_parent()
-            assert parent_handle is not None  # root removal is handled manually at the destruction of the Scene
-            parent: Optional[Widget] = parent_handle._widget()
-            assert parent is not None
+            parent: Optional[Widget] = widget.get_parent()
+            assert parent is not None  # root removal is handled manually at the destruction of the Scene
             parent._remove_child(widget)
             del parent
 

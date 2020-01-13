@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Optional, Dict, NamedTuple, List
-from weakref import ref as weak_ref
 
 from pynotf.value import Value
 from pynotf.logic import Circuit
@@ -9,15 +8,22 @@ from .output_plug import OutputPlug
 from .path import Path
 
 
-#######################################################################################################################
+########################################################################################################################
 
 class PropertyDefinition(NamedTuple):
     default_value: Value
     operation: Optional[Property.Operation] = None
 
 
-class WidgetDefinition(NamedTuple):
+########################################################################################################################
 
+class WidgetDefinition(NamedTuple):
+    """
+    Fully describes a Widget Type.
+    A Widget.Definition can be created by anyone and does not have to valid. Before you can use it as a Widget.Type, it
+    has to be validated.
+    See each field of this tuple for details on what constraints apply.
+    """
     # the Scene-unique name of the Widget Type
     # cannot be empty and must not contain Path control symbols like '/' and '.' so the type of a widget is a valid
     # default name for an instance
@@ -38,6 +44,8 @@ class WidgetDefinition(NamedTuple):
     # state machine of the Widget
     state_machine: StateMachine
 
+
+########################################################################################################################
 
 class WidgetType(WidgetDefinition):
     """
@@ -103,7 +111,43 @@ class WidgetType(WidgetDefinition):
         return WidgetType(*definition)
 
 
-#######################################################################################################################
+########################################################################################################################
+
+class WidgetView:
+    """
+    A View onto a Widget instance. A View is only able to inspect Property Values and nothing else.
+    It is the Widget accessor with the lowest level of access.
+    """
+
+    def __init__(self, widget: Widget):
+        """
+        Constructor.
+        :param widget: Widget that is being viewed.
+        """
+        self._widget: Widget = widget
+
+    def __getitem__(self, property_name: str) -> Optional[Value]:
+        """
+        Returns the value of the Property with the given name or None if the Widget has no Property by the name.
+        :param property_name: Name of the Property providing the Value.
+        :return: The Property's Value or None if no Property by the given name exists on the Widget.
+        """
+        return self._widget.get_property(property_name)
+
+
+########################################################################################################################
+
+class WidgetHandle:
+    """
+    Mutability Widget Handle passed to Callbacks which allows the user to access the Widget's private data
+    Value as well as its Properties and OPlugs.
+    """
+
+    def __init__(self, widget: Widget):
+        self._widget: Widget = widget
+
+
+########################################################################################################################
 
 class Widget:
     """
@@ -116,67 +160,8 @@ class Widget:
     Property = Property
     InputPlug = InputPlug
     OutputPlug = OutputPlug
-
-    class View:
-        """
-        A View onto a Widget instance. A View is only able to inspect Property Values and nothing else.
-        It is the Widget accessor with the lowest level of access.
-        """
-
-        def __init__(self, widget: Widget):
-            """
-            Constructor.
-            :param widget: Widget that is being viewed.
-            """
-            self._widget: Widget = widget
-
-        def __getitem__(self, property_name: str) -> Optional[Value]:
-            """
-            Returns the value of the Property with the given name or None if the Widget has no Property by the name.
-            :param property_name: Name of the Property providing the Value.
-            :return: The Property's Value or None if no Property by the given name exists on the Widget.
-            """
-            prop: Optional[Property] = self._widget._properties.get(property_name)
-            if prop is None:
-                return None
-            return prop.get_value()
-
-    class Handle:
-        def __init__(self, widget: Widget):
-            assert isinstance(widget, Widget)
-            self._widget: Optional[weak_ref] = weak_ref(widget)
-
-        def is_valid(self) -> bool:
-            return self._widget() is not None
-
-        def get_type(self) -> Optional[str]:
-            widget: Widget = self._widget()
-            if widget is not None:
-                return widget.get_type()
-
-        def get_name(self) -> Optional[str]:
-            widget: Widget = self._widget()
-            if widget is not None:
-                return widget.get_name()
-
-        def get_path(self) -> Optional[Path]:
-            widget: Widget = self._widget()
-            if widget is not None:
-                return widget.get_path()
-
-        def get_parent(self) -> Optional[Widget.Handle]:
-            widget: Widget = self._widget()
-            if widget is not None:
-                return widget.get_parent()
-
-    class Self:
-        """
-        Special kind of Widget Handle passed to Callbacks which allows the user to access the Widget's private data
-        Value as well as its Properties and OPlugs.
-        """
-
-        def __init__(self, widget: Widget):
-            self._widget: Widget = widget
+    View = WidgetView
+    Handle = WidgetHandle
 
     def __init__(self, definition: Type, parent: Optional[Widget], scene: 'Scene', name: str):
         """
@@ -233,16 +218,25 @@ class Widget:
             next_widget = next_widget._parent
         return Path.create(list(reversed(path)))
 
-    def get_parent(self) -> Optional[Widget.Handle]:
+    def get_parent(self) -> Optional[Widget]:
         """
         The parent of this Widget, is only None if this is the root Widget.
         """
-        if self._parent is None:
+        return self._parent
+
+    def get_property(self, name: str) -> Optional[Value]:
+        """
+        Returns the value of the Property with the given name or None if the Widget has no Property by the name.
+        :param name: Name of the Property providing the Value.
+        :return: The Property's Value or None if no Property by the given name exists on the Widget.
+        """
+        prop: Optional[Property] = self._properties.get(name)
+        if prop is None:
             return None
         else:
-            return Widget.Handle(self._parent)
+            return prop.get_value()
 
-    def find_widget(self, path: Widget.Path) -> Optional[Widget.Handle]:
+    def find_widget(self, path: Widget.Path) -> Optional[Widget]:
         """
         Tries to find a Widget in the Scene from a given Path.
         :param path: Path of the Widget to find.
@@ -253,7 +247,7 @@ class Widget:
         else:
             return self._find_widget(path, 0)  # start following the relative path starting here
 
-    def create_child(self, type_name: str, child_name: str) -> Widget.Handle:
+    def create_child(self, type_name: str, child_name: str) -> Widget:
         """
         Creates a new child of this Widget.
         :param type_name:   Name of the Type of the Widget to create
@@ -277,20 +271,20 @@ class Widget:
             raise NameError(f'No Widget Type named "{type_name}" is registered with the Scene')
 
         # create the child widget
-        node: Widget = Widget(widget_type, self, self._scene, child_name)
-        self._children[child_name] = node
+        child_widget: Widget = Widget(widget_type, self, self._scene, child_name)
+        self._children[child_name] = child_widget
 
-        # return a handle
-        return Widget.Handle(node)
+        # return the child widget
+        return child_widget
 
     def remove(self):
         """
         Marks this Widget as expired. It will be deleted at the end of the Event.
         """
-        self._scene._expired_widgets.add(Widget.Handle(self))
+        self._scene._expired_widgets.add(self)
 
     # private for Scene
-    def _find_widget(self, path: Widget.Path, step: int) -> Optional[Widget.Handle]:
+    def _find_widget(self, path: Widget.Path, step: int) -> Optional[Widget]:
         """
         Recursive implementation to follow a Path to a particular Widget.
         :param path: Path of the Widget to find.
@@ -300,7 +294,7 @@ class Widget:
         # if this is the final step, we have reached the target widget
         if step == len(path):
             assert path.get_widget(len(path) - 1) == self._name
-            return Widget.Handle(self)
+            return self
 
         # if this is not the final step, get the next step
         next_child: Optional[str] = path.get_widget(step)
@@ -318,20 +312,18 @@ class Widget:
         # if the child widget is found, advance to the next step in the path and let the child continue the search
         return child_widget._find_widget(path, step + 1)
 
-    def _remove_child(self, node_handle: 'Widget.Handle'):
+    def _remove_child(self, widget: Widget):
         """
         Removes a child of this Widget.
-        :param node_handle:     Child Widget to remove.
+        :param widget:  Child Widget to remove.
         """
-        node: Optional[Widget] = node_handle._widget()
-        assert node is not None
-        assert node in self._children
-        node._remove_self()
-        del self._children[node.get_name()]
-        del node
-        assert not node_handle.is_valid()
+        assert widget in self._children
+        widget._remove_self()
+        del self._children[widget.get_name()]
+        del widget
 
     # private
+
     def _remove_self(self):
         """
         This method is called when this Widget is being removed.
@@ -352,7 +344,7 @@ class Widget:
         return name.isalnum()
 
 
-#######################################################################################################################
+########################################################################################################################
 
 from .scene import Scene
 from .property import Property
