@@ -4,7 +4,7 @@ os.environ["LD_LIBRARY_PATH"] = os.environ.get("LD_LIBRARY_PATH", "") + r""":/ho
 
 import glfw
 from OpenGL import GLES3 as gl
-import pynotf.pynanovg as nanovg
+import pynotf.extra.pynanovg as nanovg
 
 
 def key_callback_fn(window, key, scancode, action, mods):

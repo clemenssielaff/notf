@@ -35,7 +35,7 @@ class Path:
         """
         Delimiter character used to denote a final token in the Path.
         """
-        return '/'
+        return ':'
     
     @staticmethod
     def create(widgets: List[str], is_absolute: bool = True, property_name: Optional[str] = None):
@@ -79,7 +79,7 @@ class Path:
         # test whether this is a path to a property
         property_delimiter_pos: int = string.find(self.get_property_delimiter())
         if property_delimiter_pos != -1:
-            # empty property names are not allowed
+            # empty property names are   not allowed
             if property_delimiter_pos == len(string) - 1:
                 raise Path.Error.show_location(string, property_delimiter_pos + 1, 1,
                                                "Empty Property names are not allowed")

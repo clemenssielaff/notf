@@ -156,10 +156,6 @@ class Widget:
     Definition = WidgetDefinition
     Type = WidgetType
     Path = Path
-    StateMachine = StateMachine
-    Property = Property
-    InputPlug = InputPlug
-    OutputPlug = OutputPlug
     View = WidgetView
     Handle = WidgetHandle
 
