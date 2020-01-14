@@ -26,7 +26,7 @@ class Callback:
         Example:
             callback: Callback = Callback(dict(a=int, b=float), "return float(a + b)")
         :param signature: Signature of the Callback. Is used to define the internal function header.
-        :param source: Source string defining the body of the Callback's function. Must be valid Python code.
+        :param source: Source string defining the body of the Callback's function. Must be valid Python code or empty.
         :param: environment: Additional Python objects that are relevant to execute the function.
         """
 
@@ -110,6 +110,10 @@ class Callback:
         :param source: User-defined source body.
         :return: Normalized source body.
         """
+        # if the source is empty, this is a noop function
+        if source == '':
+            return "    pass"
+
         lines: List[str] = source.split('\n')
 
         # find the first non-empty line
@@ -119,6 +123,10 @@ class Callback:
                 break
             else:
                 start_index += 1
+
+        # the number of leading whitespace characters of the first line is assumed to be the base indentation
+        # this number of characters is removed from the start of each line
+        indent: int = len(lines[start_index]) - len(lines[start_index].lstrip())
 
         # find the last non-empty line
         end_index: int = len(lines)
@@ -131,6 +139,6 @@ class Callback:
         # return the normalized result
         return '\n'.join(
             (' ' * 4) +  # indent
-            cls._trailing_whitespace.sub('', line)  # trim trailing whitespace from each line
+            cls._trailing_whitespace.sub('', line)[indent:]  # trim leading and trailing whitespace from each line
             for line in lines[start_index: end_index]  # trim empty lines from the top and bottom
         )

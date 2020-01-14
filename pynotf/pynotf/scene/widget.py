@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Dict, NamedTuple, List
+from typing import Optional, Dict, NamedTuple, List, Any
 
 from pynotf.value import Value
 from pynotf.logic import Circuit
@@ -116,7 +116,6 @@ class WidgetType(WidgetDefinition):
 class WidgetView:
     """
     A View onto a Widget instance. A View is only able to inspect Property Values and nothing else.
-    It is the Widget accessor with the lowest level of access.
     """
 
     def __init__(self, widget: Widget):
@@ -137,14 +136,55 @@ class WidgetView:
 
 ########################################################################################################################
 
-class WidgetHandle:
+class WidgetHandle(WidgetView):
     """
-    Mutability Widget Handle passed to Callbacks which allows the user to access the Widget's private data
-    Value as well as its Properties and OPlugs.
+    Mutability Widget Handle passed to Callbacks which allows the user to modify the Widget.
     """
 
     def __init__(self, widget: Widget):
-        self._widget: Widget = widget
+        """
+        Constructor.
+        :param widget: Widget that is being handled.
+        """
+        WidgetView.__init__(self, widget)
+
+    def __setitem__(self, property_name: str, value: Any):
+        """
+        Updates the Property with the given name to value
+        :param property_name: Name of the Property to update.
+        :param value: Value to update the Property with.
+        :raise NameError: if the Widget has no Property by the given name.
+        :raise TypeError: If the given value does not match the Property's.
+        """
+        prop: Optional[Property] = self._widget.get_property(property_name)
+        if prop is None:
+            raise NameError(f'Widget "{self._widget.get_path()}" has no Property "{property_name}"')
+        else:
+            prop.set_value(value)
+
+    def emit(self, output_name: str, value: Any):
+        pass  # TODO:
+
+    def transition_into(self, state_name: str):
+        pass
+
+    def set_input_callback(self, input_name: str, callback_name: str):
+        pass
+
+    def set_property_callback(self, input_name: str, callback_name: str):
+        pass
+
+    def connect_input(self, input_name: str, output_path: Path):
+        pass
+
+    def disconnect_input(self, input_name: str, output_path: Optional[Path] = None):
+        pass
+
+    def connect_output(self, output_name: str, input_path: Path):
+        pass
+
+    def disconnect_output(self, output_name: str, input_path: Optional[Path] = None):
+        pass
 
 
 ########################################################################################################################
@@ -154,6 +194,7 @@ class Widget:
 
     """
     Definition = WidgetDefinition
+    Property = PropertyDefinition
     Type = WidgetType
     Path = Path
     View = WidgetView

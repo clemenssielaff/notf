@@ -20,7 +20,10 @@ class InputPlug(Receiver):
         """
 
         def __init__(self, source: str):
-            CallbackBase.__init__(self, dict(signal=ValueSignal, widget=Widget.Handle), source)
+            CallbackBase.__init__(self,
+                                  signature=dict(signal=ValueSignal, widget=Widget.Handle),
+                                  source=source,
+                                  environment=dict(ValueSignal=ValueSignal, WidgetHandle=Widget.Handle))
 
     def __init__(self, circuit: Circuit, element_id: Circuit.Element.ID, widget: 'Widget', schema: Value.Schema):
         """

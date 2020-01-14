@@ -1,9 +1,13 @@
 import unittest
 
-from pynotf.scene.path import Path
+from pynotf.scene import Path, Scene, Widget, InputPlug, OutputPlug, StateMachine
+from pynotf.value import Value
+
+from tests.utils import number_schema
 
 
 ########################################################################################################################
+
 
 class TestPath(unittest.TestCase):
     def test_empty(self):
@@ -155,3 +159,73 @@ class TestPath(unittest.TestCase):
         self.assertEqual(str(Path('/')), '/')
         self.assertEqual(str(Path('/test/this:path')), '/test/this:path')
         self.assertEqual(str(Path('./test/this/../that')), 'test/that')
+
+
+########################################################################################################################
+
+class TestEmptyScene(unittest.TestCase):
+
+    def test_empty(self):
+        _: Scene = Scene()
+
+    def test_simple_setup(self):
+        """                                  +------+
+              '/'       with 'a' and 'b':   -| prop |-
+               |                             |------|
+            +--+--+                         -|input |
+            |     |                          |output|-
+           'a'   'b'                         +------+
+
+        We have a simple setup with two Widgets of the same type under the root of the Scene.
+        Each input of each Widget is connected to an outside Emitter for stimuli, the input of `b` is also connected
+        to the output of `a`.
+        """
+        scene: Scene = Scene()
+        scene.register_widget_type(Widget.Definition(
+            type_name='test_widget',
+            properties={
+                'prop': Widget.Property(Value(100))
+            },
+            input_plugs={
+                'input': number_schema
+            },
+            output_plugs={
+                'output': number_schema
+            },
+            plug_callbacks={
+                'state1_input': InputPlug.Callback(r"""
+                    number = signal.get_value().as_number()
+                    if number <= 100:
+                        widget['prop'] = number
+                    else:
+                        widget.emit('output', number % 100)
+                        widget.transition_into('state2')
+                    
+                """),
+                'state2_input': InputPlug.Callback(r"""
+                    number = signal.get_value().as_number()
+                    widget['prop'] = number * -1
+                    if number == 0:
+                        widget.transition_into('state1')
+                """)
+            },
+            property_callbacks={},
+            state_machine=StateMachine(StateMachine.Description(
+                states={
+                    'state1': StateMachine.State(StateMachine.Callback(r"""
+                        widget.set_input_callback('input', 'state1_input')
+                    """)),
+                    'state2': StateMachine.State(StateMachine.Callback(r"""
+                        widget.set_input_callback('input', 'state2_input')
+                    """))
+                },
+                initial_state='state1',
+                transitions={
+                    'state1': ['state2'],
+                    'state2': ['state1']
+                }
+            ))
+        ))
+
+        a: Widget = scene.create_widget('test_widget', 'a')
+        b: Widget = scene.create_widget('test_widget', 'b')

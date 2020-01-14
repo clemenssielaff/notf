@@ -7,6 +7,23 @@ from pynotf.logic import Circuit
 
 class Scene:
 
+    @staticmethod
+    def _get_root_type():
+        return Widget.Type.create(
+            Widget.Definition(
+                type_name='_root',
+                properties={},
+                input_plugs={},
+                output_plugs={},
+                plug_callbacks={},
+                property_callbacks={},
+                state_machine=StateMachine(StateMachine.Description(
+                    states={'root': StateMachine.State(StateMachine.Callback())},
+                    initial_state='root'
+                ))
+            )
+        )
+
     def __init__(self):
         """
         Default Constructor.
@@ -15,10 +32,12 @@ class Scene:
         # We store Handles here to keep ownership contained to the parent Widget only.
         self._expired_widgets: Set[Widget] = set()
 
-        self._root: Widget = Widget(Widget.Type("", Widget.Definition()), None, self, '/')  # is constant
+        self._widget_types: Dict[str, Widget.Type] = {}
+
         self._circuit: Circuit = Circuit()  # is constant
 
-        self._widget_types: Dict[str, Widget.Type] = {}
+        # create the root widget last to make sure all other members of the scene are initialized
+        self._root: Widget = Widget(self._get_root_type(), None, self, '/')  # is constant
 
     def __del__(self):
         """
@@ -32,16 +51,18 @@ class Scene:
         """
         return self._circuit
 
-    def register_widget_type(self, type_name: str, definition: 'Widget.Definition'):
+    def register_widget_type(self, definition: 'Widget.Definition'):
         """
         Register a new Widget Type with the Scene.
-        :param type_name: Name of the new Widget Type.
         :param definition: Definition of the Type.
+        :raise Widget.Type.ConsistencyError: If the Definition fails to validate.
         """
-        if type_name in self._widget_types:
-            raise NameError(f'Another Widget type with the name "{type_name}" exists already in the Scene')
+        widget_type: Widget.Type = Widget.Type.create(definition)
+
+        if widget_type.type_name in self._widget_types:
+            raise NameError(f'Another Widget type with the name "{widget_type.type_name}" exists already in the Scene')
         else:
-            self._widget_types[type_name] = Widget.Type(type_name, definition)
+            self._widget_types[widget_type.type_name] = widget_type
 
     def find_widget(self, path: 'Widget.Path') -> Optional['Widget']:
         """
@@ -98,3 +119,4 @@ class Scene:
 #######################################################################################################################
 
 from .widget import Widget
+from .statemachine import StateMachine

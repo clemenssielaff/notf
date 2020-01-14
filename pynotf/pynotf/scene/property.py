@@ -34,7 +34,10 @@ class Property(Receiver, Emitter):  # final
             :param source:  Function body of a function adhering to the signature of a Property.Operation.
             :param data:    Initial private data Value. Is empty by default.
             """
-            CallbackBase.__init__(self, dict(value=Value, widget=Widget.View, data=Value), source, dict(Value=Value))
+            CallbackBase.__init__(self,
+                                  signature=dict(value=Value, widget=Widget.View, data=Value),
+                                  source=source,
+                                  environment=dict(Value=Value, WidgetView=Widget.View))
 
             # initialize an empty data Value that can be used by the Callback function to store state
             self._data: Value = data or Value()
