@@ -276,3 +276,34 @@ Depending on the execution order, the flag of Widget A would either say "this Wi
 The same goes for anything else that might be used as "removal light", like removing the Widget as child of the parent so it does not get found anymore when the hierarchy is traversed.
 
 
+# Layout Properties
+
+When we defined a Widget, everything was pretty clear. You have Properties, Inputs and Outputs and various Callbacks. However, when we got to layouting, this clean taxonomy suddenly didn't suffice. With the grant size, the scene aabr (in global space) and child aabr (in local space) we have 3 "things" that have the following behavior and constraints:
+
+1. They can be read by user code, but never set
+2. They are visible from the outside and emit whenever new Values are set
+3. The user should be able to attach internal Callback to it
+
+To me, this very much looks like a Property _except_ for the fact that the user cannot set it and you cannot connect upstream emitters to them. 
+Well, speaking of which: having _each and every_ Property settable from the outside is an invitation to screw with the system. So far, I haven't restricted any connection because I wanted to go the Python route and allow the user to change everything all the time. If you want to shoot yourself in the foot, you can do so, maybe you actually find a good reason to do so...
+So actually, can we just leave it at that? Saying that if the user wants to set any of these Values by hand, he is free to do so but it will most likely break the layouting? ... That's one way to do it.
+Another way would be to add a flag to a Property that determines if a Property can be set from the outside and if it can be set from the inside. In our case, both flags would disallow changes, which would be useless for the user but okay for us because we are not going through user defined code.
+The overhead is minimal: 2 bits on the Property Type in space and a lookup whenever
+
+* user defined code tries to connect a Property as downstream (note, no further checks are done once this succeeds)
+* a property value is set from user defined code
+
+Honestly, that sounds quite reasonable to me.
+The only problem I have is the question, whether or not this is something that we want to include into our design. Let's make a pro/con list, shall we?
+
+Pro: it's a natural fit for what I am trying to do with layout properties
+Con: it's an additional thing that people have to be aware of when coding
+Pro: the default behavior can be what we currently have: allow external and internal modification
+Con: this could lead people to close their widgets off to outside access, making things more complicated than they need to be
+Pro: not a big deal, you can always change the definition of the Widget.Type - and who are you to say that you know better than the author of the widget in the first place?
+Con: it is one additional source of runtime errors
+Pro: you could say that this is actually a way to reduce sources of errors since you can be certain that you don't accidentally change Properties from the outside that should never be changed
+Pro: even if the user forgets that a property cannot be connected to / changed, it won't crash or anything and the user will be able to rectify the code easily
+Con: but the runtime cost! the branching!
+Pro: fuck off
+
