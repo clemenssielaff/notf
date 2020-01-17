@@ -53,9 +53,24 @@ class StateMachine:
     Description = StateMachineDescription
 
     class ConsistencyError(Exception):
+        """
+        Raised when a State Machine Description failed to validate in the State Machine constructor.
+        """
+        pass
+
+    class TransitionError(Exception):
+        """
+        Raised when a Transition it not allowed.
+        """
         pass
 
     def __init__(self, description: Description):
+        """
+        Constructor.
+        Validates the State Machine Description and initializes a State Machine instance from it.
+        :param description: State Machine Description to initialize from.
+        :raise ConsistencyError: If the Description fails to validate.
+        """
         if len(description.states) == 0:
             raise self.ConsistencyError("Cannot construct a StateMachine with zero States")
         if description.initial_state not in description.states:
@@ -80,32 +95,54 @@ class StateMachine:
         self._states: Dict[str, State] = description.states  # is constant
         self._initial_state: str = description.initial_state  # is constant
         self._transitions: Dict[str, List[str]] = description.transitions  # is constant
+        self._widget: Optional[Widget.Handle] = None
+        self._current_state_name: str = ''
         self._current_state: Optional[State] = None
 
-    def initialize(self):
+    def initialize(self, widget: 'Widget'):
+        """
+        Enter the initial State.
+        Is not part of the constructor because the Widget needs to be fully set up before any StateMachineCallback
+        can safely be called.
+        :param widget: Widget to manage.
+        """
         if self._current_state is None:
+            self._widget = Widget.Handle(widget)
+            self._current_state_name = self._initial_state
             self._current_state = self._states[self._initial_state]
-            self._current_state.enter()
+            self._current_state.enter(self._widget)
 
-    def transition_to(self, target_name: str) -> bool:
-        if self._current_state is None:
-            self.initialize()
+    def transition_into(self, target_name: str):
+        """
+        Transitions from the current into another State with the given name.
+        Re-transitioning into the current State has to be allowed explicitly in the State Machine Description, otherwise
+        it is considered a TransitionError.
+        :param target_name: Name of the State to transition into.
+        :raise NameError: If the State Machine does not have a State with the given name.
+        :raise TransitionError: If you cannot enter the target State from the current one.
+        """
+        assert self._current_state is not None
 
+        # does the target name identify a state in this state machine?
         target_state: State = self._states.get(target_name)
         if target_state is None:
-            return False  # state name is not in the description
+            raise NameError(f'No State named "{target_name}" in State Machine')
 
-        if target_state == self._current_state:
-            return True  # we are already there
+        # can we transition from this state into the target state?
+        if target_name not in self._transitions[self._current_state_name]:
+            if target_name == self._current_state_name:
+                raise self.TransitionError(f'Re-transition into State "{self._current_state_name}" '
+                                           f'has not been allowed in the State Machine Description.')
+            else:
+                raise self.TransitionError(f'Transition from current State "{self._current_state_name}" to '
+                                           f'"{target_name}" has not been allowed in the State Machine Description.')
 
-        if target_name not in self._transitions[self._current_state.get_name()]:
-            return False  # no transition allowed
-
+        # perform the transition
         if self._current_state.exit is not None:
-            self._current_state.exit()
+            self._current_state.exit(self._widget)
+        self._current_state_name = target_name
         self._current_state = target_state
-        self._current_state.enter()
-        return True
+        self._current_state.enter(self._widget)
 
 
 #######################################################################################################################

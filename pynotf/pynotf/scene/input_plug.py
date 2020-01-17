@@ -56,7 +56,7 @@ class InputPlug(Receiver):
     def set_callback(self, callback: Optional[InputPlug.Callback]):
         """
         Callbacks must take two arguments (ValueSignal, Widget.Handle) and return nothing.
-        :param callback:    New Callback to call when a new Value is received or None to uninstall the Callback.
+        :param callback:    New Callback to call on input or None to uninstall the current Callback.
         """
         self._callback = callback
 

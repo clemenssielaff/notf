@@ -31,24 +31,24 @@ class Path:
         return '/'
 
     @staticmethod
-    def get_property_delimiter() -> str:
+    def get_element_delimiter() -> str:
         """
         Delimiter character used to denote a final token in the Path.
         """
         return ':'
     
     @staticmethod
-    def create(widgets: List[str], is_absolute: bool = True, property_name: Optional[str] = None):
+    def create(widgets: List[str], is_absolute: bool = True, element_name: Optional[str] = None):
         """
         Manual Path factory.
         :param widgets: All widgets in the Path.
         :param is_absolute: Whether or not the Path is absolute or not (default = True).
-        :param property_name: Optional target Property of the last Widget in the Path (default = None).
+        :param element_name: Optional target Element of the last Widget in the Path (default = None).
         :return: A new Path.
         """
         path: Path = Path()
         path._widgets = widgets
-        path._property = property_name
+        path._element = element_name
         path._is_absolute = is_absolute
         path._normalize()
         return path
@@ -60,7 +60,7 @@ class Path:
         """
         # initialize member defaults
         self._widgets: List[str] = []
-        self._property: Optional[str] = None
+        self._element: Optional[str] = None
         self._is_absolute: bool = False
 
         # if the path is empty, this is all we have to do
@@ -76,27 +76,27 @@ class Path:
             if len(string) == 0:
                 return
 
-        # test whether this is a path to a property
-        property_delimiter_pos: int = string.find(self.get_property_delimiter())
-        if property_delimiter_pos != -1:
-            # empty property names are   not allowed
-            if property_delimiter_pos == len(string) - 1:
-                raise Path.Error.show_location(string, property_delimiter_pos + 1, 1,
-                                               "Empty Property names are not allowed")
+        # test whether this is a path to an element
+        element_delimiter_pos: int = string.find(self.get_element_delimiter())
+        if element_delimiter_pos != -1:
+            # empty element names are not allowed
+            if element_delimiter_pos == len(string) - 1:
+                raise Path.Error.show_location(string, element_delimiter_pos + 1, 1,
+                                               "Empty Element names are not allowed")
 
-            # additional delimiters of any kind after the property delimiter are not allowed
-            extra_delimiter_pos: int = max(string.find(self.get_widget_delimiter(), property_delimiter_pos + 1),
-                                           string.find(self.get_property_delimiter(), property_delimiter_pos + 1))
+            # additional delimiters of any kind after the element delimiter are not allowed
+            extra_delimiter_pos: int = max(string.find(self.get_widget_delimiter(), element_delimiter_pos + 1),
+                                           string.find(self.get_element_delimiter(), element_delimiter_pos + 1))
             if extra_delimiter_pos != -1:
                 raise Path.Error.show_location(string, extra_delimiter_pos + 1, len(string) - extra_delimiter_pos,
-                                               "Delimiters in the Property name are not allowed")
+                                               "Delimiters in the Element name are not allowed")
 
         # split the path into widget tokens
         self._widgets: List[str] = string.split(self.get_widget_delimiter())
 
-        # if this is a property path split the last token into widget:property
-        if property_delimiter_pos != -1:
-            last_widget, self._property = self._widgets[-1].split(self.get_property_delimiter())
+        # if this is a element path split the last token into widget:element
+        if element_delimiter_pos != -1:
+            last_widget, self._element = self._widgets[-1].split(self.get_element_delimiter())
             self._widgets[-1] = last_widget
 
         self._normalize()
@@ -145,7 +145,7 @@ class Path:
         Checks whether the Path is empty.
         An absolute path without any Widgets is the root and not empty.
         """
-        return len(self._widgets) == 0 and self._property is None and not self.is_absolute()
+        return len(self._widgets) == 0 and self._element is None and not self.is_absolute()
 
     def is_absolute(self) -> bool:
         """
@@ -160,17 +160,17 @@ class Path:
         """
         return not self._is_absolute
 
-    def is_property_path(self) -> bool:
+    def is_element_path(self) -> bool:
         """
-        Checks whether or not the last token in the Path is a property name.
+        Checks whether or not the last token in the Path is a Element name.
         """
-        return self._property is not None
+        return self._element is not None
 
     def is_widget_path(self) -> bool:
         """
         Checks whether or not the last token in the Path is a widget name.
         """
-        return self._property is None
+        return self._element is None
 
     def get_widget(self, index: int) -> Optional[str]:
         """
@@ -182,11 +182,18 @@ class Path:
         else:
             return self._widgets[index]
 
-    def get_property(self) -> Optional[str]:
+    def get_widget_path(self) -> Path:
         """
-        Returns the name of the Property pointed to by this Path or None if this is not a Property Path.
+        Returns this Path as a Widget Path (without an Element postfix).
+        If this is already a Widget Path, the returned one is just a copy of this.
         """
-        return self._property
+        return self.create(self._widgets, self._is_absolute)
+
+    def get_element(self) -> Optional[str]:
+        """
+        Returns the name of the Element pointed to by this Path or None if this is not an Element Path.
+        """
+        return self._element
 
     def __len__(self) -> int:
         """
@@ -201,10 +208,10 @@ class Path:
         if self.is_empty():
             return ''
 
-        elif self.is_property_path():
+        elif self.is_element_path():
             return f'{self.get_widget_delimiter() if self._is_absolute else ""}' \
                    f'{self.get_widget_delimiter().join(self._widgets)}' \
-                   f':{self._property}'
+                   f':{self._element}'
         else:
             return f'{self.get_widget_delimiter() if self._is_absolute else ""}' \
                    f'{self.get_widget_delimiter().join(self._widgets)}'
@@ -215,7 +222,7 @@ class Path:
         """
         return (self._is_absolute == other._is_absolute and
                 self._widgets == other._widgets and
-                self._property == other._property)
+                self._element == other._element)
 
     def __add__(self, other: Path) -> Path:
         """
@@ -227,7 +234,7 @@ class Path:
         if other.is_absolute():
             raise Path.Error(f'Cannot add path "{str(other)}" because it is absolute"')
 
-        return Path.create(self._widgets + other._widgets, self.is_absolute(), other._property)
+        return Path.create(self._widgets + other._widgets, self.is_absolute(), other._element)
 
     def __iadd__(self, other: Path) -> Path:
         """
@@ -240,6 +247,6 @@ class Path:
             raise Path.Error(f'Cannot add path "{str(other)}" because it is absolute"')
 
         self._widgets.extend(other._widgets)
-        self._property = other._property
+        self._element = other._element
         self._normalize()
         return self

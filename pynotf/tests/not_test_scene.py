@@ -98,12 +98,12 @@ class TestCase(unittest.TestCase):
         node = scene.root.create_child(TestNode, "Herbert")
 
         self.assertEqual(node.name, "Herbert")
-        self.assertEqual(node.get_property("prop_number").value.as_number(), 0)
+        self.assertEqual(node.get_element("prop_number").value.as_number(), 0)
         node.get_signal("number_output")
         node.get_slot("number_input")
 
         with self.assertRaises(KeyError):
-            node.get_property("Not a Property")
+            node.get_element("Not a Property")
         with self.assertRaises(KeyError):
             node.get_signal("Not a Signal")
         with self.assertRaises(KeyError):
@@ -133,7 +133,7 @@ class TestCase(unittest.TestCase):
         scene = Scene()
         node = scene.root.create_child(TestNode)
 
-        number_prop = node.get_property("prop_number")
+        number_prop = node.get_element("prop_number")
         self.assertEqual(number_prop.node, node)
         self.assertEqual(number_prop.value.as_number(), 0)
         number_prop.value = 3.87
@@ -143,7 +143,7 @@ class TestCase(unittest.TestCase):
         number_prop.value = -7
         self.assertEqual(number_prop.value.as_number(), 0)  # 0 is min
 
-        string_prop = node.get_property("prop_string")
+        string_prop = node.get_element("prop_string")
         self.assertEqual(string_prop.value.as_string(), "")
         string_prop.value = Value("test string")
         self.assertEqual(string_prop.value.as_string(), "test string")
@@ -164,7 +164,7 @@ class TestCase(unittest.TestCase):
     def test_reactive_property(self):
         scene = Scene()
         node = scene.root.create_child(TestNode)
-        prop: Property = node.get_property("prop_number")
+        prop: Property = node.get_element("prop_number")
         emitter1: Emitter = NumberEmitter()
         emitter2: Emitter = NumberEmitter()
 

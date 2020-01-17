@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Set
+from typing import Optional, Set, Union
 from weakref import ref as weak_ref
 
 from ..value import Value
@@ -65,16 +65,17 @@ class Receiver(Circuit.Element):
         # return a handle to the freshly created Operator
         return Operator.CreatorHandle(operator)
 
-    def connect_to(self, emitter_handle: Emitter.Handle):  # noexcept
+    def connect_to(self, emitter: Union[Emitter, Emitter.Handle]):  # noexcept
         """
         Connect to the given Emitter.
         If the Emitter is invalid or this Receiver is already connected to it, this does nothing.
-        :param emitter_handle: Handle of the Emitter to connect to.
+        :param emitter: Emitter / Handle of the Emitter to connect to.
         """
-        # get the emitter to connect to, if it is still alive
-        emitter: Optional[Emitter] = emitter_handle._element()
-        if emitter is None:
-            return
+        # get the emitter to connect to, if the input is a valid handle
+        if isinstance(emitter, Emitter.Handle):
+            emitter: Optional[Emitter] = emitter._element()
+            if emitter is None:
+                return
 
         # fail immediately if the schemas don't match
         if self.get_input_schema() != emitter.get_output_schema():
@@ -92,15 +93,16 @@ class Receiver(Circuit.Element):
         # schedule the creation of the connection
         self.get_circuit().create_connection(emitter, self)
 
-    def disconnect_from(self, emitter_handle: Emitter.Handle):
+    def disconnect_from(self, emitter: Union[Emitter, Emitter.Handle]):
         """
         Disconnects from the given Emitter.
-        :param emitter_handle:  Handle of the emitter to disconnect from.
+        :param emitter:  Emitter / Handle of the Emitter to disconnect from.
         """
-        # get the emitter to disconnect from, if it is still alive
-        emitter: Optional[Emitter] = emitter_handle._element()
-        if emitter is None:
-            return
+        # get the emitter to disconnect from, if the input is a valid handle
+        if isinstance(emitter, Emitter.Handle):
+            emitter: Optional[Emitter] = emitter._element()
+            if emitter is None:
+                return
 
         # At this point the receiver might not even be connected to the emitter yet, if the connection was created as
         # part of the same event as this call to disconnect.

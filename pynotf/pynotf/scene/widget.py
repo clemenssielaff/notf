@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Optional, Dict, NamedTuple, List, Any
 
 from pynotf.value import Value
-from pynotf.logic import Circuit
+from pynotf.logic import Circuit, Receiver, Emitter
 
 from .output_plug import OutputPlug
 from .path import Path
@@ -36,7 +36,7 @@ class WidgetDefinition(NamedTuple):
     output_plugs: Dict[str, Value.Schema]
 
     # callbacks that can be attached to an input plug
-    plug_callbacks: Dict[str, InputPlug.Callback]
+    input_callbacks: Dict[str, InputPlug.Callback]
 
     # callbacks that can be attached to a property
     property_callbacks: Dict[str, Property.Callback]
@@ -72,7 +72,7 @@ class WidgetType(WidgetDefinition):
         Only the Scene should be able to create a Widget.Type from a Widget.Definition.
         :param definition: Widget Definition to build the Type from. Would be an r-value in C++.
         """
-        forbidden_symbols: List[str] = [Path.get_widget_delimiter(), Path.get_property_delimiter()]
+        forbidden_symbols: List[str] = [Path.get_widget_delimiter(), Path.get_element_delimiter()]
 
         # type name
         if len(definition.type_name) == 0:
@@ -131,7 +131,11 @@ class WidgetView:
         :param property_name: Name of the Property providing the Value.
         :return: The Property's Value or None if no Property by the given name exists on the Widget.
         """
-        return self._widget.get_property(property_name)
+        prop: Optional[Property] = self._widget.get_property(property_name)
+        if prop is None:
+            return None
+        else:
+            return prop.get_value()
 
 
 ########################################################################################################################
@@ -158,32 +162,152 @@ class WidgetHandle(WidgetView):
         """
         prop: Optional[Property] = self._widget.get_property(property_name)
         if prop is None:
-            raise NameError(f'Widget "{self._widget.get_path()}" has no Property "{property_name}"')
+            raise NameError(f'Widget "{self._widget.get_path()}" has no Property named "{property_name}"')
         else:
             prop.set_value(value)
 
-    def emit(self, output_name: str, value: Any):
-        pass  # TODO:
+    def emit(self, output_name: str, value: Any) -> None:
+        """
+        Emits a new Value from one of the Widget's Output Plugs.
+        :param output_name: Name of the Output Plug to emit from.
+        :param value: Value to emit.
+        :raise NameError: If the Widget has no Output Plug by the given name.
+        :raise ValueError: If `value` could not be converted into a Value instance.
+        :raise TypeError: If the given Value is of the wrong type for the Output Plug.
+        """
+        output_plug: Optional[OutputPlug] = self._widget.get_output_plug(output_name)
+        if output_plug is None:
+            raise NameError(f'Widget "{self._widget.get_path()}" has no Output Plug named "{output_name}"')
+
+        output_plug.emit(value)
 
     def transition_into(self, state_name: str):
-        pass
+        """
+        Transitions from the current into another State with the given name.
+        Re-transitioning into the current State has to be allowed explicitly in the State Machine Description, otherwise
+        it is considered a TransitionError.
+        :param state_name: Name of the State to transition into.
+        :raise NameError: If the State Machine does not have a State with the given name.
+        :raise TransitionError: If you cannot enter the target State from the current one.
+        """
+        self._widget.transition_into(state_name)
 
     def set_input_callback(self, input_name: str, callback_name: str):
-        pass
+        """
+        Sets or removes the Callback of an Input Plug.
+        :param input_name: Name of the Input Plug to modify.
+        :param callback_name: New Callback to call on input or the empty string to uninstall the current Callback.
+        :raise NameError: If the Widget has no Input Plug by the given name.
+        :raise NameError: If the Widget has no Input Callback by the given name.
+        """
+        input_plug: Optional[InputPlug] = self._widget.get_input_plug(input_name)
+        if input_plug is None:
+            raise NameError(f'Widget "{self._widget.get_path()}" has no Input Plug named "{input_name}"')
 
-    def set_property_callback(self, input_name: str, callback_name: str):
-        pass
+        if callback_name == "":
+            input_callback = None
+        else:
+            input_callback: Optional[InputPlug.Callback] = self._widget.get_input_callback(callback_name)
+            if input_callback is None:
+                raise NameError(f'Widget "{self._widget.get_path()}" has no Input Callback named "{callback_name}"')
 
-    def connect_input(self, input_name: str, output_path: Path):
-        pass
+        input_plug.set_callback(input_callback)
+
+    def set_property_callback(self, property_name: str, callback_name: str):
+        """
+        Sets or removes the Callback of a Property.
+        :param property_name: Name of the Property to modify.
+        :param callback_name: New Callback to call on input or the empty string to uninstall the current Callback.
+        :raise NameError: If the Widget has no Property by the given name.
+        :raise NameError: If the Widget has no Property Callback by the given name.
+        """
+        prop: Optional[Property] = self._widget.get_property(property_name)
+        if prop is None:
+            raise NameError(f'Widget "{self._widget.get_path()}" has no Property named "{property_name}"')
+
+        if callback_name == "":
+            property_callback = None
+        else:
+            property_callback: Optional[Property.Callback] = self._widget.get_property_callback(callback_name)
+            if property_callback is None:
+                raise NameError(f'Widget "{self._widget.get_path()}" has no Property Callback named "{callback_name}"')
+
+        prop.set_callback(property_callback)
+
+    def connect_input_to(self, input_name: str, output_path: Path):
+        """
+        Connect an Input Plug of this Widget to an Emitter in the Circuit.
+        :param input_name: Name of the Input Plug to connect.
+        :param output_path: Path to the Emitter in the Circuit to connect to.
+        :raise NameError: If the Widget has no Input Plug by the given name.
+        :raise Path.Error: If the Path to the Emitter could not be resolved.
+        """
+        input_plug: Optional[InputPlug] = self._widget.get_input_plug(input_name)
+        if input_plug is None:
+            raise NameError(f'Widget "{self._widget.get_path()}" has no Input Plug named "{input_name}"')
+
+        try:
+            emitter: Optional[Emitter] = self._widget.find_output(output_path)
+        except Path.Error as path_error:
+            raise Path.Error(f'Failed to connect input "{input_name}" to "{output_path}".\n{str(path_error)}')
+        if emitter is None:
+            raise Path.Error(f'Widget "{output_path.get_widget_path()}" '
+                             f'has no output named "{output_path.get_element()}"')
+
+        input_plug.connect_to(emitter)
+
+    def connect_output_to(self, output_name: str, input_path: Path):
+        """
+        Connect an Output Plug of this Widget to a Receiver in the Circuit.
+        :param output_name: Name of the Output Plug to connect.
+        :param input_path: Path to the Receiver in the Circuit to connect to.
+        :raise NameError: If the Widget has no Output Plug by the given name.
+        :raise Path.Error: If the Path to the Receiver could not be resolved.
+        """
+        output_plug: Optional[OutputPlug] = self._widget.get_output_plug(output_name)
+        if output_plug is None:
+            raise NameError(f'Widget "{self._widget.get_path()}" has no Output Plug named "{output_name}"')
+
+        try:
+            receiver: Optional[Receiver] = self._widget.find_input(input_path)
+        except Path.Error as path_error:
+            raise Path.Error(f'Failed to connect output "{output_name}" to "{input_path}".\n{str(path_error)}')
+        if receiver is None:
+            raise Path.Error(f'Widget "{input_path.get_widget_path()}" '
+                             f'has no input named "{input_path.get_element()}"')
+
+        receiver.connect_to(output_plug)
 
     def disconnect_input(self, input_name: str, output_path: Optional[Path] = None):
-        pass
+        """
+        Disconnects an Input Plug from a specific or all upstream Emitters.
+        :param input_name: Name of the Input Plug to disconnect.
+        :param output_path: Optional Path to a specific Emitter to disconnect from.
+        :raise NameError: If the Widget has no Input Plug by the given name.
+        :raise Path.Error: If the Path to the Emitter could not be resolved.
+        """
+        input_plug: Optional[InputPlug] = self._widget.get_input_plug(input_name)
+        if input_plug is None:
+            raise NameError(f'Widget "{self._widget.get_path()}" has no Input Plug named "{input_name}"')
 
-    def connect_output(self, output_name: str, input_path: Path):
-        pass
+        if output_path is None:
+            input_plug.disconnect_upstream()
+
+        else:
+            try:
+                emitter: Optional[Emitter] = self._widget.find_output(output_path)
+            except Path.Error as path_error:
+                raise Path.Error(f'Failed to resolve "{output_path}".\n{str(path_error)}')
+            if emitter is None:
+                raise Path.Error(f'Widget "{output_path.get_widget_path()}" '
+                                 f'has no output named "{output_path.get_element()}"')
+
+            input_plug.disconnect_from(emitter)
+
 
     def disconnect_output(self, output_name: str, input_path: Optional[Path] = None):
+        # TODO: disconnect emitter downstream
+        #  CONTINUE HERE
         pass
 
 
@@ -194,7 +318,7 @@ class Widget:
 
     """
     Definition = WidgetDefinition
-    Property = PropertyDefinition
+    PropertyDefinition = PropertyDefinition
     Type = WidgetType
     Path = Path
     View = WidgetView
@@ -208,14 +332,17 @@ class Widget:
         :param scene: Scene containing this Widget.
         :param name: Parent-unique name of this Widget.
         """
-
-        # store constant arguments
+        # store constant fields (in C++ these could even be public)
         self._parent: Optional[Widget] = parent  # is constant
         self._scene: Scene = scene  # is constant
         self._name: str = name  # is constant
         self._type: str = definition.type_name  # is constant
+        self._input_callbacks: Dict[str, InputPlug.Callback] = definition.input_callbacks  # is constant
+        self._property_callbacks: Dict[str, Property.Callback] = definition.property_callbacks  # is constant
 
+        # initialize mutable fields
         self._children: Dict[str, Widget] = {}
+        self._state_machine: StateMachine = definition.state_machine
 
         # apply widget.definition
         circuit: Circuit = self._scene.get_circuit()
@@ -232,6 +359,9 @@ class Widget:
             for name, schema in definition.output_plugs.items()
         }
 
+        # enter the initial state
+        self._state_machine.initialize(self)
+
     def get_type(self) -> str:
         """
         The Scene-unique name of this Widget's Type.
@@ -244,7 +374,7 @@ class Widget:
         """
         return self._name
 
-    def get_path(self) -> Widget.Path:
+    def get_path(self) -> Path:
         """
         Returns the absolute Path of this Widget.
         """
@@ -261,19 +391,43 @@ class Widget:
         """
         return self._parent
 
-    def get_property(self, name: str) -> Optional[Value]:
+    def get_property(self, name: str) -> Optional[Property]:
         """
-        Returns the value of the Property with the given name or None if the Widget has no Property by the name.
-        :param name: Name of the Property providing the Value.
-        :return: The Property's Value or None if no Property by the given name exists on the Widget.
+        Returns the Property with the given name or None if the Widget has no Property by the name.
+        :param name: Name of the Property.
+        :return: The Property with the given name or None if the Widget has no Property by the name.
         """
-        prop: Optional[Property] = self._properties.get(name)
-        if prop is None:
-            return None
-        else:
-            return prop.get_value()
+        return self._properties.get(name)
 
-    def find_widget(self, path: Widget.Path) -> Optional[Widget]:
+    def get_property_callback(self, name: str) -> Optional[Property.Callback]:
+        """
+        Returns the Property Callback associated with the given name or None, if none exists.
+        :param name: Name of the Property Callback.
+        """
+        return self._property_callbacks.get(name)
+
+    def get_input_plug(self, name: str) -> Optional[InputPlug]:
+        """
+        Returns the Input Plug associated with the given name or None, if none exists.
+        :param name: Name of the Input Plug.
+        """
+        return self._input_plugs.get(name)
+
+    def get_input_callback(self, name: str) -> Optional[InputPlug.Callback]:
+        """
+        Returns the Input Callback associated with the given name or None, if none exists.
+        :param name: Name of the Input Callback.
+        """
+        return self._input_callbacks.get(name)
+
+    def get_output_plug(self, name: str) -> Optional[OutputPlug]:
+        """
+        Returns the Output Plug associated with the given name or None, if the Widget has no output plug by the name.
+        :param name: Name of the Output Plug.
+        """
+        return self._output_plugs.get(name)
+
+    def find_widget(self, path: Path) -> Optional[Widget]:
         """
         Tries to find a Widget in the Scene from a given Path.
         :param path: Path of the Widget to find.
@@ -284,6 +438,68 @@ class Widget:
         else:
             return self._find_widget(path, 0)  # start following the relative path starting here
 
+    def find_input(self, path: Path) -> Optional[Receiver]:
+        """
+        Finds a Receiver in the Circuit - either an Input Plug or a Property,
+        :param path: Path leading to a Receiver in the Circuit.
+        :raise Path.Error: If the Path did not resolve to an Element or the input is an internal Property.
+        :return: The target input or None, if none could be found (but the Path resolved successfully).
+        """
+        # if the path does not denote an element, there is no way that we will find one
+        element_name: Optional[str] = path.get_element()
+        if element_name is None:
+            raise Path.Error(f'Path "{path}" does not point to an Element')
+
+        # if we cannot find the widget, we won't find an input on it
+        target_widget: Optional[Widget] = self.find_widget(path)
+        if target_widget is None:
+            raise Path.Error(f'Could not find a Widget with the path: "{path}"')
+
+        # first, try if the path leads to an input plug
+        input_plug: Optional[InputPlug] = target_widget.get_input_plug(element_name)
+        if input_plug is not None:
+            return input_plug
+
+        # maybe the path is to a property?
+        input_property: Optional[Property] = target_widget.get_property(element_name)
+        if input_property is not None:
+            # TODO: check if the property allows external connections and raise an Error if it doesn't
+            #  this way we can let the user know what's happening instead of pretending that the property doesn't exist
+            return input_property
+
+        # the element name is not an input on the target widget
+        return None
+
+    def find_output(self, path: Path) -> Optional[Emitter]:
+        """
+        Finds an Emitter in the Circuit - either an Output Plug or a Property,
+        :param path: Path leading to an Emitter in the Circuit.
+        :raise Path.Error: If the Path did not resolve to an Element.
+        :return: The target output or None, if none could be found (but the Path resolved successfully).
+        """
+        # if the path does not denote an element, there is no way that we will find one
+        element_name: Optional[str] = path.get_element()
+        if element_name is None:
+            raise Path.Error(f'Path "{path}" does not point to an Element')
+
+        # if we cannot find the widget, we won't find an output on it
+        target_widget: Optional[Widget] = self.find_widget(path)
+        if target_widget is None:
+            raise Path.Error(f'Failed to find a Widget with the path: "{path}"')
+
+        # first, try if the path leads to an output plug
+        output_plug: Optional[OutputPlug] = target_widget.get_output_plug(element_name)
+        if output_plug is not None:
+            return output_plug
+
+        # maybe the path is to a property?
+        output_property: Optional[Property] = target_widget.get_property(element_name)
+        if output_property is not None:
+            return output_property
+
+        # the element name is not an output on the target widget
+        return None
+
     def create_child(self, type_name: str, child_name: str) -> Widget:
         """
         Creates a new child of this Widget.
@@ -291,16 +507,16 @@ class Widget:
         :param child_name:  Parent-unique name of the child Widget.
         :return:            A Handle to the created Widget.
         :raise NameError:           If the Scene does not know a Type of the given type name.
-        :raise Widget.Path.Error:   If the Widget already has a child Widget with the given name.
+        :raise Path.Error:   If the Widget already has a child Widget with the given name.
         """
         # validate the name
         if not self._validate_name(child_name):
-            raise Widget.Path.Error(f'Cannot create a Widget with an invalid name "{child_name}".\n'
-                                    f'Widget names must be alphanumeric and cannot be empty.')
+            raise Path.Error(f'Cannot create a Widget with an invalid name "{child_name}".\n'
+                             f'Widget names must be alphanumeric and cannot be empty.')
 
         # ensure the name is unique
         if child_name in self._children:
-            raise Widget.Path.Error(f'Cannot create another child Widget of "{self.get_path()}" named "{child_name}"')
+            raise Path.Error(f'Cannot create another child Widget of "{self.get_path()}" named "{child_name}"')
 
         # get the widget type from the scene
         widget_type: Optional[WidgetType] = self._scene._get_widget_type(type_name)
@@ -314,6 +530,17 @@ class Widget:
         # return the child widget
         return child_widget
 
+    def transition_into(self, state_name: str):
+        """
+        Transitions from the current into another State with the given name.
+        Re-transitioning into the current State has to be allowed explicitly in the State Machine Description, otherwise
+        it is considered a TransitionError.
+        :param state_name: Name of the State to transition into.
+        :raise NameError: If the State Machine does not have a State with the given name.
+        :raise TransitionError: If you cannot enter the target State from the current one.
+        """
+        self._state_machine.transition_into(state_name)
+
     def remove(self):
         """
         Marks this Widget as expired. It will be deleted at the end of the Event.
@@ -321,7 +548,7 @@ class Widget:
         self._scene._expired_widgets.add(self)
 
     # private for Scene
-    def _find_widget(self, path: Widget.Path, step: int) -> Optional[Widget]:
+    def _find_widget(self, path: Path, step: int) -> Optional[Widget]:
         """
         Recursive implementation to follow a Path to a particular Widget.
         :param path: Path of the Widget to find.

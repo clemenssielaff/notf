@@ -138,7 +138,7 @@ class Property(Receiver, Emitter):  # final
     def set_callback(self, callback: Optional[Property.Callback]):
         """
         Callbacks must take two arguments (Value, Widget.Handle) and return nothing.
-        :param callback:    New Callback to call when the Property changes its Value.
+        :param callback:    New Callback to call on input or None to uninstall the current Callback.
         """
         self._callback = callback
 

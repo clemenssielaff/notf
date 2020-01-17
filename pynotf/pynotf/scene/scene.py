@@ -15,7 +15,7 @@ class Scene:
                 properties={},
                 input_plugs={},
                 output_plugs={},
-                plug_callbacks={},
+                input_callbacks={},
                 property_callbacks={},
                 state_machine=StateMachine(StateMachine.Description(
                     states={'root': StateMachine.State(StateMachine.Callback())},

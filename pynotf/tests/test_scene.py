@@ -1,6 +1,6 @@
 import unittest
 
-from pynotf.scene import Path, Scene, Widget, InputPlug, OutputPlug, StateMachine
+from pynotf.scene import Path, Scene, Widget, InputPlug, StateMachine
 from pynotf.value import Value
 
 from tests.utils import number_schema
@@ -48,12 +48,18 @@ class TestPath(unittest.TestCase):
         self.assertFalse(Path("this/is/a/valid:path").is_widget_path())
 
     def test_is_property_path(self):
-        self.assertTrue(Path("this/is/a/valid:path").is_property_path())
-        self.assertTrue(Path("./test/this:path").is_property_path())
-        self.assertTrue(Path("/test/this:path").is_property_path())
-        self.assertTrue(Path("./:path").is_property_path())
-        self.assertTrue(Path(":path").is_property_path())
+        self.assertTrue(Path("this/is/a/valid:path").is_element_path())
+        self.assertTrue(Path("./test/this:path").is_element_path())
+        self.assertTrue(Path("/test/this:path").is_element_path())
+        self.assertTrue(Path("./:path").is_element_path())
+        self.assertTrue(Path(":path").is_element_path())
         self.assertFalse(Path("this/is/a/valid:path").is_widget_path())
+
+    def test_get_widget_path(self):
+        self.assertEqual(Path("/test/that/../this:path").get_widget_path(), Path("/test/this"))
+        self.assertEqual(Path("/test/that/../this").get_widget_path(), Path("/test/this"))
+        self.assertEqual(Path("./test/that/../this:path").get_widget_path(), Path("./test/this"))
+        self.assertEqual(Path("./test/that/../this").get_widget_path(), Path("./test/this"))
 
     def test_normalization(self):
         self.assertEqual(Path("/test/this:path"), Path("/test/that/../this:path"))
@@ -65,7 +71,7 @@ class TestPath(unittest.TestCase):
 
     def test_factory(self):
         self.assertEqual(Path.create(['test', 'this'], True, 'path'), Path("/test/this:path"))
-        self.assertEqual(Path.create(['test', 'this'], property_name='path'), Path("/test/this:path"))
+        self.assertEqual(Path.create(['test', 'this'], element_name='path'), Path("/test/this:path"))
         self.assertEqual(Path.create(['test', 'this'], is_absolute=False), Path("test/this"))
         self.assertEqual(Path.create(['test', 'this']), Path("/test/this"))
         self.assertEqual(Path.create([], is_absolute=True), Path('/'))
@@ -92,9 +98,9 @@ class TestPath(unittest.TestCase):
         self.assertEqual(path.get_widget(0), 'parent')
         self.assertEqual(path.get_widget(1), 'child')
         self.assertEqual(path.get_widget(2), 'target')
-        self.assertEqual(path.get_property(), 'property')
+        self.assertEqual(path.get_element(), 'property')
         self.assertIsNone(path.get_widget(3))
-        self.assertIsNone(Path('/parent/child/target').get_property())
+        self.assertIsNone(Path('/parent/child/target').get_element())
 
     def test_concatenation(self):
         self.assertEqual(Path('/parent') + Path('path/to/child'), Path('/parent/path/to/child'))
@@ -184,7 +190,7 @@ class TestEmptyScene(unittest.TestCase):
         scene.register_widget_type(Widget.Definition(
             type_name='test_widget',
             properties={
-                'prop': Widget.Property(Value(100))
+                'prop': Widget.PropertyDefinition(Value(100))
             },
             input_plugs={
                 'input': number_schema
@@ -192,7 +198,7 @@ class TestEmptyScene(unittest.TestCase):
             output_plugs={
                 'output': number_schema
             },
-            plug_callbacks={
+            input_callbacks={
                 'state1_input': InputPlug.Callback(r"""
                     number = signal.get_value().as_number()
                     if number <= 100:
