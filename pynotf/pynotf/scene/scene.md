@@ -63,7 +63,9 @@ A Widget is the basic building block of of the Scene's tree structure. It is an 
 Every Widget has 0-n child Widget in no particular order, addressable by a Widget-unique name. New Widget can only be created by their parent Widget, and only be removed by their parent (except the root, which is created and destroyed by the Scene). When a parent Widget removes one if its children, the child will remove all of it children first before destroying itself.  
 It is not possible to change a Widget's parent as that would change the Widget's Path. You can however change its position among its siblings since that operation does not influence how the Widget would be addressed in the Scene. For more details see Widget.Path and Z-value below.
 
-> **What is a Widget**
+One basic design decision is that parent Widgets have explicit knowledge of their children, but child Widgets should never rely on the presence of a particular parent. This way, we can build re-usable atomic Widgets that are easily composable into larger ones. Think of child Widgets as an implementation detail of the parent.
+
+> **What is a Widget**  
 > Originally, everything was a Node. I assumed that Widgets, Services, Resources, Layouts and Controller objects would all be subclasses of Node and share the same hierarchy. I also assumed that the user would be able to derive from the Node class to define custom Node types.  
 > However, one by one, the other use-cases for most Node classes disappeared. Resources are better managed somewhere outside the hierarchy, where they can pre-fetched, cached and replaced without having to worry about their place in the Scene. Controller objects were replaced with the logic Circuit, Services are now globally accessible from the Application. And Layouts became a field inside a Widget, not a Node itself. At that point, all Nodes were Widgets.
 
@@ -99,7 +101,7 @@ Unlike Circuit Elements, which have a Circuit-unique numeric identifier, Widgets
 
 * `.` denotes the furthest Widget in the Path up to that point or "this" Widget, if it is the first name. `..` means "go up one level".
 * `/` is the name separator. The name to the left is the parent of the name to the right if none of them are control symbols.
-* `:` is the separator between the Widget Path and the target Element. See sub-chapter for details.
+* `:` is the separator between the Widget Path and the target Element (see below).
 
 By having the identifier of a Widget be another POD object (in this case a string), user Scripts are free to address Widgets all over the Scene. Paths in user Scripts can be absolute or relative. Relative Paths are resolved by replacing the initial dot with the absolute path of the Widget executing the Script. Much like filesystem paths in Linux, you can use the reserved `..` name to go up a level in the Scene.
 
@@ -108,103 +110,73 @@ Example of a valid Widget Path:
 * `/absolute/path/to/a/widget`
 * `./child1/../child2/grandchild38` (if called from `/parent` resolves to `/parent/child2/grandchild`)
 
-Additionally, a Path can also be used to address a single Circuit Element (Input Plug / Output Plug or Property) on a specific Widget. We do not differentiate between Paths leading to a Widget and those that lead to an Element because the functions that take a Path as an argument are specialized to return a specific type anyway:
+Additionally, a Path can also be used to address a single Circuit Element (Input Plug / Output Plug or Property) on a specific Widget. Formatted as a string, an example for a Path to an Element would be: `/parent/widget:element`. The name of the Element is the last token in the Path and is separated from the rest by the element symbol `:`.
+
+We do not differentiate between Paths leading to a Widget and those that lead to an Element because the functions that take a Path as an argument are specialized to return a specific type anyway:
 
 1. `get_widget(Path)`
 2. `get_property(Path)`
 3. `get_input(Path)`
 4. `get_output(Path)`
 
-Inside each of the function, the Path needs to be tested whether it leads to a Widget or Element of the requested type anyway. Having an additional "Element Path" sounds good from a statically typed point-of-view, but since Paths are basically deserialized from a string input by the user, we do not gain anything from parsing two different types.
-
-Next to Widget,s Path  The ElementPath is derived from a Widget.Path but also stores the name of a target Element. Formatted as a string, an example Element path would be: `/parent/widget:element`.  
-We differentiate between 
-Since Input Plugs / Output Plugs and Properties share the same namespace, 
-
+Inside each of the function, the Path needs to be tested whether it leads to a Widget or Element of the requested type anyway. Having an additional "Element Path" sounds good from a statically typed point-of-view, but since Paths are basically deserialized from a string input by the user, we do not gain anything from parsing two different types.  
 Note that the `get_input` and `get_output` functions above return both the respective Input/Output Plugs as well as Properties, since Properties can act as inputs _or_ outputs (more an that below). Since all three share the same namespace, you can simply ask for a Input/Output Plug first, and then for a Property should no Plug exist. 
 
 
 ## Properties
 
-Conceptually, Properties are a single Value associated with a Widget instance. They are declared as part of the Widget.Definition and have a name that is unique among the Widget.Type's Elements (Input Plugs / Output Plugs / Properties). Properties have a constant Value Schema that must not be empty and is initialized with a default value. They can act as both Receivers and Emitters in the Circuit but can also be read and written to directly by Scripts living on the Widget (but not from the outside).
+Conceptually, Properties are a single Value associated with a Widget instance. They are declared as part of the Widget.Definition and have a name that is unique among the Widget.Type's Elements (Input Plugs / Output Plugs / Properties). A Property has a constant Value Schema and is initialized with a default value which must not be empty. They can act as both Receivers and Emitters in the Circuit but can also be read and written to directly by Scripts living on the Widget (but not from the outside).
 
+We say Properties are single Values "conceptually", because they actually refer to entries in a single _Property Map_ Value that lives inside the Widget. Storing all Properties inside a single Value simplifies the rendering of a Widget (see chapter on rendering) and is generally easier to work with than a variable number of Values stored in a C++ `std::unordered_map`, for example.
 
---> CONTINEUH HER
+Widgets store no data outside their Property Map. There might be additional state stored in Proprety Operators (see next chapter) but that is not accessible from the Widget level.
 
-Widgets store no data 
+Properties can be updated both from Scripts executing on the Widget and from an Emitter upstream in the Circuit. In the second case the update Value will be wrapped in a ValueSignal. Still, we have decided against adding another Callback to the Property that would allow the Signal to be accepted or blocked -- instead, Properties that are updated from upstream Emitters will unconditionally take the Value but "ignore" the Signal (meaning, do not "accept" or "block" the Signal). Properties are all about data, there is no good use case in which they would try to control the flow of an incoming Signal like an Input Plug might.
 
-They are determined by the Widget.Definition and are basically member fields.  Properties must be Values, which has the advantage that their content can be emitted and received through the Circuit and that they can be serialized automatically. 
+>> TODO: Write about "forcing" connections into plugs.
 
-Widgets store all of their Properties in a single Value and have no data other than what is stored in their Properties (see "Private Data or not?" for a discussion of an alternative). If you take the entire Scene, take the combined Property Values of all the Widgets, serialize them alongside the hierarchy and re-load it, you have essentially restored the entire UI application at the point of serialization. 
 
 ### Property Operation
 
-Apart from their Value Schema and name, a Property is defined by an optional Operation that is performed on every new Value. Like in an Operator, the Operation can either choose to return the input Value unmodified, change it in some way (clamp it, round it to the nearest integer ...) before returning it or returning None, in which case the existing value of the Property remains unchanged. Unlike Operator.Operations, Property.Operations have access to a Widget.View object. This way, Operation are able to read other Properties of the same Widget which allows for a Property which is a number that is clamped between two others, for example.
+Apart from their Value Schema and name, a Property is defined by an optional Operation that is performed on every new value. Like in an Operator in the Circuit, the Operation can either choose to return the input Value unmodified, change it in some way (clamp it, round it to the nearest integer ...) before returning it or returning `None`, in which case the existing value of the Property remains unchanged.  
+Unlike Operator.Operations, Property.Operations have access to a Widget.View object. This way, Operation are able to read their own and other Properties of the same Widget which allows for a Property which is a number that is clamped between two others, for example.
 
 Property Operations cannot be changed as they are as much part of the Property "type" as its Value Schema.
 
-Like Operator Operations, Property Operations are allowed to store an arbitrary Value as private data. This actually fixes the problem I had with "private" Properties that were used only to act as support data for other Properties (See "Private Data or not?").
+Like Operator.Operations, Property.Operations are allowed to store an arbitrary Value as private data. This allows the Operators to keep semi-private values that are only relevant for their internal workings. For example, you could only allow the new value if it is larger than the average of the last three. Without the ability to store data own their own, this average would have to be a Property on the Widget, which is not really where it belongs.
+
 
 ### Property Callback
 
-Like Input Plugs, Properties also have an optional Callback function that is invoked after the Property has been updated. Unlike the Property Operation, which is only allowed to operate on the value, the Callback has full access to a Widget.Handle handle, which allows it to update Properties and emit from Output Plugs. Of course, you have to take care not to create any infinite loops between Callbacks, just like you would in the Circuit. If a Property Callback of a Property would set the same Property again, it would create an infinite loop and an immediate deadlock if it was not for the reentrancy check in a Property's `Emitter._emit` methods that will catch this case and fail gracefully. The same goes for the "wider" cycle, in which two Properties keep changing each other's value forever.
+Like Input Plugs, Properties also have an optional Callback function that is invoked after the Property has been updated. Unlike the Property Operation, which is only allowed to operate on the value, the Callback has full access to a Widget.Handle, which allows it to update Properties and emit from Output Plugs.  
+Which Property Callback is active at any given time is defined by the Widget's current State. The Property.Callback can also be set to `None` to disable.
 
-However, there is one exception to the "no cycle" rule, one that is only possible because of the separation between the Property Operation and -Callback: Imagine a Widget with two Properties `A` and `B` that need to be kept in sync. Let's say that `B=A+2` must hold at all times. Whenever you set `A` to `x`, its Callback will also set `B` to `x+2`. But there is no way to differentiate this case from one where you changed `B` instead of `A` and so `B` will continue to update `A` as well ...which would cause a NoDag exception. But while this is a cycle, it is clearly not an infinite one. In fact, after touching both `A` and `B` once (no matter which one is set by the user), no further progress will be made. We can catch this case with a simple all-purpose optimization: check whether the new value is equal to the existing one *prior* to checking for cycles. If the value is the same, just do nothing and return. In this case, setting `A`  to `x` will change `B` to `x+2` which will in turn cause `A` to update to `x` again. But since at this point, `A` already has the value `x`, it will simply return nothing and the cycle is broken.
+Of course, you have to take care not to create any infinite loops between Callbacks, just like you do with any emission in the Circuit. If a Property Callback of a Property were to set the same Property again, it would create an infinite loop and an immediate deadlock if it was not for the reentrancy check in a Property's `Emitter._emit` methods that will catch this case and fail gracefully. The same goes for the "wider" cycle, in which two Properties keep changing each other's value forever.
 
-Like IPlug Callbacks, Property Callbacks can be changed by the Widget and set to None to disable.
-
-### Properties and ValueSignals
-
-Properties can be updated both from within a Widget Callback and from an Emitter upstream in the Circuit. Only in the second case will the Property even see a ValueSignal.  
-Here are all the ways that we could do this:
-
-1. Have the Property Operator handle ValueSignals
-   Not great, that's not what it is for. Also, I don't want to create a bogus ValueSignal every time I update a Property.
-2. Have the Property Callback handle the ValueSignal
-   Better, but we still need a bogus Signal ... and worse yet, I cannot think of a Property that would even accept or even block a Signal. It's about the data of the Signal.
-3. Ignore existing Signals and don't create one if you set the Property through code.
-   Sounds reasonable. 
-
-Nr. 3 it is.
-
-### Private Data or not?
-
-In the beginning, it was planned that all data stored in a Widget would have to be a Property. This is similar to the Python approach of "public everything", where you can access all of an objects members from the outside with only a naming convention as guide (members starting with "_" are private).  
-Then we came across a use-case that saw a Property that would only change if the new value was sufficiently different from some sort of "rest" value. In that model, we would have a second Property that would only serve as a support value for the first one. This second Property will not connect to anything else in the Circuit, leaving about 72 bytes (with the current implementation) unused. That is per unused Property per instance of that Widget type.
-
-The alternative would be to store a single Value in the Widget that contains private data that is not accessible from the outside. It would also be serialized with the Widget, just like a Property, but without any of the Emitter/Receiver overhead. With this approach it is left to the programmer to decide, what values are exposed on the outside of the Widget and what are private.
-
-As always, I think it comes down to a judgement call. Let's say that we have 40 Properties on a Widget, 16 of which are private. The complete UI consist only of Widgets of that type (or similar) and we end up with about 600 Widgets on screen. I think both of these numbers might be a bit high, but let's go with that.
-With the current implementation, we have 16 * 600 * 72 = 691200 bytes = 675Kib [(Kibibyte)](https://en.wikipedia.org/wiki/Kibibyte) = not so much, for a ridiculously overcrowded UI.
-
-Then again, it is not nothing. And 600 Widgets might actually be quite reasonable if you count Widgets that are invisible, maybe cropped, maybe hidden behind others. And having private data would mean that the user is better able to keep the public interface of a Widget clean from implementation details. This sounds especially relevant, when you start versioning Widget Definitions.
-
-Okay, let's say have have this private Data Value. It will most likely be a map. Does the map share the namespace of its keys with the namespace of the Widgets I/OPLugs and Properties?  
-No. In order to access the data, you need a Widget.Handle handle that has a special method to access the private data, maybe called `data(name)`.  To make this work consistently, we could enforce that the data is indeed always a map. With this special method, you don't need to worry about accessing anything but the private data, so there is no need to share the namespace. 
-
-That "stable interface" argument almost had me there, but you could also simply put an underscore in front of the name to denote it as "private" (like in Python). While it is true that some user of that Widget might still depend on a private Property, he does so with the implied understanding that this Property may be renamed, or removed in the future.  
-What I am more worried about is that users that write code for a Widget will constantly have to think about whether this one value is stored in a Property or if it is stored in the private data. I certainly would, especially since you can have both a Property named "Foo" and a private data Value of the same name. I think this would lead me to favor one over the other and since I am always for private-first, I would probably end up using mostly private data and only occasionally public properties whenever I see an obvious use-case.  
- The problem with this approach is that I explicitly set out to "fix" the problem I saw in Qt, where certain values are not accessible from the outside even though I am sure are stored somewhere in the Widget (I cannot think of the example from the top of my head now though). By making everything public by default, we can be certain that the implementer of a Widget will not hide important information from the outside -- may that be by accident or by making everything private-first because that's what you do in OOP.
-
-Another aspect and another reason *for* forcing all data to live in Properties is that with that approach you can actually get the best of both worlds: just have a map Value Property called "_data" that stores all of the private data. This way, it is not hidden from the outside but it is stored in a format that makes it appropriately difficult to get any meaningful content out of it. And it is safe to do so, because even though you can *read* all of the "private" Properties on a Widget, you cannot *write* to any of them.
-
-
+There is however one exception to the "no cycle" rule, one that is only possible because of the separation between the Property Operation and -Callback: Imagine a Widget with two Properties `A` and `B` that need to be kept in sync. Let's say that `B=A+2` must hold at all times. Whenever you set `A` to `x`, its Callback will also set `B` to `x+2`. But there is no way to differentiate this case from one where you changed `B` instead of `A` and so `B` will continue to update `A` as well ...which would cause a NoDag exception. But while this is a cycle, it is clearly not an infinite one. In fact, after touching both `A` and `B` once (no matter which one is set by the user), no further progress will be made. We can catch this case with a simple all-purpose optimization: check whether the new value is equal to the existing one *prior* to checking for cycles. If the value is the same, just do nothing and return. In this case, setting `A`  to `x` will change `B` to `x+2` which will in turn cause `A` to update to `x` again. But since at this point, `A` already has the value `x`, it will simply return nothing and the cycle is broken.
 
 
 ## Input Plug
 
-Widgets have input and output plugs, special Receiver and Emitters that that allow the Widget to communicate with the rest of the Circuit. Input Plugs (IPlugs) take a ValueSignal and ignore all others (apart from disconnecting, which a Receiver does automatically). They then forward the ValueSignal to a Callback inside the Widget. Which callback they forward to can be changed at runtime as part of the Widget's StateMachine.
+Apart from Properties, Widgets have another way to receive input from the outside world: Input Plugs.  Unlike Properties, Input Plugs do not store any state beyond their Callback. An Input Plug is an implementation of a Circuit Receiver and reacts to ValueSignals that are passed down from connected Emitters upstream. All other Signals are ignored, except for the automatic disconnection from completed Emitters, which a Receiver does automatically.  
+When an InputPlug receives a ValueSignal, it will forward the Signal to an InputCallback inside the Widget. Which InputCallback is active at any given time can be changed during State changes of the Widget's StateMachine. The InputCallback can also be `None`, in which case the Signal is simply ignored.
+
+Input Plugs are the point at which input events are handled by a Widget. If the user clicks into the UI, the "mouse-down" Emitter will emit an event Value which is forwarded to receiving Widget Input Plugs in decreasing order of their Widget's Z-value.
+
+InputCallbacks differ from other Callbacks in a Widget.Definition insofar as that they are passed the handle to the Widget as well as the mutable ValueSignal that was received. This way they can  "accept" or "block" a ValueSignal, should they decide to do so.
+
 
 ## Output Plug
 
-Output Plugs (OPlugs) are Emitters that live on the Widget and than can be invoked by their Widget to propagate non-Property Values into the Circuit as needed. They share a namespace with the rest of the Circuit Elements that are discoverable on a Widget (IPlugs and Properties).
+Output Plugs are Emitters that live on a Widget and can be invoked by Scripts on their Widget to propagate non-Property Values into the Circuit as needed. Output Plugs are truly stateless (apart from the state held by the Emitter base class). They share a namespace with the rest of the Circuit Elements that are discoverable on a Widget (Input Plugs and Properties).
 
-> Previously output plugs were allowed to emit from anywhere with the reasoning:
->> Unlike IPlugs, OPlugs are public -- meaning that they can be triggered from everywhere, although most will probably be triggered from code living on the Widget itself. The reason why we allow them to be triggered from outside of the Widget is that they themselves do not depend on the Widget itself, nor do they modify it in any way. It is therefore feasible to have for example a single Widget with an OPlug "FormChanged" which is triggered from the various form elements as needed.
-> Now however, I've decided to limit emission ability to the Widget owning the output plug, since in the reasoning above, the child widget would have to have explicit knowledge of their parent. I would rather invert this, with only the parent knowing of its children but not the other way around. That means that each child is free to emit from its own output, the parent is able to forwards the child's output to their own and this way encapsulation is preserved. 
+Since they do not interfere with the Widget that they live on, I originally planned that Output Plugs could be told to emit from anywhere. This way, they could act as aggregators, with multiple Widgets emitting from the same Output Plug on some third Widget.  
+This approach did however go against the principle of encapsulation, stating that child Widgets should never rely on their parent Widgets for functionality and that child Widgets are basically an implementation detail of their parents. Basically, we cannot emit from an Output Plug of a child Widget since that is an implementation detail and we cannot emit from an Output Plug of a parent Widget, since that should be unknowable to the child.
 
 
 ## Widgets and User-Code
+
+>> TODO: continue here
 
 Widgets are *the* place to build the UI through user-defined code. Of course, the code cannot be just injected anywhere, we have a specific place for it: Callbacks. A Callback is something that can be connected to an Input Plug (IPlug), the connection can be modified at run-time. This Callback receives a Value from the IPlug, but in order to work effectively, it also needs access to other members of the Widget - some of which might have been user-defined as well. What are these things?
 
