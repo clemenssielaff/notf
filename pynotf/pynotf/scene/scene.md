@@ -133,7 +133,15 @@ Widgets store no data outside their Property Map. There might be additional stat
 
 Properties can be updated both from Scripts executing on the Widget and from an Emitter upstream in the Circuit. In the second case the update Value will be wrapped in a ValueSignal. Still, we have decided against adding another Callback to the Property that would allow the Signal to be accepted or blocked -- instead, Properties that are updated from upstream Emitters will unconditionally take the Value but "ignore" the Signal (meaning, do not "accept" or "block" the Signal). Properties are all about data, there is no good use case in which they would try to control the flow of an incoming Signal like an Input Plug might.
 
->> TODO: Write about "forcing" connections into plugs.
+There is another wrinkle to Properties in comparison to "pure" Circuit Emitter/Receivers. In the Circuit, the Receiver has full control over which Emitters it wants to connect to, while Emitters act as if they were unaware of the Receivers they emit to (apart from a function to test if there are any Receivers at all). Properties do not change that specific behavior, but they do allow any Widgets to initiate a connection to the Property of any other Widget. Internally, the connection is still initiated by the Receiver, but the Widget owning the connected Property will be unaware of what happened.  
+
+Why would we want other Widgets to force their Values onto the Properties of other Widgets?  
+Let's take a progress bar as an example. The parent Widget is called "ProgressBar", it has a Propert called "progress" and is the thing that is known to the rest of the UI to display the progress in whatever form it wants to.  
+Inside, the "ProgressBar" Widget you find a rectangle Widget that grows to the right, the "bar" of the ProgressBar. It has has a "width" Property, which is a real number in the range [0, 1]. Next to it is a label Widget that displays the progress in text and has a "percentage" property in the range [0, 100[. Both children have no idea where their respective progress values comes from, they only know how to display it. The parent Widget's job is to orchestrate its children, so it must forward the progress value to its children, even though they have no idea that they are part of a bigger Widget.  
+In order to push Values down to its child Widgets, the "ProgressBar" needs to connect to their Properties since the children do not know about the parent Widget and its "progress" Property.
+
+Of course, by allowing essentially random Widgets to connect to and overwrite Propreties on any other Widget, we open the user up to all sorts of error cases, where Property Values change suddenly between Callbacks and you don't know where the modification came from. In order to hand control back to the user, we added the `external` argument to Property Operations.
+
 
 
 ### Property Operation
@@ -144,6 +152,9 @@ Unlike Operator.Operations, Property.Operations have access to a Widget.View obj
 Property Operations cannot be changed as they are as much part of the Property "type" as its Value Schema.
 
 Like Operator.Operations, Property.Operations are allowed to store an arbitrary Value as private data. This allows the Operators to keep semi-private values that are only relevant for their internal workings. For example, you could only allow the new value if it is larger than the average of the last three. Without the ability to store data own their own, this average would have to be a Property on the Widget, which is not really where it belongs.
+
+As mentioned before, the third argument to a Property Operation (besides the Widget.Handle and the private data Value) is a flag `external` that is set to `true` if the new value was received from an upstream Emitter in the Circuit and to `false` if the new value was set from a Callback on the Widget.  
+This offers a more powerful way for the user to determine how a Property reacts to inputs from different sources than for example a simple `is_private` flag would do (where "private" Propreties could not be changes from outside their Widget). For example, if you wanted to allow all non-empty lists Values from the outside, but want to allow the Widget itself to set an empty list, you could simply reject all empty lists if the `external` flag is true. 
 
 
 ### Property Callback
