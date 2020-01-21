@@ -305,10 +305,29 @@ class WidgetHandle(WidgetView):
             input_plug.disconnect_from(emitter)
 
 
-    def disconnect_output(self, output_name: str, input_path: Optional[Path] = None):
-        # TODO: disconnect emitter downstream
-        #  CONTINUE HERE
-        pass
+    def disconnect_output(self, output_name: str, input_path: Path):
+        """
+        Disconnects an Output Plug from a specific downstream Receiver.
+        Unlike the `disconnect_input` function, we do not allow the unspecified removal of all outgoing connections,
+        since an Emitter should not know nor care about who receives its Signals.
+        :param output_name: Name of the Output Plug to disconnect.
+        :param input_path: Path to a specific Receiver to disconnect from.
+        :raise NameError: If the Widget has no Output Plug by the given name.
+        :raise Path.Error: If the Path to the Receiver could not be resolved.
+        """
+        output_plug: Optional[OutputPlug] = self._widget.get_output_plug(output_name)
+        if output_plug is None:
+            raise NameError(f'Widget "{self._widget.get_path()}" has no Output Plug named "{output_name}"')
+
+        try:
+            receiver: Optional[Receiver] = self._widget.find_input(input_path)
+        except Path.Error as path_error:
+            raise Path.Error(f'Failed to resolve "{input_path}".\n{str(path_error)}')
+        if receiver is None:
+            raise Path.Error(f'Widget "{input_path.get_widget_path()}" '
+                             f'has no input named "{input_path.get_element()}"')
+
+        receiver.disconnect_from(output_plug)
 
 
 ########################################################################################################################
