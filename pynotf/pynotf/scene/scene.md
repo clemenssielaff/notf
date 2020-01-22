@@ -75,7 +75,7 @@ One basic design decision is that parent Widgets have explicit knowledge of thei
 Up until quite recently in the design process, I assumed that the user would be able to subclass the Widget base class to define custom Widget types. This is a natural thing to do in C++ or any object oriented (OO) programming language, but for notf it posed some unique challenges. First of all, defining a subclass means that the user would be allowed to define custom members and modify them during the class' virtual methods -- all user Scripts were potentially stateful. Furthermore, in order to create child Widgets of a custom type you need to pass the subclass as an argument in an interpreted language which means that you required access to the dynamic type objects and the interpreted context in which they live.  
 Both things did not sit well with the purely data-driven approach that I was going for.
 
-Fortunately, I discovered that it was possible to contain all user-define code into `Callback` objects, basically strings. At least for an interpreted runtime. Statically compiled Callbacks would compile with the rest of the program, but I figured that the true power of notf is first and foremost in its live updates, which require (?) a runtime. If you indexed each Callback by a name, you basically broke down the whole "subtype" into a map of string to string. Combined with other POD (Value Schemas and the State Machine, see below), this lead to the invention of the Widget.Type object. Widget.Types are objects that describe the Widget, much like a Schema describes a Value. The contents of the Value might change, but the Schema stays the same.  
+Fortunately, I discovered that it was possible to contain all user-define code in `Script` objects, basically strings. At least for an interpreted runtime. Statically compiled Scripts would compile with the rest of the program, but I figured that the true power of notf is first and foremost in its live updates, which require (?) a runtime. If you indexed each Script by a name, you basically broke down the whole "subtype" into a map of string to string. Combined with other POD (Value Schemas and the State Machine, see below), this lead to the invention of the Widget.Type object. Widget.Types are objects that describe the Widget, much like a Schema describes a Value. The contents of the Value might change, but the Schema stays the same.  
 You can create new Widget Types at runtime, by constructing a Widget.Definition object, populating its fields and registering it with the Scene. Every Widget.Type has a name that is unique in the Scene. It can be used to construct a new Widget of that type and Widget instances return it as their type identifier. The only difference between the Definition and the Type is that the Type is validated and is immutable.
   
 A Widget.Definition object consists of:
@@ -88,11 +88,13 @@ A Widget.Definition object consists of:
   Properties need to be defined themselves, albeit just with a Schema and an optional Property.Operation. See below for details.  
   All Properties and input/output Plugs share the same namespace. Their names cannot be empty and must not contain Path control symbols.
 * Free *Input Callbacks* (Dict[str, InputPlug.Callback])
-  Callbacks that can be attached to an input plug
+  Functions that can be attached to an input plug
 * Free *Property Callbacks* (Dict[str, Property.Callback])
-  Callbacks that can be attached to a property
+  Functions that can be attached to a property
 * The Widget's *StateMachine* (StateMachine)
-  The StateMachine controls which Callbacks are called when and provides the initial set-up Callback for the Widget type.
+  The StateMachine controls which Callbacks are active, and provides the initial set-up Callback for the Widget type.
+
+For more details on Functions (and Callbacks and Scripts) see the chapter on "Widget and Scripts".
 
 
 ## Widget Name and Path
@@ -140,8 +142,7 @@ Let's take a progress bar as an example. The parent Widget is called "ProgressBa
 Inside, the "ProgressBar" Widget you find a rectangle Widget that grows to the right, the "bar" of the ProgressBar. It has has a "width" Property, which is a real number in the range [0, 1]. Next to it is a label Widget that displays the progress in text and has a "percentage" property in the range [0, 100[. Both children have no idea where their respective progress values comes from, they only know how to display it. The parent Widget's job is to orchestrate its children, so it must forward the progress value to its children, even though they have no idea that they are part of a bigger Widget.  
 In order to push Values down to its child Widgets, the "ProgressBar" needs to connect to their Properties since the children do not know about the parent Widget and its "progress" Property.
 
-Of course, by allowing essentially random Widgets to connect to and overwrite Propreties on any other Widget, we open the user up to all sorts of error cases, where Property Values change suddenly between Callbacks and you don't know where the modification came from. In order to hand control back to the user, we added the `external` argument to Property Operations.
-
+Of course, by allowing essentially random Widgets to connect to and overwrite Propreties on any other Widget, we open the user up to all sorts of error cases, where Property Values change suddenly between Functions and you don't know where the modification came from. In order to hand control back to the user, we added the `external` argument to Property Operations.
 
 
 ### Property Operation
@@ -153,13 +154,13 @@ Property Operations cannot be changed as they are as much part of the Property "
 
 Like Operator.Operations, Property.Operations are allowed to store an arbitrary Value as private data. This allows the Operators to keep semi-private values that are only relevant for their internal workings. For example, you could only allow the new value if it is larger than the average of the last three. Without the ability to store data own their own, this average would have to be a Property on the Widget, which is not really where it belongs.
 
-As mentioned before, the third argument to a Property Operation (besides the Widget.Handle and the private data Value) is a flag `external` that is set to `true` if the new value was received from an upstream Emitter in the Circuit and to `false` if the new value was set from a Callback on the Widget.  
+As mentioned before, the third argument to a Property Operation (besides the Widget.Handle and the private data Value) is a flag `external` that is set to `true` if the new value was received from an upstream Emitter in the Circuit and to `false` if the new value was set from a Function on the Widget.  
 This offers a more powerful way for the user to determine how a Property reacts to inputs from different sources than for example a simple `is_private` flag would do (where "private" Propreties could not be changes from outside their Widget). For example, if you wanted to allow all non-empty lists Values from the outside, but want to allow the Widget itself to set an empty list, you could simply reject all empty lists if the `external` flag is true. 
 
 
 ### Property Callback
 
-Like Input Plugs, Properties also have an optional Callback function that is invoked after the Property has been updated. Unlike the Property Operation, which is only allowed to operate on the value, the Callback has full access to a Widget.Handle, which allows it to update Properties and emit from Output Plugs.  
+Like Input Plugs, Properties also have an optional Callback that is invoked after the Property has been updated. Unlike the Property Operation, which is only allowed to operate on the value, the Callback has full access to a Widget.Handle, which allows it to update Properties and emit from Output Plugs.  
 Which Property Callback is active at any given time is defined by the Widget's current State. The Property.Callback can also be set to `None` to disable.
 
 Of course, you have to take care not to create any infinite loops between Callbacks, just like you do with any emission in the Circuit. If a Property Callback of a Property were to set the same Property again, it would create an infinite loop and an immediate deadlock if it was not for the reentrancy check in a Property's `Emitter._emit` methods that will catch this case and fail gracefully. The same goes for the "wider" cycle, in which two Properties keep changing each other's value forever.
@@ -169,12 +170,12 @@ There is however one exception to the "no cycle" rule, one that is only possible
 
 ## Input Plug
 
-Apart from Properties, Widgets have another way to receive input from the outside world: Input Plugs.  Unlike Properties, Input Plugs do not store any state beyond their Callback. An Input Plug is an implementation of a Circuit Receiver and reacts to ValueSignals that are passed down from connected Emitters upstream. All other Signals are ignored, except for the automatic disconnection from completed Emitters, which a Receiver does automatically.  
+Apart from Properties, Widgets have another way to receive input from the outside world: Input Plugs. Unlike Properties, Input Plugs do not store any state beyond what Callback they are currently deferring to. An Input Plug is an implementation of a Circuit Receiver and reacts to ValueSignals that are passed down from connected Emitters upstream. All other Signals are ignored, except for the automatic disconnection from completed Emitters, which a Receiver does automatically.  
 When an InputPlug receives a ValueSignal, it will forward the Signal to an InputCallback inside the Widget. Which InputCallback is active at any given time can be changed during State changes of the Widget's StateMachine. The InputCallback can also be `None`, in which case the Signal is simply ignored.
 
 Input Plugs are the point at which input events are handled by a Widget. If the user clicks into the UI, the "mouse-down" Emitter will emit an event Value which is forwarded to receiving Widget Input Plugs in decreasing order of their Widget's Z-value.
 
-InputCallbacks differ from other Callbacks in a Widget.Definition insofar as that they are passed the handle to the Widget as well as the mutable ValueSignal that was received. This way they can  "accept" or "block" a ValueSignal, should they decide to do so.
+InputCallbacks differ from other Functions in a Widget.Definition insofar as that they are passed the handle to the Widget as well as the mutable ValueSignal that was received. This way they can  "accept" or "block" a ValueSignal, should they decide to do so.
 
 
 ## Output Plug
@@ -185,61 +186,39 @@ Since they do not interfere with the Widget that they live on, I originally plan
 This approach did however go against the principle of encapsulation, stating that child Widgets should never rely on their parent Widgets for functionality and that child Widgets are basically an implementation detail of their parents. Basically, we cannot emit from an Output Plug of a child Widget since that is an implementation detail and we cannot emit from an Output Plug of a parent Widget, since that should be unknowable to the child.
 
 
-## Widgets and User-Code
+## Widgets and Scripts
 
->> TODO: continue here
+When designing notf, I assumed at first that the user would add custom functionality by deriving from types that are supplied by the architecture. However, as discussed in "Widget Definition and Type", this approach meant a lot of overhead to supply base classes to runtime bindings (for Python, Lua, JavaScript etc.) and the introduction of untracked state. That in turn required the introduction of special "serialize/deserialize" functions and limited our ability to introspect the state of the entire UI (which is not too important right now, but would be, if we decide to implement ["event sourcing"](https://martinfowler.com/eaaDev/EventSourcing.html) or multi-threaded event handling). Lastly, the more I read about functional programming and immutable values, the more I liked the idea of designing the UI using _pure functions_ only. A pure function only operates on a given set of inputs, must return a value, and does not produce any side effects.  
+This is how I eventually settled on the concepts of _Functions_ (upper-case _F_).
 
-Widgets are *the* place to build the UI through user-defined code. Of course, the code cannot be just injected anywhere, we have a specific place for it: Callbacks. A Callback is something that can be connected to an Input Plug (IPlug), the connection can be modified at run-time. This Callback receives a Value from the IPlug, but in order to work effectively, it also needs access to other members of the Widget - some of which might have been user-defined as well. What are these things?
+A Function is a piece of user-defined code, with a fixed list of parameters and a single return type. The code must run in isolation and operate only on the given arguments -- in other words, be pure functional. Throughout this document I also use the term _Script_, and where a Function always comes with a fixed signature, a Script is just any piece of user-defined code. A Function contains a Script, but a Script is not a Function.
 
-1. Properties
-2. Output Plugs
-3. Existing child Widgets
-4. Handle, in order to create or remove child Widgets.
+So far, there are 5 types of Function defined in the whole architecture. One in the Circuit and four in the Scene:
 
-That looks like a function signature (self, ValueSignal) to me. A Callback has a name, which can be registered with the IPlug. An IPlug can only call a single or no Callback - we don't allow multiple connected Callbacks. Of course, you can set up the one Callback to call two other ones, but that's your responsibility.
+1. Operator.Operation `(input: Value, private_data: Value) -> Optional[Value])`
+2. Property.Operation `(input: Value, private_data: Value, widget: Widget.View, external: bool) -> Optional[Value]`
+3. Property.Callback `(new_value: Value, widget: Widget.Handle) -> None`
+4. Input.Callback `(signal: ValueSignal, widget: Widget.Handle) -> None`
+5. StateMachine.Callback `(widget: Widget.Handle) -> None`
 
-A pure function only operates on a given set of inputs, must return a value, and does not produce any side effects.
+Note that we have introduced two new shorthands here: An _Operation_ is a Function that returns a Value whereas a _Callback_ does not. To recap:
 
-Unlike in previous architectures, you never get a handle to another Widget. I always assumed that there would be some way to request a handle to another Widget from the Scene, something like:
+* **Script** -- A user-defined string from the user that contains code that can be executed by the application's runtime.
+* **Function** -- A Script that is embedded in a function with a fixed signature and return type.
+* **Operation** -- A Function that returns a Value.
+* **Callback** -- A Function that returns None.
 
-```python
-this: Widget.Self = self
-grandchild: Optional[Widget.Handle] = this.find_widget("./child/grandchild")
-assert grandchild is not None
-grandchild.do_something(...)
-```
-
-However, what is this `do_something` that we need to call on another widget? Let's enumerate all use-cases that I can think of off the top of my head:
-
-1. Get a Property Value
-2. Connect / Disconnect an input of this Widget to the output (Plug / Property) of another one.
-3. Connect / Disconnect an output of this Widget to an input of another one.
-... are there even any other?
-
-But what about `Widget.get_parent()`. I mean, the Widget needs it in order to do the layouting, but is that something that the user needs to see? If you want to connect to a parent Property or whatever, you do that via the Path. Easy.
-
-Point is, the user never has access to the widget itself, only through various handle classes that are passed into Callbacks. 
+Unlike in previous iterations of the notf architecture, the user is never able to access other Widgets directly. The only way to interact with other Widgets is to connect/disconnect to/from one of their Input/Output Plugs or read a Property -- all of which can be done using the respective Path.
 
 
 ## Widget State Machine
 
-### State Switching
+A State change goes like this:
 
-The question right now is if Receivers always call their new callbacks right away or not - and if they do, in which order?
-
-My first instinct was to say "Whenever a Callback is reassigned, the new one is called immediately with the latest Value". Then I realized, that during a State change this would mean that the first Callback is called before the last Callback in the State change has a change to switch leading to weird race-conditions where one Callback somehow triggers others (through Properties) even though they are currently undergoing a State change.
-The next step was to say, after a State change, all new Callbacks are called once, this way we don't have any in-transition calls. This sounds like it is required for a working system but not sufficient yet. After all, the order in which the Callbacks are called is also important. Ideally, it shouldn't but I am not sure if I can rely on orthogonality between Callbacks.
-
-Actually, I can be sure that they are not orthogonal. What about a Widget that has different Callbacks for "mouse down" and "mouse up"? Even though it isn't specified anywhere in the Widget, it is reasonable to expect "mouse down" to be the first call and a corresponding "mouse up" before the next one.
-
-Maybe then, this idea of re-emitting Values from IPlugs and Properties is a bad idea to begin with? 
-Yes it is.
-Instead, a State change should go like this:
-
-1. StateA:Enter function is called. StateA is the entry State of the Widget.
+1. StateA:Enter Callback is called. StateA is the entry State of the Widget.
 2. Somehow a transition to StateB is triggered.
-3. StateA:Exit function is called
-4. StateB:Enter function is called
+3. StateA:Exit Callback is called
+4. StateB:Enter Callback is called
 
 
 ## The Z-Value
