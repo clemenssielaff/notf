@@ -2,7 +2,7 @@
 
 The Scene takes its name from the "Scene Graph" that is inherit in many game engines or DCC tools. It is older than the Circuit in its conception and is a higher-level abstraction to the workings of a UI. The Scene is conceptually somewhat orthogonal to the Logic, but the Scene module depends on the Logic module and not the other way around.
 
-Data-structure wise, the Scene is a tree of Widgets. There is one RootWidget in a Scene, and like every other Widget, it can have 0-n children. Every Widget has a single parent that outlives it and cannot be changed. When the Scene is removed, it will safely destroy all  Widgets from the leafs up, meaning that the root is the last Widget to be destroyed.
+Data-structure wise, the Scene is a tree of Widgets. There is one RootWidget in a Scene, and like every other Widget, it can have 0-n children. Every Widget has a single parent that outlives it and cannot be changed. When the Scene is removed, it will safely destroy all Widgets from the leafs up, meaning that the root is the last Widget to be destroyed.
 
 A Scene owns a Circuit and manages it in a way that allows the user to inject user-defined code (Scripts) at very specific places that are as expressive as possible while still being safe. All modification of a Scene (and its Circuit) is explicitly single threaded and should occur on a dedicated thread. You can have parallel loops or similar technicalities where they make sense, but they must operate on local data only. Much like Circuit Elements, the removal of a Widget in the Scene is delayed until the end of an Event.
 
@@ -58,9 +58,9 @@ A Scene owns a Circuit and manages it in a way that allows the user to inject us
 
 # The Widget
 
-A Widget is the basic building block of of the Scene's tree structure. It is an architectural detail and not accessible to user scripts. Every Widget has a single parent, which is constant and guaranteed to be valid throughout the Widget's lifetime -- except for the root Widget, whose parent is always empty. The root Widget is created with the Scene and is the last Widget to be destroyed.
+A Widget is the basic building block of of the Scene's tree structure. Every Widget has a single parent, which is constant and guaranteed to be valid throughout the Widget's lifetime -- except for the root Widget, whose parent is always empty. The root Widget is created with the Scene and is the last Widget to be destroyed.
   
-Every Widget has 0-n child Widget in no particular order, addressable by a Widget-unique name. New Widget can only be created by their parent Widget, and only be removed by their parent (except the root, which is created and destroyed by the Scene). When a parent Widget removes one if its children, the child will remove all of it children first before destroying itself.  
+Every Widget has 0-n child Widget, addressable by a Widget-unique name. New Widget can only be created by their parent Widget, and only be removed by their parent (except the root, which is created and destroyed by the Scene). When a parent Widget removes one if its children, the child will remove all of it children first before destroying itself.  
 It is not possible to change a Widget's parent as that would change the Widget's Path. You can however change its position among its siblings since that operation does not influence how the Widget would be addressed in the Scene. For more details see Widget.Path and Z-value below.
 
 One basic design decision is that parent Widgets have explicit knowledge of their children, but child Widgets should never rely on the presence of a particular parent. This way, we can build re-usable atomic Widgets that are easily composable into larger ones. Think of child Widgets as an implementation detail of the parent.
@@ -94,8 +94,9 @@ A Widget.Definition object consists of:
 * The Widget's *StateMachine* (StateMachine)
   The StateMachine controls which Callbacks are active, and provides the initial set-up Callback for the Widget type.
 
-For more details on Functions (and Callbacks and Scripts) see the chapter on "Widget and Scripts".
+> TODO: add render callbacks and layout(s?) to the Widget.Definition, once I have them all worked out.
 
+For more details on Functions (and Callbacks and Scripts) see the chapter on "Widget and Scripts".
 
 ## Widget Name and Path
 
@@ -127,45 +128,48 @@ Note that the `get_input` and `get_output` functions above return both the respe
 
 ## Properties
 
-Conceptually, Properties are a single Value associated with a Widget instance. They are declared as part of the Widget.Definition and have a name that is unique among the Widget.Type's Elements (Input Plugs / Output Plugs / Properties). A Property has a constant Value Schema and is initialized with a default value which must not be empty. They can act as both Receivers and Emitters in the Circuit but can also be read and written to directly by Scripts living on the Widget (but not from the outside).
+Properties are a single Value associated with a Widget instance. They are declared as part of the Widget.Definition and have a name that is unique among the Widget.Type's Elements (Input Plugs / Output Plugs / Properties). A Property has a constant Value Schema and is initialized with a default value which must not be empty. They can act as both Receivers and Emitters in the Circuit but can also be read and written to directly by Scripts living on the Widget (but not from the outside).
 
-We say Properties are single Values "conceptually", because they actually refer to entries in a single _Property Map_ Value that lives inside the Widget. Storing all Properties inside a single Value simplifies the rendering of a Widget (see chapter on rendering) and is generally easier to work with than a variable number of Values stored in a C++ `std::unordered_map`, for example.
-
-Widgets store no data outside their Property Map. There might be additional state stored in Proprety Operators (see next chapter) but that is not accessible from the Widget level.
+Widgets store no Values outside their Properties. There might be additional Values that are part of Proprety Operators (see next chapter) but those are not accessible from the Widget.
 
 Properties can be updated both from Scripts executing on the Widget and from an Emitter upstream in the Circuit. In the second case the update Value will be wrapped in a ValueSignal. Still, we have decided against adding another Callback to the Property that would allow the Signal to be accepted or blocked -- instead, Properties that are updated from upstream Emitters will unconditionally take the Value but "ignore" the Signal (meaning, do not "accept" or "block" the Signal). Properties are all about data, there is no good use case in which they would try to control the flow of an incoming Signal like an Input Plug might.
 
-There is another wrinkle to Properties in comparison to "pure" Circuit Emitter/Receivers. In the Circuit, the Receiver has full control over which Emitters it wants to connect to, while Emitters act as if they were unaware of the Receivers they emit to (apart from a function to test if there are any Receivers at all). Properties do not change that specific behavior, but they do allow any Widgets to initiate a connection to the Property of any other Widget. Internally, the connection is still initiated by the Receiver, but the Widget owning the connected Property will be unaware of what happened.  
+
+### Forward connection
+
+There is another wrinkle to Properties in comparison to "pure" Circuit Emitter/Receivers. In the Circuit, the Receiver has full control over which Emitters it wants to connect to, while Emitters act as if they were unaware of the Receivers they emit to (apart from a function to test if there are any Receivers at all). This could be called "backward" connection, because the direction of the connection is backward to the flow of data.  
+Properties do not change that specific behavior, but they do allow any Widgets to initiate a "forward" connection to the Property of any other Widget. Internally, the connection is still initiated by the Receiver, but the Widget owning the connected Property will be unaware of what happened.  
 
 Why would we want other Widgets to force their Values onto the Properties of other Widgets?  
 Let's take a progress bar as an example. The parent Widget is called "ProgressBar", it has a Propert called "progress" and is the thing that is known to the rest of the UI to display the progress in whatever form it wants to.  
 Inside, the "ProgressBar" Widget you find a rectangle Widget that grows to the right, the "bar" of the ProgressBar. It has has a "width" Property, which is a real number in the range [0, 1]. Next to it is a label Widget that displays the progress in text and has a "percentage" property in the range [0, 100[. Both children have no idea where their respective progress values comes from, they only know how to display it. The parent Widget's job is to orchestrate its children, so it must forward the progress value to its children, even though they have no idea that they are part of a bigger Widget.  
 In order to push Values down to its child Widgets, the "ProgressBar" needs to connect to their Properties since the children do not know about the parent Widget and its "progress" Property.
 
-Of course, by allowing essentially random Widgets to connect to and overwrite Propreties on any other Widget, we open the user up to all sorts of error cases, where Property Values change suddenly between Functions and you don't know where the modification came from. In order to hand control back to the user, we added the `external` argument to Property Operations.
+Of course, by allowing essentially random Widgets to connect to and overwrite Propreties on any other Widget, we open the user up to all sorts of error cases, where Property Values change suddenly between Functions and you don't know where the modification came from. In order to hand control back to the user, we added the `external` argument to Property Operations (see next chapter).
 
 
 ### Property Operation
 
-Apart from their Value Schema and name, a Property is defined by an optional Operation that is performed on every new value. Like in an Operator in the Circuit, the Operation can either choose to return the input Value unmodified, change it in some way (clamp it, round it to the nearest integer ...) before returning it or returning `None`, in which case the existing value of the Property remains unchanged.  
-Unlike Operator.Operations, Property.Operations have access to a Widget.View object. This way, Operation are able to read their own and other Properties of the same Widget which allows for a Property which is a number that is clamped between two others, for example.
-
+Apart from their Value Schema and name, a Property is defined by an optional Operation that is performed on every new value. Like in an Operator in the Circuit, the Operation can either choose to return the input Value unmodified, change it in some way (clamp it, round it to the nearest integer etc.) before returning it or returning `None`, in which case the existing value of the Property remains unchanged.  
+Unlike Operator.Operations, Property.Operations receive a Widget.View object as an argument. This way, Operation are able to read their own and other Properties of the same Widget which allows for a Property which is a number that is clamped between two others, for example.  
 Property Operations cannot be changed as they are as much part of the Property "type" as its Value Schema.
 
 Like Operator.Operations, Property.Operations are allowed to store an arbitrary Value as private data. This allows the Operators to keep semi-private values that are only relevant for their internal workings. For example, you could only allow the new value if it is larger than the average of the last three. Without the ability to store data own their own, this average would have to be a Property on the Widget, which is not really where it belongs.
 
-As mentioned before, the third argument to a Property Operation (besides the Widget.Handle and the private data Value) is a flag `external` that is set to `true` if the new value was received from an upstream Emitter in the Circuit and to `false` if the new value was set from a Function on the Widget.  
+The third argument to a Property Operation (besides the Widget.Handle and the private data Value) is a flag `external` that is set to `true` if the new value was received from an upstream Emitter in the Circuit and to `false` if the new value was set from a Function on the Widget.  
 This offers a more powerful way for the user to determine how a Property reacts to inputs from different sources than for example a simple `is_private` flag would do (where "private" Propreties could not be changes from outside their Widget). For example, if you wanted to allow all non-empty lists Values from the outside, but want to allow the Widget itself to set an empty list, you could simply reject all empty lists if the `external` flag is true. 
 
 
 ### Property Callback
 
 Like Input Plugs, Properties also have an optional Callback that is invoked after the Property has been updated. Unlike the Property Operation, which is only allowed to operate on the value, the Callback has full access to a Widget.Handle, which allows it to update Properties and emit from Output Plugs.  
-Which Property Callback is active at any given time is defined by the Widget's current State. The Property.Callback can also be set to `None` to disable.
+Which Property Callback is active at any given time is defined by the Widget's current State. The Property.Callback can also be set to `None`.
 
 Of course, you have to take care not to create any infinite loops between Callbacks, just like you do with any emission in the Circuit. If a Property Callback of a Property were to set the same Property again, it would create an infinite loop and an immediate deadlock if it was not for the reentrancy check in a Property's `Emitter._emit` methods that will catch this case and fail gracefully. The same goes for the "wider" cycle, in which two Properties keep changing each other's value forever.
 
-There is however one exception to the "no cycle" rule, one that is only possible because of the separation between the Property Operation and -Callback: Imagine a Widget with two Properties `A` and `B` that need to be kept in sync. Let's say that `B=A+2` must hold at all times. Whenever you set `A` to `x`, its Callback will also set `B` to `x+2`. But there is no way to differentiate this case from one where you changed `B` instead of `A` and so `B` will continue to update `A` as well ...which would cause a NoDag exception. But while this is a cycle, it is clearly not an infinite one. In fact, after touching both `A` and `B` once (no matter which one is set by the user), no further progress will be made. We can catch this case with a simple all-purpose optimization: check whether the new value is equal to the existing one *prior* to checking for cycles. If the value is the same, just do nothing and return. In this case, setting `A`  to `x` will change `B` to `x+2` which will in turn cause `A` to update to `x` again. But since at this point, `A` already has the value `x`, it will simply return nothing and the cycle is broken.
+There is however one exception to the "no cycle" rule, one that is only possible because of the separation between the Property Operation and -Callback:  
+Imagine a Widget with two Properties `A` and `B` that need to be kept in sync. Let's say that `B=A+2` must hold at all times. Whenever you set `A` to `x`, its Callback will also set `B` to `x+2`. But there is no way to differentiate this case from one where you changed `B` instead of `A` and so `B` will continue to update `A` as well ...which would cause a NoDag exception.  
+But while this is a cycle, it is clearly not an infinite one. In fact, after touching both `A` and `B` once (no matter which one is set by the user), no further progress will be made. We can catch this case with a simple all-purpose optimization: check whether the new value is equal to the existing one *prior* to checking for cycles. If the value is the same, just do nothing and return. In this case, setting `A`  to `x` will change `B` to `x+2` which will in turn cause `A` to update to `x` again. But since at this point, `A` already has the value `x`, it will simply return nothing and the cycle is broken.
 
 
 ## Input Plug
@@ -175,12 +179,12 @@ When an InputPlug receives a ValueSignal, it will forward the Signal to an Input
 
 Input Plugs are the point at which input events are handled by a Widget. If the user clicks into the UI, the "mouse-down" Emitter will emit an event Value which is forwarded to receiving Widget Input Plugs in decreasing order of their Widget's Z-value.
 
-InputCallbacks differ from other Functions in a Widget.Definition insofar as that they are passed the handle to the Widget as well as the mutable ValueSignal that was received. This way they can  "accept" or "block" a ValueSignal, should they decide to do so.
+InputCallbacks differ from other Functions in a Widget.Definition insofar as that receive the ValueSignal as a mutable argument as well. This way they can  "accept" or "block" a ValueSignal, should they decide to do so.
 
 
 ## Output Plug
 
-Output Plugs are Emitters that live on a Widget and can be invoked by Scripts on their Widget to propagate non-Property Values into the Circuit as needed. Output Plugs are truly stateless (apart from the state held by the Emitter base class). They share a namespace with the rest of the Circuit Elements that are discoverable on a Widget (Input Plugs and Properties).
+Output Plugs are Emitters that live on a Widget and can be invoked by Scripts on their Widget to propagate non-Property Values into the Circuit as needed. Output Plugs are truly stateless (apart from the state held by the abstract Emitter base class). They share a namespace with the rest of the Circuit Elements that are discoverable on a Widget (Input Plugs and Properties).
 
 Since they do not interfere with the Widget that they live on, I originally planned that Output Plugs could be told to emit from anywhere. This way, they could act as aggregators, with multiple Widgets emitting from the same Output Plug on some third Widget.  
 This approach did however go against the principle of encapsulation, stating that child Widgets should never rely on their parent Widgets for functionality and that child Widgets are basically an implementation detail of their parents. Basically, we cannot emit from an Output Plug of a child Widget since that is an implementation detail and we cannot emit from an Output Plug of a parent Widget, since that should be unknowable to the child.
@@ -188,7 +192,7 @@ This approach did however go against the principle of encapsulation, stating tha
 
 ## Widgets and Scripts
 
-When designing notf, I assumed at first that the user would add custom functionality by deriving from types that are supplied by the architecture. However, as discussed in "Widget Definition and Type", this approach meant a lot of overhead to supply base classes to runtime bindings (for Python, Lua, JavaScript etc.) and the introduction of untracked state. That in turn required the introduction of special "serialize/deserialize" functions and limited our ability to introspect the state of the entire UI (which is not too important right now, but would be, if we decide to implement ["event sourcing"](https://martinfowler.com/eaaDev/EventSourcing.html) or multi-threaded event handling). Lastly, the more I read about functional programming and immutable values, the more I liked the idea of designing the UI using _pure functions_ only. A pure function only operates on a given set of inputs, must return a value, and does not produce any side effects.  
+When designing notf, I assumed at first that the user would add custom functionality by deriving from types that are supplied by the architecture. However, as discussed in "Widget Definition and Type", this approach meant a lot of overhead to supply base classes to runtime bindings (for Python, Lua, JavaScript etc.) and the introduction of untracked state. That in turn required the introduction of special "serialize/deserialize" functions and limited our ability to introspect the state of the entire UI. Lastly, the more I read about functional programming and immutable values, the more I liked the idea of designing the UI using _pure functions_ only. A pure function only operates on a given set of inputs, must return a value, and does not produce any side effects.  
 This is how I eventually settled on the concepts of _Functions_ (upper-case _F_).
 
 A Function is a piece of user-defined code, with a fixed list of parameters and a single return type. The code must run in isolation and operate only on the given arguments -- in other words, be pure functional. Throughout this document I also use the term _Script_, and where a Function always comes with a fixed signature, a Script is just any piece of user-defined code. A Function contains a Script, but a Script is not a Function.
@@ -201,6 +205,8 @@ So far, there are 5 types of Function defined in the whole architecture. One in 
 4. Input.Callback `(signal: ValueSignal, widget: Widget.Handle) -> None`
 5. StateMachine.Callback `(widget: Widget.Handle) -> None`
 
+> TODO: add rendering and layouting Callbacks here
+
 Note that we have introduced two new shorthands here: An _Operation_ is a Function that returns a Value whereas a _Callback_ does not. To recap:
 
 * **Script** -- A user-defined string from the user that contains code that can be executed by the application's runtime.
@@ -210,6 +216,108 @@ Note that we have introduced two new shorthands here: An _Operation_ is a Functi
 
 Unlike in previous iterations of the notf architecture, the user is never able to access other Widgets directly. The only way to interact with other Widgets is to connect/disconnect to/from one of their Input/Output Plugs or read a Property -- all of which can be done using the respective Path.
 
+
+## The Atomic Application
+
+At some point during the design we wanted to define how exceptions in Scripts would be handled by the running system. We know that all Scripts would be called somewhere below an Emitter.emit call in the stack, so it made sense to set up a general catch-all clause there and handle all exceptions as closely to the failure as possible.  
+This is still a valid option, but one that comes with a major downside: it can leave the whole application (frontend and backend) in an inconsistent state if the user is not careful to handle exceptions gracefully (and if an exception escapes from a Script, we know that it was not). Imagine you have an application to rename a photo collection, based on the files' metadata. Your (pseudo-)code looks like this:
+
+```python
+# get a list of photos from a directory
+photos = get_all_photos_in_directory("~/photos/")
+
+# create a backup of all photos before renaming them
+backup = create_backup_copies(photos)
+
+# rename each photo
+for index in range(len(photos)):
+    photo = photos[index]
+    date: get_photo_meta_tag(photo, "date")
+    location: get_photo_meta_tag(photo, "location")
+    photo.rename(f'{date} @ {location}.jpg')
+    
+    # and then remove the backup file
+    remove_file(backup[index])
+```
+
+The exception occurs when one of the photos does not have a "location" tag, for example. Since it is not handled in the Script itself, the exception will interrupt the Script right in the loop and return immediately. At this point, we have an unknown number of already renamed files and a unknown number of backup copies, maybe in the same folder even? So that they get picked up as new "originals" during the next run of the script?  
+Obviously, this is not great code. And you would be excused to think that it is the user's responsibility to make sure that code like this is never put into production. But the software is named "notf" for a reason, not "fewer tfs, though only if your code is perfect". Let's see if we can do better.
+
+Ideally, what would happen here is that the exception interrupts the application and lets the user know where the error happened. The user would then have the opportunity to fix the code and let the event replay (if the user is the developer) or abort and make a ticket for the programmers to fix their shit. We focus on the first case, since we strive to be a great UI development tool first and a great UI framework second (as that naturally derives from the first).  
+In either case, we want the event that caused the exception to not have any side-effects. Neither on the backend, nor in the frontend. 
+
+The backend requirement is relatively easy to ensure: just queue all service calls and execute them in batch once the event has completed successfully. And if it fails, then just discard the queue. This behavior should be indistinguishable from the approach of firing service calls off immediately, since whatever effect they have will not be part of the current event anyway.
+
+The frontend is a bit more involved. What this asks for are basically "atomic" events: events that either succeed completely (no exception escapes a ran Script) or fails without changing the application state at all. Whatever state changes have been made must be rolled back, as if they never happened.  
+As I see it, there are two ways to go about this:
+
+1. Keep a record of whatever changes are applied to the application state and undo them on failure.
+2. Keep a snapshot of the original state around and re-apply it on failure, overwriting the current state.
+
+The first option would allow us to keep the data representation separate from its modification. If you change the order of a Widget's children, you could simply store the modification itself (move the second child to the end of the list) and not worry about whether a child is a raw pointer, a Path or an index in a vector somewhere.  
+On the other hand, it would introduce a lot more complexity into the code, since every new functionality that is supplied to the user would require a new "do" and "undo" function to go along with it, including the state that is needed to undo the operation.
+
+The second option is the one favored by value-centric programming and modern frontend architectures like Redux. The first of [the three principles of Redux](https://redux.js.org/introduction/three-principles) is the idea that the entire application state is a single object. This, combined with an immutable object model allows for easy implementation of complete application serialization / undo-redo / copy / diffing etc. (as seen in the quite brilliant talk [Postmodern immutable data structures](https://www.youtube.com/watch?v=sPhpelUfu8Q)).  
+This option would provide a superset of the functionality as the first, but instead of adding new Command-pattern like structures in the code, we would need to modify the way the data is stored in memory. So far, we have been refering extensively to the use of `Value` objects, which are (among other things) immutable. With Widgets however, we have introduced a whole lot of other state into the code that cannot easily be represented with Values ... or can it?
+
+In order to have an application state that can be represented as plain old data in memory we would need to say goodbye to a few features that the previous programming model allowed us to do:
+
+1. No more pointers. Since we no longer allow mutable fields, we no longer have memory identity for any object.
+2. No more automatic lifetime management. With shared pointers, we did not have to worry about child Widgets getting destroyed when their parent goes out of scope. Without them, we need to do that ourself.
+3. No more virtual base classes, all types need to be known since we cannot use `dynamic_cast`.
+4. The current memory model is a tree, with parents owning their children and Widgets scattered all over memory in a large, branching application state. Combine that with a lot of small, local changes to individual Values, each change prompting another creation of all copy of the tree down to the change, and you get many many copies of minimally different data. Every time you update a leaf, you then need to update the owner of the leaf, and its owner and so on all the way to the application object, which is then the next ground truth.
+
+For a while, I was not sure which way to go. The first one is easy to start, but is potentially hard to maintain because every new modification of any part of the application will require a new Command. We are basically creating and managing a lot of individual deltas, but without being able to outright copy the original state since it might contain pointers. So, on top of the maintenance hassle we have a lot of serialization at runtime.  
+The second one seemed to offer some really cool functionality for free, but was totally incompatible with the way that the application was represented in memory...
+
+Until it hit us: What if we could lay out the whole application in tables instead of a tree? Like in an SQL database. This way, we could keep everything in a data structure that was as shallow as possible. With structural sharing, we could even have an entire history of the application state with minimal space requirements! And unlike a tree, diffing two tables is basically trivial.
+So, what do we get for our troubles?
+
+* Better debugging: we can easily search where in the history of the application, a Value was modified, an Input Callback was fired etc.
+* Automatic and guaranteed valid undo for the UI. Only Services need to provide user-defined undo functions - and those we certainly cannot automate.
+* You could even step back in time, change a Script and re-run all Events up to now from that point onwards.
+* Trivial serialization/deserialization: Instead of walking a tree, just dump a few tables to disk.
+* Easy synchronization of the complete application state over the network (for example), if you have a multi-user session.
+
+Very cool. Now to how this will actually work:
+
+At the top, we have a single application object that stores a number of tables. Every row in a table represents instances of a single type: Widgets in one, Operators in another etc. That might sound unwieldly, but since we don't customize through subclasses (like in a regular OO program), there are only so many classes that we actually need to represent. In all of the logic module, for example, we only have two concrete (persistent) classes: The Circuit and the Operator. And you could argue that the Circuit does not even be its own table, since you only have one in a given application. And yes, there are more concrete classes than that in the logic module, but not _persistent_ ones. Instead we have Signals, Events, Errors etc.  
+Whenever you update a Value, you modify its table and the application object -- and that is that. 
+
+Instead of pointers, you have indices to a specific row of a table. Note that this does indeed mean that you need to know the exact type of object that you point to, so you can look it up in the correct table (unless of course we add another indirection but I hope that it will not come to that). Whenever a new object of the table's type is constructed, it will be put into the first free row of the table - initially at its end. Of course always appending new rows would mean that the table would grow forever, or at least until the application is shut down. This might not be a problem if you plan to keep the entire history of a session in memory, but if we decide to only keep the last 100 iterations around and serialize the rest to disk, this will no longer work. Instead, we need to re-use rows that have gone out of scope.
+
+Fortunately, we know when a object goes out of scope because we have clearly defined ownership. Widgets are owned by their parent, Operators by their downstream. And for classes where ownership is truly shared, we need a dedicated row for a reference count (non-atomic, because modifications should happen on a single thread only). Whenever a row is deleted, it is not actually modified but its index is added to a "free list". When you create a new Widget or Element or whatever, you just pop the last entry off the free list and use that instead.
+To safeguard against use-after free errors, every row stores a 'generation" number, that is different for every new object put into the same row. You start out with generation 1, when that is deleted you set it to -1. When the row is re-used, set it to 2, then -2 on deletion again. This way you can check whether the row is currently alive by checking if `generation > 0`. Note that this is only relevant in *our* debug mode, because if that fails, then the user of the software won't be able to fix it.
+
+The number of a row acts as address of the pointed-to element. This row number is not exposed to the user, the user still needs to address Widgets with a Path and Circuit Elements with an ID combining the row number and generation value.
+
+For reference, this is how I imagine the table for Widgets to look like in c++ code (using [immer](https://github.com/arximboldi/immer) for immutable value semantics):
+
+```c++
+struct Widget {
+    immer::box<std::string> name; // internalized string?
+    uint parent;
+    immer::array<uint> children; // maybe immer::vector but probably not
+    uint type; // foreign key into Widget.Type table
+    uint current_state; // index of a state defined in the type's state machine
+    immer::array<Value> property_values;  // values and callbacks of each property, the index in each array
+    immer::array<str> property_callbacks; //  corresponds to the index of the property in the Widget.Type
+    // ...
+};
+
+struct WidgetRow {
+    // row number is implicit
+    int generation;
+    Widget widget;
+};
+
+using WidgetTable = immer::vector<WidgetRow>;
+```
+
+One approach for the table design (the one from the example) is to move as much state as possible into the `Widget` struct, which keeps all mutable state nice and centralized.  
+Another approach would be to keep the tables lean, so that as little "old" data as possible is copied whenever a row is modified.
+
+> TODO: return back to the design of the tables once we have the scene module all worked out
 
 ---
 
@@ -273,158 +381,6 @@ At the moment, the Widget is flagged for deletion, a strong reference to it is a
 Note that it is not possible to check whether a Widget is going to be removed at the end of the update process or not, even though such a method would be easy enough to implement. The problem is the same as with an immediate removal. 
 Depending on the execution order, the flag of Widget A would either say "this Widget is going to be deleted" if B was updated first or "this Widget is not scheduled for removal" if A is updated first. The result is not wrong, but essentially useless.
 The same goes for anything else that might be used as "removal light", like removing the Widget as child of the parent so it does not get found anymore when the hierarchy is traversed.
-
-# notf vs. Redux
-
-The first of [the three principles of Redux](https://redux.js.org/introduction/three-principles) is the idea that the entire application state is a single object. This, combined with an immutable object model allows for easy implementation of complete application serialization / undo-redo / copy / diffing etc. (as seen in the quite brilliant talk [Postmodern immutable data structures](https://www.youtube.com/watch?v=sPhpelUfu8Q)). And we _do_ use immutability extensively throughout the notf architecture. However, our application state is not a single object but rather a wild collection of Widgets and free Circuit Elements.  
-How can we live with ourselves in 2020, where the world has seemingly moved on from this entangled web of interconnected objects into the  promised land of the unidirectional data flow? 
-
-Well, we know the pros, but what about the cons? Let us imagine how our application state would work in a single value:
-
-* Instead of pointers, we now have to do a look-up every time one object references another one. 
-* References do not influence ownership anymore and in order to clean up dead objects you have to do your own garbage collection.
-* The undo/redo "pro" argument doesn't actually apply, because undoing a change in the UI alone is pointless, if the underlying model is not also affected.
-* We have a potential large application state and a lot of small changes. Right now, these changes are local to individual Values only, if we always create a new application state for every Value change, we will end up creating a lot of unnecessary work.
-* We can already serialize and deserialize the entire application - the fact that the serialized representation looks different from the runtime representation is not a bug, it's actually a feature.
-
-On the actual pro side: diffing a complete application would be very nice to do if we ever go ahead and do multithreaded event handling. However, that itself would add even more overhead to a feature that I had already dismissed because of overhead concerns.
-
-So no, for now we are not storing the application into a single object.  
-Maybe my view on this will change in the future, after we have a working alpha version? I expect that the effects of some design decisions will only become apparent then and it will be interesting to see how they stack up against the current hotness in web development.
-
----
-
-what do we do about exceptions thrown in a State enter/exit Callback?
-this actually generalizes to the bigger picture of exception handling. The current approach is to ignore and report errors and continue to the best of our ability but that might not actually be the best. 
-
-Instead, what if any error interrupts the execution? The program stops and presents the error including the stack and everything. The big feature is that the whole event can then be replayed after the scripts have been updated by the user. In order for that to work, we need atomic events, that can be completely rolled back if they failed. And every call to a service must also be stopped. 
-This is actually easy to do. Instead of firing commands off to a service when the script calls for it, you queue the command to be sent after the event has finished. This way we can simply discard the queue so far in the case of an exception during event handling. 
-The roll back is a bit more involved, but only because for that feature we need event sourcing and for that we need the single- state application like in redux. 
-
-This is for a debug mode btw. In release mode I think that the current approach suffices, where exceptions are handled ( reported and ignored ) as locally as possible. 
-
-Another advantages of event sourcing are:
-
-* find where in the history of the application a property was set to x / an input was fired etc.
-* automatic and guaranteed valid undo for the UI. That means only commands to the services need to provide user-defined undo functions. And that we certainly can't automate.
-
----
-
-What do we have:
-To recap; i want to be able to have atomic events, meaning that an event either succeeds (no exception is thrown) or it fails (an exception is thrown).
-We have no half-states, where the event succeeded up to a point but then failed.
-If the event succeeds, it update the UI and all services.
-If the event failed, it will be as if it never happened.
-This should be really great for debugging, since the program can stop when an exception occurs, tell you where it happened and then let you change exiting Scripts before re-running the event.
-Similarly, you could even step back in time, change a few scripts and then let the events re-run.
-The question here is, what events? I'd figure that clicks into the UI are not too useful, if you are changing the location of child Widgets, for example - in that case you'd want the Widget's reaction to an event to be replayed, even if it has moved away from the position of the original mouse click ...
-Why am I even questioning this?
-I think, the problem is that I am still not fully convinced that this feature is necessary.
-It will cause a lot of rewrite and a little bit of runtime overhead when it exists, but I think I'm mostly worried about an increase in complexity of the backend.
-Not of the user-facing stuff, that should become easier ... but I am not really convinced of that yet.
-So we have two questions:
-1. what features would a persistent, redux-style, atomic application object allow us to implement?
-2. how would we even implement it?
-The two are closely interwoven, but I think I will be able to answer the second question easier.
-The first question has the possibility to drift off into "wouldn't it be nice" territory, where features sound good but make no sense (see "replay" above).
-Okay, so how would be implement this.
-In redux, we have a single object containing the entire application state.
-That's nice and if it is a persistent object with state-sharing, we have an entire history of the application with minimal space requirements.
-One problem with persistent objects is that we cannot really have pointers, can we? 
-It seems we can. For example you could use an immer::box<std::unique_ptr<T>>. But then, you cannot modify T anymore.
-I mean, that's the crux behind immutability.
-Whenever you change a single value anywhere in the application, the change needs to bubble up all the way to the top object, if we store the application as it is right now: as a tree.
-You update a leaf, and then you need to update the owner of the leaf, and its owner and so on all the way to the application object, which is then the next ground truth.
-Okay, let's have a look at what state we are storing.
-
-**At the very bottom, we have Values.**
-Values are easy, because they are basically immutable values by design. Nothing magical here.
-
-**Then we have the Logic.**
-The Circuit is basically a map ID -> Element
-The Element can either be an Emitter or a Receiver (or both or a subclass of any or both)
-How can we represent that in data? Subtypes can have arbitrary fields...
-OMG, do we need to use a Map str -> Any here? That would be terrible. 
-But Any objects are definitely not const, so it would be a map str->str. 
-An you know what? If we did that, we would basically operate on a _fucking single string_, like an HTML document.
-Well, fuck.
-And we haven't even gotten to the real interesting part, the Scene hierarchy.
-Then again, Widgets are probably easier, since they are all the same type, but differ only in Values.
-Hmm...
-You know what? I don't actually need the `Any` type at all. Right now, there are actually only a very limited number of *concrete* classes.
-Okay, let's back up and enumerate.
-Easy. The only concrete and persistent class (that excludes Signals etc.) in the Logic module, apart from the Circuit, is the Operator.
-Another wrinkle to consider here though, is that the Circuit down not _own_ its Elements, it only offers an easy way to access them.
-
-**Now to the Scene.**
-Here, we get to the question of ownership.
-Right now, parents own their children, but if we represent this structure 1:1 in data, we'd get the deep tree that we are trying to avoid. 
-Instead, we want to keep everything as shallow as possible.
-Tables come to mind, like in a database.
-We could give each Widget a unique ID, like we do with Circuit.Elements. You wouldn't need them to refer to another, that is still done via a Path, but in data, these IDs act as primary keys like in a DB.
-Okay, I just did a bit of sketching and I am pretty sure that it works. Like in a DB you have multiple tables with primary keys as ID and foreign keys as pointers.
-Whenever you update a callback or a Value or whatever, you just update a single table. The Application state is just the collection of all tables. 
-One type per table.
-
-Let me dedent this, because I think I know now how this could work.
-Tables are the right approach. They are proven and easy and work great with immutable data.
-One problem that I see is that of speed. Right now, we have structures in memory that point to each other. I'm thinking parent Widgets, child Widgets, and the up/downstream of Receivers and Emitters.
-Would it be possible to use IDs not at unversally unique IDs but as the number of the row in the table? 
-I think that would be possible. 
-The obvious "problem" here is that the table would grow uncontrollably, if we would never re-use rows. 
-So we have to do that.
-Right now, we can already determine when a Widget or Element goes out of scope, let's just do the same here.
-If a row is deleted, it is actually not modified but it's number is added to a "free list" 
-Optionally, we could also set a flag on the row saying that "this row has been deleted - if you access it, you are basically segfaulting" ... maybe in debug mode only though.
-When you create a new Widget or Element or whatever, you just pop the last entry off the free list and use that instead.
-Actually, better than a "this has been deleted Flag", add a "Generation" number. You start out with generation 1, when that is deleted you set it to -1. When the row is re-used, set it to 2, then -2 on deletion again. This way you can check whether the row is currently alive by checking if `generation > 0`. Still only relevant in *our* debug mode (because if that fails, then the user of the software won't be able to fix it).
-I AM FUCKING LOVING THIS
-
-Okay smartiepants:
-If all of that is so great, then tell me: how does ownership work with that DB model?
-A whole lot more manual, that's for sure.
-I think, you need to have another row for reference counting. 
-The good news is that you don't need to use an atomic variable, because recount modifications should happen on a single thread.
-You *do* need atomic refcounts for the rows and the tables (for if we want to do multi-threaded event handling), but immer should provide those out-of-the-box.
-
-Hey Hey!
-Another good thing about this: diffing tables should be a whole lot easier than diffing trees.
-
-For reference, this is how I imagine a tabel to look like in c++ code:
-
-```c++
-struct Widget {
-    immer::box<std::string> name; // internalized string?
-    uint parent;
-    immer::array<uint> children; // maybe immer::vector but probably not
-    uint type; // foreign key into Widget.Type table
-    uint current_state; // index of a state defined in the type's state machine
-    // ...
-};
-
-struct WidgetRow {
-    // row number is implicit
-    int generation;
-    uint refcount;
-    Widget widget;
-};
-
-using WidgetTable = immer::vector<WidgetRow>;
-
-```
-
-Note that I store the current state in the Widget, not in the StateMachine.
-This way we allow the StateMachine to be stateless.
-The same would go for the Callbacks stored in the Widget. I would leave them in the Widget.Type and only reference them by index.
-Of course that does exclude stateful things, like the active Callback of an Input or Property, or the data of a Property.Operation - those would be stored in the Widget itself.
-... But would they?
-Let's take the simple question of Properties and their values.
-The type of Properties is determined by the Widget.Type. No need to store that information in the Widget.
-But the Property value belongs to the Widget instance, so we should store it.
-Well, the number of Properties won't change. At least not often (only if the Widget.Type changes and at that point we are dealing with a new Widget type anyway. That should only happen during development anyway).
-We could store Properties in an array of Values. Which index belongs to which Property can be read from the Widget.Type.
-This approach translates well to all other questions, like Property Operation data, active Callbacks for Inputs and Properties etc.
-Even for the state machine, was it not for the fact that there can always be only a single one and therefore the array of active states always has a length of 1.
 
 ----
 
