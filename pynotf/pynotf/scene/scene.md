@@ -93,8 +93,9 @@ A Widget.Definition object consists of:
   Functions that can be attached to a property
 * The Widget's *StateMachine* (StateMachine)
   The StateMachine controls which Callbacks are active, and provides the initial set-up Callback for the Widget type.
+* The name of a *Render Callback* to look up in the Style Manager.
 
-> TODO: add render callbacks and layout(s?) to the Widget.Definition, once I have them all worked out.
+> TODO: add layout(s?) to the Widget.Definition, once I have them all worked out.
 
 For more details on Functions (and Callbacks and Scripts) see the chapter on "Widget and Scripts".
 
@@ -188,6 +189,22 @@ Output Plugs are Emitters that live on a Widget and can be invoked by Scripts on
 
 Since they do not interfere with the Widget that they live on, I originally planned that Output Plugs could be told to emit from anywhere. This way, they could act as aggregators, with multiple Widgets emitting from the same Output Plug on some third Widget.  
 This approach did however go against the principle of encapsulation, stating that child Widgets should never rely on their parent Widgets for functionality and that child Widgets are basically an implementation detail of their parents. Basically, we cannot emit from an Output Plug of a child Widget since that is an implementation detail and we cannot emit from an Output Plug of a parent Widget, since that should be unknowable to the child.
+
+
+## The Render Callback
+
+Whereas other Functions refer to an executable Script directly, the Render Callback field of a Widget only contains a name. The actual Script is looked up at runtime in the _StyleManager_ (or Stylist?), which contains a sequence of _Styles_. A Style is a simple map of names to Render Calblacks. If the name is not found in the first Style, the StyleManager will attempt to find it from the second and so on until either a Style provides a Render Callback by the given name or the manager ran out of Styles, at which point this is an error. This is basically the "cascading" behavior in "Cascading Style Sheets" (CSS).
+
+The idea here is that we want to decouple the inner working of a Widget from how it is displayed on screen. A button behaves like a button, no matter if its corners are rounded, if it has a dropshadow or even if it has text or not. And if you want to switch between one Style and the next, you should not need to have to restart your Application.
+
+We should be able to connect all Render Callback names with a Render Callback whenever the Style/s of an Application is changed and at startup. This way we can be certain that there will be no suprise failures at runtime.  
+I think the best approach here would be to store the name of the Render Callback in the Widget.Definition, and the actual Render Callback in the Widget.Type. Whenever you update a Style (and how often will you do that), the Render Callback field of each Widget.Type will have to be updated. On the plus side, you can actually serialize the current Render Callback with the rest of the Application state, meaning that if you do not change the Style at all (which I think is the default), you only occurr the cost of Render Callback lookup the first time you start the application.
+
+Another level of abstraction is the Palette, which is separate from the Style. Within a Render Callback, you have access to the current Palette which can contain colors, fonts, measurements (like the average height of a button, font size), gradients or whatever. Palettes also cascade like Styles, meaning you can have a "default" Palette and override only certain characteristics with you custom Palette that has a higher priority.  
+Palettes are separate from Styles. Wheras Styles contain Scripts (executable code), Palettes contain only data. Palettes are also easy to expose to the user of an application, because you can modify them using number entry fields / color pickers etc. and do not need to know the interpreted scripting language.
+
+By putting the Render Callback name into the Widget.Definition, we ensure that the Render Callback of a Widget cannot be changed at runtime. You could easily imagine a world in which we _did_ allow that and it would also work, however we found that you do not _need_ to do it because every behavior that you get with multiple Render Callbacks can be duplicated by just having a big list of if/else statements at the root of you single Render Callback. The advantage here is that we contain the logic of drawing to the actual Render Callback itself and not spread it out over the union of all Widget Callbacks with a mutable Widget.Handle.  
+Another advantage is that you can never try to assign an invalid Render Callback at runtime.
 
 
 ## Widgets and Scripts
