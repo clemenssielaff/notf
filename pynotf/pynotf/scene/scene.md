@@ -620,16 +620,24 @@ The Render Callback of a Widget serves multiple purposes at once:
 2. Create the hit Shape (defaults to the union of all painted shapes)
 3. Create the clip Shape (defaults to None)
 
-The **Draw Shape** is the outer edge around everything that is drawn as part of the Widget's Design. It is used to determine when a Widget has become invisible.
+The **Draw Shape** is the outer edge around everything that is drawn as part of the Widget's Design, including its children (see Clip Shape). 
+
+The **Visibility Shape** is used to determine when a Widget has become invisible. It cannot be manipulated by the user and defaults to the narrowest AABR around the Draw Shape. 
+It is the most performance critical of the Shapes and is used for broad-phase visibility testing. As soon the Visibility Shape is fully clipped by an ancestor, the Widget is considered invisible and will not be traversed during rendering or event propagation (unless the _Clip Shape_ is set to _unbound_, see below).
 
 The **Hit Shape** is a shape in Widget space in which mouse events are received. If you have a circular button for example, you don't want the outer corners of the Widget's bounding rectangle to react to mouse events, even though the Widget's draw shape does not extend to there.
-The **Hit Shape** is independent of the Draw Shape, because use-cases for Clip Shapes both smaller and larger than the Draw Shape exists: Dropshadows for example are drawn, but are not part of the Hit Shape; whereas the Hit Shape of circular buttons on touchscreen displays are usually larger than their Draw Shape.
+The Hit Shape is independent of the Draw Shape, because use-cases for Clip Shapes both smaller and larger than the Draw Shape exists: Dropshadows for example are drawn, but are not part of the Hit Shape; whereas the Hit Shape of circular buttons on touchscreen displays are usually larger than their Draw Shape. The Hit Shape is also independent of the Clip Shape. 
 Defaults to the Draw Shape if not set explicitly.
 
-The **Clip Shape** is an optional shape of a Widget that restricts all of its child widgets shapes (draw / clip / hit) to a certain shape in parent space. If it is empty, the parent does not clip its children.
-The Clip Shape must be fully contained within the Draw Shape but can be smaller than it. That is because the Draw Shape is used to determine whether a Widget is visible or not and we might otherwise determine that a widget is not visible (since its draw shape is fully clipped) and ignore the Widget's subtree during rendering. In a way, the parent Widget is deferring "painting" its child Widgets, and whatever area is allocated for the children to paint has to be assumed to be fully filled.
+The **Clip Shape** is Shape restricts all child shapes (draw / clip / hit) to a certain shape in parent space. It has three states: default, explicit and unbound.
+By default, the Clip Shape is the Visibility Shape. This should provide a good default behavior for most Widgets.
+If set explicitly, the Clip Shape is independent of the Draw Shape but will gor 
+If it is empty, the parent does not clip its children.
+If it exists, the Clip Shape must be fully contained within the Draw Shape, but you can still set a Clip Shape that is larger than the current Draw Shape. In that case, the Draw Shape will grow to include the Clip Shape.
+We need the Clip Shape to be contained in the Draw Shape because the Draw Shape is used to determine whether a Widget is visible or not and we might otherwise determine that a widget is not visible (since its draw shape is fully clipped) and ignore the Widget's subtree during rendering. In a way, the parent Widget is deferring "painting" its child Widgets, and whatever area is allocated for the children to paint has to be assumed to be fully filled.
+Do not set thisIf you don't need to clip child Widgets
 The Clip shape does not affect its own Widget in any way. This way the Widget can draw itself around an area reserved for its children to frame them, for example.
-Is empty by default.
+Defaults to the Draw Shape if not set or removed explicitly.
 
 Problem:
 1) How can we ever have an empty Clip Shape, if the Clip Shape must be fully encompassed by the Draw Shape? That would imply that the DrawShape is the maximal Clip Shape and any modification can only make it smaller. But does that not defeat the purpose of having no Clip Shape at all?
@@ -650,7 +658,7 @@ We have two use-cases for accessing a child Widget from a parent:
 
 ## Layouts
 
-Any Widget with at least one child must have a Layout Callback.
+
 Unlike other Callbacks though, we don't require the user to write these specific ones - I am fairly certain that we will be able to provdide most Layout Callbacks that are needed to build any reasonable UI. Of course, a user should be able to write a new Layout implementation, but I think that is something of an advanced thing that should not really be necessary at all.
 
 One problem that I see is that Layouts cannot be pure functions, because some Layouts will require different data than others. And unlike other Operations, we need to access this data from the outside. For example: is a FlexLayout wrapping? It certainly does not make sense for all Layouts to have an `is_wrapping` field.  
@@ -664,6 +672,10 @@ The layouting process must do four things:
     2. For each child, define the grant size in its local space.
     3. For the widget owning the layout, define the aabr of all children combined in its local space.
     4. For the widget owning the layout, modify the Claim of the widget if one or both Claim.Streches are set to "implicit". 
+    
+> modifying the claim of the parent is a dangerous game, because that change will propagate up, then the parent layout is
+> called, which will propagate down again to the child which might again modify its claim etc.
+> I guess that is okay only if having an implicit Claim.Stretch means that a change in grant will not cause a re-layout... 
     
 Since all of the information required to do these 4 things are part of the same layouting process, it makes sense to combine them in a single function instead of separating them into separate ones.  
 I mean, 3 and 4 could be done in a post-process stage, but I would assume that quite a few Layouts would be able to use intermediate results to calculate these things quicker.
@@ -839,3 +851,18 @@ However, that does not solve the problem that we need a list of children in draw
 
 ... a bimap - at least conceptually
 
+------------------------------------------------------------------------------------------------------------------------
+
+## Layouts
+
+Every Widget, regardless of whether it has any children or not, must have a Layout.
+The Layout's job is to provide 3 things for a (sub)set of the Widget's children:
+
+1. The child's 3D _transformation_ (position, rotation, scaling) in its parent space.
+2. The child's 2D _grant_ size.
+3. The child's _depth_ or draw order among its siblings.
+
+From that information, we can infer two more things:
+
+4. The _axis-aligned bounding rectangle_ (AABR) of all children of the Widget.
+5. An _implicit Claim_ that is the sum of all child Claims. More on that later.
