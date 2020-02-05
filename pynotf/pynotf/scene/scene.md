@@ -355,6 +355,182 @@ This is how far the document is consolidated, after this point things get messy.
 
 ---
 
+## Layouts
+
+Every Widget with at least one child must have a Layout.
+The Layout's job is to provide 5 data points for a (sub)set of the Widget's children:
+
+1. The child's 3D _transformation_ (position, rotation, scaling) in its parent space.
+2. The child's 2D _grant_ size.
+3. The child's 1D _depth_ or draw order among its siblings.
+4. The _axis-aligned bounding rectangle_ (AABR) of all children of the Widget.
+5. An _implicit Claim_ that is the sum of all child Claims. More on that later.
+
+The result of a layout is written into a `Layout.Composition`, which is a structure:
+
+    Layout.Composition: Tuple[
+        widgets: List[Map[name: String, xform: Xform3, grant: Size2, depth: Number]],
+        aabr: Optional[AABR],
+        claim: Optional[Claim],
+    ]
+
+with
+
+    # 2-dimensional size
+    Size2: Tuple[width: Number, height: Number]
+
+    # 4x4 matrix
+    Xform3: Tuple[Number, Number, Number, Number,
+              Number, Number, Number, Number,
+              Number, Number, Number, Number,
+              Number, Number, Number, Number]
+    
+    # left, bottom, right, top
+    AABR: Tuple[Number, Number, Number, Number]
+
+    Claim: ... # see Claim
+
+Note that the AABR and the Claim (data points 4 and 5) are both optional as we could infer them from the per-child data points, by simply combining all of the child sizes and Claims. However, we expect that the Layout.Callback will have more insight into (and/or intermediate data for) calculating these two fields for their specific use-case. Or maybe you just want the child AABR to be a bit larger, smaller etc?
+In any case, if the user leaves these fields empty, we can calculate them ourselves as well.
+
+I thought about splitting the layouting process into multiple functions, but we cannot know which part of the Composition will change from the input alone. Therefore we will have to call each function on every new input. Furthermore, I expect the data points to correlate a lot, meaning that multiple smaller functions will have to do a lot of duplicate work. Therefore it is both cleaner and faster to have a single _Layout.Callback_ to calculate the complete Composition in one go.
+
+
+### Transitions
+
+Layouts are separate from Widgets so that you can change the Layout depending on the state of the parent or the available size granted by its own parent Widget. Perhaps you want to display only the icons of push buttons if you shrink their parent Widget to its minimal width? Or arrange a horizontal list of checkboxes vertically if their available space becomes to narrow?  
+This is the bread and butter of web and app developers and we certainly do not want our users to miss out.
+
+Things become interesting when you consider that Layout switches should not (always) be immediate, instead you will most likely want a smooth transition between them. This is where _Transitions_ come in.
+
+A Transition is simply a Layout that owns two other child Layouts that each produce their own Composition. This is another reason why the Layout.Callback returns a Value instead of placing the child Widgets directly - it is trivial to interpolate between two constant Values, no matter what internal process the child Layouts follow to produce their result.
+
+Layouts can have a single parent Layout or None, if they are owned directly by a Widget. Layouts can have no or two children, two only if they are transitioning.
+
+Of course, each one of the child Layouts can themselves be another Transition. Although you might want to make sure that the tree of Transitions does not grow out of hand. 
+
+In order to start a transition, the Widget has a method 
+```python
+set_layout(
+    target_layout: Layout, 
+    transition_duration: int = 0, # in milliseconds
+    warp_function: Optional[Layout.Transition.Warp] = None)
+```
+that automatically replaces the current Layout with a Transition containing the current Layout as the *source* Layout and the given `target_layout` instance as the *target* Layout.  
+Note that this works even if the current Layout is already a Transition.  
+In the special case that `transition_duration` is 0, we can skip the transition and jump to the target immediately.
+
+The Transition Layout is a special (built-in) type of Layout that registers a timer Callback to be called once every frame (at least, if the Widget's size is changed in between, the Transition layout might be called more than once). It then invokes the layout function on both of its children until the transition has completed.
+
+A transition takes `transition_duration` milliseconds and blends linearly between the *source* and *target*. The rules for each child Widget are as follows:
+
+* Xform: The 3D transformation is split into its translation, rotation and scale components. Their are lerped individually and finally merged together again, first the transformation, then the rotation and finally scaling.
+* Size: Width and height are blended independently.
+* Depth: Since the depth values are integers, we'll have to live with the fact that they are going to jump at some point. I guess the middle of the transition is as good as any other.
+
+Similarly, if the Layouts do not contain the same number of children, the source children missing in the target Layout will disappear once the Transition has passes its mid-point, whereas the additional children from the target Layout will only appear after the superfluous source children have dissappeared.
+
+Since a linear blend between the source and target state might not always be what you want, you can optionally define a `warp_function` that takes a single floating point value in the range [0 ... 1] and returns another floating point value. Use this to implement easing or even bouncing, since the returned value can be outside the [0 ... 1] range (in that case, the delta will be extrapolated beyong its source or target).
+
+Once the Transition has completed, it will notify the parent Widget or Layout and replace itself with its target Layout.
+
+
+### Layout Properties
+
+Unlike other Callbacks on a Widget, Layouts can not be pure functions. Let's take the example of a simple ListLayout, that takes a list of Widgets and arranges them vertically, one after the other. The spacing between the Widget is constant.  
+Where does the spacing value come from? It cannot live on the Widget, or at least it should not, since the Widget may also want to lay out its children in a StackLayout (for example), should the grant become too small to display a list. In that case, why would you have a "spacing" property on the Widget, even though it is not used anywhere? If we did that, the Widget.Type would need to contain a union of all Properties for any Layout types that the Widget may use. Not a great design.
+
+Instead, Layouts need their own Properties. We use the name Layout.Property to differentiate them from Widget.Properties, which are conceptually similar but differ in implementation.  
+Note also that Layouts are explicitly *not* Widgets themselves. Their ability to have other Layouts as children and the fact that they have (their own version of) Properties might look like they share much of the same concepts as Widgets but they really don't.
+
+Layout.Properties can connect to upstream Emitters in the Circuit like Widget.Properies, but unlike Widget.Properties, Layout.Properties can also be set from the outside, from their owning Widget to be precise. 
+
+Layout.Properties can have a Value.Operator to ensure that all of the Property values are valid. If a new value is not valid, the Property will not be updated and no relayout is taking place.
+
+### Layout Definition
+
+Like Widgets, Layouts must also be defined. A Layout.Definition contains the following fields:
+
+```python
+LayoutDefinition: Tuple[
+    callback: Layout.Callback,
+    properties: Dict[
+        name: str,
+        schema: Value.Schema
+    ],
+    per_widget_data: Value.Schema,
+]
+```
+
+
+### Which Widgets to Lay Out
+
+In the trivial case, a Layout would always take all children of its Widget. However, we might not have space enough for all children at all times, or maybe we just want to hide some Widgets without removing them from the parent.  
+Therefore, in order to appear at all, every child of a Widget needs to be added to one (or more) Layouts explicitly. The "more" case occurs during Transitions, where the same child might have been added to both source and target Layout. Note though, that the child Widget will still only get a single xform, size and depth provided by the Transition, not multiple ones.
+
+You might have noticed that the `Widget.set_layout` method takes a Layout *instance*, not a Layout.Definition. That is because we need to add Widgets to the Layout using `Layout.add_widget(child_name: str, data: Optional[Value])`. The Value.Schema of the second argument is defined by the Layout.Definition's `per_widget_data` field and contains widget-specific data that is available to the Layout.Callback.
+
+Note that you are able to modify the per-widget data on the current Layout from the widget. Each modification triggers a relayout.
+
+The order in which the Widgets are added to the Layout is significant, because it will define the order in which they are laid out. For a ListLayout, for example, that might mean that earlier additions are further left than later ones. 
+You can also remove existing Widgets and add new ones to the current Layout.  
+Since the children are stored as a simple List Value in the Layout, you can even use generic Value List operations to order them, pop a specific index or whatever.
+Every change in children triggers a re-layout. 
+
+
+### Layout Prologue
+
+The list of children is a list of Strings, but since we need to pass Claims to the Callback, we need to collect them from the Widgets. It would probably be good if the Layout would request actual pointers to the Widgets (in native code, obviously) and then use them to collect the Claims to pass to the Layout.Callback. 
+
+Whenever a Widget removes one of its children, it should always remove it from the Layout as well. If the Layout doesn't have the child Widget, that's a noop.
+Also make sure that Transition Layouts always let their child Layouts know that a child has been removed. 
+
+
+### Layout Callback
+
+Has access to widget-specific data, using the Widget's name as key.
+Have no access to the Widget itself beyond what is passed as data (no asking whether the Widget is selected or anything). That would tie the Layout to the Widget that it lays out and we don't want that.
+
+Here we can make good use of the fact that Value maps are ordered by design and you can access them both with an index or by key if you want to address a specific widget to lay out (perhaps if the name of the widget is passed through a Layout.Property).
+
+
+
+### Layout Epilogue
+
+In some cases, a relayout is triggered by the parent Widget itself. Here, it would be enough to simply take the return value of the Layout.Callback and apply it to each child. However, changing a Layout.Property for example also triggers a relayout, and here we have no Widget to accept the result and apply it to the children.  
+Instead, the root Layout of a Widget must *push* the new Layout values to the Widget, which in turn then distributes it to the children. All of that can happen in native code and be completely invisible to the user.
+
+About implicit Claims: 
+> modifying the claim of the parent is a dangerous game, because that change will propagate up, then the parent layout is
+> called, which will propagate down again to the child which might again modify its claim etc.
+> I guess that is okay only if having an implicit Claim.Stretch means that a change in grant will not cause a re-layout... 
+
+
+> And now a short story about an alternative approach that does not work:  
+> At one point during the design process, I became convinced that it should be possible to create a layout based on rules alone.  
+> The idea here was that you would have a user Script that would return a set of constraints that define the Layout and would not have to be updated on every change of the parent's size.
+> This also fit in well with the data-driven approach that I had adopted for the rest of the UI state.
+> 
+> And why not? With the introduction of Widget.Claims, we were already half-way there. You can think of a Claim as a collection of rules, now the only thing we needed was a more general expression of Layout rules. And I didn't have to look for long, because *anchors* already exist as a concept in layouting.  
+> Simply speaking, an anchor is a constraint that places one item along the edge of another one. If you place the left and the top edge of an item to the bottom and right edge of another one, you have just "anchored" the first item to the bottom-right corner of the second.  
+> Additionally, I was planning to allow the creation of "free" anchors, points or edges that Widget can be anchored to, that are encoded in the rules. For example, the iTunes cover view would consist of a list of free anchors (one per Widget), all placed on a horizontal line, with tighter spacing towards the edges and a central anchor in the middle. 
+>
+> In order to make the layout process as general as possible, we split it up into 3 phases:  
+> In the first phase, a user-defined Script would be invoked to produce at least two rules for each Widget that was going to be laid out: one rule for the horizontal placement, one rule for the vertical.  
+> In the second phase, we were going to build two DAGs, one for each axis in 2D space, defining the layout of each Widget in terms of constraints to attached or free anchors.  
+> In the third phase, we would have distributed the available space in each dimension among the Widgets according to the constraints from step 2, so each Widget takes up as much space as possible but no more.
+> Brilliant.
+>
+> There were however problems with this approach (if there weren't we would be using it).  
+> 
+> First, in the case of the iTunes cover layout, the first phase is already the complete layout process. There is nothing else but this one user-defined Script that we need to call. And we need to call it again, whenever the number of child Widgets change, whenever the grant of the parent Widget changes, whenever the cursor position changed... We can never skip this phase, becaues the user might have included a weird edge-case branch that is only executed if the layout has exactly 3 widgets, each 3.45 units apart ...   
+Basically, we have added a lot of complexity, creating anchors and resolving them, but did not gain anything.
+>
+> Secondly, there was no general way to handle "overflow" in the third phase. If the Widgets were too wide or high to fit into the grant size, they would simply overflow. Everything else (like a wrapping Flexbox) requires special handling and the only way to do that without restricting flexibility was to add another user-defined Callback to split child Widgets into "groups" that could be laid out according to some orthogonal layouting process. And to make things worse, after this user-defined Callback had run, we had to repeat the whole process from phase 2 onwards, including (potentially) calling the same user-defined Callback *again*, after realizing that the new groups still didn't fit.
+>
+> All in all, this approach went nowhere. But I spent way too much though on it to not at least make a sidenot of it here.
+
+
 ## Widget State Machine
 
 A State change goes like this:
@@ -503,7 +679,196 @@ I guess I am still not having a good idea of how a non-visual interface would wo
 
 > I have since come to the conclusion that UI is just one transformation applied to the Scene - the main one, probably, but only one. Widgets must take care to contain enough data to be represented in multiple ways (accessibility)
 
+
+## Properties as a single Value
+
+> Original idea: Design should be immutable so we don't ever need to lock the event queue
+> However, That's actually not true since we need to lock at some point in order to update the design. After that, the design isn't touched again until after it has been drawn.
+
+what if all Widget Properties are in fact a single Value (a Map) and every Property just operates on a single field of that Value? If the Value is immutable, we could pass the "current Value + RenderCallback" to the renderer and don't need to lock anything.
+That still leaves the question of how we represent the Scene hierarchy.
+I mean, we could simply have that be a Value as well...
+But, here's the thing: I already wrote extensively against using Values to replace pointers.
+
+What about this: at the point of rendering, you do not traverse the tree of widgets and call their render function to create a design?
+Instead, you build up a tree (Plate, Blueprint..?) of the triplet {Property Value,  Render Callback, Children List } and then run the render callbacks on that instead?
+That sounds very good.
+We _don't_ have a Value representation of the actual Scene, only of the parts that are rendered. There are no pointers in the Document and you never work "with" it, instead all you do is call a pure (recursive) function on it:
+
+```python    
+def draw(design&: Design, properties: Value, render: RenderCallback, childen: List[Triplet]):
+    design.add(render(properties))
+    for child in children:
+        draw(design, child.properties, child.render, child.children)
+```
+
+I like it.
+
+Perhaps the Triplet should be a quartet that also includes the maximum size of the resulting subdesign for better parallelizability? 
+And/or the widget ID (pointer?) to allow partial updates of the Design.
+I guess what we could also do is to simply execute the RenderCallback, see what the subdesign looks like and then decide whether we can update the existing subdesign or if we have to create a new section in the Design to hold it. This way we should get a behavior much like a std::vector in that increasing the complexity of a subdesign will cause it to re-allocate, but making it simpler will just re-use the existing space.
+Of course, with that approach we also need to communicate to the Design when a widget has been removed.
+
+Sidenote: it should be possible to draw multiple Widgets in parallel if we manage to make the drawing function constant (and forbid the creation of new Widgets, connections etc.)
+
+---
+
+### Rendering
+
+The Render Callback of a Widget serves multiple purposes at once:
+
+1. Create a Design object, a sequence of commands for the Painterpreter.
+2. Create the hit Shape (defaults to the union of all painted shapes)
+3. Create the clip Shape (defaults to None)
+
+The **Draw Shape** is the outer edge around everything that is drawn as part of the Widget's Design, including its children (see Clip Shape). 
+
+The **Visibility Shape** is used to determine when a Widget has become invisible. It cannot be manipulated by the user and defaults to the narrowest AABR around the Draw Shape. 
+It is the most performance critical of the Shapes and is used for broad-phase visibility testing. As soon the Visibility Shape is fully clipped by an ancestor, the Widget is considered invisible and will not be traversed during rendering or event propagation (unless the _Clip Shape_ is set to _unbound_, see below).
+
+The **Hit Shape** is a shape in Widget space in which mouse events are received. If you have a circular button for example, you don't want the outer corners of the Widget's bounding rectangle to react to mouse events, even though the Widget's draw shape does not extend to there.
+The Hit Shape is independent of the Draw Shape, because use-cases for Clip Shapes both smaller and larger than the Draw Shape exists: Dropshadows for example are drawn, but are not part of the Hit Shape; whereas the Hit Shape of circular buttons on touchscreen displays are usually larger than their Draw Shape. The Hit Shape is also independent of the Clip Shape. 
+Defaults to the Draw Shape if not set explicitly.
+
+The **Clip Shape** is Shape restricts all child shapes (draw / clip / hit) to a certain shape in parent space. It has three states: default, explicit and unbound.
+By default, the Clip Shape is the Visibility Shape. This should provide a good default behavior for most Widgets.
+If set explicitly, the Clip Shape is independent of the Draw Shape but will gor 
+If it is empty, the parent does not clip its children.
+If it exists, the Clip Shape must be fully contained within the Draw Shape, but you can still set a Clip Shape that is larger than the current Draw Shape. In that case, the Draw Shape will grow to include the Clip Shape.
+We need the Clip Shape to be contained in the Draw Shape because the Draw Shape is used to determine whether a Widget is visible or not and we might otherwise determine that a widget is not visible (since its draw shape is fully clipped) and ignore the Widget's subtree during rendering. In a way, the parent Widget is deferring "painting" its child Widgets, and whatever area is allocated for the children to paint has to be assumed to be fully filled.
+Do not set thisIf you don't need to clip child Widgets
+The Clip shape does not affect its own Widget in any way. This way the Widget can draw itself around an area reserved for its children to frame them, for example.
+Defaults to the Draw Shape if not set or removed explicitly.
+
+Problem:
+1) How can we ever have an empty Clip Shape, if the Clip Shape must be fully encompassed by the Draw Shape? That would imply that the DrawShape is the maximal Clip Shape and any modification can only make it smaller. But does that not defeat the purpose of having no Clip Shape at all?
+2) Similar but not as bad: If we have Hit Shapes larger than the Draw Shape, then those would also suddenly dissappear, if the widget's Draw Shape was cropped?
+
+To 1): Maybe the default should not be None but the bounding rect of the Draw Shape (which would be a third option next to "No Clip Shape" and "Explicit Clip Shape"). This way we can still have unclipped children that are bigger than their parent, but we don't need to traverse the widget all the time just to find that chilren are also invisible like their parent.
+To 2): Yeah, but maybe that's what you want.
+
+
+---
+
+Interestingly, I don't see the bounding rect at all anymore.
+In order to do hit detection, we need the final, clipped shape in Window coordinates. Question is, do we update it whenever the Layout changes or whenever the shape is asked for?
+What about a compromise. In addition to the two shapes, a Widget *does* store a bounding rect in window coordinates, but one that is automatically updated and totally invisible to the user.
+The bounding rect is calculated automatically from the hit-zone shape.
+This bounding rect is always updated whenever the layout changes and is empty, if the Widget is fully clipped - which is convenient because we don't need an additional flag.
+With the Z-order and the Aabr in window space, we should be able to limit the number of failed shape tests when finding the next Widget to propagate a mouse event to.
+Let's step through the algorithm to find out whether a mouse click hit a particular Widget.
+    
+```python
+def next_handler(click: ClickEvent, candidates: List[Widget]):
+    """
+    A Python generator function that takes a click event and produces the next interested Widget if there is one.
+    
+    :param click: The mouse click event, containing the position of the click in window coordinates.
+    :param candidates: All Widgets that have subscribed to receive mouse click events, ordered from front to back.
+    """    
+    # Create a cache to store the calculated clipping shapes.
+    cache: Dict[Widget, Path] = {}
+    
+    # We start with the topmost candidate and continue until somebody either blocks the event 
+    # or we run out of candidates.
+    for candidate in candidates:
+        
+        # If the click is not even in the Widget's bounding box in window coordinates, 
+        # there is no way that this candidate will handle the event.
+        if click.window_pos not in candidate.hitbox:
+            continue
+        
+        def get_hitshape(widget: Widget) -> Path:
+            # If we have already calculated the hitshape of the current Widget, just re-use that
+            if widget in cache:
+                return cache[widget]
+            
+            parent: Optional[Widget] = widget.get_parent()
+            if parent is None:  # widget is root
+                result: Path = widget.hitbox
+            
+            else:
+                parent_hitshape: Path = get_hitshape(parent)
+                widget_xform: Xform = widget.get_xform()  # transformation in parent space
+                result: Path = parent_hitshape  # TODO: THIS IS WRONG, WE NEED TO CLIP THE CHILD HITSHAPE IF ANYTHING
+            
+            cache[widget] = result
+            return result
+        
+        # If the click is inside the candidate's hitshape, this is the next Widget to receive the event
+        if click.window_pos in get_hitshape(widget):
+            yield candidate
+
+    # No more candidates.
+    return
+
+```
+
+## Children
+
+We have already stated that any Widget can parent any number (including zero) of child Widgets. Each child Widget is owned by its parent and the parent is guaranteed to be alive for at least as long as the child is. Note that this description does not imply how child Widgets are managed by their parent.  
+We have two use-cases for accessing a child Widget from a parent:
+
+1. By name. For example, when traversing a Path. This is most efficiently done using a map [name -> Widget].
+2. By render order. When rendering child Widgets, we need to iterate over all children from back to front (or front to back, if we can improve on the painter's algorithm). The map from 1. will not suffice here, so we need a second way to list widgets in that specific order.
+
+
+---
+
+I like the approach in Qt, where you can manually set a Z-value override on a Widget with a signed integer.
+The default is zero for all Widgets.
+Positive values are drawn in front of all smaller values.
+Two widgets with the same value are drawn in the order they appear in the list.
+
+---
+Fortunately, the algorithm to create a back-to-front odering form a list of widgets with z-overrides should be fairly trivial.
+
+```python
+def get_draw_order(widgets: List[Widget]):
+
+    # sort widgets into buckets by z override value
+    buckets: Dict[int, List[Widget]] = {}
+    for widget in widgets:
+        z_override: int = widget.get_z_override()
+        if z_override in buckets:
+            buckets[z_override].append(widget)
+        else:
+            buckets[z_override] = [widget]
+
+    # concatenate a new list from the old
+    return list(chain(*[buckets[z] for z in sorted(buckets.keys())]))
+```
+
+And since this is somewhat annoying to do for every single widget every time, we can probably cache the result if we change the signature to take (widgets: List[Widget], z_overrides: List[int]) and doing some (Memoization)[https://en.wikipedia.org/wiki/Memoization].
+This should be particularly easy to do, since we can store both arguments as persistent values and just check for equality.
+... Then again, that would require us to keep a list of z_overrides on the parent widget, which is not really feasable since the z_override is something that we'd might set on the widget itself? 
+Yes, I think so.
+But maybe there is a way to speed this up. Maybe we can correlate a set of "moves" from the list of z_overrides? I mean, a list of [0, 0, 0, 0] clearly means "take the input widgets and return them unchanged", whereas a a list of [0, -1, 0, 0, 1, 0] means " take the second element, then the first, then the third, forth, sixth and finally the fifth.
+Actually, the whole function can be just that, no access to the Widget class required:
+[0, 0, 0, 0] -> [0, 1, 2, 3]
+[0, -1, 0, 1, 0] -> [1, 0, 2, 4, 3]
+That looks cachable enough, especially if you consider that we can make the z-override only 1 byte wide and it should still work. I mean, seriously. You don't need that many.
+With that optimization, the first argument is basically its own 64 bit hash, whereas the second one needs one call to hash_combine with (0, -1, 0, 1) and (0, 0, 0, 0).
+And you know what? Maybe we "should" store the z-override in the parent Widget, even though it is accessible from the child.
+We only need to make sure that if you reorder the child list, you also reorder the z-override list.
+Basic.
+
+---
+
+If Widgets store the position amongst their siblings, it should be easy to recalculate their z value. Similarly, changes to a widget's list of children will only affect the children and will not propagate downwards. 
+
+However, that does not solve the problem that we need a list of children in draw order for rendering. Maybe we need the information twice?
+
+1. In the parent widget: list of all children in draw order
+2. In each child widget: its position among its siblings 
+
+... a bimap - at least conceptually
+
+-----
+
 ## Layout Properties
+
+Layout property names are considered "reserved" for Widgets and cannot be used in a Widget.Type.
 
 When we defined a Widget, everything was pretty clear. You have Properties, Inputs and Outputs and various Callbacks. However, when we got to layouting, this clean taxonomy suddenly didn't suffice. With the grant size, the scene aabr (in global space) and child aabr (in local space) we have 3 "things" that have the following behavior and constraints:
 
@@ -579,290 +944,4 @@ Widget Definitions should not be allowed to define built-in properties.
 
 I though about whether State should be a private property as well, but it shouldn't because it is a true implementation detail.
 
-## Properties as a single Value
 
-> Original idea: Design should be immutable so we don't ever need to lock the event queue
-> However, That's actually not true since we need to lock at some point in order to update the design. After that, the design isn't touched again until after it has been drawn.
-
-what if all Widget Properties are in fact a single Value (a Map) and every Property just operates on a single field of that Value? If the Value is immutable, we could pass the "current Value + RenderCallback" to the renderer and don't need to lock anything.
-That still leaves the question of how we represent the Scene hierarchy.
-I mean, we could simply have that be a Value as well...
-But, here's the thing: I already wrote extensively against using Values to replace pointers.
-
-What about this: at the point of rendering, you do not traverse the tree of widgets and call their render function to create a design?
-Instead, you build up a tree (Plate, Blueprint..?) of the triplet {Property Value,  Render Callback, Children List } and then run the render callbacks on that instead?
-That sounds very good.
-We _don't_ have a Value representation of the actual Scene, only of the parts that are rendered. There are no pointers in the Document and you never work "with" it, instead all you do is call a pure (recursive) function on it:
-
-```python    
-def draw(design&: Design, properties: Value, render: RenderCallback, childen: List[Triplet]):
-    design.add(render(properties))
-    for child in children:
-        draw(design, child.properties, child.render, child.children)
-```
-
-I like it.
-
-Perhaps the Triplet should be a quartet that also includes the maximum size of the resulting subdesign for better parallelizability? 
-And/or the widget ID (pointer?) to allow partial updates of the Design.
-I guess what we could also do is to simply execute the RenderCallback, see what the subdesign looks like and then decide whether we can update the existing subdesign or if we have to create a new section in the Design to hold it. This way we should get a behavior much like a std::vector in that increasing the complexity of a subdesign will cause it to re-allocate, but making it simpler will just re-use the existing space.
-Of course, with that approach we also need to communicate to the Design when a widget has been removed.
-
-Sidenote: it should be possible to draw multiple Widgets in parallel if we manage to make the drawing function constant (and forbid the creation of new Widgets, connections etc.)
-
----
-
-### Rendering
-
-The Render Callback of a Widget serves multiple purposes at once:
-
-1. Create a Design object, a sequence of commands for the Painterpreter.
-2. Create the hit Shape (defaults to the union of all painted shapes)
-3. Create the clip Shape (defaults to None)
-
-The **Draw Shape** is the outer edge around everything that is drawn as part of the Widget's Design, including its children (see Clip Shape). 
-
-The **Visibility Shape** is used to determine when a Widget has become invisible. It cannot be manipulated by the user and defaults to the narrowest AABR around the Draw Shape. 
-It is the most performance critical of the Shapes and is used for broad-phase visibility testing. As soon the Visibility Shape is fully clipped by an ancestor, the Widget is considered invisible and will not be traversed during rendering or event propagation (unless the _Clip Shape_ is set to _unbound_, see below).
-
-The **Hit Shape** is a shape in Widget space in which mouse events are received. If you have a circular button for example, you don't want the outer corners of the Widget's bounding rectangle to react to mouse events, even though the Widget's draw shape does not extend to there.
-The Hit Shape is independent of the Draw Shape, because use-cases for Clip Shapes both smaller and larger than the Draw Shape exists: Dropshadows for example are drawn, but are not part of the Hit Shape; whereas the Hit Shape of circular buttons on touchscreen displays are usually larger than their Draw Shape. The Hit Shape is also independent of the Clip Shape. 
-Defaults to the Draw Shape if not set explicitly.
-
-The **Clip Shape** is Shape restricts all child shapes (draw / clip / hit) to a certain shape in parent space. It has three states: default, explicit and unbound.
-By default, the Clip Shape is the Visibility Shape. This should provide a good default behavior for most Widgets.
-If set explicitly, the Clip Shape is independent of the Draw Shape but will gor 
-If it is empty, the parent does not clip its children.
-If it exists, the Clip Shape must be fully contained within the Draw Shape, but you can still set a Clip Shape that is larger than the current Draw Shape. In that case, the Draw Shape will grow to include the Clip Shape.
-We need the Clip Shape to be contained in the Draw Shape because the Draw Shape is used to determine whether a Widget is visible or not and we might otherwise determine that a widget is not visible (since its draw shape is fully clipped) and ignore the Widget's subtree during rendering. In a way, the parent Widget is deferring "painting" its child Widgets, and whatever area is allocated for the children to paint has to be assumed to be fully filled.
-Do not set thisIf you don't need to clip child Widgets
-The Clip shape does not affect its own Widget in any way. This way the Widget can draw itself around an area reserved for its children to frame them, for example.
-Defaults to the Draw Shape if not set or removed explicitly.
-
-Problem:
-1) How can we ever have an empty Clip Shape, if the Clip Shape must be fully encompassed by the Draw Shape? That would imply that the DrawShape is the maximal Clip Shape and any modification can only make it smaller. But does that not defeat the purpose of having no Clip Shape at all?
-2) Similar but not as bad: If we have Hit Shapes larger than the Draw Shape, then those would also suddenly dissappear, if the widget's Draw Shape was cropped?
-
-To 1): Maybe the default should not be None but the bounding rect of the Draw Shape (which would be a third option next to "No Clip Shape" and "Explicit Clip Shape"). This way we can still have unclipped children that are bigger than their parent, but we don't need to traverse the widget all the time just to find that chilren are also invisible like their parent.
-To 2): Yeah, but maybe that's what you want.
-
-
-## Children
-
-We have already stated that any Widget can parent any number (including zero) of child Widgets. Each child Widget is owned by its parent and the parent is guaranteed to be alive for at least as long as the child is. Note that this description does not imply how child Widgets are managed by their parent.  
-We have two use-cases for accessing a child Widget from a parent:
-
-1. By name. For example, when traversing a Path. This is most efficiently done using a map [name -> Widget].
-2. By render order. When rendering child Widgets, we need to iterate over all children from back to front (or front to back, if we can improve on the painter's algorithm). The map from 1. will not suffice here, so we need a second way to list widgets in that specific order.
-
-
-## Layouts
-
-
-Unlike other Callbacks though, we don't require the user to write these specific ones - I am fairly certain that we will be able to provdide most Layout Callbacks that are needed to build any reasonable UI. Of course, a user should be able to write a new Layout implementation, but I think that is something of an advanced thing that should not really be necessary at all.
-
-One problem that I see is that Layouts cannot be pure functions, because some Layouts will require different data than others. And unlike other Operations, we need to access this data from the outside. For example: is a FlexLayout wrapping? It certainly does not make sense for all Layouts to have an `is_wrapping` field.  
-This means that we cannot just have Callbacks like for every other "functionality slot" in the Widget (?)
-Furthermore, I want to be able to transition between Layouts, meaning I want to create a new Transition Layout instance at runtime that takes two (the existing source and new target) other Layouts to transition between. The Layout should be a tree of Layouts - a tree of only a root if there is only one Layout; a tree of three, if there is a transition from one to another (the third one would be the parent, merging the two); of five, if you transition from the previous transition into a new state etc.  
-...But abstract objects are not really a thing in table-land.
-
-The layouting process must do four things:
-
-    1. For each child, define the layout transformation in parent space.
-    2. For each child, define the grant size in its local space.
-    3. For the widget owning the layout, define the aabr of all children combined in its local space.
-    4. For the widget owning the layout, modify the Claim of the widget if one or both Claim.Streches are set to "implicit". 
-    
-> modifying the claim of the parent is a dangerous game, because that change will propagate up, then the parent layout is
-> called, which will propagate down again to the child which might again modify its claim etc.
-> I guess that is okay only if having an implicit Claim.Stretch means that a change in grant will not cause a re-layout... 
-    
-Since all of the information required to do these 4 things are part of the same layouting process, it makes sense to combine them in a single function instead of separating them into separate ones.  
-I mean, 3 and 4 could be done in a post-process stage, but I would assume that quite a few Layouts would be able to use intermediate results to calculate these things quicker.
-
-So far (apart from the question of private data), this looks similar to an Operation with the following signature:
-
-    (composition: Composition&, available_space: Size2, data: Value&) -> None
-
-Here, a Composition is a structure that contains all information required to return the 4 things from above:
-
-```
-Composition:
-    + children: constant List of Widgets
-        + claim: constant Claim
-        + xform: mutable Xform (default=identity)
-        + grant: mutable Size2 (default=preferred size from Claim)
-    + child_aabr: mutable Optional[Aabr] (default=None)
-    + claim: mutable Claim (default=widget claim)
-```
-
-If the Layout does not set the `child_aabr` field and leaves it at None, we can still re-calculate by iterating over all children and doing it manually. We assume that in some cases, the Operation might have better insight in how a child Aabr is calculated (or maybe you want it to be a bit larger, smaller etc?), but if the user does not provide this, we can do it ourselves as well.
-
-
-Problems/Insights:
-* Layouts do not _need_ to be user-defined. It would be nice, but we should be able to do without.
-* Different Layout types have different internal state that must be addressable from the outside.
-* Layout Transitions need to own (or at least refer to) other Layout instances.
-* The signature of the Operation will not work for Transitions.
-* The ordered list of children is only necessary for some Layouts (Flex Layout ... that's it, really), the other Layouts can do without an ordering, as the draw order is taken care off independently from the child Widget XForm and Size. A more general solution would be to implement LayoutItem objects for each Layout type that can be "attached" to any child Widget. This would also allow us to fill a sparse grid Layout for example - something you couldn't do with a simple list.
-* I thought that the Layout would be able to influence Z-order of the children, however - if the depth order is in fact part of the Xform, then that goes out of the window (fortunately)
-
-
----
-
-Interestingly, I don't see the bounding rect at all anymore.
-In order to do hit detection, we need the final, clipped shape in Window coordinates. Question is, do we update it whenever the Layout changes or whenever the shape is asked for?
-What about a compromise. In addition to the two shapes, a Widget *does* store a bounding rect in window coordinates, but one that is automatically updated and totally invisible to the user.
-The bounding rect is calculated automatically from the hit-zone shape.
-This bounding rect is always updated whenever the layout changes and is empty, if the Widget is fully clipped - which is convenient because we don't need an additional flag.
-With the Z-order and the Aabr in window space, we should be able to limit the number of failed shape tests when finding the next Widget to propagate a mouse event to.
-Let's step through the algorithm to find out whether a mouse click hit a particular Widget.
-    
-```python
-def next_handler(click: ClickEvent, candidates: List[Widget]):
-    """
-    A Python generator function that takes a click event and produces the next interested Widget if there is one.
-    
-    :param click: The mouse click event, containing the position of the click in window coordinates.
-    :param candidates: All Widgets that have subscribed to receive mouse click events, ordered from front to back.
-    """    
-    # Create a cache to store the calculated clipping shapes.
-    cache: Dict[Widget, Path] = {}
-    
-    # We start with the topmost candidate and continue until somebody either blocks the event 
-    # or we run out of candidates.
-    for candidate in candidates:
-        
-        # If the click is not even in the Widget's bounding box in window coordinates, 
-        # there is no way that this candidate will handle the event.
-        if click.window_pos not in candidate.hitbox:
-            continue
-        
-        def get_hitshape(widget: Widget) -> Path:
-            # If we have already calculated the hitshape of the current Widget, just re-use that
-            if widget in cache:
-                return cache[widget]
-            
-            parent: Optional[Widget] = widget.get_parent()
-            if parent is None:  # widget is root
-                result: Path = widget.hitbox
-            
-            else:
-                parent_hitshape: Path = get_hitshape(parent)
-                widget_xform: Xform = widget.get_xform()  # transformation in parent space
-                result: Path = parent_hitshape  # TODO: THIS IS WRONG, WE NEED TO CLIP THE CHILD HITSHAPE IF ANYTHING
-            
-            cache[widget] = result
-            return result
-        
-        # If the click is inside the candidate's hitshape, this is the next Widget to receive the event
-        if click.window_pos in get_hitshape(widget):
-            yield candidate
-
-    # No more candidates.
-    return
-
-```
-
----
-
-* Every Widget owns a Layout Node.
-* Scripts have (read-only) access to the Properties of the Layout via the "property getter" function of a Widget.View/Handle - setting a layout property will fail. This way we don't have to implement a new concept like read-only Properties, we can simply safeguard against setting them in the Widget specific handles for Scripts.
-* (apart from the read-only access to its properties), the existence of a Layout is invisible to user Scripts.
-* Layout property names are considered "reserved" for Widgets and cannot be used in a Widget.Type.
-* Layouts are owned by a parent Node. That Node can either be a Widget or another Layout. The parent is irrelevant for the Layout and it should never need to access it.
-* Layouts have an associated set of child Widgets that are laid out by it.
-* Layouts provide a function: `get_child_widgets(where: Optional[Union[Vec2, Aabr]] = None) -> List[Widget]` that contain all child Widgets at the given point ordered with descending Z-value (later child Widgets are drawn behind earlier ones)
-* If you call `get_child_widgets` without a point or aabr, all child widgets are returned in order with descending Z-values.
-* Layouts provide a property `child_aabr` which contains the AABR of the union of all child widgets in widget space. The property is updated whenever the layout changes and is accessible to Callbacks of the associated Widget.
-* Layouts produce a data structure containing, for each child widget: { An xform in parent space, The grant size}. We need this to be a data structure in order to allow for transitions between multiple Layouts.
-
----
-
-problem: layouts need a list of widgets to lay out.
-the order of the list is important as it will determine the widget's placement in the layout.
-i think, i will be able to condense ever layouting operation to that of a list: a flex layout stacks from left to right (or whatever), an overlayout or free layout from front to back, and a table in row- or column-major order.
-Previously (and most generally, I assume) the order in which a widget lays out its children is constant.
-In fact, I went so far as to store the child widgets of a widget in a list and only forward that list to the layout.
-When you wanted to re-order child widgets in the layout, you had to re-order them in the child list of the widget.
-This has the added advantage that you don't have to involve the Layout when you iterate over widgets to render them, as they are already sorted in the correct order.
-Furthermore, this allows a Widget to calculate its Z-value relatively inexpensivly.
-Well, that seems to me like there are good reasons to keep an ordered list of child widgets stored in the widget itself.
-The order of child widgets can be changed by the user through a widget handle, not by any outside widget including the child widgets themselves.
-That means, you can change the order in an Input Callback, State Enter/Exit Callback or Property Callback.
-Every change in the order of widgets triggers a relayout.
-
-There is another place from where you can change the order of children, and that is in the Layout itself. 
-Changes made in the Layout do not trigger a re-layout themselves (obviously).
-This way you can have (for example) a music cover view like in itunes, where the center child is always displayed on top of all others, even though it is Xth in a list.
-Wait a second ... let's examine that example.
-If the Layout changes the order of children in order to move a widget _in the middle_ of the list into the foreground ... the moved child widget will be at the front of the list at the next layout.
-That sucks.
-I guess, the Layout can "override" the Z-value of a Widget?
-But then we don't have the nice proprety that the list of child widgets is a 1:1 representation of the draw order... :(
-Oh well. I don't think there is a way around that.
-That means that the Layout _cannot_ change the order of child widgets, it can however override their z-value.
--
-I like the approach in Qt, where you can manually set a Z-value override on a Widget with a signed integer.
-The default is zero for all Widgets.
-Positive values are drawn in front of all smaller values.
-Two widgets with the same value are drawn in the order they appear in the list.
--
-Fortunately, the algorithm to create a back-to-front odering form a list of widgets with z-overrides should be fairly trivial.
-
-```python
-def get_draw_order(widgets: List[Widget]):
-
-    # sort widgets into buckets by z override value
-    buckets: Dict[int, List[Widget]] = {}
-    for widget in widgets:
-        z_override: int = widget.get_z_override()
-        if z_override in buckets:
-            buckets[z_override].append(widget)
-        else:
-            buckets[z_override] = [widget]
-
-    # concatenate a new list from the old
-    return list(chain(*[buckets[z] for z in sorted(buckets.keys())]))
-```
-
-And since this is somewhat annoying to do for every single widget every time, we can probably cache the result if we change the signature to take (widgets: List[Widget], z_overrides: List[int]) and doing some (Memoization)[https://en.wikipedia.org/wiki/Memoization].
-This should be particularly easy to do, since we can store both arguments as persistent values and just check for equality.
-... Then again, that would require us to keep a list of z_overrides on the parent widget, which is not really feasable since the z_override is something that we'd might set on the widget itself? 
-Yes, I think so.
-But maybe there is a way to speed this up. Maybe we can correlate a set of "moves" from the list of z_overrides? I mean, a list of [0, 0, 0, 0] clearly means "take the input widgets and return them unchanged", whereas a a list of [0, -1, 0, 0, 1, 0] means " take the second element, then the first, then the third, forth, sixth and finally the fifth.
-Actually, the whole function can be just that, no access to the Widget class required:
-[0, 0, 0, 0] -> [0, 1, 2, 3]
-[0, -1, 0, 1, 0] -> [1, 0, 2, 4, 3]
-That looks cachable enough, especially if you consider that we can make the z-override only 1 byte wide and it should still work. I mean, seriously. You don't need that many.
-With that optimization, the first argument is basically its own 64 bit hash, whereas the second one needs one call to hash_combine with (0, -1, 0, 1) and (0, 0, 0, 0).
-And you know what? Maybe we "should" store the z-override in the parent Widget, even though it is accessible from the child.
-We only need to make sure that if you reorder the child list, you also reorder the z-override list.
-Basic.
-
----
-
-If Widgets store the position amongst their siblings, it should be easy to recalculate their z value. Similarly, changes to a widget's list of children will only affect the children and will not propagate downwards. 
-
-However, that does not solve the problem that we need a list of children in draw order for rendering. Maybe we need the information twice?
-
-1. In the parent widget: list of all children in draw order
-2. In each child widget: its position among its siblings 
-
-... a bimap - at least conceptually
-
-------------------------------------------------------------------------------------------------------------------------
-
-## Layouts
-
-Every Widget, regardless of whether it has any children or not, must have a Layout.
-The Layout's job is to provide 3 things for a (sub)set of the Widget's children:
-
-1. The child's 3D _transformation_ (position, rotation, scaling) in its parent space.
-2. The child's 2D _grant_ size.
-3. The child's _depth_ or draw order among its siblings.
-
-From that information, we can infer two more things:
-
-4. The _axis-aligned bounding rectangle_ (AABR) of all children of the Widget.
-5. An _implicit Claim_ that is the sum of all child Claims. More on that later.
