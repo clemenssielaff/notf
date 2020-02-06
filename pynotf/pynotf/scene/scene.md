@@ -428,7 +428,7 @@ A transition takes `transition_duration` milliseconds and blends linearly betwee
 * Size: Width and height are blended independently.
 * Depth: Since the depth values are integers, we'll have to live with the fact that they are going to jump at some point. I guess the middle of the transition is as good as any other.
 
-Similarly, if the Layouts do not contain the same number of children, the source children missing in the target Layout will disappear once the Transition has passes its mid-point, whereas the additional children from the target Layout will only appear after the superfluous source children have dissappeared.
+Similarly, if the Layouts do not contain the same number of children, the source children missing in the target Layout will disappear once the Transition has passes its mid-point, whereas the additional children from the target Layout will only appear after the superfluous source children have disappeared.
 
 Since a linear blend between the source and target state might not always be what you want, you can optionally define a `warp_function` that takes a single floating point value in the range [0 ... 1] and returns another floating point value. Use this to implement easing or even bouncing, since the returned value can be outside the [0 ... 1] range (in that case, the delta will be extrapolated beyong its source or target).
 
