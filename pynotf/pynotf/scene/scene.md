@@ -6,55 +6,6 @@ Data-structure wise, the Scene is a tree of Widgets. There is one RootWidget in 
 
 A Scene owns a Circuit and manages it in a way that allows the user to inject user-defined code (Scripts) at very specific places that are as expressive as possible while still being safe. All modification of a Scene (and its Circuit) is explicitly single threaded and should occur on a dedicated thread. You can have parallel loops or similar technicalities where they make sense, but they must operate on local data only. Much like Circuit Elements, the removal of a Widget in the Scene is delayed until the end of an Event.
 
-# Quick Facts
-
-## Scene
-- [ ] Owns the root of the Widget hierarchy and safely deletes it up on destruction.
-- [ ] Owns the Circuit that contains all Widgets' Circuit Elements (Input/Output Plugs and Properties).
-- [ ] Keeps a queue of Widget.Handles to delete after an event has finished.
-- [ ] Can create first-level Widgets that are direct children of the root.
-- [ ] Can safely remove all expired Widgets, with children deleted before their parents.
-- [ ] Can find and return Widgets and Widget Elements using absolute paths
-- [ ] Can create Widget.Types from Widget.Definitions
-
-## Widget
-- [ ] Are constructed from a Widget.Type object
-- [ ] Have Input and Output Plugs
-- [ ] Have Properties
-- [ ] Have a state machine
-- [ ] Have a single Value containing all Properties
-- [ ] Have a dict of named Callbacks
-- [ ] Have a single, constant and always valid parent Widget (except the Root)
-- [ ] Have 0-n children stored in a dict by name.
-- [ ] Have a single Layout that can produce a strong order of the Widget's children
-- [ ] Have a name, that is unique in their parent Widget
-- [ ] Has two Handles: one "view" that cannot mutate the widget and a "handle" that can
-- [ ] Have a Z-value, which is globally strongly sortable.
-
-## Input Plug
-- [ ] Concrete implementation of the Receiver interface.
-- [ ] Store a constant raw reference to their owner Widget that is always valid.
-- [ ] Optionally forwards ValueSignals to a Widget.InputCallback, passing a Widget.Handle handle to the owner Widget.
-- [ ] Which method is forwarded to can be changed by the owner Widget.
-- [ ] If the Callback throws an exception, the ValueSignal will remain unmodified. 
-
-## Output Plug
-- [ ] Concrete implementation of the Emitter interface.
-- [ ] Have no knowledge of the Widget that owns it.
-- [ ] Can emit a Value from their own Widget only
-
-## Property
-- [ ] Have an associated Widget
-- [ ] Store a single Value, whose Schema is constant
-- [ ] Property Values cannot be None
-- [ ] Have an optional, constant Operations that is applied to each new value
-- [ ] Property.Operations have a private data Value
-- [ ] Property.Operations have access to a Widget.View of the Widget owning the Property
-- [ ] Never accept or block Signals
-- [ ] Have an optional, mutable Property.Callback that is invoked after each Value change
-- [ ] PropertyCallbacks have access to a Widget.Handle handle of the Widget owning the Property
-- [ ] PropertyCallbacks must guard against infinite cycles
-
 
 # The Widget
 
@@ -337,36 +288,19 @@ Another approach would be to keep the tables lean, so that as little "old" data 
 > TODO: return back to the design of the tables once we have the scene module all worked out
 
 
-
-
-
-
-
-
-
-
-
-
-
-
----
-
-This is how far the document is consolidated, after this point things get messy.
-
----
-
 ## Layouts
 
 Every Widget with at least one child must have a Layout.
 The Layout's job is to provide 5 data points for a (sub)set of the Widget's children:
 
-1. The child's 3D _transformation_ (position, rotation, scaling) in its parent space.
-2. The child's 2D _grant_ size.
-3. The child's 1D _depth_ or draw order among its siblings.
-4. The _axis-aligned bounding rectangle_ (AABR) of all children of the Widget.
-5. An _implicit Claim_ that is the sum of all child Claims. More on that later.
+1. Each childs' 3D **transformation** (position, rotation, scaling) in its parent space.
+2. Each childs' 2D **grant** size.
+3. Each childs' 1D **depth** or draw order among its siblings.
+4. The **axis-aligned bounding rectangle** (AABR) of all children of the Widget.
+5. An **implicit Claim** that is the sum of all child Claims. More on that later.
 
-The result of a layout is written into a `Layout.Composition`, which is a structure:
+In order to provide these data points, a Layout has a `Layout.Callback`, which is a Script that can be defined by the user. However, with Layouts it is quite likely that we will be able to provide all implementations necessary for most use cases; those would then be implemented in native code.  
+The result of a Layout.Callback is written into a `Layout.Composition`, which is a structure:
 
     Layout.Composition: Tuple[
         widgets: List[Map[name: String, xform: Xform3, grant: Size2, depth: Number]],
@@ -376,53 +310,54 @@ The result of a layout is written into a `Layout.Composition`, which is a struct
 
 with
 
-    # 2-dimensional size
     Size2: Tuple[width: Number, height: Number]
 
-    # 4x4 matrix
-    Xform3: Tuple[Number, Number, Number, Number,
-              Number, Number, Number, Number,
-              Number, Number, Number, Number,
-              Number, Number, Number, Number]
+    Xform3: Tuple[  # 4x4 matrix
+        Number, Number, Number, Number,
+        Number, Number, Number, Number,
+        Number, Number, Number, Number,
+        Number, Number, Number, Number]
     
-    # left, bottom, right, top
-    AABR: Tuple[Number, Number, Number, Number]
+    AABR: Tuple[Number, Number, Number, Number]  # left, bottom, right, top
 
     Claim: ... # see Claim
 
-Note that the AABR and the Claim (data points 4 and 5) are both optional as we could infer them from the per-child data points, by simply combining all of the child sizes and Claims. However, we expect that the Layout.Callback will have more insight into (and/or intermediate data for) calculating these two fields for their specific use-case. Or maybe you just want the child AABR to be a bit larger, smaller etc?
+Note that the AABR and the Claim (data points 4 and 5) are both optional as we could infer them from the per-child data points, by simply combining all of the child sizes and Claims. However, we expect that the Layout.Callback will have more insight into (and/or intermediate data for) calculating these two fields for their specific use-case. Or maybe you just want the child AABR to be a bit larger, smaller etc?  
 In any case, if the user leaves these fields empty, we can calculate them ourselves as well.
 
-I thought about splitting the layouting process into multiple functions, but we cannot know which part of the Composition will change from the input alone. Therefore we will have to call each function on every new input. Furthermore, I expect the data points to correlate a lot, meaning that multiple smaller functions will have to do a lot of duplicate work. Therefore it is both cleaner and faster to have a single _Layout.Callback_ to calculate the complete Composition in one go.
+I thought about splitting the Layout.Callback into multiple functions, but we cannot know which part of the Composition will change from the input alone. Therefore we would have to call each function on every new input. Furthermore, I expect the data points to correlate a lot, meaning that multiple smaller functions will have to do a lot of duplicate work. Therefore it is both cleaner and faster to have a single Layout.Callback to calculate the complete Composition in one go.
 
 
 ### Transitions
 
-Layouts are separate from Widgets so that you can change the Layout depending on the state of the parent or the available size granted by its own parent Widget. Perhaps you want to display only the icons of push buttons if you shrink their parent Widget to its minimal width? Or arrange a horizontal list of checkboxes vertically if their available space becomes to narrow?  
-This is the bread and butter of web and app developers and we certainly do not want our users to miss out.
+Layouts are separate from Widgets so that the user can change the Layout depending on the state of the Widget or the available size granted the parent Widget. Perhaps you want to display only the icons of push buttons if you shrink their parent Widget to its minimal width? Or arrange a horizontal list of checkboxes vertically if their available space becomes to narrow?  
 
-Things become interesting when you consider that Layout switches should not (always) be immediate, instead you will most likely want a smooth transition between them. This is where _Transitions_ come in.
+Things become interesting when you consider that Layout switches should not (always) be immediate, instead you will most likely want a smooth transition between them. This is where _Transitions_ come in.  
+A Transition is a built-in Layout that owns two other child Layouts that each produce their own Composition. Since Compositions are made up of known data, it is trivial to interpolate between them, no matter what internal process the child Layouts followed to produce their result.  
+Of course, each one of the child Layouts can themselves be another Transition, and so on and so forth; although the utility of deeply nested Transitions is questionable.
 
-A Transition is simply a Layout that owns two other child Layouts that each produce their own Composition. This is another reason why the Layout.Callback returns a Value instead of placing the child Widgets directly - it is trivial to interpolate between two constant Values, no matter what internal process the child Layouts follow to produce their result.
+Transitions are built-in, because they need to own two other Layouts, something that we do not allow for user-defined Layouts. We do however allow complete customization of the Transition process, this should therefore not be a problem in practice. In fact, I think the fact that a Transition is-a Layout can be completely irrelevant to the user.
 
-Layouts can have a single parent Layout or None, if they are owned directly by a Widget. Layouts can have no or two children, two only if they are transitioning.
-
-Of course, each one of the child Layouts can themselves be another Transition. Although you might want to make sure that the tree of Transitions does not grow out of hand. 
+Apart from the two children, Transitions also contain a reference to their parent Layout or Widget so that they can replace themselves with their target Layout on completion.  
+Alternatively (if possible) they might actually "become" the target Layout, in which case the parent reference can be omitted.
 
 In order to start a transition, the Widget has a method 
 ```python
 set_layout(
     target_layout: Layout, 
-    transition_duration: int = 0, # in milliseconds
-    warp_function: Optional[Layout.Transition.Warp] = None)
+    transition_duration: int = 0, # in milliseconds,
+    interpolation_function: Optional[Transition.Interpolation] = None,
+    warp_function: Optional[Transition.Warp] = None,
+    )
 ```
 that automatically replaces the current Layout with a Transition containing the current Layout as the *source* Layout and the given `target_layout` instance as the *target* Layout.  
 Note that this works even if the current Layout is already a Transition.  
 In the special case that `transition_duration` is 0, we can skip the transition and jump to the target immediately.
 
-The Transition Layout is a special (built-in) type of Layout that registers a timer Callback to be called once every frame (at least, if the Widget's size is changed in between, the Transition layout might be called more than once). It then invokes the layout function on both of its children until the transition has completed.
+The Transition registers a timer Callback to be called once every frame for `transition_duration` milliseconds (it is called at least every frame; if the Widget's size is changed in between, the Transition layout might be called more than once). It then invokes the layout function on both of its children until the Transition has completed.
 
-A transition takes `transition_duration` milliseconds and blends linearly between the *source* and *target*. The rules for each child Widget are as follows:
+By default, a transition takes blends linearly between the *source* and *target*.
+The rules for each child Widget are as follows:
 
 * Xform: The 3D transformation is split into its translation, rotation and scale components. Their are lerped individually and finally merged together again, first the transformation, then the rotation and finally scaling.
 * Size: Width and height are blended independently.
@@ -430,14 +365,14 @@ A transition takes `transition_duration` milliseconds and blends linearly betwee
 
 Similarly, if the Layouts do not contain the same number of children, the source children missing in the target Layout will disappear once the Transition has passes its mid-point, whereas the additional children from the target Layout will only appear after the superfluous source children have disappeared.
 
-Since a linear blend between the source and target state might not always be what you want, you can optionally define a `warp_function` that takes a single floating point value in the range [0 ... 1] and returns another floating point value. Use this to implement easing or even bouncing, since the returned value can be outside the [0 ... 1] range (in that case, the delta will be extrapolated beyong its source or target).
+Since a linear blend between the source and target state might not always be what you want, you can optionally define a `interpolation_function` that takes a single floating point value in the range [0 ... 1] and produces a Composition. 
 
-Once the Transition has completed, it will notify the parent Widget or Layout and replace itself with its target Layout.
+If you only want to implement an easing blend, you can instead provide a `warp_function` that also takes a floating point value in the range [0 ... 1] but simply produces a corresponding floating point value. To allow a bouncing warp, we allow the returned value to be outside the [0 ... 1] range. In that case, the delta will be extrapolated beyong its source or target.
 
 
 ### Layout Properties
 
-Unlike other Callbacks on a Widget, Layouts can not be pure functions. Let's take the example of a simple ListLayout, that takes a list of Widgets and arranges them vertically, one after the other. The spacing between the Widget is constant.  
+Unlike other Callbacks on a Widget, Layouts can not be pure functions. Let's take the example of a simple ListLayout that takes a list of Widgets and arranges them vertically, one after the other. The spacing between the Widget is constant.  
 Where does the spacing value come from? It cannot live on the Widget, or at least it should not, since the Widget may also want to lay out its children in a StackLayout (for example), should the grant become too small to display a list. In that case, why would you have a "spacing" property on the Widget, even though it is not used anywhere? If we did that, the Widget.Type would need to contain a union of all Properties for any Layout types that the Widget may use. Not a great design.
 
 Instead, Layouts need their own Properties. We use the name Layout.Property to differentiate them from Widget.Properties, which are conceptually similar but differ in implementation.  
@@ -506,7 +441,7 @@ About implicit Claims:
 > I guess that is okay only if having an implicit Claim.Stretch means that a change in grant will not cause a re-layout... 
 
 
-> And now a short story about an alternative approach that does not work:  
+> **And now a short story about an alternative approach that does not work:**  
 > At one point during the design process, I became convinced that it should be possible to create a layout based on rules alone.  
 > The idea here was that you would have a user Script that would return a set of constraints that define the Layout and would not have to be updated on every change of the parent's size.
 > This also fit in well with the data-driven approach that I had adopted for the rest of the UI state.
@@ -529,6 +464,23 @@ Basically, we have added a lot of complexity, creating anchors and resolving the
 > Secondly, there was no general way to handle "overflow" in the third phase. If the Widgets were too wide or high to fit into the grant size, they would simply overflow. Everything else (like a wrapping Flexbox) requires special handling and the only way to do that without restricting flexibility was to add another user-defined Callback to split child Widgets into "groups" that could be laid out according to some orthogonal layouting process. And to make things worse, after this user-defined Callback had run, we had to repeat the whole process from phase 2 onwards, including (potentially) calling the same user-defined Callback *again*, after realizing that the new groups still didn't fit.
 >
 > All in all, this approach went nowhere. But I spent way too much though on it to not at least make a sidenot of it here.
+
+
+
+
+
+
+
+
+
+
+
+---
+
+This is how far the document is consolidated, after this point things get messy.
+
+---
+
 
 
 ## Widget State Machine
@@ -945,3 +897,53 @@ Widget Definitions should not be allowed to define built-in properties.
 I though about whether State should be a private property as well, but it shouldn't because it is a true implementation detail.
 
 
+
+
+# Quick Facts
+
+## Scene
+- [ ] Owns the root of the Widget hierarchy and safely deletes it up on destruction.
+- [ ] Owns the Circuit that contains all Widgets' Circuit Elements (Input/Output Plugs and Properties).
+- [ ] Keeps a queue of Widget.Handles to delete after an event has finished.
+- [ ] Can create first-level Widgets that are direct children of the root.
+- [ ] Can safely remove all expired Widgets, with children deleted before their parents.
+- [ ] Can find and return Widgets and Widget Elements using absolute paths
+- [ ] Can create Widget.Types from Widget.Definitions
+
+## Widget
+- [ ] Are constructed from a Widget.Type object
+- [ ] Have Input and Output Plugs
+- [ ] Have Properties
+- [ ] Have a state machine
+- [ ] Have a single Value containing all Properties
+- [ ] Have a dict of named Callbacks
+- [ ] Have a single, constant and always valid parent Widget (except the Root)
+- [ ] Have 0-n children stored in a dict by name.
+- [ ] Have a single Layout that can produce a strong order of the Widget's children
+- [ ] Have a name, that is unique in their parent Widget
+- [ ] Has two Handles: one "view" that cannot mutate the widget and a "handle" that can
+- [ ] Have a Z-value, which is globally strongly sortable.
+
+## Input Plug
+- [ ] Concrete implementation of the Receiver interface.
+- [ ] Store a constant raw reference to their owner Widget that is always valid.
+- [ ] Optionally forwards ValueSignals to a Widget.InputCallback, passing a Widget.Handle handle to the owner Widget.
+- [ ] Which method is forwarded to can be changed by the owner Widget.
+- [ ] If the Callback throws an exception, the ValueSignal will remain unmodified. 
+
+## Output Plug
+- [ ] Concrete implementation of the Emitter interface.
+- [ ] Have no knowledge of the Widget that owns it.
+- [ ] Can emit a Value from their own Widget only
+
+## Property
+- [ ] Have an associated Widget
+- [ ] Store a single Value, whose Schema is constant
+- [ ] Property Values cannot be None
+- [ ] Have an optional, constant Operations that is applied to each new value
+- [ ] Property.Operations have a private data Value
+- [ ] Property.Operations have access to a Widget.View of the Widget owning the Property
+- [ ] Never accept or block Signals
+- [ ] Have an optional, mutable Property.Callback that is invoked after each Value change
+- [ ] PropertyCallbacks have access to a Widget.Handle handle of the Widget owning the Property
+- [ ] PropertyCallbacks must guard against infinite cycles
