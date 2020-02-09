@@ -44,7 +44,6 @@ A Widget.Definition object consists of:
   Functions that can be attached to a property
 * The Widget's *StateMachine* (StateMachine)
   The StateMachine controls which Callbacks are active, and provides the initial set-up Callback for the Widget type.
-* The name of a *Render Callback* to look up in the Style Manager.
 
 > TODO: add layout(s?) to the Widget.Definition, once I have them all worked out.
 
@@ -81,6 +80,8 @@ Note that the `get_input` and `get_output` functions above return both the respe
 ## Widget Depth
 
 Widgets can and do overlap a lot on the screen. Children always overlap with their parent Widgets but (depending on the parent's Layout) can also overlap with siblings. The order in which Widgets are drawn on screen and the order in which they receive "top-down" events like mouse clicks is determined by their "depth", a single floating point number that identifies a Widget's position among all other Widgets along the z-axis. Unlike the sibling order, which is only relevant to the parent, the depth value is global, meaning two Widgets can compare their values to determine their relative placement, no matter where in the hierarchy they are.
+
+For a while, we considered using the depth value from the Widget's transformation in application space for depth calculation. While that would allow widgets to intersect on the depth axis, it would require turning our UI engine in to a full blown 3D engine. We eventually dediced to stick the the depth representation by order alone as it is easier for event handling, it is easier to understand when drawing and is less complex in code.
 
 The root Widget has a depth value of zero by definition, all other depth values can be calculated by the following (recursive) Python snippet:
 
@@ -182,6 +183,27 @@ Imagine a Widget with two Properties `A` and `B` that need to be kept in sync. L
 But while this is a cycle, it is clearly not an infinite one. In fact, after touching both `A` and `B` once (no matter which one is set by the user), no further progress will be made. We can catch this case with a simple all-purpose optimization: check whether the new value is equal to the existing one *prior* to checking for cycles. If the value is the same, just do nothing and return. In this case, setting `A`  to `x` will change `B` to `x+2` which will in turn cause `A` to update to `x` again. But since at this point, `A` already has the value `x`, it will simply return nothing and the cycle is broken.
 
 
+### Build-in Properties
+
+
+Full Properties (can receive values, be written and read locally):
+* Opacity (native): Number[0...1]
+* Depth Override: Number[signed int]
+* Xform (local): Xform3  
+  Are only used by the Render Callback and do not influence the Widget's Claim.
+* Claim: Claim
+
+Read-only:
+* Xform (layout): Xform3
+* Grant: Size2
+* Opacity (effective): Number[0...1]
+* Index: Number[unsigned int]  
+  Position among siblings in draw-order.
+* Child Count: Number[unsigned int]
+
+> TODO: do I need child count as a property? I think it should better be an emitter or nothing, actually.
+
+
 ## Input Plug
 
 Apart from Properties, Widgets have another way to receive input from the outside world: Input Plugs. Unlike Properties, Input Plugs do not store any state beyond what Callback they are currently deferring to. An Input Plug is an implementation of a Circuit Receiver and reacts to ValueSignals that are passed down from connected Emitters upstream. All other Signals are ignored, except for the automatic disconnection from completed Emitters, which a Receiver does automatically.  
@@ -198,22 +220,6 @@ Output Plugs are Emitters that live on a Widget and can be invoked by Scripts on
 
 Since they do not interfere with the Widget that they live on, I originally planned that Output Plugs could be told to emit from anywhere. This way, they could act as aggregators, with multiple Widgets emitting from the same Output Plug on some third Widget.  
 This approach did however go against the principle of encapsulation, stating that child Widgets should never rely on their parent Widgets for functionality and that child Widgets are basically an implementation detail of their parents. Basically, we cannot emit from an Output Plug of a child Widget since that is an implementation detail and we cannot emit from an Output Plug of a parent Widget, since that should be unknowable to the child.
-
-
-## The Render Callback
-
-Whereas other Functions refer to an executable Script directly, the Render Callback field of a Widget only contains a name. The actual Script is looked up at runtime in the _StyleManager_ (or Stylist?), which contains a sequence of _Styles_. A Style is a simple map of names to Render Calblacks. If the name is not found in the first Style, the StyleManager will attempt to find it from the second and so on until either a Style provides a Render Callback by the given name or the manager ran out of Styles, at which point this is an error. This is basically the "cascading" behavior in "Cascading Style Sheets" (CSS).
-
-The idea here is that we want to decouple the inner working of a Widget from how it is displayed on screen. A button behaves like a button, no matter if its corners are rounded, if it has a dropshadow or even if it has text or not. And if you want to switch between one Style and the next, you should not need to have to restart your Application.
-
-We should be able to connect all Render Callback names with a Render Callback whenever the Style/s of an Application is changed and at startup. This way we can be certain that there will be no suprise failures at runtime.  
-I think the best approach here would be to store the name of the Render Callback in the Widget.Definition, and the actual Render Callback in the Widget.Type. Whenever you update a Style (and how often will you do that), the Render Callback field of each Widget.Type will have to be updated. On the plus side, you can actually serialize the current Render Callback with the rest of the Application state, meaning that if you do not change the Style at all (which I think is the default), you only occurr the cost of Render Callback lookup the first time you start the application.
-
-Another level of abstraction is the Palette, which is separate from the Style. Within a Render Callback, you have access to the current Palette which can contain colors, fonts, measurements (like the average height of a button, font size), gradients or whatever. Palettes also cascade like Styles, meaning you can have a "default" Palette and override only certain characteristics with you custom Palette that has a higher priority.  
-Palettes are separate from Styles. Wheras Styles contain Scripts (executable code), Palettes contain only data. Palettes are also easy to expose to the user of an application, because you can modify them using number entry fields / color pickers etc. and do not need to know the interpreted scripting language.
-
-By putting the Render Callback name into the Widget.Definition, we ensure that the Render Callback of a Widget cannot be changed at runtime. You could easily imagine a world in which we _did_ allow that and it would also work, however we found that you do not _need_ to do it because every behavior that you get with multiple Render Callbacks can be duplicated by just having a big list of if/else statements at the root of you single Render Callback. The advantage here is that we contain the logic of drawing to the actual Render Callback itself and not spread it out over the union of all Widget Callbacks with a mutable Widget.Handle.  
-Another advantage is that you can never try to assign an invalid Render Callback at runtime.
 
 
 ## Widgets and Scripts
@@ -353,15 +359,16 @@ The Layout's job is to provide 5 data points for a (sub)set of the Widget's chil
 
 1. Each childs' 3D **transformation** (position, rotation, scaling) in its parent space.
 2. Each childs' 2D **grant** size.
-3. Each childs' 1D **depth** or draw order among its siblings.
-4. The **axis-aligned bounding rectangle** (AABR) of all children of the Widget.
-5. An **implicit Claim** that is the sum of all child Claims. More on that later.
+3. Each childs' optional **depth override**
+4. Each childs' optional **opacity factor**
+5. The optional **axis-aligned bounding rectangle** (AABR) of all children of the Widget.
+6. An optional **implicit Claim** that is the sum of all child Claims. More on that later.
 
 In order to provide these data points, a Layout has a `Layout.Callback`, which is a Script that can be defined by the user. However, with Layouts it is quite likely that we will be able to provide all implementations necessary for most use cases; those would then be implemented in native code.  
 The result of a Layout.Callback is written into a `Layout.Composition`, which is a structure:
 
     Layout.Composition: Tuple[
-        widgets: List[Map[name: String, xform: Xform3, grant: Size2, depth: Number]],
+        widgets: List[Map[name: String, xform: Xform3, grant: Size2, depth: Optional[Number], opacity: Optional[Number]]],
         aabr: Optional[AABR],
         claim: Optional[Claim],
     ]
@@ -380,7 +387,9 @@ with
 
     Claim: ... # see Claim
 
-Note that the AABR and the Claim (data points 4 and 5) are both optional as we could infer them from the per-child data points, by simply combining all of the child sizes and Claims. However, we expect that the Layout.Callback will have more insight into (and/or intermediate data for) calculating these two fields for their specific use-case. Or maybe you just want the child AABR to be a bit larger, smaller etc?  
+Each child's depth override and opacity factor (data points 3 and 4) are optional as they are provided by the child Widget's built-in properties. However, the Layout might choose to override the child's Widget depth-value or to multiply the Widget's opacity. If you don't touch these values in the Layout, they remain unchanged.
+
+That the AABR and the Claim (data points 5 and 6) are also both optional as we could infer them from the per-child data points, by simply combining all of the child sizes and Claims. However, we expect that the Layout.Callback will have more insight into (and/or intermediate data for) calculating these two fields for their specific use-case. Or maybe you just want the child AABR to be a bit larger, smaller etc?  
 In any case, if the user leaves these fields empty, we can calculate them ourselves as well.
 
 I thought about splitting the Layout.Callback into multiple functions, but we cannot know which part of the Composition will change from the input alone. Therefore we would have to call each function on every new input. Furthermore, I expect the data points to correlate a lot, meaning that multiple smaller functions will have to do a lot of duplicate work. Therefore it is both cleaner and faster to have a single Layout.Callback to calculate the complete Composition in one go.
@@ -421,7 +430,7 @@ The rules for each child Widget are as follows:
 
 * Xform: The 3D transformation is split into its translation, rotation and scale components. Their are lerped individually and finally merged together again, first the transformation, then the rotation and finally scaling.
 * Size: Width and height are blended independently.
-* Depth: Since the depth values are integers, we'll have to live with the fact that they are going to jump at some point. I guess the middle of the transition is as good as any other.
+* Depth override: Since the depth values are integers, we'll have to live with the fact that they are going to jump at some point. I guess the middle of the transition is as good as any other.
 
 Similarly, if the Layouts do not contain the same number of children, the source children missing in the target Layout will disappear once the Transition has passes its mid-point, whereas the additional children from the target Layout will only appear after the superfluous source children have disappeared.
 
@@ -505,7 +514,9 @@ However, changing a Layout.Property also triggers a relayout, and here we have n
 Instead, the root Layout of a Widget must *push* the new Layout values to the Widget, which in turn then distributes it to the children. All of that can happen in native code and be completely invisible to the user.
 
 
-### The implicit Claim
+
+
+## The implicit Claim
 
 > TODO: Are implicit Claims even a good idea?
 > modifying the claim of the parent is a dangerous game, because that change will propagate up, then the parent layout is
@@ -542,8 +553,67 @@ Basically, we have added a lot of complexity, creating anchors and resolving the
 > All in all, this approach went nowhere. But I spent way too much though on it to not at least make a sidenote of it here.
 
 
+# Widget State Machine
+
+We have described a way to define a Widget through data and Callbacks. However, this only describes a single point in time for a Widget. Usually Widgets can be in different states: enabled / disabled / active / etc. These States only describe changes in business logic, not the internal Widget logic. A Widget can either be visible or invisible (depending on whether their internal _Visibility AABR_ is clipped by their parent _Clip Shape_, see "Shapes of a Widget" for details), but that differentiation is notf-internal and does not constitute an upper-case "State".  
+States are defined by the user and toghether form a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine).
+
+
+> TODO: would it be a good idea to limit certain changes to a Widget instance (changes in children, in upstream connections, in the render callback, ...) to state changes? 
+
+State changes, like value changes, are immediate. That means that the same Callback will execute in the context of both the source and the target state if it switches in the middle of its body.  
+Switches states looks like this:
+
+1. The EntryState:Enter Callback is called when the Widget is initialized.
+2. ...
+3. A State-changing Callback is started and runs up to the point where the switch is initiated.
+4. The EntryState:Exit Callback is called
+5. The NewState:Enter Callback is called
+6. The State-changing Callback from 3. is continued.
+
+This has the advantage that you can query and react to changes in state both before and after a State change but has the disadvantage of being more difficult to reason about (but not more so than any nested method call). That also means that you could trigger more than one State change from the same Callback.  
+The alternative would be to restrict State changes to the Event epilogue. ... That might also work but I fail to see the advantage in the general case. Right now it seems like more complex code on our end and very little clarity added to the user's side. In fact, it might even prohibit certain functionality (having post a pre- and post-State switch part of the Callback) that might still prove to be useful.
+
+Since we have no way of introspecting user-code, we cannot know in advance which State switches will occur. This would make it impossible for us to map out a transition diagram. Therefore, the user needs to define all reachable States from a given State up-front.
+
+
 # Rendering
 
+## The Render Callback
+
+Whereas other Functions refer to an executable Script directly, the Render Callback of a Widget is not actually _on_ the Widget itself. Instead it is a free Callback that can be found by the name of the Widget.Type. The actual Script is looked up at runtime in the `RenderManager`, which contains a sequence of _Styles_. A Style is a simple map of Widget Type names to Render Calblacks. If the name is not found in the first Style, the StyleManager will attempt to find it from the second and so on until either a Style provides a Render Callback by the given name or the manager ran out of Styles, at which point this is an error. This is basically the "cascading" behavior in "Cascading Style Sheets" (CSS).
+
+The idea here is that we want to decouple the inner working of a Widget from how it is displayed on screen. A button behaves like a button, no matter if its corners are rounded, if it has a dropshadow or even if it has text or not. And if you want to switch between one Style and the next, you should not need to have to restart your Application.
+
+We should be able to connect all Widget Types with a Render Callback at startup and whenever the Style/s of an Application is changed. This way we can be certain that there will be no suprise failures at runtime. And you can actually serialize the current Render Callback for each Widget.Type with the rest of the Application state, meaning that if you do not change the Style at all (which I think is the default), you only occurr the cost of Render Callback lookup the first time you start a session.
+
+Another level of abstraction is the Palette, which is separate from the Style. Within a Render Callback, you have access to the current Palette which can contain colors, fonts, measurements (like the average height of a button, font size), gradients or whatever. Palettes also cascade like Styles, meaning you can have a "default" Palette and override only certain characteristics with you custom Palette that has a higher priority.  
+Palettes are separate from Styles. Wheras Styles contain Scripts (executable code), Palettes contain only data. Palettes are also easy to expose to the user of an application, because you can modify them using number entry fields / color pickers etc. and do not need to know the interpreted scripting language.
+
+By associating the Render Callback with a Widget.Type, we ensure that the Render Callback of a Widget cannot be changed at runtime. You could easily imagine a world in which we _did_ allow that and it would also work, however we found that you do not _need_ to do it because every behavior that you get with multiple Render Callbacks can be duplicated by just having a big list of if/else statements at the root of you single Render Callback. The advantage here is that we contain the logic of drawing to the actual Render Callback itself and not spread it out over the union of all Widget Callbacks with a mutable Widget.Handle.  
+
+
+## Accessibility
+
+Another advantage of the separation between the Render Callback and the Widget is that it should be fairly easy to substitute on way of rendering with another. notf should be usable by all people that can use a computer. That means we also have to take care that the architecture allows easy communication of the state of a Widget as both a visual as well as a textual representation. For example a narrator. I have no idea how to do that yet, but we already have decoupled the visual representation of a Widget from its "logic", so I am pretty sure that we are on a good track here.
+
+
+## Widget Design
+
+The Widget Design is a list of Commands for the `Painterpreter` object that uses it to generate the draw calls to the GPU to render the UI. It is created by calling functions on a `Painter` object that is passed to the Widget's Render Callback.  
+Example
+
+```python
+painter.set_fill_color("#ff0000")
+painter.set_line_color("#000000")
+painter.set_line_width(1)
+painter.draw_circle(10)  # circle at origin with radius=10
+
+painter.move(20, 0)
+painter.draw_circle(10)  # a second circle 20 units to the right
+```
+
+Each Widget has its own Design, which allos us to update them independently from another. For rendering that means that we can use multiple threads without having to worry that the Designs might overlap in memory.
 
 
 ## Shapes of a Widget
@@ -604,18 +674,10 @@ If you have a Hit Shape larger than the Visiblity Shape (which is possible), the
 
 
 
-
+# NOPE
 ---
 
 
-## Widget State Machine
-
-A State change goes like this:
-
-1. StateA:Enter Callback is called. StateA is the entry State of the Widget.
-2. Somehow a transition to StateB is triggered.
-3. StateA:Exit Callback is called
-4. StateB:Enter Callback is called
 
 
 # Widgets and Logic
@@ -634,15 +696,6 @@ The same goes for anything else that might be used as "removal light", like remo
 ---
 
 # Widget Rendering Frontend
-
-> Apparently fighting games have a medium response time of about 67ms (which would be 4 frames on 60hz)
-> https://en.wikipedia.org/wiki/Input_lag#Typical_overall_response_times
-
-* Design is a Node underneath a Widget, this way a Widget can have multiple Designs. This way we can switch easily or separate constant from changing parts of the complete design.
-* Designs can be disabled. This way you can switch between multiple designs or temporarily hide a Widget that will reappear soon. 
-* Use a skip list as data structure for a root design. Disabling a design will mark it to be skipped, so does deleting one.
-* It would be *very* advantageous to forbid designs to change size at run-time. This way, we could pack them tightly into the skip list and wouldn't have to worry about resizing the list during design update. You could also update all designs in parallel and write them straight into the final design buffer because you know that they won't grow (I guess shrinking is okay). 
-* Maybe if we really cannot enforce a size limit on a design, we could at least separate those that can give that guarantee from those that cannot.
 
 Design and how to "View" a Widget.
 
