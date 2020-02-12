@@ -138,7 +138,7 @@ Properties are a single Value associated with a Widget instance. They are declar
 
 Widgets store no Values outside their Properties. There might be additional Values that are part of Proprety Operators (see next chapter) but those are not accessible from the Widget.
 
-Properties can be updated both from Scripts executing on the Widget and from an Emitter upstream in the Circuit. In the second case the update Value will be wrapped in a ValueSignal. Still, we have decided against adding another Callback to the Property that would allow the Signal to be accepted or blocked -- instead, Properties that are updated from upstream Emitters will unconditionally take the Value but "ignore" the Signal (meaning, do not "accept" or "block" the Signal). Properties are all about data, there is no good use case in which they would try to control the flow of an incoming Signal like an Input Plug might.
+Properties can be updated both from Scripts executing on the Widget, from an Emitter upstream in the Circuit and from Scripts executing on another Widget instance. In the second case the update Value will be wrapped in a ValueSignal. Still, we have decided against adding another Callback to the Property that would allow the Signal to be accepted or blocked -- instead, Properties that are updated from upstream Emitters will unconditionally take the Value but "ignore" the Signal (meaning, do not "accept" or "block" the Signal). Properties are all about data, there is no good use case in which they would try to control the flow of an incoming Signal like an Input Plug might.
 
 
 ### Forward connection
