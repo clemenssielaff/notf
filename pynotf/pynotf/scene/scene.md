@@ -218,9 +218,8 @@ InputCallbacks differ from other Functions in a Widget.Definition insofar as tha
 
 Output Plugs are Emitters that live on a Widget and can be invoked by Scripts on their Widget to propagate non-Property Values into the Circuit as needed. Output Plugs are truly stateless (apart from the state held by the abstract Emitter base class). They share a namespace with the rest of the Circuit Elements that are discoverable on a Widget (Input Plugs and Properties).
 
-> Since they do not interfere with the Widget that they live on, I always planned that Output Plugs could be told to emit from anywhere. This way, they could act as aggregators, with multiple Widgets emitting from the same Output Plug on some third Widget.  
-> This approach did however go against the principle of encapsulation, stating that child Widgets should never rely on their parent Widgets for functionality and that child Widgets are basically an implementation detail of their parents. Basically, we cannot emit from an Output Plug of a child Widget since that is an implementation detail and we cannot emit from an Output Plug of a parent Widget, since that should be unknowable to the child.
-> Eventually I came around to the idea again. Parent Widgets have explicit knowledge of their children and are able to connect their plugs in any way they please. I cannot think of a reason to do so off the top of my head, but at the same time I _also_ cannot think of a way to accidentally shoot yourself in the foot here. If you are querying the output plug of another Widget and emitting a Value from it, you probably know what you are doing. And with no good reason to do it and no good reason not to do it, I decide to allow the user to do it until we can prove that it does more harm than good.
+> Since they do not interfere with the Widget that they live on, I originally planned that Output Plugs could be told to emit from anywhere. This way, they could act as aggregators, with multiple Widgets emitting from the same Output Plug on some third Widget.  
+> However, this does not work with built-in output Plugs that are used to communicate true details about the Widget, like the number of children or the draw index as those need to be set internally from the Layout. If the user were able to emit from them, they could no longer be trusted.
 
 
 ## Widgets and Scripts
