@@ -1,6 +1,6 @@
 from enum import Enum
 
-from ..value import Value
+from pynotf.data import Value
 
 from .circuit import Circuit
 

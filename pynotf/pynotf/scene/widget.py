@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Optional, Dict, NamedTuple, List, Any
 
-from pynotf.value import Value
+from pynotf.data import Value
 from pynotf.logic import Circuit, Receiver, Emitter
 
 from .output_plug import OutputPlug

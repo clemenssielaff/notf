@@ -7,7 +7,7 @@ from random import randint as random_int
 from weakref import ref as weak_ref
 
 from pynotf.logic import Receiver, Emitter, Circuit, FailureSignal, CompletionSignal, ValueSignal, Operator
-from pynotf.value import Value
+from pynotf.data import Value
 
 from tests.utils import number_schema, string_schema, Recorder, random_schema, create_emitter, create_receiver, \
     create_operator, random_shuffle, create_operation, make_handle

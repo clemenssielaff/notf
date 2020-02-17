@@ -464,12 +464,10 @@ Therefore, in order to appear at all, every child of a Widget needs to be added 
 
 You might have noticed that the `Widget.set_layout` method takes a Layout *instance*, not a Layout.Definition. That is because we need to add Widgets to the Layout using `Layout.add_widget(child_name: str, data: Optional[Value])`. The Value.Schema of the second argument is defined by the Layout.Definition's `per_widget_data` field and contains widget-specific data that is available to the Layout.Callback.
 
-Note that you are able to modify the per-widget data on the current Layout from the widget. Each modification triggers a relayout.
 
 The order in which the Widgets are added to the Layout is significant, because it will define the order in which they are laid out. For a ListLayout, for example, that might mean that earlier additions are further left than later ones. 
-You can also remove existing Widgets and add new ones to the current Layout.  
-Since the children are stored as a simple List Value in the Layout, you can even use generic Value List operations to order them, pop a specific index or whatever.
-Every change in children triggers a re-layout. 
+
+You cannot modify a Layout once it is set, but you can create a new Layout with new properties / children / per-child data and transition to that.
 
 
 ## Layout Definition

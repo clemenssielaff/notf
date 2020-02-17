@@ -6,7 +6,7 @@ import logging
 from time import sleep
 from itertools import product
 
-from pynotf.value import Value
+from pynotf.data import Value
 from pynotf.logic import Emitter, Receiver
 from pynotf.scene import Executor, Fact, Scene, RootNode, Widget, Property
 

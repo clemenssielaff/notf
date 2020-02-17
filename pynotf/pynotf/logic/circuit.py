@@ -7,7 +7,7 @@ from typing import Any, Optional, List, Tuple, Deque, Dict, Callable, Type, Type
 from typing import NamedTuple, NewType
 from weakref import ref as weak_ref
 
-from ..value import Value
+from pynotf.data import Value
 
 T = TypeVar('T')
 

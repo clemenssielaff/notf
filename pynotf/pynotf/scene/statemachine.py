@@ -1,6 +1,6 @@
 from typing import Optional, Dict, List, NamedTuple, Set
 
-from pynotf.callback import Callback as CallbackBase
+from pynotf.data import Callback as CallbackBase
 
 
 #######################################################################################################################

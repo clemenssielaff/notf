@@ -1,6 +1,6 @@
 import unittest
 import sys
-from pynotf.value import Value
+from pynotf.data import Value
 
 ########################################################################################################################
 # TEST HELPER

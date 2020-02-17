@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Any, Optional, List
 from weakref import ref as weak_ref
 
-from ..value import Value
+from pynotf.data import Value
 
 from .circuit import Circuit
 from .signals import ValueSignal, FailureSignal, CompletionSignal

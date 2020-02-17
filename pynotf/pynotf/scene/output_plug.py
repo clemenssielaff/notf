@@ -1,6 +1,6 @@
 from typing import Any
 
-from pynotf.value import Value
+from pynotf.data import Value
 from pynotf.logic import Circuit, Emitter
 
 

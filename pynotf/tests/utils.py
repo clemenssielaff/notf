@@ -3,7 +3,7 @@ from random import randint as random_int, choice as random_choice, shuffle
 
 from pynotf.logic import Operator, Receiver, Emitter, Circuit, ValueSignal, FailureSignal, \
     CompletionSignal
-from pynotf.value import Value
+from pynotf.data import Value
 
 T = TypeVar('T')
 

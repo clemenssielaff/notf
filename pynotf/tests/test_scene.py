@@ -1,7 +1,7 @@
 import unittest
 
 from pynotf.scene import Path, Scene, Widget, InputPlug, StateMachine
-from pynotf.value import Value
+from pynotf.data import Value
 
 from tests.utils import number_schema
 

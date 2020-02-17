@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from weakref import ref as weak_ref
 
-from ..value import Value
+from pynotf.data import Value
 
 from .receiver import Receiver
 from .emitter import Emitter

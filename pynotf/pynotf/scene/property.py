@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Optional, Any
 
-from pynotf.value import Value
-from pynotf.callback import Callback as CallbackBase
+from pynotf.data import Value
+from pynotf.data import Callback as CallbackBase
 from pynotf.logic import Circuit, ValueSignal, Emitter, Receiver
 
 

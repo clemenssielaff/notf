@@ -2,8 +2,8 @@ from __future__ import annotations
 from typing import Optional
 from weakref import ref as weak_ref
 
-from pynotf.value import Value
-from pynotf.callback import Callback as CallbackBase
+from pynotf.data import Value
+from pynotf.data import Callback as CallbackBase
 from pynotf.logic import Circuit, ValueSignal, Receiver
 
 
