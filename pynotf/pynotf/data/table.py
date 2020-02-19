@@ -1,6 +1,7 @@
-from typing import Type, List, Tuple, Optional, Any
+from typing import List, Tuple, Optional, Any
 
 from pyrsistent import CheckedPVector as ConstList, CheckedPMap as ConstMap, PRecord as ConstNamedTuple, field
+from pyrsistent.typing import CheckedPVector as ConstListT
 
 
 class Handle(ConstNamedTuple):
@@ -26,34 +27,27 @@ class HandleMap(ConstMap):
     __value_type__ = Handle
 
 
-def create_table_type(column_type: Type[ConstNamedTuple]):
+class BuiltinColumns(ConstNamedTuple):
     """
-    Creates a new table type containing columns of the given type.
     Every table has a built-in column `generation`, which allows the re-use of a table row without running into problems
     where a Handle would reference a row that has since been re-used.
-    :param column_type: Type to store in the table's columns.
-    :return: New table type.
     """
-
-    class Table(ConstList):
-        class Row(ConstNamedTuple):
-            generation = field(type=int, mandatory=True)
-            data = field(type=column_type, mandatory=True)
-
-        __type__ = Row
-
-    return Table
+    generation = field(type=int, mandatory=True)
 
 
-def add_row(table, data, free_list: List[int], refcounts: Optional[List[int]] = None) -> Tuple[Any, Handle]:
+Table = ConstListT[BuiltinColumns]
+
+
+def add_row(table: Table, row: BuiltinColumns, free_list: List[int], refcounts: Optional[List[int]] = None) \
+        -> Tuple[Table, Handle]:
     """
     Adds a new row to a table.
     Either re-uses a expired row from the free list or appends a new row.
-    :param table: Table to modify.
-    :param data: Data to add to the table, must be of the Table's `Row` type.
+    :param table: Table to mutate.
+    :param row: Row to add to the table. Must match the table's type.
     :param free_list: List of free indices in the table. Faster than searching for negative generation values.
     :param refcounts: Optional reference counts for each row in the table.
-    :return: Modified table, Handle to the new row.
+    :return: Mutated table, Handle to the new row.
     """
     assert refcounts is None or len(table) == len(refcounts)
 
@@ -72,7 +66,7 @@ def add_row(table, data, free_list: List[int], refcounts: Optional[List[int]] = 
             refcounts[index] = 1
 
         # mutate the table
-        new_table = table.set(index, table.Row(generation=generation, data=data))
+        new_table: Table = table.set(index, row.set(generation=generation))
 
     else:  # free list is empty
         # create a new row
@@ -84,24 +78,32 @@ def add_row(table, data, free_list: List[int], refcounts: Optional[List[int]] = 
             refcounts.append(1)
 
         # mutate the table
-        new_table = table.append(table.Row(generation=generation, data=data))
+        new_table: Table = table.append(row.set(generation=generation))
 
     # create and return a Handle to the new row
     return new_table, Handle(index=index, generation=generation)
 
 
-def update_row(table, index: int, data, free_list: List[int], refcounts: Optional[List[int]] = None) -> Any:
-    assert index < len(table)
-    assert index not in free_list
-    assert refcounts is None or (len(table) == len(refcounts) and refcounts[index] > 0)
+# def update_row(table, index: int, data, free_list: List[int], refcounts: Optional[List[int]] = None) -> Any:
+#     assert index < len(table)
+#     assert index not in free_list
+#     assert refcounts is None or (len(table) == len(refcounts) and refcounts[index] > 0)
+#
+#     # mutate the table
+#     generation: int = table[index].generation
+#     assert generation > 0
+#     return table.set(index, table.Row(generation=generation, data=data))
+#
 
-    # mutate the table
-    generation: int = table[index].generation
-    assert generation > 0
-    return table.set(index, table.Row(generation=generation, data=data))
-
-
-def remove_row(table, index: int, free_list: List[int], refcounts: Optional[List[int]] = None) -> Any:
+def remove_row(table: Table, index: int, free_list: List[int], refcounts: Optional[List[int]] = None) -> Table:
+    """
+    Removes the row with the given index from the table.
+    :param table: Table to mutate.
+    :param index: Index of the row to remove, must be 0 <= index < len(table)
+    :param free_list: List of free row indices in the table.
+    :param refcounts: Optional reference counts for each row in the table.
+    :return: Mutated table.
+    """
     assert index < len(table)
     assert index not in free_list
     assert refcounts is None or (len(table) == len(refcounts) and refcounts[index] == 0)
@@ -114,7 +116,7 @@ def remove_row(table, index: int, free_list: List[int], refcounts: Optional[List
     free_list.append(index)
 
     # mutate the table
-    return table.set(index, table.Row(generation=generation, data=table[index].data))
+    return table.set(index, table[index].set(generation=generation))
 
 
 def increase_refcount(table, index: int, refcounts: List[int]) -> int:
@@ -147,21 +149,29 @@ def is_handle_valid(table, handle: Handle) -> bool:
 
 ## DATA ################################################################################################################
 
-class WidgetRow(ConstNamedTuple):
+class WidgetRow(BuiltinColumns):
     name = field(type=str, mandatory=True)
     parent = field(type=Handle, mandatory=True)
     children = field(type=HandleMap, mandatory=True)
     properties = field(type=HandleMap, mandatory=True)
 
 
-class PropertyRow(ConstNamedTuple):
+class PropertyRow(BuiltinColumns):
     name = field(type=str, mandatory=True)
     value = field(type=int, mandatory=True)
 
 
+class WidgetTable(ConstList):
+    __type__ = WidgetRow
+
+
+class PropertyTable(ConstList):
+    __type__ = PropertyRow
+
+
 class ApplicationData(ConstNamedTuple):
-    widgets = field(type=create_table_type(WidgetRow), mandatory=True)
-    properties = field(type=create_table_type(PropertyRow), mandatory=True)
+    widgets = field(type=WidgetTable, mandatory=True)
+    properties = field(type=PropertyTable, mandatory=True)
 
 
 ## HANDLER #############################################################################################################
@@ -178,17 +188,15 @@ class Widget:
 
 class Application:
     def __init__(self):
-        WidgetTable = create_table_type(WidgetRow)
         self._data: ApplicationData = ApplicationData(
-            widgets=WidgetTable([WidgetTable.Row(
+            widgets=WidgetTable([WidgetRow(
                 generation=1,
-                data=WidgetRow(
-                    name='[root]',
-                    parent=Handle(index=0, generation=1),
-                    children=HandleMap(),
-                    properties=HandleMap(),
-                ))]),
-            properties=create_table_type(PropertyRow)(),
+                name='[root]',
+                parent=Handle(index=0, generation=1),
+                children=HandleMap(),
+                properties=HandleMap(),
+            )]),
+            properties=PropertyTable(),
         )
 
         self._widget_free_list: List[int] = []
@@ -208,20 +216,18 @@ class Application:
             parent = Handle(index=0, generation=1)
 
         assert is_handle_valid(self._data.widgets, parent)
-        assert name not in self._data.widgets[parent.index].data.children
+        assert name not in self._data.widgets[parent.index].children
 
-        widget_table, new_widget = add_row(self._data.widgets,
-                                           WidgetRow(name=name, parent=parent, children=HandleMap(),
-                                                     properties=HandleMap()),
-                                           self._widget_free_list)
+        widget_table, new_widget = add_row(
+            self._data.widgets,
+            WidgetRow(generation=0, name=name, parent=parent, children=HandleMap(), properties=HandleMap()),
+            self._widget_free_list)
+        assert new_widget.generation != 0
 
-        # TODO: update widget cell function?
         self._data = self._data.set(
             widgets=widget_table.set(
-                parent.index, widget_table.Row(
-                    generation=parent.generation,
-                    data=widget_table[parent.index].data.set(
-                        children=widget_table[parent.index].data.children.set(name, new_widget)))))
+                parent.index, widget_table[parent.index].set(
+                    children=widget_table[parent.index].children.set(name, new_widget))))
 
         return new_widget
 
@@ -231,6 +237,7 @@ class Application:
         # remove widget
         pass
 
+
 def main():
     app: Application = Application()
     state1 = app.get_state()
@@ -238,7 +245,7 @@ def main():
     widget1 = app.add_widget("widget1")
     state2 = app.get_state()
 
-    widget2 = app.add_widget('widget2', widget1)
+    _ = app.add_widget('widget2', widget1)
     state3 = app.get_state()
 
     print(state1)
