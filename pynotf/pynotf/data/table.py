@@ -1,10 +1,14 @@
-from typing import List, Tuple, Optional, Any
+from __future__ import annotations
+from typing import List, Tuple, Optional, Union, TypeVar, Callable
+from json import dumps as pretty_print
 
 from pyrsistent import CheckedPVector as ConstList, CheckedPMap as ConstMap, PRecord as ConstNamedTuple, field
 from pyrsistent.typing import CheckedPVector as ConstListT
 
+T = TypeVar('T')
 
-class Handle(ConstNamedTuple):
+
+class RowHandle(ConstNamedTuple):
     """
     A reference to a specific row in a Table.
     """
@@ -12,25 +16,25 @@ class Handle(ConstNamedTuple):
     generation = field(type=int, mandatory=True, invariant=lambda x: (x > 0, 'Generation must be > 0'))
 
 
-class Handles(ConstList):
+class RowHandles(ConstList):
     """
-    An immutable list of Handles.
+    An immutable list of RowHandles.
     """
-    __type__ = Handle
+    __type__ = RowHandle
 
 
-class HandleMap(ConstMap):
+class RowHandleMap(ConstMap):
     """
-    An immutable map of named Handles.
+    An immutable map of named RowHandles.
     """
     __key_type__ = str
-    __value_type__ = Handle
+    __value_type__ = RowHandle
 
 
 class BuiltinColumns(ConstNamedTuple):
     """
     Every table has a built-in column `generation`, which allows the re-use of a table row without running into problems
-    where a Handle would reference a row that has since been re-used.
+    where a RowHandle would reference a row that has since been re-used.
     """
     generation = field(type=int, mandatory=True)
 
@@ -39,7 +43,7 @@ Table = ConstListT[BuiltinColumns]
 
 
 def add_row(table: Table, row: BuiltinColumns, free_list: List[int], refcounts: Optional[List[int]] = None) \
-        -> Tuple[Table, Handle]:
+        -> Tuple[Table, RowHandle]:
     """
     Adds a new row to a table.
     Either re-uses a expired row from the free list or appends a new row.
@@ -81,19 +85,8 @@ def add_row(table: Table, row: BuiltinColumns, free_list: List[int], refcounts: 
         new_table: Table = table.append(row.set(generation=generation))
 
     # create and return a Handle to the new row
-    return new_table, Handle(index=index, generation=generation)
+    return new_table, RowHandle(index=index, generation=generation)
 
-
-# def update_row(table, index: int, data, free_list: List[int], refcounts: Optional[List[int]] = None) -> Any:
-#     assert index < len(table)
-#     assert index not in free_list
-#     assert refcounts is None or (len(table) == len(refcounts) and refcounts[index] > 0)
-#
-#     # mutate the table
-#     generation: int = table[index].generation
-#     assert generation > 0
-#     return table.set(index, table.Row(generation=generation, data=data))
-#
 
 def remove_row(table: Table, index: int, free_list: List[int], refcounts: Optional[List[int]] = None) -> Table:
     """
@@ -119,6 +112,13 @@ def remove_row(table: Table, index: int, free_list: List[int], refcounts: Option
     return table.set(index, table[index].set(generation=generation))
 
 
+def mutate(data: T, path: List[Union[int, str]], func: Callable[[T], T]) -> T:
+    if len(path) == 0:
+        return func(data)
+    step: Union[int, str] = path.pop(0)
+    return data.set(step, mutate(data[step], path, func))
+
+
 def increase_refcount(table, index: int, refcounts: List[int]) -> int:
     assert index < len(table)
     assert len(table) == len(refcounts) and refcounts[index] > 0
@@ -137,7 +137,7 @@ def decrease_refcount(table, index: int, refcounts: List[int]) -> int:
     return new_refcount
 
 
-def is_handle_valid(table, handle: Handle) -> bool:
+def is_handle_valid(table, handle: RowHandle) -> bool:
     if not (0 <= handle.index < len(table)):
         return False
     if handle.generation <= 0:
@@ -151,9 +151,9 @@ def is_handle_valid(table, handle: Handle) -> bool:
 
 class WidgetRow(BuiltinColumns):
     name = field(type=str, mandatory=True)
-    parent = field(type=Handle, mandatory=True)
-    children = field(type=HandleMap, mandatory=True)
-    properties = field(type=HandleMap, mandatory=True)
+    parent = field(type=RowHandle, mandatory=True)
+    children = field(type=RowHandleMap, mandatory=True)
+    properties = field(type=RowHandleMap, mandatory=True)
 
 
 class PropertyRow(BuiltinColumns):
@@ -174,16 +174,7 @@ class ApplicationData(ConstNamedTuple):
     properties = field(type=PropertyTable, mandatory=True)
 
 
-## HANDLER #############################################################################################################
-
-
-class Widget:
-    def __init__(self, handle: Handle):
-        self._handle: Handle = handle
-
-    @property
-    def handle(self) -> Handle:
-        return self._handle
+## APPLICATION #########################################################################################################
 
 
 class Application:
@@ -191,10 +182,10 @@ class Application:
         self._data: ApplicationData = ApplicationData(
             widgets=WidgetTable([WidgetRow(
                 generation=1,
-                name='[root]',
-                parent=Handle(index=0, generation=1),
-                children=HandleMap(),
-                properties=HandleMap(),
+                name='<root>',
+                parent=RowHandle(index=0, generation=1),
+                children=RowHandleMap(),
+                properties=RowHandleMap(),
             )]),
             properties=PropertyTable(),
         )
@@ -205,52 +196,93 @@ class Application:
     def get_state(self) -> ApplicationData:
         return self._data
 
-    def is_valid(self, obj: Any) -> bool:
-        if isinstance(obj, Widget):
-            return is_handle_valid(self._data.widgets, obj.handle)
-        else:
-            assert False
+    @staticmethod
+    def is_widget_root(widget: RowHandle) -> bool:
+        return widget.index == 0
 
-    def add_widget(self, name: str, parent: Optional[Handle] = None) -> Handle:
+    def get_widget_name(self, widget: RowHandle) -> str:
+        assert is_handle_valid(self._data.widgets, widget)
+        return self._data.widgets[widget.index].name
+
+    def get_widget_path(self, widget: RowHandle) -> str:
+        names: List[str] = []
+        while widget.index != 0:
+            names.append(self.get_widget_name(widget))
+            widget = self._data.widgets[widget.index].parent
+        return f"/{'/'.join(reversed(names))}"
+
+    def add_widget(self, name: str, parent: Optional[RowHandle] = None) -> RowHandle:
         if parent is None:  # parent defaults to root if not set
-            parent = Handle(index=0, generation=1)
+            parent = RowHandle(index=0, generation=1)
 
         assert is_handle_valid(self._data.widgets, parent)
         assert name not in self._data.widgets[parent.index].children
 
         widget_table, new_widget = add_row(
             self._data.widgets,
-            WidgetRow(generation=0, name=name, parent=parent, children=HandleMap(), properties=HandleMap()),
+            WidgetRow(generation=0, name=name, parent=parent, children=RowHandleMap(), properties=RowHandleMap()),
             self._widget_free_list)
         assert new_widget.generation != 0
 
         self._data = self._data.set(
-            widgets=widget_table.set(
-                parent.index, widget_table[parent.index].set(
-                    children=widget_table[parent.index].children.set(name, new_widget))))
+            widgets=mutate(widget_table, [parent.index, "children"], lambda x: x.set(name, new_widget)))
 
         return new_widget
 
-    def remove_widget(self, widget: Handle):
-        # find widget
-        # recursively remove all children first
-        # remove widget
-        pass
+    def remove_widget(self, widget: RowHandle):
+        assert not self.is_widget_root(widget)  # cannot remove the root widget
+        assert is_handle_valid(self._data.widgets, widget)
+
+        def remove_recursive(_widget: RowHandle):
+            assert is_handle_valid(self._data.widgets, _widget)
+
+            # remove the widget
+            self._data.set(widgets=remove_row(self._data.widgets, _widget.index, self._widget_free_list))
+
+            # recursively remove all children first, depth-first
+            child_widgets: List[RowHandle] = list(self._data.widgets[_widget.index].children.values())
+            for child_widget in child_widgets:
+                remove_recursive(child_widget)
+
+        # update the parent's children map
+        parent: RowHandle = self._data.widgets[widget.index].parent
+        assert is_handle_valid(self._data.widgets, parent)
+        self._data = mutate(self._data, ["widgets", parent.index, "children"],
+                            lambda x: x.remove(self.get_widget_name(widget)))
+
+        # remove the widget itself and all children recursively
+        remove_recursive(widget)
+
+    def print_widgets(self, root: RowHandle = RowHandle(index=0, generation=1)):
+        def recurse(next_widget: RowHandle):
+            return {
+                self._data.widgets[child_widget.index].name: recurse(child_widget) for child_widget in
+                self._data.widgets[next_widget.index].children.values()
+            }
+
+        print(pretty_print({self._data.widgets[root.index].name: recurse(root)}, indent=2))
+
+    # TODO: print table
 
 
 def main():
     app: Application = Application()
-    state1 = app.get_state()
+    w1 = app.add_widget("w1")
+    w1_w1 = app.add_widget('w1', w1)
+    app.add_widget('w2', w1)  # w1_w2
+    w1_w3 = app.add_widget('w3', w1)
+    app.add_widget('w1', w1_w1)  # w1_w1_w1
+    app.add_widget('w2', w1_w1)  # w1_w1_w2
+    app.add_widget('w1', w1_w3)  # w1_w3_w1
+    w1_w3_w2 = app.add_widget('w2', w1_w3)  # w1_w3_w2
 
-    widget1 = app.add_widget("widget1")
-    state2 = app.get_state()
+    app._data = mutate(app._data, ["widgets", w1_w3_w2.index], lambda x: x.set(name="fantastic"))
 
-    _ = app.add_widget('widget2', widget1)
-    state3 = app.get_state()
-
-    print(state1)
-    print(state2)
-    print(state3)
+    app.print_widgets()
+    app.remove_widget(w1_w3)
+    app.print_widgets()
+    app.remove_widget(w1)
+    app.print_widgets()
 
 
 main()
