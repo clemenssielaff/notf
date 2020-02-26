@@ -9,28 +9,28 @@ from pyrsistent.typing import PVector as ConstList, PMap as ConstMap
 
 ########################################################################################################################
 
-Representable = Union[
+Denotable = Union[
     float,  # numbers are always stored as floats
     str,  # strings are UTF-8 encoded strings
-    Optional[List['Representable']],  # list contain an unknown number of representable data, all of the same Schema
-    Union[Tuple['Representable', ...], Dict[str, 'Representable']],  # records contain a named or unnamed tuple
+    Optional[List['Denotable']],  # list contain an unknown number of denotable data, all of the same Schema
+    Union[Tuple['Denotable', ...], Dict[str, 'Denotable']],  # records contain a named or unnamed tuple
     'Value',  # Values can be used to define other Values
 ]
 """
 Python data that conforms to the restrictions imposed by the Value type.
-The only way to get a `Representable` object is to pass "raw" Python data to `check_representable`. If the input data is
+The only way to get a `Denotable` object is to pass "raw" Python data to `check_denotable`. If the input data is
 malformed in any way, this function will raise an exception.
 """
 
 
-def check_representable(obj: Any, allow_empty_list: bool) -> Representable:
+def check_denotable(obj: Any, allow_empty_list: bool) -> Denotable:
     """
-    Tries to convert any given Python object into a Representable.
-    Representable are still pure Python objects, but they are known to be capable of being stored in a Value.
+    Tries to convert any given Python object into a Denotable.
+    Denotable are still pure Python objects, but they are known to be capable of being stored in a Value.
     :param obj: Object to convert.
     :param allow_empty_list: Empty lists are allowed when modifying a Value, but not during construction.
-    :return: The given obj as Representable.
-    :raise ValueError: If the object cannot be represented as an Element.
+    :return: The given obj as Denotable.
+    :raise ValueError: If the object cannot be denoted by a Value.
     """
     # already a Value
     if isinstance(obj, Value):
@@ -46,17 +46,17 @@ def check_representable(obj: Any, allow_empty_list: bool) -> Representable:
 
     # list
     elif isinstance(obj, list):
-        representable: List[Representable] = [check_representable(x, allow_empty_list) for x in obj]
+        denotable: List[Denotable] = [check_denotable(x, allow_empty_list) for x in obj]
 
-        if len(representable) > 0:
-            reference_representable: Representable = representable[0]
-            reference_schema: Schema = Schema(reference_representable)
-            for i in range(1, len(representable)):
-                if Schema(representable[i]) != reference_schema:
+        if len(denotable) > 0:
+            reference_denotable: Denotable = denotable[0]
+            reference_schema: Schema = Schema(reference_denotable)
+            for i in range(1, len(denotable)):
+                if Schema(denotable[i]) != reference_schema:
                     raise ValueError("All items in a Value.List must have the same Schema")
 
-            if Kind.from_representable(reference_representable) == Kind.RECORD:
-                def get_keys(rep: Representable) -> Optional[AbstractSet[str]]:
+            if Kind.from_denotable(reference_denotable) == Kind.RECORD:
+                def get_keys(rep: Denotable) -> Optional[AbstractSet[str]]:
                     if isinstance(rep, dict):
                         return rep.keys()
                     elif isinstance(rep, tuple):
@@ -68,32 +68,32 @@ def check_representable(obj: Any, allow_empty_list: bool) -> Representable:
                             result = set(result)  # to allow == comparison with dict.keys()
                         return result
 
-                reference_keys: Optional[AbstractSet[str]] = get_keys(reference_representable)
-                for i in range(1, len(representable)):
-                    keys: Optional[AbstractSet[str]] = get_keys(representable[i])
+                reference_keys: Optional[AbstractSet[str]] = get_keys(reference_denotable)
+                for i in range(1, len(denotable)):
+                    keys: Optional[AbstractSet[str]] = get_keys(denotable[i])
                     if keys != reference_keys:
                         raise ValueError("All Records in a Value.List must have the same Dictionary")
 
-            return representable
+            return denotable
 
     # named record
     elif isinstance(obj, dict):
         if len(obj) == 0:
             raise ValueError("Records cannot be empty")
 
-        representable: Dict[str, Representable] = {}
+        denotable: Dict[str, Denotable] = {}
         for key, value in obj.items():
             if not isinstance(key, str):
                 raise ValueError("All keys of a Record must be of Value.Kind String")
-            representable[key] = check_representable(value, allow_empty_list)
-        return representable
+            denotable[key] = check_denotable(value, allow_empty_list)
+        return denotable
 
     # unnamed record
     elif isinstance(obj, tuple):
         if len(obj) == 0:
             raise ValueError("Records cannot be empty")
 
-        return tuple(check_representable(value, allow_empty_list) for value in obj)
+        return tuple(check_denotable(value, allow_empty_list) for value in obj)
 
     # empty list
     if obj is None or (isinstance(obj, list) and len(obj) == 0):
@@ -103,19 +103,17 @@ def check_representable(obj: Any, allow_empty_list: bool) -> Representable:
             raise ValueError("Lists cannot be empty during Value definition")
 
     # incompatible type
-    raise ValueError("Cannot construct Representable from a {}".format(type(obj).__name__))
+    raise ValueError("Cannot construct Denotable from a {}".format(type(obj).__name__))
 
 
 ########################################################################################################################
 
 class Kind(IntEnum):
     """
-    Enumeration of the four representable Kinds and the empty Kind.
+    Enumeration of the four denotable Value Kinds.
     To differentiate between integers in a Value.Schema that represent forward offsets (see Schema), and enum values
-    that denote the Kind of an Element, we only use the highest representable integers for the enum.
-    The EMPTY Kind never part of a Schema, it is only used as a sentinel to denote that a Schema is empty.
+    that denote the Kind of an Element, we only use the highest denotable integers for the enum.
     """
-    EMPTY = 0
     LIST = sys.maxsize - 3
     RECORD = auto()
     NUMBER = auto()
@@ -131,27 +129,25 @@ class Kind(IntEnum):
     @staticmethod
     def is_ground(value: int) -> bool:
         """
-        :return: Whether `value` represents one of the ground types: Number and String
+        :return: Whether `value` denotes one of the ground types: Number and String
         """
         return value >= Kind.NUMBER
 
     @staticmethod
-    def from_representable(representable: Optional[Representable]) -> Kind:
+    def from_denotable(denotable: Optional[Denotable]) -> Kind:
         """
-        :return: The Kind of the given representable Python data.
+        :return: The Kind of the given denotable Python data.
         """
-        if representable is None:
-            return Kind.NONE
-        elif isinstance(representable, Value):
-            return representable.get_kind()
-        elif isinstance(representable, str):
+        if isinstance(denotable, Value):
+            return denotable.get_kind()
+        elif isinstance(denotable, str):
             return Kind.STRING
-        elif isinstance(representable, float):
+        elif isinstance(denotable, float):
             return Kind.NUMBER
-        elif isinstance(representable, list):
+        elif isinstance(denotable, list):
             return Kind.LIST
         else:
-            assert isinstance(representable, (dict, tuple))
+            assert isinstance(denotable, (dict, tuple))
             return Kind.RECORD
 
 
@@ -159,29 +155,37 @@ class Kind(IntEnum):
 
 class Schema(tuple, Sequence[int]):
     """
-    A Schema describes how the representable of a Value instance is laid out in memory.
+    A Schema describes how the denotable of a Value instance is laid out in memory.
     It is a simple tuple of integers, each integer either identifying a ground Kind (Number or String) or a forward
     offset to a container Schema (List or Record).
     """
 
+    @classmethod
+    def from_slice(cls, base: Schema, start: int, end: int) -> Schema:
+        return super().__new__(Schema, base[start: end])
+
+    @classmethod
+    def explicit(cls, *args: Tuple[int, ...]) -> Schema:
+        return super().__new__(Schema, args)
+
     def __new__(cls, obj: Optional[Any] = None) -> Schema:
         """
-        Recursive, breadth-first assembly of a Schema for the given Representable.
-        :returns: Schema describing how a Value containing the given Representable would be laid out.
+        Recursive, breadth-first assembly of a Schema for the given Denotable.
+        :returns: Schema describing how a Value containing the given Denotable would be laid out.
         """
+        if obj is None:
+            # The empty Schema
+            return super().__new__(Schema)
+
         if isinstance(obj, Value):
             # Value Schemas can simply be copied
             obj.get_schema()
 
         schema: List[int] = []
-        representable: Representable = check_representable(obj, allow_empty_list=False)
-        kind: Kind = Kind.from_representable(representable)
+        denotable: Denotable = check_denotable(obj, allow_empty_list=False)
+        kind: Kind = Kind.from_denotable(denotable)
 
-        if kind == Kind.EMPTY:
-            # The Empty Schema is empty.
-            pass
-
-        elif kind == Kind.NUMBER:
+        if kind == Kind.NUMBER:
             # Numbers take up a single word in a Schema, the NUMBER Kind.
             schema.append(int(Kind.NUMBER))
 
@@ -198,9 +202,9 @@ class Schema(tuple, Sequence[int]):
             # || List Type || ChildType | ... ||
             # ||- header --||---- child ------||
             #
-            assert len(representable) > 0
+            assert len(denotable) > 0
             schema.append(int(Kind.LIST))
-            schema.extend(Schema(representable[0]))
+            schema.extend(Schema(denotable[0]))
 
         else:
             assert kind == Kind.RECORD
@@ -222,22 +226,22 @@ class Schema(tuple, Sequence[int]):
             #    In the special case where the Record contains only one non-ground child and it is the last child in the
             #    Record, we can remove the last entry in the body and move the single child up one word.
             # 3. Child Lists and Records in order of their appearance in the body.
-            assert len(representable) > 0
+            assert len(denotable) > 0
             schema.append(int(Kind.RECORD))
-            schema.append(len(representable))  # number of children
+            schema.append(len(denotable))  # number of children
             child_position = len(schema)
-            schema.extend([0] * len(representable))  # reserve space for the body
+            schema.extend([0] * len(denotable))  # reserve space for the body
 
-            if isinstance(representable, dict):
-                children: Iterable[Representable] = representable.values()
+            if isinstance(denotable, dict):
+                children: Iterable[Denotable] = denotable.values()
             else:
-                assert isinstance(representable, tuple)
-                children: Iterable[Representable] = representable
+                assert isinstance(denotable, tuple)
+                children: Iterable[Denotable] = denotable
 
             for child in children:
                 # only store the Kind for ground types
-                if Kind.is_ground(Kind.from_representable(child)):
-                    schema[child_position] = int(Kind.from_representable(child))
+                if Kind.is_ground(Kind.from_denotable(child)):
+                    schema[child_position] = int(Kind.from_denotable(child))
                 # lists and records store a forward offset and append themselves to the end of the schema
                 else:
                     offset = len(schema) - child_position
@@ -328,7 +332,7 @@ def get_subschema_end(schema: Schema, start_index: int) -> int:
 ########################################################################################################################
 
 Data = Union[
-    None,  # the empty value, immutable by design
+    None,  # denotes an empty list, immutable by design
     float,  # numbers are ground and immutable by design
     int,  # the size of a list is stored as an unsigned integer which are immutable by design
     str,  # strings are ground and immutable because of their Python implementation
@@ -346,7 +350,7 @@ def create_data_from_schema(schema: Schema) -> Data:
     :return: The Schema's default Data.
     """
     if schema.is_empty():
-        return None
+        raise ValueError("Cannot instantiate a Value from the empty Schema")
 
     def create_data(index: int = 0) -> Data:
         assert index < len(schema)
@@ -361,7 +365,7 @@ def create_data_from_schema(schema: Schema) -> Data:
 
         # list
         elif schema[index] == Kind.LIST:
-            return ConstList()
+            return None  # empty list
 
         # record
         assert schema[index] == Kind.RECORD
@@ -383,9 +387,36 @@ def create_data_from_schema(schema: Schema) -> Data:
     return create_data()
 
 
+def create_data_from_denotable(denotable: Denotable) -> Data:
+    if denotable is None:
+        return None
+
+    elif isinstance(denotable, Value):
+        return denotable._data
+
+    kind: Kind = Kind.from_denotable(denotable)
+
+    if Kind.is_ground(kind):
+        return denotable
+
+    elif kind == Kind.LIST:
+        list_size: int = len(denotable)
+        if list_size > 0:
+            return make_const_list((list_size, *(create_data_from_denotable(child) for child in denotable)))
+        else:
+            return None  # empty list
+
+    assert kind == Kind.RECORD
+    if isinstance(denotable, tuple):
+        return make_const_list(create_data_from_denotable(child) for child in denotable)
+
+    assert isinstance(denotable, dict)
+    return make_const_list(create_data_from_denotable(child) for child in denotable.values())
+
+
 ########################################################################################################################
 
-Dictionary = ConstMap[str, Optional['Dictionary']]
+Dictionary = ConstMap[str, Tuple[int, Optional['Dictionary']]]
 """
 A Dictionary can be attached to a Value to access Record entries by name.
 The Record keys are not part of the data as they are not mutable, much like a Schema.
@@ -394,60 +425,228 @@ compatible to {r=float, g=float, b=float}.
 """
 
 
-def create_dictionary(representable: Representable) -> Optional[Dictionary]:
+def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
     """
     Recursive, depth-first assembly of a Dictionary.
-    :param representable: Representable data to build the Dictionary from.
-    :return: The Dictionary corresponding to the given representable or None if it were empty.
+    :param denotable: Denotable data to build the Dictionary from.
+    :return: The Dictionary corresponding to the given denotable or None if it would be empty.
     """
 
-    def parse_next(next_representable: Representable) -> Optional[Dictionary]:
-        if next_representable is None:
+    def parse_next(next_denotable: Denotable) -> Optional[Dictionary]:
+        if next_denotable is None:
             return None
 
-        elif isinstance(next_representable, Value):
-            return next_representable.get_dictionary()
+        elif isinstance(next_denotable, Value):
+            return next_denotable._dictionary
 
-        kind: Kind = Kind.from_representable(next_representable)
+        kind: Kind = Kind.from_denotable(next_denotable)
 
         if Kind.is_ground(kind):
             return None
 
         elif kind == Kind.LIST:
-            return parse_next(next_representable[0])
+            return parse_next(next_denotable[0])
 
         else:
             assert kind == Kind.RECORD
-            return make_const_map({str(name): parse_next(child) for (name, child) in next_representable.items()})
+            return make_const_map({str(name): (index, parse_next(child))
+                                   for index, (name, child) in enumerate(next_denotable.items())})
 
-    return parse_next(representable)
+    return parse_next(denotable)
 
 
 ########################################################################################################################
 
 
 class Value:
-    def __init__(self):
+
+    def __init__(self, obj: Any = None):
         self._schema: Schema = Schema()
+        self._data: Data = None
         self._dictionary: Optional[Dictionary] = None
 
+        # default (empty) initialization
+        if obj is None:
+            return
+
+        # copy initialization
+        if isinstance(obj, Value):
+            self._schema = obj._schema
+            self._data = obj._data
+            self._dictionary = obj._dictionary
+
+        # initialization from Schema
+        elif isinstance(obj, Schema):
+            self._schema = obj
+            self._data = create_data_from_schema(self._schema)
+            self._dictionary = None
+
+        # value initialization
+        else:
+            denotable: Denotable = check_denotable(obj, allow_empty_list=False)
+            self._schema = Schema(denotable)
+            self._data = create_data_from_denotable(denotable)
+            self._dictionary = create_dictionary(denotable)
+
+        assert self._is_consistent()
+
+    @classmethod
+    def _create(cls, schema: Schema, data: Data, dictionary: Optional[Dictionary]) -> Value:
+        value: Value = Value()
+        value._schema = schema
+        value._data = data
+        value._dictionary = dictionary
+        assert value._is_consistent()
+        return value
+
     def get_schema(self) -> Schema:
+        """
+        The Schema of this Value.
+        """
         return self._schema
 
-    def get_dictionary(self) -> Optional[Dictionary]:
-        return self._dictionary
-
     def get_kind(self) -> Kind:
-        if self._schema.is_empty():
-            return Kind.EMPTY
-        else:
-            assert Kind.is_valid(self._schema[0])
-            return Kind(self._schema[0])
+        """
+        The Kind of this Value.
+        """
+        assert Kind.is_valid(self._schema[0])
+        return Kind(self._schema[0])
 
-    def get_keys(self) -> Optional[AbstractSet[str]]:
+    def get_keys(self) -> AbstractSet[str]:
+        """
+        Returns the known keys if this is a named record.
+        Otherwise returns an empty set.
+        """
         if self._dictionary:
             return self._dictionary.keys()
-        return None
+        else:
+            return set()
+
+    def __eq__(self, other: Any) -> bool:
+        """
+        Equality test.
+        """
+        return self._data == other._data and self._schema == other._schema
+
+    def __ne__(self, other) -> bool:
+        """
+        Inequality tests.
+        """
+        return not self.__eq__(other)
+
+    def __len__(self) -> int:
+        """
+        The number of child Elements if the current Element is a List or Map, or zero otherwise.
+        """
+        kind: Kind = self.get_kind()
+
+        if kind == Kind.LIST:
+            if self._data is None:
+                return 0
+            else:
+                list_size: int = self._data[0]
+                assert list_size == len(self._data) - 1  # -1 for the first integer that is the size of the list
+                return list_size
+
+        elif kind == Kind.RECORD:
+            assert self._data is not None
+            assert len(self._schema) > 1
+            return self._schema[1]
+
+        else:
+            return 0  # only lists and records
+
+    def _get_item_by_index(self, index: int) -> Value:
+        assert isinstance(self._data, ConstList)
+
+        # this method must only be called on list and record values
+        kind: Kind = self.get_kind()
+        assert kind == Kind.LIST or kind == Kind.RECORD
+
+        # support negative indices from the back
+        size: int = len(self._data)
+        if index < 0:
+            index = size - index
+        if kind == kind.RECORD:
+            assert size == self._schema[1]
+
+        # make sure that the index is valid
+        if not (0 <= index < size):
+            raise KeyError(f'Cannot get Element at index {size - index} from a '
+                           f'{"List" if kind == Kind.LIST else "Record"} of size {size}')
+
+        # lists store the child schema size at index one
+        if kind == Kind.LIST:
+            start: int = 1
+            end: int = get_subschema_end(self._schema, start)
+            schema: Schema = Schema.from_slice(self._schema, start, end)
+
+        # while records might require a lookup
+        else:
+            child_entry: int = self._schema[2 + index]
+            if Kind.is_ground(child_entry):
+                schema: Schema = Schema.explicit((child_entry,))
+            else:
+                start: int = 2 + index + child_entry
+                end: int = get_subschema_end(self._schema, start)
+                schema: Schema = Schema.from_slice(self._schema, start, end)
+
+        return Value._create(schema, self._data[index], self._dictionary)
+
+    def _get_item_by_name(self, name: str) -> Value:
+        """
+
+        :param name:
+        :return:
+        """
+        assert isinstance(self._data, ConstList)
+
+        if self._dictionary is None:
+            kind: Kind = self.get_kind()
+            if kind == Kind.RECORD:
+                raise KeyError(f'This Record Value has only unnamed entries, use an index to access them')
+            else:
+                raise KeyError(f'Cannot request children of a {kind.name.capitalize()} Value by name')
+        if name not in self._dictionary:
+            available_keys: str = '", "'.join(self._dictionary.keys())  # since this is a Record, there is at least one
+            raise KeyError(f'Unknown key "{name}" in Record. Available keys are: "{available_keys}"')
+
+        assert len(self._data) == self._schema[1]
+        index: int = self._dictionary[name][0]
+        assert 0 <= index < len(self._data)
+
+        child_entry: int = self._schema[2 + index]
+        if Kind.is_ground(child_entry):
+            schema: Schema = Schema.explicit((child_entry,))
+        else:
+            start: int = 2 + index + child_entry
+            end: int = get_subschema_end(self._schema, start)
+            schema: Schema = Schema.from_slice(self._schema, start, end)
+
+        return Value._create(schema, self._data[index], self._dictionary[name][1])
+
+    def __getitem__(self, key: Union[str, int]) -> Value:
+        kind: Kind = self.get_kind()
+
+        if kind == Kind.LIST:
+            if not isinstance(key, int):
+                raise KeyError(f'Lists must be accessed using an index, not {key}')
+            return self._get_item_by_index(key)
+
+        if kind == Kind.RECORD:
+            if isinstance(key, int):
+                return self._get_item_by_index(key)
+            elif isinstance(key, str):
+                return self._get_item_by_name(key)
+            else:
+                raise KeyError(f'Records must be accessed using an index or a string, not {key}')
+
+        else:
+            raise KeyError(f'Cannot use operator[] with a {kind.name.capitalize()} Value')
+
+    # noinspection PyMethodMayBeStatic
+    def _is_consistent(self) -> bool:
+        return True  # TODO: Value._is_consistent
 
 
 ########################################################################################################################
@@ -496,13 +695,15 @@ def main():
         "nested_list": None,
     }
 
-    test_representable = check_representable(test_object, allow_empty_list=False)
-    dictionary: Optional[Dictionary] = create_dictionary(test_representable)
-    print(raw_dictionary.keys() == set(dictionary.keys()))
-    # schema: Schema = Schema(test_object)
-    # print(schema)
-    # print(f'End index of element starting at 0: {get_subschema_end(schema, 0)}')
-    # print(create_dictionary({}))
+    test_denotable = check_denotable(test_object, allow_empty_list=False)
+    # dictionary: Optional[Dictionary] = create_dictionary(test_denotable)
+    # print(raw_dictionary.keys() == set(dictionary.keys()))
+    schema: Schema = Schema(test_denotable)
+    print(schema)
+    start = 15
+    end = get_subschema_end(schema, start)
+    print(f'End index of element starting at {start}: {end}')
+    print(Schema.from_slice(schema, start, end))
     pass
 
 
