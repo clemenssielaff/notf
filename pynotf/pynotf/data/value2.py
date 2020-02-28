@@ -4,8 +4,9 @@ import sys
 from enum import IntEnum, auto
 from typing import Union, List, Dict, Any, Sequence, Optional, Tuple, Iterable, AbstractSet
 
-from pyrsistent import pvector as make_const_list, pmap as make_const_map
-from pyrsistent.typing import PVector as ConstList, PMap as ConstMap
+from pyrsistent import pvector as make_const_list, PVector as ConstList, \
+    pmap as make_const_map, PMap as ConstMap, PRecord as ConstNamedTuple, field
+from pyrsistent.typing import PVector as ConstListT
 
 ########################################################################################################################
 
@@ -125,6 +126,13 @@ class Kind(IntEnum):
         :return: True iff `value` is a valid Kind enum value.
         """
         return value >= Kind.LIST
+
+    @staticmethod
+    def is_offset(value: int) -> bool:
+        """
+        :return: True iff `value` is not a valid Kind enum value but an offset in a Schema.
+        """
+        return not Kind.is_valid(value)
 
     @staticmethod
     def is_ground(value: int) -> bool:
@@ -296,6 +304,30 @@ class Schema(tuple, Sequence[int]):
         return result
 
 
+def get_subschema_start(schema: Schema, iterator: int, index: int) -> int:
+    """
+    Given a Schema, the position of an iterator within the Schema, pointing to the start of a Record subschema,
+    and the index of a child in the Record, returns the position of the child subschema.
+    :param schema: Schema containing the subschema.
+    :param iterator: Index in the Schema pointing to the parent Record subschema.
+    :param index: Index of the child subschema to find.
+    :return: Index in the Schema pointing to the child subschema.
+    """
+    assert iterator < len(schema)
+    assert Kind(schema[iterator]) == Kind.RECORD
+    child_location: int = iterator + 2 + index
+    child_entry: int = schema[child_location]
+
+    # the child Schema can either be in the body of the Record Schema if it is ground ...
+    if Kind.is_ground(child_entry):
+        return child_entry
+
+    # ... or require a lookup
+    else:
+        # mote that you can have a non-offset, non-ground child entry if the last child is the only one non-ground
+        return child_location + (child_entry if Kind.is_offset(child_entry) else 0)
+
+
 def get_subschema_end(schema: Schema, start_index: int) -> int:
     """
     For the start index of a Subschema in the given Schema, return the index one past the end.
@@ -322,8 +354,11 @@ def get_subschema_end(schema: Schema, start_index: int) -> int:
         # we need to find the end index of the last, non-ground child
         for child_index in (start_index + 2 + child for child in reversed(range(child_count))):
             assert child_index < len(schema)
-            if not Kind.is_valid(schema[child_index]):
-                return get_subschema_end(schema, child_index + schema[child_index])
+            if not Kind.is_ground(schema[child_index]):
+                if Kind.is_offset(schema[child_index]):
+                    return get_subschema_end(schema, child_index + schema[child_index])
+                else:
+                    return get_subschema_end(schema, child_index)
 
         # if all children are ground, the end index is one past the body
         return start_index + 2 + child_count
@@ -336,7 +371,7 @@ Data = Union[
     float,  # numbers are ground and immutable by design
     int,  # the size of a list is stored as an unsigned integer which are immutable by design
     str,  # strings are ground and immutable because of their Python implementation
-    ConstList['Data'],  # references to child Data are immutable through the use of ConstList
+    ConstListT['Data'],  # references to child Data are immutable through the use of ConstList
 ]
 """
 The immutable data stored inside a Value.
@@ -376,7 +411,7 @@ def create_data_from_schema(schema: Schema) -> Data:
         record_size: int = schema[index + 1]
         for child_index in (index + 2 + child for child in range(record_size)):
             assert child_index < len(schema)
-            if not not Kind.is_valid(schema[child_index]):
+            if Kind.is_offset(schema[child_index]):
                 child_index += schema[child_index]
                 assert child_index < len(schema)
             child_indices.append(child_index)
@@ -416,13 +451,17 @@ def create_data_from_denotable(denotable: Denotable) -> Data:
 
 ########################################################################################################################
 
-Dictionary = ConstMap[str, Tuple[int, Optional['Dictionary']]]
-"""
-A Dictionary can be attached to a Value to access Record entries by name.
-The Record keys are not part of the data as they are not mutable, much like a Schema.
-The Dictionary is also ignored when two Schemas are compared, meaning a Record {x=float, y=float, z=float} will be 
-compatible to {r=float, g=float, b=float}.
-"""
+class Dictionary(ConstNamedTuple):
+    """
+    A Dictionary can be attached to a Value to access Record entries by name.
+    The Record keys are not part of the data as they are not mutable, much like a Schema.
+    The Dictionary is also ignored when two Schemas are compared, meaning a Record {x=float, y=float, z=float} will be
+    compatible to {r=float, g=float, b=float}.
+    The child Dictionaries need to be addressable by name and index, therefore we have a map [str -> index] and a vector
+    that contain the actual child Dictionaries.
+    """
+    names = field(type=ConstMap, mandatory=True)
+    children = field(type=ConstList, mandatory=True)
 
 
 def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
@@ -449,8 +488,10 @@ def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
 
         else:
             assert kind == Kind.RECORD
-            return make_const_map({str(name): (index, parse_next(child))
-                                   for index, (name, child) in enumerate(next_denotable.items())})
+            return Dictionary(
+                names=make_const_map({str(name): index for (index, name) in enumerate(next_denotable.keys())}),
+                children=make_const_list([parse_next(child) for child in next_denotable.values()]),
+            )
 
     return parse_next(denotable)
 
@@ -518,7 +559,7 @@ class Value:
         Otherwise returns an empty set.
         """
         if self._dictionary:
-            return self._dictionary.keys()
+            return self._dictionary.names.keys()
         else:
             return set()
 
@@ -563,35 +604,48 @@ class Value:
         kind: Kind = self.get_kind()
         assert kind == Kind.LIST or kind == Kind.RECORD
 
-        # support negative indices from the back
+        # lists have one additional entry at the beginning where they store the size of the list
         size: int = len(self._data)
-        if index < 0:
-            index = size - index
-        if kind == kind.RECORD:
+        if kind == kind.LIST:
+            assert len(self._data) > 0  # at least the size of the list must be stored in it
+            size -= 1
+        else:
             assert size == self._schema[1]
+
+        # support negative indices from the back
+        if index < 0:
+            index = size + index
 
         # make sure that the index is valid
         if not (0 <= index < size):
             raise KeyError(f'Cannot get Element at index {size - index} from a '
                            f'{"List" if kind == Kind.LIST else "Record"} of size {size}')
 
-        # lists store the child schema size at index one
         if kind == Kind.LIST:
+            # the child Schema starts at index 1
             start: int = 1
             end: int = get_subschema_end(self._schema, start)
             schema: Schema = Schema.from_slice(self._schema, start, end)
 
-        # while records might require a lookup
-        else:
-            child_entry: int = self._schema[2 + index]
-            if Kind.is_ground(child_entry):
-                schema: Schema = Schema.explicit((child_entry,))
-            else:
-                start: int = 2 + index + child_entry
-                end: int = get_subschema_end(self._schema, start)
-                schema: Schema = Schema.from_slice(self._schema, start, end)
+            # children in list data start at index 1
+            assert len(self._data) > index + 1
+            data: Data = self._data[index + 1]
 
-        return Value._create(schema, self._data[index], self._dictionary)
+            # since this is not a record, we do not have to change the dictionary
+            dictionary: Optional[Dictionary] = self._dictionary
+
+        else:
+            start_index: int = get_subschema_start(self._schema, 0, index)
+            end_index: int = get_subschema_end(self._schema, start_index)
+            schema: Schema = Schema.from_slice(self._schema, start_index, end_index)
+
+            # children in record data start at index 0
+            data: Data = self._data[index]
+
+            # since this is a record, we need to advance to the child's dictionary
+            dictionary: Dictionary = self._dictionary.children[index]
+
+        return Value._create(schema, data, dictionary)
 
     def _get_item_by_name(self, name: str) -> Value:
         """
@@ -607,23 +661,19 @@ class Value:
                 raise KeyError(f'This Record Value has only unnamed entries, use an index to access them')
             else:
                 raise KeyError(f'Cannot request children of a {kind.name.capitalize()} Value by name')
-        if name not in self._dictionary:
-            available_keys: str = '", "'.join(self._dictionary.keys())  # since this is a Record, there is at least one
+        if name not in self._dictionary.names:
+            available_keys: str = '", "'.join(self._dictionary.names.keys())  # this is a Record, there is at least one
             raise KeyError(f'Unknown key "{name}" in Record. Available keys are: "{available_keys}"')
 
         assert len(self._data) == self._schema[1]
-        index: int = self._dictionary[name][0]
+        index: int = self._dictionary.names[name]
         assert 0 <= index < len(self._data)
 
-        child_entry: int = self._schema[2 + index]
-        if Kind.is_ground(child_entry):
-            schema: Schema = Schema.explicit((child_entry,))
-        else:
-            start: int = 2 + index + child_entry
-            end: int = get_subschema_end(self._schema, start)
-            schema: Schema = Schema.from_slice(self._schema, start, end)
+        start_index: int = get_subschema_start(self._schema, 0, index)
+        end_index: int = get_subschema_end(self._schema, start_index)
+        schema: Schema = Schema.from_slice(self._schema, start_index, end_index)
 
-        return Value._create(schema, self._data[index], self._dictionary[name][1])
+        return Value._create(schema, self._data[index], self._dictionary.children[index])
 
     def __getitem__(self, key: Union[str, int]) -> Value:
         kind: Kind = self.get_kind()
@@ -647,6 +697,79 @@ class Value:
     # noinspection PyMethodMayBeStatic
     def _is_consistent(self) -> bool:
         return True  # TODO: Value._is_consistent
+
+
+########################################################################################################################
+
+def set_value(value: Value, path: Tuple[Union[int, str], ...], target: Any) -> Value:
+    denotable: Denotable = check_denotable(target, allow_empty_list=True)
+    target_schema: Schema = None if denotable is None else Schema(denotable)
+    assert target_schema is None or len(target_schema) > 0
+
+    def recursion(_data: Data, _schema_itr: int, _dict_itr: Optional[Dictionary],
+                  _path: Tuple[Union[int, str], ...]) -> Data:
+        assert _schema_itr < len(value._schema)
+        kind: Kind = Kind(value._schema[_schema_itr])
+        assert Kind.is_valid(kind)
+
+        # last step
+        if len(_path) == 0:
+            is_target_valid: bool = True
+            if target_schema is None and kind != Kind.LIST:
+                is_target_valid = False
+            elif target_schema[0] != kind:
+                is_target_valid = False
+            if not is_target_valid:
+                raise ValueError(f'Cannot set a Value of kind {kind.name.capitalize()} to {target}')
+            return create_data_from_denotable(denotable)
+
+        # cannot continue recursion past a ground value
+        if Kind.is_ground(kind):
+            raise IndexError(f'Unsupported operator[] for Value of kind {kind.name.capitalize()}')
+        assert kind in (Kind.LIST, Kind.RECORD)
+
+        # pop the index of the next child from the path
+        index: Union[int, str] = _path[0]
+        if isinstance(index, str):
+            if _dict_itr is None or index not in _dict_itr.names:
+                available_keys: str = '", "'.join(_dict_itr.names.keys())
+                raise KeyError(f'Unknown key "{index}" in Record. Available keys are: "{available_keys}"')
+            index = _dict_itr.names[index]
+
+        else:
+            assert isinstance(index, int)
+
+            # support negative indices from the back
+            if index < 0:
+                size: int = len(_data)
+                if kind == kind.LIST:
+                    assert len(_data) > 0  # at least the size of the list must be stored in it
+                    size -= 1
+                else:
+                    assert _schema_itr + 1 < len(value._schema)
+                    assert size == value._schema[_schema_itr + 1]
+                index = size + index
+
+            # list indices start at 1
+            if kind == kind.LIST:
+                index += 1
+
+        assert isinstance(index, int) and (0 <= index < len(_data))
+
+        # advance the schema iterator
+        if kind == Kind.LIST:
+            _schema_itr += 1
+        else:
+            _schema_itr = get_subschema_start(value._schema, _schema_itr, index)
+
+        # advance the dictionary iterator
+        if kind == Kind.RECORD:
+            _dict_itr = _dict_itr.children[index]
+
+        # continue the recursion
+        return _data.set(index, recursion(_data[index], _schema_itr, _dict_itr, _path[1:]))
+
+    return Value._create(value._schema, recursion(value._data, 0, value._dictionary, path), value._dictionary)
 
 
 ########################################################################################################################
@@ -695,16 +818,24 @@ def main():
         "nested_list": None,
     }
 
-    test_denotable = check_denotable(test_object, allow_empty_list=False)
+    # test_denotable = check_denotable(test_object, allow_empty_list=False)
+
     # dictionary: Optional[Dictionary] = create_dictionary(test_denotable)
-    # print(raw_dictionary.keys() == set(dictionary.keys()))
-    schema: Schema = Schema(test_denotable)
-    print(schema)
-    start = 15
-    end = get_subschema_end(schema, start)
-    print(f'End index of element starting at {start}: {end}')
-    print(Schema.from_slice(schema, start, end))
-    pass
+    # print(dictionary)
+    # print(raw_dictionary.keys() == set(dictionary.names.keys()))
+
+    # schema: Schema = Schema(test_denotable)
+    # print(schema)
+    # start = 15
+    # end = get_subschema_end(schema, start)
+    # print(f'End index of element starting at {start}: {end}')
+    # print(Schema.from_slice(schema, start, end))
+
+    test_value: Value = Value(test_object)
+    print(test_value[0][-1]["number_list"][1]._data)
+
+    test_value2: Value = set_value(test_value, (0, -1, "number_list", 1), 72)
+    print(test_value2["coords"][-1]["number_list"][1]._data)
 
 
 if __name__ == '__main__':
