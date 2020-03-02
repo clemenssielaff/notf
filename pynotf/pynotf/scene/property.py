@@ -75,7 +75,7 @@ class Property(Receiver, Emitter):  # final
                         new_data = Value(new_data)
                     except ValueError:
                         success = False
-                if success and new_data.schema != self._data.schema:
+                if success and new_data.get_schema() != self._data.get_schema():
                     success = False
                 if not success:
                     raise TypeError("Property.Callbacks must return the data or None as the second return value")
@@ -105,10 +105,10 @@ class Property(Receiver, Emitter):  # final
         :param operation: Operations applied to every new Value of this Property, can be a noop.
         """
         # various asserts, all of this should be guaranteed by the Widget.Definition
-        assert not value.schema.is_empty()
+        assert not value.get_schema().is_empty()
 
-        Receiver.__init__(self, value.schema)
-        Emitter.__init__(self, value.schema)
+        Receiver.__init__(self, value.get_schema())
+        Emitter.__init__(self, value.get_schema())
 
         self._circuit: Circuit = circuit  # is constant
         self._element_id: Circuit.Element.ID = element_id  # is constant
@@ -160,7 +160,7 @@ class Property(Receiver, Emitter):  # final
                 raise TypeError(str(exception)) from exception
         assert isinstance(value, Value)
 
-        if value.schema != self._value.schema:
+        if value.get_schema() != self._value.schema:
             raise TypeError("Cannot change the type of a Property")
 
         # since the Operation contains user-defined code, this might throw

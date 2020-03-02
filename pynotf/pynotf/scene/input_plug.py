@@ -68,7 +68,7 @@ class InputPlug(Receiver):
         or blocked it prior to failure.
         :param signal   The ValueSignal associated with this call.
         """
-        assert signal.get_value().schema == self.get_input_schema()
+        assert signal.get_value().get_schema() == self.get_input_schema()
 
         # don't do anything if no Callback is registered
         if self._callback is None:

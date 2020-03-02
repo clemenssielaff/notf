@@ -7,12 +7,12 @@ from pynotf.data import Value
 
 T = TypeVar('T')
 
-number_schema: Value.Schema = Value(0).schema
+number_schema: Value.Schema = Value(0).get_schema()
 """
 Schema consisting of a single number.
 """
 
-string_schema: Value.Schema = Value("").schema
+string_schema: Value.Schema = Value("").get_schema()
 """
 Schema consisting of a single string.
 """

@@ -7,7 +7,7 @@ from random import randint as random_int
 from weakref import ref as weak_ref
 
 from pynotf.logic import Receiver, Emitter, Circuit, FailureSignal, CompletionSignal, ValueSignal, Operator
-from pynotf.data import Value
+from pynotf.data import Value, set_value
 
 from tests.utils import number_schema, string_schema, Recorder, random_schema, create_emitter, create_receiver, \
     create_operator, random_shuffle, create_operation, make_handle
@@ -175,7 +175,7 @@ class SimpleTestCase(BaseTestCase):
         self.assertEqual(self._handle_events(), 1)
         self.assertEqual(len(recorder.signals), 1)
         self.assertEqual(len(recorder.get_values()), 1)
-        self.assertEqual(recorder.get_values()[0].as_number(), 74)
+        self.assertEqual(float(recorder.get_values()[0]), 74)
 
         # when we delete the bottom receiver, the whole chain is destroyed
         del recorder
@@ -266,7 +266,7 @@ class SimpleTestCase(BaseTestCase):
         self.assertEqual(self._handle_events(), 1)
         self.assertEqual(len(recorder1.signals), 1)
         self.assertEqual(len(recorder2.signals), 2)
-        self.assertEqual([value.as_number() for value in recorder2.get_values()], [0, 1])
+        self.assertEqual([float(value) for value in recorder2.get_values()], [0, 1])
 
         # disconnect recorder 2
         recorder2.disconnect_from(operator)
@@ -310,7 +310,7 @@ class SimpleTestCase(BaseTestCase):
         # just to make sure, emit a single value and see how many end up at the receiver
         self.circuit.emit_value(emitter, 46)
         self.assertEqual(self._handle_events(), 1)
-        self.assertEqual([value.as_number() for value in recorder.get_values()], [46])
+        self.assertEqual([float(value) for value in recorder.get_values()], [46])
 
     def test_connect_disconnect_in_same_event(self):
         """
@@ -335,7 +335,7 @@ class SimpleTestCase(BaseTestCase):
         self.assertEqual(self._apply_topology_changes(), 3)
         self.circuit.emit_value(emitter, 83)
         self.assertEqual(self._handle_events(), 1)
-        self.assertEqual([value.as_number() for value in recorder.get_values()], [83])
+        self.assertEqual([float(value) for value in recorder.get_values()], [83])
 
         # disconnect - connect - disconnect => disconnected
         recorder.disconnect_from(make_handle(emitter))
@@ -344,7 +344,7 @@ class SimpleTestCase(BaseTestCase):
         self.assertEqual(self._apply_topology_changes(), 3)
         self.circuit.emit_value(emitter, 49)
         self.assertEqual(self._handle_events(), 1)
-        self.assertEqual([value.as_number() for value in recorder.get_values()], [83])  # unchanged
+        self.assertEqual([float(value) for value in recorder.get_values()], [83])  # unchanged
 
     def test_disconnect_from_unconnected(self):
         """
@@ -393,7 +393,7 @@ class SimpleTestCase(BaseTestCase):
         self.assertEqual(self._handle_events(), 5)
 
         # make sure all signals were received and we know where they come from
-        self.assertEqual([value.as_number() for value in recorder.get_values()], [0, 1, 2, 3, 4])
+        self.assertEqual([float(value) for value in recorder.get_values()], [0, 1, 2, 3, 4])
         e1: int = emitter1.get_id()
         e2: int = emitter2.get_id()
         self.assertEqual([signal.get_source() for signal in recorder.signals if isinstance(signal, ValueSignal)],
@@ -522,8 +522,7 @@ class SimpleTestCase(BaseTestCase):
         # set up the Circuit
         emitter: Emitter = self.create_emitter(number_schema)
         operator: Operator = create_operator(self.circuit, number_schema,
-                                             lambda value: value.modified().set(value.as_number() * 2)
-                                             )
+                                             lambda value: set_value(value, float(value) * 2))
         operator.connect_to(make_handle(emitter))
         recorder: Recorder = Recorder.record(operator)
         self.assertEqual(self._apply_topology_changes(), 2)
@@ -534,7 +533,7 @@ class SimpleTestCase(BaseTestCase):
         self.assertEqual(self._handle_events(), 4)
 
         # check that the operator did what it promised
-        self.assertEqual([v.as_number() for v in recorder.get_values()], [0, 2, 4, 6])
+        self.assertEqual([float(v) for v in recorder.get_values()], [0, 2, 4, 6])
 
     def test_conversion_operator(self):
         """
@@ -543,7 +542,7 @@ class SimpleTestCase(BaseTestCase):
         # set up the Circuit
         emitter: Emitter = self.create_emitter(number_schema)
         operator: Operator = create_operator(self.circuit, number_schema,
-                                             lambda value: Value(str(value.as_number())),
+                                             lambda value: Value(str(float(value))),
                                              output_schema=string_schema)
         operator.connect_to(make_handle(emitter))
         recorder: Recorder = Recorder.record(operator)
@@ -555,7 +554,7 @@ class SimpleTestCase(BaseTestCase):
         self.assertEqual(self._handle_events(), 4)
 
         # check that the operator did what it promised
-        self.assertEqual([v.as_string() for v in recorder.get_values()], ["0.0", "1.0", "2.0", "3.0"])
+        self.assertEqual([str(v) for v in recorder.get_values()], ["0.0", "1.0", "2.0", "3.0"])
 
     def test_stateful_operator(self):
         """
@@ -575,13 +574,13 @@ class SimpleTestCase(BaseTestCase):
                 return number_schema
 
             def get_output_schema(self) -> Value.Schema:
-                return self._output_prototype.schema
+                return self._output_prototype.get_schema()
 
             def __call__(self, value: Value) -> Optional[Value]:
                 if self._last_value is None:
-                    self._last_value = value.as_number()
+                    self._last_value = float(value)
                 else:
-                    result = self._output_prototype.modified().set({"x": self._last_value, "y": value.as_number()})
+                    result = set_value(self._output_prototype, {"x": self._last_value, "y": float(value)})
                     self._last_value = None
                     return result
 
@@ -612,7 +611,7 @@ class SimpleTestCase(BaseTestCase):
             """
 
             def anonymous_func(value: Value) -> Value:
-                if value.as_number() == trigger:
+                if float(value) == trigger:
                     raise RuntimeError()
                 return value
 
@@ -632,7 +631,7 @@ class SimpleTestCase(BaseTestCase):
 
         # even though we handled 10 events, the operator failed while handling input 4
         self.assertEqual([signal.get_source() for signal in recorder.get_failures()], [operator.get_id()])
-        self.assertEqual([value.as_number() for value in recorder.get_values()], [0, 1, 2, 3])
+        self.assertEqual([float(value) for value in recorder.get_values()], [0, 1, 2, 3])
 
     def test_create_connect_bad_operator(self):
         """
@@ -712,13 +711,13 @@ class SimpleTestCase(BaseTestCase):
         self.circuit.emit_value(emitter, Value(98))
         self.assertEqual(self._handle_events(), 1)
         self.assertEqual(len(recorder.signals), 1)
-        self.assertEqual(recorder.signals[0].get_value().as_number(), 98)
+        self.assertEqual(float(recorder.signals[0].get_value()), 98)
 
         # emitting anything that can be casted to the right value type works as well
         self.circuit.emit_value(emitter, Value(9436))
         self.assertEqual(self._handle_events(), 1)
         self.assertEqual(len(recorder.signals), 2)
-        self.assertEqual(recorder.signals[1].get_value().as_number(), 9436)
+        self.assertEqual(float(recorder.signals[1].get_value()), 9436)
 
         # emitting wrong value types will throw an exception right away
         with self.assertRaises(TypeError):
@@ -774,7 +773,7 @@ class SimpleTestCase(BaseTestCase):
         self.assertEqual(self._handle_events(), 1)
         for rec in (rec1, rec2, rec3, rec4, rec5):
             self.assertEqual(len(rec.signals), 1)
-            self.assertEqual(rec.get_values()[0].as_number(), 23)
+            self.assertEqual(float(rec.get_values()[0]), 23)
         del rec
 
         del rec1  # delete first
@@ -958,7 +957,7 @@ class SimpleTestCase(BaseTestCase):
 
             def _on_value(self, signal: ValueSignal):
                 value: Value = signal.get_value()
-                assert value.schema == self.get_input_schema()
+                assert value.get_schema() == self.get_input_schema()
                 source: int = signal.get_source()
                 if source in self._storage:
                     self._storage[source].append(value)
@@ -980,7 +979,7 @@ class SimpleTestCase(BaseTestCase):
         b: Emitter = self.create_emitter(number_schema)
         c: Emitter = self.create_emitter(number_schema)
         sorter: Sorter = self.circuit.create_element(Sorter, number_schema)
-        recorder: Recorder = self.create_recorder(Value([0]).schema)
+        recorder: Recorder = self.create_recorder(Value([0]).get_schema())
         recorder.connect_to(make_handle(sorter))
         sorter.connect_to(make_handle(b))
         sorter.connect_to(make_handle(c))
@@ -1168,8 +1167,8 @@ class EmitterRecorderCircuit(BaseTestCase):
         self.assertEqual(self._handle_events(), len(numbers))
 
         # make sure that all values were received in order
-        self.assertEqual([value.as_number() for value in self.recorder1.get_values()], numbers)
-        self.assertEqual([value.as_number() for value in self.recorder2.get_values()], numbers)
+        self.assertEqual([float(value) for value in self.recorder1.get_values()], numbers)
+        self.assertEqual([float(value) for value in self.recorder2.get_values()], numbers)
 
     def test_emitter_failure(self):
         """
@@ -1183,7 +1182,7 @@ class EmitterRecorderCircuit(BaseTestCase):
 
         # make sure that all values were received in order
         received_values: List[Value] = self.recorder1.get_values()
-        self.assertEqual([value.as_number() for value in received_values], [0, 1, 2])
+        self.assertEqual([float(value) for value in received_values], [0, 1, 2])
         self.assertEqual(received_values, self.recorder2.get_values())
 
         # make sure that the receivers have not received an error yet
@@ -1227,7 +1226,7 @@ class EmitterRecorderCircuit(BaseTestCase):
 
         # make sure that all values were received in order
         received_values: List[Value] = self.recorder1.get_values()
-        self.assertEqual([value.as_number() for value in received_values], [0, 1, 2])
+        self.assertEqual([float(value) for value in received_values], [0, 1, 2])
         self.assertEqual(received_values, self.recorder2.get_values())
 
         # make sure that the receiver has not received an completions yet
@@ -1271,8 +1270,8 @@ class EmitterRecorderCircuit(BaseTestCase):
         self.assertEqual(self._handle_events(), 1)
 
         # make sure that the value was received by all
-        self.assertEqual([value.as_number() for value in self.recorder1.get_values()], [0])
-        self.assertEqual([value.as_number() for value in self.recorder2.get_values()], [0])
+        self.assertEqual([float(value) for value in self.recorder1.get_values()], [0])
+        self.assertEqual([float(value) for value in self.recorder2.get_values()], [0])
 
         # disconnect a single receiver
         self.recorder2.disconnect_from(make_handle(self.emitter))
@@ -1281,8 +1280,8 @@ class EmitterRecorderCircuit(BaseTestCase):
         self.assertEqual(self._handle_events(), 1)
 
         # make sure that only one receiver got the value
-        self.assertEqual([value.as_number() for value in self.recorder1.get_values()], [0, 1])
-        self.assertEqual([value.as_number() for value in self.recorder2.get_values()], [0])
+        self.assertEqual([float(value) for value in self.recorder1.get_values()], [0, 1])
+        self.assertEqual([float(value) for value in self.recorder2.get_values()], [0])
 
         # disconnect the other receiver
         self.recorder1.disconnect_from(make_handle(self.emitter))
@@ -1291,8 +1290,8 @@ class EmitterRecorderCircuit(BaseTestCase):
         self.assertEqual(self._handle_events(), 1)
 
         # this time, nobody should have gotten the value
-        self.assertEqual([value.as_number() for value in self.recorder1.get_values()], [0, 1])
-        self.assertEqual([value.as_number() for value in self.recorder2.get_values()], [0])
+        self.assertEqual([float(value) for value in self.recorder1.get_values()], [0, 1])
+        self.assertEqual([float(value) for value in self.recorder2.get_values()], [0])
 
 
 class NamedEmitterCircuit(BaseTestCase):
@@ -1399,16 +1398,16 @@ class OrderedEmissionTestCase(BaseTestCase):
 
             def __call__(self, value: Value) -> Optional[Value]:
                 if self.first is None:
-                    self.first = value.as_number()
+                    self.first = float(value)
                 else:
-                    result: float = self.first - value.as_number()
+                    result: float = self.first - float(value)
                     self.first = None
                     return Value(result)
 
         # create the Circuit
         self.a: Emitter = self.create_emitter(number_schema)
-        self.b: Operator = create_operator(self.circuit, number_schema, lambda value: Value(value.as_number() + 2))
-        self.c: Operator = create_operator(self.circuit, number_schema, lambda value: Value(value.as_number() + 3))
+        self.b: Operator = create_operator(self.circuit, number_schema, lambda value: Value(float(value) + 2))
+        self.c: Operator = create_operator(self.circuit, number_schema, lambda value: Value(float(value) + 3))
         self.d: Operator = self.circuit.create_element(Operator, NodeDOp())
         self.recorder: Recorder = self.create_recorder(number_schema)
 
@@ -1432,7 +1431,7 @@ class OrderedEmissionTestCase(BaseTestCase):
 
         recorded_values: List[Value] = self.recorder.get_values()
         self.assertEqual(len(recorded_values), 1)
-        self.assertEqual(recorded_values[0].as_number(), -1)
+        self.assertEqual(float(recorded_values[0]), -1)
 
     def test_c_then_b(self):
         """
@@ -1454,7 +1453,7 @@ class OrderedEmissionTestCase(BaseTestCase):
 
         recorded_values: List[Value] = self.recorder.get_values()
         self.assertEqual(len(recorded_values), 1)
-        self.assertEqual(recorded_values[0].as_number(), 1)
+        self.assertEqual(float(recorded_values[0]), 1)
 
 
 class SignalStatusTestCase(BaseTestCase):
@@ -1538,12 +1537,12 @@ class SignalStatusTestCase(BaseTestCase):
             self.circuit.emit_value(distributor, x)
         self.assertEqual(self._handle_events(), 4)
 
-        self.assertEqual([value.as_number() for value in ignore1.get_values()], [1, 2, 3, 4])
-        self.assertEqual([value.as_number() for value in accept1.get_values()], [1, 2, 3, 4])
-        self.assertEqual([value.as_number() for value in ignore2.get_values()], [])
-        self.assertEqual([value.as_number() for value in accept2.get_values()], [1, 2, 3, 4])
-        self.assertEqual([value.as_number() for value in block1.get_values()], [1, 2, 3, 4])
-        self.assertEqual([value.as_number() for value in block2.get_values()], [])
+        self.assertEqual([float(value) for value in ignore1.get_values()], [1, 2, 3, 4])
+        self.assertEqual([float(value) for value in accept1.get_values()], [1, 2, 3, 4])
+        self.assertEqual([float(value) for value in ignore2.get_values()], [])
+        self.assertEqual([float(value) for value in accept2.get_values()], [1, 2, 3, 4])
+        self.assertEqual([float(value) for value in block1.get_values()], [1, 2, 3, 4])
+        self.assertEqual([float(value) for value in block2.get_values()], [])
 
     def test_unblockable_signal(self):
         distributor: Emitter = self.create_emitter(number_schema)  # default, unblockable signal
@@ -1565,10 +1564,10 @@ class SignalStatusTestCase(BaseTestCase):
         self.assertEqual(self._handle_events(), 4)
 
         # everybody got all the values since unblockable means the signal cannot be stopped
-        self.assertEqual([value.as_number() for value in ignorer.get_values()], [1, 2, 3, 4])
-        self.assertEqual([value.as_number() for value in accepter.get_values()], [1, 2, 3, 4])
-        self.assertEqual([value.as_number() for value in blocker.get_values()], [1, 2, 3, 4])
-        self.assertEqual([value.as_number() for value in recorder.get_values()], [1, 2, 3, 4])
+        self.assertEqual([float(value) for value in ignorer.get_values()], [1, 2, 3, 4])
+        self.assertEqual([float(value) for value in accepter.get_values()], [1, 2, 3, 4])
+        self.assertEqual([float(value) for value in blocker.get_values()], [1, 2, 3, 4])
+        self.assertEqual([float(value) for value in recorder.get_values()], [1, 2, 3, 4])
 
 
 if __name__ == '__main__':

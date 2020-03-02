@@ -121,7 +121,7 @@ class Operator(Receiver, Emitter):  # final
         :param signal   The ValueSignal associated with this call.
         """
         value: Value = signal.get_value()
-        assert value.schema == self.get_input_schema()
+        assert value.get_schema() == self.get_input_schema()
 
         # invoke the operation to produce a result or an error
         error: Optional[Exception] = None
@@ -134,7 +134,7 @@ class Operator(Receiver, Emitter):  # final
             # if no error occurred, but no result was produced either, there's nothing left to do
             if result is None:
                 return
-            elif result.schema != self.get_output_schema():
+            elif result.get_schema() != self.get_output_schema():
                 error = TypeError("Return Value of Operation does not conform to the Operator's output Schema")
 
         # if any error occurred, the Operator will complete through failure

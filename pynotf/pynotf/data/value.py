@@ -1,199 +1,289 @@
+from __future__ import annotations
+
 import sys
 from enum import IntEnum, auto
-from copy import copy
-from itertools import chain
-from typing import NewType, List, Dict, Union, Optional, Sequence, Any
+from typing import Union, List, Dict, Any, Sequence, Optional, Tuple, Iterable, AbstractSet, Callable
+from math import trunc, ceil, floor, pow
+from operator import floordiv, mod, truediv
 
-Element = NewType('Element', Union[float, str, List["Element"], Dict[str, "Element"]])
+from pyrsistent import pvector as make_const_list, PVector as ConstList, \
+    pmap as make_const_map, PMap as ConstMap, PRecord as ConstNamedTuple, field
+from pyrsistent.typing import PVector as ConstListT
+
+########################################################################################################################
+
+Denotable = Union[
+    None,  # the only data held by a None Value, cannot be nested
+    float,  # numbers are always stored as floats
+    str,  # strings are UTF-8 encoded strings
+    List['Denotable'],  # list contain an unknown number of denotable data, all of the same Schema
+    Union[Tuple['Denotable', ...], Dict[str, 'Denotable']],  # records contain a named or unnamed tuple
+    'Value',  # Values can be used to define other Values
+]
 """
-The `Element` kind is a variant of the four data kinds that can be stored in a Value.
-It defines a single Element including all of its child Elements (if the parent Element is a List or a Map)
+Python data that conforms to the restrictions imposed by the Value type.
+The only way to get a `Denotable` object is to pass "raw" Python data to `check_denotable`. If the input data is
+malformed in any way, this function will raise an exception.
 """
 
 
-def check_element(raw: Any, allow_empty_lists: bool) -> Element:
+def check_number(obj: Any) -> Optional[float]:
+    converter: Optional[Callable[[Any], float]] = getattr(obj, "__float__", None)
+    if converter is None:
+        return None
+    else:
+        return float(converter())
+
+
+def check_denotable(obj: Any, allow_empty_list: bool, is_root: bool = True) -> Denotable:
     """
-    Tries to convert any given "raw" value into an Element.
-    :param raw: Raw value to convert.
-    :param allow_empty_lists: Empty lists are allowed when modifying a Value, but not during construction.
-    :return: The given raw value as an Element.
-    :raise ValueError: If the raw value cannot be represented as an Element.
+    Tries to convert any given Python object into a Denotable.
+    Denotable are still pure Python objects, but they are known to be capable of being stored in a Value.
+    :param obj: Object to convert.
+    :param allow_empty_list: Empty lists are allowed when modifying a Value, but not during construction.
+    :param is_root: `None` is only allowed as the first and only data in a Value.
+    :return: The given obj as Denotable.
+    :raise ValueError: If the object cannot be denoted by a Value.
     """
-    if isinstance(raw, (str, float)):
-        # native Element types
-        return raw
+    # already a Value
+    if isinstance(obj, Value):
+        return obj
 
-    elif isinstance(raw, int):
-        # types trivially convertible to a Element kind
-        return float(raw)
+    # ground
+    elif isinstance(obj, (str, float)):
+        return obj
 
-    elif isinstance(raw, list):
-        # lists
-        elements: List[Element] = [check_element(x, allow_empty_lists) for x in raw]
+    # trivially convertible
+    elif isinstance(obj, (int,)):
+        return float(obj)
 
-        if len(elements) > 0:
-            reference_element: Element = elements[0]
-            reference_schema: Schema = Schema(reference_element)
-            for i in range(1, len(elements)):
-                if Schema(elements[i]) != reference_schema:
-                    raise ValueError("List entries must all have the same schema")
+    # none
+    elif obj is None:
+        if is_root:
+            return None
+        else:
+            raise ValueError("If present, None must be the only data in a Value")
 
-            if Kind.from_element(reference_element) == Kind.MAP:
-                for i in range(1, len(elements)):
-                    if elements[i].keys() != reference_element.keys():
-                        raise ValueError("Map entries in a List must all have the same keys")
-        elif not allow_empty_lists:
-            raise ValueError("Lists cannot be empty when creating a Value")
+    # list
+    elif isinstance(obj, list):
+        denotable: List[Denotable] = [check_denotable(x, allow_empty_list, is_root=False) for x in obj]
 
-        return elements
+        if len(denotable) == 0:
+            if allow_empty_list:
+                return []
+            else:
+                raise ValueError("Lists cannot be empty during Value definition")
 
-    elif isinstance(raw, dict):
-        # map
-        if len(raw) == 0:
-            raise ValueError("Maps cannot be empty")
+        reference_denotable: Denotable = denotable[0]
+        reference_schema: Schema = Schema(reference_denotable)
+        for i in range(1, len(denotable)):
+            if Schema(denotable[i]) != reference_schema:
+                raise ValueError("All items in a Value.List must have the same Schema")
 
-        elements: Dict[str, Element] = {}
-        for key, element in raw.items():
+        if Kind.from_denotable(reference_denotable) == Kind.RECORD:
+            def get_keys(rep: Denotable) -> Optional[AbstractSet[str]]:
+                if isinstance(rep, dict):
+                    return rep.keys()
+                elif isinstance(rep, tuple):
+                    return None
+                else:
+                    assert isinstance(rep, Value)
+                    result: Optional[AbstractSet[str]] = rep.get_keys()
+                    if result is not None:
+                        result = set(result)  # to allow == comparison with dict.keys()
+                    return result
+
+            reference_keys: Optional[AbstractSet[str]] = get_keys(reference_denotable)
+            for i in range(1, len(denotable)):
+                keys: Optional[AbstractSet[str]] = get_keys(denotable[i])
+                if keys != reference_keys:
+                    raise ValueError("All Records in a Value.List must have the same Dictionary")
+
+        return denotable
+
+    # named record
+    elif isinstance(obj, dict):
+        if len(obj) == 0:
+            raise ValueError("Records cannot be empty")
+
+        denotable: Dict[str, Denotable] = {}
+        for key, value in obj.items():
             if not isinstance(key, str):
-                raise ValueError("All keys of a Map must be of kind string")
-            elements[key] = check_element(element, allow_empty_lists)
-        return elements
+                raise ValueError("All keys of a Record must be of Value.Kind String")
+            denotable[key] = check_denotable(value, allow_empty_list, is_root=False)
+        return denotable
 
-    raise ValueError("Cannot construct a Value.Element from a {}".format(type(raw).__name__))
-    # TODO: Cannot construct a Value.Element from a Value
+    # unnamed record
+    elif isinstance(obj, tuple):
+        if len(obj) == 0:
+            raise ValueError("Records cannot be empty")
 
+        return tuple(check_denotable(value, allow_empty_list, is_root=False) for value in obj)
+
+    # incompatible type
+    raise ValueError("Cannot construct Denotable from a {}".format(type(obj).__name__))
+
+
+########################################################################################################################
 
 class Kind(IntEnum):
     """
-    Enumeration of the four Element kinds and None.
-    To differentiate between integers in a Schema that represent forward offsets (see Schema) and enum values that
-    denote the Kind of an Element, we only use the highest representable integers for the enum.
-    The NONE kind never mentioned as part of a Schema, it is only returned if the Schema is empty.
+    Enumeration of the five denotable Value Kinds.
+    To differentiate between integers in a Value.Schema that represent forward offsets (see Schema), and enum values
+    that denote the Kind of an Element, we only use the highest denotable integers for the enum.
     """
     NONE = 0
     LIST = sys.maxsize - 3
-    MAP = auto()
+    RECORD = auto()
     NUMBER = auto()
     STRING = auto()
 
     @staticmethod
-    def is_kind(value: int) -> bool:
+    def is_valid(value: int) -> bool:
         """
-        Checks if the `value` is a valid Kind enum.
+        :return: True iff `value` is a valid Kind enum value.
         """
-        return value >= Kind.LIST
+        return value >= Kind.LIST or Kind.is_none(value)
 
     @staticmethod
     def is_offset(value: int) -> bool:
         """
-        :return: True iff `value` would be considered a forward offset in a Schema.
+        :return: True iff `value` is not a valid Kind enum value but an offset in a Schema.
         """
-        return not Kind.is_kind(value)
+        return not Kind.is_valid(value)
 
     @staticmethod
     def is_ground(value: int) -> bool:
         """
-        :return: Checks whether `value` represents one of the ground types: Number and String
+        :return: Whether `value` denotes one of the ground types: Number and String
         """
         return value >= Kind.NUMBER
 
     @staticmethod
-    def from_element(element: Optional[Element]) -> 'Kind':
+    def is_none(value: int) -> bool:
         """
-        The kind of the given Element.
+        :return: Whether `value` is the NONE Kind.
         """
-        if element is None:
+        return value == Kind.NONE
+
+    @staticmethod
+    def from_denotable(denotable: Optional[Denotable]) -> Kind:
+        """
+        :return: The Kind of the given denotable Python data.
+        """
+        if isinstance(denotable, Value):
+            return denotable.get_kind()
+        elif denotable is None:
             return Kind.NONE
-        elif isinstance(element, str):
+        elif isinstance(denotable, str):
             return Kind.STRING
-        elif isinstance(element, (int, float)):
+        elif isinstance(denotable, float):
             return Kind.NUMBER
-        elif isinstance(element, list):
+        elif isinstance(denotable, list):
             return Kind.LIST
         else:
-            assert isinstance(element, dict)
-            return Kind.MAP
+            assert isinstance(denotable, (dict, tuple))
+            return Kind.RECORD
 
+
+########################################################################################################################
 
 class Schema(tuple, Sequence[int]):
     """
-    A Schema describes how data of a Value instance is laid out in memory.
-    It is a simple list of integers, each integer either identifying a ground Element kind (like a number or string) or
-    a forward offset to a container Element (like a list or map).
+    A Schema describes how the denotable of a Value instance is laid out in memory.
+    It is a simple tuple of integers, each integer either identifying a ground Kind (Number or String) or a forward
+    offset to a container Schema (List or Record).
     """
 
-    def __new__(cls, element: Optional[Element] = None):
+    @classmethod
+    def from_slice(cls, base: Schema, start: int, end: int) -> Schema:
+        return super().__new__(Schema, base[start: end])
+
+    def __new__(cls, obj: Optional[Any] = None) -> Schema:
         """
-        Recursive, breadth-first assembly of a Schema for a given Element.
-        :returns: Schema describing how a Value containing the given Element would be laid out.
+        Recursive, breadth-first assembly of a Schema for the given Denotable.
+        :returns: Schema describing how a Value containing the given Denotable would be laid out.
         """
-        kind: Kind = Kind.from_element(element)
+        if obj is None:
+            # The empty Schema
+            return super().__new__(Schema)
+
+        if isinstance(obj, Value):
+            # Value Schemas can simply be copied
+            return obj.get_schema()
+
         schema: List[int] = []
+        denotable: Denotable = check_denotable(obj, allow_empty_list=False)
+        kind: Kind = Kind.from_denotable(denotable)
+        assert kind != Kind.NONE
 
-        if kind == Kind.NONE:
-            # The None Schema is empty.
-            pass
-
-        elif kind == Kind.NUMBER:
-            # Numbers take up a single word in a Schema, the NUMBER kind identifier
+        if kind == Kind.NUMBER:
+            # Numbers take up a single word in a Schema, the NUMBER Kind.
             schema.append(int(Kind.NUMBER))
 
         elif kind == Kind.STRING:
-            # Strings take up a single word in a Schema, the STRING kind identifier
+            # Strings take up a single word in a Schema, the STRING Kind.
             schema.append(Kind.STRING)
 
         elif kind == Kind.LIST:
-            # A List is a pair [List Type ID, child Element] and its size in words is the size of the child Element + 1.
-            # Lists can only contain a single kind of Element and in case that Element is a Map, all Maps in the List
-            # are required to have the same subschema.
-            # An example Schema of a list is:
+            # A List Schema is a pair [LIST Kind, child Schema].
+            # All Values contained in a List must have the same Schema.
+            # An example Schema of a List is:
             #
             # ||    1.     ||     2.    | ... ||
             # || List Type || ChildType | ... ||
             # ||- header --||---- child ------||
             #
-            assert len(element) > 0
+            assert len(denotable) > 0
             schema.append(int(Kind.LIST))
-            schema.extend(Schema(element[0]))
+            schema.extend(Schema(denotable[0]))
 
         else:
-            assert kind == Kind.MAP
-            # Maps take up at least 3 words in the buffer - the MAP kind identifier, the number of entries in the map
-            # (must be at least 1) followed by the child entries.
-            # An example Schema of a map containing a number, a list, a string and another map can be visualized as
-            # follows:
+            assert kind == Kind.RECORD
+            # Records take up at least 3 words in the buffer - the RECORD kind identifier, the number of entries in the
+            # Record (must be at least 1) followed by the child entries.
+            # An example Schema of a Record containing a Number, a List, a String and another Record can be visualized
+            # as follows:
             #
             # ||    1.    |    2.    ||    3.    |    4.    |    5.    |    6.    ||   7.     | ... |    14.   | ... ||
-            # || Map Type | Map Size || Nr. Type |  +3 (=7) | Str Type | +8 (=14) || ListType | ... | Map Type | ... ||
+            # || Rec Type | Rec Size || Nr. Type |  +3 (=7) | Str Type | +8 (=14) || ListType | ... | Rec Type | ... ||
             # ||------ header -------||------------------ body -------------------||------------ children -----------||
             #
-            # The map itself is split into three parts:
-            # 1. The header just contains the Map Type ID and number of child entries.
+            # The Record Schema itself is split into three parts:
+            # 1. The header just contains the RECORD Kind and number of child entries.
             # 2. The body contains a single word for each child. Strings and Number Schemas are only a single word long,
-            #    therefore they can be written straight into the body of the map.
-            #    List and Map Schemas are longer than one word and are appended at the end of the body. The body itself
-            #    contains only the forward offset to the child Element in question.
-            #    In the special case where the map only contains a single non-ground Element at the very end, we can
-            #    remove the last entry in the body and move the single child up one word.
-            # 3. Child Lists and Maps in order of their appearance in the body.
-            assert len(element) > 0
-            schema.append(int(Kind.MAP))  # this is a map
-            schema.append(len(element))  # number of items in the map
+            #    therefore they can be written straight into the body of the Schema.
+            #    List and Record Schemas are longer than one word and are appended at the end of the body. The body
+            #    itself contains only the forward offset to the child Schema in question.
+            #    In the special case where the Record contains only one non-ground child and it is the last child in the
+            #    Record, we can remove the last entry in the body and move the single child up one word.
+            # 3. Child Lists and Records in order of their appearance in the body.
+            assert len(denotable) > 0
+            schema.append(int(Kind.RECORD))
+            schema.append(len(denotable))  # number of children
             child_position = len(schema)
-            schema.extend([0] * len(element))  # reserve space for the body
-            for child in element.values():
-                # numbers and strings are stored inline
-                if Kind.is_ground(Kind.from_element(child)):
-                    schema[child_position] = int(Kind.from_element(child))
-                # lists and maps store a pointer and append themselves to the end of the schema
+            schema.extend([0] * len(denotable))  # reserve space for the body
+
+            if isinstance(denotable, dict):
+                children: Iterable[Denotable] = denotable.values()
+            else:
+                assert isinstance(denotable, tuple)
+                children: Iterable[Denotable] = denotable
+
+            for child in children:
+                # only store the Kind for ground types
+                if Kind.is_ground(Kind.from_denotable(child)):
+                    schema[child_position] = int(Kind.from_denotable(child))
+                # lists and records store a forward offset and append themselves to the end of the schema
                 else:
                     offset = len(schema) - child_position
-                    # if the offset is 1, we only have a single non-ground Element in the map and it is at the very end
-                    # in this case, we can simply put the sub-schema of the child inline and save a pointer
-                    if offset > 1:
-                        schema[child_position] = offset  # store the offset
+                    assert offset > 0
+                    # If the offset is 1, we only have a single non-ground child in the entire record and it is at the
+                    # very end. In this case, we can simply put the sub-schema of the child inline and save a word.
+                    if offset == 1:
+                        schema.pop()
                     else:
-                        schema.pop(-1)
+                        schema[child_position] = offset  # forward offset
                     schema.extend(Schema(child))
                 child_position += 1
 
@@ -205,640 +295,672 @@ class Schema(tuple, Sequence[int]):
         """
         return len(self) == 0
 
-    def __str__(self) -> str:
-        """
-        :return: A string representation of this Schema.
-        """
-        result: str = ""
-        next_number_is_map_size = False
-        for x, index in zip(self, range(len(self))):
-            result += "{:>3}: ".format(index)
-            if x == Kind.NUMBER:
-                result += "Number"
-            elif x == Kind.STRING:
-                result += "String"
-            elif x == Kind.LIST:
-                result += "List"
-            elif x == Kind.MAP:
-                result += "Map"
-                next_number_is_map_size = True
-            else:
-                if next_number_is_map_size:
-                    result += " ↳ Size: {}".format(x)
-                    next_number_is_map_size = False
-                else:
-                    result += "→ {}".format(index + x)
-            result += "\n"
-        return result
-
-    def as_list(self) -> 'Schema':
+    def as_list(self) -> Schema:
         """
         Creates a Schema that is a list containing elements of this Schema.
         """
         return super().__new__(Schema, [int(Kind.LIST), *self])
 
+    def __str__(self) -> str:
+        """
+        :return: A human-readable string representation of this Schema.
+        """
+        result: str = ""
+        next_word_is_record_size: bool = False
+        for word, index in zip(self, range(len(self))):
+            result += "{:>3}: ".format(index)
+            if word == Kind.NUMBER:
+                result += "Number"
+            elif word == Kind.STRING:
+                result += "String"
+            elif word == Kind.LIST:
+                result += "List"
+            elif word == Kind.RECORD:
+                result += "Record"
+                next_word_is_record_size = True
+            else:
+                if next_word_is_record_size:
+                    result += " ↳ Size: {}".format(word)
+                    next_word_is_record_size = False
+                else:
+                    result += "→ {}".format(index + word)
+            result += "\n"
+        return result
 
-Buffer = List[Union[float, int, str, List['Buffer']]]
-"""
-The Buffer is a list of Element that make up the data of a Value.
-Note that buffers also contain integers as list/map sizes and offsets.
-"""
 
-
-def produce_buffer(source: Union[Schema, Element]) -> Buffer:
+def get_subschema_start(schema: Schema, iterator: int, index: int) -> int:
     """
-    Builds a Buffer instance from either a Schema or an Element.
-    :param source: Schema or Element from which to produce the Buffer.
-    :return: The Buffer, initialized to the capabilities of the source.
-    :raise ValueError: If `source` is neither a Schema, nor a type that can be converted into an Element.
+    Given a Schema, the position of an iterator within the Schema, pointing to the start of a Record subschema,
+    and the index of a child in the Record, returns the position of the child subschema.
+    :param schema: Schema containing the subschema.
+    :param iterator: Index in the Schema pointing to the parent Record subschema.
+    :param index: Index of the child subschema to find.
+    :return: Index in the Schema pointing to the child subschema.
     """
+    assert iterator < len(schema)
+    assert Kind(schema[iterator]) == Kind.RECORD
+    child_location: int = iterator + 2 + index
+    child_entry: int = schema[child_location]
 
-    def build_buffer_from_schema(buffer: Buffer, index: int = 0) -> Buffer:
-        """
-        If `source` is a Schema: Creates a zero-initialized Buffer laid out according to the given Schema.
-        """
-        assert len(source) > index
-        if source[index] == Kind.NUMBER:
-            buffer.append(0)
+    # the child Schema can either be in the body of the Record Schema if it is ground, or require a lookup
+    # mote that you can have a non-offset, non-ground child entry if the last child is the only one non-ground
+    return child_location + (child_entry if Kind.is_offset(child_entry) else 0)
 
-        elif source[index] == Kind.STRING:
-            buffer.append("")
 
-        elif source[index] == Kind.LIST:
-            buffer.append([])
+def get_subschema_end(schema: Schema, start_index: int) -> int:
+    """
+    For the start index of a Subschema in the given Schema, return the index one past the end.
+    :param schema: Schema containing the subschema.
+    :param start_index: Start index of a subschema. Must contain a valid Kind and be inside the Schema.
+    :return: Index in the schema one past the end of the subschema starting at `start_index`.
+    """
+    assert start_index < len(schema)
+    assert Kind.is_valid(schema[start_index])
+    kind: Kind = Kind(schema[start_index])
 
-        else:
-            assert source[index] == Kind.MAP
-            assert len(source) > index + 1
-            map_size = source[index + 1]
-            for child_index in range(map_size):
-                child_schema_index = index + 2 + child_index
-                assert len(source) > child_schema_index
-                # if the child index is not a number or a string, it is a pointer and needs to be resolved
-                if Kind.is_offset(source[child_schema_index]):
-                    child_schema_index += source[child_schema_index]
-                    assert len(source) > child_schema_index
-                build_buffer_from_schema(buffer, child_schema_index)
+    if Kind.is_ground(kind):
+        return start_index + 1
 
-        return buffer
+    elif kind == Kind.LIST:
+        return get_subschema_end(schema, start_index + 1)
 
-    def build_buffer_from_element(element: Element) -> Union[float, str, list]:
-        """
-        If `source` is an Element: Creates a value-initialized Buffer laid out according to the given Element's Schema.
-        """
-        kind: Kind = Kind.from_element(element)
-
-        if Kind.is_ground(kind):
-            return element
-
-        elif kind == Kind.LIST:
-            result = [len(element)]  # size of the list
-            result.extend(build_buffer_from_element(child) for child in element)
-            return result
-
-        else:
-            assert kind == Kind.MAP
-            return [build_buffer_from_element(child) for child in element.values()]
-
-    # choose which of the two nested functions to use
-    if isinstance(source, Schema):
-        if source.is_empty():
-            return []
-        else:
-            return build_buffer_from_schema([])
     else:
-        root_element = build_buffer_from_element(source)
-        return root_element if isinstance(root_element, list) else [root_element]
+        assert kind == Kind.RECORD
+        assert start_index + 1 < len(schema)
+        child_count: int = schema[start_index + 1]
+        assert child_count > 0
+
+        # we need to find the end index of the last, non-ground child
+        for child_index in (start_index + 2 + child for child in reversed(range(child_count))):
+            assert child_index < len(schema)
+            if not Kind.is_ground(schema[child_index]):
+                if Kind.is_offset(schema[child_index]):
+                    return get_subschema_end(schema, child_index + schema[child_index])
+                else:
+                    return get_subschema_end(schema, child_index)
+
+        # if all children are ground, the end index is one past the body
+        return start_index + 2 + child_count
 
 
-Dictionary = Dict[str, Optional['Dictionary']]
+########################################################################################################################
+
+Data = Union[
+    None,  # the only data stored in a None Value
+    float,  # numbers are ground and immutable by design
+    int,  # the size of a list is stored as an unsigned integer which are immutable by design
+    str,  # strings are ground and immutable because of their Python implementation
+    ConstListT['Data'],  # references to child Data are immutable through the use of ConstList
+]
 """
-A Dictionary can be attached to a Value to access Map entries by name.
-The map keys are not part of the data as they are not mutable, much like a Schema.
-Unlike a Schema however, a Dictionary is not mandatory for a Value, as some might not contain maps.
-The Dictionary is also ignored when two Schemas are compared, meaning a map {x=float, y=float, z=float} will be 
-compatible to {r=float, g=float, b=float}.
+The immutable data stored inside a Value.
+In Python, an empty list is stored like a regular list in the Value, meaning the Value contains a list object with one
+zero, which is the size of the list. In C++, we could store a nullptr (or equivalent) instead of going to the heap for
+what is basically a None value. 
 """
 
 
-def produce_dictionary(element: Element) -> Optional[Dictionary]:
+def create_data_from_schema(schema: Schema) -> Data:
+    """
+    Creates a default-initialized, immutable Data object conforming to the given Schema.
+    :param schema: Schema describing the layout of the Data object to produce.
+    :return: The Schema's default Data.
+    """
+    if schema.is_empty():
+        return None
+
+    def create_data(index: int = 0) -> Data:
+        assert index < len(schema)
+
+        # number
+        if schema[index] == Kind.NUMBER:
+            return 0.
+
+        # string
+        elif schema[index] == Kind.STRING:
+            return ""
+
+        # list
+        elif schema[index] == Kind.LIST:
+            return make_const_list((0,))  # empty list
+
+        # record
+        assert schema[index] == Kind.RECORD
+        child_indices: List[int] = []
+
+        # if the Schema contains an offset at the child index, resolve it
+        assert index + 1 < len(schema)
+        record_size: int = schema[index + 1]
+        for child_index in (index + 2 + child for child in range(record_size)):
+            assert child_index < len(schema)
+            if Kind.is_offset(schema[child_index]):
+                child_index += schema[child_index]
+                assert child_index < len(schema)
+            child_indices.append(child_index)
+
+        # recursively create child data
+        return make_const_list(create_data(child_index) for child_index in child_indices)
+
+    return create_data()
+
+
+def create_data_from_denotable(denotable: Denotable) -> Data:
+    if isinstance(denotable, Value):
+        return denotable._data
+
+    kind: Kind = Kind.from_denotable(denotable)
+
+    if Kind.is_none(kind):
+        return None
+
+    elif Kind.is_ground(kind):
+        return denotable
+
+    elif kind == Kind.LIST:
+        list_size: int = len(denotable)
+        if list_size > 0:
+            return make_const_list((list_size, *(create_data_from_denotable(child) for child in denotable)))
+        else:
+            return make_const_list((0,))  # empty list
+
+    assert kind == Kind.RECORD
+    if isinstance(denotable, tuple):
+        return make_const_list(create_data_from_denotable(child) for child in denotable)
+
+    assert isinstance(denotable, dict)
+    return make_const_list(create_data_from_denotable(child) for child in denotable.values())
+
+
+########################################################################################################################
+
+class Dictionary(ConstNamedTuple):
+    """
+    A Dictionary can be attached to a Value to access Record entries by name.
+    The Record keys are not part of the data as they are not mutable, much like a Schema.
+    The Dictionary is also ignored when two Schemas are compared, meaning a Record {x=float, y=float, z=float} will be
+    compatible to {r=float, g=float, b=float}.
+    The child Dictionaries need to be addressable by name and index, therefore we have a map [str -> index] and a vector
+    that contain the actual child Dictionaries.
+    """
+    names = field(type=ConstMap, mandatory=True)
+    children = field(type=ConstList, mandatory=True)
+
+
+def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
     """
     Recursive, depth-first assembly of a Dictionary.
-    :param element: Element to represent in the Dictionary.
-    :return: The Dictionary corresponding to the given Element. Is None if the Element does not contain a Map.
+    :param denotable: Denotable data to build the Dictionary from.
+    :return: The Dictionary corresponding to the given denotable or None if it would be empty.
     """
 
-    def parse_next_element(next_element: Element):
-        kind: Kind = Kind.from_element(next_element)
+    def parse_next(next_denotable: Denotable) -> Optional[Dictionary]:
+        if isinstance(next_denotable, Value):
+            return next_denotable._dictionary
 
-        if Kind.is_ground(kind):
+        kind: Kind = Kind.from_denotable(next_denotable)
+
+        if Kind.is_none(kind) or Kind.is_ground(kind):
             return None
 
         elif kind == Kind.LIST:
-            return produce_dictionary(next_element[0])
+            return parse_next(next_denotable[0])
 
         else:
-            assert kind == Kind.MAP
-            return {name: parse_next_element(child) for (name, child) in next_element.items()}
-
-    return parse_next_element(element)
-
-
-class Accessor:
-    """
-    Base class for both Reader and Writer accessors to a Value.
-    """
-
-    def __init__(self, value: 'Value'):
-        """
-        :param value:   Value instance being accessed.
-        """
-        self._value = value
-        self._schema_itr: int = 0
-        # since the schema is constant, we store the Value itself instead of the schema as well as the
-        # offset, which also has the advantage that the value's buffer is needed for write operations anyway.
-        # In order to access the schema, we use the private `_schema` property
-
-        self._buffer: Buffer = value._buffer
-        self._buffer_itr: int = 0
-        # the currently iterated buffer as well as the offset to the current Element in the buffer
-
-        self._dictionary: Optional[Dictionary] = value._dictionary
-        # dictionaries do not need an extra iterator since it is enough to point to the dictionary in question
-
-    @property
-    def _schema(self) -> Schema:
-        """
-        Private access to the constant schema of the iterated Value, just for readability.
-        """
-        return self._value.schema
-
-    @property
-    def kind(self) -> Kind:
-        """
-        Kind of the currently accessed Element.
-        In C++, this would be a protected method that is only public on Reader.
-        """
-        if self._schema.is_empty():
-            return Kind.NONE
-        else:
-            assert Kind.is_kind(self._schema[self._schema_itr])
-            return Kind(self._schema[self._schema_itr])
-
-    def __len__(self) -> int:
-        """
-        The number of child Elements if the current Element is a List or Map, or zero otherwise.
-        In C++, this would be a protected method that is only public on Reader.
-        """
-        if self.kind == Kind.LIST:
-            assert len(self._buffer) > 0
-            list_size = self._buffer[0]
-            assert list_size == len(self._buffer) - 1  # -1 for the first integer that is the size of the list
-            return list_size
-
-        elif self.kind == Kind.MAP:
-            assert len(self._schema) > self._schema_itr + 1
-            map_size = self._schema[self._schema_itr + 1]
-            assert map_size == len(self._buffer)
-            return map_size
-
-        else:
-            return 0  # Number and Strings do not have child entries
-
-    def __getitem__(self, key: Union[str, int]) -> Union['Accessor', 'Reader', 'Writer']:
-        """
-        Getting an item from an Accessor with the [] operator returns a new, deeper Accessor into the Value.
-        In C++ we would differentiate between r-value and l-value overloads, the r-value one would modify itself while
-        the l-value overload would produce a new Accessor as the Python implementation does.
-        :param key: Index / Name of the value to access.
-        :return: A new Accessor to the requested item.
-        :raise KeyError: If the key does not identify an index in the current List / a key in the current Map.
-        """
-        result: Accessor = copy(self)  # shallow copy
-
-        if result.kind == Kind.LIST:
-            if not isinstance(key, int):
-                raise KeyError("Lists must be accessed using an index, not {}".format(key))
-
-            # support negative indices from the back of the list
-            list_size: int = len(self)
-            original_key: int = key
-            if key < 0:
-                key = list_size - key
-
-            # make sure that there are enough entries in the list
-            if not (0 <= key < list_size):
-                raise KeyError(
-                    "Cannot get Element at index {} from a List of size {}".format(original_key, list_size))
-
-            # advance the schema index
-            result._schema_itr += 1
-
-            # advance the iterator within the current buffer
-            if Kind.is_ground(result._schema[result._schema_itr]):
-                result._buffer_itr = key + 1
-            # ... or advance to the next buffer if the Element is not ground
+            assert kind == Kind.RECORD
+            if isinstance(next_denotable, tuple):
+                return None
             else:
-                result._buffer_itr = 0
-                result._buffer = result._buffer[key + 1]
+                return Dictionary(
+                    names=make_const_map({str(name): index for (index, name) in enumerate(next_denotable.keys())}),
+                    children=make_const_list([parse_next(child) for child in next_denotable.values()]),
+                )
 
-        elif result.kind == Kind.MAP:
-            if not isinstance(key, str):
-                raise KeyError("Maps must be accessed using a string, not {}".format(key))
-
-            if result._dictionary is None or key not in result._dictionary:
-                raise KeyError("Unknown key \"{}\"".format(key))
-
-            # find the index of the child in the map
-            child_index = list(result._dictionary.keys()).index(key)
-            assert child_index < len(result)
-
-            # advance the schema index
-            result._schema_itr = result._schema_itr + 2 + child_index
-            if Kind.is_offset(result._schema[result._schema_itr]):
-                # resolve pointer to list or map
-                result._schema_itr += result._schema[result._schema_itr]
-
-            # advance to the next buffer if the Element is not ground
-            if Kind.is_ground(result._schema[result._schema_itr]):
-                result._buffer_itr = child_index
-            else:
-                result._buffer = result._buffer[child_index]
-                result._buffer_itr = 0
-
-            # advance the dictionary
-            result._dictionary = result._dictionary[key]
-
-        else:
-            raise KeyError("Cannot use operator[] on a {} Element".format(result.kind.name))
-
-        assert result._schema_itr < len(result._schema)
-        return result
+    return parse_next(denotable)
 
 
-class Reader(Accessor):
-
-    def keys(self) -> Optional[List[str]]:
-        """
-        If the current Element is a Map, returns the available keys. If not, returns None.
-        """
-        if self.kind != Kind.MAP:
-            return None
-        return list(self._dictionary.keys())
-
-    def as_number(self) -> float:
-        """
-        Returns the current Element as a Number.
-        :raise ValueError: If the Element is not a number.
-        """
-        if self.kind != Kind.NUMBER:
-            raise ValueError("Element is not a Number")
-        result = self._buffer[self._buffer_itr]
-        assert isinstance(result, float)
-        return result
-
-    def as_string(self) -> str:
-        """
-        Returns the current Element as a String.
-        :raise ValueError: If the Element is not a string.
-        """
-        if self.kind != Kind.STRING:
-            raise ValueError("Element is not a String")
-        result = self._buffer[self._buffer_itr]
-        assert isinstance(result, str)
-        return result
-
-
-class Writer(Accessor):
-    """
-    Writing to a Value creates a new Value referencing a new root buffer.
-    The new root buffer contains as many references to the existing child-buffers, that are immutable, but in each
-    level there can be (at most) one updated reference to a new buffer. An example:
-
-    Let's say, we have a simple tree of buffers:
-
-            A
-         +--+--+
-         |     |
-         B     C
-
-    In order to change C to C', we need to update C and A:
-
-            A'
-         +--+--+
-         |     |
-         B     C'
-
-    Later on, when you update B to B`, we update B and A` again and you get:
-
-            A"
-         +--+--+
-         |     |
-         B'    C'
-    """
-
-    def __init__(self, value: 'Value'):
-        """
-        :param value:   Value instance to modify.
-        """
-        super().__init__(value)
-        self._path = [value._buffer]
-        # in order to update the buffer tree from root to the modified element, we need to store the path containing
-        # each buffer that was passed on the way
-
-    def __getitem__(self, key: Union[str, int]) -> 'Writer':
-        """
-        Getting an item from an Accessor with the [] operator returns a new, deeper Accessor into the Value.
-        :param key: Index / Name of the Element to access.
-        :return: A new Accessor to the requested item.
-        :raise KeyError: If the key does not identify an index in the current List / a key in the current Map.
-        """
-        writer: Writer = super().__getitem__(key)
-
-        # if the item resides in a new buffer, add it to the path of buffers to modify
-        if writer._path[-1] is not writer._buffer:
-            writer._path.append(writer._buffer)
-
-        return writer
-
-    def set(self, raw: Any) -> 'Value':
-        """
-        Creates a new Value with the minimal number of new sub-buffers.
-
-        :param raw: "Raw" new value to set.
-        :raise ValueError: If `raw` cannot be converted to an Element.
-                           If the Element does not match the currently accessed Element Kind.
-        """
-        # make sure the given raw value can be stored in the buffer
-        element: Element = check_element(raw, allow_empty_lists=True)
-        kind: Kind = Kind.from_element(element)
-
-        # make sure that the given Element is compatible with the current
-        if kind != self.kind:
-            raise ValueError("Cannot change an Element of kind {} to one of kind {}".format(self.kind.name, kind.name))
-        else:
-            if kind == Kind.MAP and tuple(raw.keys()) != tuple(self._dictionary.keys()):
-                raise ValueError("Cannot assign to a Map with incompatible keys (name and order)")
-            if kind == Kind.LIST and len(element) == 0:
-                pass  # we cannot deduce the Schema from an empty list
-            else:
-                schema: Schema = Schema(element)
-                slice_end = self._schema_itr + len(schema)
-                if len(self._schema) < slice_end or schema != self._schema[self._schema_itr: slice_end]:
-                    raise ValueError("Cannot assign an Element with an incompatible Schema")
-
-        # create a new buffer for the updated Element
-        if Kind.is_ground(self._schema[self._schema_itr]):
-
-            # if the new Element is equal to the old one, we don't need to do anything
-            if element == self._buffer[self._buffer_itr]:
-                return self._value
-
-            new_buffer = copy(self._buffer)  # shallow copy
-            new_buffer[self._buffer_itr] = element
-
-        # ... or replace the entire subbuffer, if it is a map or a list
-        else:
-            new_buffer = produce_buffer(element)
-
-            # if the new buffer is equal to the old one, we don't need to do anything
-            if new_buffer == self._buffer:
-                return self._value
-
-        # create the new buffer tree from the leaf up, made up of updated copies for those on the path straight copies
-        # for all others
-        assert (self._path[-1] == self._buffer)
-        while len(self._path) > 1:
-            old_buffer = self._path.pop()
-            old_parent_buffer = self._path[-1]
-            new_buffer = [(x if x != old_buffer else new_buffer) for x in old_parent_buffer]
-
-        # create a new Value instance that references the updated buffer tree
-        result: Value = copy(self._value)
-        result._buffer = new_buffer
-        return result
+########################################################################################################################
 
 
 class Value:
-    """
-    The Value contains a Buffer from which to read the data, a Schema describing the layout of the Buffer, and
-    an optional Dictionary to access Map entries by name.
-    Apart from a Value that contains one of the 4 Element types, you can also have an empty (None) value that
-    does not contain anything. It is not possible to have a None value nested inside another Value.
-    """
-
     Kind = Kind
     Schema = Schema
-    Dictionary = Dictionary
 
-    def __init__(self, source: Any = None):
-        """
-        :param source: Anything that can be used to create a new Value.
-        :raise ValueError: If `source` cannot be used to initialize a Value.
-        """
-        # explict None
-        if source is None:
-            schema: Schema = Schema()
-            buffer: Buffer = []
-            dictionary = None
+    def __init__(self, obj: Any = None):
+        self._schema: Schema = Schema()
+        self._data: Data = None
+        self._dictionary: Optional[Dictionary] = None
 
-        # null-initialize from schema
-        elif isinstance(source, Schema):
-            schema: Schema = source
-            buffer: Buffer = produce_buffer(schema)
-            dictionary = None
+        # default (None) initialization
+        if obj is None:
+            return
 
-        # initialize from list of values
-        elif isinstance(source, (tuple, list)) and len(source) > 0 and isinstance(source[0], Value):
-            # check the schema
-            reference_schema: Schema = source[0].schema
-            for other_value in source[1:]:
-                if not other_value.schema == reference_schema:
-                    raise ValueError("Cannot construct a list from Values with different Schemas")
+        # copy initialization
+        if isinstance(obj, Value):
+            self._schema = obj._schema
+            self._data = obj._data
+            self._dictionary = obj._dictionary
 
-            # the schema of this value is a list of all others
-            schema: Schema = reference_schema.as_list()
-            if Kind.is_ground(reference_schema[0]):
-                # if the reference value kind is ground, we can collapse the individual buffers into one
-                buffer: Buffer = [len(source), *chain(*[value._buffer for value in source])]
-            else:
-                # if the reference value kind is not ground, we store each buffer in the new one
-                buffer: Buffer = [len(source), *[value._buffer for value in source]]
-            dictionary = None
+        # initialization from Schema
+        elif isinstance(obj, Schema):
+            self._schema = obj
+            self._data = create_data_from_schema(self._schema)
+            self._dictionary = None
 
-        # TODO: initialize from dict of values?
-
-        # value-initialize from Element
+        # value initialization
         else:
-            element: Element = check_element(source, allow_empty_lists=False)
-            schema: Schema = Schema(element)
-            buffer: Buffer = produce_buffer(element)
-            dictionary: Optional[Dictionary] = produce_dictionary(element)
+            denotable: Denotable = check_denotable(obj, allow_empty_list=False)
+            self._schema = Schema(denotable)
+            self._data = create_data_from_denotable(denotable)
+            self._dictionary = create_dictionary(denotable)
 
-        # Schema of the buffer, is constant
-        assert schema is not None
-        self._schema: Schema = schema
+        assert self._is_consistent()
 
-        # Buffer storing the data of this Value.
-        assert buffer is not None
-        self._buffer: Buffer = buffer
+    @classmethod
+    def _create(cls, schema: Schema, data: Data, dictionary: Optional[Dictionary]) -> Value:
+        value: Value = Value()
+        value._schema = schema
+        value._data = data
+        value._dictionary = dictionary
+        assert value._is_consistent()
+        return value
 
-        # A Dictionary referring to the topmost map in the Schema. Can be None.
-        self._dictionary: Optional[Dictionary] = dictionary
+    def is_number(self) -> bool:
+        return isinstance(self._data, float)
 
-    @property
-    def schema(self) -> Schema:
+    def is_string(self) -> bool:
+        return isinstance(self._data, str)
+
+    def is_none(self) -> bool:
+        return self._data is None
+
+    def get_schema(self) -> Schema:
         """
-        Schema of the buffer, is constant
+        The Schema of this Value.
         """
         return self._schema
 
-    @property
-    def kind(self) -> Kind:
+    def get_kind(self) -> Kind:
         """
-        The Kind of the root Element.
+        The Kind of this Value.
         """
         if self._schema.is_empty():
             return Kind.NONE
+        assert Kind.is_valid(self._schema[0])
+        return Kind(self._schema[0])
+
+    def get_keys(self) -> Optional[AbstractSet[str]]:
+        """
+        Returns the known keys if this is a named record.
+        Otherwise returns None.
+        """
+        if self._dictionary:
+            return self._dictionary.names.keys()
         else:
-            assert Kind.is_kind(self._schema[0])
-            return Kind(self._schema[0])
-
-    def keys(self) -> Optional[List[str]]:
-        """
-        If the root Element of this Value is a Map, returns the available keys. If not, returns None.
-        """
-        if self.kind != Kind.MAP:
             return None
-        return list(self._dictionary.keys())
-
-    def __getitem__(self, key: Union[str, int]) -> Reader:
-        """
-        Read access to this Value instance via the [] operator.
-        """
-        return Reader(self)[key]
+        # TODO: ConstMap stored keys unordered, but we need them in order
 
     def __eq__(self, other: Any) -> bool:
         """
         Equality test.
         """
-        if not isinstance(other, self.__class__):
-            return False
-        return self._schema == other._schema and self._buffer == other._buffer and self._dictionary == other._dictionary
+        return isinstance(other, Value) and self._data == other._data and self._schema == other._schema
 
-    def __ne__(self, other) -> bool:
+    def __ne__(self, other: Any) -> bool:
         """
         Inequality tests.
         """
         return not self.__eq__(other)
 
-    def as_number(self) -> float:
+    def __lt__(self, other: Any) -> bool:
+        other_number: Optional[float] = check_number(other)
+        if other_number is None:
+            return NotImplemented
+        else:
+            return float(self) < other_number
+
+    def __le__(self, other: Any) -> bool:
+        other_number: Optional[float] = check_number(other)
+        if other_number is None:
+            return NotImplemented
+        else:
+            return float(self) <= other_number
+
+    def __float__(self) -> float:
+        if self.is_number():
+            return self._data
+        else:
+            raise TypeError("Value is not a number")
+
+    def __str__(self) -> str:
+        if self.is_string():
+            return self._data
+        else:
+            raise TypeError("Value is not a string")
+
+    def __len__(self) -> int:
         """
-        Returns the Element as a Number.
-        :raise ValueError: If the Element is not a number.
+        The number of child Elements if the current Element is a List or Map, or zero otherwise.
         """
-        return Reader(self).as_number()
+        kind: Kind = self.get_kind()
 
-    def as_string(self) -> str:
+        if kind == Kind.LIST:
+            assert len(self._data) > 0
+            list_size: int = self._data[0]
+            assert list_size == len(self._data) - 1  # -1 for the first integer that is the size of the list
+            return list_size
+
+        elif kind == Kind.RECORD:
+            assert len(self._schema) > 1
+            return self._schema[1]
+
+        else:
+            return 0  # only lists and records
+
+    def __getitem__(self, key: Union[str, int]) -> Value:
+        kind: Kind = self.get_kind()
+
+        if kind == Kind.LIST:
+            if not isinstance(key, int):
+                raise KeyError(f'Lists must be accessed using an index, not {key}')
+            return self._get_item_by_index(key)
+
+        if kind == Kind.RECORD:
+            if isinstance(key, int):
+                return self._get_item_by_index(key)
+            elif isinstance(key, str):
+                return self._get_item_by_name(key)
+            else:
+                raise KeyError(f'Records must be accessed using an index or a string, not {key}')
+
+        else:
+            raise KeyError(f'Cannot use operator[] with a {kind.name.capitalize()} Value')
+
+    def __neg__(self) -> Value:
+        return Value._create(self._schema, -float(self), self._dictionary)
+
+    def __pos__(self) -> Value:
+        return Value._create(self._schema, +float(self), self._dictionary)
+
+    def __abs__(self) -> Value:
+        return Value._create(self._schema, abs(float(self)), self._dictionary)
+
+    def __trunc__(self) -> Value:
+        return Value._create(self._schema, float(trunc(float(self))), self._dictionary)
+
+    def __floor__(self) -> Value:
+        return Value._create(self._schema, float(floor(float(self))), self._dictionary)
+
+    def __ceil__(self) -> Value:
+        return Value._create(self._schema, float(ceil(float(self))), self._dictionary)
+
+    def __round__(self, digits: Optional[int] = None) -> Value:
+        return Value._create(self._schema, float(round(float(self), digits)), self._dictionary)
+
+    def __truediv__(self, other: Any) -> Value:
+        other_number: Optional[float] = check_number(other)
+        if other_number is None:
+            return NotImplemented
+        else:
+            return Value._create(self._schema, float(truediv(float(self), other)), self._dictionary)
+
+    def __rtruediv__(self, other: Any) -> float:
+        return truediv(other, float(self))
+
+    def __floordiv__(self, other: Any) -> Value:
+        other_number: Optional[float] = check_number(other)
+        if other_number is None:
+            return NotImplemented
+        else:
+            return Value._create(self._schema, float(floordiv(float(self), other)), self._dictionary)
+
+    def __rfloordiv__(self, other: Any) -> int:
+        return floordiv(other, float(self))
+
+    def __add__(self, other: Any) -> Value:
+        other_number: Optional[float] = check_number(other)
+        if other_number is None:
+            return NotImplemented
+        else:
+            return Value._create(self._schema, float(self) + other_number, self._dictionary)
+
+    def __radd__(self, other: Any) -> float:
+        other_number: Optional[float] = check_number(other)
+        if other_number is None:
+            return NotImplemented
+        else:
+            return other_number + float(self)
+
+    def __mul__(self, other: Any) -> Value:
+        other_number: Optional[float] = check_number(other)
+        if other_number is None:
+            return NotImplemented
+        else:
+            return Value._create(self._schema, float(self) * other_number, self._dictionary)
+
+    def __rmul__(self, other: Any) -> float:
+        other_number: Optional[float] = check_number(other)
+        if other_number is None:
+            return NotImplemented
+        else:
+            return other_number * float(self)
+
+    def __mod__(self, other: Any) -> Value:
+        other_number: Optional[float] = check_number(other)
+        if other_number is None:
+            return NotImplemented
+        else:
+            return Value._create(self._schema, float(mod(float(self), other)), self._dictionary)
+
+    def __rmod__(self, other: Any) -> float:
+        return mod(other, float(self))
+
+    def __pow__(self, exponent: Any) -> Value:
+        other_number: Optional[float] = check_number(exponent)
+        if other_number is None:
+            return NotImplemented
+        else:
+            return Value._create(self._schema, pow(float(self), exponent), self._dictionary)
+
+    def __rpow__(self, base: Any) -> float:
+        return pow(base, float(self))
+
+    def _get_item_by_index(self, index: int) -> Value:
+        assert isinstance(self._data, ConstList)
+
+        # this method must only be called on list and record values
+        kind: Kind = self.get_kind()
+        assert kind == Kind.LIST or kind == Kind.RECORD
+
+        # lists have one additional entry at the beginning where they store the size of the list
+        size: int = len(self._data)
+        if kind == kind.LIST:
+            assert len(self._data) > 0  # at least the size of the list must be stored in it
+            size -= 1
+        else:
+            assert size == self._schema[1]
+
+        # support negative indices from the back
+        if index < 0:
+            index = size + index
+
+        # make sure that the index is valid
+        if not (0 <= index < size):
+            raise KeyError(f'Cannot get Element at index {size - index} from a '
+                           f'{"List" if kind == Kind.LIST else "Record"} of size {size}')
+
+        if kind == Kind.LIST:
+            # the child Schema starts at index 1
+            start: int = 1
+            end: int = get_subschema_end(self._schema, start)
+            schema: Schema = Schema.from_slice(self._schema, start, end)
+
+            # children in list data start at index 1
+            assert len(self._data) > index + 1
+            data: Data = self._data[index + 1]
+
+            # since this is not a record, we do not have to change the dictionary
+            dictionary: Optional[Dictionary] = self._dictionary
+
+        else:
+            start_index: int = get_subschema_start(self._schema, 0, index)
+            end_index: int = get_subschema_end(self._schema, start_index)
+            schema: Schema = Schema.from_slice(self._schema, start_index, end_index)
+
+            # children in record data start at index 0
+            data: Data = self._data[index]
+
+            # since this is a record, we need to advance to the child's dictionary
+            dictionary: Dictionary = self._dictionary.children[index]
+
+        return Value._create(schema, data, dictionary)
+
+    def _get_item_by_name(self, name: str) -> Value:
         """
-        Returns the Element as a String.
-        :raise ValueError: If the Element is not a string.
+
+        :param name:
+        :return:
         """
-        return Reader(self).as_string()
+        assert isinstance(self._data, ConstList)
+        assert self.get_kind() == Kind.RECORD
 
-    def is_none(self) -> bool:
+        if self._dictionary is None:
+            raise KeyError(f'This Record Value has only unnamed entries, use an index to access them')
+
+        if name not in self._dictionary.names:
+            available_keys: str = '", "'.join(self._dictionary.names.keys())  # this is a Record, there is at least one
+            raise KeyError(f'Unknown key "{name}" in Record. Available keys are: "{available_keys}"')
+
+        assert len(self._data) == self._schema[1]
+        index: int = self._dictionary.names[name]
+        assert 0 <= index < len(self._data)
+
+        start_index: int = get_subschema_start(self._schema, 0, index)
+        end_index: int = get_subschema_end(self._schema, start_index)
+        schema: Schema = Schema.from_slice(self._schema, start_index, end_index)
+
+        return Value._create(schema, self._data[index], self._dictionary.children[index])
+
+    # noinspection PyMethodMayBeStatic
+    def _is_consistent(self) -> bool:
+        return True  # TODO: Value._is_consistent
+
+
+def set_value(value: Value, data: Any, *path: Union[int, str]) -> Value:
+    """
+
+    I would much rather have a syntax like `set_value(value["key"][34], "NEW")`, but for that you need to return an
+    accessor when getting a value. The accessor retains a reference to the root Value, so that `set_value` can modify
+    it, instead of the last one in the Path.
+    In C++ we can have an implicit conversion between a Value.Accessor and a Value and use r-value overloads to ensure
+    that the user does not accidentally store a Value.Accessor instead of a Value, but in Python we cannot.
+
+    :param value:
+    :param data:
+    :param path:
+    :return:
+    """
+    if value.is_none():
+        if data is None:
+            return value  # setting None to None returns None
+        else:
+            raise ValueError("Cannot modify the None Value.")
+    elif data is None:
+        raise ValueError("Cannot set a non-None Value to`None`")
+
+    denotable: Denotable = check_denotable(data, allow_empty_list=True)
+
+    def recursion(_data: Data, _schema_itr: int, _dict_itr: Optional[Dictionary],
+                  _path: Tuple[Union[int, str], ...]) -> Optional[Data]:
         """
-        Checks if this is a None value.
+        If the last step of the recursion detects that the current and the new data are equal, returns None to avoid
+        the construction of a new Value.
+        :param _data:
+        :param _schema_itr:
+        :param _dict_itr:
+        :param _path:
+        :return:
         """
-        return self._schema.is_empty()
+        assert _schema_itr < len(value._schema)
+        kind: Kind = Kind(value._schema[_schema_itr])
+        assert Kind.is_valid(kind)
 
-    def modified(self) -> Writer:  # TODO: I had to look up what "modified" means here, maybe rename it to "write"?
-        """
-        Write access to this Value instance.
-        """
-        return Writer(self)
+        # last step
+        if len(_path) == 0:
 
+            # set to empty list
+            if isinstance(denotable, list) and len(denotable) == 0:
+                if kind == Kind.LIST:
+                    return create_data_from_denotable(denotable)
+                else:
+                    raise TypeError(f'Type mismatch, cannot set a Value of kind {kind.name.capitalize()} '
+                                    f'to the empty list')
 
-"""
-Additional Thoughts
-===================
+            # check if the data's Schema matches the child Value's
+            data_schema: Schema = Schema(denotable)  # cannot create a Scheme for an empty list
+            current_schema: Schema = Schema.from_slice(value.get_schema(), _schema_itr,
+                                                       get_subschema_end(value.get_schema(), _schema_itr))
+            if data_schema != current_schema:
+                raise TypeError(f'Cannot set a Value of kind {kind.name.capitalize()} to {denotable}')
 
-Better support for growing lists
---------------------------------
-One use-case for lists that I can think of is storing an ever-growing log of something, a chat log for example. Or maybe
-a history of sensor readings or whatever. In that case, it will be very wasteful to copy a list every time it is 
-changed. For example if you have a list "2ab" and want to add a "c" at the end, you'll have to copy the entire list 
-before you can modify it to "3abc". The problem here is that we store the size of the list at the beginning.
+            # do nothing if the current and new data are equal
+            _new_data = create_data_from_denotable(denotable)
+            if _new_data == _data:
+                return None
+            else:
+                return _new_data
 
-Instead, the size of the list should be stored in the buffer looking into the list (alternatively, you could also store
-the beginning and end of the list). This way, you can have two Values referencing the same underlying list, but offering
-different views. Using this approach we could even use different start- and end-points in the same list...
+        # cannot continue recursion past a ground value
+        if Kind.is_ground(kind):
+            raise IndexError(f'Unsupported operator[] for Value of kind {kind.name.capitalize()}')
+        assert kind in (Kind.LIST, Kind.RECORD)
 
-The big problem here is that we'd now have a single Element type that uses two words instead of one. 
-Possible ramifications:
-    - not a problem, we know that the Element is a list and a fixed number of words per Element was an accident more 
-      than a requirement anyway
-    - use 64 bit words, but split them into two 32 bit pointers. This way we still have double precision for numbers,
-      but we would limit the addressable memory to whatever 32 bits can provide. Also, we'd waste 32 bits for each
-      String and Map Element...
-    - not a problem because the pointer stored in the word of a list is not a pointer to the start of the list itself,
-      but a pointer to the shared state, that manages the underlying memory (similar to a shared_ptr). See the chapter
-      on memory management below.
+        # pop the index of the next child from the path
+        index: Union[int, str] = _path[0]
+        if isinstance(index, str):
+            if _dict_itr is None or index not in _dict_itr.names:
+                available_keys: str = '", "'.join(_dict_itr.names.keys())
+                raise KeyError(f'Unknown key "{index}" in Record. Available keys are: "{available_keys}"')
+            index = _dict_itr.names[index]
 
-The same does of course also apply to strings -- where of course the size of a string is not equivalent to the number
-of words since UTF8 allows variable sizes for each code point... Maybe storing the start- and end-point is in fact the
-better alternative here (like iterators)?
+        else:
+            assert isinstance(index, int)
 
+            # support negative indices from the back
+            if index < 0:
+                size: int = len(_data)
+                if kind == kind.LIST:
+                    assert len(_data) > 0  # at least the size of the list must be stored in it
+                    size -= 1
+                else:
+                    assert _schema_itr + 1 < len(value._schema)
+                    assert size == value._schema[_schema_itr + 1]
+                index = size + index
 
-Custom memory management
-------------------------
-We could go all the way down to memory allocation in order to optimize working with immutable values. Here are my 
-thoughts so far:
+            # list indices start at 1
+            if kind == kind.LIST:
+                index += 1
 
-There should be a single value cache / -manager that knows of all the values and has weak references to them. It should
-work like an unordered_map, every value is hashable and the hash is used as a key to a weak reference to that value.
-If we enforce that two values that share the same content are always consolidated into one (the later one is dropped in
-favor of the earlier one), value comparison is a simple pointer comparison.
+        assert isinstance(index, int) and (0 <= index < len(_data))
 
-Orthogonal to the value cache, there is the memory manager that manages individual chunks of memory. A chunk is 
-a part of memory that can be shared by multiple values, not all of them need to refer to the same slice of the chunk.
-For example:
+        # advance the schema iterator
+        if kind == Kind.LIST:
+            _schema_itr += 1
+        else:
+            _schema_itr = get_subschema_start(value._schema, _schema_itr, index)
 
-    ||  00  01  02  03  ...   0f  10  11  12  ...   c3  c4  | ...   d9 || 
-                 <------  A  ------>                        |
-                 <------  B  -------------->                |
-                               <---------  C  ----------->  |
+        # advance the dictionary iterator
+        if kind == Kind.RECORD:
+            _dict_itr = _dict_itr.children[index]
 
-Here A, B and C all reference the same chunk of size c4 (196), meaning the chunk will only be removed after all three
-references have all gone out of scope, even though some of them refer to different values.
+        # continue the recursion
+        _new_data: Optional[Data] = recursion(_data[index], _schema_itr, _dict_itr, _path[1:])
+        if _new_data is None:
+            return None
+        else:
+            return _data.set(index, _new_data)
 
-Note the vertical line after c4. Everything left to that line is memory that is either in use (02 ... c4) or has been
-used once, but is no longer referenced by any value (00 ... 01), which we call unreachable. We don't keep track of
-unreachable memory, even though it is effectively lost until the chunk itself can be cleared. That is a reason to keep
-chunks small.
-
-On the other hand, Lists that are expected to grow might well profit from larger chunks. In the example, we can have a
-list that starts out small (A) and then grows (B). Both A and B are views on the same list, even though they are
-different Values. If you have a chat log or something else that only grows larger, it would be very useful to have a
-large chunk allocated for that log alone, with different Values referring to different slices but without any copying
-when another message is added. 
-
-We could approach this problem by allowing chunks of varying sizes, where the manager keeps track of the start and end
-points of each chunk.
-With fixed size chunks however, the manager could reserve a giant space up front and use that to allocate all possible 
-chunks at once. They would be easy to manage because you could use a simple list of free chunk indices + the index of 
-the lowest yet unused chunk to find out where you can create a new chunk, and the size of a chunk * index in order to 
-get its location in memory. The downside is that the number of chunks is limited right from the start.
-Then again, this seems to be a non-issue when you're using virtual memory:
-https://www.gamasutra.com/blogs/NiklasGray/20171107/309071/Virtual_Memory_Tricks.php
-Maybe it would be a good idea to have two separate pools of memory: one for fixed size Values (everything but Lists) and
-one for Lists only, with large gaps in between.
-
-Chunks must also have a generation value, which informs a weak reference that the chunk it points to might be in use, 
-but it was reclaimed since the weak reference was created.
-For details see: https://gamasutra.com/blogs/NiklasGray/20190724/347232/Data_Structures_Part_1_Bulk_Data.php
-
-Values (Lists and Maps to be precise) point not directly into memory, but to a shared block of data appropriate for 
-their type. Lists for example should store both the offset and the size (or the last/one past last element) and maybe
-even a growing vector of chunks, if a list happens to span multiple?
-"""
+    new_data: Optional[Data] = recursion(value._data, 0, value._dictionary, path)
+    if new_data is None:
+        return value
+    else:
+        return Value._create(value._schema, new_data, value._dictionary)

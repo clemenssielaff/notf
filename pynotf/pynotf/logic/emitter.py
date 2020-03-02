@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Optional, List
+from typing import Optional, List
 from weakref import ref as weak_ref
 
 from pynotf.data import Value
@@ -117,13 +117,13 @@ class Emitter(Circuit.Element):
         return len(self._downstream) > 0
 
     # protected
-    def _emit(self, value: Any = Value()):  # noexcept
+    def _emit(self, value: Value = Value()):  # noexcept
         """
         Push the given value to all active Receivers.
 
         :param value:       Value to emit, can be empty if this Emitter does not emit a meaningful value.
         """
-        assert value.schema == self.get_output_schema()
+        assert value.get_schema() == self.get_output_schema()
 
         # make sure we can never emit once the Emitter has completed
         if self.is_completed():

@@ -125,7 +125,7 @@ class Receiver(Circuit.Element):
         assert any(emitter.get_id() == signal.get_source() for emitter in self._upstream)
 
         # it should be impossible to emit a value of the wrong type
-        assert signal.get_value().schema == self.get_input_schema()
+        assert signal.get_value().get_schema() == self.get_input_schema()
 
         # pass the signal along to the user-defined handler
         try:

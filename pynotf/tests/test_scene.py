@@ -200,7 +200,7 @@ class TestEmptyScene(unittest.TestCase):
             },
             input_callbacks={
                 'state1_input': InputPlug.Callback(r"""
-                    number = signal.get_value().as_number()
+                    number = float(signal.get_value())
                     if number <= 100:
                         widget['prop'] = number
                     else:
@@ -209,7 +209,7 @@ class TestEmptyScene(unittest.TestCase):
                     
                 """),
                 'state2_input': InputPlug.Callback(r"""
-                    number = signal.get_value().as_number()
+                    number = float(signal.get_value())
                     widget['prop'] = number * -1
                     if number == 0:
                         widget.transition_into('state1')

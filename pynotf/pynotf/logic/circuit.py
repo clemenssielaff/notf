@@ -165,7 +165,7 @@ class Circuit:
             :param value:   Emitted Value.
             """
             # by this point, the value's schema should match the Emitter's
-            assert emitter().get_output_schema() == value.schema
+            assert emitter().get_output_schema() == value.get_schema()
 
             Circuit._CompletionEvent.__init__(self, emitter)
 
@@ -286,10 +286,10 @@ class Circuit:
                 raise TypeError("Emitters can only emit Values or things that are implicitly convertible to one")
 
         # ensure that the value can be emitted by the Emitter
-        if emitter.get_output_schema() != value.schema:
+        if emitter.get_output_schema() != value.get_schema():
             raise TypeError(f"Cannot emit Value from Emitter {emitter.get_id()}."
                             f"  Emitter schema: {emitter.get_output_schema()}"
-                            f"  Value schema: {value.schema}")
+                            f"  Value schema: {value.get_schema()}")
 
         # schedule the event
         with self._event_condition:

@@ -53,9 +53,9 @@ class OutputPlug(Emitter):
                 raise TypeError("Emitters can only emit Values or things that are implicitly convertible to one")
 
         # ensure that the value can be emitted by the Emitter
-        if self.get_output_schema() != value.schema:
+        if self.get_output_schema() != value.get_schema():
             raise TypeError(f"Cannot emit Value from Emitter {self.get_id()}."
                             f"  Emitter schema: {self.get_output_schema()}"
-                            f"  Value schema: {value.schema}")
+                            f"  Value schema: {value.get_schema()}")
 
         self._emit(value)
