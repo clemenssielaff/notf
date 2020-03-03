@@ -35,13 +35,12 @@ def check_number(obj: Any) -> Optional[float]:
         return float(converter())
 
 
-def check_denotable(obj: Any, allow_empty_list: bool, is_root: bool = True) -> Denotable:
+def check_denotable(obj: Any, allow_empty_list: bool) -> Denotable:
     """
     Tries to convert any given Python object into a Denotable.
     Denotable are still pure Python objects, but they are known to be capable of being stored in a Value.
     :param obj: Object to convert.
     :param allow_empty_list: Empty lists are allowed when modifying a Value, but not during construction.
-    :param is_root: `None` is only allowed as the first and only data in a Value.
     :return: The given obj as Denotable.
     :raise ValueError: If the object cannot be denoted by a Value.
     """
@@ -59,14 +58,13 @@ def check_denotable(obj: Any, allow_empty_list: bool, is_root: bool = True) -> D
 
     # none
     elif obj is None:
-        if is_root:
-            return None
-        else:
-            raise ValueError("If present, None must be the only data in a Value")
+        # there is no code path to create a None Value at the root,
+        # therefore it must be encountered within a list or record
+        raise ValueError("If present, None must be the only data in a Value")
 
     # list
     elif isinstance(obj, list):
-        denotable: List[Denotable] = [check_denotable(x, allow_empty_list, is_root=False) for x in obj]
+        denotable: List[Denotable] = [check_denotable(x, allow_empty_list) for x in obj]
 
         if len(denotable) == 0:
             if allow_empty_list:
@@ -110,7 +108,7 @@ def check_denotable(obj: Any, allow_empty_list: bool, is_root: bool = True) -> D
         for key, value in obj.items():
             if not isinstance(key, str):
                 raise ValueError("All keys of a Record must be of Value.Kind String")
-            denotable[key] = check_denotable(value, allow_empty_list, is_root=False)
+            denotable[key] = check_denotable(value, allow_empty_list)
         return denotable
 
     # unnamed record
@@ -118,7 +116,7 @@ def check_denotable(obj: Any, allow_empty_list: bool, is_root: bool = True) -> D
         if len(obj) == 0:
             raise ValueError("Records cannot be empty")
 
-        return tuple(check_denotable(value, allow_empty_list, is_root=False) for value in obj)
+        return tuple(check_denotable(value, allow_empty_list) for value in obj)
 
     # incompatible type
     raise ValueError("Cannot construct Denotable from a {}".format(type(obj).__name__))
@@ -171,10 +169,9 @@ class Kind(IntEnum):
         """
         :return: The Kind of the given denotable Python data.
         """
+        assert denotable is not None
         if isinstance(denotable, Value):
             return denotable.get_kind()
-        elif denotable is None:
-            return Kind.NONE
         elif isinstance(denotable, str):
             return Kind.STRING
         elif isinstance(denotable, float):
@@ -445,15 +442,14 @@ def create_data_from_schema(schema: Schema) -> Data:
 
 
 def create_data_from_denotable(denotable: Denotable) -> Data:
+    assert denotable is not None
+
     if isinstance(denotable, Value):
         return denotable._data
 
     kind: Kind = Kind.from_denotable(denotable)
 
-    if Kind.is_none(kind):
-        return None
-
-    elif Kind.is_ground(kind):
+    if Kind.is_ground(kind):
         return denotable
 
     elif kind == Kind.LIST:
@@ -900,7 +896,7 @@ def set_value(value: Value, data: Any, *path: Union[int, str]) -> Value:
             current_schema: Schema = Schema.from_slice(value.get_schema(), _schema_itr,
                                                        get_subschema_end(value.get_schema(), _schema_itr))
             if data_schema != current_schema:
-                raise TypeError(f'Cannot set a Value of kind {kind.name.capitalize()} to {denotable}')
+                raise TypeError(f'Cannot set a Value of kind {kind.name.capitalize()} to "{denotable}"')
 
             # do nothing if the current and new data are equal
             _new_data = create_data_from_denotable(denotable)

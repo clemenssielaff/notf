@@ -180,7 +180,13 @@ class TestCase(unittest.TestCase):
         self.assertEqual(len(none), 0)
         set_value(none, None)  # noop but okay
 
-    def test_accessor_len(self):
+        # None cannot be nested
+        with self.assertRaises(ValueError):
+            _ = Value([None])
+        with self.assertRaises(ValueError):
+            _ = Value(dict(a=None))
+
+    def test_len(self):
         accessor = test_value["coords"]
         self.assertEqual(len(accessor), 2)
         accessor = accessor[0]
@@ -188,7 +194,7 @@ class TestCase(unittest.TestCase):
         accessor = accessor["x"]
         self.assertEqual(len(accessor), 0)
 
-    def test_accessor(self):
+    def test_get_value(self):
         self.assertEqual(float(float_value), 42.24)
         with self.assertRaises(TypeError):
             str(float_value)  # read number as string
@@ -222,38 +228,6 @@ class TestCase(unittest.TestCase):
         # check for None value
         self.assertTrue(none_value.is_none())
         self.assertFalse(test_value.is_none())
-
-    def test_record_access(self):
-        self.assertEqual(test_value["coords"][0]["someName"], test_value[0][0][1])
-
-    def test_immutability(self):
-        modified = set_value(test_value, 1, "coords", 0, "x")
-        self.assertEqual(float(modified["coords"][0]["x"]), 1)
-        self.assertEqual(float(test_value["coords"][0]["x"]), 0)
-
-        modified2 = set_value(modified, "Mr. VeryWell", "name")
-        self.assertEqual(str(modified2["name"]), "Mr. VeryWell")
-        self.assertEqual(str(modified["name"]), "Mr. Okay")
-
-    def test_change_subtree(self):
-        # change a list in the value
-        modified = set_value(test_value, [dict(x=42, someName="answer", number_list=[-1, -2])], "coords")
-        self.assertEqual(len(modified["coords"]), 1)
-        self.assertEqual(str(modified["coords"][0]["someName"]), "answer")
-
-        # change a map in the value
-        modified = set_value(test_value, {"key": "changed",
-                                          "list_in_the_middle": ["I am a changed string"],
-                                          "a number": 124, }, "my_map")
-        self.assertEqual(str(modified["my_map"]["key"]), "changed")
-
-        # fail to change the subtree to one with a different schema
-        with self.assertRaises(TypeError):
-            set_value(test_value, [{"x": 7}], "coords")
-        with self.assertRaises(TypeError):  # shuffled
-            set_value(test_value, {"list_in_the_middle": ["I am a changed string"],
-                                   "key": "changed",
-                                   "a number": 124, }, "my_map")
 
     def test_get_failure(self):
         with self.assertRaises(KeyError):  # access a list using a key
@@ -293,6 +267,48 @@ class TestCase(unittest.TestCase):
             _ = Value([1, 2, 3])["first"]
         with self.assertRaises(KeyError):
             _ = Value((1, 2, 3))["first"]
+
+        # cannot traverse a value with anything but integers and strings
+        with self.assertRaises(KeyError):
+            _ = test_value[type('Unsupported', (object,), dict())()]
+        with self.assertRaises(KeyError):
+            # noinspection PyTypeChecker
+            _ = test_value[1.0]
+
+    def test_record_access(self):
+        self.assertEqual(test_value["coords"][0]["someName"], test_value[0][0][1])
+
+    def test_immutability(self):
+        modified = set_value(test_value, 1, "coords", 0, "x")
+        self.assertEqual(float(modified["coords"][0]["x"]), 1)
+        self.assertEqual(float(test_value["coords"][0]["x"]), 0)
+
+        modified2 = set_value(modified, "Mr. VeryWell", "name")
+        self.assertEqual(str(modified2["name"]), "Mr. VeryWell")
+        self.assertEqual(str(modified["name"]), "Mr. Okay")
+
+    def test_set_value(self):
+        # change a list in the value
+        modified = set_value(test_value, [dict(x=42, someName="answer", number_list=[-1, -2])], "coords")
+        self.assertEqual(len(modified["coords"]), 1)
+        self.assertEqual(str(modified["coords"][0]["someName"]), "answer")
+
+        # change a map in the value
+        modified = set_value(test_value, {"key": "changed",
+                                          "list_in_the_middle": ["I am a changed string"],
+                                          "a number": 124, }, "my_map")
+        self.assertEqual(str(modified["my_map"]["key"]), "changed")
+
+        # change an item in a list by negative index
+        modified = set_value(test_value, 123, "number_list", -2)
+        self.assertEqual(float(modified["number_list"][1]), 123)
+        self.assertEqual(float(modified[4][1]), 123)
+        self.assertEqual(float(modified[4][-2]), 123)
+
+        # change an item in a record by negative index
+        modified = set_value(test_value, "derb", "coords", -1, -2)
+        self.assertEqual(str(modified["coords"][1]["someName"]), "derb")
+        self.assertEqual(str(modified[0][-1][-2]), "derb")
 
     def test_set_failures(self):
         with self.assertRaises(TypeError):  # set number to string
@@ -336,6 +352,27 @@ class TestCase(unittest.TestCase):
             set_value(Value("string"), None)
         with self.assertRaises(ValueError):
             set_value(Value(['list', 'of', 'strings']), None)
+
+        # path traversal errors
+        with self.assertRaises(IndexError):
+            set_value(test_value, 0, "pos", 0)  # cannot move past a ground value
+        with self.assertRaises(IndexError):
+            set_value(test_value, "", "name", 1)
+        with self.assertRaises(IndexError):
+            set_value(test_value, 0, "pos", "foo")
+        with self.assertRaises(IndexError):
+            set_value(test_value, "", "name", "bar")
+
+        with self.assertRaises(KeyError):
+            set_value(test_value, 0, "not a key")
+
+        # fail to change the subtree to one with a different schema
+        with self.assertRaises(TypeError):
+            set_value(test_value, [{"x": 7}], "coords")
+        with self.assertRaises(TypeError):  # shuffled
+            set_value(test_value, {"list_in_the_middle": ["I am a changed string"],
+                                   "key": "changed",
+                                   "a number": 124, }, "my_map")
 
 
     def test_modify_with_equal_value(self):
