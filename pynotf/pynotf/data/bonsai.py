@@ -69,7 +69,7 @@ def create_bonsai(string_names: List[str]) -> bytes:
 
         # define the first part of the node: (common string size, common string)
         result.append(common_string_length)
-        result.extend(int(character) for character in common_string)  # may be empty
+        result.extend(list(common_string))  # may be empty
 
         # define the node index, may be NO ID
         result.append(node_id)
@@ -101,24 +101,28 @@ def create_bonsai(string_names: List[str]) -> bytes:
         # the remaining children need an offset, we are going to put zero in it for now and fill it up recursively later
         for label in labels[1:]:
             result.extend((label, 0))
+        node_end_index: int = len(result)  # index one past the end of this node
 
         # create the first child branch
         create_node_recursively(branches[labels[0]])
 
         # create and fill offset value for the remaining child branches
+        last_offset: int = 0
         for child_index in range(1, len(labels)):
             offset_index: int = children_index + 1 + (2 * child_index)
-            offset = len(result) - offset_index - 4  # 4 is the smallest possible offset
+            actual_offset: int = len(result) - node_end_index
+            offset: int = actual_offset - last_offset
             assert offset >= 0
-            if offset > 255:
+            if offset > NO_ID:
                 raise ValueError(f'Cannot encode the given strings in a Bonsai dictionary '
-                                 f'because it would require an offset of {offset} (> 255)')
+                                 f'because it would require an offset of {offset} (> {NO_ID})')
             result[offset_index] = offset
+            last_offset = actual_offset
             create_node_recursively(branches[labels[child_index]])
 
     result: List[int] = []
-    create_node_recursively(sorted(((name.encode('utf-8'), index) for index, name in enumerate(string_names)),
-                                   key=lambda pair: pair[0]))
+    create_node_recursively(sorted(
+        ((name.encode(), index) for index, name in enumerate(string_names)), key=lambda pair: pair[0]))
     return bytes(result)
 
 
@@ -153,47 +157,28 @@ def find_in_bonsai(bonsai: bytes, word: str) -> Optional[int]:
 
         # find the child branch to continue traversal
         target_branch_label: int = remaining_word[0]
+        node_end_index: int = number_of_branches_index + (number_of_branches * 2)
+        assert node_end_index - 1 < len(bonsai)
 
         # we can either take the first branch...
-        left_branch_index: int = number_of_branches_index + 1
-        assert left_branch_index < len(bonsai)
-        if target_branch_label == bonsai[left_branch_index]:
-            return traverse(remaining_word[1:], number_of_branches_index + (number_of_branches * 2))
+        branch_index: int = number_of_branches_index + 1
+        if target_branch_label == bonsai[branch_index]:
+            return traverse(remaining_word[1:], node_end_index)
 
-        if target_branch_label < bonsai[left_branch_index]:
+        if target_branch_label < bonsai[branch_index]:
             return None  # target label is smaller than the labels of all child branches
 
-        # ...or the last branch...
-        right_branch_index: int = number_of_branches_index + ((number_of_branches - 1) * 2)
-        assert right_branch_index + 1 < len(bonsai)
-        if target_branch_label == bonsai[right_branch_index]:
-            return traverse(remaining_word[1:], right_branch_index + 1 + bonsai[right_branch_index + 1] + 4)
-
-        if target_branch_label > bonsai[right_branch_index]:
-            return None  # target label is greater than the labels of all child branches
-
-        # ... or find the correct one using binary search
-        left_branch_index += 1  # move right to the leftmost unchecked branch index
-        right_branch_index -= 2  # move left to the rightmost unchecked branch index
-        while left_branch_index != right_branch_index:
-            center_branch_index: int = left_branch_index + (2 * ((right_branch_index - left_branch_index) // 4))
-            center_branch_label: int = bonsai[center_branch_index]
-            if target_branch_label == center_branch_label:
-                branch_offset: int = center_branch_index + 1
-                return traverse(remaining_word[1:], branch_offset + bonsai[branch_offset] + 4)
-            elif target_branch_label < center_branch_label:
-                right_branch_index = center_branch_index
-            elif left_branch_index == center_branch_index:
-                break
+        # ...or do a linear search through the remaining child branches
+        branch_index += 1  # advance to next unchecked branch index
+        total_offset: int = 0
+        while branch_index < node_end_index:
+            total_offset += bonsai[branch_index + 1]
+            if target_branch_label == bonsai[branch_index]:
+                return traverse(remaining_word[1:], node_end_index + total_offset)
             else:
-                left_branch_index = center_branch_index
+                branch_index += 2
 
-        # the last possible branch
-        if target_branch_label == bonsai[right_branch_index]:
-            branch_offset: int = right_branch_index + 1
-            return traverse(remaining_word[1:], branch_offset + bonsai[branch_offset] + 4)
-        else:
-            return None  # target label does not denote a child branch
+        return None  # target label does not denote a child branch
 
     return traverse(word.encode('utf-8'))
 
@@ -213,9 +198,8 @@ class Bonsai:
 
 ########################################################################################################################
 
-def main():
-    test_case: int = 5
-    if test_case == 1:
+def main(test_number: int = 4):
+    if test_number == 0:
         names: List[str] = [
             'a',  # 0
             'to',  # 1
@@ -226,7 +210,7 @@ def main():
             'in',  # 6
             'inn',  # 7
         ]
-    elif test_case == 2:
+    elif test_number == 1:
         names: List[str] = [
             'xform',  # 0
             'layout_xform',  # 1
@@ -237,29 +221,46 @@ def main():
             'amplitude',  # 6
             'something else',  # 7
         ]
-    elif test_case == 3:
+    elif test_number == 2:
         names = ['0', '00']
-    elif test_case == 4:
+    elif test_number == 3:
         names = ['0', '0/']
-    elif test_case == 5:
+    elif test_number == 4:
         names: List[str] = [
             'xform',
             'layout_xform',
             'claim',
             'opacity',
             'period',
+            'reverse_opacity',
+            'state',
             'progress',
+            'phase',
+            'seed',
+            'width',
+            'height',
+            'score',
             'amplitude',
-            'something else',
-            'long ass prop',
-            'whatever else',
-            'sys.prop.derb',
-            'sys.prop.superderb',
-            'blub.di.bla',
-            'blub.di.bla2'
+            't',
+            'i',
+            'value',
+            'id',
+            'parent_id',
+            'strength',
+            'power_level',
+            'child_count',
+            'data_offset'
+            'color_r',
+            'color_g',
+            'color_b',
+            'color_space',
+            'is_critical',
+            'is_reversible',
         ]
-    else:
+    elif test_number == 5:
         names: List[str] = []
+    else:
+        return
     bonsai = create_bonsai(names)
     print(bonsai)
     print(f'Length of bonsai: {len(bonsai)}')
@@ -295,4 +296,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    for test_case in range(6):
+        main(test_case)
+    # main()
