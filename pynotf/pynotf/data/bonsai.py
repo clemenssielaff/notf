@@ -20,7 +20,7 @@ A Bonsai dictionary is a simple array of "nodes". Each node in the array contain
 from typing import List, Tuple, Sequence, Dict, Optional
 
 WORD_SIZE: int = 8  # bits
-NO_ID: int = 2 ** WORD_SIZE
+NO_ID: int = (2 ** WORD_SIZE) - 1
 
 
 def find_common_string_length(names: Sequence[bytes]) -> int:
@@ -39,7 +39,10 @@ def find_common_string_length(names: Sequence[bytes]) -> int:
     return common_string_length
 
 
-def create_bonsai(string_names: List[str]) -> List[int]:
+def create_bonsai(string_names: List[str]) -> bytes:
+    if len(string_names) == 0:
+        return b''
+
     assert len(set(string_names)) == len(string_names)  # names must be unique
 
     def create_node_recursively(names: List[Tuple[bytes, int]]):
@@ -52,21 +55,17 @@ def create_bonsai(string_names: List[str]) -> List[int]:
             names.clear()
 
         else:
+            # find the common substring at the start of all names of the input set
+            common_string_length: int = find_common_string_length([name for name, _ in names])
+            common_string: bytes = names[0][0][:common_string_length]
+
             # check to see if the empty name is part of the input set
             node_id: int = NO_ID  # if the empty name is part of the input set, this node has its id
             for name, index in names:
-                if name == b"":
+                if len(name) == common_string_length:
                     node_id = index
                     names.remove((name, index))
                     break
-
-            # if the empty name is not part of the set, find the common substring at the start of all names of the input set
-            if node_id == NO_ID:
-                common_string_length: int = find_common_string_length([name for name, _ in names])
-                common_string: bytes = names[0][0][:common_string_length]
-            else:
-                common_string_length: int = 0
-                common_string: bytes = b''
 
         # define the first part of the node: (common string size, common string)
         result.append(common_string_length)
@@ -86,7 +85,7 @@ def create_bonsai(string_names: List[str]) -> List[int]:
         for name, index in names:
             # remove the common string from the start of all names (they are still unique) and place the remainder
             # into buckets identified by the first letter
-            first_letter: int = int(name[max(0, common_string_length - 1)])
+            first_letter: int = int(name[common_string_length])
             if first_letter in branches:
                 branches[first_letter].append((name[common_string_length + 1:], index))
             else:
@@ -120,10 +119,10 @@ def create_bonsai(string_names: List[str]) -> List[int]:
     result: List[int] = []
     create_node_recursively(sorted(((name.encode('utf-8'), index) for index, name in enumerate(string_names)),
                                    key=lambda pair: pair[0]))
-    return result
+    return bytes(result)
 
 
-def find_in_dictionary(bonsai: List[int], word: str) -> Optional[int]:
+def find_in_bonsai(bonsai: bytes, word: str) -> Optional[int]:
     if len(bonsai) == 0:
         return None  # we know that we will not find the word in an empty bonsai
 
@@ -199,27 +198,68 @@ def find_in_dictionary(bonsai: List[int], word: str) -> Optional[int]:
     return traverse(word.encode('utf-8'))
 
 
+########################################################################################################################
+
+class Bonsai:
+    def __init__(self, names: List[str]):
+        self._bonsai: bytes = create_bonsai(names)
+
+    def __getitem__(self, name: str) -> int:
+        result: Optional[int] = find_in_bonsai(self._bonsai, name)
+        if result is None:
+            raise KeyError(f'Could not find "{name}" in Bonsai')
+        return result
+
+
+########################################################################################################################
+
 def main():
-    # names: List[str] = [
-    #     'a',  # 0
-    #     'to',  # 1
-    #     'tea',  # 2
-    #     'ted',  # 3
-    #     'ten',  # 4
-    #     'i',  # 5
-    #     'in',  # 6
-    #     'inn',  # 7
-    # ]
-    names: List[str] = [
-        'xform',  # 0
-        'layout_xform',  # 1
-        'claim',  # 2
-        'opacity',  # 3
-        'period',  # 4
-        'progress',  # 5
-        'amplitude',  # 6
-        'something else',  # 7
-    ]
+    test_case: int = 5
+    if test_case == 1:
+        names: List[str] = [
+            'a',  # 0
+            'to',  # 1
+            'tea',  # 2
+            'ted',  # 3
+            'ten',  # 4
+            'i',  # 5
+            'in',  # 6
+            'inn',  # 7
+        ]
+    elif test_case == 2:
+        names: List[str] = [
+            'xform',  # 0
+            'layout_xform',  # 1
+            'claim',  # 2
+            'opacity',  # 3
+            'period',  # 4
+            'progress',  # 5
+            'amplitude',  # 6
+            'something else',  # 7
+        ]
+    elif test_case == 3:
+        names = ['0', '00']
+    elif test_case == 4:
+        names = ['0', '0/']
+    elif test_case == 5:
+        names: List[str] = [
+            'xform',
+            'layout_xform',
+            'claim',
+            'opacity',
+            'period',
+            'progress',
+            'amplitude',
+            'something else',
+            'long ass prop',
+            'whatever else',
+            'sys.prop.derb',
+            'sys.prop.superderb',
+            'blub.di.bla',
+            'blub.di.bla2'
+        ]
+    else:
+        names: List[str] = []
     bonsai = create_bonsai(names)
     print(bonsai)
     print(f'Length of bonsai: {len(bonsai)}')
@@ -245,7 +285,7 @@ def main():
     # print(f'Success? {success}')
 
     for index, name in enumerate(names):
-        result: Optional[int] = find_in_dictionary(bonsai, name)
+        result: Optional[int] = find_in_bonsai(bonsai, name)
         if result is None:
             print(f'FAILURE! "{name}" not found. Expected {index}')
         elif result == index:
