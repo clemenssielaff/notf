@@ -14,8 +14,11 @@ A Bonsai dictionary is a simple array of "nodes". Each node in the array contain
 3. Numeric Id, if this node signifies the end of a name.
 4. The number of child branches.
 5. (for each child node) A pair of words: the first one is the label of the branch,
-   the second one is the forward offset to the branch in the array.
-   The first child branch does not store an offset because it is always `number of child branches * 2`)
+   the second one is the forward offset to the branch in the array from the end of this node.
+   The first child branch does not store an offset because it is always zero.
+
+Instead of storing the absolute offset value, each offset is only the offset added by this child branch. In order to
+calculate the actual offset, you need to sum up the offset of all branches and including the target branch's.
 """
 from typing import List, Tuple, Sequence, Dict, Optional
 
@@ -43,7 +46,13 @@ def create_bonsai(string_names: List[str]) -> bytes:
     if len(string_names) == 0:
         return b''
 
-    assert len(set(string_names)) == len(string_names)  # names must be unique
+    if len(set(string_names)) != len(string_names):
+        raise ValueError("Names stored in a Bonsai must be unique")
+
+    for string_name in string_names:
+        if len(string_name) > NO_ID:
+            raise ValueError(f'Names stored in a Bonsai must be <= {NO_ID} characters in size.\n'
+                             f'"{string_name}" is {len(string_name)} long.')
 
     def create_node_recursively(names: List[Tuple[bytes, int]]):
         assert len(names) > 0
@@ -189,113 +198,11 @@ class Bonsai:
     def __init__(self, names: List[str]):
         self._bonsai: bytes = create_bonsai(names)
 
+    def get(self, name: str) -> Optional[int]:
+        return find_in_bonsai(self._bonsai, name)
+
     def __getitem__(self, name: str) -> int:
         result: Optional[int] = find_in_bonsai(self._bonsai, name)
         if result is None:
             raise KeyError(f'Could not find "{name}" in Bonsai')
         return result
-
-
-########################################################################################################################
-
-def main(test_number: int = 4):
-    if test_number == 0:
-        names: List[str] = [
-            'a',  # 0
-            'to',  # 1
-            'tea',  # 2
-            'ted',  # 3
-            'ten',  # 4
-            'i',  # 5
-            'in',  # 6
-            'inn',  # 7
-        ]
-    elif test_number == 1:
-        names: List[str] = [
-            'xform',  # 0
-            'layout_xform',  # 1
-            'claim',  # 2
-            'opacity',  # 3
-            'period',  # 4
-            'progress',  # 5
-            'amplitude',  # 6
-            'something else',  # 7
-        ]
-    elif test_number == 2:
-        names = ['0', '00']
-    elif test_number == 3:
-        names = ['0', '0/']
-    elif test_number == 4:
-        names: List[str] = [
-            'xform',
-            'layout_xform',
-            'claim',
-            'opacity',
-            'period',
-            'reverse_opacity',
-            'state',
-            'progress',
-            'phase',
-            'seed',
-            'width',
-            'height',
-            'score',
-            'amplitude',
-            't',
-            'i',
-            'value',
-            'id',
-            'parent_id',
-            'strength',
-            'power_level',
-            'child_count',
-            'data_offset'
-            'color_r',
-            'color_g',
-            'color_b',
-            'color_space',
-            'is_critical',
-            'is_reversible',
-        ]
-    elif test_number == 5:
-        names: List[str] = []
-    else:
-        return
-    bonsai = create_bonsai(names)
-    print(bonsai)
-    print(f'Length of bonsai: {len(bonsai)}')
-    #
-    # expected: List[int] = [
-    #     0, NO_ID, 3, int(*b'a'), int(*b'i'), 2, int(*b't'), 11,
-    #     0, 0, 0,  # a
-    #     0, 5, 1, int(*b'n'),  # i
-    #     0, 6, 1, int(*b'n'),  # in
-    #     0, 7, 0,  # inn
-    #     0, NO_ID, 2, int(*b'e'), int(*b'o'), 14,
-    #     0, NO_ID, 3, int(*b'a'), int(*b'd'), 2, int(*b'n'), 3,
-    #     0, 2, 0,  # tea
-    #     0, 3, 0,  # ted
-    #     0, 4, 0,  # ten
-    #     0, 1, 0,  # to
-    # ]
-    # print(expected)
-    #
-    # print(f'Size of the result: {len(bonsai)} bytes (= {len(bonsai) / 8} pointers)')
-    #
-    # success: str = "YES!" if bonsai == expected else "... nope"
-    # print(f'Success? {success}')
-
-    for index, name in enumerate(names):
-        result: Optional[int] = find_in_bonsai(bonsai, name)
-        if result is None:
-            print(f'FAILURE! "{name}" not found. Expected {index}')
-        elif result == index:
-            print(f'Success. "{name}" -> {result}')
-        else:
-            print(f'FAILURE! "{name}" -> {result}, but expected {index}')
-
-
-if __name__ == '__main__':
-    for test_case in range(6):
-        main(test_case)
-    # main()
