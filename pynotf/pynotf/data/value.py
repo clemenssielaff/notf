@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import sys
 from enum import IntEnum, auto
-from typing import Union, List, Dict, Any, Sequence, Optional, Tuple, Iterable, AbstractSet, Callable
+from typing import Union, List, Dict, Any, Sequence, Optional, Tuple, Iterable, Callable
 from math import trunc, ceil, floor, pow
 from operator import floordiv, mod, truediv
 
-from pyrsistent import pvector as make_const_list, PVector as ConstList, \
-    pmap as make_const_map, PMap as ConstMap, PRecord as ConstNamedTuple, field
+from pyrsistent import pvector as make_const_list, PVector as ConstList, PRecord as ConstNamedTuple, field
 from pyrsistent.typing import PVector as ConstListT
+
+from pynotf.data import Bonsai
 
 ########################################################################################################################
 
@@ -79,22 +80,18 @@ def check_denotable(obj: Any, allow_empty_list: bool) -> Denotable:
                 raise ValueError("All items in a Value.List must have the same Schema")
 
         if Kind.from_denotable(reference_denotable) == Kind.RECORD:
-            def get_keys(rep: Denotable) -> Optional[AbstractSet[str]]:
+            def get_keys(rep: Denotable) -> Optional[List[str]]:
                 if isinstance(rep, dict):
-                    return rep.keys()
+                    return list(rep.keys())
                 elif isinstance(rep, tuple):
                     return None
                 else:
                     assert isinstance(rep, Value)
-                    result: Optional[AbstractSet[str]] = rep.get_keys()
-                    if result is not None:
-                        result = set(result)  # to allow == comparison with dict.keys()
-                    return result
+                    return rep.get_keys()
 
-            reference_keys: Optional[AbstractSet[str]] = get_keys(reference_denotable)
+            reference_keys: Optional[List[str]] = get_keys(reference_denotable)
             for i in range(1, len(denotable)):
-                keys: Optional[AbstractSet[str]] = get_keys(denotable[i])
-                if keys != reference_keys:
+                if get_keys(denotable[i]) != reference_keys:
                     raise ValueError("All Records in a Value.List must have the same Dictionary")
 
         return denotable
@@ -478,7 +475,7 @@ class Dictionary(ConstNamedTuple):
     The child Dictionaries need to be addressable by name and index, therefore we have a map [str -> index] and a vector
     that contain the actual child Dictionaries.
     """
-    names = field(type=ConstMap, mandatory=True)
+    names = field(type=Bonsai, mandatory=True)
     children = field(type=ConstList, mandatory=True)
 
 
@@ -506,8 +503,9 @@ def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
             if isinstance(next_denotable, tuple):
                 return None
             else:
+                assert isinstance(next_denotable, dict)
                 return Dictionary(
-                    names=make_const_map({str(name): index for (index, name) in enumerate(next_denotable.keys())}),
+                    names=Bonsai(list(next_denotable.keys())),
                     children=make_const_list([parse_next(child) for child in next_denotable.values()]),
                 )
 
@@ -584,7 +582,7 @@ class Value:
         assert Kind.is_valid(self._schema[0])
         return Kind(self._schema[0])
 
-    def get_keys(self) -> Optional[AbstractSet[str]]:
+    def get_keys(self) -> Optional[List[str]]:
         """
         Returns the known keys if this is a named record.
         Otherwise returns None.
@@ -593,7 +591,6 @@ class Value:
             return self._dictionary.names.keys()
         else:
             return None
-        # TODO: ConstMap stored keys unordered, but we need them in order
 
     def __eq__(self, other: Any) -> bool:
         """

@@ -16,21 +16,6 @@ class RowHandle(ConstNamedTuple):
     generation = field(type=int, mandatory=True, invariant=lambda x: (x > 0, 'Generation must be > 0'))
 
 
-class RowHandles(ConstList):
-    """
-    An immutable list of RowHandles.
-    """
-    __type__ = RowHandle
-
-
-class RowHandleMap(ConstMap):
-    """
-    An immutable map of named RowHandles.
-    """
-    __key_type__ = str
-    __value_type__ = RowHandle
-
-
 class BuiltinColumns(ConstNamedTuple):
     """
     Every table has a built-in column `generation`, which allows the re-use of a table row without running into problems
@@ -148,6 +133,15 @@ def is_handle_valid(table, handle: RowHandle) -> bool:
 
 
 ## DATA ################################################################################################################
+
+
+class RowHandleMap(ConstMap):
+    """
+    An immutable map of named RowHandles.
+    """
+    __key_type__ = str
+    __value_type__ = RowHandle
+
 
 class WidgetRow(BuiltinColumns):
     name = field(type=str, mandatory=True)

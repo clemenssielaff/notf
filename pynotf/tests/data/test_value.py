@@ -170,8 +170,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(test_value.get_kind(), Value.Kind.RECORD)
 
     def test_keys(self):
-        self.assertEqual(set(test_value.get_keys()), set(test_element.keys()))
-        # TODO: update this test once the dictionary stores keys in order
+        self.assertEqual(test_value.get_keys(), list(test_element.keys()))
         self.assertIsNone(Value(0).get_keys())
 
     def test_none(self):

@@ -158,19 +158,19 @@ def find_in_bonsai(bonsai: bytes, word: str) -> Optional[int]:
             return None if result == NO_ID else result  # word was found but might not have an associated id
 
         # if the node has no child branches, there is nowhere to go from here
-        number_of_branches_index: int = start_index + common_word_size + 2
-        assert number_of_branches_index < len(bonsai)
-        number_of_branches: int = bonsai[number_of_branches_index]
-        if number_of_branches == 0:
+        child_count_index: int = start_index + common_word_size + 2
+        assert child_count_index < len(bonsai)
+        child_count: int = bonsai[child_count_index]
+        if child_count == 0:
             return None  # word was not found
 
         # find the child branch to continue traversal
         target_branch_label: int = remaining_word[0]
-        node_end_index: int = number_of_branches_index + (number_of_branches * 2)
+        node_end_index: int = child_count_index + (child_count * 2)
         assert node_end_index - 1 < len(bonsai)
 
         # we can either take the first branch...
-        branch_index: int = number_of_branches_index + 1
+        branch_index: int = child_count_index + 1
         if target_branch_label == bonsai[branch_index]:
             return traverse(remaining_word[1:], node_end_index)
 
@@ -192,17 +192,76 @@ def find_in_bonsai(bonsai: bytes, word: str) -> Optional[int]:
     return traverse(word.encode('utf-8'))
 
 
+def get_names_from_bonsai(bonsai: bytes) -> List[str]:
+    if len(bonsai) == 0:
+        return []
+
+    result: Dict[int, str] = {}
+
+    def traverse(name: bytes, node_index: int) -> None:
+        assert node_index < len(bonsai)
+        common_word_size: int = bonsai[node_index]
+        common_word_index: int = node_index + 1
+        id_index: int = common_word_index + common_word_size
+
+        # add the common word to the name
+        if common_word_size > 0:
+            assert node_index + common_word_size < len(bonsai)
+            name = name + bonsai[common_word_index: id_index]
+
+        # if this node has an id, it is a new name
+        node_id: int = bonsai[id_index]
+        if node_id != NO_ID:
+            assert node_id not in result
+            result[node_id] = name.decode('utf-8')
+
+        # no children
+        child_count_index: int = id_index + 1
+        assert child_count_index < len(bonsai)
+        child_count: int = bonsai[child_count_index]
+        if child_count == 0:
+            return
+
+        # single child
+        node_end_index: int = child_count_index + (child_count * 2)
+        label_index: int = child_count_index + 1
+        assert node_end_index < len(bonsai)
+        traverse(name + bytes(bonsai[label_index: label_index+1]), node_end_index)
+        
+        # multiple children
+        label_index += 1
+        total_offset: int = 0
+        for _ in range(1, child_count):
+            offset_index: int = label_index + 1
+            total_offset += bonsai[offset_index]
+            traverse(name + bytes(bonsai[label_index: offset_index]), node_end_index + total_offset)
+            label_index += 2
+
+    traverse(b'', 0)
+    return [result[key] for key in sorted(result.keys())]
+
+
 ########################################################################################################################
 
 class Bonsai:
     def __init__(self, names: List[str]):
         self._bonsai: bytes = create_bonsai(names)
 
-    def get(self, name: str) -> Optional[int]:
-        return find_in_bonsai(self._bonsai, name)
-
     def __getitem__(self, name: str) -> int:
+        if not isinstance(name, str):
+            raise KeyError(f'Can not find "{name}" in Bonsai - only strings are allowed as key.')
         result: Optional[int] = find_in_bonsai(self._bonsai, name)
         if result is None:
-            raise KeyError(f'Could not find "{name}" in Bonsai')
+            raise KeyError(f'Can not find "{name}" in Bonsai.')
         return result
+
+    def __contains__(self, item: str) -> bool:
+        return self.get(item) is not None
+
+    def get(self, name: str) -> Optional[int]:
+        if not isinstance(name, str):
+            return None
+        return find_in_bonsai(self._bonsai, name)
+
+    def keys(self) -> List[str]:
+        return get_names_from_bonsai(self._bonsai)
