@@ -100,8 +100,9 @@ def remove_row(table: Table, index: int, free_list: List[int], refcounts: Option
 def mutate(data: T, path: List[Union[int, str]], func: Callable[[T], T]) -> T:
     if len(path) == 0:
         return func(data)
-    step: Union[int, str] = path.pop(0)
-    return data.set(step, mutate(data[step], path, func))
+    else:
+        step: Union[int, str] = path.pop(0)
+        return data.set(step, mutate(data[step], path, func))
 
 
 def increase_refcount(table, index: int, refcounts: List[int]) -> int:

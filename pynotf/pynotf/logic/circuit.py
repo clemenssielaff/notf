@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import deque
-from enum import Enum
+from enum import Enum, unique
 from logging import error as print_error
 from threading import Lock, Condition
 from typing import Any, Optional, List, Tuple, Deque, Dict, Callable, Type, TypeVar
@@ -52,6 +52,7 @@ class Error(NamedTuple):
     Object wrapping any exception thrown (and caught) in the Circuit alongside additional information.
     """
 
+    @unique
     class Kind(Enum):
         NO_DAG = 1  # a cycle was detected during Event handling
         WRONG_VALUE_SCHEMA = 2  # the Schema of a Value did not match the expected

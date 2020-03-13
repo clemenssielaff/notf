@@ -110,3 +110,31 @@ For details see: https://gamasutra.com/blogs/NiklasGray/20190724/347232/Data_Str
 Values (Lists and Maps to be precise) point not directly into memory, but to a shared block of data appropriate for 
 their type. Lists for example should store both the offset and the size (or the last/one past last element) and maybe
 even a growing vector of chunks, if a list happens to span multiple?
+
+
+
+# Logic Data
+
+Our goal here is to express the entire circuit as a single data structure.
+This will most likely work like the example with the application: have a single map (or named tuple) at the root, and multiple tables underneath.
+The question right now is: do we want to have separate tables for Emitters and Receivers?
+Let's list all the pros and cons:
+
+Pro:
+    * We would only have a single table.
+    * We can ensure easily that Operators (which are Receivers and Emitters) only have a single ID
+    * No jumping between tables, direct access to the data.
+
+Con:
+    * Space wasted for the pure Receiver or Emitters.
+
+... Honestly, those sound like a lot of pros and very few (and inconsequential) cons.
+Alright then. 
+How does the Circuit data structure look like?
+Well, it's a table.
+Each row has an (implicit) ID and a generation value.
+Every row is another Element in the Circuit.
+
+| Generation |  Input Schema  |    Output Schema   | Connected Upstream | Connected Downstream | Status  / Flags |  Last emitted Value |
+|:----------:|:--------------:|:------------------:|:------------------:|:--------------------:|:---------------:|---------------------|
+| signed int | shared<Schema> | shared_ptr<Schema> |   set<RowHandle>   |    list<RowHandle>   |   int/bitfield  |  shared_ptr<Value>  |

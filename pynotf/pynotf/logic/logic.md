@@ -702,3 +702,82 @@ In another Scenario, you are waiting forever for an async operation to finish bu
 The second scenario is actually a good case for the prologue not returning a Service-String *or* a Value for the epilogue, but both. Meaning, the epilogue can always be called right away on top of whatever the async Service emits later on. Of course, you should also be able to inhibit both calls, so I guess the final signature of the prologue return object is:  
 Tuple[Optional[String], Optional[Value]]  
 with the first String being the Service string and the Value the input for the epilogue function. If you pass (None, None) then nothing happens.
+
+
+
+------------------------------------------------------
+
+maybe we don't need circuit element ids after all, if all relevant emitters are tied to (named) nodes..?
+in that case, we wouldn't have the common Element base class. Emitters can use the &this pointer as unique ID and the one place where an Emitter can throw an error (NoDAG) could be handled some other way ..?
+
+Actually, here is a reason why we might *still* need Element IDs: serialization. Pointer to Emitter and Pointer to Receiver will not match, and a single ID per Circuit element, it might get harder to serialize a Circuit.
+
+------------------------------------------------------
+
+Multi-Threaded Circuit Evalution
+
+here's a thought: If we really *can* make Nodes only have Properties (which are Values), children (which are Nodes) and a single Value as private state, we could actually have a multi-threaded graph - at least one using the event sourcing approach
+
+BUT ACTUALLY NOT
+(regardless of what the text says underneath)
+The problem is that even if two Events B and C modify completely different state, we cannot be certain that they are independent.
+C might read state that is modified by B but not C. But if B has not been applied yet, then C will produce the _wrong_ result!
+Therefore, in order to be truly sure that two events are independent, we need to keep track of _all the reads_ during an event as well, not just the delta in the end state! 
+
+Text from the Markdown file:
+
+The topic of true parallel execution of the Application Logic has been a difficult one. On the surface it seems like
+it should be possible - after all, what is the Logic but a DAG? And parallel graph execution has been done countless 
+times. The problem however is twofold:
+    1. Logic operations are allowed to add, move or remove other operations in the Logic graph.
+    2. Since we allow user-defined code to execute in the Logic (be that dynamically through scripting or statically 
+       at compile time), we cannot be certain what dependencies an operation has.
+Actually, looking at the problems - it is really just one: User-defined code. 
+
+This all means that it is impossible to statically determine the topology of the graph. Even if you propagate an Event 
+once, you cannot be certain that the same Event with a different Value would reach the same child operations, since any
+Operation could contain a simply if-statement for any specific case which would be transparent from the outside. And
+event with the same Value you might get a different result, as long as the user defined code is allowed to store its own
+state.
+Without a fixed topology, you do not have multithreaded execution.
+
+However ...  
+There is this idea called "Event Sourcing" (https://martinfowler.com/eaaDev/EventSourcing.html) that basically says that
+instead of storing the state of something, we only store all the events that modify that something and then, if someone
+asks, use the events to generate the state that we need. For example, instead of storing the amount of money in the bank
+account, we assume that it starts with zero and only store transactions. Then, if you want to look up your current
+balance, we replay all transactions and generate the answer.
+That alone does not help here though. Our problem is not the state of the Logic, but its lack of visibility. We only
+know which Logic operators were read, written, created or destroyed *after* the event has been processed. Since there
+is no way to know that in advance, we cannot schedule multiple threads executing the Logic in parallel without creating
+race conditions.
+But what if we keep a record of ever read, write, creation or destruction that ever event triggered? This will not solve
+the problems of racy reads and writes, but it will allow us to reason about dependencies of events after the fact.
+So if we have event A and B (in that order), we handle both in parallel (based on the Logic as it presented itself at
+the start of the event loop) and afterwards find out that they touched completely different operators? We do nothing.
+There was no possible race condition and we can update the Logic using the CRUD (create, read, update, delete) records
+that both Events generated independently. If however we find an Switch that:
+    * A and B wrote to
+    * A wrote to and B read
+    * A destroyed and B read
+we must assume that the records from B are invalid, as it was run on an outdated Logic graph. Now we need to re-run B, 
+after applying the changes from A. 
+And yes, that does mean that we might have to do some work twice. It also means that we  have to keep track of child 
+events, so they too can be destroyed should their parent (B in the example) be found out to be invalid; otherwise B 
+might spawn invalid and/or duplicate child events. But on the plus side, if enough events are independent (which I 
+assume they will be) we can have true parallel execution for most Events.
+Whether or not this is actually useful is left to be determined through profiling.
+
+Okay, counterpoint: Since we have user-defined code; *state-full* user-defined code, how can we guarantee that the 
+effect of an Event can be truly reversible? Meaning, if we do find that B is invalid, how can we restore the complete
+state of the Logic graph to before B was run? "complete" being the weight-bearing word here. The point is: we can not.
+Not, as long as the user is able to keep her own state around that we don't know anything about.
+The true question is: can we allow that? Or asked differently, do we gain enough by cutting the user's ability to 
+manage her own state? 
+Probably not. The dream of true parallel Logic execution remains as alluring as it is elusive. It sure sounds good to 
+say that all events are executed in parallel, but that might well be a burden. It is not unlikely that most events will 
+be short or even ultra-short lived (by that I mean that they are emitted straight into Nirvana, without a single 
+Receiver to react) and opening up a new thread for each one would be a massive overhead. On top of that, you'd have to
+record CRUD and analyse the records - more overhead. And we didn't even consider the cost of doing the same work twice 
+if a collision in the records is found. Combine that with the fact that we would need to keep track of *all* of the 
+state and must forbid the user to manage any of her own ... I say it is not worth it.

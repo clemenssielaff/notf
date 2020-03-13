@@ -15,3 +15,5 @@ pynotf/.venv/
 pynotf/lib/*.so*
 pynotf/coverage/
 pynotf/.coverage
+pynotf/.hypothesis/*
+pynotf/tests/.hypothesis/*
