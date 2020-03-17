@@ -15,11 +15,11 @@ class TestCase(unittest.TestCase):
         """
         A Storage with a single, simple Table with some basic operations on it.
         """
-        storage: Storage = Storage(dict(
+        storage: Storage = Storage(
             properties=dict(
                 name=str,
             )
-        ))
+        )
         self.assertEqual(list(storage.keys()), ["properties"])
 
         # add the first row
@@ -70,21 +70,21 @@ class TestCase(unittest.TestCase):
         Tables in a Storage cannot have the same name (case insensitive)
         """
         with self.assertRaises(NameError):
-            Storage({
-                "table": dict(),
-                "Table": dict(),
-            })
+            Storage(
+                table=dict(),
+                Table=dict(),
+            )
 
     def test_to_string(self):
         """
         Basic test of the string representation of a table (for coverage, mostly).
         """
-        storage: Storage = Storage(dict(
+        storage: Storage = Storage(
             properties=dict(
                 name=str,
                 value=int,
             )
-        ))
+        )
 
         table: Table = storage["properties"]
         table.add_row(name="a", value=1)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Type, Dict, Tuple, Any, TypeVar, Union, Callable, Iterable
 
-from pyrsistent import CheckedPVector as ConstList, PRecord as ConstNamedTuple, field
+from pyrsistent import CheckedPVector as ConstList, CheckedPMap as ConstMap, PRecord as ConstNamedTuple, field
 from pyrsistent.typing import CheckedPVector as ConstListT
 
 from pynotf.extra import color_background
@@ -27,6 +27,21 @@ class RowHandle(ConstNamedTuple):
     """
     index = field(type=int, mandatory=True, invariant=lambda x: (x >= 0, 'Row index must be >= 0'))
     _gen = field(type=int, mandatory=True, invariant=lambda x: (x > 0, 'Generation must be > 0'))
+
+
+class RowHandleList(ConstList):
+    """
+    An immutable list of RowHandles.
+    """
+    __type__ = RowHandle
+
+
+class RowHandleMap(ConstMap):
+    """
+    An immutable map of named RowHandles.
+    """
+    __key_type__ = str
+    __value_type__ = RowHandle
 
 
 # FUNCTIONS ############################################################################################################
@@ -156,10 +171,9 @@ def generate_storage_type(tables: Dict[str, Type]) -> Type:
 
 class Storage:
 
-    def __init__(self, description: Dict[str, Dict[str, Type]]):
-        original_size: int = len(description)
-        description = {name.lower(): table_description for name, table_description in description.items()}
-        if original_size != len(description):
+    def __init__(self, **tables: Dict[str, Type]):
+        description = {name.lower(): table_description for name, table_description in tables.items()}
+        if len(tables) != len(description):
             raise NameError('No duplicate names (case insensitive) allowed')
 
         self._table_types: Dict[str, Type] = {
@@ -225,6 +239,9 @@ class Table:
     def is_handle_valid(self, row_handle: RowHandle) -> bool:
         return is_handle_valid(self._table, row_handle)
 
+    def keys(self) -> List[str]:
+        return list(self._row_type._precord_fields.keys())[1:]
+
     def __getitem__(self, index: int) -> Accessor:
         return self.Accessor(self, self._table, index)
 
@@ -232,7 +249,7 @@ class Table:
         return len(self._table)
 
     def __str__(self) -> str:
-        titles: str = ", ".join(list(self._row_type._precord_fields.keys())[1:])
+        titles: str = ", ".join(self.keys())
         return f'Table("{titles}") with {len(self._table)} rows.'
 
     def to_string(self) -> str:
