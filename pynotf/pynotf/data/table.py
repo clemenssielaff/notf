@@ -1,5 +1,8 @@
 from __future__ import annotations
-from typing import List, Type, Dict, Tuple, Any, TypeVar, Union, Callable, Optional
+
+from enum import IntEnum, unique
+from typing import List, Type, Dict, Tuple, Any, TypeVar, Union, Callable
+from logging import warning
 
 from pyrsistent import CheckedPVector as ConstList, CheckedPMap as ConstMap, PRecord as ConstNamedTuple, field
 from pyrsistent.typing import CheckedPVector as ConstListT
@@ -41,22 +44,21 @@ class RowHandle:
     def generation(self) -> int:
         return self._data & ((2 ** self._GENERATION_SIZE) - 1)
 
-    def is_valid(self) -> bool:
+    def is_null(self) -> bool:
         """
-        The only way for a Handle to be identifiable as invalid (without comparing it against a table) is a generation
-        value of zero.
+        Handles are a bit like pointers. We know that the nullptr is always invalid, but if a pointer is not null, we
+        still don't know if it points to valid memory or not.
+        The only way for a Handle to be identifiable as "null" is a generation value of zero.
         """
-        return self.generation != 0
+        return self.generation == 0
+
+    def __eq__(self, other: RowHandle) -> bool:
+        if not isinstance(other, RowHandle):
+            return NotImplemented
+        return self._data == other._data
 
     def __bool__(self) -> bool:
-        return self.is_valid()
-
-
-class HandleError(Exception):
-    """
-    Exception raised when an invalid RowHandle is used.
-    """
-    pass
+        return not self.is_null()
 
 
 class RowHandleList(ConstList):
@@ -82,30 +84,13 @@ class TableRow(ConstNamedTuple):
     _gen = field(type=int, mandatory=True)
 
 
-AnyTable = ConstListT[TableRow]
+TableData = ConstListT[TableRow]
 T = TypeVar('T')
 
 
 # FUNCTIONS ############################################################################################################
 
-def is_row_active(table: AnyTable, row_index: int) -> bool:
-    return row_index < len(table) and table[row_index]._gen > 0
-
-
-def is_handle_valid(table: AnyTable, handle: RowHandle) -> bool:
-    return 0 <= handle.index < len(table) and handle.generation == table[handle.index]._gen
-
-
-def get_handle_error_reason(table: AnyTable, handle: RowHandle) -> str:
-    if not (0 <= handle.index < len(table)):
-        return f'Invalid RowHandle index {handle.index} for a table with a highest index of {len(table) - 1}'
-    else:
-        assert handle.generation != table[handle.index]._gen
-        return f'Invalid RowHandle generation {handle.generation} ' \
-               f'for a row with a current generation value of {table[handle.index]._gen}'
-
-
-def add_table_row(table: AnyTable, table_id: int, row: TableRow, free_list: List[int]) -> Tuple[AnyTable, RowHandle]:
+def add_table_row(table: TableData, table_id: int, row: TableRow, free_list: List[int]) -> Tuple[TableData, RowHandle]:
     """
     Adds a new row to a table.
     Either re-uses a expired row from the free list or appends a new row.
@@ -122,6 +107,7 @@ def add_table_row(table: AnyTable, table_id: int, row: TableRow, free_list: List
 
         if table[row_index]._gen == -(2 ** 31):
             # integer overflow!
+            warning(f'Generation overflow in table {table_id}, row {row_index}')
             generation: int = 1
         else:
             # increment the row's generation
@@ -129,7 +115,7 @@ def add_table_row(table: AnyTable, table_id: int, row: TableRow, free_list: List
         assert generation > 0
 
         # mutate the table
-        new_table: AnyTable = table.set(row_index, row.set(_gen=generation))
+        new_table: TableData = table.set(row_index, row.set(_gen=generation))
 
     else:  # free list is empty
         # create a new row
@@ -137,13 +123,13 @@ def add_table_row(table: AnyTable, table_id: int, row: TableRow, free_list: List
         generation: int = 1
 
         # mutate the table
-        new_table: AnyTable = table.append(row.set(_gen=generation))
+        new_table: TableData = table.append(row.set(_gen=generation))
 
     # create and return a Handle to the new row
     return new_table, RowHandle(table_id, row_index, generation)
 
 
-def remove_table_row(table: AnyTable, index: int, free_list: List[int]) -> AnyTable:
+def remove_table_row(table: TableData, index: int, free_list: List[int]) -> TableData:
     """
     Removes the row with the given index from the table.
     :param table: Table to mutate.
@@ -180,13 +166,17 @@ def mutate_data(data: T, path: List[Union[int, str]], func: Callable[[T], T]) ->
         return data.set(step, mutate_data(data[step], path, func))
 
 
-def generate_table_type(description: Dict[str, Type]) -> Type:
+def generate_table_type(name: str, description: Dict[str, Type]) -> Type:
     """
     Creates a Table type, an immutable named tuple with a typed row for each entry.
+    :param name: Name of the Table type (all lowercase).
     :param description: Row name -> Row type (row names are converted to lowercase).
     """
+    # type names are capitalized
+    name = name.capitalize()
+
     # create the row type
-    row_type: Type = type('_Row', (TableRow,), dict())
+    row_type: Type = type(f'{name}Row', (TableRow,), dict())
     for row_name, row_value_type in description.items():
         assert isinstance(row_name, str)
         row_name = row_name.lower()
@@ -194,7 +184,7 @@ def generate_table_type(description: Dict[str, Type]) -> Type:
         row_type._precord_mandatory_fields.add(row_name)
 
     # create the table type
-    table_type: Type = type('_Table', (ConstList,), dict())
+    table_type: Type = type(name, (ConstList,), dict())
     table_type.__type__ = row_type
     table_type._checked_types = (row_type,)
     table_type.Row = row_type  # for convenient access
@@ -204,124 +194,211 @@ def generate_table_type(description: Dict[str, Type]) -> Type:
 
 # API ##################################################################################################################
 
-class Storage:
+class HandleError(Exception):
+    """
+    Exception raised when an invalid RowHandle is used.
+    """
 
-    def __init__(self, *tables: Dict[str, Type]):
-        self._table_types: List[Type] = [generate_table_type(table) for table in tables]
-        self._data: ConstListT[AnyTable] = ConstList(type_() for type_ in self._table_types)
+    @unique
+    class Reason(IntEnum):
+        NO_ERROR = 0
+        TABLE_MISMATCH = 1
+        INVALID_INDEX = 2
+        GENERATION_MISMATCH = 3
+
+
+class Storage:
+    """
+    An array of Tables.
+    Contains the root of the immutable Application data.
+    """
+
+    def __init__(self, **tables: Dict[str, Type]):
+        """
+        Constructor.
+        :param tables: Named Table description in order.
+        """
+        # normalize names
+        description = {name.lower(): table_description for name, table_description in tables.items()}
+        if len(tables) != len(description):
+            raise NameError('Tables in Storage may not have the same (case insensitive) name')
+
+        self._table_types: List[Type] = [generate_table_type(name, table) for name, table in description.items()]
+        self._data: ConstListT[TableData] = ConstList(type_() for type_ in self._table_types)
         self._tables: List[Table] = [Table(self, table_id, type_) for table_id, type_ in enumerate(self._table_types)]
 
-    def __getitem__(self, index: int) -> Table:
-        return self._tables[index]
+    def __getitem__(self, table_id: int) -> Table:
+        """
+        Returns a Table by its id.
+        :param table_id: Id of the requested Table
+        :return: The requested Table.
+        :raise IndexError: If the table id does not match a Table in Storage.
+        """
+        return self._tables[table_id]
 
     def __len__(self) -> int:
+        """
+        The number of Tables in Storage.
+        """
         return len(self._tables)
 
-    def get_data(self):
+    def get_data(self) -> ConstListT[TableData]:
+        """
+        The complete Application data.
+        """
         return self._data
 
-    def set_data(self, data):
+    def set_data(self, data: ConstListT[TableData]) -> None:
+        """
+        Updates the complete Application data.
+        Note that this method does not check the given data for validity, I assume you know what you are doing.
+        We would get this for free with the type checking in C++; in Python I cannot be bothered to implement it.
+        :param data: New Application data.
+        """
         self._data = data
         for table in self._tables:
             table._refresh_free_list()
 
 
 class Table:
+    """
+    Wrapper around a single Table in Storage.
+    Allows the interaction with a Table as if it was mutable.
+    """
+
     class Accessor:
-        def __init__(self, table: Table, data, row_index: int):
+        """
+        Access to a single row in the Table.
+        Object returned when you access a Table via the [] operator.
+        Encapsulated both read and write operations, making them appear as if you were working on regular, mutable data.
+        """
+
+        def __init__(self, table: Table, data: TableData, row_index: int):
+            """
+            Constructor.
+            :param table: The accessed Table.
+            :param data: The current table data.
+            :param row_index: Index of the accessed row.
+            """
+            # Unlike the Table, the Accessor _does_ store the table data itself, because we expect it to be short-lived.
+            # An r-value, essentially. There should be no way to modify the data from somewhere else while it is being
+            # accessed by this Accessor.
+            # This of course assumes that the Storage is only accessed on a single thread.
             self._table: Table = table
-            self._data = data
+            self._data: TableData = data
             self._row_index: int = row_index
 
-        def __getitem__(self, name: str) -> Any:
-            return self._data[self._row_index][name]
+        def __getitem__(self, column: str) -> Any:
+            """
+            Return the contents of a cell in the table by column name.
+            :param column: Name of the column to read.
+            :return: Contents of the cell identified by the row of the Accessor and the given column.
+            :raise KeyError: If the column is not part of the Table.
+            """
+            return self._data[self._row_index][column]
 
-        def __setitem__(self, name: str, value: Any) -> None:
-            storage = self._table._storage
-            storage._data = mutate_data(storage._data, [self._table._id, self._row_index],
-                                        lambda row: row.set(name, value))
+        def __setitem__(self, column: str, value: Any) -> None:
+            """
+            Modifies the row, and continues the cascade of modification up to the Storage.
+            :param column: Name of the column to update.
+            :param value: New value of the cell.
+            :raise KeyError: If the column is not part of the Table.
+            """
+            self._table._storage._data = mutate_data(
+                self._table._storage._data, [self._table.get_id(), self._row_index], lambda row: row.set(column, value))
 
     def __init__(self, storage: Storage, table_id: int, table_type: Type):
+        """
+        Constructor.
+        :param storage: Storage managing the data of this Table. 
+        :param table_id: The numeric id of this Table.
+        :param table_type: The type used to store the Table's data.
+        """
         self._storage: Storage = storage
         self._id: int = table_id
+        self._table_type: Type = table_type
         self._free_list: List[int] = []
-        self._row_type: Type[TableRow] = table_type.Row
 
-    @property
-    def _table_data(self):
-        return self._storage._data[self._id]
-
-    def _refresh_free_list(self):
-        self._free_list = [index for index in range(len(self._table_data)) if self._table_data[index]._gen < 0]
-
-    def get_handle(self, row_index: int) -> RowHandle:
-        table = self._table_data
-        if row_index < len(table):
-            return RowHandle(self._id, row_index, table[row_index]['_gen'])
-        else:
-            return RowHandle(self._id, row_index)  # invalid handle
-
-    def is_row_active(self, row_index: int) -> bool:
-        return is_row_active(self._table_data, row_index)
-
-    def is_handle_valid(self, row_handle: RowHandle) -> bool:
-        return row_handle.table == self._id and is_handle_valid(self._table_data, row_handle)
-
-    def check_handle(self, row_handle: RowHandle) -> Optional[str]:
-        table = self._table_data
-        if row_handle.table != self._id:
-            return f'Cannot use Handle for table {row_handle.table} with table {self._id}'
-        return None if is_handle_valid(table, row_handle) else get_handle_error_reason(table, row_handle)
-
-    def add_row(self, **kwargs) -> RowHandle:
-        new_table, row = add_table_row(self._table_data, self._id, self._row_type(_gen=0, **kwargs), self._free_list)
-        assert row.is_valid()
-        self._storage._data = self._storage._data.set(self._id, new_table)
-        return row
-
-    def remove_row(self, row: Union[int, RowHandle]) -> None:
-        table = self._table_data
-        if isinstance(row, RowHandle):
-            if row.table != self._id:
-                raise HandleError(f'Cannot use Handle for table {row.table} with table {self._id}')
-            if not is_handle_valid(table, row):
-                raise HandleError(get_handle_error_reason(table, row))
-            row_index: int = row.index
-        else:
-            row_index: int = row
-        self._storage._data = self._storage._data.set(self._id, remove_table_row(table, row_index, self._free_list))
-
-    def keys(self) -> List[str]:
-        return list(self._row_type._precord_fields.keys())[1:]
-
-    def __getitem__(self, row: Union[int, RowHandle]) -> Accessor:
+    def __getitem__(self, handle: RowHandle) -> Accessor:
         """
         The "int" overload should not be part of the public API as it allows unchecked modification of the data.
-        :param row: Index or Handle of the row to return.
+        :param handle: Handle of the row to access.
         :return: An Accessor to the requested row.
-        :raises: HandleError.
+        :raises HandleError: If the given Handle is invalid.
         """
-        table = self._table_data
-        if isinstance(row, RowHandle):
-            if row.table != self._id:
-                raise HandleError(f'Cannot use Handle for table {row.table} with table {self._id}')
-            if not is_handle_valid(table, row):
-                raise HandleError(get_handle_error_reason(table, row))
-            row_index: int = row.index
-        else:
-            row_index: int = row
-        return self.Accessor(self, self._table_data, row_index)
+        table_data: TableData = self._get_table_data()
+        self._assert_handle(handle, table_data)
+        return self.Accessor(self, table_data, handle.index)
 
     def __len__(self) -> int:
-        return len(self._table_data)
+        """
+        The current number of rows in this Table.
+        """
+        return len(self._get_table_data())
 
     def __str__(self) -> str:
-        titles: str = ", ".join(self.keys())
-        return f'Table("{titles}") with {len(self._table_data)} rows.'
+        """
+        Human-readable short description of this Table for debugging.
+        """
+        return f'Table "{self.get_name()}" ({len(self)} rows)'
+
+    def get_id(self) -> int:
+        """
+        Numeric id of this Table in Storage.
+        Can be used to request this Table from Storage.
+        """
+        return self._id
+
+    def get_name(self) -> str:
+        """
+        Human-readable name of this Table for debugging.
+        """
+        return self._table_type.__name__
+
+    def get_columns(self) -> List[str]:
+        """
+        The names of all (public) columns of this Table.
+        Note that this excludes the generation value.
+        """
+        return list(self._table_type.Row._precord_fields.keys())[1:]
+
+    def is_handle_valid(self, handle: RowHandle) -> bool:
+        """
+        Tests if a given Handle can be used to access this Table.
+        :param handle: Handle to test.
+        :return: True iff the Handle can be used to access this Table.
+        """
+        return not self._get_handle_error(handle, self._get_table_data())
+
+    def add_row(self, **kwargs) -> RowHandle:
+        """
+        Adds a new row to this Table.
+        :param kwargs: Per-column arguments used to construct the new Row.
+        :return: A Handle to the new Row.
+        """
+        modified_table, row_handle = add_table_row(
+            self._get_table_data(), self._id, self._table_type.Row(_gen=0, **kwargs), self._free_list)
+        assert not row_handle.is_null()
+        self._storage._data = self._storage._data.set(self._id, modified_table)
+        return row_handle
+
+    def remove_row(self, handle: RowHandle) -> None:
+        """
+        Removes an existing row from this Table.
+        :param handle: Handle of the row to remove.
+        :raise HandleError: If the given Handle is invalid.
+        """
+        table_data: TableData = self._get_table_data()
+        self._assert_handle(handle, table_data)
+        self._storage._data = self._storage._data.set(
+            self._id, remove_table_row(table_data, handle.index, self._free_list))
 
     def to_string(self) -> str:
-        table = self._table_data
-        titles: List[str] = list(self._row_type._precord_fields.keys())
+        """
+        Returns a nicely formatted UTF-8 table representation of this Table and its contents.
+        """
+        table = self._get_table_data()
+        titles: List[str] = list(self._table_type.Row._precord_fields.keys())
         rows: List[List[str, ...]] = [
             [f' {number} ', *(f' {row[i]} ' for i in titles)] for number, row in enumerate(table)]
 
@@ -351,3 +428,54 @@ class Table:
             f'└{lines[-1]}┘',  # bottom corners
         ]
         return '\n'.join(lines)
+
+    def _get_table_data(self) -> TableData:
+        """
+        The table data cannot be stored, its current value has to be read from the Storage as it could have changed.
+        """
+        return self._storage._data[self._id]
+
+    def _refresh_free_list(self):
+        """
+        Refreshes the "Free List" of this Table after its data has been updated by the Storage.
+        """
+        table_data: TableData = self._get_table_data()
+        self._free_list = [index for index in range(len(table_data)) if table_data[index]._gen < 0]
+
+    def _get_handle_error(self, row_handle: RowHandle, table_data: TableData) -> HandleError.Reason:
+        """
+        Internal test whether a given handle is valid for this Table and its current data.
+        :param row_handle: Handle to test.
+        :param table_data: The current data of this Table. Could be requested from the Storage, but since since this a
+            private method we can be certain that the caller has means to do that outside of this function. This way we
+            save a lookup in the Storage.
+        :return: A HandleError.Reason. Is NO_ERROR if the handle is valid.
+        """
+        if row_handle.table != self._id:
+            return HandleError.Reason.TABLE_MISMATCH
+        elif not (0 <= row_handle.index < len(table_data)):
+            return HandleError.Reason.INVALID_INDEX
+        elif row_handle.generation != table_data[row_handle.index]._gen:
+            return HandleError.Reason.GENERATION_MISMATCH
+        else:
+            return HandleError.Reason.NO_ERROR
+
+    def _assert_handle(self, handle: RowHandle, table_data: TableData) -> None:
+        """
+        This does nothing but throw an exception if the given Handle is invalid.
+        :param handle: Handle to validate.
+        :param table_data: Current data of this Table.
+        """
+        error: HandleError.Reason = self._get_handle_error(handle, table_data)
+        if error == HandleError.Reason.NO_ERROR:
+            return
+        elif error == HandleError.Reason.TABLE_MISMATCH:
+            raise HandleError(f'Cannot use a Handle for Table {handle.table} '
+                              f'to access Table {self._id} ({self.get_name()})')
+        elif error == HandleError.Reason.INVALID_INDEX:
+            raise HandleError(f'Invalid Handle index {handle.index} '
+                              f'for a Table with a highest index of {len(table_data) - 1}')
+        else:
+            assert error == HandleError.Reason.GENERATION_MISMATCH
+            raise HandleError(f'Invalid Handle generation {handle.generation} '
+                              f'for a row with a current generation value of {table_data[handle.index]._gen}')
