@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import IntEnum, unique
-from typing import List, Type, Dict, Tuple, Any, TypeVar, Union, Callable
+from typing import List, Type, Tuple, Any, TypeVar, Union, Callable
 from logging import warning
 
 from pyrsistent import CheckedPVector as ConstList, CheckedPMap as ConstMap, PRecord as ConstNamedTuple, field
@@ -16,6 +16,11 @@ class RowHandle:
     """
     An immutable Handle to a specific row in a specific Table.
     The default constructed Handle is invalid.
+    We store the entire handle in the space of a single 64 bit pointer.
+    The current separation of 8 bits for the table, 24 bits for the index and 32 bits for the generation gives us:
+        * 2**8 = 256 tables
+        * 2**24 = 16'777'216 rows per table
+        * 2**(32-1) = 2'147'483'648 generations per row before wrapping
     """
 
     _TABLE_SIZE: int = 8  # in bits
@@ -166,29 +171,16 @@ def mutate_data(data: T, path: List[Union[int, str]], func: Callable[[T], T]) ->
         return data.set(step, mutate_data(data[step], path, func))
 
 
-def generate_table_type(name: str, description: Dict[str, Type]) -> Type:
+def generate_table_type(name: str, row_type: Type[TableRow]) -> Type:
     """
     Creates a Table type, an immutable named tuple with a typed row for each entry.
     :param name: Name of the Table type (all lowercase).
-    :param description: Row name -> Row type (row names are converted to lowercase).
+    :param row_type: Named tuple, containing one entry per column.
     """
-    # type names are capitalized
-    name = name.capitalize()
-
-    # create the row type
-    row_type: Type = type(f'{name}Row', (TableRow,), dict())
-    for row_name, row_value_type in description.items():
-        assert isinstance(row_name, str)
-        row_name = row_name.lower()
-        row_type._precord_fields[row_name] = field(type=row_value_type, mandatory=True)
-        row_type._precord_mandatory_fields.add(row_name)
-
-    # create the table type
-    table_type: Type = type(name, (ConstList,), dict())
+    table_type: Type = type(name.capitalize(), (ConstList,), dict())
     table_type.__type__ = row_type
     table_type._checked_types = (row_type,)
     table_type.Row = row_type  # for convenient access
-
     return table_type
 
 
@@ -213,19 +205,24 @@ class Storage:
     Contains the root of the immutable Application data.
     """
 
-    def __init__(self, **tables: Dict[str, Type]):
+    def __init__(self, **tables: Type[TableRow]):
         """
         Constructor.
         :param tables: Named Table description in order.
         """
+        # ensure the tables are at their expected indices
+        for actual_index, (_, table_type) in enumerate(tables.items()):
+            assert table_type.__table_index__ == actual_index
+
         # normalize names
         description = {name.lower(): table_description for name, table_description in tables.items()}
         if len(tables) != len(description):
             raise NameError('Tables in Storage may not have the same (case insensitive) name')
 
-        self._table_types: List[Type] = [generate_table_type(name, table) for name, table in description.items()]
-        self._data: ConstListT[TableData] = ConstList(type_() for type_ in self._table_types)
-        self._tables: List[Table] = [Table(self, table_id, type_) for table_id, type_ in enumerate(self._table_types)]
+        table_types: List[Type] = [generate_table_type(name, table) for name, table in description.items()]
+        self._data: ConstListT[TableData] = ConstList(table_type() for table_type in table_types)
+        self._tables: List[Table] = [Table(self, table_id, table_type)
+                                     for table_id, table_type in enumerate(table_types)]
 
     def __getitem__(self, table_id: int) -> Table:
         """
@@ -361,6 +358,19 @@ class Table:
         Note that this excludes the generation value.
         """
         return list(self._table_type.Row._precord_fields.keys())[1:]
+
+    def get_handle(self, row_index: int) -> RowHandle:
+        """
+        Returns a RowHandle for the row with the given index.
+        :param row_index: Index of the requested row.
+        :return: RowHandle for the requested row, is invalid if the index is too large for this Table.
+        """
+        table_data: TableData = self._get_table_data()
+        if row_index < len(table_data):
+            generation: int = table_data[row_index]._gen
+            if generation > 0:
+                return RowHandle(self._id, row_index, generation)
+        return RowHandle()  # invalid handle
 
     def is_handle_valid(self, handle: RowHandle) -> bool:
         """

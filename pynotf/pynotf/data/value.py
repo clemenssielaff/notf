@@ -13,6 +13,10 @@ from pynotf.data import Bonsai
 
 ########################################################################################################################
 
+
+# Python data that conforms to the restrictions imposed by the Value type.
+# The only way to get a `Denotable` object is to give "raw" Python data to `check_denotable`.
+# If the input data is malformed in any way, this function will raise an exception.
 Denotable = Union[
     None,  # the only data held by a None Value, cannot be nested
     float,  # numbers are always stored as floats
@@ -21,11 +25,6 @@ Denotable = Union[
     Union[Tuple['Denotable', ...], Dict[str, 'Denotable']],  # records contain a named or unnamed tuple
     'Value',  # Values can be used to define other Values
 ]
-"""
-Python data that conforms to the restrictions imposed by the Value type.
-The only way to get a `Denotable` object is to pass "raw" Python data to `check_denotable`. If the input data is
-malformed in any way, this function will raise an exception.
-"""
 
 
 def check_number(obj: Any) -> Optional[float]:
@@ -596,7 +595,13 @@ class Value:
         """
         Equality test.
         """
-        return isinstance(other, Value) and self._data == other._data and self._schema == other._schema
+        if isinstance(other, Value):
+            return self._data == other._data and self._schema == other._schema
+        elif isinstance(other, (int, float)):
+            return self.get_kind() == Value.Kind.NUMBER and self._data == float(other)
+        elif isinstance(other, str):
+            return self.get_kind() == Value.Kind.STRING and self._data == other
+        return False
 
     def __ne__(self, other: Any) -> bool:
         """

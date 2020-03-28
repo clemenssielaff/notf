@@ -1,81 +1,59 @@
-from __future__ import annotations
-from typing import Optional, Set, Union
-from weakref import ref as weak_ref
+from typing import Optional
 
-from pynotf.data import Value
+from pynotf.data import Value, RowHandle, HandleError, Table
+from pynotf.core import get_app
 
-from .circuit import Circuit
-from .signals import ValueSignal, FailureSignal, CompletionSignal
+from .signals import CompletionSignal, FailureSignal, ValueSignal
 
 
 ########################################################################################################################
-# noinspection PyAbstractClass
-class Receiver(Circuit.Element):
+
+class Receiver:
     """
-    Virtual interface class for Circuit Elements that receive Signals.
-    Is non-copyable and may only be owned by other Receivers downstream and Nodes.
+    Non-owning object operating on a Circuit table row that contains a Receiver.
     """
 
-    def __init__(self, schema: Value.Schema = Value.Schema()):  # noexcept
-        """
-        Constructor.
-        Should only be called by `Circuit.create_receiver` and the Operator constructor.
-        :param schema:  Schema defining the Value expected by this Receiver, defaults to empty.
-        """
-        self._input_schema: Value.Schema = schema  # is constant
-        self._upstream: Set[Emitter] = set()
+    # def create_operator(self, operation: 'Operator.Operation') -> Optional['Operator.CreatorHandle']:  # noexcept
+    #     """
+    #     Creates and connects to a new Operator upstream.
+    #     :param operation: Operation defining the Operator.
+    #     :returns: New Operator or None if the output type of the Operation does not match this Receiver's.
+    #     """
+    #     # fail immediately if the schemas don't match
+    #     if self.get_input_schema() != operation.get_output_schema():
+    #         return self.get_circuit().handle_error(Circuit.Error(
+    #             weak_ref(self),
+    #             Circuit.Error.Kind.WRONG_VALUE_SCHEMA,
+    #             f"Cannot create an Operator with the output Value Schema {operation.get_output_schema()} "
+    #             f"from a Receiver with the input Value Schema {self.get_input_schema()}"))
+    #
+    #     # create the Operator
+    #     operator: Operator = self.get_circuit().create_element(Operator, operation)
+    #
+    #     # store the operator right away to keep it alive, this does not count as a connection yet
+    #     self._upstream.add(operator)
+    #
+    #     # the actual connection is delayed until the end of the event
+    #     self.get_circuit().create_connection(operator, self)
+    #
+    #     # return a handle to the freshly created Operator
+    #     return Operator.CreatorHandle(operator)
 
-    def get_input_schema(self) -> Value.Schema:  # noexcept
-        """
-        Schema of expected values. Can be the empty Schema.
-        """
-        return self._input_schema
-
-    def has_upstream(self) -> bool:  # noexcept
-        """
-        Checks if the Receiver has any Emitter connected upstream.
-        Useful for overrides of `_on_failure` and `_on_complete` to find out whether the completed Emitter was the last
-        connected one.
-        """
-        return len(self._upstream) != 0
-
-    def create_operator(self, operation: 'Operator.Operation') -> Optional['Operator.CreatorHandle']:  # noexcept
-        """
-        Creates and connects to a new Operator upstream.
-        :param operation: Operation defining the Operator.
-        :returns: New Operator or None if the output type of the Operation does not match this Receiver's.
-        """
-        # fail immediately if the schemas don't match
-        if self.get_input_schema() != operation.get_output_schema():
-            return self.get_circuit().handle_error(Circuit.Error(
-                weak_ref(self),
-                Circuit.Error.Kind.WRONG_VALUE_SCHEMA,
-                f"Cannot create an Operator with the output Value Schema {operation.get_output_schema()} "
-                f"from a Receiver with the input Value Schema {self.get_input_schema()}"))
-
-        # create the Operator
-        operator: Operator = self.get_circuit().create_element(Operator, operation)
-
-        # store the operator right away to keep it alive, this does not count as a connection yet
-        self._upstream.add(operator)
-
-        # the actual connection is delayed until the end of the event
-        self.get_circuit().create_connection(operator, self)
-
-        # return a handle to the freshly created Operator
-        return Operator.CreatorHandle(operator)
-
-    def connect_to(self, emitter: Union[Emitter, Emitter.Handle]):  # noexcept
+    def connect_to(self, emitter: RowHandle):  # noexcept
         """
         Connect to the given Emitter.
         If the Emitter is invalid or this Receiver is already connected to it, this does nothing.
-        :param emitter: Emitter / Handle of the Emitter to connect to.
+        :param emitter: Handle of the Emitter to connect to.
         """
-        # get the emitter to connect to, if the input is a valid handle
-        if isinstance(emitter, Emitter.Handle):
-            emitter: Optional[Emitter] = emitter._element()
-            if emitter is None:
-                return
+        table: Table = get_app().get_circuit().get_table()
+
+        # check if the emitter is valid
+        if not table.is_handle_valid(emitter):
+            return
+
+        # do nothing if the emitter is already connected
+        if emitter.index in self._get_row()['upstream']:
+            return
 
         # fail immediately if the schemas don't match
         if self.get_input_schema() != emitter.get_output_schema():
@@ -86,9 +64,9 @@ class Receiver(Circuit.Element):
                 f"with the output Value Schema {emitter.get_output_schema()} "
                 f"to a Receiver with the input Value Schema {self.get_input_schema()}"))
 
-        # store the operator right away to keep it alive
+        # store the emitter right away to keep it alive
         # as the emitter does not know about this, it does not count as a connection yet
-        self._upstream.add(emitter)
+        self._get_row()['upstream'] = self._get_row()['upstream'].append(emitter.index)
 
         # schedule the creation of the connection
         self.get_circuit().create_connection(emitter, self)
@@ -189,16 +167,6 @@ class Receiver(Circuit.Element):
                 Circuit.Error(weak_ref(self), Circuit.Error.Kind.USER_CODE_EXCEPTION, str(error)))
 
     # private
-    def _find_emitter(self, emitter_id: Emitter.ID) -> Optional[Emitter.Handle]:
-        """
-        Finds and returns an Emitter.Handle of any Emitter in the Circuit.
-        :param emitter_id:  ID of the Emitter to find.
-        :return:            A (non-owning) handle to the requested Emitter or NOne.
-        """
-        element: Optional[Circuit.Element] = self.get_circuit().get_element(emitter_id)
-        if element is None or not isinstance(element, Emitter):
-            return None
-        return Emitter.Handle(element)
 
     def _on_value(self, signal: ValueSignal):  # virtual
         """
@@ -222,9 +190,3 @@ class Receiver(Circuit.Element):
         :param signal   The CompletionSignal associated with this call.
         """
         pass
-
-
-########################################################################################################################
-
-from .emitter import Emitter
-from .operator import Operator

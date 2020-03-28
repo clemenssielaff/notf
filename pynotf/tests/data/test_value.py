@@ -124,7 +124,7 @@ class TestCase(unittest.TestCase):
 
     def test_invalid_lists(self):
         with self.assertRaises(ValueError):
-            Value([]) # list cannot be empty on creation
+            Value([])  # list cannot be empty on creation
 
         # list elements must have the same output_schema
         with self.assertRaises(ValueError):
@@ -145,8 +145,8 @@ class TestCase(unittest.TestCase):
             Value([Value(dict(a=1, b=2)), Value(dict(a=3, c=-4))])
 
     def test_valid_record(self):
-        Value((1, 2, 3, 4)) # build from tuple
-        Value(dict(a=Value(1), b=Value(2))) # build from other values
+        Value((1, 2, 3, 4))  # build from tuple
+        Value(dict(a=Value(1), b=Value(2)))  # build from other values
 
     def test_invalid_record(self):
         # records cannot be empty
@@ -373,7 +373,6 @@ class TestCase(unittest.TestCase):
                                    "key": "changed",
                                    "a number": 124, }, "my_map")
 
-
     def test_modify_with_equal_value(self):
         # update with the same number
         modified = set_value(test_value, 32.2, "pos")
@@ -460,7 +459,11 @@ class TestCase(unittest.TestCase):
 
         # comparison
         self.assertTrue(one == one)
+        self.assertTrue(one == 1)
+        self.assertTrue(one == 1.)
         self.assertFalse(one == three)
+        self.assertFalse(one == 3)
+        self.assertFalse(one == 3.)
         self.assertTrue(one != three)
         self.assertFalse(one != one)
         self.assertTrue(one < three)
@@ -521,6 +524,24 @@ class TestCase(unittest.TestCase):
             _ = one % unsupported
         with self.assertRaises(TypeError):
             _ = one ** unsupported
+
+    def test_implicit_string(self):
+        self.assertEqual(test_value["my_map"]['key'], "string")
+        self.assertNotEqual(test_value["name"], "string")
+
+    def test_get_subschema_edge_case(self):
+        value: Value = Value(dict(
+            first=dict(
+                all=1,
+                children=2,
+                are=3,
+                ground=4
+            ),
+            second=dict(
+                not_empty=1
+            )
+        ))
+        self.assertEqual(value["second"]["not_empty"], 1)
 
 
 if __name__ == '__main__':
