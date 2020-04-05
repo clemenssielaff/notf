@@ -1,3 +1,5 @@
 coverage>=5.0.3
-pyrsistent>=0.15.7
+curio>=1.1
+glfw>=1.11.0
 hypothesis>=5.6.0
+pyrsistent>=0.15.7

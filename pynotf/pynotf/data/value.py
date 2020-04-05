@@ -591,6 +591,12 @@ class Value:
         else:
             return None
 
+    def __repr__(self) -> str:
+        """
+        Unlike __str__, this function produces a string meant for debugging.
+        """
+        return repr(self._data)
+
     def __eq__(self, other: Any) -> bool:
         """
         Equality test.
@@ -626,6 +632,12 @@ class Value:
     def __float__(self) -> float:
         if self.is_number():
             return self._data
+        else:
+            raise TypeError("Value is not a number")
+
+    def __int__(self) -> int:
+        if self.is_number():
+            return int(self._data)
         else:
             raise TypeError("Value is not a number")
 

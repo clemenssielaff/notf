@@ -7,7 +7,7 @@ from pynotf.data import Value
 
 from .receiver import Receiver
 from .emitter import Emitter
-from .circuit import Circuit
+from pynotf.core.circuit import Circuit
 from .signals import ValueSignal, FailureSignal, CompletionSignal
 
 

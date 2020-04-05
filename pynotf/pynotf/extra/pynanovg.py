@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 def _load_nanovg():
-    library = CDLL(str((Path(__file__).parent / Path("../lib/libnanovg.so")).resolve()))
+    library = CDLL(str((Path(__file__).parent / Path("../../lib/libnanovg.so")).resolve()))
     return library
 
 
@@ -687,21 +687,21 @@ def transform_point(xform: Xform, x: float, y: float) -> (float, float):
 # Creates image by loading it from the disk from specified file name.
 # Returns handle to the image.
 @_c_api_wrapper('nvgCreateImage', [c_void_p, c_char_p, c_int32], c_int32)
-def create_image(ctx: c_void_p, filename: str, imageFlags: int) -> int:
+def create_image(ctx: c_void_p, filename: str, image_flags: int) -> int:
     raise NotImplementedError()
 
 
 # Creates image by loading it from the specified chunk of memory.
 # Returns handle to the image.
 @_c_api_wrapper('nvgCreateImageMem', [c_void_p, c_int32, c_void_p, c_int32], c_int32)
-def create_image_mem(ctx: c_void_p, imageFlags: int, data, ndata: int) -> int:
+def create_image_mem(ctx: c_void_p, image_flags: int, data, ndata: int) -> int:
     raise NotImplementedError()
 
 
 # Creates image from specified image data.
 # Returns handle to the image.
 @_c_api_wrapper('nvgCreateImageRGBA', [c_void_p, c_int32, c_int32, c_int32, c_void_p], c_int32)
-def create_image_rgba(ctx: c_void_p, w: int, h: int, imageFlags: int, data) -> int:
+def create_image_rgba(ctx: c_void_p, w: int, h: int, image_flags: int, data) -> int:
     raise NotImplementedError()
 
 
@@ -1089,7 +1089,7 @@ def create_font(ctx: c_void_p, name: str, filename: str) -> int:
 # Creates font by loading it from the specified memory chunk.
 # Returns handle to the font.
 @_c_api_wrapper('nvgCreateFontMem', [c_void_p, c_char_p, c_void_p, c_int32, c_int32], c_int32)
-def create_font_mem(ctx: c_void_p, name: str, data, ndata: int, freeData: int) -> int:
+def create_font_mem(ctx: c_void_p, name: str, data, ndata: int, free_data: int) -> int:
     raise NotImplementedError()
 
 
@@ -1101,13 +1101,13 @@ def find_font(ctx: c_void_p, name: str) -> int:
 
 # Adds a fallback font by handle.
 @_c_api_wrapper('nvgAddFallbackFontId', [c_void_p, c_int32, c_int32], c_int32)
-def add_fallback_font_id(ctx: c_void_p, baseFont: int, fallbackFont: int) -> int:
+def add_fallback_font_id(ctx: c_void_p, base_font: int, fallback_font: int) -> int:
     raise NotImplementedError()
 
 
 # Adds a fallback font by name.
 @_c_api_wrapper('nvgAddFallbackFont', [c_void_p, c_char_p, c_char_p], c_int32)
-def add_fallback_font(ctx: c_void_p, baseFont: str, fallbackFont: str):
+def add_fallback_font(ctx: c_void_p, base_font: str, fallback_font: str):
     raise NotImplementedError()
 
 
@@ -1131,7 +1131,7 @@ def text_letter_spacing(ctx: c_void_p, spacing: float):
 
 # Sets the proportional line height of current text style. The line height is specified as multiple of font size.
 @_c_api_wrapper('nvgTextLineHeight', [c_void_p, c_float])
-def text_line_height(ctx: c_void_p, lineHeight: float):
+def text_line_height(ctx: c_void_p, line_height: float):
     raise NotImplementedError()
 
 
@@ -1164,7 +1164,7 @@ def text(ctx: c_void_p, x: float, y: float, string: str, end: str) -> float:
 # boundaries or when new-line characters are encountered.
 # Words longer than the max width are slit at nearest character (i.e. no hyphenation).
 @_c_api_wrapper('nvgTextBox', [c_void_p, c_float, c_float, c_float, c_char_p, c_char_p])
-def text_box(ctx: c_void_p, x: float, y: float, breakRowWidth: float, string: str, end: str):
+def text_box(ctx: c_void_p, x: float, y: float, break_row_width: float, string: str, end: str):
     raise NotImplementedError()
 
 
@@ -1181,7 +1181,7 @@ def text_bounds(ctx: c_void_p, x: float, y: float, string: str, end: str, bounds
 # if the bounding box of the text should be returned. The bounds value are [xmin,ymin, xmax,ymax]
 # Measured values are returned in local coordinate space.
 @_c_api_wrapper('nvgTextBoxBounds', [c_void_p, c_float, c_float, c_float, c_char_p, c_char_p, c_void_p])
-def text_box_bounds(ctx: c_void_p, x: float, y: float, breakRowWidth: float, string: str, end: str, bounds):
+def text_box_bounds(ctx: c_void_p, x: float, y: float, break_row_width: float, string: str, end: str, bounds):
     raise NotImplementedError()
 
 
@@ -1189,7 +1189,7 @@ def text_box_bounds(ctx: c_void_p, x: float, y: float, breakRowWidth: float, str
 # Measured values are returned in local coordinate space.
 @_c_api_wrapper('nvgTextGlyphPositions', [c_void_p, c_float, c_float, c_char_p, c_char_p, c_void_p, c_int32], c_int32)
 def text_glyph_positions(ctx: c_void_p, x: float, y: float, string: str, end: str, positions: GlyphPosition,
-                         maxPositions: int) -> int:
+                         max_positions: int) -> int:
     raise NotImplementedError()
 
 
@@ -1206,5 +1206,5 @@ def text_metrics(ctx: c_void_p) -> (float, float, float):
 # are encountered.
 # Words longer than the max width are slit at nearest character (i.e. no hyphenation).
 @_c_api_wrapper('nvgTextBreakLines', [c_void_p, c_char_p, c_char_p, c_float, c_void_p, c_int32], c_int32)
-def text_break_lines(ctx: c_void_p, string: str, end: str, breakRowWidth: float, rows: TextRow, maxRows: int):
+def text_break_lines(ctx: c_void_p, string: str, end: str, break_row_width: float, rows: TextRow, max_rows: int):
     raise NotImplementedError()

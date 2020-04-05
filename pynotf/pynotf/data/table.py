@@ -426,7 +426,7 @@ class Table:
             '┼'.join(('─' * width) for width in row_widths),  # title separator
         ]
         for number, row in enumerate(rows):  # entries
-            line: str = '│'.join(entry.ljust(width) for entry, width in zip(row, row_widths))
+            line: str = '│'.join(repr(entry).ljust(width) for entry, width in zip(row, row_widths))
             if table[number]._gen < 0:
                 lines.append(color_background(line, (33, 23, 23)))  # deleted row
             else:

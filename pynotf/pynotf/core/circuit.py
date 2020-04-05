@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from collections import deque
 from weakref import ref as weak_ref
 from logging import warning
@@ -9,16 +10,17 @@ from typing import List, Optional, NamedTuple, Union, Deque, Any
 from pyrsistent import field
 
 from pynotf.data import Value, RowHandle, RowHandleList, Table, TableRow, Storage
+import pynotf.core as core
 
 
 # DATA #################################################################################################################
 
 # All (public) columns of the Emitter table.
 class EmitterColumns(TableRow):
-    __table_index__: int = 0  # in C++ this would be a type trait
+    __table_index__: int = core.TableIndex.EMITTERS  # in C++ this would be a type trait
     schema = field(type=Value.Schema, mandatory=True)  # The Schema of Values emitted downstream.
-    connections = field(type=RowHandleList, mandatory=True, initial=RowHandleList())  # Set of downstream Receivers.
     value = field(type=Value, mandatory=True)  # The last emitted Value, undefined until first emission.
+    downstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())  # Set of downstream Receivers.
     flags = field(type=int, mandatory=True, initial=0)  # bitset:
     # | 4 | 3 | 2 | 1 | 0 |
     #   +---+---+   |   |
@@ -31,8 +33,6 @@ class EmitterColumns(TableRow):
 # The first two (public) columns in any Receiver table.
 class ReceiverRow(TableRow):
     schema = field(type=Value.Schema, mandatory=True)  # The Schema of Values received from upstream.
-    connections = field(type=RowHandleList, mandatory=True, initial=RowHandleList())  # Set of upstream Emitters.
-    # TODO: I don't actually think that I need to store the upstream connections now that they are non-owning...
 
 
 class FlagIndex(IntEnum):
@@ -118,20 +118,6 @@ class Event(NamedTuple):
     value: Union[Value, Exception, None] = None
 
 
-class Error(NamedTuple):
-    """
-    Object wrapping any exception thrown (and caught) in the Circuit alongside additional information.
-    """
-    emitter: RowHandle  # the Emitter that caught the error
-    kind: Kind  # kind of error caught in the circuit
-    message: str  # error message
-
-    class Kind(Enum):
-        NO_DAG = 1  # Exception raised when a cyclic dependency was detected in the graph.
-        WRONG_VALUE_SCHEMA = 2
-        USER_CODE_EXCEPTION = 3
-
-
 class CompletionSignal(NamedTuple):
     emitter: RowHandle
 
@@ -191,25 +177,25 @@ def get_schema(table: Table, handle: RowHandle) -> Value.Schema:
 #     table[handle]['schema'] = schema
 #
 #
-def has_connections(table: Table, handle: RowHandle) -> bool:
-    return len(table[handle]['connections']) > 0
+def has_downstream(table: Table, emitter: RowHandle) -> bool:
+    return len(table[emitter]['downstream']) > 0
 
 
-def get_connections(table: Table, handle: RowHandle) -> RowHandleList:
-    return table[handle]['connections']
+def get_downstream(table: Table, emitter: RowHandle) -> RowHandleList:
+    return table[emitter]['downstream']
 
 
-def is_connected(table: Table, handle: RowHandle, other: RowHandle) -> bool:
-    return other in table[handle]["connections"]
+def is_downstream(table: Table, emitter: RowHandle, receiver: RowHandle) -> bool:
+    return receiver in table[emitter]["downstream"]
 
 
-def connect(table: Table, handle: RowHandle, other: RowHandle) -> None:
-    if not is_connected(table, handle, other):
-        table[handle]["connections"] = table[handle]["connections"].append(other)
+def connect(table: Table, emitter: RowHandle, receiver: RowHandle) -> None:
+    if not is_downstream(table, emitter, receiver):
+        table[emitter]["downstream"] = table[emitter]["downstream"].append(receiver)
 
 
-def clear_connections(table: Table, handle: RowHandle) -> None:
-    table[handle]["connections"] = RowHandleList()
+def clear_downstream(table: Table, emitter: RowHandle) -> None:
+    table[emitter]["downstream"] = RowHandleList()
 
 
 #
@@ -245,7 +231,7 @@ def set_status(table: Table, handle: RowHandle, status: EmitterStatus) -> None:
     table[handle]['flags'] = (current_flags & ~(int(0b111) << FlagIndex.STATUS)) | (status << FlagIndex.STATUS)
 
 
-def emit_value(table: Table, emitter: RowHandle, value: Value) -> Optional[Error]:
+def emit_value(table: Table, emitter: RowHandle, value: Value) -> Optional[core.Error]:
     """
     Push the given value to all active Receivers.
     :param table:   The Emitter table.
@@ -261,13 +247,13 @@ def emit_value(table: Table, emitter: RowHandle, value: Value) -> Optional[Error
         return
 
     # early out if there wouldn't be a point of emitting anyway
-    if not has_connections(table, emitter):
+    if not has_downstream(table, emitter):
         return
 
     # make sure that we are not already emitting
     if status != EmitterStatus.IDLE:
-        return Error(emitter, Error.Kind.NO_DAG,
-                     f"Cyclic dependency detected during emission from Emitter {emitter.index}.")
+        return core.Error(emitter, core.Error.Kind.NO_DAG,
+                          f"Cyclic dependency detected during emission from Emitter {emitter.index}.")
     set_status(table, emitter, EmitterStatus.EMITTING)
 
     # create the signal to emit, in C++ the value would be moved
@@ -276,7 +262,7 @@ def emit_value(table: Table, emitter: RowHandle, value: Value) -> Optional[Error
         ValueSignal.Status.UNHANDLED if is_blockable(table, emitter) else ValueSignal.Status.UNBLOCKABLE)
 
     # emit to all receivers in order
-    for receiver in get_connections(table, emitter):
+    for receiver in get_downstream(table, emitter):
         # highly unlikely, but can happen if there is a cycle in the circuit that caused this emitter to
         # complete while it is in the process of emitting a value
         if get_status(table, emitter).is_completed():
@@ -294,7 +280,7 @@ def emit_value(table: Table, emitter: RowHandle, value: Value) -> Optional[Error
         set_status(table, emitter, EmitterStatus.IDLE)
 
 
-def emit_failure(table: Table, emitter: RowHandle, error: Exception) -> Optional[Error]:
+def emit_failure(table: Table, emitter: RowHandle, error: Exception) -> Optional[core.Error]:
     """
     Failure method, completes the Emitter while letting the downstream Receivers inspect the error.
     :param table:   The Emitter table.
@@ -313,7 +299,7 @@ def emit_failure(table: Table, emitter: RowHandle, error: Exception) -> Optional
     signal: FailureSignal = FailureSignal(emitter, error)
 
     # emit to all receivers in order
-    for receiver in get_connections(table, emitter):
+    for receiver in get_downstream(table, emitter):
         # error = receiver.on_failure(signal)   TODO: Receiver callbacks (& exception safety ?)
         pass
 
@@ -323,7 +309,7 @@ def emit_failure(table: Table, emitter: RowHandle, error: Exception) -> Optional
     return None
 
 
-def emit_completion(table: Table, emitter: RowHandle) -> Optional[Error]:
+def emit_completion(table: Table, emitter: RowHandle) -> Optional[core.Error]:
     """
     Failure method, completes the Emitter while letting the downstream Receivers inspect the error.
     :param table:   The Emitter table.
@@ -340,7 +326,7 @@ def emit_completion(table: Table, emitter: RowHandle) -> Optional[Error]:
     signal: CompletionSignal = CompletionSignal(emitter)
 
     # emit to all receivers in order
-    for receiver in get_connections(table, emitter):
+    for receiver in get_downstream(table, emitter):
         # error = receiver.on_completion(signal)   TODO: Receiver callbacks (& exception safety ?)
         pass
 
@@ -360,9 +346,10 @@ class Circuit:
 
     EmitterColumns = EmitterColumns
 
-    def __init__(self, storage: Storage):
-        self._storage: Storage = storage
-        self._data: CircuitData = CircuitData(storage[EmitterColumns.__table_index__])
+    def __init__(self, application: core.Application):
+        self._application: core.Application = application
+        self._storage: Storage = application.get_storage()
+        self._data: CircuitData = CircuitData(self._storage[core.TableIndex.EMITTERS])
 
     def create_fact(self, schema: Value.Schema) -> Fact:
         return Fact(self._data, schema)
@@ -394,7 +381,7 @@ class Circuit:
         restoration_point = self._storage.get_data()
 
         # handle the event
-        error: Optional[Error] = None
+        error: Optional[core.Error] = None
         if isinstance(event.value, Value):
             error = emit_value(self._data.table, event.emitter, event.value)
         elif isinstance(event.value, Exception):
@@ -406,7 +393,7 @@ class Circuit:
         # reset the application state on error
         if error is not None:
             self._storage.set_data(restoration_point)
-            raise RuntimeError(error.message)  # TODO: proper error handling
+            return self._application.handle_error(error)
 
         # perform delayed topology changes, this might cause new Events to be created
         self.apply_topology_changes()

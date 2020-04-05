@@ -1,5 +1,7 @@
+from logging import error as print_error
+
 from pynotf.data import Storage
-from pynotf.logic import Circuit
+import pynotf.core as core
 
 
 # UTILITY ##############################################################################################################
@@ -10,7 +12,14 @@ class Application:
         # Define the Data Storage.
         # This is where the entire state of the Application is stored in a named tuple of tables.
         self._storage: Storage = Storage(
-            circuit=Circuit.EmitterColumns,  # table index: 0
+            circuit=core.Circuit.EmitterColumns,  # table index: 0
         )
 
-        self._circuit: Circuit = Circuit(self._storage)
+        self._circuit: core.Circuit = core.Circuit(self)
+
+    def get_storage(self) -> Storage:
+        return self._storage
+
+    @staticmethod
+    def handle_error(error: core.Error) -> None:
+        print_error(f'[error {error.kind}] {error.message}')

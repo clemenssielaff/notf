@@ -12,6 +12,10 @@ def key_callback_fn(window, key, scancode, action, mods):
         glfw.set_window_should_close(window, 1)
 
 
+def cursor_pos_fn(window, x, y):
+    print(f'{x}, {y}')
+
+
 def main():
     # Initialize the library
     if not glfw.init():
@@ -28,6 +32,7 @@ def main():
         return
 
     glfw.set_key_callback(window, key_callback_fn)
+    glfw.set_cursor_pos_callback(window, cursor_pos_fn)
 
     # Make the window's context current
     glfw.make_context_current(window)
