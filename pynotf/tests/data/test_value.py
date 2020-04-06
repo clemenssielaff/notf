@@ -35,6 +35,7 @@ test_element = {
         ["a", "b"],
         ["c", "d"],
     ],
+    "unnamed record": (2, "hello", dict(x=3))
 }
 test_value = Value(test_element)
 float_value = Value(42.24)
@@ -64,43 +65,63 @@ class TestCase(unittest.TestCase):
                              vec(["string", vec([1, "I'm in the middle"]), 847.0]),
                              32.2,
                              vec([3, 2.0, 23.1, -347.0]),
-                             vec([2, vec([2, "a", "b"]), vec([2, "c", "d"])])]))
+                             vec([2, vec([2, "a", "b"]), vec([2, "c", "d"])]),
+                             vec([2, "hello", vec([3])]),
+                         ]))
 
     def test_copy_constructor(self):
         other_value: Value = Value(test_value)
         self.assertEqual(other_value.get_schema(), test_value.get_schema())
         self.assertEqual(id(other_value._data), id(test_value._data))
 
+    def test_repr(self):
+        self.assertEqual(repr(Value()), 'Value(None)')
+        self.assertEqual(repr(Value(89)), 'Value(89)')
+        self.assertEqual(repr(Value(1.23)), 'Value(1.23)')
+        self.assertEqual(repr(Value("limbo man")), 'Value("limbo man")')
+        self.assertEqual(repr(Value([1, 2.34, 3])), 'Value([1, 2.34, 3])')
+        self.assertEqual(repr(Value([dict(x=3), dict(x=89.12), dict(x=80)])), 'Value([{x: 3}, {x: 89.12}, {x: 80}])')
+        self.assertEqual(repr(Value((1, ['foo', 'bla'], dict(what='the funk')))),
+                         'Value({1, ["foo", "bla"], {what: "the funk"}})')
+
     def test_schema(self):
         self.assertEqual(str(none_value.get_schema()), "")
-        self.assertEqual(len(test_value._schema), 27)
+        self.assertEqual(len(test_value._schema), 35)
         self.assertEqual(str(test_value._schema), """  0: Record
-  1:  ↳ Size: 6
-  2: → 8
+  1:  ↳ Size: 7
+  2: → 9
   3: String
-  4: → 15
+  4: → 16
   5: Number
-  6: → 22
-  7: → 24
-  8: List
-  9: Record
- 10:  ↳ Size: 3
- 11: Number
- 12: String
- 13: List
- 14: Number
- 15: Record
- 16:  ↳ Size: 3
- 17: String
- 18: → 20
- 19: Number
- 20: List
- 21: String
- 22: List
- 23: Number
- 24: List
+  6: → 23
+  7: → 25
+  8: → 28
+  9: List
+ 10: Record
+ 11:  ↳ Size: 3
+ 12: Number
+ 13: String
+ 14: List
+ 15: Number
+ 16: Record
+ 17:  ↳ Size: 3
+ 18: String
+ 19: → 21
+ 20: Number
+ 21: List
+ 22: String
+ 23: List
+ 24: Number
  25: List
- 26: String
+ 26: List
+ 27: String
+ 28: Record
+ 29:  ↳ Size: 3
+ 30: Number
+ 31: String
+ 32: Record
+ 33:  ↳ Size: 1
+ 34: Number
 """)
 
     def test_equality(self):
@@ -160,8 +181,9 @@ class TestCase(unittest.TestCase):
             Value({1: "nope"})
 
     def test_create_value_from_schema(self):
-        self.assertEqual(Value(test_value._schema)._data,
-                         vec([empty_list, '', vec(['', empty_list, 0.0]), 0.0, empty_list, empty_list]))
+        self.assertEqual(
+            Value(test_value._schema)._data,
+            vec([empty_list, '', vec(['', empty_list, 0.0]), 0.0, empty_list, empty_list, vec([0.0, '', vec([0.0])])]))
 
     def test_kind(self):
         self.assertEqual(none_value.get_kind(), Value.Kind.NONE)
@@ -364,6 +386,10 @@ class TestCase(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             set_value(test_value, 0, "not a key")
+        with self.assertRaises(KeyError):
+            set_value(test_value, 0, "unnamed record", "has no names")
+        with self.assertRaises(KeyError):
+            set_value(test_value, 0, "number_list", "string as list index")
 
         # fail to change the subtree to one with a different schema
         with self.assertRaises(TypeError):
@@ -456,6 +482,12 @@ class TestCase(unittest.TestCase):
         three: Value = Value(3)
         four: Value = Value(4)
         pie: Value = Value(pi)
+
+        # int
+        self.assertEqual(int(four), 4)
+        self.assertEqual(int(pie), 3)
+        with self.assertRaises(TypeError):
+            int(Value("string"))
 
         # comparison
         self.assertTrue(one == one)

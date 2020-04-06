@@ -473,8 +473,9 @@ class Dictionary(ConstNamedTuple):
     compatible to {r=float, g=float, b=float}.
     The child Dictionaries need to be addressable by name and index, therefore we have a map [str -> index] and a vector
     that contain the actual child Dictionaries.
+    Unnamed records still have a Dictionary, but with an empty name field.
     """
-    names = field(type=Bonsai, mandatory=True)
+    names = field(type=(Bonsai, type(None)), mandatory=True)
     children = field(type=ConstList, mandatory=True)
 
 
@@ -500,7 +501,10 @@ def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
         else:
             assert kind == Kind.RECORD
             if isinstance(next_denotable, tuple):
-                return None
+                return Dictionary(
+                    names=None,
+                    children=make_const_list([parse_next(child) for child in next_denotable]),
+                )
             else:
                 assert isinstance(next_denotable, dict)
                 return Dictionary(
@@ -586,7 +590,7 @@ class Value:
         Returns the known keys if this is a named record.
         Otherwise returns None.
         """
-        if self._dictionary:
+        if self._dictionary and self._dictionary.names:
             return self._dictionary.names.keys()
         else:
             return None
@@ -595,7 +599,53 @@ class Value:
         """
         Unlike __str__, this function produces a string meant for debugging.
         """
-        return repr(self._data)
+
+        def recursion(data: Any, iterator: int, dictionary: Optional[Dictionary]) -> str:
+            assert iterator < len(self._schema)
+            kind: Kind = Kind(self._schema[iterator])
+            if kind == Kind.NUMBER:
+                if trunc(data) == data:
+                    # int
+                    return f'{int(data)}'
+                else:
+                    # float
+                    return f'{data}'
+            elif kind == Kind.STRING:
+                # string
+                return f'"{data}"'
+            elif kind == Kind.LIST:
+                # list
+                iterator += 1
+                return '[{}]'.format(', '.join(recursion(child_data, iterator, dictionary) for child_data in data[1:]))
+            else:
+                assert kind == Kind.RECORD
+                assert (iterator + 1) < len(self._schema)
+                child_count: int = self._schema[iterator + 1]
+                if dictionary is None or dictionary.names is None:
+                    # unnamed record
+                    return '{{{}}}'.format(', '.join(
+                        recursion(data[child_index],
+                                  get_subschema_start(self._schema, iterator, child_index),
+                                  None if dictionary is None else dictionary.children[child_index])
+                        for child_index in range(child_count)))
+                else:
+                    # named record
+                    keys: List[str] = dictionary.names.keys()
+                    assert len(keys) == child_count
+                    children: List[Tuple[str, str]] = []
+                    for child_index in range(child_count):
+                        child_name: str = keys[child_index]
+                        child_value: str = recursion(
+                            data[child_index],
+                            get_subschema_start(self._schema, iterator, child_index),
+                            dictionary.children[dictionary.names[child_name]])
+                        children.append((child_name, child_value))
+                    return '{{{}}}'.format(', '.join('{}: {}'.format(key, value) for (key, value) in children))
+
+        if len(self._schema) == 0:
+            return f'Value(None)'
+        else:
+            return f'Value({recursion(self._data, 0, self._dictionary)})'
 
     def __eq__(self, other: Any) -> bool:
         """
@@ -832,8 +882,9 @@ class Value:
         """
         assert isinstance(self._data, ConstList)
         assert self.get_kind() == Kind.RECORD
+        assert self._dictionary is not None
 
-        if self._dictionary is None:
+        if self._dictionary.names is None:
             raise KeyError(f'This Record Value has only unnamed entries, use an index to access them')
 
         if name not in self._dictionary.names:
@@ -884,10 +935,10 @@ def set_value(value: Value, data: Any, *path: Union[int, str]) -> Value:
         """
         If the last step of the recursion detects that the current and the new data are equal, returns None to avoid
         the construction of a new Value.
-        :param _data:
-        :param _schema_itr:
-        :param _dict_itr:
-        :param _path:
+        :param _data: Data buffer to iterate.
+        :param _schema_itr: Index in the Value's Schema denoting the current child.
+        :param _dict_itr: Child Dictionary.
+        :param _path: The remaining path.
         :return:
         """
         assert _schema_itr < len(value._schema)
@@ -927,7 +978,12 @@ def set_value(value: Value, data: Any, *path: Union[int, str]) -> Value:
         # pop the index of the next child from the path
         index: Union[int, str] = _path[0]
         if isinstance(index, str):
-            if _dict_itr is None or index not in _dict_itr.names:
+            if _dict_itr is None:
+                assert kind == Kind.LIST
+                raise KeyError(f'Cannot access List by name "{index}"')
+            elif _dict_itr.names is None:
+                raise KeyError(f'Cannot access unnamed Record by name "{index}"')
+            elif index not in _dict_itr.names:
                 available_keys: str = '", "'.join(_dict_itr.names.keys())
                 raise KeyError(f'Unknown key "{index}" in Record. Available keys are: "{available_keys}"')
             index = _dict_itr.names[index]
