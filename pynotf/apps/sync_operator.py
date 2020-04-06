@@ -63,7 +63,7 @@ class Application:
         event_thread = Thread(target=self._event_loop.run)
         event_thread.start()
 
-        #======================================================= HACK
+        # ======================================================= HACK
         def key_callback_fn(_1, key, _2, action, _3):
             if action not in (glfw.PRESS, glfw.REPEAT):
                 return
@@ -83,7 +83,7 @@ class Application:
         click_counter = create_throttle(self._reactor, RowHandle(), 1.0)
         clicker: Callable = FUNCTION_TABLE[0][0]
         glfw.set_key_callback(window, key_callback_fn)
-        #=======================================================
+        # =======================================================
 
         try:
             while not glfw.window_should_close(window):
@@ -262,7 +262,13 @@ class Self:
         self._reactor.emit_completion(self._handle)
 
     def schedule(self, callback: Callable, *args):
-        self._reactor.schedule((callback, *args))
+        if iscoroutinefunction(callback):
+            async def update_data_on_completion():
+                self._table[self._handle]["data"] = await callback(*args)
+
+            self._reactor.schedule((update_data_on_completion,))
+        else:
+            self._reactor.schedule((callback, *args))
 
 
 # THROTTLE #############################################################################################################
@@ -280,10 +286,7 @@ def throttle_on_next(self: Self, _1: RowHandle, _2: Value) -> Value:
                 return
             self.next(Value(self.data["counter"]))
             print(f'Clicked {int(self.data["counter"])} times in the last {float(self["time_span"])} seconds')
-
-            # TODO: this is a hack
-            self._table[self._handle]["data"] = set_value(self.data, False, "is_running")
-            # return set_value(self.data, False, "is_running")
+            return set_value(self.data, False, "is_running")
 
         self.schedule(timeout)
         return Value(dict(is_running=True, counter=1))
