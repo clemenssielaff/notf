@@ -21,6 +21,7 @@ class RowHandle:
         * 2**8 = 256 tables
         * 2**24 = 16'777'216 rows per table
         * 2**(32-1) = 2'147'483'648 generations per row before wrapping
+    Another advantage of this approach is that you can store a RowHandle like any regular Value number.
     """
 
     _TABLE_SIZE: int = 8  # in bits
@@ -36,6 +37,12 @@ class RowHandle:
         self._data: int = (table << self._INDEX_SIZE + self._GENERATION_SIZE
                            | index << self._GENERATION_SIZE
                            | generation)
+
+    @classmethod
+    def from_int(cls, data: int) -> RowHandle:
+        result: RowHandle = RowHandle()
+        result._data = data
+        return result
 
     @property
     def table(self) -> int:
@@ -64,6 +71,15 @@ class RowHandle:
 
     def __bool__(self) -> bool:
         return not self.is_null()
+
+    def __int__(self) -> int:
+        return self._data
+
+    def __repr__(self) -> str:
+        return f'RowHandle(table={self.table}, index={self.index}, generation={self.generation})'
+
+    def __hash__(self) -> int:
+        return self._data
 
 
 class RowHandleList(ConstList):

@@ -226,8 +226,8 @@ def get_names_from_bonsai(bonsai: bytes) -> List[str]:
         node_end_index: int = child_count_index + (child_count * 2)
         label_index: int = child_count_index + 1
         assert node_end_index < len(bonsai)
-        traverse(name + bytes(bonsai[label_index: label_index+1]), node_end_index)
-        
+        traverse(name + bytes(bonsai[label_index: label_index + 1]), node_end_index)
+
         # multiple children
         label_index += 1
         total_offset: int = 0
@@ -244,8 +244,13 @@ def get_names_from_bonsai(bonsai: bytes) -> List[str]:
 ########################################################################################################################
 
 class Bonsai:
-    def __init__(self, names: List[str]):
-        self._bonsai: bytes = create_bonsai(names)
+    def __init__(self, names: Optional[List[str]] = None):
+        """
+        Constructor.
+        If no names are given, this constructs an empty Bonsai.
+        :param names: All names (in order) to store in the Bonsai.
+        """
+        self._bonsai: bytes = create_bonsai(names or [])
 
     def __getitem__(self, name: str) -> int:
         if not isinstance(name, str):
@@ -265,3 +270,6 @@ class Bonsai:
 
     def keys(self) -> List[str]:
         return get_names_from_bonsai(self._bonsai)
+
+    def is_empty(self) -> bool:
+        return len(self._bonsai) == 0

@@ -475,7 +475,7 @@ class Dictionary(ConstNamedTuple):
     that contain the actual child Dictionaries.
     Unnamed records still have a Dictionary, but with an empty name field.
     """
-    names = field(type=(Bonsai, type(None)), mandatory=True)
+    names = field(type=Bonsai, mandatory=True)
     children = field(type=ConstList, mandatory=True)
 
 
@@ -502,7 +502,7 @@ def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
             assert kind == Kind.RECORD
             if isinstance(next_denotable, tuple):
                 return Dictionary(
-                    names=None,
+                    names=Bonsai(),
                     children=make_const_list([parse_next(child) for child in next_denotable]),
                 )
             else:
@@ -590,8 +590,8 @@ class Value:
         Returns the known keys if this is a named record.
         Otherwise returns None.
         """
-        if self._dictionary and self._dictionary.names:
-            return self._dictionary.names.keys()
+        if self._dictionary:
+            return self._dictionary.names.keys() or None
         else:
             return None
 
@@ -621,7 +621,7 @@ class Value:
                 assert kind == Kind.RECORD
                 assert (iterator + 1) < len(self._schema)
                 child_count: int = self._schema[iterator + 1]
-                if dictionary is None or dictionary.names is None:
+                if dictionary is None or dictionary.names.is_empty():
                     # unnamed record
                     return '{{{}}}'.format(', '.join(
                         recursion(data[child_index],
@@ -884,7 +884,7 @@ class Value:
         assert self.get_kind() == Kind.RECORD
         assert self._dictionary is not None
 
-        if self._dictionary.names is None:
+        if self._dictionary.names.is_empty():
             raise KeyError(f'This Record Value has only unnamed entries, use an index to access them')
 
         if name not in self._dictionary.names:
@@ -981,7 +981,7 @@ def set_value(value: Value, data: Any, *path: Union[int, str]) -> Value:
             if _dict_itr is None:
                 assert kind == Kind.LIST
                 raise KeyError(f'Cannot access List by name "{index}"')
-            elif _dict_itr.names is None:
+            elif _dict_itr.names.is_empty():
                 raise KeyError(f'Cannot access unnamed Record by name "{index}"')
             elif index not in _dict_itr.names:
                 available_keys: str = '", "'.join(_dict_itr.names.keys())
