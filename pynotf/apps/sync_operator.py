@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from enum import IntEnum, auto, unique
 from threading import Thread, Lock
-from typing import Tuple, Callable, Any, Optional, Dict, Set
+from typing import Tuple, Callable, Any, Optional, Dict, Union, List
 from inspect import iscoroutinefunction
 from weakref import ref as weak_ref
 
@@ -9,15 +10,21 @@ import glfw
 import curio
 from pyrsistent import field
 
-from pynotf.data import Value, RowHandle, Table, TableRow, Storage, set_value
+from pynotf.data import Value, RowHandle, Table, TableRow, Storage, set_value, RowHandleList
 import pynotf.extra.pynanovg as nanovg
 import pynotf.extra.opengl as gl
 
 
 # DATA #################################################################################################################
 
+@unique
+class TableIndex(IntEnum):
+    OPERATORS = 0
+    FACTS = auto()
+
+
 class OperatorColumns(TableRow):
-    __table_index__: int = 0
+    __table_index__: int = TableIndex.OPERATORS
     op_index = field(type=int, mandatory=True)
     schema_in = field(type=Value.Schema, mandatory=True)
     schema_out = field(type=Value.Schema, mandatory=True)
@@ -25,8 +32,12 @@ class OperatorColumns(TableRow):
     data = field(type=Value, mandatory=True)
     downstream = field(type=RowHandle, mandatory=True)
 
-# TODO: CONTINUE HERE
-#   Create a Fact columns type, add a Fact table to the storage. Update the Fact class and Reactor.create_fact.
+
+class FactColumns(TableRow):
+    __table_index__: int = TableIndex.FACTS
+    schema = field(type=Value.Schema, mandatory=True)
+    downstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
+
 
 # APPLICATION ##########################################################################################################
 
@@ -35,12 +46,13 @@ class Application:
     def __init__(self):
         self._storage: Storage = Storage(
             operators=OperatorColumns,
+            facts=FactColumns,
         )
         self._reactor: Reactor = Reactor(self)
         self._event_loop: EventLoop = EventLoop()
 
-    def get_table(self, table_index: int) -> Table:
-        return self._storage[table_index]
+    def get_table(self, table_index: Union[int, TableIndex]) -> Table:
+        return self._storage[int(table_index)]
 
     def schedule_event(self, callback: Callable, *args):
         self._event_loop.schedule((callback, *args))
@@ -85,7 +97,7 @@ class Application:
                 # char: str = bytes([key]).decode()
                 key_fact.next(Value())
 
-        key_fact: Fact = Fact(self, RowHandle(), Value.Schema())
+        key_fact: Fact = self._reactor.create_fact("on_key", Value.Schema())
         click_counter = create_throttle(self._reactor, Value.Schema(), RowHandle(), 1.0)
         key_fact.subscribe(click_counter)
         glfw.set_key_callback(window, key_callback_fn)
@@ -192,37 +204,39 @@ class EventLoop:
 class Reactor:
 
     def __init__(self, application: Application):
-        self._application: Application = application
-        self._table: Table = application.get_table(OperatorColumns.__table_index__)
+        self._app: Application = application
         self._facts: Dict[str, weak_ref] = {}
 
     def create_operator(self, op_index: int, schema_in: Value.Schema, schema_out: Value.Schema, args: Value,
                         data: Value, downstream: RowHandle) -> RowHandle:
         assert op_index < len(OPERATOR_TABLE)
-        return self._table.add_row(
+        operators_table: Table = self._app.get_table(TableIndex.OPERATORS)
+        return operators_table.add_row(
             op_index=op_index, schema_in=schema_in, schema_out=schema_out, args=args, data=data, downstream=downstream)
 
     def create_fact(self, name: str, schema: Value.Schema) -> Fact:
         assert name not in self._facts
-        fact: Fact = Fact(self._application, RowHandle(), schema)  # TODO: Fact type table
+        facts_table: Table = self._app.get_table(TableIndex.FACTS)
+        handle: RowHandle = facts_table.add_row(schema=schema)
+        fact: Fact = Fact(self._app, handle)
         self._facts[name] = weak_ref(fact)
         return fact
 
 
 class Operator:
     def __init__(self, application: Application, handle: RowHandle):
-        self._application: Application = application
+        self._app: Application = application
         self._handle: RowHandle = handle
 
     def is_valid(self) -> bool:
-        return self._application.get_table(self._handle.table).is_handle_valid(self._handle)
+        return self._app.get_table(self._handle.table).is_handle_valid(self._handle)
 
     @property
     def data(self) -> Value:
-        return self._application.get_table(self._handle.table)[self._handle]["data"]
+        return self._app.get_table(self._handle.table)[self._handle]["data"]
 
     def __getitem__(self, name: str):
-        return self._application.get_table(self._handle.table)[self._handle]["args"][name]
+        return self._app.get_table(self._handle.table)[self._handle]["args"][name]
 
     def next(self, value: Value) -> None:
         self._emit(0, value)
@@ -236,16 +250,16 @@ class Operator:
     def schedule(self, callback: Callable, *args):
         if iscoroutinefunction(callback):
             async def update_data_on_completion():
-                self._application.get_table(self._handle.table)[self._handle]["data"] = await callback(*args)
+                self._app.get_table(self._handle.table)[self._handle]["data"] = await callback(*args)
 
-            self._application.schedule_event(update_data_on_completion)
+            self._app.schedule_event(update_data_on_completion)
         else:
-            self._application.schedule_event(lambda: callback(*args))
+            self._app.schedule_event(lambda: callback(*args))
 
     def _emit(self, operator_row: int, value: Optional[Value] = None) -> None:
         assert 0 <= operator_row < 3
 
-        table: Table = self._application.get_table(self._handle.table)
+        table: Table = self._app.get_table(self._handle.table)
         downstream: RowHandle = table[self._handle]["downstream"]
         if not table.is_handle_valid(downstream):
             return  # operator has no downstream
@@ -255,9 +269,9 @@ class Operator:
             return
 
         if operator_row < 2:
-            new_data: Value = callback(Operator(self._application, downstream), self._handle, value)
+            new_data: Value = callback(Operator(self._app, downstream), self._handle, value)
         else:
-            new_data: Value = callback(Operator(self._application, downstream), self._handle)
+            new_data: Value = callback(Operator(self._app, downstream), self._handle)
         assert new_data.get_schema() == table[downstream]["data"].get_schema()
         table[downstream]['data'] = new_data
 
@@ -266,58 +280,69 @@ class Operator:
 
 
 class Fact:
-    def __init__(self, application: Application, handle: RowHandle, schema: Value.Schema):
-        self._application: Application = application
+    def __init__(self, application: Application, handle: RowHandle):
+        self._app: Application = application
         self._handle: RowHandle = handle
-        self._schema: Value.Schema = schema
-        self._downstream: Set[RowHandle] = set()
         self._mutex: Lock = Lock()
 
+    def get_schema(self) -> Value.Schema:
+        facts_table: Table = self._app.get_table(TableIndex.FACTS)
+        assert facts_table.is_handle_valid(self._handle)
+        return facts_table[self._handle]['schema']
+
     def next(self, value: Value) -> None:
-        assert value.get_schema() == self._schema
-        self._application.schedule_event((lambda: self._emit(0, value)))
+        assert value.get_schema() == self.get_schema()
+        self._app.schedule_event((lambda: self._emit(0, value)))
 
     def fail(self, error: Value) -> None:
-        self._application.schedule_event((lambda: self._emit(1, error)))
+        self._app.schedule_event((lambda: self._emit(1, error)))
 
     def complete(self) -> None:
-        self._application.schedule_event((lambda: self._emit(2)))
+        self._app.schedule_event((lambda: self._emit(2)))
 
     def subscribe(self, operator: RowHandle):
-        assert operator.table == OperatorColumns.__table_index__
-        assert self._application.get_table(operator.table)[operator]['schema_in'] == self._schema
+        assert operator.table == TableIndex.OPERATORS
+        assert self._app.get_table(operator.table)[operator]['schema_in'] == self.get_schema()
+        facts_table: Table = self._app.get_table(TableIndex.FACTS)
         with self._mutex:
-            self._downstream.add(operator)
+            downstream: RowHandleList = facts_table[self._handle]["downstream"]
+            if operator not in downstream:
+                facts_table[self._handle]["downstream"] = downstream.append(operator)
 
     def _emit(self, operator_row: int, value: Optional[Value] = None) -> None:
         assert 0 <= operator_row < 3
 
-        operator_table: Table = self._application.get_table(OperatorColumns.__table_index__)
+        operators_table: Table = self._app.get_table(TableIndex.OPERATORS)
+        facts_table: Table = self._app.get_table(TableIndex.FACTS)
 
-        # remove all invalid downstream handles
-        all_downstream: Set[RowHandle] = set()
+        # remove all expired downstream handles
+        downstream: RowHandleList = facts_table[self._handle]["downstream"]
+        expired: List[RowHandle] = []
         with self._mutex:
-            for downstream in self._downstream:
-                if operator_table.is_handle_valid(downstream):
-                    all_downstream.add(downstream)
-            self._downstream = all_downstream
+            for operator in downstream:
+                if not operators_table.is_handle_valid(operator):
+                    expired.append(operator)
+            if expired:
+                downstream = RowHandleList(op for op in downstream if op not in expired)
+                facts_table[self._handle]["downstream"] = downstream
 
-        for downstream in all_downstream:
+        # emit to all valid downstream operators
+        for operator in downstream:
 
             # find the callback
-            callback: Optional[Callable] = OPERATOR_TABLE[operator_table[downstream]["op_index"]][operator_row]
+            callback: Optional[Callable] = OPERATOR_TABLE[operators_table[operator]["op_index"]][operator_row]
             if callback is None:
                 continue  # downstream operator type does not offer the requested callback
 
             # execute the callback
             if operator_row < 2:
-                new_data: Value = callback(Operator(self._application, downstream), self._handle, value)
+                new_data: Value = callback(Operator(self._app, operator), self._handle, value)
             else:
-                new_data: Value = callback(Operator(self._application, downstream), self._handle)
+                new_data: Value = callback(Operator(self._app, operator), self._handle)
 
             # update the operator data
-            assert new_data.get_schema() == operator_table[downstream]["data"].get_schema()
-            operator_table[downstream]['data'] = new_data
+            assert new_data.get_schema() == operators_table[operator]["data"].get_schema()
+            operators_table[operator]['data'] = new_data
 
 
 # THROTTLE #############################################################################################################
