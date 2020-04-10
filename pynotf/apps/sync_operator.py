@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import IntEnum, auto, unique
-from threading import Thread, Lock
+from threading import Thread
 from typing import Tuple, Callable, Any, Optional, Dict, Union, List
 from inspect import iscoroutinefunction
 from weakref import ref as weak_ref
@@ -20,7 +20,7 @@ import pynotf.extra.opengl as gl
 @unique
 class TableIndex(IntEnum):
     OPERATORS = 0
-    FACTS = auto()
+    SUBJECTS = auto()
 
 
 class OperatorColumns(TableRow):
@@ -33,10 +33,85 @@ class OperatorColumns(TableRow):
     downstream = field(type=RowHandle, mandatory=True)
 
 
-class FactColumns(TableRow):
-    __table_index__: int = TableIndex.FACTS
+class SubjectColumns(TableRow):
+    __table_index__: int = TableIndex.SUBJECTS
     schema = field(type=Value.Schema, mandatory=True)
     downstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
+
+
+# FUNCTIONS ############################################################################################################
+
+def run_downstream(app: Application, element: RowHandle, source: RowHandle, callback: Callback, value: Value) -> None:
+    """
+    Execute one of the callbacks of a given downstream logic element.
+    :param app: Application containing the state.
+    :param element: Logic element whose callback to execute.
+    :param source: Source Logic element that triggered the execution.
+    :param callback: Callback to execute.
+    :param value: Callback argument
+    """
+    if not app.is_handle_valid(element):
+        return
+
+    if element.table == TableIndex.OPERATORS:
+        # find the callback to perform
+        operator_table: Table = app.get_table(TableIndex.OPERATORS)
+        callback_func: Optional[Callable] = CALLBACK_TRIPLETS[operator_table[element]["op_index"]][callback]
+        if callback_func is None:
+            return  # operator type does not provide the requested callback
+
+        # perform the callback ...
+        new_data: Value = callback_func(Operator(app, element), source, value)
+
+        # ...and update the operator's data
+        assert new_data.get_schema() == operator_table[element]["data"].get_schema()
+        operator_table[element]['data'] = new_data
+
+    else:
+        emit_from_subject(app, element, callback, value)
+
+
+def emit_from_subject(app: Application, subject: RowHandle, callback: Callback, value: Value) -> None:
+    assert app.is_handle_valid(subject)
+    assert subject.table == TableIndex.SUBJECTS
+
+    # temporarily clear the downstream of the emitting element to rule out cycles
+    subject_table: Table = app.get_table(TableIndex.SUBJECTS)
+    downstream: RowHandleList = subject_table[subject]["downstream"]
+    subject_table[subject]["downstream"] = RowHandleList()
+
+    if callback == Callback.NEXT:
+        # emit to all valid downstream elements and remember the expired ones
+        expired: List[RowHandle] = []
+        for downstream_element in downstream:
+            if app.is_handle_valid(downstream_element):
+                run_downstream(app, downstream_element, subject, callback, value)
+            else:
+                expired.append(downstream_element)
+
+        # remove all expired downstream handles
+        if expired:
+            downstream = RowHandleList(op for op in downstream if op not in expired)
+
+        # restore the element's downstream after the emission has finished
+        subject_table[subject]["downstream"] = downstream
+
+    else:
+        # emit one last time ...
+        for downstream_element in downstream:
+            run_downstream(app, downstream_element, subject, callback, value)
+
+        # ... and invalidate the element
+        subject_table.remove_row(subject)
+
+
+def get_schema(app: Application, element: RowHandle) -> Value.Schema:
+    assert app.is_handle_valid(element)
+    if element.table == TableIndex.OPERATORS:
+        return app.get_table(TableIndex.OPERATORS)[element]['schema_in']
+    else:
+        assert element.table == TableIndex.SUBJECTS
+        return app.get_table(TableIndex.SUBJECTS)[element]['schema']
 
 
 # APPLICATION ##########################################################################################################
@@ -46,13 +121,16 @@ class Application:
     def __init__(self):
         self._storage: Storage = Storage(
             operators=OperatorColumns,
-            facts=FactColumns,
+            facts=SubjectColumns,
         )
         self._reactor: Reactor = Reactor(self)
         self._event_loop: EventLoop = EventLoop()
 
     def get_table(self, table_index: Union[int, TableIndex]) -> Table:
         return self._storage[int(table_index)]
+
+    def is_handle_valid(self, handle: RowHandle) -> bool:
+        return self.get_table(handle.table).is_handle_valid(handle)
 
     def schedule_event(self, callback: Callable, *args):
         self._event_loop.schedule((callback, *args))
@@ -209,14 +287,14 @@ class Reactor:
 
     def create_operator(self, op_index: int, schema_in: Value.Schema, schema_out: Value.Schema, args: Value,
                         data: Value, downstream: RowHandle) -> RowHandle:
-        assert op_index < len(OPERATOR_TABLE)
+        assert op_index < len(CALLBACK_TRIPLETS)
         operators_table: Table = self._app.get_table(TableIndex.OPERATORS)
         return operators_table.add_row(
             op_index=op_index, schema_in=schema_in, schema_out=schema_out, args=args, data=data, downstream=downstream)
 
     def create_fact(self, name: str, schema: Value.Schema) -> Fact:
         assert name not in self._facts
-        facts_table: Table = self._app.get_table(TableIndex.FACTS)
+        facts_table: Table = self._app.get_table(TableIndex.SUBJECTS)
         handle: RowHandle = facts_table.add_row(schema=schema)
         fact: Fact = Fact(self._app, handle)
         self._facts[name] = weak_ref(fact)
@@ -225,124 +303,77 @@ class Reactor:
 
 class Operator:
     def __init__(self, application: Application, handle: RowHandle):
+        assert (handle.table == TableIndex.OPERATORS)
         self._app: Application = application
         self._handle: RowHandle = handle
 
-    def is_valid(self) -> bool:
-        return self._app.get_table(self._handle.table).is_handle_valid(self._handle)
-
     @property
     def data(self) -> Value:
-        return self._app.get_table(self._handle.table)[self._handle]["data"]
+        return self._app.get_table(TableIndex.OPERATORS)[self._handle]["data"]
+
+    def is_valid(self) -> bool:
+        return self._app.get_table(TableIndex.OPERATORS).is_handle_valid(self._handle)
 
     def __getitem__(self, name: str):
-        return self._app.get_table(self._handle.table)[self._handle]["args"][name]
+        return self._app.get_table(TableIndex.OPERATORS)[self._handle]["args"][name]
 
     def next(self, value: Value) -> None:
-        self._emit(0, value)
+        self._emit(Callback.NEXT, value)
 
     def fail(self, error: Value) -> None:
-        self._emit(1, error)
+        self._emit(Callback.FAILURE, error)
 
     def complete(self) -> None:
-        self._emit(2)
+        self._emit(Callback.COMPLETION, Value())
 
     def schedule(self, callback: Callable, *args):
-        if iscoroutinefunction(callback):
-            async def update_data_on_completion():
-                self._app.get_table(self._handle.table)[self._handle]["data"] = await callback(*args)
+        assert iscoroutinefunction(callback)
 
-            self._app.schedule_event(update_data_on_completion)
-        else:
-            self._app.schedule_event(lambda: callback(*args))
+        async def update_data_on_completion():
+            self._app.get_table(self._handle.table)[self._handle]["data"] = await callback(*args)
 
-    def _emit(self, operator_row: int, value: Optional[Value] = None) -> None:
-        assert 0 <= operator_row < 3
+        self._app.schedule_event(update_data_on_completion)
 
-        table: Table = self._app.get_table(self._handle.table)
-        downstream: RowHandle = table[self._handle]["downstream"]
-        if not table.is_handle_valid(downstream):
-            return  # operator has no downstream
+    def _emit(self, callback: Callback, value: Value) -> None:
+        operator_table: Table = self._app.get_table(TableIndex.OPERATORS)
+        downstream: RowHandle = operator_table[self._handle]["downstream"]
 
-        callback: Optional[Callable] = OPERATOR_TABLE[table[downstream]["op_index"]][operator_row]
-        if callback is None:
-            return
+        # if we emit failure or completion, invalidate the operator here to rule out cycles
+        if callback != Callback.NEXT:
+            operator_table.remove_row(self._handle)
 
-        if operator_row < 2:
-            new_data: Value = callback(Operator(self._app, downstream), self._handle, value)
-        else:
-            new_data: Value = callback(Operator(self._app, downstream), self._handle)
-        assert new_data.get_schema() == table[downstream]["data"].get_schema()
-        table[downstream]['data'] = new_data
-
-
-# FACT #################################################################################################################
+        # execute the downstream callback
+        if operator_table.is_handle_valid(downstream):
+            run_downstream(self._app, downstream, self._handle, callback, value)
 
 
 class Fact:
     def __init__(self, application: Application, handle: RowHandle):
         self._app: Application = application
         self._handle: RowHandle = handle
-        self._mutex: Lock = Lock()
 
     def get_schema(self) -> Value.Schema:
-        facts_table: Table = self._app.get_table(TableIndex.FACTS)
-        assert facts_table.is_handle_valid(self._handle)
-        return facts_table[self._handle]['schema']
+        return get_schema(self._app, self._handle)
 
     def next(self, value: Value) -> None:
         assert value.get_schema() == self.get_schema()
-        self._app.schedule_event((lambda: self._emit(0, value)))
+        self._app.schedule_event(lambda: emit_from_subject(self._app, self._handle, Callback.NEXT, value))
 
     def fail(self, error: Value) -> None:
-        self._app.schedule_event((lambda: self._emit(1, error)))
+        self._app.schedule_event(lambda: emit_from_subject(self._app, self._handle, Callback.FAILURE, error))
 
     def complete(self) -> None:
-        self._app.schedule_event((lambda: self._emit(2)))
+        self._app.schedule_event(lambda: emit_from_subject(self._app, self._handle, Callback.COMPLETION, Value()))
 
-    def subscribe(self, operator: RowHandle):
-        assert operator.table == TableIndex.OPERATORS
-        assert self._app.get_table(operator.table)[operator]['schema_in'] == self.get_schema()
-        facts_table: Table = self._app.get_table(TableIndex.FACTS)
-        with self._mutex:
-            downstream: RowHandleList = facts_table[self._handle]["downstream"]
-            if operator not in downstream:
-                facts_table[self._handle]["downstream"] = downstream.append(operator)
+    def subscribe(self, downstream: RowHandle):
+        if not self._app.is_handle_valid(downstream):
+            return
+        assert get_schema(self._app, self._handle) == get_schema(self._app, downstream)
 
-    def _emit(self, operator_row: int, value: Optional[Value] = None) -> None:
-        assert 0 <= operator_row < 3
-
-        operators_table: Table = self._app.get_table(TableIndex.OPERATORS)
-        facts_table: Table = self._app.get_table(TableIndex.FACTS)
-
-        # remove all expired downstream handles
-        downstream: RowHandleList = facts_table[self._handle]["downstream"]
-        expired: List[RowHandle] = []
-        with self._mutex:
-            for operator in downstream:
-                if not operators_table.is_handle_valid(operator):
-                    expired.append(operator)
-            if expired:
-                downstream = RowHandleList(op for op in downstream if op not in expired)
-                facts_table[self._handle]["downstream"] = downstream
-
-        # emit to all valid downstream operators
-        for operator in downstream:
-
-            # find the callback
-            callback: Optional[Callable] = OPERATOR_TABLE[operators_table[operator]["op_index"]][operator_row]
-            if callback is None:
-                continue  # downstream operator type does not offer the requested callback
-
-            # execute the callback
-            if operator_row < 2:
-                new_data: Value = callback(Operator(self._app, operator), self._handle, value)
-            else:
-                new_data: Value = callback(Operator(self._app, operator), self._handle)
-
-            # update the operator data
-            assert new_data.get_schema() == operators_table[operator]["data"].get_schema()
-            operators_table[operator]['data'] = new_data
+        facts_table: Table = self._app.get_table(TableIndex.SUBJECTS)
+        current_downstream: RowHandleList = facts_table[self._handle]["downstream"]
+        if downstream not in current_downstream:
+            facts_table[self._handle]["downstream"] = current_downstream.append(downstream)
 
 
 # THROTTLE #############################################################################################################
@@ -374,9 +405,16 @@ def throttle_on_next(self: Operator, _1: RowHandle, _2: Value) -> Value:
         return set_value(self.data, self.data["counter"] + 1, "counter")
 
 
-# OPERATOR TABLE #######################################################################################################
+# CALLBACK TRIPLETS ####################################################################################################
 
-OPERATOR_TABLE: Tuple[Tuple[Optional[Callable], Optional[Callable], Optional[Callable]], ...] = (
+@unique
+class Callback(IntEnum):
+    NEXT = 0
+    FAILURE = 1
+    COMPLETION = 2
+
+
+CALLBACK_TRIPLETS: Tuple[Tuple[Optional[Callable], Optional[Callable], Optional[Callable]], ...] = (
     (throttle_on_next, None, None),  # throttle
 )
 
@@ -394,7 +432,7 @@ def get_op_index(on_next: Optional[Callable] = None,
     :return: The index of the given function/s.
     """
     assert on_next or on_failure or on_complete
-    for index, (_next, _fail, _complete) in enumerate(OPERATOR_TABLE):
+    for index, (_next, _fail, _complete) in enumerate(CALLBACK_TRIPLETS):
         if (on_next and on_next == _next
                 or on_failure and on_failure == _fail
                 or on_complete and on_complete == _complete):
@@ -418,8 +456,12 @@ def get_op_index(on_next: Optional[Callable] = None,
 #             self.emit(value)
 
 
-# THROTTLE #############################################################################################################
+# MAIN #################################################################################################################
 
-if __name__ == "__main__":
+def main() -> None:
     app: Application = Application()
     app.run()
+
+
+if __name__ == "__main__":
+    main()
