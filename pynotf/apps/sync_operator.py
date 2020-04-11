@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import sys
 from enum import IntEnum, auto, unique
 from threading import Thread
-from typing import Tuple, Callable, Any, Optional, Dict, Union, List
+from typing import Tuple, Callable, Any, Optional, Dict, Union, List, NamedTuple
 from inspect import iscoroutinefunction
-from weakref import ref as weak_ref
 
 import glfw
 import curio
@@ -13,6 +13,22 @@ from pyrsistent import field
 from pynotf.data import Value, RowHandle, Table, TableRow, Storage, set_value, RowHandleList
 import pynotf.extra.pynanovg as nanovg
 import pynotf.extra.opengl as gl
+
+
+# TODO: node hierarchy
+# TODO: a service
+# TODO: lua runtime
+# TODO: graphic design
+
+# UTILS ################################################################################################################
+
+class IndexEnum(IntEnum):
+    """
+    Enum class whose auto indices start with zero.
+    """
+
+    def _generate_next_value_(self, _1, index: int, _2) -> int:
+        return index
 
 
 # DATA #################################################################################################################
@@ -41,14 +57,15 @@ class SubjectColumns(TableRow):
 
 # FUNCTIONS ############################################################################################################
 
-def run_downstream(app: Application, element: RowHandle, source: RowHandle, callback: Callback, value: Value) -> None:
+def run_downstream(app: Application, element: RowHandle, source: RowHandle, callback: OperatorCallback,
+                   value: Value) -> None:
     """
     Execute one of the callbacks of a given downstream logic element.
     :param app: Application containing the state.
     :param element: Logic element whose callback to execute.
     :param source: Source Logic element that triggered the execution.
-    :param callback: Callback to execute.
-    :param value: Callback argument
+    :param callback: OperatorCallback to execute.
+    :param value: OperatorCallback argument
     """
     if not app.is_handle_valid(element):
         return
@@ -56,7 +73,7 @@ def run_downstream(app: Application, element: RowHandle, source: RowHandle, call
     if element.table == TableIndex.OPERATORS:
         # find the callback to perform
         operator_table: Table = app.get_table(TableIndex.OPERATORS)
-        callback_func: Optional[Callable] = CALLBACK_TRIPLETS[operator_table[element]["op_index"]][callback]
+        callback_func: Optional[Callable] = OPERATOR_REGISTRY[operator_table[element]["op_index"]][callback]
         if callback_func is None:
             return  # operator type does not provide the requested callback
 
@@ -71,7 +88,7 @@ def run_downstream(app: Application, element: RowHandle, source: RowHandle, call
         emit_from_subject(app, element, callback, value)
 
 
-def emit_from_subject(app: Application, subject: RowHandle, callback: Callback, value: Value) -> None:
+def emit_from_subject(app: Application, subject: RowHandle, callback: OperatorCallback, value: Value) -> None:
     assert app.is_handle_valid(subject)
     assert subject.table == TableIndex.SUBJECTS
 
@@ -80,7 +97,7 @@ def emit_from_subject(app: Application, subject: RowHandle, callback: Callback, 
     downstream: RowHandleList = subject_table[subject]["downstream"]
     subject_table[subject]["downstream"] = RowHandleList()
 
-    if callback == Callback.NEXT:
+    if callback == OperatorCallback.NEXT:
         # emit to all valid downstream elements and remember the expired ones
         expired: List[RowHandle] = []
         for downstream_element in downstream:
@@ -123,8 +140,8 @@ class Application:
             operators=OperatorColumns,
             facts=SubjectColumns,
         )
-        self._reactor: Reactor = Reactor(self)
         self._event_loop: EventLoop = EventLoop()
+        self._scene: Scene = Scene(self)
 
     def get_table(self, table_index: Union[int, TableIndex]) -> Table:
         return self._storage[int(table_index)]
@@ -135,10 +152,16 @@ class Application:
     def schedule_event(self, callback: Callable, *args):
         self._event_loop.schedule((callback, *args))
 
-    def run(self):
+    def create_fact(self, schema: Value.Schema) -> Fact:
+        return Fact(self, self.get_table(TableIndex.SUBJECTS).add_row(schema=schema))
+
+    def get_subject(self, name: str) -> Optional[RowHandle]:
+        return self._scene.get_subject(name)
+
+    def run(self, setup_func: Callable[[Application, Any], None]) -> int:
         # initialize glfw
         if not glfw.init():
-            return
+            return -1
 
         # create a windowed mode window and its OpenGL context.
         glfw.window_hint(glfw.CLIENT_API, glfw.OPENGL_ES_API)
@@ -150,7 +173,7 @@ class Application:
         window = glfw.create_window(640, 480, "notf", None, None)
         if not window:
             glfw.terminate()
-            return
+            return -1
 
         # make the window's context current
         glfw.make_context_current(window)
@@ -161,25 +184,8 @@ class Application:
         event_thread = Thread(target=self._event_loop.run)
         event_thread.start()
 
-        # ======================================================= HACK
-        def key_callback_fn(_1, key, _2, action, _3):
-            if action not in (glfw.PRESS, glfw.REPEAT):
-                return
-
-            if key == glfw.KEY_ESCAPE:
-                glfw.set_window_should_close(window, 1)
-
-            if glfw.KEY_A <= key <= glfw.KEY_Z:
-                # if (mods & glfw.MOD_SHIFT) != glfw.MOD_SHIFT:
-                #     key += 32
-                # char: str = bytes([key]).decode()
-                key_fact.next(Value())
-
-        key_fact: Fact = self._reactor.create_fact("on_key", Value.Schema())
-        click_counter = create_throttle(self._reactor, Value.Schema(), RowHandle(), 1.0)
-        key_fact.subscribe(click_counter)
-        glfw.set_key_callback(window, key_callback_fn)
-        # =======================================================
+        # execute the user-supplied setup function
+        setup_func(self, window)
 
         try:
             while not glfw.window_should_close(window):
@@ -212,6 +218,8 @@ class Application:
 
             nanovg._nanovg.nvgDeleteGLES3(ctx)
             glfw.terminate()
+
+        return 0  # terminated normally
 
 
 # EVENT LOOP ###########################################################################################################
@@ -277,29 +285,7 @@ class EventLoop:
             finished_tasks.clear()
 
 
-# REACTOR ##############################################################################################################
-
-class Reactor:
-
-    def __init__(self, application: Application):
-        self._app: Application = application
-        self._facts: Dict[str, weak_ref] = {}
-
-    def create_operator(self, op_index: int, schema_in: Value.Schema, schema_out: Value.Schema, args: Value,
-                        data: Value, downstream: RowHandle) -> RowHandle:
-        assert op_index < len(CALLBACK_TRIPLETS)
-        operators_table: Table = self._app.get_table(TableIndex.OPERATORS)
-        return operators_table.add_row(
-            op_index=op_index, schema_in=schema_in, schema_out=schema_out, args=args, data=data, downstream=downstream)
-
-    def create_fact(self, name: str, schema: Value.Schema) -> Fact:
-        assert name not in self._facts
-        facts_table: Table = self._app.get_table(TableIndex.SUBJECTS)
-        handle: RowHandle = facts_table.add_row(schema=schema)
-        fact: Fact = Fact(self._app, handle)
-        self._facts[name] = weak_ref(fact)
-        return fact
-
+# LOGIC ################################################################################################################
 
 class Operator:
     def __init__(self, application: Application, handle: RowHandle):
@@ -318,13 +304,13 @@ class Operator:
         return self._app.get_table(TableIndex.OPERATORS)[self._handle]["args"][name]
 
     def next(self, value: Value) -> None:
-        self._emit(Callback.NEXT, value)
+        self._emit(OperatorCallback.NEXT, value)
 
     def fail(self, error: Value) -> None:
-        self._emit(Callback.FAILURE, error)
+        self._emit(OperatorCallback.FAILURE, error)
 
     def complete(self) -> None:
-        self._emit(Callback.COMPLETION, Value())
+        self._emit(OperatorCallback.COMPLETION, Value())
 
     def schedule(self, callback: Callable, *args):
         assert iscoroutinefunction(callback)
@@ -334,12 +320,12 @@ class Operator:
 
         self._app.schedule_event(update_data_on_completion)
 
-    def _emit(self, callback: Callback, value: Value) -> None:
+    def _emit(self, callback: OperatorCallback, value: Value) -> None:
         operator_table: Table = self._app.get_table(TableIndex.OPERATORS)
         downstream: RowHandle = operator_table[self._handle]["downstream"]
 
         # if we emit failure or completion, invalidate the operator here to rule out cycles
-        if callback != Callback.NEXT:
+        if callback != OperatorCallback.NEXT:
             operator_table.remove_row(self._handle)
 
         # execute the downstream callback
@@ -352,23 +338,29 @@ class Fact:
         self._app: Application = application
         self._handle: RowHandle = handle
 
+    def __del__(self):
+        table: Table = self._app.get_table(TableIndex.SUBJECTS)
+        if table.is_handle_valid(self._handle):
+            table.remove_row(self._handle)
+
     def get_schema(self) -> Value.Schema:
-        return get_schema(self._app, self._handle)
+        return self._app.get_table(TableIndex.SUBJECTS)[self._handle]['schema']
 
     def next(self, value: Value) -> None:
         assert value.get_schema() == self.get_schema()
-        self._app.schedule_event(lambda: emit_from_subject(self._app, self._handle, Callback.NEXT, value))
+        self._app.schedule_event(lambda: emit_from_subject(self._app, self._handle, OperatorCallback.NEXT, value))
 
     def fail(self, error: Value) -> None:
-        self._app.schedule_event(lambda: emit_from_subject(self._app, self._handle, Callback.FAILURE, error))
+        self._app.schedule_event(lambda: emit_from_subject(self._app, self._handle, OperatorCallback.FAILURE, error))
 
     def complete(self) -> None:
-        self._app.schedule_event(lambda: emit_from_subject(self._app, self._handle, Callback.COMPLETION, Value()))
+        self._app.schedule_event(
+            lambda: emit_from_subject(self._app, self._handle, OperatorCallback.COMPLETION, Value()))
 
     def subscribe(self, downstream: RowHandle):
         if not self._app.is_handle_valid(downstream):
             return
-        assert get_schema(self._app, self._handle) == get_schema(self._app, downstream)
+        assert self.get_schema() == get_schema(self._app, downstream)
 
         facts_table: Table = self._app.get_table(TableIndex.SUBJECTS)
         current_downstream: RowHandleList = facts_table[self._handle]["downstream"]
@@ -376,19 +368,149 @@ class Fact:
             facts_table[self._handle]["downstream"] = current_downstream.append(downstream)
 
 
-# THROTTLE #############################################################################################################
+# SCENE ################################################################################################################
 
-def create_throttle(reactor: Reactor, schema: Value.Schema, downstream: RowHandle, time_span: float) -> RowHandle:
-    return reactor.create_operator(
-        op_index=get_op_index(on_next=throttle_on_next),
+class Scene:
+    def __init__(self, app: Application):
+        self._app: Application = app
+        self._root_node: Node = Node(app, '', NodeDescription(
+            inputs={}, outputs={}, state_machine=NodeStateMachine(states=dict(default=NodeNetworkDescription(
+                operators=[],
+                internal_connections=[],
+                external_connections=[],
+                incoming_connections=[],
+                outgoing_connections=[],
+            )), transitions=[], initial='default')))
+
+    def create_node(self, name: str, description: NodeDescription):
+        self._root_node._create_child(name, description)
+
+    def get_subject(self, name: str) -> Optional[RowHandle]:
+        path: List[str] = name.split('/')
+        path[-1], subject_name = path[-1].split(':', maxsplit=1)
+        node: Node = self._root_node
+        for step in path:
+            node = node.get_child(step)
+        return node.get_subject(subject_name)
+
+
+class NodeDescription(NamedTuple):
+    inputs: Dict[str, Value.Schema]
+    outputs: Dict[str, Value.Schema]
+    state_machine: NodeStateMachine
+
+
+class NodeStateMachine(NamedTuple):
+    states: Dict[str, NodeNetworkDescription]
+    transitions: List[Tuple[str, str]]
+    initial: str
+
+
+class NodeNetworkDescription(NamedTuple):
+    operators: List[Tuple[OperatorKind, Value]]
+    internal_connections: List[Tuple[int, int]]  # internal to internal
+    external_connections: List[Tuple[str, str]]  # external to input
+    incoming_connections: List[Tuple[str, int]]  # input to internal
+    outgoing_connections: List[Tuple[int, str]]  # internal to output
+
+
+class Node:
+    def __init__(self, app: Application, name: str, description: NodeDescription, parent: Optional[Node] = None):
+        self._app: Application = app
+        self._name: str = name
+        self._description: NodeDescription = description
+        self._parent: Optional[Node] = parent
+        self._children: Dict[str, Node] = {}
+        self._network: List[RowHandle] = []
+        self._state: str = ''
+
+        assert len(set(description.inputs.keys()) | set(description.outputs.keys())) == \
+               len(description.inputs) + len(description.outputs)
+        subject_table: Table = self._app.get_table(TableIndex.SUBJECTS)
+        self._inputs: Dict[str, RowHandle] = {
+            name: subject_table.add_row(schema=schema) for (name, schema) in description.inputs.items()}
+        self._outputs: Dict[str, RowHandle] = {
+            name: subject_table.add_row(schema=schema) for (name, schema) in description.outputs.items()}
+
+        self._transition_into(description.state_machine.initial)
+
+    def __del__(self):
+        self._clear_network()
+
+        subject_table: Table = self._app.get_table(TableIndex.SUBJECTS)
+        for direction in (self._inputs, self._outputs):
+            for subject in direction.values():
+                subject_table.remove_row(subject)
+
+    def get_child(self, name: str) -> Optional[Node]:  # TODO: this should return a RowHandle - create a NodeTable
+        return self._children.get(name)
+
+    def get_subject(self, name: str) -> Optional[RowHandle]:
+        if name in self._inputs:
+            return self._inputs[name]
+        if name in self._outputs:
+            return self._outputs[name]
+        return None
+
+    def _transition_into(self, state: str) -> None:
+        assert self._state == '' or (self._state, state) in self._description.state_machine.transitions
+
+        self._clear_network()
+
+        network_description: NodeNetworkDescription = self._description.state_machine.states[state]
+        for kind, args in network_description.operators:
+            self._network.append(OPERATOR_REGISTRY[kind][OperatorCallback.CREATE](self._app, args))
+
+        subject_table: Table = self._app.get_table(TableIndex.SUBJECTS)
+        for input_name, operator_index in network_description.incoming_connections:
+            subject: RowHandle = self._inputs[input_name]
+            current_downstream: RowHandleList = subject_table[subject]["downstream"]
+            subject_table[subject]["downstream"] = current_downstream.append(self._network[operator_index])
+
+        # TODO: create internal connections (and all others)
+
+    def _clear_network(self) -> None:
+        operator_table: Table = self._app.get_table(TableIndex.OPERATORS)
+        for operator in self._network:
+            operator_table.remove_row(operator)
+        self._network.clear()
+
+    # TODO: create child and -operator and state transition and all other private node methods should be operators...
+    def _create_child(self, name: str, description: NodeDescription):
+        assert name not in self._children
+        child: Node = Node(self._app, name, description, self)
+        self._children[name] = child
+
+
+# OPERATOR REGISTRY ####################################################################################################
+
+@unique
+class OperatorCallback(IndexEnum):
+    CREATE = auto()
+    NEXT = auto()
+    FAILURE = auto()
+    COMPLETION = auto()
+
+
+@unique
+class OperatorKind(IndexEnum):
+    BUFFER = auto()
+
+
+def create_buffer_operator(app: Application, args: Value) -> RowHandle:
+    schema: Value.Schema = Value.Schema.from_value(args['schema'])
+    assert schema
+    return app.get_table(TableIndex.OPERATORS).add_row(
+        op_index=OperatorKind.BUFFER,
         schema_in=schema,
         schema_out=schema.as_list(),
-        args=Value(dict(time_span=time_span)),
+        args=Value(dict(time_span=args['time_span'])),
         data=Value(dict(is_running=False, counter=0)),
-        downstream=downstream)
+        downstream=RowHandle()
+    )
 
 
-def throttle_on_next(self: Operator, _1: RowHandle, _2: Value) -> Value:
+def buffer_on_next(self: Operator, _1: RowHandle, _2: Value) -> Value:
     if not int(self.data["is_running"]) == 1:
         async def timeout():
             await curio.sleep(float(self["time_span"]))
@@ -405,43 +527,15 @@ def throttle_on_next(self: Operator, _1: RowHandle, _2: Value) -> Value:
         return set_value(self.data, self.data["counter"] + 1, "counter")
 
 
-# CALLBACK TRIPLETS ####################################################################################################
-
-@unique
-class Callback(IntEnum):
-    NEXT = 0
-    FAILURE = 1
-    COMPLETION = 2
-
-
-CALLBACK_TRIPLETS: Tuple[Tuple[Optional[Callable], Optional[Callable], Optional[Callable]], ...] = (
-    (throttle_on_next, None, None),  # throttle
+OPERATOR_REGISTRY: Tuple[
+    Tuple[
+        Callable[[Application, Value], RowHandle],
+        Optional[Callable[[Operator, RowHandle], Value]],
+        Optional[Callable[[Operator, RowHandle], Value]],
+        Optional[Callable[[Operator, RowHandle], Value]],
+    ], ...] = (
+    (create_buffer_operator, buffer_on_next, None, None),  # buffer
 )
-
-
-def get_op_index(on_next: Optional[Callable] = None,
-                 on_failure: Optional[Callable] = None,
-                 on_complete: Optional[Callable] = None) -> Optional[int]:
-    """
-    Returns the index of a callback in the Operator table.
-    Used so I don't have to hard code indices into the create_* function calls.
-    Checks all functions against the given row and asserts if not all match.
-    :param on_next: The on_next function to look for.
-    :param on_failure: The on_failure function to look for.
-    :param on_complete: The on_complete function to look for.
-    :return: The index of the given function/s.
-    """
-    assert on_next or on_failure or on_complete
-    for index, (_next, _fail, _complete) in enumerate(CALLBACK_TRIPLETS):
-        if (on_next and on_next == _next
-                or on_failure and on_failure == _fail
-                or on_complete and on_complete == _complete):
-            assert ((on_next is None or on_next == _next)
-                    and (on_failure is None or on_failure == _fail)
-                    and (on_complete is None or on_complete == _complete))
-            return index
-    return None
-
 
 # class Map:  # TODO: in the example, this is a more generalized "map" operator with user-defined code
 #     @staticmethod
@@ -456,12 +550,55 @@ def get_op_index(on_next: Optional[Callable] = None,
 #             self.emit(value)
 
 
+# SETUP ################################################################################################################
+
+count_presses_node: NodeDescription = NodeDescription(
+    inputs=dict(key_down=Value.Schema()),
+    outputs=dict(),
+    state_machine=NodeStateMachine(
+        states=dict(
+            default=NodeNetworkDescription(
+                operators=[(OperatorKind.BUFFER, Value(dict(schema=Value.Schema(), time_span=1)))],
+                internal_connections=[],
+                external_connections=[],
+                incoming_connections=[('key_down', 0)],
+                outgoing_connections=[],
+            )
+        ),
+        transitions=[],
+        initial='default'
+    )
+)
+
+
+def app_setup(app: Application, window) -> None:
+    def key_callback_fn(_1, key, _2, action, _3):
+        if action not in (glfw.PRESS, glfw.REPEAT):
+            return
+
+        if key == glfw.KEY_ESCAPE:
+            glfw.set_window_should_close(window, 1)
+
+        if glfw.KEY_A <= key <= glfw.KEY_Z:
+            # if (mods & glfw.MOD_SHIFT) != glfw.MOD_SHIFT:
+            #     key += 32
+            # char: str = bytes([key]).decode()
+            key_fact.next(Value())
+
+    key_fact: Fact = app.create_fact(Value.Schema())
+    app._scene.create_node("herbert", count_presses_node)
+    key_fact.subscribe(app.get_subject('herbert:key_down'))
+    glfw.set_key_callback(window, key_callback_fn)
+
+    # TODO: Add a state change via a `StateChange` Sink element, which exchanges the Nodes' network
+
+
 # MAIN #################################################################################################################
 
-def main() -> None:
+def main() -> int:
     app: Application = Application()
-    app.run()
+    return app.run(app_setup)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -28,7 +28,7 @@ Denotable = Union[
 
 
 def check_number(obj: Any) -> Optional[float]:
-    converter: Optional[Callable[[Any], float]] = getattr(obj, "__float__", None)
+    converter: Optional[Callable[[], float]] = getattr(obj, "__float__", None)
     if converter is None:
         return None
     else:
@@ -94,6 +94,12 @@ def check_denotable(obj: Any, allow_empty_list: bool) -> Denotable:
                     raise ValueError("All Records in a Value.List must have the same Dictionary")
 
         return denotable
+
+    # schema is a tuple, but we treat it as a list...
+    elif isinstance(obj, Schema):
+        if len(obj) == 0:  # TODO: validate Schema
+            raise ValueError("Schema cannot be empty")
+        return [float(word) for word in obj]
 
     # named record
     elif isinstance(obj, dict):
@@ -192,14 +198,27 @@ class Schema(tuple, Sequence[int]):
     def from_slice(cls, base: Schema, start: int, end: int) -> Schema:
         return super().__new__(Schema, base[start: end])
 
+    @classmethod
+    def from_value(cls, value: Value) -> Optional[Schema]:
+        """
+        Creates a Schema from a list of numbers stored in a Value.
+        :param value: Value storing the Schema.
+        :return: The new Schema or None on error.
+        """
+        if value.get_kind() != Value.Kind.LIST or Value.Kind(value.get_schema()[1]) != Value.Kind.NUMBER:
+            return None
+        return super().__new__(Schema, (int(value[i]) for i in range(len(value))))  # TODO: validate Schema
+
     def __new__(cls, obj: Optional[Any] = None) -> Schema:
         """
         Recursive, breadth-first assembly of a Schema for the given Denotable.
         :returns: Schema describing how a Value containing the given Denotable would be laid out.
         """
         if obj is None:
-            # The empty Schema
-            return super().__new__(Schema)
+            # The None Schema is still one word long, so you can store it in a Value.
+            # Empty lists cannot be used to create a Value, so you'd have to jump through hoops to store a None Schema
+            # in a Value.
+            return super().__new__(Schema, (0,))
 
         if isinstance(obj, Value):
             # Value Schemas can simply be copied
@@ -282,17 +301,27 @@ class Schema(tuple, Sequence[int]):
 
         return super().__new__(Schema, schema)
 
-    def is_empty(self) -> bool:
+    def is_none(self) -> bool:
         """
-        Checks if this is the empty Schema.
+        Checks if this is the None Schema.
         """
-        return len(self) == 0
+        assert len(self) > 0
+        if self[0] == Kind.NONE:
+            assert len(self) == 1
+            return True
+        else:
+            return False
 
     def as_list(self) -> Schema:
         """
         Creates a Schema that is a list containing elements of this Schema.
+        You cannot create a corresponding list Schema to a None Schema, if this Schema is None the returned Schema
+        will also be None.
         """
-        return super().__new__(Schema, [int(Kind.LIST), *self])
+        if self.is_none():
+            return self
+        else:
+            return super().__new__(Schema, [int(Kind.LIST), *self])
 
     def __str__(self) -> str:
         """
@@ -399,7 +428,7 @@ def create_data_from_schema(schema: Schema) -> Data:
     :param schema: Schema describing the layout of the Data object to produce.
     :return: The Schema's default Data.
     """
-    if schema.is_empty():
+    if schema.is_none():
         return None
 
     def create_data(index: int = 0) -> Data:
@@ -580,9 +609,7 @@ class Value:
         """
         The Kind of this Value.
         """
-        if self._schema.is_empty():
-            return Kind.NONE
-        assert Kind.is_valid(self._schema[0])
+        assert len(self._schema) > 0
         return Kind(self._schema[0])
 
     def get_keys(self) -> Optional[List[str]]:
@@ -623,11 +650,16 @@ class Value:
                 child_count: int = self._schema[iterator + 1]
                 if dictionary is None or dictionary.names.is_empty():
                     # unnamed record
-                    return '{{{}}}'.format(', '.join(
-                        recursion(data[child_index],
-                                  get_subschema_start(self._schema, iterator, child_index),
-                                  None if dictionary is None else dictionary.children[child_index])
-                        for child_index in range(child_count)))
+                    if dictionary is None:
+                        return '{{{}}}'.format(', '.join(
+                            recursion(data[child_index], get_subschema_start(self._schema, iterator, child_index), None)
+                            for child_index in range(child_count)))
+                    else:
+                        return '{{{}}}'.format(', '.join(
+                            recursion(data[child_index],
+                                      get_subschema_start(self._schema, iterator, child_index),
+                                      dictionary.children[child_index])
+                            for child_index in range(child_count)))
                 else:
                     # named record
                     keys: List[str] = dictionary.names.keys()
@@ -642,7 +674,7 @@ class Value:
                         children.append((child_name, child_value))
                     return '{{{}}}'.format(', '.join('{}: {}'.format(key, value) for (key, value) in children))
 
-        if len(self._schema) == 0:
+        if self._schema.is_none():
             return f'Value(None)'
         else:
             return f'Value({recursion(self._data, 0, self._dictionary)})'
