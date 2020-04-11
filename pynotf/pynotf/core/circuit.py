@@ -9,14 +9,14 @@ from typing import List, Optional, NamedTuple, Union, Deque, Any
 
 from pyrsistent import field
 
-from pynotf.data import Value, RowHandle, RowHandleList, Table, TableRow, Storage
+from pynotf.data import Value, RowHandle, RowHandleList, Table, TableColumns, Storage
 import pynotf.core as core
 
 
 # DATA #################################################################################################################
 
 # All (public) columns of the Emitter table.
-class EmitterColumns(TableRow):
+class EmitterColumns(TableColumns):
     __table_index__: int = core.TableIndex.EMITTERS  # in C++ this would be a type trait
     schema = field(type=Value.Schema, mandatory=True)  # The Schema of Values emitted downstream.
     value = field(type=Value, mandatory=True)  # The last emitted Value, undefined until first emission.
@@ -31,7 +31,7 @@ class EmitterColumns(TableRow):
 
 
 # The first two (public) columns in any Receiver table.
-class ReceiverRow(TableRow):
+class ReceiverRow(TableColumns):
     schema = field(type=Value.Schema, mandatory=True)  # The Schema of Values received from upstream.
 
 

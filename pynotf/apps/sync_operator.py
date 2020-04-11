@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from enum import IntEnum, auto, unique
+from enum import IntEnum, auto, unique, Enum
 from threading import Thread
 from typing import Tuple, Callable, Any, Optional, Dict, Union, List, NamedTuple
 from inspect import iscoroutinefunction
@@ -10,15 +10,15 @@ import glfw
 import curio
 from pyrsistent import field
 
-from pynotf.data import Value, RowHandle, Table, TableRow, Storage, set_value, RowHandleList
+from pynotf.data import Value, RowHandle, Table, TableColumns, Storage, set_value, RowHandleList, Bonsai, RowHandleMap
 import pynotf.extra.pynanovg as nanovg
 import pynotf.extra.opengl as gl
 
 
 # TODO: node hierarchy
+# TODO: graphic design
 # TODO: a service
 # TODO: lua runtime
-# TODO: graphic design
 
 # UTILS ################################################################################################################
 
@@ -33,13 +33,59 @@ class IndexEnum(IntEnum):
 
 # DATA #################################################################################################################
 
+
 @unique
-class TableIndex(IntEnum):
-    OPERATORS = 0
-    SUBJECTS = auto()
+class OperatorCallback(IndexEnum):
+    CREATE = auto()
+    NEXT = auto()
+    FAILURE = auto()
+    COMPLETION = auto()
 
 
-class OperatorColumns(TableRow):
+@unique
+class OperatorKind(IndexEnum):
+    BUFFER = auto()
+
+
+@unique
+class TableIndex(IndexEnum):
+    OPERATORS = auto()
+    RELAYS = auto()
+    NODES = auto()
+
+
+@unique
+class NodeSocketDirection(Enum):
+    INPUT = auto()
+    OUTPUT = auto()
+
+
+class NodeNetworkDescription(NamedTuple):
+    operators: List[Tuple[OperatorKind, Value]]
+    internal_connections: List[Tuple[int, int]]  # internal to internal
+    external_connections: List[Tuple[str, str]]  # external to input
+    incoming_connections: List[Tuple[str, int]]  # input to internal
+    outgoing_connections: List[Tuple[int, str]]  # internal to output
+
+
+class NodeStateMachine(NamedTuple):
+    states: Dict[str, NodeNetworkDescription]
+    transitions: List[Tuple[str, str]]
+    initial: str
+
+
+class NodeSockets(NamedTuple):
+    names: Bonsai
+    elements: Tuple[NodeSocketDirection, RowHandle]
+
+
+class NodeDescription(NamedTuple):
+    inputs: Dict[str, Value.Schema]
+    outputs: Dict[str, Value.Schema]
+    state_machine: NodeStateMachine
+
+
+class OperatorColumns(TableColumns):
     __table_index__: int = TableIndex.OPERATORS
     op_index = field(type=int, mandatory=True)
     schema_in = field(type=Value.Schema, mandatory=True)
@@ -49,10 +95,20 @@ class OperatorColumns(TableRow):
     downstream = field(type=RowHandle, mandatory=True)
 
 
-class SubjectColumns(TableRow):
-    __table_index__: int = TableIndex.SUBJECTS
+class RelayColumns(TableColumns):
+    __table_index__: int = TableIndex.RELAYS
     schema = field(type=Value.Schema, mandatory=True)
     downstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
+
+
+class NodeColumns(TableColumns):
+    __table_index__: int = TableIndex.NODES
+    description = field(type=NodeDescription, mandatory=True)
+    parent = field(type=RowHandle, mandatory=True)
+    sockets = field(type=NodeSockets, mandatory=True)
+    state = field(type=str, mandatory=True)
+    children = field(type=RowHandleMap, mandatory=True, initial=RowHandleMap())
+    network = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
 
 
 # FUNCTIONS ############################################################################################################
@@ -73,7 +129,7 @@ def run_downstream(app: Application, element: RowHandle, source: RowHandle, call
     if element.table == TableIndex.OPERATORS:
         # find the callback to perform
         operator_table: Table = app.get_table(TableIndex.OPERATORS)
-        callback_func: Optional[Callable] = OPERATOR_REGISTRY[operator_table[element]["op_index"]][callback]
+        callback_func: Optional[Callable] = ELEMENT_TABLE[operator_table[element]["op_index"]][callback]
         if callback_func is None:
             return  # operator type does not provide the requested callback
 
@@ -85,24 +141,24 @@ def run_downstream(app: Application, element: RowHandle, source: RowHandle, call
         operator_table[element]['data'] = new_data
 
     else:
-        emit_from_subject(app, element, callback, value)
+        emit_from_relay(app, element, callback, value)
 
 
-def emit_from_subject(app: Application, subject: RowHandle, callback: OperatorCallback, value: Value) -> None:
-    assert app.is_handle_valid(subject)
-    assert subject.table == TableIndex.SUBJECTS
+def emit_from_relay(app: Application, relay: RowHandle, callback: OperatorCallback, value: Value) -> None:
+    assert app.is_handle_valid(relay)
+    assert relay.table == TableIndex.RELAYS
 
     # temporarily clear the downstream of the emitting element to rule out cycles
-    subject_table: Table = app.get_table(TableIndex.SUBJECTS)
-    downstream: RowHandleList = subject_table[subject]["downstream"]
-    subject_table[subject]["downstream"] = RowHandleList()
+    relay_table: Table = app.get_table(TableIndex.RELAYS)
+    downstream: RowHandleList = relay_table[relay]["downstream"]
+    relay_table[relay]["downstream"] = RowHandleList()
 
     if callback == OperatorCallback.NEXT:
         # emit to all valid downstream elements and remember the expired ones
         expired: List[RowHandle] = []
         for downstream_element in downstream:
             if app.is_handle_valid(downstream_element):
-                run_downstream(app, downstream_element, subject, callback, value)
+                run_downstream(app, downstream_element, relay, callback, value)
             else:
                 expired.append(downstream_element)
 
@@ -111,15 +167,15 @@ def emit_from_subject(app: Application, subject: RowHandle, callback: OperatorCa
             downstream = RowHandleList(op for op in downstream if op not in expired)
 
         # restore the element's downstream after the emission has finished
-        subject_table[subject]["downstream"] = downstream
+        relay_table[relay]["downstream"] = downstream
 
     else:
         # emit one last time ...
         for downstream_element in downstream:
-            run_downstream(app, downstream_element, subject, callback, value)
+            run_downstream(app, downstream_element, relay, callback, value)
 
         # ... and invalidate the element
-        subject_table.remove_row(subject)
+        relay_table.remove_row(relay)
 
 
 def get_schema(app: Application, element: RowHandle) -> Value.Schema:
@@ -127,41 +183,49 @@ def get_schema(app: Application, element: RowHandle) -> Value.Schema:
     if element.table == TableIndex.OPERATORS:
         return app.get_table(TableIndex.OPERATORS)[element]['schema_in']
     else:
-        assert element.table == TableIndex.SUBJECTS
-        return app.get_table(TableIndex.SUBJECTS)[element]['schema']
+        assert element.table == TableIndex.RELAYS
+        return app.get_table(TableIndex.RELAYS)[element]['schema']
 
 
 # APPLICATION ##########################################################################################################
 
 class Application:
+    class Data(NamedTuple):
+        storage: Storage
+        event_loop: EventLoop
 
     def __init__(self):
-        self._storage: Storage = Storage(
-            operators=OperatorColumns,
-            facts=SubjectColumns,
-        )
-        self._event_loop: EventLoop = EventLoop()
-        self._scene: Scene = Scene(self)
+        self._data: Optional[Application.Data] = None
 
     def get_table(self, table_index: Union[int, TableIndex]) -> Table:
-        return self._storage[int(table_index)]
+        assert self._data
+        return self._data.storage[int(table_index)]
 
     def is_handle_valid(self, handle: RowHandle) -> bool:
         return self.get_table(handle.table).is_handle_valid(handle)
 
     def schedule_event(self, callback: Callable, *args):
-        self._event_loop.schedule((callback, *args))
+        assert self._data
+        self._data.event_loop.schedule((callback, *args))
 
     def create_fact(self, schema: Value.Schema) -> Fact:
-        return Fact(self, self.get_table(TableIndex.SUBJECTS).add_row(schema=schema))
+        return Fact(self, self.get_table(TableIndex.RELAYS).add_row(schema=schema))
 
-    def get_subject(self, name: str) -> Optional[RowHandle]:
-        return self._scene.get_subject(name)
-
-    def run(self, setup_func: Callable[[Application, Any], None]) -> int:
+    def run(self, setup_func: Callable[[Application, Any, Scene], None], root_desc: NodeDescription) -> int:
         # initialize glfw
         if not glfw.init():
             return -1
+
+        # create the application data
+        self._data = Application.Data(
+            storage=Storage(
+                operators=OperatorColumns,
+                facts=RelayColumns,
+                nodes=NodeColumns,
+            ),
+            event_loop=EventLoop(),
+        )
+        scene = Scene(self, root_desc)
 
         # create a windowed mode window and its OpenGL context.
         glfw.window_hint(glfw.CLIENT_API, glfw.OPENGL_ES_API)
@@ -181,11 +245,11 @@ class Application:
         ctx = nanovg._nanovg.nvgCreateGLES3(5)
 
         # start the event loop
-        event_thread = Thread(target=self._event_loop.run)
+        event_thread = Thread(target=self._data.event_loop.run)
         event_thread.start()
 
         # execute the user-supplied setup function
-        setup_func(self, window)
+        setup_func(self, window, scene)
 
         try:
             while not glfw.window_should_close(window):
@@ -213,10 +277,11 @@ class Application:
                 glfw.wait_events()
 
         finally:
-            self._event_loop.close()
+            self._data.event_loop.close()
             event_thread.join()
 
             nanovg._nanovg.nvgDeleteGLES3(ctx)
+            self._data = None
             glfw.terminate()
 
         return 0  # terminated normally
@@ -339,30 +404,30 @@ class Fact:
         self._handle: RowHandle = handle
 
     def __del__(self):
-        table: Table = self._app.get_table(TableIndex.SUBJECTS)
+        table: Table = self._app.get_table(TableIndex.RELAYS)
         if table.is_handle_valid(self._handle):
             table.remove_row(self._handle)
 
     def get_schema(self) -> Value.Schema:
-        return self._app.get_table(TableIndex.SUBJECTS)[self._handle]['schema']
+        return self._app.get_table(TableIndex.RELAYS)[self._handle]['schema']
 
     def next(self, value: Value) -> None:
         assert value.get_schema() == self.get_schema()
-        self._app.schedule_event(lambda: emit_from_subject(self._app, self._handle, OperatorCallback.NEXT, value))
+        self._app.schedule_event(lambda: emit_from_relay(self._app, self._handle, OperatorCallback.NEXT, value))
 
     def fail(self, error: Value) -> None:
-        self._app.schedule_event(lambda: emit_from_subject(self._app, self._handle, OperatorCallback.FAILURE, error))
+        self._app.schedule_event(lambda: emit_from_relay(self._app, self._handle, OperatorCallback.FAILURE, error))
 
     def complete(self) -> None:
         self._app.schedule_event(
-            lambda: emit_from_subject(self._app, self._handle, OperatorCallback.COMPLETION, Value()))
+            lambda: emit_from_relay(self._app, self._handle, OperatorCallback.COMPLETION, Value()))
 
     def subscribe(self, downstream: RowHandle):
         if not self._app.is_handle_valid(downstream):
             return
         assert self.get_schema() == get_schema(self._app, downstream)
 
-        facts_table: Table = self._app.get_table(TableIndex.SUBJECTS)
+        facts_table: Table = self._app.get_table(TableIndex.RELAYS)
         current_downstream: RowHandleList = facts_table[self._handle]["downstream"]
         if downstream not in current_downstream:
             facts_table[self._handle]["downstream"] = current_downstream.append(downstream)
@@ -371,47 +436,21 @@ class Fact:
 # SCENE ################################################################################################################
 
 class Scene:
-    def __init__(self, app: Application):
+
+    def __init__(self, app: Application, root_description: NodeDescription):
         self._app: Application = app
-        self._root_node: Node = Node(app, '', NodeDescription(
-            inputs={}, outputs={}, state_machine=NodeStateMachine(states=dict(default=NodeNetworkDescription(
-                operators=[],
-                internal_connections=[],
-                external_connections=[],
-                incoming_connections=[],
-                outgoing_connections=[],
-            )), transitions=[], initial='default')))
+        self._root_node: Node = Node(app, '', root_description)
 
     def create_node(self, name: str, description: NodeDescription):
         self._root_node._create_child(name, description)
 
-    def get_subject(self, name: str) -> Optional[RowHandle]:
+    def get_relay(self, name: str) -> Optional[RowHandle]:
         path: List[str] = name.split('/')
-        path[-1], subject_name = path[-1].split(':', maxsplit=1)
+        path[-1], relay_name = path[-1].split(':', maxsplit=1)
         node: Node = self._root_node
         for step in path:
             node = node.get_child(step)
-        return node.get_subject(subject_name)
-
-
-class NodeDescription(NamedTuple):
-    inputs: Dict[str, Value.Schema]
-    outputs: Dict[str, Value.Schema]
-    state_machine: NodeStateMachine
-
-
-class NodeStateMachine(NamedTuple):
-    states: Dict[str, NodeNetworkDescription]
-    transitions: List[Tuple[str, str]]
-    initial: str
-
-
-class NodeNetworkDescription(NamedTuple):
-    operators: List[Tuple[OperatorKind, Value]]
-    internal_connections: List[Tuple[int, int]]  # internal to internal
-    external_connections: List[Tuple[str, str]]  # external to input
-    incoming_connections: List[Tuple[str, int]]  # input to internal
-    outgoing_connections: List[Tuple[int, str]]  # internal to output
+        return node.get_socket(relay_name)
 
 
 class Node:
@@ -426,31 +465,29 @@ class Node:
 
         assert len(set(description.inputs.keys()) | set(description.outputs.keys())) == \
                len(description.inputs) + len(description.outputs)
-        subject_table: Table = self._app.get_table(TableIndex.SUBJECTS)
+        relay_table: Table = self._app.get_table(TableIndex.RELAYS)
         self._inputs: Dict[str, RowHandle] = {
-            name: subject_table.add_row(schema=schema) for (name, schema) in description.inputs.items()}
+            name: relay_table.add_row(schema=schema) for (name, schema) in description.inputs.items()}
         self._outputs: Dict[str, RowHandle] = {
-            name: subject_table.add_row(schema=schema) for (name, schema) in description.outputs.items()}
+            name: relay_table.add_row(schema=schema) for (name, schema) in description.outputs.items()}
 
         self._transition_into(description.state_machine.initial)
 
-    def __del__(self):
-        self._clear_network()
-
-        subject_table: Table = self._app.get_table(TableIndex.SUBJECTS)
-        for direction in (self._inputs, self._outputs):
-            for subject in direction.values():
-                subject_table.remove_row(subject)
 
     def get_child(self, name: str) -> Optional[Node]:  # TODO: this should return a RowHandle - create a NodeTable
         return self._children.get(name)
 
-    def get_subject(self, name: str) -> Optional[RowHandle]:
+    def get_socket(self, name: str) -> Optional[RowHandle]:
         if name in self._inputs:
             return self._inputs[name]
         if name in self._outputs:
             return self._outputs[name]
         return None
+
+    def remove(self):
+        self._remove_recursively()
+        if self._parent:
+            del self._parent._children[self._name]
 
     def _transition_into(self, state: str) -> None:
         assert self._state == '' or (self._state, state) in self._description.state_machine.transitions
@@ -459,15 +496,33 @@ class Node:
 
         network_description: NodeNetworkDescription = self._description.state_machine.states[state]
         for kind, args in network_description.operators:
-            self._network.append(OPERATOR_REGISTRY[kind][OperatorCallback.CREATE](self._app, args))
+            self._network.append(ELEMENT_TABLE[kind][OperatorCallback.CREATE](self._app, args))
 
-        subject_table: Table = self._app.get_table(TableIndex.SUBJECTS)
+        relay_table: Table = self._app.get_table(TableIndex.RELAYS)
         for input_name, operator_index in network_description.incoming_connections:
-            subject: RowHandle = self._inputs[input_name]
-            current_downstream: RowHandleList = subject_table[subject]["downstream"]
-            subject_table[subject]["downstream"] = current_downstream.append(self._network[operator_index])
+            relay: RowHandle = self._inputs[input_name]
+            current_downstream: RowHandleList = relay_table[relay]["downstream"]
+            relay_table[relay]["downstream"] = current_downstream.append(self._network[operator_index])
 
         # TODO: create internal connections (and all others)
+
+    def _remove_recursively(self):
+        """
+        Unlike `remove`, this does not remove this Node from its parent as we know that the parent is also in the
+        process of removing itself from the Scene.
+        """
+        # remove all children
+        for child in self._children.values():
+            child._remove_recursively()
+
+        # remove dynamic network
+        self._clear_network()
+
+        # remove sockets
+        relay_table: Table = self._app.get_table(TableIndex.RELAYS)
+        for direction in (self._inputs, self._outputs):
+            for relay in direction.values():
+                relay_table.remove_row(relay)
 
     def _clear_network(self) -> None:
         operator_table: Table = self._app.get_table(TableIndex.OPERATORS)
@@ -483,18 +538,6 @@ class Node:
 
 
 # OPERATOR REGISTRY ####################################################################################################
-
-@unique
-class OperatorCallback(IndexEnum):
-    CREATE = auto()
-    NEXT = auto()
-    FAILURE = auto()
-    COMPLETION = auto()
-
-
-@unique
-class OperatorKind(IndexEnum):
-    BUFFER = auto()
 
 
 def create_buffer_operator(app: Application, args: Value) -> RowHandle:
@@ -527,7 +570,7 @@ def buffer_on_next(self: Operator, _1: RowHandle, _2: Value) -> Value:
         return set_value(self.data, self.data["counter"] + 1, "counter")
 
 
-OPERATOR_REGISTRY: Tuple[
+ELEMENT_TABLE: Tuple[
     Tuple[
         Callable[[Application, Value], RowHandle],
         Optional[Callable[[Operator, RowHandle], Value]],
@@ -552,6 +595,15 @@ OPERATOR_REGISTRY: Tuple[
 
 # SETUP ################################################################################################################
 
+root_node: NodeDescription = NodeDescription(
+    inputs={}, outputs={}, state_machine=NodeStateMachine(states=dict(default=NodeNetworkDescription(
+        operators=[],
+        internal_connections=[],
+        external_connections=[],
+        incoming_connections=[],
+        outgoing_connections=[],
+    )), transitions=[], initial='default'))
+
 count_presses_node: NodeDescription = NodeDescription(
     inputs=dict(key_down=Value.Schema()),
     outputs=dict(),
@@ -571,7 +623,8 @@ count_presses_node: NodeDescription = NodeDescription(
 )
 
 
-def app_setup(app: Application, window) -> None:
+# TODO: instead of this function, use the root node description's initial state for setup
+def app_setup(app: Application, window, scene: Scene) -> None:
     def key_callback_fn(_1, key, _2, action, _3):
         if action not in (glfw.PRESS, glfw.REPEAT):
             return
@@ -586,8 +639,8 @@ def app_setup(app: Application, window) -> None:
             key_fact.next(Value())
 
     key_fact: Fact = app.create_fact(Value.Schema())
-    app._scene.create_node("herbert", count_presses_node)
-    key_fact.subscribe(app.get_subject('herbert:key_down'))
+    scene.create_node("herbert", count_presses_node)
+    key_fact.subscribe(scene.get_relay('herbert:key_down'))
     glfw.set_key_callback(window, key_callback_fn)
 
     # TODO: Add a state change via a `StateChange` Sink element, which exchanges the Nodes' network
@@ -597,7 +650,7 @@ def app_setup(app: Application, window) -> None:
 
 def main() -> int:
     app: Application = Application()
-    return app.run(app_setup)
+    return app.run(app_setup, root_node)
 
 
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ def check_number(obj: Any) -> Optional[float]:
         return float(converter())
 
 
-def check_denotable(obj: Any, allow_empty_list: bool) -> Denotable:
+def create_denotable(obj: Any, allow_empty_list: bool) -> Denotable:
     """
     Tries to convert any given Python object into a Denotable.
     Denotable are still pure Python objects, but they are known to be capable of being stored in a Value.
@@ -64,7 +64,7 @@ def check_denotable(obj: Any, allow_empty_list: bool) -> Denotable:
 
     # list
     elif isinstance(obj, list):
-        denotable: List[Denotable] = [check_denotable(x, allow_empty_list) for x in obj]
+        denotable: List[Denotable] = [create_denotable(x, allow_empty_list) for x in obj]
 
         if len(denotable) == 0:
             if allow_empty_list:
@@ -110,7 +110,7 @@ def check_denotable(obj: Any, allow_empty_list: bool) -> Denotable:
         for key, value in obj.items():
             if not isinstance(key, str):
                 raise ValueError("All keys of a Record must be of Value.Kind String")
-            denotable[key] = check_denotable(value, allow_empty_list)
+            denotable[key] = create_denotable(value, allow_empty_list)
         return denotable
 
     # unnamed record
@@ -118,7 +118,7 @@ def check_denotable(obj: Any, allow_empty_list: bool) -> Denotable:
         if len(obj) == 0:
             raise ValueError("Records cannot be empty")
 
-        return tuple(check_denotable(value, allow_empty_list) for value in obj)
+        return tuple(create_denotable(value, allow_empty_list) for value in obj)
 
     # incompatible type
     raise ValueError("Cannot construct Denotable from a {}".format(type(obj).__name__))
@@ -225,7 +225,7 @@ class Schema(tuple, Sequence[int]):
             return obj.get_schema()
 
         schema: List[int] = []
-        denotable: Denotable = check_denotable(obj, allow_empty_list=False)
+        denotable: Denotable = create_denotable(obj, allow_empty_list=False)
         kind: Kind = Kind.from_denotable(denotable)
         assert kind != Kind.NONE
 
@@ -574,7 +574,7 @@ class Value:
 
         # value initialization
         else:
-            denotable: Denotable = check_denotable(obj, allow_empty_list=False)
+            denotable: Denotable = create_denotable(obj, allow_empty_list=False)
             self._schema = Schema(denotable)
             self._data = create_data_from_denotable(denotable)
             self._dictionary = create_dictionary(denotable)
@@ -960,7 +960,7 @@ def set_value(value: Value, data: Any, *path: Union[int, str]) -> Value:
     elif data is None:
         raise ValueError("Cannot set a non-None Value to`None`")
 
-    denotable: Denotable = check_denotable(data, allow_empty_list=True)
+    denotable: Denotable = create_denotable(data, allow_empty_list=True)
 
     def recursion(_data: Data, _schema_itr: int, _dict_itr: Optional[Dictionary],
                   _path: Tuple[Union[int, str], ...]) -> Optional[Data]:

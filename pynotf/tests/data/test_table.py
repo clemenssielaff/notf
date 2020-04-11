@@ -3,7 +3,7 @@ from typing import List
 
 from pyrsistent import field
 
-from pynotf.data import Storage, Table, RowHandle, HandleError, TableRow
+from pynotf.data import Storage, Table, RowHandle, HandleError, TableColumns
 from pynotf.data.table import mutate_data
 
 
@@ -11,11 +11,11 @@ from pynotf.data.table import mutate_data
 # UTILS
 ########################################################################################################################
 
-class TestRow(TableRow):
+class TestRow(TableColumns):
     __table_index__: int = 0
     name = field(type=str, mandatory=True)
 
-class TestRow2(TableRow):
+class TestRow2(TableColumns):
     __table_index__: int = 1
     name = field(type=str, mandatory=True)
 

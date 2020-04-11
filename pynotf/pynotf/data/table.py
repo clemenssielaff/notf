@@ -97,7 +97,7 @@ class RowHandleMap(ConstMap):
     __value_type__ = RowHandle
 
 
-class TableRow(ConstNamedTuple):
+class TableColumns(ConstNamedTuple):
     """
     Every table has a built-in column `_gen`, which allows the re-use of a table row without running into problems
     where a RowHandle would reference a row that has since been re-used.
@@ -105,13 +105,13 @@ class TableRow(ConstNamedTuple):
     _gen = field(type=int, mandatory=True)
 
 
-TableData = ConstListT[TableRow]
+TableData = ConstListT[TableColumns]
 T = TypeVar('T')
 
 
 # FUNCTIONS ############################################################################################################
 
-def add_table_row(table: TableData, table_id: int, row: TableRow, free_list: List[int]) -> Tuple[TableData, RowHandle]:
+def add_table_row(table: TableData, table_id: int, row: TableColumns, free_list: List[int]) -> Tuple[TableData, RowHandle]:
     """
     Adds a new row to a table.
     Either re-uses a expired row from the free list or appends a new row.
@@ -187,7 +187,7 @@ def mutate_data(data: T, path: List[Union[int, str]], func: Callable[[T], T]) ->
         return data.set(step, mutate_data(data[step], path, func))
 
 
-def generate_table_type(name: str, row_type: Type[TableRow]) -> Type:
+def generate_table_type(name: str, row_type: Type[TableColumns]) -> Type:
     """
     Creates a Table type, an immutable named tuple with a typed row for each entry.
     :param name: Name of the Table type (all lowercase).
@@ -221,7 +221,7 @@ class Storage:
     Contains the root of the immutable Application data.
     """
 
-    def __init__(self, **tables: Type[TableRow]):
+    def __init__(self, **tables: Type[TableColumns]):
         """
         Constructor.
         :param tables: Named Table description in order.
