@@ -76,12 +76,11 @@ class NodeStateMachine(NamedTuple):
 
 class NodeSockets(NamedTuple):
     names: Bonsai
-    elements: Tuple[NodeSocketDirection, RowHandle]
+    elements: List[Tuple[NodeSocketDirection, RowHandle]]
 
 
 class NodeDescription(NamedTuple):
-    inputs: Dict[str, Value.Schema]
-    outputs: Dict[str, Value.Schema]
+    sockets: Dict[str, Tuple[NodeSocketDirection, Value.Schema]]
     state_machine: NodeStateMachine
 
 
@@ -106,7 +105,7 @@ class NodeColumns(TableColumns):
     description = field(type=NodeDescription, mandatory=True)
     parent = field(type=RowHandle, mandatory=True)
     sockets = field(type=NodeSockets, mandatory=True)
-    state = field(type=str, mandatory=True)
+    state = field(type=str, mandatory=True, initial='')
     children = field(type=RowHandleMap, mandatory=True, initial=RowHandleMap())
     network = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
 
@@ -281,6 +280,7 @@ class Application:
             event_thread.join()
 
             nanovg._nanovg.nvgDeleteGLES3(ctx)
+            del scene
             self._data = None
             glfw.terminate()
 
@@ -439,72 +439,128 @@ class Scene:
 
     def __init__(self, app: Application, root_description: NodeDescription):
         self._app: Application = app
-        self._root_node: Node = Node(app, '', root_description)
+
+        # create the root node
+        node_table: Table = self._app.get_table(TableIndex.NODES)
+        relay_table: Table = self._app.get_table(TableIndex.RELAYS)
+        root_handle: RowHandle = node_table.add_row(
+            description=root_description,
+            parent=RowHandle(),  # empty row handle as parent
+            sockets=NodeSockets(
+                names=Bonsai([socket_name for socket_name in root_description.sockets.keys()]),
+                elements=[(socket_direction, relay_table.add_row(schema=socket_schema)) for
+                          (socket_direction, socket_schema) in root_description.sockets.values()],
+            )
+        )
+        self._root_node: Node = Node(self._app, root_handle)
+        self._root_node.transition_into(root_description.state_machine.initial)
+
+    def __del__(self):
+        self._root_node.remove()
 
     def create_node(self, name: str, description: NodeDescription):
-        self._root_node._create_child(name, description)
+        self._root_node.create_child(name, description)
 
     def get_relay(self, name: str) -> Optional[RowHandle]:
         path: List[str] = name.split('/')
         path[-1], relay_name = path[-1].split(':', maxsplit=1)
         node: Node = self._root_node
         for step in path:
-            node = node.get_child(step)
+            node = Node(self._app, node.get_child(step))
         return node.get_socket(relay_name)
 
 
 class Node:
-    def __init__(self, app: Application, name: str, description: NodeDescription, parent: Optional[Node] = None):
+    def __init__(self, app: Application, handle: RowHandle):
+        assert handle.table == TableIndex.NODES
         self._app: Application = app
-        self._name: str = name
-        self._description: NodeDescription = description
-        self._parent: Optional[Node] = parent
-        self._children: Dict[str, Node] = {}
-        self._network: List[RowHandle] = []
-        self._state: str = ''
+        self._handle: RowHandle = handle
 
-        assert len(set(description.inputs.keys()) | set(description.outputs.keys())) == \
-               len(description.inputs) + len(description.outputs)
+    # TODO: create child and -operator and state transition and all other private node methods should be operators...
+    def create_child(self, name: str, description: NodeDescription) -> RowHandle:
+        # ensure the child name is unique
+        node_table: Table = self._app.get_table(TableIndex.NODES)
+        assert name not in node_table[self._handle]['children']
+
+        # create the child node entry
         relay_table: Table = self._app.get_table(TableIndex.RELAYS)
-        self._inputs: Dict[str, RowHandle] = {
-            name: relay_table.add_row(schema=schema) for (name, schema) in description.inputs.items()}
-        self._outputs: Dict[str, RowHandle] = {
-            name: relay_table.add_row(schema=schema) for (name, schema) in description.outputs.items()}
+        child_handle: RowHandle = node_table.add_row(
+            description=description,
+            parent=self._handle,
+            sockets=NodeSockets(
+                names=Bonsai([socket_name for socket_name in description.sockets.keys()]),
+                elements=[(socket_direction, relay_table.add_row(schema=socket_schema)) for
+                          (socket_direction, socket_schema) in description.sockets.values()],
+            )
+        )
+        node_table[self._handle]['children'] = node_table[self._handle]['children'].set(name, child_handle)
 
-        self._transition_into(description.state_machine.initial)
+        # initialize the child node by transitioning into its initial state
+        child_node: Node = Node(self._app, child_handle)
+        child_node.transition_into(description.state_machine.initial)
 
+        return child_handle
 
-    def get_child(self, name: str) -> Optional[Node]:  # TODO: this should return a RowHandle - create a NodeTable
-        return self._children.get(name)
+    def get_name(self) -> str:
+        node_table: Table = self._app.get_table(TableIndex.NODES)
+        parent_handle: RowHandle = node_table[self._handle]['parent']
+        if parent_handle.is_null():
+            return '<root>'
+        children: RowHandleMap = node_table[parent_handle]['children']
+        for index, (child_name, child_handle) in enumerate(children.items()):
+            if child_handle == self._handle:
+                return child_name
+        assert False
+
+    def get_child(self, name: str) -> Optional[RowHandle]:
+        return self._app.get_table(TableIndex.NODES)[self._handle]['children'].get(name)
 
     def get_socket(self, name: str) -> Optional[RowHandle]:
-        if name in self._inputs:
-            return self._inputs[name]
-        if name in self._outputs:
-            return self._outputs[name]
-        return None
+        node_table: Table = self._app.get_table(TableIndex.NODES)
+        sockets: NodeSockets = node_table[self._handle]['sockets']
+        index: Optional[int] = sockets.names.get(name)
+        if index is None:
+            return None
+        return sockets.elements[index][1]
+        # TODO: differentiate inputs/outputs? Right now, you can connect an output as downstream from external
 
     def remove(self):
+        # unregister from the parent
+        node_table: Table = self._app.get_table(TableIndex.NODES)
+        parent_handle: RowHandle = node_table[self._handle]['parent']
+        if not parent_handle.is_null():
+            children: RowHandleMap = node_table[parent_handle]['children']
+            children.remove(self.get_name())
+
+        # remove all children first and then yourself
         self._remove_recursively()
-        if self._parent:
-            del self._parent._children[self._name]
 
-    def _transition_into(self, state: str) -> None:
-        assert self._state == '' or (self._state, state) in self._description.state_machine.transitions
+    def transition_into(self, state: str) -> None:
+        # ensure the transition is allowed
+        node_table: Table = self._app.get_table(TableIndex.NODES)
+        current_state: str = node_table[self._handle]['state']
+        node_description: NodeDescription = node_table[self._handle]['description']
+        assert current_state == '' or (current_state, state) in node_description.state_machine.transitions
 
+        # remove the current dynamic network
         self._clear_network()
 
-        network_description: NodeNetworkDescription = self._description.state_machine.states[state]
+        # create new elements
+        network: List[RowHandle] = []
+        network_description: NodeNetworkDescription = node_description.state_machine.states[state]
         for kind, args in network_description.operators:
-            self._network.append(ELEMENT_TABLE[kind][OperatorCallback.CREATE](self._app, args))
+            network.append(ELEMENT_TABLE[kind][OperatorCallback.CREATE](self._app, args))
+        node_table[self._handle]['network'] = RowHandleList(network)
 
         relay_table: Table = self._app.get_table(TableIndex.RELAYS)
         for input_name, operator_index in network_description.incoming_connections:
-            relay: RowHandle = self._inputs[input_name]
+            relay: RowHandle = self.get_socket(input_name)
             current_downstream: RowHandleList = relay_table[relay]["downstream"]
-            relay_table[relay]["downstream"] = current_downstream.append(self._network[operator_index])
+            relay_table[relay]["downstream"] = current_downstream.append(network[operator_index])
 
         # TODO: create internal connections (and all others)
+        # children = field(type=RowHandleMap, mandatory=True, initial=RowHandleMap())
+        # network = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
 
     def _remove_recursively(self):
         """
@@ -512,29 +568,30 @@ class Node:
         process of removing itself from the Scene.
         """
         # remove all children
-        for child in self._children.values():
-            child._remove_recursively()
+        node_table: Table = self._app.get_table(TableIndex.NODES)
+        child_handles: RowHandleMap = node_table[self._handle]['children']
+        for child_handle in child_handles.values():
+            Node(self._app, child_handle)._remove_recursively()
 
         # remove dynamic network
         self._clear_network()
 
         # remove sockets
+        sockets: NodeSockets = node_table[self._handle]['sockets']
         relay_table: Table = self._app.get_table(TableIndex.RELAYS)
-        for direction in (self._inputs, self._outputs):
-            for relay in direction.values():
-                relay_table.remove_row(relay)
+        for _, socket_handle in sockets.elements:
+            relay_table.remove_row(socket_handle)
+
+        # remove the node
+        node_table.remove_row(self._handle)
 
     def _clear_network(self) -> None:
+        node_table: Table = self._app.get_table(TableIndex.NODES)
+        network_handles: RowHandleList = node_table[self._handle]['network']
         operator_table: Table = self._app.get_table(TableIndex.OPERATORS)
-        for operator in self._network:
+        for operator in network_handles:
             operator_table.remove_row(operator)
-        self._network.clear()
-
-    # TODO: create child and -operator and state transition and all other private node methods should be operators...
-    def _create_child(self, name: str, description: NodeDescription):
-        assert name not in self._children
-        child: Node = Node(self._app, name, description, self)
-        self._children[name] = child
+        node_table[self._handle]['network'] = RowHandleList()
 
 
 # OPERATOR REGISTRY ####################################################################################################
@@ -596,7 +653,7 @@ ELEMENT_TABLE: Tuple[
 # SETUP ################################################################################################################
 
 root_node: NodeDescription = NodeDescription(
-    inputs={}, outputs={}, state_machine=NodeStateMachine(states=dict(default=NodeNetworkDescription(
+    sockets={}, state_machine=NodeStateMachine(states=dict(default=NodeNetworkDescription(
         operators=[],
         internal_connections=[],
         external_connections=[],
@@ -605,8 +662,7 @@ root_node: NodeDescription = NodeDescription(
     )), transitions=[], initial='default'))
 
 count_presses_node: NodeDescription = NodeDescription(
-    inputs=dict(key_down=Value.Schema()),
-    outputs=dict(),
+    sockets=dict(key_down=(NodeSocketDirection.INPUT, Value.Schema())),
     state_machine=NodeStateMachine(
         states=dict(
             default=NodeNetworkDescription(
@@ -626,11 +682,14 @@ count_presses_node: NodeDescription = NodeDescription(
 # TODO: instead of this function, use the root node description's initial state for setup
 def app_setup(app: Application, window, scene: Scene) -> None:
     def key_callback_fn(_1, key, _2, action, _3):
+        nonlocal key_fact
         if action not in (glfw.PRESS, glfw.REPEAT):
             return
 
         if key == glfw.KEY_ESCAPE:
             glfw.set_window_should_close(window, 1)
+            del key_fact  # TODO: Fact will outlive the application when closed through window X
+            return
 
         if glfw.KEY_A <= key <= glfw.KEY_Z:
             # if (mods & glfw.MOD_SHIFT) != glfw.MOD_SHIFT:

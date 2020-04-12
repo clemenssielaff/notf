@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import IntEnum, unique
 from typing import List, Type, Tuple, Any, TypeVar, Union, Callable
-from logging import warning
+from logging import warning, debug
 
 from pyrsistent import CheckedPVector as ConstList, CheckedPMap as ConstMap, PRecord as ConstNamedTuple, field
 from pyrsistent.typing import CheckedPVector as ConstListT
@@ -111,7 +111,8 @@ T = TypeVar('T')
 
 # FUNCTIONS ############################################################################################################
 
-def add_table_row(table: TableData, table_id: int, row: TableColumns, free_list: List[int]) -> Tuple[TableData, RowHandle]:
+def add_table_row(table: TableData, table_id: int, row: TableColumns, free_list: List[int]) \
+        -> Tuple[TableData, RowHandle]:
     """
     Adds a new row to a table.
     Either re-uses a expired row from the free list or appends a new row.
@@ -406,6 +407,7 @@ class Table:
             self._get_table_data(), self._id, self._table_type.Row(_gen=0, **kwargs), self._free_list)
         assert not row_handle.is_null()
         self._storage._data = self._storage._data.set(self._id, modified_table)
+        debug(f'Created row {row_handle.index} in table {row_handle.table} (gen: {row_handle.generation})')
         return row_handle
 
     def remove_row(self, handle: RowHandle) -> None:
@@ -418,6 +420,7 @@ class Table:
         self._assert_handle(handle, table_data)
         self._storage._data = self._storage._data.set(
             self._id, remove_table_row(table_data, handle.index, self._free_list))
+        debug(f'Removed row {handle.index} from table {handle.table} (gen: {handle.generation})')
 
     def to_string(self) -> str:
         """
