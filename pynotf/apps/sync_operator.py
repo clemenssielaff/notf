@@ -35,15 +35,8 @@ class IndexEnum(IntEnum):
 
 
 @unique
-class OperatorCallback(IndexEnum):
-    CREATE = auto()
-    NEXT = auto()
-    FAILURE = auto()
-    COMPLETION = auto()
-
-
-@unique
 class OperatorKind(IndexEnum):
+    RELAY = auto()
     BUFFER = auto()
 
 
@@ -60,7 +53,55 @@ class NodeSocketDirection(Enum):
     OUTPUT = auto()
 
 
-class NodeNetworkDescription(NamedTuple):
+@unique
+class OperatorCallback(IntEnum):
+    NEXT = 0  # 0-3 matches the corresponding EmitterStatus
+    FAILURE = 1
+    COMPLETION = 2
+    CREATE = 3
+
+
+@unique
+class EmitterStatus(IntEnum):
+    """
+    Emitters start out IDLE and change to EMITTING whenever they are emitting a ValueSignal to connected Receivers.
+    If an Emitter tries to emit but is already in EMITTING state, we know that we have caught a cyclic dependency.
+    To emit a FailureSignal or a CompletionSignal, the Emitter will switch to the respective FAILING or COMPLETING
+    state. Once it has finished its `_fail` or `_complete` methods, it will permanently change its state to
+    COMPLETED or FAILED and will not emit anything again.
+
+        --> IDLE <-> EMITTING
+              |
+              +--> FAILING --> FAILED
+              |
+              +--> COMPLETING --> COMPLETE
+    """
+    EMITTING = 0  # 0-3 matches the corresponding OperatorCallback
+    FAILING = 1
+    COMPLETING = 2
+    IDLE = 3  # follow-up status is active (EMITTING, FAILING, COMPLETING) + 3
+    FAILED = 4
+    COMPLETED = 5
+
+    def is_active(self) -> bool:
+        """
+        There are 3 active and 3 passive states:
+            * IDLE, FAILED and COMPLETED are passive
+            * EMITTING, FAILING and COMPLETING are active
+        """
+        return self < EmitterStatus.IDLE
+
+    def is_completed(self) -> bool:
+        """
+        Every status except IDLE and EMITTING can be considered "completed".
+        """
+        return not (self == EmitterStatus.IDLE or self == EmitterStatus.EMITTING)
+
+    def next_after(self) -> EmitterStatus:
+        return EmitterStatus(self + 3)
+
+
+class NodeNetworkDescription(NamedTuple):  # TODO: assign integers to sockets as well
     operators: List[Tuple[OperatorKind, Value]]
     internal_connections: List[Tuple[int, int]]  # internal to internal
     external_connections: List[Tuple[str, str]]  # external to input
@@ -86,17 +127,19 @@ class NodeDescription(NamedTuple):
 
 class OperatorColumns(TableColumns):
     __table_index__: int = TableIndex.OPERATORS
+    value = field(type=Value, mandatory=True)
     op_index = field(type=int, mandatory=True)
-    schema_in = field(type=Value.Schema, mandatory=True)
-    schema_out = field(type=Value.Schema, mandatory=True)
+    schema = field(type=Value.Schema, mandatory=True)
     args = field(type=Value, mandatory=True)
     data = field(type=Value, mandatory=True)
-    downstream = field(type=RowHandle, mandatory=True)
+    status = field(type=EmitterStatus, mandatory=True, initial=EmitterStatus.IDLE)
+    downstream = field(type=RowHandle, mandatory=True, initial=RowHandle())
 
 
 class RelayColumns(TableColumns):
     __table_index__: int = TableIndex.RELAYS
-    schema = field(type=Value.Schema, mandatory=True)
+    value = field(type=Value, mandatory=True)
+    status = field(type=EmitterStatus, mandatory=True, initial=EmitterStatus.IDLE)
     downstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
 
 
@@ -114,48 +157,60 @@ class NodeColumns(TableColumns):
 
 def run_downstream(app: Application, element: RowHandle, source: RowHandle, callback: OperatorCallback,
                    value: Value) -> None:
-    """
-    Execute one of the callbacks of a given downstream logic element.
-    :param app: Application containing the state.
-    :param element: Logic element whose callback to execute.
-    :param source: Source Logic element that triggered the execution.
-    :param callback: OperatorCallback to execute.
-    :param value: OperatorCallback argument
-    """
-    if not app.is_handle_valid(element):
-        return
+    assert app.is_handle_valid(element)
+    assert app.is_handle_valid(source)
 
     if element.table == TableIndex.OPERATORS:
-        # find the callback to perform
-        operator_table: Table = app.get_table(TableIndex.OPERATORS)
-        callback_func: Optional[Callable] = ELEMENT_TABLE[operator_table[element]["op_index"]][callback]
-        if callback_func is None:
-            return  # operator type does not provide the requested callback
-
-        # perform the callback ...
-        new_data: Value = callback_func(Operator(app, element), source, value)
-
-        # ...and update the operator's data
-        assert new_data.get_schema() == operator_table[element]["data"].get_schema()
-        operator_table[element]['data'] = new_data
-
+        run_operator(app, element, source, callback, value)
     else:
+        assert element.table == TableIndex.RELAYS
         emit_from_relay(app, element, callback, value)
 
 
-def emit_from_relay(app: Application, relay: RowHandle, callback: OperatorCallback, value: Value) -> None:
-    assert app.is_handle_valid(relay)
-    assert relay.table == TableIndex.RELAYS
+def run_operator(app: Application, operator: RowHandle, source: RowHandle, callback: OperatorCallback,
+                 value: Value) -> None:
+    # make sure the operator is valid and not completed yet
+    operator_table: Table = app.get_table(TableIndex.OPERATORS)
+    status: EmitterStatus = operator_table[operator]['status']
+    if status.is_completed():
+        return  # operator has completed
 
-    # temporarily clear the downstream of the emitting element to rule out cycles
+    # find the callback to perform
+    callback_func: Optional[Callable] = ELEMENT_TABLE[operator_table[operator]["op_index"]][callback]
+    if callback_func is None:
+        return  # operator type does not provide the requested callback
+
+    # perform the callback ...
+    new_data: Value = callback_func(Operator(app, operator), source, value)
+
+    # ...and update the operator's data
+    assert new_data.get_schema() == operator_table[operator]["data"].get_schema()
+    operator_table[operator]['data'] = new_data
+
+
+def emit_from_relay(app: Application, relay: RowHandle, callback: OperatorCallback, value: Value) -> None:
+    assert callback != OperatorCallback.CREATE
+
+    # make sure the relay is valid and not completed yet
     relay_table: Table = app.get_table(TableIndex.RELAYS)
-    downstream: RowHandleList = relay_table[relay]["downstream"]
-    relay_table[relay]["downstream"] = RowHandleList()
+    status: EmitterStatus = relay_table[relay]['status']
+    if status.is_completed():
+        return  # relay has completed
+
+    # ensure that the relay is able to emit the given value
+    assert value.get_schema() == relay_table[relay]['value'].get_schema()
+
+    # mark the relay as actively emitting
+    assert not status.is_active()  # cyclic error
+    relay_table[relay]['status'] = EmitterStatus(callback)  # set the active status
+
+    # store the emitted value
+    relay_table[relay]['value'] = value
 
     if callback == OperatorCallback.NEXT:
         # emit to all valid downstream elements and remember the expired ones
         expired: List[RowHandle] = []
-        for downstream_element in downstream:
+        for downstream_element in relay_table[relay]["downstream"]:
             if app.is_handle_valid(downstream_element):
                 run_downstream(app, downstream_element, relay, callback, value)
             else:
@@ -163,27 +218,88 @@ def emit_from_relay(app: Application, relay: RowHandle, callback: OperatorCallba
 
         # remove all expired downstream handles
         if expired:
-            downstream = RowHandleList(op for op in downstream if op not in expired)
-
-        # restore the element's downstream after the emission has finished
-        relay_table[relay]["downstream"] = downstream
+            relay_table[relay]["downstream"] = RowHandleList(op for op in relay_table[relay]["downstream"]
+                                                             if op not in expired)
 
     else:
         # emit one last time ...
-        for downstream_element in downstream:
+        for downstream_element in relay_table[relay]["downstream"]:
             run_downstream(app, downstream_element, relay, callback, value)
 
-        # ... and invalidate the element
-        relay_table.remove_row(relay)
+        # ... and remove all downstream handles
+        relay_table[relay]["downstream"] = RowHandleList()
+
+    # reset the status
+    relay_table[relay]['status'] = EmitterStatus(callback).next_after()
+
+
+def emit_from_operator(app: Application, operator: RowHandle, callback: OperatorCallback, value: Value) -> None:
+    assert callback != OperatorCallback.CREATE
+
+    # make sure the operator is valid and not completed yet
+    operator_table: Table = app.get_table(TableIndex.OPERATORS)
+    status: EmitterStatus = operator_table[operator]['status']
+    if status.is_completed():
+        return  # operator has completed
+
+    # ensure that the operator is able to emit the given value
+    assert value.get_schema() == operator_table[operator]['value'].get_schema()
+
+    # mark the operator as actively emitting
+    assert not status.is_active()  # cyclic error
+    operator_table[operator]['status'] = EmitterStatus(callback)  # set the active status
+
+    # store the emitted value
+    operator_table[operator]['value'] = value
+
+    # emit or remove the downstream if it has expired
+    downstream: RowHandle = operator_table[operator]["downstream"]
+    if downstream.is_null():
+        if app.is_handle_valid(downstream):
+            run_downstream(app, downstream, operator, callback, value)
+        else:
+            operator_table[operator]["downstream"] = RowHandle()
+
+    # reset the status
+    operator_table[operator]['status'] = EmitterStatus(callback).next_after()
+
+
+def subscribe_to_relay(app: Application, relay: RowHandle, subscriber: RowHandle) -> None:
+    assert app.is_handle_valid(relay)
+    assert app.is_handle_valid(subscriber)
+
+    relay_table: Table = app.get_table(TableIndex.RELAYS)
+    assert relay_table[relay]['value'].get_schema() == get_schema(app, subscriber)
+
+    current_downstream: RowHandleList = relay_table[relay]["downstream"]
+    if subscriber not in current_downstream:
+        relay_table[relay]["downstream"] = current_downstream.append(subscriber)
+
+
+def subscribe_to_operator(app: Application, operator: RowHandle, subscriber: RowHandle) -> None:
+    assert app.is_handle_valid(operator)
+    assert app.is_handle_valid(subscriber)
+
+    operator_table: Table = app.get_table(TableIndex.OPERATORS)
+    assert operator_table[operator]['value'].get_schema() == get_schema(app, subscriber)
+
+    current_downstream: RowHandle = operator_table[operator]["downstream"]
+    assert current_downstream.is_null()
+    operator_table[operator]["downstream"] = subscriber
 
 
 def get_schema(app: Application, element: RowHandle) -> Value.Schema:
     assert app.is_handle_valid(element)
     if element.table == TableIndex.OPERATORS:
-        return app.get_table(TableIndex.OPERATORS)[element]['schema_in']
+        return app.get_table(TableIndex.OPERATORS)[element]['schema']
     else:
         assert element.table == TableIndex.RELAYS
-        return app.get_table(TableIndex.RELAYS)[element]['schema']
+        return app.get_table(TableIndex.RELAYS)[element]['value'].get_schema()
+
+
+def create_relay(app: Application, initial: Value) -> RowHandle:
+    relay_table: Table = app.get_table(TableIndex.RELAYS)
+    return relay_table.add_row(value=initial)
 
 
 # APPLICATION ##########################################################################################################
@@ -206,9 +322,6 @@ class Application:
     def schedule_event(self, callback: Callable, *args):
         assert self._data
         self._data.event_loop.schedule((callback, *args))
-
-    def create_fact(self, schema: Value.Schema) -> Fact:
-        return Fact(self, self.get_table(TableIndex.RELAYS).add_row(schema=schema))
 
     def run(self, setup_func: Callable[[Application, Any, Scene], None], root_desc: NodeDescription) -> int:
         # initialize glfw
@@ -369,13 +482,13 @@ class Operator:
         return self._app.get_table(TableIndex.OPERATORS)[self._handle]["args"][name]
 
     def next(self, value: Value) -> None:
-        self._emit(OperatorCallback.NEXT, value)
+        emit_from_operator(self._app, self._handle, OperatorCallback.NEXT, value)
 
     def fail(self, error: Value) -> None:
-        self._emit(OperatorCallback.FAILURE, error)
+        emit_from_operator(self._app, self._handle, OperatorCallback.FAILURE, error)
 
     def complete(self) -> None:
-        self._emit(OperatorCallback.COMPLETION, Value())
+        emit_from_operator(self._app, self._handle, OperatorCallback.COMPLETION, Value())
 
     def schedule(self, callback: Callable, *args):
         assert iscoroutinefunction(callback)
@@ -384,18 +497,6 @@ class Operator:
             self._app.get_table(self._handle.table)[self._handle]["data"] = await callback(*args)
 
         self._app.schedule_event(update_data_on_completion)
-
-    def _emit(self, callback: OperatorCallback, value: Value) -> None:
-        operator_table: Table = self._app.get_table(TableIndex.OPERATORS)
-        downstream: RowHandle = operator_table[self._handle]["downstream"]
-
-        # if we emit failure or completion, invalidate the operator here to rule out cycles
-        if callback != OperatorCallback.NEXT:
-            operator_table.remove_row(self._handle)
-
-        # execute the downstream callback
-        if operator_table.is_handle_valid(downstream):
-            run_downstream(self._app, downstream, self._handle, callback, value)
 
 
 class Fact:
@@ -408,8 +509,11 @@ class Fact:
         if table.is_handle_valid(self._handle):
             table.remove_row(self._handle)
 
+    def get_value(self) -> Value:
+        return self._app.get_table(TableIndex.RELAYS)[self._handle]['value']
+
     def get_schema(self) -> Value.Schema:
-        return self._app.get_table(TableIndex.RELAYS)[self._handle]['schema']
+        return self.get_value().get_schema()
 
     def next(self, value: Value) -> None:
         assert value.get_schema() == self.get_schema()
@@ -419,18 +523,10 @@ class Fact:
         self._app.schedule_event(lambda: emit_from_relay(self._app, self._handle, OperatorCallback.FAILURE, error))
 
     def complete(self) -> None:
-        self._app.schedule_event(
-            lambda: emit_from_relay(self._app, self._handle, OperatorCallback.COMPLETION, Value()))
+        self._app.schedule_event(lambda: emit_from_relay(self._app, self._handle, OperatorCallback.COMPLETION, Value()))
 
     def subscribe(self, downstream: RowHandle):
-        if not self._app.is_handle_valid(downstream):
-            return
-        assert self.get_schema() == get_schema(self._app, downstream)
-
-        facts_table: Table = self._app.get_table(TableIndex.RELAYS)
-        current_downstream: RowHandleList = facts_table[self._handle]["downstream"]
-        if downstream not in current_downstream:
-            facts_table[self._handle]["downstream"] = current_downstream.append(downstream)
+        subscribe_to_relay(self._app, self._handle, downstream)
 
 
 # SCENE ################################################################################################################
@@ -448,7 +544,7 @@ class Scene:
             parent=RowHandle(),  # empty row handle as parent
             sockets=NodeSockets(
                 names=Bonsai([socket_name for socket_name in root_description.sockets.keys()]),
-                elements=[(socket_direction, relay_table.add_row(schema=socket_schema)) for
+                elements=[(socket_direction, relay_table.add_row(value=Value(socket_schema))) for
                           (socket_direction, socket_schema) in root_description.sockets.values()],
             )
         )
@@ -489,7 +585,7 @@ class Node:
             parent=self._handle,
             sockets=NodeSockets(
                 names=Bonsai([socket_name for socket_name in description.sockets.keys()]),
-                elements=[(socket_direction, relay_table.add_row(schema=socket_schema)) for
+                elements=[(socket_direction, relay_table.add_row(value=Value(socket_schema))) for
                           (socket_direction, socket_schema) in description.sockets.values()],
             )
         )
@@ -555,7 +651,7 @@ class Node:
         relay_table: Table = self._app.get_table(TableIndex.RELAYS)
         for input_name, operator_index in network_description.incoming_connections:
             relay: RowHandle = self.get_socket(input_name)
-            current_downstream: RowHandleList = relay_table[relay]["downstream"]
+            current_downstream: RowHandleList = relay_table[relay]["downstream"]  # TODO: use subscribe_downstream
             relay_table[relay]["downstream"] = current_downstream.append(network[operator_index])
 
         # TODO: create internal connections (and all others)
@@ -601,12 +697,11 @@ def create_buffer_operator(app: Application, args: Value) -> RowHandle:
     schema: Value.Schema = Value.Schema.from_value(args['schema'])
     assert schema
     return app.get_table(TableIndex.OPERATORS).add_row(
+        value=Value(0),
         op_index=OperatorKind.BUFFER,
-        schema_in=schema,
-        schema_out=schema.as_list(),
+        schema=schema,
         args=Value(dict(time_span=args['time_span'])),
         data=Value(dict(is_running=False, counter=0)),
-        downstream=RowHandle()
     )
 
 
@@ -629,12 +724,13 @@ def buffer_on_next(self: Operator, _1: RowHandle, _2: Value) -> Value:
 
 ELEMENT_TABLE: Tuple[
     Tuple[
+        Optional[Callable[[Operator, RowHandle], Value]],
+        Optional[Callable[[Operator, RowHandle], Value]],
+        Optional[Callable[[Operator, RowHandle], Value]],
         Callable[[Application, Value], RowHandle],
-        Optional[Callable[[Operator, RowHandle], Value]],
-        Optional[Callable[[Operator, RowHandle], Value]],
-        Optional[Callable[[Operator, RowHandle], Value]],
     ], ...] = (
-    (create_buffer_operator, buffer_on_next, None, None),  # buffer
+    (None, None, None, create_relay),  # relay
+    (buffer_on_next, None, None, create_buffer_operator),  # buffer
 )
 
 # class Map:  # TODO: in the example, this is a more generalized "map" operator with user-defined code
@@ -697,7 +793,7 @@ def app_setup(app: Application, window, scene: Scene) -> None:
             # char: str = bytes([key]).decode()
             key_fact.next(Value())
 
-    key_fact: Fact = app.create_fact(Value.Schema())
+    key_fact: Fact = Fact(app, create_relay(app, Value()))
     scene.create_node("herbert", count_presses_node)
     key_fact.subscribe(scene.get_relay('herbert:key_down'))
     glfw.set_key_callback(window, key_callback_fn)
