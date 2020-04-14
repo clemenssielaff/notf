@@ -9,14 +9,14 @@ from typing import List, Optional, NamedTuple, Union, Deque, Any
 
 from pyrsistent import field
 
-from pynotf.data import Value, RowHandle, RowHandleList, Table, TableColumns, Storage
+from pynotf.data import Value, RowHandle, RowHandleList, Table, TableRow, Storage
 import pynotf.core as core
 
 
 # DATA #################################################################################################################
 
 # All (public) columns of the Emitter table.
-class EmitterColumns(TableColumns):
+class EmitterRow(TableRow):
     __table_index__: int = core.TableIndex.EMITTERS  # in C++ this would be a type trait
     schema = field(type=Value.Schema, mandatory=True)  # The Schema of Values emitted downstream.
     value = field(type=Value, mandatory=True)  # The last emitted Value, undefined until first emission.
@@ -31,7 +31,7 @@ class EmitterColumns(TableColumns):
 
 
 # The first two (public) columns in any Receiver table.
-class ReceiverRow(TableColumns):
+class ReceiverRow(TableRow):
     schema = field(type=Value.Schema, mandatory=True)  # The Schema of Values received from upstream.
 
 
@@ -344,7 +344,7 @@ class Circuit:
     Owns the only strong reference to a `CircuitData` instance.
     """
 
-    EmitterColumns = EmitterColumns
+    EmitterColumns = EmitterRow
 
     def __init__(self, application: core.Application):
         self._application: core.Application = application

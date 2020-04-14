@@ -10,15 +10,15 @@ import glfw
 import curio
 from pyrsistent import field
 
-from pynotf.data import Value, RowHandle, Table, TableColumns, Storage, set_value, RowHandleList, Bonsai, RowHandleMap
+from pynotf.data import Value, RowHandle, Table, TableRow, Storage, set_value, RowHandleList, Bonsai, RowHandleMap
 import pynotf.extra.pynanovg as nanovg
 import pynotf.extra.opengl as gl
 
 
-# TODO: node hierarchy
-# TODO: graphic design
-# TODO: a service
-# TODO: lua runtime
+# * node hierarchy
+# * a service (periphery devices)
+# * graphic design
+# * lua runtime
 
 # UTILS ################################################################################################################
 
@@ -48,14 +48,8 @@ class TableIndex(IndexEnum):
 
 
 @unique
-class NodeSocketDirection(Enum):
-    INPUT = auto()
-    OUTPUT = auto()
-
-
-@unique
 class OperatorCallback(IntEnum):
-    NEXT = 0  # 0-3 matches the corresponding EmitterStatus
+    NEXT = 0  # 0-2 matches the corresponding EmitterStatus
     FAILURE = 1
     COMPLETION = 2
     CREATE = 3
@@ -101,6 +95,12 @@ class EmitterStatus(IntEnum):
         return EmitterStatus(self + 3)
 
 
+@unique
+class NodeSocketDirection(Enum):
+    INPUT = auto()
+    OUTPUT = auto()
+
+
 class NodeNetworkDescription(NamedTuple):  # TODO: assign integers to sockets as well
     operators: List[Tuple[OperatorKind, Value]]
     internal_connections: List[Tuple[int, int]]  # internal to internal
@@ -125,25 +125,25 @@ class NodeDescription(NamedTuple):
     state_machine: NodeStateMachine
 
 
-class OperatorColumns(TableColumns):
+class OperatorRow(TableRow):
     __table_index__: int = TableIndex.OPERATORS
     value = field(type=Value, mandatory=True)
     op_index = field(type=int, mandatory=True)
-    schema = field(type=Value.Schema, mandatory=True)
+    schema = field(type=Value.Schema, mandatory=True)  # input schema
     args = field(type=Value, mandatory=True)
     data = field(type=Value, mandatory=True)
     status = field(type=EmitterStatus, mandatory=True, initial=EmitterStatus.IDLE)
     downstream = field(type=RowHandle, mandatory=True, initial=RowHandle())
 
 
-class RelayColumns(TableColumns):
+class RelayRow(TableRow):
     __table_index__: int = TableIndex.RELAYS
     value = field(type=Value, mandatory=True)
     status = field(type=EmitterStatus, mandatory=True, initial=EmitterStatus.IDLE)
     downstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
 
 
-class NodeColumns(TableColumns):
+class NodeRow(TableRow):
     __table_index__: int = TableIndex.NODES
     description = field(type=NodeDescription, mandatory=True)
     parent = field(type=RowHandle, mandatory=True)
@@ -329,9 +329,9 @@ class Application:
         # create the application data
         self._data = Application.Data(
             storage=Storage(
-                operators=OperatorColumns,
-                facts=RelayColumns,
-                nodes=NodeColumns,
+                operators=OperatorRow,
+                facts=RelayRow,
+                nodes=NodeRow,
             ),
             event_loop=EventLoop(),
         )
@@ -649,11 +649,9 @@ class Node:
             network.append(ELEMENT_TABLE[kind][OperatorCallback.CREATE](args))
         node_table[self._handle]['network'] = RowHandleList(network)
 
-        relay_table: Table = get_app().get_table(TableIndex.RELAYS)
         for input_name, operator_index in network_description.incoming_connections:
             relay: RowHandle = self.get_socket(input_name)
-            current_downstream: RowHandleList = relay_table[relay]["downstream"]  # TODO: use subscribe_downstream
-            relay_table[relay]["downstream"] = current_downstream.append(network[operator_index])
+            subscribe_to_relay(relay, network[operator_index])
 
         # TODO: create internal connections (and all others)
         # children = field(type=RowHandleMap, mandatory=True, initial=RowHandleMap())
@@ -706,6 +704,7 @@ def create_buffer_operator(args: Value) -> RowHandle:
     )
 
 
+# TODO: this is not actually a buffer...
 def buffer_on_next(self: Operator, _1: RowHandle, _2: Value) -> Value:
     if not int(self.data["is_running"]) == 1:
         async def timeout():
@@ -798,8 +797,6 @@ def app_setup(window, scene: Scene) -> None:
     scene.create_node("herbert", count_presses_node)
     key_fact.subscribe(scene.get_relay('herbert:key_down'))
     glfw.set_key_callback(window, key_callback_fn)
-
-    # TODO: Add a state change via a `StateChange` Sink element, which exchanges the Nodes' network
 
 
 # MAIN #################################################################################################################
