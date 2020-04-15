@@ -90,8 +90,17 @@ class EmitterStatus(IntEnum):
         """
         return not (self == EmitterStatus.IDLE or self == EmitterStatus.EMITTING)
 
-    def next_after(self) -> EmitterStatus:
-        return EmitterStatus(self + 3)
+
+class FlagIndex(IntEnum):
+    IS_EXTERNAL = 0  # if this Operator is owned externally, meaning it is destroyed explicitly at some point
+    IS_MULTICAST = 1  # if this Operator allows more than one downstream subscriber
+    STATUS = 2  # offset of the EmitterStatus
+
+
+def create_flags(external: bool = False, multicast: bool = False, status: EmitterStatus = EmitterStatus.IDLE) -> int:
+    return (((int(external) << FlagIndex.IS_EXTERNAL) |
+             (int(multicast) << FlagIndex.IS_MULTICAST)) &
+            ~(int(0b111) << FlagIndex.STATUS)) | (status << FlagIndex.STATUS)
 
 
 @unique
@@ -124,6 +133,22 @@ class NodeDescription(NamedTuple):
     state_machine: NodeStateMachine
 
 
+"""
+I had a long long about splitting this table up into several tables, as not all Operators require access to all fields.
+The Relay, for example, only requires a Schema, a status and the downstream. And many other operators might not require
+the data field. 
+However, I have finally decided to use a single table (for now, and maybe ever). The reason is that our goal is to keep
+memory local. If we have a table with wide rows, the jumps between each row is large. However, if you were to jump 
+between tables, the distances would be much larger. You'd save memory overall, but the access pattern is worse.
+Also, having everything in a single table means we don't have to have special cases for different tables (emission from
+a table with a list to store the downstream VS. emission from a table that only has a single downstream entry etc.).
+
+If the Operator table is too wide (the data in a single row is large enough so you have a lot of cache misses when you 
+jump around in the table), we could store a Box<T> as value instead. This would keep the table itself small (a lot 
+smaller than it currently is), but you'd have a jump to random memory whenever you access a row, which might be worse...
+"""
+
+
 class OperatorRow(TableRow):
     __table_index__: int = TableIndex.OPERATORS
     value = field(type=Value, mandatory=True)
@@ -131,7 +156,8 @@ class OperatorRow(TableRow):
     schema = field(type=Value.Schema, mandatory=True)  # input schema
     args = field(type=Value, mandatory=True)
     data = field(type=Value, mandatory=True)
-    status = field(type=EmitterStatus, mandatory=True, initial=EmitterStatus.IDLE)
+    flags = field(type=int, mandatory=True, initial=create_flags())
+    upstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
     downstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
 
 
@@ -147,13 +173,29 @@ class NodeRow(TableRow):
 
 # FUNCTIONS ############################################################################################################
 
+def get_status(table: Table, handle: RowHandle) -> EmitterStatus:
+    return EmitterStatus(table[handle]['flags'] >> FlagIndex.STATUS)
+
+
+def set_status(table: Table, handle: RowHandle, status: EmitterStatus) -> None:
+    table[handle]['flags'] = (table[handle]['flags'] & ~(int(0b111) << FlagIndex.STATUS)) | (status << FlagIndex.STATUS)
+
+
+def is_external(flags: int) -> bool:
+    return bool(flags & (1 << FlagIndex.IS_EXTERNAL))
+
+
+def is_multicast(flags: int) -> bool:
+    return bool(flags & (1 << FlagIndex.IS_MULTICAST))
+
+
 def run_downstream(operator: RowHandle, source: RowHandle, callback: OperatorCallback, value: Value) -> None:
     assert get_app().is_handle_valid(operator)
     assert get_app().is_handle_valid(source)
 
     # make sure the operator is valid and not completed yet
     operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
-    status: EmitterStatus = operator_table[operator]['status']
+    status: EmitterStatus = get_status(operator_table, operator)
     if status.is_completed():
         return  # operator has completed
 
@@ -176,7 +218,7 @@ def emit_downstream(operator: RowHandle, callback: OperatorCallback, value: Valu
 
     # make sure the operator is valid and not completed yet
     operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
-    status: EmitterStatus = operator_table[operator]['status']
+    status: EmitterStatus = get_status(operator_table, operator)
     if status.is_completed():
         return  # operator has completed
 
@@ -185,47 +227,113 @@ def emit_downstream(operator: RowHandle, callback: OperatorCallback, value: Valu
 
     # mark the operator as actively emitting
     assert not status.is_active()  # cyclic error
-    operator_table[operator]['status'] = EmitterStatus(callback)  # set the active status
+    set_status(operator_table, operator, EmitterStatus(callback))  # set the active status
 
     # store the emitted value
     operator_table[operator]['value'] = value
 
-    if callback == OperatorCallback.NEXT:
-        # emit to all valid downstream elements and remember the expired ones
-        expired: List[RowHandle] = []
-        for downstream_element in operator_table[operator]["downstream"]:
-            if get_app().is_handle_valid(downstream_element):
-                run_downstream(downstream_element, operator, callback, value)
-            else:
-                expired.append(downstream_element)
+    # copy the list of downstream handles, in case it changes during the emission
+    downstream: RowHandleList = operator_table[operator]["downstream"]
 
-        # remove all expired downstream handles
-        if expired:
-            operator_table[operator]["downstream"] = RowHandleList(
-                op for op in operator_table[operator]["downstream"] if op not in expired)
+    if callback == OperatorCallback.NEXT:
+        # emit to all valid downstream elements
+        for element in downstream:
+            run_downstream(element, operator, callback, value)
+
+        # reset the status
+        set_status(operator_table, operator, EmitterStatus.IDLE)
 
     else:
         # emit one last time ...
-        for downstream_element in operator_table[operator]["downstream"]:
-            run_downstream(downstream_element, operator, callback, value)
+        for element in downstream:
+            run_downstream(element, operator, callback, value)
 
-        # ... and remove all downstream handles
-        operator_table[operator]["downstream"] = RowHandleList()
+        # ... and finalize the status
+        set_status(operator_table, operator, EmitterStatus(int(callback) + 3))
 
-    # reset the status
-    operator_table[operator]['status'] = EmitterStatus(callback).next_after()
+        # unsubscribe all downstream handles (this might destroy the Operator, therefore it is the last thing we do)
+        for element in downstream:
+            unsubscribe(operator, element)
+        assert len(operator_table[operator]["downstream"]) == 0
+        # if the Operator is external, it will still be alive after everyone unsubscribed
 
 
-def subscribe_to_upstream(operator: RowHandle, subscriber: RowHandle) -> None:
-    assert get_app().is_handle_valid(operator)
-    assert get_app().is_handle_valid(subscriber)
-
+def subscribe(upstream: RowHandle, downstream: RowHandle) -> None:
     operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
-    assert operator_table[operator]['value'].get_schema() == operator_table[subscriber]['schema']
+    assert operator_table.is_handle_valid(upstream)
+    assert operator_table.is_handle_valid(downstream)
+    assert operator_table[upstream]['value'].get_schema() == operator_table[downstream]['schema']
 
-    current_downstream: RowHandleList = operator_table[operator]["downstream"]
-    if subscriber not in current_downstream:
-        operator_table[operator]["downstream"] = current_downstream.append(subscriber)
+    # if the operator upstream has already completed, call the corresponding callback immediately and do not subscribe
+    upstream_status: EmitterStatus = get_status(operator_table, upstream)
+    if upstream_status.is_completed():
+        assert is_external(operator_table[upstream]['flags'])  # operator is valid but completed? -> it must be external
+        if upstream_status.is_active():
+            return run_downstream(
+                downstream, upstream, OperatorCallback(upstream_status), operator_table[upstream]['value'])
+        else:
+            return run_downstream(
+                downstream, upstream, OperatorCallback(int(upstream_status) - 3), operator_table[upstream]['value'])
+
+    current_downstream: RowHandleList = operator_table[upstream]["downstream"]
+    if len(current_downstream) != 0:
+        assert is_multicast(operator_table[upstream]["flags"])
+
+    if downstream not in current_downstream:
+        operator_table[upstream]["downstream"] = current_downstream.append(downstream)
+
+    current_upstream: RowHandleList = operator_table[downstream]["upstream"]
+    if upstream not in current_upstream:
+        operator_table[downstream]["upstream"] = current_upstream.append(upstream)
+
+
+def unsubscribe(upstream: RowHandle, downstream: RowHandle) -> None:
+    operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
+    assert operator_table.is_handle_valid(upstream)
+    assert operator_table.is_handle_valid(downstream)
+    assert operator_table[upstream]['value'].get_schema() == operator_table[downstream]['schema']
+
+    # if the upstream was already completed when the downstream subscribed, its subscription won't have completed
+    current_upstream: RowHandleList = operator_table[downstream]["upstream"]
+    if upstream not in current_upstream:
+        assert len(operator_table[upstream]["downstream"]) == 0
+        assert get_status(operator_table, upstream).is_completed()
+        return
+
+    # update the downstream element
+    operator_table[downstream]["upstream"] = current_upstream.remove(upstream)
+
+    # update the upstream element
+    current_downstream: RowHandleList = operator_table[upstream]["downstream"]
+    assert downstream in current_downstream
+    operator_table[upstream]["downstream"] = current_downstream.remove(downstream)
+
+    # if the upstream element was internal and this was its last subscriber, remove it
+    if len(current_downstream) == 1 and not is_external(operator_table[upstream]["flags"]):
+        return remove_operator(upstream)
+
+
+def remove_operator(operator: RowHandle) -> None:
+    operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
+    if not operator_table.is_handle_valid(operator):
+        return
+
+    # unsubscribe from all remaining downstream elements
+    for downstream in operator_table[operator]["downstream"]:
+        operator_table[downstream]["upstream"] = operator_table[downstream]["upstream"].remove(operator)
+
+    # unsubscribe from all upstream elements
+    for upstream in operator_table[operator]["upstream"]:
+        unsubscribe(upstream, operator)  # this might remove upstream elements
+
+    # finally, remove yourself
+    operator_table.remove_row(operator)
+
+
+def remove_node(node: RowHandle) -> None:
+    node_table: Table = get_app().get_table(TableIndex.NODES)
+    if node_table.is_handle_valid(node):
+        node_table.remove_row(node)
 
 
 # APPLICATION ##########################################################################################################
@@ -431,13 +539,18 @@ class Operator:
 
 
 class Fact:
-    def __init__(self, handle: RowHandle):
-        self._handle: RowHandle = handle
+    def __init__(self, initial: Value):
+        self._handle: RowHandle = get_app().get_table(TableIndex.OPERATORS).add_row(
+            value=initial,
+            op_index=OperatorKind.RELAY,
+            schema=initial.get_schema(),
+            args=Value(),
+            data=Value(),
+            flags=create_flags(external=True),
+        )
 
     def __del__(self):
-        operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
-        if operator_table.is_handle_valid(self._handle):
-            operator_table.remove_row(self._handle)
+        remove_operator(self._handle)
 
     def get_value(self) -> Value:
         return get_app().get_table(TableIndex.OPERATORS)[self._handle]['value']
@@ -456,7 +569,7 @@ class Fact:
         get_app().schedule_event(lambda: emit_downstream(self._handle, OperatorCallback.COMPLETION, Value()))
 
     def subscribe(self, downstream: RowHandle):
-        subscribe_to_upstream(self._handle, downstream)
+        subscribe(self._handle, downstream)
 
 
 # SCENE ################################################################################################################
@@ -575,7 +688,7 @@ class Node:
 
         for input_name, operator_index in network_description.incoming_connections:
             relay: RowHandle = self.get_socket(input_name)
-            subscribe_to_upstream(relay, network[operator_index])
+            subscribe(relay, network[operator_index])
 
         # TODO: create internal connections (and all others)
         # children = field(type=RowHandleMap, mandatory=True, initial=RowHandleMap())
@@ -597,19 +710,16 @@ class Node:
 
         # remove sockets
         sockets: NodeSockets = node_table[self._handle]['sockets']
-        operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
         for _, socket_handle in sockets.elements:
-            operator_table.remove_row(socket_handle)
+            remove_operator(socket_handle)
 
         # remove the node
-        node_table.remove_row(self._handle)
+        remove_node(self._handle)
 
     def _clear_network(self) -> None:
         node_table: Table = get_app().get_table(TableIndex.NODES)
-        network_handles: RowHandleList = node_table[self._handle]['network']
-        operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
-        for operator in network_handles:
-            operator_table.remove_row(operator)
+        for operator in node_table[self._handle]['network']:
+            remove_operator(operator)
         node_table[self._handle]['network'] = RowHandleList()
 
 
@@ -731,7 +841,7 @@ def app_setup(window, scene: Scene) -> None:
             # char: str = bytes([key]).decode()
             key_fact.next(Value())
 
-    key_fact: Fact = Fact(create_relay(Value()))
+    key_fact: Fact = Fact(Value())
     scene.create_node("herbert", count_presses_node)
     key_fact.subscribe(scene.get_relay('herbert:key_down'))
     glfw.set_key_callback(window, key_callback_fn)
