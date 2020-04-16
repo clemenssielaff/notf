@@ -551,7 +551,16 @@ class Value:
     Kind = Kind
     Schema = Schema
 
-    def __init__(self, obj: Any = None):
+    def __init__(self, *args, **kwargs):
+        if args:
+            assert len(args) == 1
+            assert not kwargs
+            obj: Any = args[0]
+        elif kwargs:
+            obj: Dict[str, Any] = kwargs
+        else:
+            obj: None = None
+
         self._schema: Schema = Schema()
         self._data: Data = None
         self._dictionary: Optional[Dictionary] = None
@@ -562,17 +571,19 @@ class Value:
 
         # copy initialization
         if isinstance(obj, Value):
+            assert len(kwargs) == 0
             self._schema = obj._schema
             self._data = obj._data
             self._dictionary = obj._dictionary
 
         # initialization from Schema
         elif isinstance(obj, Schema):
+            assert len(kwargs) == 0
             self._schema = obj
             self._data = create_data_from_schema(self._schema)
             self._dictionary = None
 
-        # value initialization
+        # initialization from denotable
         else:
             denotable: Denotable = create_denotable(obj, allow_empty_list=False)
             self._schema = Schema(denotable)
@@ -711,6 +722,20 @@ class Value:
         else:
             return float(self) <= other_number
 
+    def __gt__(self, other: Any) -> bool:
+        other_number: Optional[float] = check_number(other)
+        if other_number is None:
+            return NotImplemented
+        else:
+            return float(self) > other_number
+
+    def __ge__(self, other: Any) -> bool:
+        other_number: Optional[float] = check_number(other)
+        if other_number is None:
+            return NotImplemented
+        else:
+            return float(self) >= other_number
+
     def __float__(self) -> float:
         if self.is_number():
             return self._data
@@ -821,6 +846,20 @@ class Value:
             return NotImplemented
         else:
             return other_number + float(self)
+
+    def __sub__(self, other: Any) -> Value:
+        other_number: Optional[float] = check_number(other)
+        if other_number is None:
+            return NotImplemented
+        else:
+            return Value._create(self._schema, float(self) - other_number, self._dictionary)
+
+    def __rsub__(self, other: Any) -> float:
+        other_number: Optional[float] = check_number(other)
+        if other_number is None:
+            return NotImplemented
+        else:
+            return other_number - float(self)
 
     def __mul__(self, other: Any) -> Value:
         other_number: Optional[float] = check_number(other)

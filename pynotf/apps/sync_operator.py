@@ -35,12 +35,6 @@ class IndexEnum(IntEnum):
 
 
 @unique
-class OperatorKind(IndexEnum):
-    RELAY = auto()
-    BUFFER = auto()
-
-
-@unique
 class TableIndex(IndexEnum):
     OPERATORS = auto()
     NODES = auto()
@@ -151,14 +145,23 @@ smaller than it currently is), but you'd have a jump to random memory whenever y
 
 class OperatorRow(TableRow):
     __table_index__: int = TableIndex.OPERATORS
-    value = field(type=Value, mandatory=True)
     op_index = field(type=int, mandatory=True)
+    value = field(type=Value, mandatory=True)
     schema = field(type=Value.Schema, mandatory=True)  # input schema
     args = field(type=Value, mandatory=True)
     data = field(type=Value, mandatory=True)
-    flags = field(type=int, mandatory=True, initial=create_flags())
+    flags = field(type=int, mandatory=True)
     upstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
     downstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
+
+
+class OperatorRowData(NamedTuple):
+    operator_index: int
+    initial_value: Value
+    input_schema: Value.Schema
+    args: Value = Value()
+    data: Value = Value()
+    flags: int = create_flags()
 
 
 class NodeRow(TableRow):
@@ -172,6 +175,25 @@ class NodeRow(TableRow):
 
 
 # FUNCTIONS ############################################################################################################
+
+def create_operator(data: OperatorRowData) -> RowHandle:
+    """
+    For example, for the Factory operator, we want to inspect the input/output Schema of another, yet-to-be-created
+    Operator without actually creating one.
+    Therefore, the creator functions only return OperatorRowData, that *this* function then turns into an actual row
+    in the Operator table.
+    :param data: Date from which to construct the new row.
+    :return: The handle to the created row.
+    """
+    return get_app().get_table(TableIndex.OPERATORS).add_row(
+        op_index=data.operator_index,
+        value=data.initial_value,
+        schema=data.input_schema,
+        args=data.args,
+        data=data.data,
+        flags=data.flags,
+    )
+
 
 def get_status(table: Table, handle: RowHandle) -> EmitterStatus:
     return EmitterStatus(table[handle]['flags'] >> FlagIndex.STATUS)
@@ -205,12 +227,21 @@ def run_downstream(operator: RowHandle, source: RowHandle, callback: OperatorCal
         return  # operator type does not provide the requested callback
 
     # perform the callback ...
-    new_data: Value = callback_func(Operator(operator), source, value)
+    if callback == OperatorCallback.NEXT:
+        if operator_table[operator]['schema'].is_none():
+            new_data: Value = callback_func(Operator(operator), source,
+                                            Value())  # ignore values for operator taking none
+        else:
+            new_data: Value = callback_func(Operator(operator), source, value)
 
-    # ...and update the operator's data
-    assert new_data.get_schema() == operator_table[operator]["data"].get_schema()
-    if new_data != operator_table[operator]["data"]:
-        operator_table[operator]['data'] = new_data
+        # ...and update the operator's data
+        assert new_data.get_schema() == operator_table[operator]["data"].get_schema()
+        if new_data != operator_table[operator]["data"]:
+            operator_table[operator]['data'] = new_data
+
+    else:
+        # the failure and completion callbacks do not return a value
+        callback_func(Operator(operator), source, value)
 
 
 def emit_downstream(operator: RowHandle, callback: OperatorCallback, value: Value) -> None:
@@ -222,20 +253,21 @@ def emit_downstream(operator: RowHandle, callback: OperatorCallback, value: Valu
     if status.is_completed():
         return  # operator has completed
 
-    # ensure that the operator is able to emit the given value
-    assert value.get_schema() == operator_table[operator]['value'].get_schema()
-
     # mark the operator as actively emitting
     assert not status.is_active()  # cyclic error
     set_status(operator_table, operator, EmitterStatus(callback))  # set the active status
-
-    # store the emitted value
-    operator_table[operator]['value'] = value
 
     # copy the list of downstream handles, in case it changes during the emission
     downstream: RowHandleList = operator_table[operator]["downstream"]
 
     if callback == OperatorCallback.NEXT:
+
+        # ensure that the operator is able to emit the given value
+        assert value.get_schema() == operator_table[operator]['value'].get_schema()
+
+        # store the emitted value
+        operator_table[operator]['value'] = value
+
         # emit to all valid downstream elements
         for element in downstream:
             run_downstream(element, operator, callback, value)
@@ -244,6 +276,9 @@ def emit_downstream(operator: RowHandle, callback: OperatorCallback, value: Valu
         set_status(operator_table, operator, EmitterStatus.IDLE)
 
     else:
+        # store the emitted value, bypassing the schema check
+        operator_table[operator]['value'] = value
+
         # emit one last time ...
         for element in downstream:
             run_downstream(element, operator, callback, value)
@@ -254,15 +289,19 @@ def emit_downstream(operator: RowHandle, callback: OperatorCallback, value: Valu
         # unsubscribe all downstream handles (this might destroy the Operator, therefore it is the last thing we do)
         for element in downstream:
             unsubscribe(operator, element)
-        assert len(operator_table[operator]["downstream"]) == 0
+
         # if the Operator is external, it will still be alive after everyone unsubscribed
+        if operator_table.is_handle_valid(operator):
+            assert is_external(operator_table[operator]['flags'])
+            assert len(operator_table[operator]["downstream"]) == 0
 
 
 def subscribe(upstream: RowHandle, downstream: RowHandle) -> None:
     operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
     assert operator_table.is_handle_valid(upstream)
     assert operator_table.is_handle_valid(downstream)
-    assert operator_table[upstream]['value'].get_schema() == operator_table[downstream]['schema']
+    assert operator_table[downstream]['schema'].is_none() or (
+            operator_table[upstream]['value'].get_schema() == operator_table[downstream]['schema'])
 
     # if the operator upstream has already completed, call the corresponding callback immediately and do not subscribe
     upstream_status: EmitterStatus = get_status(operator_table, upstream)
@@ -291,7 +330,11 @@ def unsubscribe(upstream: RowHandle, downstream: RowHandle) -> None:
     operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
     assert operator_table.is_handle_valid(upstream)
     assert operator_table.is_handle_valid(downstream)
-    assert operator_table[upstream]['value'].get_schema() == operator_table[downstream]['schema']
+
+    # TODO: I don't really have a good idea yet how to handle error and completion values.
+    #  they are also stored in the `value` field, but that screws with the schema compatibility check
+    # assert operator_table[downstream]['schema'].is_none() or (
+    #         operator_table[upstream]['value'].get_schema() == operator_table[downstream]['schema'])
 
     # if the upstream was already completed when the downstream subscribed, its subscription won't have completed
     current_upstream: RowHandleList = operator_table[downstream]["upstream"]
@@ -517,6 +560,12 @@ class Operator:
     def is_valid(self) -> bool:
         return get_app().get_table(TableIndex.OPERATORS).is_handle_valid(self._handle)
 
+    def get_handle(self) -> RowHandle:
+        return self._handle
+
+    def get_downstream(self) -> RowHandleList:
+        return get_app().get_table(TableIndex.OPERATORS)[self._handle]["downstream"]
+
     def __getitem__(self, name: str):
         return get_app().get_table(TableIndex.OPERATORS)[self._handle]["args"][name]
 
@@ -533,7 +582,12 @@ class Operator:
         assert iscoroutinefunction(callback)
 
         async def update_data_on_completion():
-            get_app().get_table(TableIndex.OPERATORS)[self._handle]["data"] = await callback(*args)
+            result: Optional[Value] = await callback(*args)
+
+            # only update the operator data if it has not completed
+            operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
+            if operator_table.is_handle_valid(self._handle):
+                operator_table[self._handle]["data"] = result
 
         get_app().schedule_event(update_data_on_completion)
 
@@ -584,7 +638,7 @@ class Scene:
             parent=RowHandle(),  # empty row handle as parent
             sockets=NodeSockets(
                 names=Bonsai([socket_name for socket_name in root_description.sockets.keys()]),
-                elements=[(socket_direction, create_relay(Value(socket_schema))) for
+                elements=[(socket_direction, create_operator(OpRelay.create(Value(socket_schema)))) for
                           (socket_direction, socket_schema) in root_description.sockets.values()],
             )
         )
@@ -623,7 +677,7 @@ class Node:
             parent=self._handle,
             sockets=NodeSockets(
                 names=Bonsai([socket_name for socket_name in description.sockets.keys()]),
-                elements=[(socket_direction, create_relay(Value(socket_schema))) for
+                elements=[(socket_direction, create_operator(OpRelay.create(Value(socket_schema)))) for
                           (socket_direction, socket_schema) in description.sockets.values()],
             )
         )
@@ -683,14 +737,20 @@ class Node:
         network: List[RowHandle] = []
         network_description: NodeNetworkDescription = node_description.state_machine.states[state]
         for kind, args in network_description.operators:
-            network.append(ELEMENT_TABLE[kind][OperatorCallback.CREATE](args))
+            network.append(create_operator(ELEMENT_TABLE[kind][OperatorCallback.CREATE](args)))
         node_table[self._handle]['network'] = RowHandleList(network)
 
+        # incoming connections
         for input_name, operator_index in network_description.incoming_connections:
             relay: RowHandle = self.get_socket(input_name)
             subscribe(relay, network[operator_index])
 
-        # TODO: create internal connections (and all others)
+        # create internal connections
+        for source_index, target_index in network_description.internal_connections:
+            subscribe(network[source_index], network[target_index])
+
+        # TODO: create all other connections
+
         # children = field(type=RowHandleMap, mandatory=True, initial=RowHandleMap())
         # network = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
 
@@ -725,49 +785,148 @@ class Node:
 
 # OPERATOR REGISTRY ####################################################################################################
 
-def create_relay(initial: Value) -> RowHandle:
-    return get_app().get_table(TableIndex.OPERATORS).add_row(
-        value=initial,
-        op_index=OperatorKind.RELAY,
-        schema=initial.get_schema(),
-        args=Value(),
-        data=Value(),
-    )
+# TODO: Buffer is not really a Buffer, Countdown is way to specific, Create should utilize its input value etc.
+
+class OpRelay:
+    @staticmethod
+    def create(value: Value) -> OperatorRowData:
+        return OperatorRowData(
+            operator_index=OperatorKind.RELAY,
+            initial_value=value,
+            input_schema=value.get_schema(),
+        )
+
+    @staticmethod
+    def on_next(self: Operator, _: RowHandle, value: Value) -> Value:
+        self.next(value)
+        return self.data
 
 
-def relay_on_next(self: Operator, _: RowHandle, value: Value) -> Value:
-    self.next(value)
-    return Value()
+class OpBuffer:
+    @staticmethod
+    def create(args: Value) -> OperatorRowData:
+        schema: Value.Schema = Value.Schema.from_value(args['schema'])
+        assert schema
+        return OperatorRowData(
+            operator_index=OperatorKind.BUFFER,
+            initial_value=Value(0),
+            input_schema=schema,
+            args=Value(time_span=args['time_span']),
+            data=Value(is_running=False, counter=0),
+        )
+
+    @staticmethod
+    def on_next(self: Operator, _upstream: RowHandle, _value: Value) -> Value:
+        if not int(self.data["is_running"]) == 1:
+            async def timeout():
+                await curio.sleep(float(self["time_span"]))
+                if not self.is_valid():
+                    return
+                self.next(Value(self.data["counter"]))
+                print(f'Clicked {int(self.data["counter"])} times in the last {float(self["time_span"])} seconds')
+                return set_value(self.data, False, "is_running")
+
+            self.schedule(timeout)
+            return Value(is_running=True, counter=1)
+
+        else:
+            return set_value(self.data, self.data["counter"] + 1, "counter")
 
 
-def create_buffer_operator(args: Value) -> RowHandle:
-    schema: Value.Schema = Value.Schema.from_value(args['schema'])
-    assert schema
-    return get_app().get_table(TableIndex.OPERATORS).add_row(
-        value=Value(0),
-        op_index=OperatorKind.BUFFER,
-        schema=schema,
-        args=Value(dict(time_span=args['time_span'])),
-        data=Value(dict(is_running=False, counter=0)),
-    )
+class OpFactory:
+    """
+    Creates an Operator that takes an empty Signal and produces and subscribes a new Operator for each subscription.
+    """
+
+    @staticmethod
+    def create(args: Value) -> OperatorRowData:
+        operator_id: int = int(args['id'])
+        factory_arguments: Value = args['args']
+        example_operator_data: OperatorRowData = ELEMENT_TABLE[operator_id][OperatorCallback.CREATE](factory_arguments)
+
+        return OperatorRowData(
+            operator_index=OperatorKind.FACTORY,
+            initial_value=example_operator_data.initial_value,
+            input_schema=Value.Schema(),
+            args=args,
+        )
+
+    @staticmethod
+    def on_next(self: Operator, _1: RowHandle, _2: Value) -> Value:
+        downstream: RowHandleList = self.get_downstream()
+        if len(downstream) == 0:
+            return self.data
+
+        factory_function: Callable[[Value], OperatorRowData] = ELEMENT_TABLE[int(self['id'])][OperatorCallback.CREATE]
+        factory_arguments: Value = self['args']
+        for subscriber in downstream:
+            new_operator: RowHandle = create_operator(factory_function(factory_arguments))
+            subscribe(new_operator, subscriber)
+            run_downstream(new_operator, self.get_handle(), OperatorCallback.NEXT,
+                           get_app().get_table(TableIndex.OPERATORS)[new_operator]['value'])
+
+        return self.data
 
 
-# TODO: this is not actually a buffer...
-def buffer_on_next(self: Operator, _1: RowHandle, _2: Value) -> Value:
-    if not int(self.data["is_running"]) == 1:
-        async def timeout():
-            await curio.sleep(float(self["time_span"]))
-            if not self.is_valid():
-                return
-            self.next(Value(self.data["counter"]))
-            print(f'Clicked {int(self.data["counter"])} times in the last {float(self["time_span"])} seconds')
-            return set_value(self.data, False, "is_running")
+class OpCountdown:
+    @staticmethod
+    def create(args: Value) -> OperatorRowData:
+        return OperatorRowData(
+            operator_index=OperatorKind.COUNTDOWN,
+            initial_value=Value(0),
+            input_schema=Value.Schema(),
+            args=args,
+        )
 
-        self.schedule(timeout)
-        return Value(dict(is_running=True, counter=1))
+    @staticmethod
+    def on_next(self: Operator, _upstream: RowHandle, _value: Value) -> Value:
+        counter: Value = self['start']
+        assert counter.get_kind() == Value.Kind.NUMBER
 
-    else:
-        return set_value(self.data, self.data["counter"] + 1, "counter")
+        async def loop():
+            nonlocal counter
+            self.next(counter)
+            while counter > 0:
+                counter = counter - 1
+                await curio.sleep(1)
+                self.next(counter)
+            self.complete()
+
+        self.schedule(loop)
+        return self.data
+
+
+class OpPrinter:
+    @staticmethod
+    def create(value: Value) -> OperatorRowData:
+        return OperatorRowData(
+            operator_index=OperatorKind.PRINTER,
+            initial_value=value,
+            input_schema=value.get_schema(),
+        )
+
+    @staticmethod
+    def on_next(self: Operator, upstream: RowHandle, value: Value) -> Value:
+        print(f'Received {value!r} from {upstream}')
+        return self.data
+
+
+# class OpBuffer:
+#     @staticmethod
+#     def create(args: Value) -> OperatorRowData:
+#         pass
+#
+#     @staticmethod
+#     def on_next(self: Operator, upstream: RowHandle, value: Value) -> Value:
+#         pass
+
+@unique
+class OperatorKind(IndexEnum):
+    RELAY = auto()
+    BUFFER = auto()
+    FACTORY = auto()
+    COUNTDOWN = auto()
+    PRINTER = auto()
 
 
 ELEMENT_TABLE: Tuple[
@@ -775,10 +934,13 @@ ELEMENT_TABLE: Tuple[
         Optional[Callable[[Operator, RowHandle], Value]],
         Optional[Callable[[Operator, RowHandle], Value]],
         Optional[Callable[[Operator, RowHandle], Value]],
-        Callable[[Value], RowHandle],
+        Callable[[Value], OperatorRowData],
     ], ...] = (
-    (relay_on_next, None, None, create_relay),  # relay
-    (buffer_on_next, None, None, create_buffer_operator),  # buffer
+    (OpRelay.on_next, None, None, OpRelay.create),
+    (OpBuffer.on_next, None, None, OpBuffer.create),
+    (OpFactory.on_next, None, None, OpFactory.create),
+    (OpCountdown.on_next, None, None, OpCountdown.create),
+    (OpPrinter.on_next, None, None, OpPrinter.create),
 )
 
 # class Map:  # TODO: in the example, this is a more generalized "map" operator with user-defined code
@@ -810,10 +972,41 @@ count_presses_node: NodeDescription = NodeDescription(
     state_machine=NodeStateMachine(
         states=dict(
             default=NodeNetworkDescription(
-                operators=[(OperatorKind.BUFFER, Value(dict(schema=Value.Schema(), time_span=1)))],
-                internal_connections=[],
+                operators=[
+                    (OperatorKind.BUFFER, Value(schema=Value.Schema(), time_span=1)),
+                    (OperatorKind.PRINTER, Value()),
+                ],
+                internal_connections=[
+                    (0, 1),
+                ],
                 external_connections=[],
-                incoming_connections=[('key_down', 0)],
+                incoming_connections=[
+                    ('key_down', 0),
+                ],
+                outgoing_connections=[],
+            )
+        ),
+        transitions=[],
+        initial='default'
+    )
+)
+
+countdown_node: NodeDescription = NodeDescription(
+    sockets=dict(key_down=(NodeSocketDirection.INPUT, Value.Schema())),
+    state_machine=NodeStateMachine(
+        states=dict(
+            default=NodeNetworkDescription(
+                operators=[
+                    (OperatorKind.FACTORY, Value(id=OperatorKind.COUNTDOWN, args=Value(start=5))),
+                    (OperatorKind.PRINTER, Value(0)),
+                ],
+                internal_connections=[
+                    (0, 1),
+                ],
+                external_connections=[],
+                incoming_connections=[
+                    ('key_down', 0),
+                ],
                 outgoing_connections=[],
             )
         ),
@@ -842,7 +1035,8 @@ def app_setup(window, scene: Scene) -> None:
             key_fact.next(Value())
 
     key_fact: Fact = Fact(Value())
-    scene.create_node("herbert", count_presses_node)
+    # scene.create_node("herbert", count_presses_node)
+    scene.create_node("herbert", countdown_node)
     key_fact.subscribe(scene.get_relay('herbert:key_down'))
     glfw.set_key_callback(window, key_callback_fn)
 

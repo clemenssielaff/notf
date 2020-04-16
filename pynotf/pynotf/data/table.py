@@ -333,6 +333,13 @@ class Table:
         self._table_type: Type = table_type
         self._free_list: List[int] = []
 
+    def __del__(self):
+        diff: int = len(self) - len(self._free_list)
+        if diff == 0:
+            debug(f'Table {self._id} removed cleanly')
+        else:
+            warning(f'Table {self._id} still has {diff} unremoved rows at the end of its live')
+
     def __getitem__(self, handle: RowHandle) -> Accessor:
         """
         The "int" overload should not be part of the public API as it allows unchecked modification of the data.
@@ -428,8 +435,8 @@ class Table:
         """
         table = self._get_table_data()
         titles: List[str] = list(self._table_type.Row._precord_fields.keys())
-        rows: List[List[str, ...]] = [
-            [f' {number} ', *(f' {row[i]} ' for i in titles)] for number, row in enumerate(table)]
+        rows: List[List[str]] = [
+            [f' {number} ', *(f' {row[i]!r} ' for i in titles)] for number, row in enumerate(table)]
 
         row_widths: List[int] = [len(str(len(rows))) + 2, *(len(title) + 2 for title in titles)]
         for row in rows:
@@ -445,7 +452,7 @@ class Table:
             '┼'.join(('─' * width) for width in row_widths),  # title separator
         ]
         for number, row in enumerate(rows):  # entries
-            line: str = '│'.join(repr(entry).ljust(width) for entry, width in zip(row, row_widths))
+            line: str = '│'.join(entry.ljust(width) for entry, width in zip(row, row_widths))
             if table[number]._gen < 0:
                 lines.append(color_background(line, (33, 23, 23)))  # deleted row
             else:
