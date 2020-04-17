@@ -1,5 +1,6 @@
 import unittest
 import sys
+import logging
 from math import pi, trunc, floor, ceil
 
 from pynotf.data import Value, set_value
@@ -51,6 +52,14 @@ empty_list = vec((0,))
 
 
 class TestCase(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self._previous_log_level = logging.getLogger().getEffectiveLevel()
+        logging.getLogger().setLevel(logging.ERROR)
+
+    def tearDown(self) -> None:
+        logging.getLogger().setLevel(self._previous_log_level)
+
     def test_check_kind(self):
         self.assertEqual(Value.Kind.LIST, sys.maxsize - 3)
         self.assertEqual(Value.Kind.RECORD, sys.maxsize - 2)
@@ -85,7 +94,7 @@ class TestCase(unittest.TestCase):
                          'Value({1, ["foo", "bla"], {what: "the funk"}})')
 
     def test_schema(self):
-        self.assertEqual(str(none_value.get_schema()), "")
+        self.assertEqual(len(none_value.get_schema()), 1)
         self.assertEqual(len(test_value._schema), 35)
         self.assertEqual(str(test_value._schema), """  0: Record
   1:  ↳ Size: 7

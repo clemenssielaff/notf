@@ -4,8 +4,8 @@ from enum import IntEnum, unique
 from typing import List, Type, Tuple, Any, TypeVar, Union, Callable
 from logging import warning, debug
 
-from pyrsistent import CheckedPVector as ConstList, CheckedPMap as ConstMap, PRecord as ConstNamedTuple, field
-from pyrsistent.typing import CheckedPVector as ConstListT
+from pyrsistent._checked_types import CheckedPVector as ConstList, CheckedPMap as ConstMap
+from pyrsistent import PRecord as ConstNamedTuple, field
 
 from pynotf.extra import color_background
 
@@ -105,14 +105,13 @@ class TableRow(ConstNamedTuple):
     _gen = field(type=int, mandatory=True)
 
 
-TableData = ConstListT[TableRow]
 T = TypeVar('T')
 
 
 # FUNCTIONS ############################################################################################################
 
-def add_table_row(table: TableData, table_id: int, row: TableRow, free_list: List[int]) \
-        -> Tuple[TableData, RowHandle]:
+def add_table_row(table: ConstList, table_id: int, row: TableRow, free_list: List[int]) \
+        -> Tuple[ConstList, RowHandle]:
     """
     Adds a new row to a table.
     Either re-uses a expired row from the free list or appends a new row.
@@ -137,7 +136,7 @@ def add_table_row(table: TableData, table_id: int, row: TableRow, free_list: Lis
         assert generation > 0
 
         # mutate the table
-        new_table: TableData = table.set(row_index, row.set(_gen=generation))
+        new_table: ConstList = table.set(row_index, row.set(_gen=generation))
 
     else:  # free list is empty
         # create a new row
@@ -145,13 +144,13 @@ def add_table_row(table: TableData, table_id: int, row: TableRow, free_list: Lis
         generation: int = 1
 
         # mutate the table
-        new_table: TableData = table.append(row.set(_gen=generation))
+        new_table: ConstList = table.append(row.set(_gen=generation))
 
     # create and return a Handle to the new row
     return new_table, RowHandle(table_id, row_index, generation)
 
 
-def remove_table_row(table: TableData, index: int, free_list: List[int]) -> TableData:
+def remove_table_row(table: ConstList, index: int, free_list: List[int]) -> ConstList:
     """
     Removes the row with the given index from the table.
     :param table: Table to mutate.
@@ -168,6 +167,9 @@ def remove_table_row(table: TableData, index: int, free_list: List[int]) -> Tabl
 
     # add the removed row to the free list
     free_list.append(index)
+
+    # we also sort the free list to keep the indices small (and the active rows grouped)
+    free_list.sort(reverse=True)
 
     # mutate the table
     return table.set(index, table[index].set(_gen=generation))
@@ -237,7 +239,7 @@ class Storage:
             raise NameError('Tables in Storage may not have the same (case insensitive) name')
 
         table_types: List[Type] = [generate_table_type(name, table) for name, table in description.items()]
-        self._data: ConstListT[TableData] = ConstList(table_type() for table_type in table_types)
+        self._data: ConstList[ConstList] = ConstList(table_type() for table_type in table_types)
         self._tables: List[Table] = [Table(self, table_id, table_type)
                                      for table_id, table_type in enumerate(table_types)]
 
@@ -256,13 +258,13 @@ class Storage:
         """
         return len(self._tables)
 
-    def get_data(self) -> ConstListT[TableData]:
+    def get_data(self) -> ConstList[ConstList]:
         """
         The complete Application data.
         """
         return self._data
 
-    def set_data(self, data: ConstListT[TableData]) -> None:
+    def set_data(self, data: ConstList[ConstList]) -> None:
         """
         Updates the complete Application data.
         Note that this method does not check the given data for validity, I assume you know what you are doing.
@@ -287,7 +289,7 @@ class Table:
         Encapsulated both read and write operations, making them appear as if you were working on regular, mutable data.
         """
 
-        def __init__(self, table: Table, data: TableData, row_index: int):
+        def __init__(self, table: Table, data: ConstList, row_index: int):
             """
             Constructor.
             :param table: The accessed Table.
@@ -299,7 +301,7 @@ class Table:
             # accessed by this Accessor.
             # This of course assumes that the Storage is only accessed on a single thread.
             self._table: Table = table
-            self._data: TableData = data
+            self._data: ConstList = data
             self._row_index: int = row_index
 
         def __getitem__(self, column: str) -> Any:
@@ -347,7 +349,7 @@ class Table:
         :return: An Accessor to the requested row.
         :raises HandleError: If the given Handle is invalid.
         """
-        table_data: TableData = self._get_table_data()
+        table_data: ConstList = self._get_table_data()
         self._assert_handle(handle, table_data)
         return self.Accessor(self, table_data, handle.index)
 
@@ -389,7 +391,7 @@ class Table:
         :param row_index: Index of the requested row.
         :return: RowHandle for the requested row, is invalid if the index is too large for this Table.
         """
-        table_data: TableData = self._get_table_data()
+        table_data: ConstList = self._get_table_data()
         if row_index < len(table_data):
             generation: int = table_data[row_index]._gen
             if generation > 0:
@@ -423,7 +425,7 @@ class Table:
         :param handle: Handle of the row to remove.
         :raise HandleError: If the given Handle is invalid.
         """
-        table_data: TableData = self._get_table_data()
+        table_data: ConstList = self._get_table_data()
         self._assert_handle(handle, table_data)
         self._storage._data = self._storage._data.set(
             self._id, remove_table_row(table_data, handle.index, self._free_list))
@@ -465,7 +467,7 @@ class Table:
         ]
         return '\n'.join(lines)
 
-    def _get_table_data(self) -> TableData:
+    def _get_table_data(self) -> ConstList:
         """
         The table data cannot be stored, its current value has to be read from the Storage as it could have changed.
         """
@@ -475,10 +477,10 @@ class Table:
         """
         Refreshes the "Free List" of this Table after its data has been updated by the Storage.
         """
-        table_data: TableData = self._get_table_data()
+        table_data: ConstList = self._get_table_data()
         self._free_list = [index for index in range(len(table_data)) if table_data[index]._gen < 0]
 
-    def _get_handle_error(self, row_handle: RowHandle, table_data: TableData) -> HandleError.Reason:
+    def _get_handle_error(self, row_handle: RowHandle, table_data: ConstList) -> HandleError.Reason:
         """
         Internal test whether a given handle is valid for this Table and its current data.
         :param row_handle: Handle to test.
@@ -496,7 +498,7 @@ class Table:
         else:
             return HandleError.Reason.NO_ERROR
 
-    def _assert_handle(self, handle: RowHandle, table_data: TableData) -> None:
+    def _assert_handle(self, handle: RowHandle, table_data: ConstList) -> None:
         """
         This does nothing but throw an exception if the given Handle is invalid.
         :param handle: Handle to validate.

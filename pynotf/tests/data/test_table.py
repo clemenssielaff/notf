@@ -1,5 +1,6 @@
 import unittest
 from typing import List
+import logging
 
 from pyrsistent import field
 
@@ -24,6 +25,13 @@ class TestRow2(TableRow):
 ########################################################################################################################
 
 class TestCase(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self._previous_log_level = logging.getLogger().getEffectiveLevel()
+        logging.getLogger().setLevel(logging.ERROR)
+
+    def tearDown(self) -> None:
+        logging.getLogger().setLevel(self._previous_log_level)
 
     def test_simple(self):
         """

@@ -4,6 +4,7 @@ import sys
 from enum import IntEnum, auto, unique, Enum
 from threading import Thread
 from typing import Tuple, Callable, Any, Optional, Dict, Union, List, NamedTuple
+from types import CodeType
 from inspect import iscoroutinefunction
 
 import glfw
@@ -96,6 +97,11 @@ def create_flags(external: bool = False, multicast: bool = False, status: Emitte
     return (((int(external) << FlagIndex.IS_EXTERNAL) |
              (int(multicast) << FlagIndex.IS_MULTICAST)) &
             ~(int(0b111) << FlagIndex.STATUS)) | (status << FlagIndex.STATUS)
+
+
+class Size2(NamedTuple):
+    width: float
+    height: float
 
 
 @unique
@@ -453,12 +459,14 @@ class Application:
                 with Painterpreter(window, ctx) as painter:
                     painter.paint([
                         ("begin_path",),
-                        ("rounded_rect", 0, 0, Painterpreter.Window.Width, Painterpreter.Window.Height, 100),
+                        ("rounded_rect", 50, 50,
+                         Expression('max(0, window.width - 100)'),
+                         Expression('max(0, window.height - 100)'), 100),
                         ("fill_color", nanovg.rgba(.5, .5, .5)),
                         ("fill",),
 
                     ])
-                glfw.wait_events()
+                    glfw.wait_events()
 
         finally:
             self._data.event_loop.close()
@@ -481,20 +489,25 @@ def get_app() -> Application:
 
 # PAINTERPRETER ########################################################################################################
 
+class Expression:
+    def __init__(self, source: str):
+        self._source: str = source
+        self._code: CodeType = compile(self._source, '<string>', mode='eval')  # might raise a SyntaxError
+
+    def execute(self, scope: Optional[Dict[str, Any]] = None) -> Any:
+        return eval(self._code, {}, scope or {})
+
+    def __repr__(self) -> str:
+        return f'Expression("{self._source}")'
+
 
 class Painterpreter:
-    class Window:
-        class Width:
-            pass
-
-        class Height:
-            pass
 
     def __init__(self, window, context):
         self._window = window
         self._context = context
-        self._window_size: Tuple[int, int] = glfw.get_window_size(window)
-        self._buffer_size: Tuple[int, int] = glfw.get_framebuffer_size(window)
+        self._window_size: Size2 = Size2(*glfw.get_window_size(window))
+        self._buffer_size: Size2 = Size2(*glfw.get_framebuffer_size(window))
 
     def __enter__(self) -> Painterpreter:
         gl.viewport(0, 0, *self._buffer_size)
@@ -506,30 +519,28 @@ class Painterpreter:
         gl.enable(gl.CULL_FACE)
         gl.disable(gl.DEPTH_TEST)
 
-        window_width, window_height = self._window_size
-        buffer_width: float = self._buffer_size[0]
-        nanovg.begin_frame(self._context, window_width, window_height, buffer_width / window_width)
+        nanovg.begin_frame(self._context, self._window_size.width, self._window_size.height,
+                           self._buffer_size.width / self._window_size.width)
 
         return self
 
     def paint(self, design: NodeDesign) -> None:
+        scope: Dict[str, Any] = dict(
+            window=self._buffer_size,
+        )
+
         for command in design:
-            self._call(command)
+            func_name: str = command[0]
+            assert isinstance(func_name, str)
 
-    def _call(self, command) -> None:
-        func_name: str = command[0]
-        assert isinstance(func_name, str)
+            args = []
+            for arg in command[1:]:
+                if isinstance(arg, Expression):
+                    args.append(arg.execute(scope))
+                else:
+                    args.append(arg)
 
-        args = []
-        for arg in command[1:]:
-            if arg is Painterpreter.Window.Width:
-                args.append(float(self._buffer_size[0]))
-            elif arg is Painterpreter.Window.Height:
-                args.append(float(self._buffer_size[1]))
-            else:
-                args.append(arg)
-
-        getattr(nanovg, func_name)(self._context, *args)
+            getattr(nanovg, func_name)(self._context, *args)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         nanovg.end_frame(self._context)
