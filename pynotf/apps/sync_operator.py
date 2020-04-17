@@ -10,6 +10,8 @@ import glfw
 import curio
 from pyrsistent import field
 
+sys.path.append(r'/home/clemens/code/notf/pynotf')
+
 from pynotf.data import Value, RowHandle, Table, TableRow, Storage, set_value, RowHandleList, Bonsai, RowHandleMap
 import pynotf.extra.pynanovg as nanovg
 import pynotf.extra.opengl as gl
@@ -486,17 +488,17 @@ def get_app() -> Application:
 # EVENT LOOP ###########################################################################################################
 
 class EventLoop:
-    class _Close:
-        pass
 
     def __init__(self):
         self._events = curio.UniversalQueue()
+        self._should_close: bool = False
 
     def schedule(self, event) -> None:
         self._events.put(event)
 
     def close(self):
-        self._events.put(self._Close())
+        self._should_close = True
+        self._events.put(None)
 
     def run(self):
         curio.run(self._loop)
@@ -513,7 +515,10 @@ class EventLoop:
             :param args: Arguments passed to the coroutine.
             :return: Returns the result of the given coroutine (retrievable on join).
             """
-            task_result: Any = await coroutine(*args)
+            try:
+                task_result: Any = await coroutine(*args)
+            except curio.errors.TaskCancelled:
+                return None
             finished_tasks.append(await curio.current_task())
             return task_result
 
@@ -521,7 +526,9 @@ class EventLoop:
             event = await self._events.get()
 
             # close the loop
-            if isinstance(event, self._Close):
+            if self._should_close:
+                for task in active_tasks:
+                    await task.cancel()
                 for task in active_tasks:
                     await task.join()
                 return
