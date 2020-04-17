@@ -35,7 +35,6 @@ class IndexEnum(IntEnum):
 
 # DATA #################################################################################################################
 
-
 @unique
 class TableIndex(IndexEnum):
     OPERATORS = auto()
@@ -113,8 +112,16 @@ class NodeNetworkDescription(NamedTuple):  # TODO: assign integers to sockets as
     outgoing_connections: List[Tuple[int, str]]  # internal to output
 
 
+NodeDesign = List[Tuple[Any, ...]]
+
+
+class NodeStateDescription(NamedTuple):
+    network: NodeNetworkDescription
+    design: NodeDesign
+
+
 class NodeStateMachine(NamedTuple):
-    states: Dict[str, NodeNetworkDescription]
+    states: Dict[str, NodeStateDescription]
     transitions: List[Tuple[str, str]]
     initial: str
 
@@ -443,27 +450,14 @@ class Application:
 
         try:
             while not glfw.window_should_close(window):
-                width, height = glfw.get_window_size(window)
-                frame_buffer_width, frame_buffer_height = glfw.get_framebuffer_size(window)
-                gl.viewport(0, 0, frame_buffer_width, frame_buffer_height)
-                gl.clearColor(0, 0, .2, 1)
-                gl.clear(gl.COLOR_BUFFER_BIT, gl.DEPTH_BUFFER_BIT, gl.STENCIL_BUFFER_BIT)
+                with Painterpreter(window, ctx) as painter:
+                    painter.paint([
+                        ("begin_path",),
+                        ("rounded_rect", 0, 0, Painterpreter.Window.Width, Painterpreter.Window.Height, 100),
+                        ("fill_color", nanovg.rgba(.5, .5, .5)),
+                        ("fill",),
 
-                gl.enable(gl.BLEND)
-                gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-                gl.enable(gl.CULL_FACE)
-                gl.disable(gl.DEPTH_TEST)
-
-                nanovg.begin_frame(ctx, width, height, frame_buffer_width / width)
-
-                nanovg.begin_path(ctx)
-                nanovg.rounded_rect(ctx, 100, 100, max(0, width - 200), max(0, height - 200), 50)
-                nanovg.fill_color(ctx, nanovg.rgba(.5, .5, .5))
-                nanovg.fill(ctx)
-
-                nanovg.end_frame(ctx)
-
-                glfw.swap_buffers(window)
+                    ])
                 glfw.wait_events()
 
         finally:
@@ -483,6 +477,63 @@ _THE_APPLICATION: Application = Application()
 
 def get_app() -> Application:
     return _THE_APPLICATION
+
+
+# PAINTERPRETER ########################################################################################################
+
+
+class Painterpreter:
+    class Window:
+        class Width:
+            pass
+
+        class Height:
+            pass
+
+    def __init__(self, window, context):
+        self._window = window
+        self._context = context
+        self._window_size: Tuple[int, int] = glfw.get_window_size(window)
+        self._buffer_size: Tuple[int, int] = glfw.get_framebuffer_size(window)
+
+    def __enter__(self) -> Painterpreter:
+        gl.viewport(0, 0, *self._buffer_size)
+        gl.clearColor(0.098, 0.098, .098, 1)
+        gl.clear(gl.COLOR_BUFFER_BIT, gl.DEPTH_BUFFER_BIT, gl.STENCIL_BUFFER_BIT)
+
+        gl.enable(gl.BLEND)
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+        gl.enable(gl.CULL_FACE)
+        gl.disable(gl.DEPTH_TEST)
+
+        window_width, window_height = self._window_size
+        buffer_width: float = self._buffer_size[0]
+        nanovg.begin_frame(self._context, window_width, window_height, buffer_width / window_width)
+
+        return self
+
+    def paint(self, design: NodeDesign) -> None:
+        for command in design:
+            self._call(command)
+
+    def _call(self, command) -> None:
+        func_name: str = command[0]
+        assert isinstance(func_name, str)
+
+        args = []
+        for arg in command[1:]:
+            if arg is Painterpreter.Window.Width:
+                args.append(float(self._buffer_size[0]))
+            elif arg is Painterpreter.Window.Height:
+                args.append(float(self._buffer_size[1]))
+            else:
+                args.append(arg)
+
+        getattr(nanovg, func_name)(self._context, *args)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        nanovg.end_frame(self._context)
+        glfw.swap_buffers(self._window)  # TODO: this is happening in the MAIN loop - it should happen on a 3nd thread
 
 
 # EVENT LOOP ###########################################################################################################
@@ -740,9 +791,11 @@ class Node:
         # remove the current dynamic network
         self._clear_network()
 
+        new_state: NodeStateDescription = node_description.state_machine.states[state]
+
         # create new elements
         network: List[RowHandle] = []
-        network_description: NodeNetworkDescription = node_description.state_machine.states[state]
+        network_description: NodeNetworkDescription = new_state.network
         for kind, args in network_description.operators:
             network.append(create_operator(ELEMENT_TABLE[kind][OperatorCallback.CREATE](args)))
         node_table[self._handle]['network'] = RowHandleList(network)
@@ -966,32 +1019,45 @@ ELEMENT_TABLE: Tuple[
 # SETUP ################################################################################################################
 
 root_node: NodeDescription = NodeDescription(
-    sockets={}, state_machine=NodeStateMachine(states=dict(default=NodeNetworkDescription(
-        operators=[],
-        internal_connections=[],
-        external_connections=[],
-        incoming_connections=[],
-        outgoing_connections=[],
-    )), transitions=[], initial='default'))
+    sockets={}, state_machine=NodeStateMachine(
+        states=dict(
+            default=NodeStateDescription(
+                network=NodeNetworkDescription(
+                    operators=[],
+                    internal_connections=[],
+                    external_connections=[],
+                    incoming_connections=[],
+                    outgoing_connections=[],
+                ),
+                design=[],
+            )
+        ),
+        transitions=[],
+        initial='default'
+    )
+)
 
 count_presses_node: NodeDescription = NodeDescription(
     sockets=dict(key_down=(NodeSocketDirection.INPUT, Value.Schema())),
     state_machine=NodeStateMachine(
         states=dict(
-            default=NodeNetworkDescription(
-                operators=[
-                    (OperatorKind.BUFFER, Value(schema=Value.Schema(), time_span=1)),
-                    (OperatorKind.PRINTER, Value()),
-                ],
-                internal_connections=[
-                    (0, 1),
-                ],
-                external_connections=[],
-                incoming_connections=[
-                    ('key_down', 0),
-                ],
-                outgoing_connections=[],
-            )
+            default=NodeStateDescription(
+                network=NodeNetworkDescription(
+                    operators=[
+                        (OperatorKind.BUFFER, Value(schema=Value.Schema(), time_span=1)),
+                        (OperatorKind.PRINTER, Value()),
+                    ],
+                    internal_connections=[
+                        (0, 1),
+                    ],
+                    external_connections=[],
+                    incoming_connections=[
+                        ('key_down', 0),
+                    ],
+                    outgoing_connections=[],
+                ),
+                design=[],
+            ),
         ),
         transitions=[],
         initial='default'
@@ -1002,20 +1068,23 @@ countdown_node: NodeDescription = NodeDescription(
     sockets=dict(key_down=(NodeSocketDirection.INPUT, Value.Schema())),
     state_machine=NodeStateMachine(
         states=dict(
-            default=NodeNetworkDescription(
-                operators=[
-                    (OperatorKind.FACTORY, Value(id=OperatorKind.COUNTDOWN, args=Value(start=5))),
-                    (OperatorKind.PRINTER, Value(0)),
-                ],
-                internal_connections=[
-                    (0, 1),
-                ],
-                external_connections=[],
-                incoming_connections=[
-                    ('key_down', 0),
-                ],
-                outgoing_connections=[],
-            )
+            default=NodeStateDescription(
+                network=NodeNetworkDescription(
+                    operators=[
+                        (OperatorKind.FACTORY, Value(id=OperatorKind.COUNTDOWN, args=Value(start=5))),
+                        (OperatorKind.PRINTER, Value(0)),
+                    ],
+                    internal_connections=[
+                        (0, 1),
+                    ],
+                    external_connections=[],
+                    incoming_connections=[
+                        ('key_down', 0),
+                    ],
+                    outgoing_connections=[],
+                ),
+                design=[],
+            ),
         ),
         transitions=[],
         initial='default'

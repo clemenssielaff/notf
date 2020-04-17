@@ -336,9 +336,9 @@ class Table:
     def __del__(self):
         diff: int = len(self) - len(self._free_list)
         if diff == 0:
-            debug(f'Table {self._id} removed cleanly')
+            debug(f'Table {self._id} removed cleanly after growing to {len(self)} rows')
         else:
-            warning(f'Table {self._id} still has {diff} unremoved rows at the end of its live')
+            warning(f'Table {self._id} still has {diff} out of a total of {len(self)} rows left at the end of its live')
 
     def __getitem__(self, handle: RowHandle) -> Accessor:
         """

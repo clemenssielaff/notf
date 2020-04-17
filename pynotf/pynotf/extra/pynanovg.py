@@ -310,7 +310,7 @@ def hsla(hue: float, saturation: float, lightness: float, alpha: float = 1) -> C
     """
     Returns color value specified by hue, saturation and lightness and alpha.
 
-    :param hue:         Hue  in range [0...1].
+    :param hue:         Hue in range [0...1].
     :param saturation:  Saturation in range [0...1].
     :param lightness:   Lightness in range [0...1].
     :param alpha:       Alpha in range [0...1].
