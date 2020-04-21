@@ -977,7 +977,7 @@ class Value:
         return True  # TODO: Value._is_consistent
 
 
-def set_value(value: Value, data: Any, *path: Union[int, str]) -> Value:
+def mutate_value(value: Value, data: Any, *path: Union[int, str]) -> Value:
     """
 
     I would much rather have a syntax like `set_value(value["key"][34], "NEW")`, but for that you need to return an

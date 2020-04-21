@@ -3,7 +3,7 @@ import sys
 import logging
 from math import pi, trunc, floor, ceil
 
-from pynotf.data import Value, set_value
+from pynotf.data import Value, mutate_value
 
 from pyrsistent import pvector as vec
 
@@ -208,7 +208,7 @@ class TestCase(unittest.TestCase):
         none: Value = Value()
         self.assertEqual(none, Value(None))
         self.assertEqual(len(none), 0)
-        set_value(none, None)  # noop but okay
+        mutate_value(none, None)  # noop but okay
 
         # None cannot be nested
         with self.assertRaises(ValueError):
@@ -309,120 +309,120 @@ class TestCase(unittest.TestCase):
         self.assertEqual(test_value["coords"][0]["someName"], test_value[0][0][1])
 
     def test_immutability(self):
-        modified = set_value(test_value, 1, "coords", 0, "x")
+        modified = mutate_value(test_value, 1, "coords", 0, "x")
         self.assertEqual(float(modified["coords"][0]["x"]), 1)
         self.assertEqual(float(test_value["coords"][0]["x"]), 0)
 
-        modified2 = set_value(modified, "Mr. VeryWell", "name")
+        modified2 = mutate_value(modified, "Mr. VeryWell", "name")
         self.assertEqual(str(modified2["name"]), "Mr. VeryWell")
         self.assertEqual(str(modified["name"]), "Mr. Okay")
 
     def test_set_value(self):
         # change a list in the value
-        modified = set_value(test_value, [dict(x=42, someName="answer", number_list=[-1, -2])], "coords")
+        modified = mutate_value(test_value, [dict(x=42, someName="answer", number_list=[-1, -2])], "coords")
         self.assertEqual(len(modified["coords"]), 1)
         self.assertEqual(str(modified["coords"][0]["someName"]), "answer")
 
         # change a map in the value
-        modified = set_value(test_value, {"key": "changed",
+        modified = mutate_value(test_value, {"key": "changed",
                                           "list_in_the_middle": ["I am a changed string"],
                                           "a number": 124, }, "my_map")
         self.assertEqual(str(modified["my_map"]["key"]), "changed")
 
         # change an item in a list by negative index
-        modified = set_value(test_value, 123, "number_list", -2)
+        modified = mutate_value(test_value, 123, "number_list", -2)
         self.assertEqual(float(modified["number_list"][1]), 123)
         self.assertEqual(float(modified[4][1]), 123)
         self.assertEqual(float(modified[4][-2]), 123)
 
         # change an item in a record by negative index
-        modified = set_value(test_value, "derb", "coords", -1, -2)
+        modified = mutate_value(test_value, "derb", "coords", -1, -2)
         self.assertEqual(str(modified["coords"][1]["someName"]), "derb")
         self.assertEqual(str(modified[0][-1][-2]), "derb")
 
     def test_set_failures(self):
         with self.assertRaises(TypeError):  # set number to string
-            set_value(test_value, "0.23", "pos")
+            mutate_value(test_value, "0.23", "pos")
         with self.assertRaises(TypeError):  # set number to list
-            set_value(test_value, [], "pos")
+            mutate_value(test_value, [], "pos")
         with self.assertRaises(TypeError):  # set number to map
-            set_value(test_value, {'x': 3}, "pos")
+            mutate_value(test_value, {'x': 3}, "pos")
 
         with self.assertRaises(TypeError):  # set string to number
-            set_value(test_value, 0.23, "name")
+            mutate_value(test_value, 0.23, "name")
         with self.assertRaises(TypeError):  # set string to list
-            set_value(test_value, ["hello"], "name")
+            mutate_value(test_value, ["hello"], "name")
         with self.assertRaises(TypeError):  # set string to map
-            set_value(test_value, {"hello": "you"}, "name")
+            mutate_value(test_value, {"hello": "you"}, "name")
 
         with self.assertRaises(TypeError):  # set list to number
-            set_value(test_value, 0.23, "coords")
+            mutate_value(test_value, 0.23, "coords")
         with self.assertRaises(TypeError):  # set list to string
-            set_value(test_value, "nope", "coords")
+            mutate_value(test_value, "nope", "coords")
         with self.assertRaises(TypeError):  # set list to map
-            set_value(test_value, {"hello": "you"}, "coords")
+            mutate_value(test_value, {"hello": "you"}, "coords")
 
         with self.assertRaises(TypeError):  # set map to number
-            set_value(test_value, 0.23, "my_map")
+            mutate_value(test_value, 0.23, "my_map")
         with self.assertRaises(TypeError):  # set map to string
-            set_value(test_value, "nope", "my_map")
+            mutate_value(test_value, "nope", "my_map")
         with self.assertRaises(TypeError):  # set map to list
-            set_value(test_value, [{"key": "b", "a number": 322}], "my_map")
+            mutate_value(test_value, [{"key": "b", "a number": 322}], "my_map")
 
         # the none value cannot be changed and nothing can be set to none
         with self.assertRaises(ValueError):
-            set_value(none_value, 1)
+            mutate_value(none_value, 1)
         with self.assertRaises(ValueError):
-            set_value(none_value, "")
+            mutate_value(none_value, "")
         with self.assertRaises(ValueError):
-            set_value(none_value, [])
+            mutate_value(none_value, [])
         with self.assertRaises(ValueError):
-            set_value(Value(1), None)
+            mutate_value(Value(1), None)
         with self.assertRaises(ValueError):
-            set_value(Value("string"), None)
+            mutate_value(Value("string"), None)
         with self.assertRaises(ValueError):
-            set_value(Value(['list', 'of', 'strings']), None)
+            mutate_value(Value(['list', 'of', 'strings']), None)
 
         # path traversal errors
         with self.assertRaises(IndexError):
-            set_value(test_value, 0, "pos", 0)  # cannot move past a ground value
+            mutate_value(test_value, 0, "pos", 0)  # cannot move past a ground value
         with self.assertRaises(IndexError):
-            set_value(test_value, "", "name", 1)
+            mutate_value(test_value, "", "name", 1)
         with self.assertRaises(IndexError):
-            set_value(test_value, 0, "pos", "foo")
+            mutate_value(test_value, 0, "pos", "foo")
         with self.assertRaises(IndexError):
-            set_value(test_value, "", "name", "bar")
+            mutate_value(test_value, "", "name", "bar")
 
         with self.assertRaises(KeyError):
-            set_value(test_value, 0, "not a key")
+            mutate_value(test_value, 0, "not a key")
         with self.assertRaises(KeyError):
-            set_value(test_value, 0, "unnamed record", "has no names")
+            mutate_value(test_value, 0, "unnamed record", "has no names")
         with self.assertRaises(KeyError):
-            set_value(test_value, 0, "number_list", "string as list index")
+            mutate_value(test_value, 0, "number_list", "string as list index")
 
         # fail to change the subtree to one with a different schema
         with self.assertRaises(TypeError):
-            set_value(test_value, [{"x": 7}], "coords")
+            mutate_value(test_value, [{"x": 7}], "coords")
         with self.assertRaises(TypeError):  # shuffled
-            set_value(test_value, {"list_in_the_middle": ["I am a changed string"],
+            mutate_value(test_value, {"list_in_the_middle": ["I am a changed string"],
                                    "key": "changed",
                                    "a number": 124, }, "my_map")
 
     def test_modify_with_equal_value(self):
         # update with the same number
-        modified = set_value(test_value, 32.2, "pos")
+        modified = mutate_value(test_value, 32.2, "pos")
         self.assertEqual(id(test_value), id(modified))
 
         # update with the same string
-        modified = set_value(test_value, "Mr. Okay", "name")
+        modified = mutate_value(test_value, "Mr. Okay", "name")
         self.assertEqual(id(test_value), id(modified))
 
         # update with the same list
-        modified = set_value(test_value, [2, 23.1, -347], "number_list")
+        modified = mutate_value(test_value, [2, 23.1, -347], "number_list")
         self.assertEqual(id(test_value), id(modified))
 
         # update with the same map
-        modified = set_value(test_value, {"key": "string",
+        modified = mutate_value(test_value, {"key": "string",
                                           "list_in_the_middle": ["I'm in the middle"],
                                           "a number": 847}, "my_map")
         self.assertEqual(id(test_value), id(modified))
@@ -430,16 +430,16 @@ class TestCase(unittest.TestCase):
     def test_change_list_size(self):
         # update list in nested list
         self.assertEqual(len(test_value["nested_list"][0]), 2)
-        modified = set_value(test_value, ["x", "y", "z"], "nested_list", 0)
+        modified = mutate_value(test_value, ["x", "y", "z"], "nested_list", 0)
         self.assertEqual(len(modified["nested_list"][0]), 3)
 
         # update list in dict
         self.assertEqual(len(test_value["coords"][1]["number_list"]), 2)
-        modified = set_value(test_value, [6, 7, 8, 9], "coords", 1, "number_list")
+        modified = mutate_value(test_value, [6, 7, 8, 9], "coords", 1, "number_list")
         self.assertEqual(len(modified["coords"][1]["number_list"]), 4)
 
         # set the list to empty
-        modified = set_value(test_value, [], "coords")
+        modified = mutate_value(test_value, [], "coords")
         self.assertEqual(len(modified["coords"]), 0)
 
     def test_schema_as_list(self):
@@ -477,7 +477,7 @@ class TestCase(unittest.TestCase):
 
     def test_create_empty_list(self):
         value: Value = Value([1])
-        empty: Value = set_value(value, [])
+        empty: Value = mutate_value(value, [])
         self.assertEqual(len(empty), 0)
 
     def test_bad_list_initializer(self):

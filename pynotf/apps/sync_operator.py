@@ -6,6 +6,7 @@ from threading import Thread
 from typing import Tuple, Callable, Any, Optional, Dict, Union, List, NamedTuple
 from types import CodeType
 from inspect import iscoroutinefunction
+from math import inf
 
 import glfw
 import curio
@@ -13,7 +14,7 @@ from pyrsistent import field
 
 sys.path.append(r'/home/clemens/code/notf/pynotf')
 
-from pynotf.data import Value, RowHandle, Table, TableRow, Storage, set_value, RowHandleList, Bonsai, RowHandleMap
+from pynotf.data import Value, RowHandle, Table, TableRow, Storage, mutate_value, RowHandleList, Bonsai, RowHandleMap
 import pynotf.extra.pynanovg as nanovg
 import pynotf.extra.opengl as gl
 
@@ -104,14 +105,18 @@ class Size2(NamedTuple):
     height: float
 
 
+Xform = Tuple[float, float, float, float, float, float]
+
+
 @unique
-class NodeSocketDirection(Enum):
+class NodeSocketKind(Enum):
     INPUT = auto()
+    PROPERTY = auto()
     OUTPUT = auto()
 
 
 class NodeNetworkDescription(NamedTuple):  # TODO: assign integers to sockets as well
-    operators: List[Tuple[OperatorKind, Value]]
+    operators: List[Tuple[OperatorIndex, Value]]
     internal_connections: List[Tuple[int, int]]  # internal to internal
     external_connections: List[Tuple[str, str]]  # external to input
     incoming_connections: List[Tuple[str, int]]  # input to internal
@@ -134,12 +139,33 @@ class NodeStateMachine(NamedTuple):
 
 class NodeSockets(NamedTuple):
     names: Bonsai
-    elements: List[Tuple[NodeSocketDirection, RowHandle]]
+    elements: List[Tuple[NodeSocketKind, RowHandle]]
 
 
 class NodeDescription(NamedTuple):
-    sockets: Dict[str, Tuple[NodeSocketDirection, Value.Schema]]
+    sockets: Dict[str, Tuple[NodeSocketKind, Value.Schema]]
     state_machine: NodeStateMachine
+
+
+class Claim(NamedTuple):
+    class Stretch(NamedTuple):
+        minimum: float = 0.
+        preferred: float = 0.
+        maximum: float = inf
+        scale_factor: float = 1.
+        priority: int = 0
+
+    vertical: Claim.Stretch = Stretch()
+    horizontal: Claim.Stretch = Stretch()
+
+
+class NodeData(NamedTuple):
+    opacity: float = 1.
+    depth_override: int = 0
+    xform_local: Xform = (1, 0, 0, 1, 0, 0)
+    claim: Claim = Claim()
+    xform_layout: Xform = (1, 0, 0, 1, 0, 0)
+    grant: Size2 = Size2(0, 0)
 
 
 """
@@ -161,16 +187,16 @@ smaller than it currently is), but you'd have a jump to random memory whenever y
 class OperatorRow(TableRow):
     __table_index__: int = TableIndex.OPERATORS
     op_index = field(type=int, mandatory=True)
+    flags = field(type=int, mandatory=True)  # flags and op_index could be stored in the same 64 bit word
     value = field(type=Value, mandatory=True)
-    schema = field(type=Value.Schema, mandatory=True)  # input schema
+    input_schema = field(type=Value.Schema, mandatory=True)
     args = field(type=Value, mandatory=True)
     data = field(type=Value, mandatory=True)
-    flags = field(type=int, mandatory=True)
     upstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
     downstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
 
 
-class OperatorRowData(NamedTuple):
+class OperatorRowDescription(NamedTuple):
     operator_index: int
     initial_value: Value
     input_schema: Value.Schema
@@ -185,17 +211,18 @@ class NodeRow(TableRow):
     parent = field(type=RowHandle, mandatory=True)
     sockets = field(type=NodeSockets, mandatory=True)
     state = field(type=str, mandatory=True, initial='')
+    data = field(type=NodeData, mandatory=True, initial=NodeData())
     children = field(type=RowHandleMap, mandatory=True, initial=RowHandleMap())
     network = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
 
 
 # FUNCTIONS ############################################################################################################
 
-def create_operator(data: OperatorRowData) -> RowHandle:
+def create_operator(data: OperatorRowDescription) -> RowHandle:
     """
     For example, for the Factory operator, we want to inspect the input/output Schema of another, yet-to-be-created
     Operator without actually creating one.
-    Therefore, the creator functions only return OperatorRowData, that *this* function then turns into an actual row
+    Therefore, the creator functions only return OperatorRowDescription, that *this* function then turns into an actual row
     in the Operator table.
     :param data: Date from which to construct the new row.
     :return: The handle to the created row.
@@ -203,27 +230,106 @@ def create_operator(data: OperatorRowData) -> RowHandle:
     return get_app().get_table(TableIndex.OPERATORS).add_row(
         op_index=data.operator_index,
         value=data.initial_value,
-        schema=data.input_schema,
+        input_schema=data.input_schema,
         args=data.args,
         data=data.data,
         flags=data.flags,
     )
 
 
-def get_status(table: Table, handle: RowHandle) -> EmitterStatus:
-    return EmitterStatus(table[handle]['flags'] >> FlagIndex.STATUS)
+# TODO: all of these getters/setters should be part of an `Operator` class that only has the row handle as field
+def get_op_index(handle: RowHandle) -> int:
+    assert handle.table == TableIndex.OPERATORS
+    return get_app().get_table(TableIndex.OPERATORS)[handle]['op_index']
 
 
-def set_status(table: Table, handle: RowHandle, status: EmitterStatus) -> None:
+def get_flags(handle: RowHandle) -> int:
+    assert handle.table == TableIndex.OPERATORS
+    return get_app().get_table(TableIndex.OPERATORS)[handle]['flags']
+
+
+def get_status(handle: RowHandle) -> EmitterStatus:
+    return EmitterStatus(get_flags(handle) >> FlagIndex.STATUS)
+
+
+def set_status(handle: RowHandle, status: EmitterStatus) -> None:
+    assert handle.table == TableIndex.OPERATORS
+    table: Table = get_app().get_table(TableIndex.OPERATORS)
     table[handle]['flags'] = (table[handle]['flags'] & ~(int(0b111) << FlagIndex.STATUS)) | (status << FlagIndex.STATUS)
 
 
-def is_external(flags: int) -> bool:
-    return bool(flags & (1 << FlagIndex.IS_EXTERNAL))
+def is_external(handle: RowHandle) -> bool:
+    return bool(get_flags(handle) & (1 << FlagIndex.IS_EXTERNAL))
 
 
-def is_multicast(flags: int) -> bool:
-    return bool(flags & (1 << FlagIndex.IS_MULTICAST))
+def is_multicast(handle: RowHandle) -> bool:
+    return bool(get_flags(handle) & (1 << FlagIndex.IS_MULTICAST))
+
+
+def get_input_schema(handle: RowHandle) -> Value.Schema:
+    assert handle.table == TableIndex.OPERATORS
+    return get_app().get_table(TableIndex.OPERATORS)[handle]['input_schema']
+
+
+def get_value(handle: RowHandle) -> Value:
+    assert handle.table == TableIndex.OPERATORS
+    return get_app().get_table(TableIndex.OPERATORS)[handle]['value']
+
+
+def set_value(handle: RowHandle, value: Value, check_schema: Optional[Value.Schema] = None) -> bool:
+    assert handle.table == TableIndex.OPERATORS
+    if check_schema is not None and check_schema != value.get_schema():
+        return False
+    else:
+        get_app().get_table(TableIndex.OPERATORS)[handle]['value'] = value
+        return True
+
+
+def get_upstream(handle: RowHandle) -> RowHandleList:
+    assert handle.table == TableIndex.OPERATORS
+    return get_app().get_table(TableIndex.OPERATORS)[handle]['upstream']
+
+
+def add_upstream(downstream: RowHandle, upstream: RowHandle) -> None:
+    assert downstream.table == upstream.table == TableIndex.OPERATORS
+    current_upstream: RowHandleList = get_upstream(downstream)
+    if upstream not in current_upstream:
+        get_app().get_table(TableIndex.OPERATORS)[downstream]['upstream'] = current_upstream.append(upstream)
+
+
+def remove_upstream(downstream: RowHandle, upstream: RowHandle) -> bool:
+    assert downstream.table == upstream.table == TableIndex.OPERATORS
+    table: Table = get_app().get_table(TableIndex.OPERATORS)
+    current_upstream: RowHandleList = table[downstream]['upstream']
+    if upstream in current_upstream:
+        table[downstream]['upstream'] = current_upstream.remove(upstream)
+        return True
+    else:
+        return False
+
+
+def get_downstream(handle: RowHandle) -> RowHandleList:
+    assert handle.table == TableIndex.OPERATORS
+    return get_app().get_table(TableIndex.OPERATORS)[handle]['downstream']
+
+
+def add_downstream(upstream: RowHandle, downstream: RowHandle) -> None:
+    assert upstream.table == downstream.table == TableIndex.OPERATORS
+    table: Table = get_app().get_table(TableIndex.OPERATORS)
+    current_downstream: RowHandleList = get_downstream(upstream)
+    if downstream not in current_downstream:
+        table[upstream]['downstream'] = current_downstream.append(downstream)
+
+
+def remove_downstream(upstream: RowHandle, downstream: RowHandle) -> bool:
+    assert upstream.table == downstream.table == TableIndex.OPERATORS
+    table: Table = get_app().get_table(TableIndex.OPERATORS)
+    current_downstream: RowHandleList = table[upstream]['downstream']
+    if downstream in current_downstream:
+        table[upstream]['downstream'] = current_downstream.remove(downstream)
+        return True
+    else:
+        return False
 
 
 def run_downstream(operator: RowHandle, source: RowHandle, callback: OperatorCallback, value: Value) -> None:
@@ -232,22 +338,22 @@ def run_downstream(operator: RowHandle, source: RowHandle, callback: OperatorCal
 
     # make sure the operator is valid and not completed yet
     operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
-    status: EmitterStatus = get_status(operator_table, operator)
+    status: EmitterStatus = get_status(operator)
     if status.is_completed():
         return  # operator has completed
 
     # find the callback to perform
-    callback_func: Optional[Callable] = ELEMENT_TABLE[operator_table[operator]["op_index"]][callback]
+    callback_func: Optional[Callable] = ELEMENT_TABLE[get_op_index(operator)][callback]
     if callback_func is None:
         return  # operator type does not provide the requested callback
 
     # perform the callback ...
     if callback == OperatorCallback.NEXT:
-        if operator_table[operator]['schema'].is_none():
-            new_data: Value = callback_func(Operator(operator), source,
-                                            Value())  # ignore values for operator taking none
+        if get_input_schema(operator).is_none():
+            new_data: Value = callback_func(OperatorSelf(operator), source,
+                                            Value())  # for operators with no input value
         else:
-            new_data: Value = callback_func(Operator(operator), source, value)
+            new_data: Value = callback_func(OperatorSelf(operator), source, value)
 
         # ...and update the operator's data
         assert new_data.get_schema() == operator_table[operator]["data"].get_schema()
@@ -256,7 +362,7 @@ def run_downstream(operator: RowHandle, source: RowHandle, callback: OperatorCal
 
     else:
         # the failure and completion callbacks do not return a value
-        callback_func(Operator(operator), source, value)
+        callback_func(OperatorSelf(operator), source, value)
 
 
 def emit_downstream(operator: RowHandle, callback: OperatorCallback, value: Value) -> None:
@@ -264,42 +370,39 @@ def emit_downstream(operator: RowHandle, callback: OperatorCallback, value: Valu
 
     # make sure the operator is valid and not completed yet
     operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
-    status: EmitterStatus = get_status(operator_table, operator)
+    status: EmitterStatus = get_status(operator)
     if status.is_completed():
         return  # operator has completed
 
     # mark the operator as actively emitting
     assert not status.is_active()  # cyclic error
-    set_status(operator_table, operator, EmitterStatus(callback))  # set the active status
+    set_status(operator, EmitterStatus(callback))  # set the active status
 
     # copy the list of downstream handles, in case it changes during the emission
-    downstream: RowHandleList = operator_table[operator]["downstream"]
+    downstream: RowHandleList = get_downstream(operator)
 
     if callback == OperatorCallback.NEXT:
 
-        # ensure that the operator is able to emit the given value
-        assert value.get_schema() == operator_table[operator]['value'].get_schema()
-
-        # store the emitted value
-        operator_table[operator]['value'] = value
+        # store the emitted value and ensure that the operator is able to emit the given value
+        set_value(operator, value, get_value(operator).get_schema())
 
         # emit to all valid downstream elements
         for element in downstream:
             run_downstream(element, operator, callback, value)
 
         # reset the status
-        set_status(operator_table, operator, EmitterStatus.IDLE)
+        set_status(operator, EmitterStatus.IDLE)
 
     else:
         # store the emitted value, bypassing the schema check
-        operator_table[operator]['value'] = value
+        set_value(operator, value)
 
         # emit one last time ...
         for element in downstream:
             run_downstream(element, operator, callback, value)
 
         # ... and finalize the status
-        set_status(operator_table, operator, EmitterStatus(int(callback) + 3))
+        set_status(operator, EmitterStatus(int(callback) + 3))
 
         # unsubscribe all downstream handles (this might destroy the Operator, therefore it is the last thing we do)
         for element in downstream:
@@ -307,38 +410,30 @@ def emit_downstream(operator: RowHandle, callback: OperatorCallback, value: Valu
 
         # if the Operator is external, it will still be alive after everyone unsubscribed
         if operator_table.is_handle_valid(operator):
-            assert is_external(operator_table[operator]['flags'])
-            assert len(operator_table[operator]["downstream"]) == 0
+            assert is_external(operator)
+            assert len(get_downstream(operator)) == 0
 
 
 def subscribe(upstream: RowHandle, downstream: RowHandle) -> None:
     operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
     assert operator_table.is_handle_valid(upstream)
     assert operator_table.is_handle_valid(downstream)
-    assert operator_table[downstream]['schema'].is_none() or (
-            operator_table[upstream]['value'].get_schema() == operator_table[downstream]['schema'])
+    assert get_input_schema(downstream).is_none() or (get_value(upstream).get_schema() == get_input_schema(downstream))
 
     # if the operator upstream has already completed, call the corresponding callback immediately and do not subscribe
-    upstream_status: EmitterStatus = get_status(operator_table, upstream)
+    upstream_status: EmitterStatus = get_status(upstream)
     if upstream_status.is_completed():
-        assert is_external(operator_table[upstream]['flags'])  # operator is valid but completed? -> it must be external
+        assert is_external(upstream)  # operator is valid but completed? -> it must be external
         if upstream_status.is_active():
-            return run_downstream(
-                downstream, upstream, OperatorCallback(upstream_status), operator_table[upstream]['value'])
+            return run_downstream(downstream, upstream, OperatorCallback(upstream_status), get_value(upstream))
         else:
-            return run_downstream(
-                downstream, upstream, OperatorCallback(int(upstream_status) - 3), operator_table[upstream]['value'])
+            return run_downstream(downstream, upstream, OperatorCallback(int(upstream_status) - 3), get_value(upstream))
 
-    current_downstream: RowHandleList = operator_table[upstream]["downstream"]
-    if len(current_downstream) != 0:
-        assert is_multicast(operator_table[upstream]["flags"])
+    if len(get_downstream(upstream)) != 0:
+        assert is_multicast(upstream)
 
-    if downstream not in current_downstream:
-        operator_table[upstream]["downstream"] = current_downstream.append(downstream)
-
-    current_upstream: RowHandleList = operator_table[downstream]["upstream"]
-    if upstream not in current_upstream:
-        operator_table[downstream]["upstream"] = current_upstream.append(upstream)
+    add_downstream(upstream, downstream)
+    add_upstream(downstream, upstream)
 
 
 def unsubscribe(upstream: RowHandle, downstream: RowHandle) -> None:
@@ -348,26 +443,23 @@ def unsubscribe(upstream: RowHandle, downstream: RowHandle) -> None:
 
     # TODO: I don't really have a good idea yet how to handle error and completion values.
     #  they are also stored in the `value` field, but that screws with the schema compatibility check
-    # assert operator_table[downstream]['schema'].is_none() or (
-    #         operator_table[upstream]['value'].get_schema() == operator_table[downstream]['schema'])
+    # assert get_input_schema(downstream).is_none() or (get_value(upstream).get_schema() == get_input_schema(downstream))
 
     # if the upstream was already completed when the downstream subscribed, its subscription won't have completed
-    current_upstream: RowHandleList = operator_table[downstream]["upstream"]
+    current_upstream: RowHandleList = get_upstream(downstream)
     if upstream not in current_upstream:
-        assert len(operator_table[upstream]["downstream"]) == 0
-        assert get_status(operator_table, upstream).is_completed()
+        assert len(get_downstream(upstream)) == 0
+        assert get_status(upstream).is_completed()
         return
 
     # update the downstream element
-    operator_table[downstream]["upstream"] = current_upstream.remove(upstream)
+    remove_upstream(downstream, upstream)
 
     # update the upstream element
-    current_downstream: RowHandleList = operator_table[upstream]["downstream"]
-    assert downstream in current_downstream
-    operator_table[upstream]["downstream"] = current_downstream.remove(downstream)
+    remove_downstream(upstream, downstream)
 
     # if the upstream element was internal and this was its last subscriber, remove it
-    if len(current_downstream) == 1 and not is_external(operator_table[upstream]["flags"]):
+    if len(get_downstream(upstream)) == 0 and not is_external(upstream):
         return remove_operator(upstream)
 
 
@@ -376,12 +468,12 @@ def remove_operator(operator: RowHandle) -> None:
     if not operator_table.is_handle_valid(operator):
         return
 
-    # unsubscribe from all remaining downstream elements
-    for downstream in operator_table[operator]["downstream"]:
-        operator_table[downstream]["upstream"] = operator_table[downstream]["upstream"].remove(operator)
+    # remove from all remaining downstream elements
+    for downstream in list(get_downstream(operator)):
+        remove_upstream(downstream, operator)
 
     # unsubscribe from all upstream elements
-    for upstream in operator_table[operator]["upstream"]:
+    for upstream in list(get_upstream(operator)):
         unsubscribe(upstream, operator)  # this might remove upstream elements
 
     # finally, remove yourself
@@ -457,15 +549,7 @@ class Application:
         try:
             while not glfw.window_should_close(window):
                 with Painterpreter(window, ctx) as painter:
-                    painter.paint([
-                        ("begin_path",),
-                        ("rounded_rect", 50, 50,
-                         Expression('max(0, window.width - 100)'),
-                         Expression('max(0, window.height - 100)'), 100),
-                        ("fill_color", nanovg.rgba(.5, .5, .5)),
-                        ("fill",),
-
-                    ])
+                    painter.paint(scene.get_node("herbert"))
                     glfw.wait_events()
 
         finally:
@@ -488,6 +572,16 @@ def get_app() -> Application:
 
 
 # PAINTERPRETER ########################################################################################################
+
+class Properties:
+    def __init__(self, node: RowHandle):
+        self._handle: RowHandle = node
+
+    def __getitem__(self, name: str) -> Value:
+        property_handle: Optional[RowHandle] = Node(self._handle).get_property(name)
+        assert property_handle
+        return get_value(property_handle)
+
 
 class Expression:
     def __init__(self, source: str):
@@ -524,12 +618,13 @@ class Painterpreter:
 
         return self
 
-    def paint(self, design: NodeDesign) -> None:
+    def paint(self, node: RowHandle) -> None:
         scope: Dict[str, Any] = dict(
             window=self._buffer_size,
+            prop=Properties(node),
         )
 
-        for command in design:
+        for command in Node(node).get_design():
             func_name: str = command[0]
             assert isinstance(func_name, str)
 
@@ -617,7 +712,11 @@ class EventLoop:
 
 # LOGIC ################################################################################################################
 
-class Operator:
+class OperatorSelf:
+    """
+    Operator access within one of its callback functions.
+    """
+
     def __init__(self, handle: RowHandle):
         assert (handle.table == TableIndex.OPERATORS)
         self._handle: RowHandle = handle
@@ -633,7 +732,7 @@ class Operator:
         return self._handle
 
     def get_downstream(self) -> RowHandleList:
-        return get_app().get_table(TableIndex.OPERATORS)[self._handle]["downstream"]
+        return get_downstream(self._handle)
 
     def __getitem__(self, name: str):
         return get_app().get_table(TableIndex.OPERATORS)[self._handle]["args"][name]
@@ -665,8 +764,8 @@ class Fact:
     def __init__(self, initial: Value):
         self._handle: RowHandle = get_app().get_table(TableIndex.OPERATORS).add_row(
             value=initial,
-            op_index=OperatorKind.RELAY,
-            schema=initial.get_schema(),
+            op_index=OperatorIndex.RELAY,
+            input_schema=initial.get_schema(),
             args=Value(),
             data=Value(),
             flags=create_flags(external=True),
@@ -676,7 +775,7 @@ class Fact:
         remove_operator(self._handle)
 
     def get_value(self) -> Value:
-        return get_app().get_table(TableIndex.OPERATORS)[self._handle]['value']
+        return get_value(self._handle)
 
     def get_schema(self) -> Value.Schema:
         return self.get_value().get_schema()
@@ -720,19 +819,25 @@ class Scene:
     def create_node(self, name: str, description: NodeDescription):
         self._root_node.create_child(name, description)
 
-    def get_relay(self, name: str) -> Optional[RowHandle]:
+    def get_node(self, name: str) -> Optional[RowHandle]:
         path: List[str] = name.split('/')
-        path[-1], relay_name = path[-1].split(':', maxsplit=1)
         node: Node = self._root_node
         for step in path:
             node = Node(node.get_child(step))
-        return node.get_socket(relay_name)
+        return node.get_handle()
+
+    def get_socket(self, name: str) -> Optional[RowHandle]:
+        path, socket = name.rsplit(':', maxsplit=1)
+        return Node(self.get_node(path)).get_socket(socket)
 
 
 class Node:
     def __init__(self, handle: RowHandle):
         assert handle.table == TableIndex.NODES
         self._handle: RowHandle = handle
+
+    def get_handle(self) -> RowHandle:
+        return self._handle
 
     # TODO: create child and -operator and state transition and all other private node methods should be operators...
     def create_child(self, name: str, description: NodeDescription) -> RowHandle:
@@ -772,14 +877,30 @@ class Node:
     def get_child(self, name: str) -> Optional[RowHandle]:
         return get_app().get_table(TableIndex.NODES)[self._handle]['children'].get(name)
 
+    def get_property(self, name: str) -> Optional[RowHandle]:
+        socket_handle: Optional[RowHandle] = self.get_socket(name)
+        if socket_handle is None or get_op_index(socket_handle) != OperatorIndex.PROPERTY:
+            return None
+        else:
+            return socket_handle
+
     def get_socket(self, name: str) -> Optional[RowHandle]:
         node_table: Table = get_app().get_table(TableIndex.NODES)
         sockets: NodeSockets = node_table[self._handle]['sockets']
         index: Optional[int] = sockets.names.get(name)
         if index is None:
             return None
-        return sockets.elements[index][1]
+        socket_handle: RowHandle = sockets.elements[index][1]
+        assert socket_handle.table == TableIndex.OPERATORS
+        return socket_handle
         # TODO: differentiate inputs/outputs? Right now, you can connect an output as downstream from external
+
+    def get_state(self) -> str:
+        return get_app().get_table(TableIndex.NODES)[self._handle]['state']
+
+    def get_design(self) -> NodeDesign:
+        node_table: Table = get_app().get_table(TableIndex.NODES)
+        return node_table[self._handle]['description'].state_machine.states[self.get_state()].design
 
     def remove(self):
         # unregister from the parent
@@ -802,7 +923,9 @@ class Node:
         # remove the current dynamic network
         self._clear_network()
 
+        # enter the new state
         new_state: NodeStateDescription = node_description.state_machine.states[state]
+        node_table[self._handle]['state'] = state
 
         # create new elements
         network: List[RowHandle] = []
@@ -860,26 +983,41 @@ class Node:
 
 class OpRelay:
     @staticmethod
-    def create(value: Value) -> OperatorRowData:
-        return OperatorRowData(
-            operator_index=OperatorKind.RELAY,
+    def create(value: Value) -> OperatorRowDescription:
+        return OperatorRowDescription(
+            operator_index=OperatorIndex.RELAY,
             initial_value=value,
             input_schema=value.get_schema(),
         )
 
     @staticmethod
-    def on_next(self: Operator, _: RowHandle, value: Value) -> Value:
+    def on_next(self: OperatorSelf, _: RowHandle, value: Value) -> Value:
         self.next(value)
         return self.data
 
 
+class OpProperty:
+    """
+    A Property is basically a Relay with the requirement that it's value schema is not none.
+    """
+
+    @staticmethod
+    def create(value: Value) -> OperatorRowDescription:
+        assert not value.get_schema().is_none()
+        return OperatorRowDescription(
+            operator_index=OperatorIndex.PROPERTY,
+            initial_value=value,
+            input_schema=value.get_schema(),
+        )
+
+
 class OpBuffer:
     @staticmethod
-    def create(args: Value) -> OperatorRowData:
+    def create(args: Value) -> OperatorRowDescription:
         schema: Value.Schema = Value.Schema.from_value(args['schema'])
         assert schema
-        return OperatorRowData(
-            operator_index=OperatorKind.BUFFER,
+        return OperatorRowDescription(
+            operator_index=OperatorIndex.BUFFER,
             initial_value=Value(0),
             input_schema=schema,
             args=Value(time_span=args['time_span']),
@@ -887,7 +1025,7 @@ class OpBuffer:
         )
 
     @staticmethod
-    def on_next(self: Operator, _upstream: RowHandle, _value: Value) -> Value:
+    def on_next(self: OperatorSelf, _upstream: RowHandle, _value: Value) -> Value:
         if not int(self.data["is_running"]) == 1:
             async def timeout():
                 await curio.sleep(float(self["time_span"]))
@@ -895,13 +1033,13 @@ class OpBuffer:
                     return
                 self.next(Value(self.data["counter"]))
                 print(f'Clicked {int(self.data["counter"])} times in the last {float(self["time_span"])} seconds')
-                return set_value(self.data, False, "is_running")
+                return mutate_value(self.data, False, "is_running")
 
             self.schedule(timeout)
             return Value(is_running=True, counter=1)
 
         else:
-            return set_value(self.data, self.data["counter"] + 1, "counter")
+            return mutate_value(self.data, self.data["counter"] + 1, "counter")
 
 
 class OpFactory:
@@ -910,47 +1048,48 @@ class OpFactory:
     """
 
     @staticmethod
-    def create(args: Value) -> OperatorRowData:
+    def create(args: Value) -> OperatorRowDescription:
         operator_id: int = int(args['id'])
         factory_arguments: Value = args['args']
-        example_operator_data: OperatorRowData = ELEMENT_TABLE[operator_id][OperatorCallback.CREATE](factory_arguments)
+        example_operator_data: OperatorRowDescription = ELEMENT_TABLE[operator_id][OperatorCallback.CREATE](
+            factory_arguments)
 
-        return OperatorRowData(
-            operator_index=OperatorKind.FACTORY,
+        return OperatorRowDescription(
+            operator_index=OperatorIndex.FACTORY,
             initial_value=example_operator_data.initial_value,
             input_schema=Value.Schema(),
             args=args,
         )
 
     @staticmethod
-    def on_next(self: Operator, _1: RowHandle, _2: Value) -> Value:
+    def on_next(self: OperatorSelf, _1: RowHandle, _2: Value) -> Value:
         downstream: RowHandleList = self.get_downstream()
         if len(downstream) == 0:
             return self.data
 
-        factory_function: Callable[[Value], OperatorRowData] = ELEMENT_TABLE[int(self['id'])][OperatorCallback.CREATE]
+        factory_function: Callable[[Value], OperatorRowDescription] = ELEMENT_TABLE[int(self['id'])][
+            OperatorCallback.CREATE]
         factory_arguments: Value = self['args']
         for subscriber in downstream:
             new_operator: RowHandle = create_operator(factory_function(factory_arguments))
             subscribe(new_operator, subscriber)
-            run_downstream(new_operator, self.get_handle(), OperatorCallback.NEXT,
-                           get_app().get_table(TableIndex.OPERATORS)[new_operator]['value'])
+            run_downstream(new_operator, self.get_handle(), OperatorCallback.NEXT, get_value(new_operator))
 
         return self.data
 
 
 class OpCountdown:
     @staticmethod
-    def create(args: Value) -> OperatorRowData:
-        return OperatorRowData(
-            operator_index=OperatorKind.COUNTDOWN,
+    def create(args: Value) -> OperatorRowDescription:
+        return OperatorRowDescription(
+            operator_index=OperatorIndex.COUNTDOWN,
             initial_value=Value(0),
             input_schema=Value.Schema(),
             args=args,
         )
 
     @staticmethod
-    def on_next(self: Operator, _upstream: RowHandle, _value: Value) -> Value:
+    def on_next(self: OperatorSelf, _upstream: RowHandle, _value: Value) -> Value:
         counter: Value = self['start']
         assert counter.get_kind() == Value.Kind.NUMBER
 
@@ -969,22 +1108,22 @@ class OpCountdown:
 
 class OpPrinter:
     @staticmethod
-    def create(value: Value) -> OperatorRowData:
-        return OperatorRowData(
-            operator_index=OperatorKind.PRINTER,
+    def create(value: Value) -> OperatorRowDescription:
+        return OperatorRowDescription(
+            operator_index=OperatorIndex.PRINTER,
             initial_value=value,
             input_schema=value.get_schema(),
         )
 
     @staticmethod
-    def on_next(self: Operator, upstream: RowHandle, value: Value) -> Value:
+    def on_next(self: OperatorSelf, upstream: RowHandle, value: Value) -> Value:
         print(f'Received {value!r} from {upstream}')
         return self.data
 
 
 # class OpBuffer:
 #     @staticmethod
-#     def create(args: Value) -> OperatorRowData:
+#     def create(args: Value) -> OperatorRowDescription:
 #         pass
 #
 #     @staticmethod
@@ -992,8 +1131,9 @@ class OpPrinter:
 #         pass
 
 @unique
-class OperatorKind(IndexEnum):
+class OperatorIndex(IndexEnum):
     RELAY = auto()
+    PROPERTY = auto()
     BUFFER = auto()
     FACTORY = auto()
     COUNTDOWN = auto()
@@ -1002,30 +1142,18 @@ class OperatorKind(IndexEnum):
 
 ELEMENT_TABLE: Tuple[
     Tuple[
-        Optional[Callable[[Operator, RowHandle], Value]],
-        Optional[Callable[[Operator, RowHandle], Value]],
-        Optional[Callable[[Operator, RowHandle], Value]],
-        Callable[[Value], OperatorRowData],
+        Optional[Callable[[OperatorSelf, RowHandle], Value]],
+        Optional[Callable[[OperatorSelf, RowHandle], Value]],
+        Optional[Callable[[OperatorSelf, RowHandle], Value]],
+        Callable[[Value], OperatorRowDescription],
     ], ...] = (
     (OpRelay.on_next, None, None, OpRelay.create),
+    (OpRelay.on_next, None, None, OpProperty.create),  # property uses relay's `on_next` function
     (OpBuffer.on_next, None, None, OpBuffer.create),
     (OpFactory.on_next, None, None, OpFactory.create),
     (OpCountdown.on_next, None, None, OpCountdown.create),
     (OpPrinter.on_next, None, None, OpPrinter.create),
 )
-
-# class Map:  # TODO: in the example, this is a more generalized "map" operator with user-defined code
-#     @staticmethod
-#     def on_next(self: Operator, _, stream_id: int, value: Value) -> None:
-#         self.emit(Value(len(value)))
-#
-#
-# class Filter:  # TODO: again, this should probably take a user-defined expression
-#     @staticmethod
-#     def on_next(self: Operator, _1, _2, value: Value) -> None:
-#         if int(value) >= 2:
-#             self.emit(value)
-
 
 # SETUP ################################################################################################################
 
@@ -1049,14 +1177,14 @@ root_node: NodeDescription = NodeDescription(
 )
 
 count_presses_node: NodeDescription = NodeDescription(
-    sockets=dict(key_down=(NodeSocketDirection.INPUT, Value.Schema())),
+    sockets=dict(key_down=(NodeSocketKind.INPUT, Value.Schema())),
     state_machine=NodeStateMachine(
         states=dict(
             default=NodeStateDescription(
                 network=NodeNetworkDescription(
                     operators=[
-                        (OperatorKind.BUFFER, Value(schema=Value.Schema(), time_span=1)),
-                        (OperatorKind.PRINTER, Value()),
+                        (OperatorIndex.BUFFER, Value(schema=Value.Schema(), time_span=1)),
+                        (OperatorIndex.PRINTER, Value()),
                     ],
                     internal_connections=[
                         (0, 1),
@@ -1076,14 +1204,14 @@ count_presses_node: NodeDescription = NodeDescription(
 )
 
 countdown_node: NodeDescription = NodeDescription(
-    sockets=dict(key_down=(NodeSocketDirection.INPUT, Value.Schema())),
+    sockets=dict(key_down=(NodeSocketKind.INPUT, Value.Schema())),
     state_machine=NodeStateMachine(
         states=dict(
             default=NodeStateDescription(
                 network=NodeNetworkDescription(
                     operators=[
-                        (OperatorKind.FACTORY, Value(id=OperatorKind.COUNTDOWN, args=Value(start=5))),
-                        (OperatorKind.PRINTER, Value(0)),
+                        (OperatorIndex.FACTORY, Value(id=OperatorIndex.COUNTDOWN, args=Value(start=5))),
+                        (OperatorIndex.PRINTER, Value(0)),
                     ],
                     internal_connections=[
                         (0, 1),
@@ -1094,13 +1222,22 @@ countdown_node: NodeDescription = NodeDescription(
                     ],
                     outgoing_connections=[],
                 ),
-                design=[],
+                design=[
+                    ("begin_path",),
+                    ("rounded_rect", 50, 50,
+                     Expression('max(0, window.width - 100)'),
+                     Expression('max(0, window.height - 100)'), 100),
+                    ("fill_color", nanovg.rgba(.5, .5, .5)),
+                    ("fill",),
+                ],
             ),
         ),
         transitions=[],
         initial='default'
     )
 )
+
+# TODO: continue here - try drawing with access to a Property of the herbert countdown node
 
 
 # TODO: instead of this function, use the root node description's initial state for setup
@@ -1124,7 +1261,7 @@ def app_setup(window, scene: Scene) -> None:
     key_fact: Fact = Fact(Value())
     # scene.create_node("herbert", count_presses_node)
     scene.create_node("herbert", countdown_node)
-    key_fact.subscribe(scene.get_relay('herbert:key_down'))
+    key_fact.subscribe(scene.get_socket('herbert:key_down'))
     glfw.set_key_callback(window, key_callback_fn)
 
 
