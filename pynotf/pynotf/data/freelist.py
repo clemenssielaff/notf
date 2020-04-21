@@ -1,6 +1,9 @@
+"""
+Codename: ZebraList
+"""
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from math import log2
 
 from pynotf.extra import chunks
@@ -21,8 +24,28 @@ class FreeList:
         self._first_free: int = 0
         self.reserve(initial_size)
 
+    def __repr__(self) -> str:
+        # noinspection PyStringFormat
+        return 'FreeList({})'.format(', '.join(f'{{0:0{WORD_SIZE}b}}'.format(word)[::-1] for word in self._words))
+
+    def __len__(self):
+        return len(self._words) * WORD_SIZE
+
+    def __contains__(self, index: int) -> bool:
+        """
+        Checks if a given index is free.
+        Indices that are outside of the range of the free list are considered occupied.
+        """
+        word_index, bit_index = self._get_word_and_bit_index(index)
+        if word_index is None:
+            return False
+        return (self._words[word_index] >> bit_index) & 1 == 1
+
     @staticmethod
-    def create_from_string(values: str) -> FreeList:
+    def from_string(values: str) -> FreeList:
+        # extend the string with ones to align it with the word size
+        values = f'{values}{"1" * (0 if len(values) % WORD_SIZE == 0 else 64 - len(values) % WORD_SIZE)}'
+
         free_list: FreeList = FreeList(0)
 
         # words
@@ -68,8 +91,8 @@ class FreeList:
         result: int = self._first_free
 
         # unset the corresponding bit
-        word_index: int = self._first_free // WORD_SIZE
-        bit_index: int = self._first_free - (word_index * WORD_SIZE)
+        word_index, bit_index = self._get_word_and_bit_index(self._first_free)
+        assert word_index is not None
         self._words[word_index] &= ~(1 << bit_index)
 
         # advance the word index to the first word with a free bit
@@ -92,14 +115,9 @@ class FreeList:
         return result
 
     def release(self, index: int) -> None:
-        assert index >= 0
-
-        word_index: int = index // WORD_SIZE
-        if word_index >= len(self._words):
+        word_index, bit_index = self._get_word_and_bit_index(index)
+        if word_index is None:
             return  # we haven't even stored a word for that index yet, no need to unset anything
-
-        bit_index: int = index - (word_index * WORD_SIZE)
-        assert 0 <= bit_index < WORD_SIZE
 
         # update the first free index
         if index < self._first_free:
@@ -109,9 +127,14 @@ class FreeList:
         # set the bit
         self._words[word_index] |= 1 << bit_index
 
-    def __repr__(self) -> str:
-        # noinspection PyStringFormat
-        return 'FreeList({})'.format(', '.join(f'{{0:0{WORD_SIZE}b}}'.format(word)[::-1] for word in self._words))
+    def _get_word_and_bit_index(self, index: int) -> Tuple[Optional[int], int]:
+        assert index >= 0
 
-    def __len__(self):
-        return len(self._words) * WORD_SIZE
+        word_index: int = index // WORD_SIZE
+        if word_index >= len(self._words):
+            return None, 0  # the index is not part of the free list
+
+        bit_index: int = index - (word_index * WORD_SIZE)
+        assert 0 <= bit_index < WORD_SIZE
+
+        return word_index, bit_index

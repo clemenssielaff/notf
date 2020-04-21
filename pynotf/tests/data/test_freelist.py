@@ -41,6 +41,9 @@ class TestCase(unittest.TestCase):
             free_elements.add(index)
         self.assertEqual(free_list.count_free(200), 100)
 
+        self.assertTrue(list(free_elements)[0] in free_list)
+        self.assertFalse(12345 in free_list)
+
         # acquire 50 elements
         for _ in range(50):
             actual: int = free_list.acquire()
@@ -53,8 +56,8 @@ class TestCase(unittest.TestCase):
         self.assertEqual(free_list.count_free(200), 50)
 
     def test_from_string(self):
-        self.assertEqual(repr(FreeList.create_from_string('1')),
-                         f'FreeList(1{"0" * (WORD_SIZE - 1)})')
-        self.assertEqual(repr(FreeList.create_from_string('0' * WORD_SIZE)),
+        self.assertEqual(repr(FreeList.from_string('0')),
+                         f'FreeList(0{"1" * (WORD_SIZE - 1)})')
+        self.assertEqual(repr(FreeList.from_string('0' * WORD_SIZE)),
                          f'FreeList({"0" * WORD_SIZE}, {"1" * WORD_SIZE})')
 

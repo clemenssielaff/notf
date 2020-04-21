@@ -7,6 +7,7 @@ from logging import warning, debug
 from pyrsistent._checked_types import CheckedPVector as ConstList, CheckedPMap as ConstMap
 from pyrsistent import PRecord as ConstNamedTuple, field
 
+from pynotf.data import FreeList
 from pynotf.extra import color_background
 
 
@@ -110,7 +111,7 @@ T = TypeVar('T')
 
 # FUNCTIONS ############################################################################################################
 
-def add_table_row(table: ConstList, table_id: int, row: TableRow, free_list: List[int]) \
+def add_table_row(table: ConstList, table_id: int, row: TableRow, free_list: FreeList) \
         -> Tuple[ConstList, RowHandle]:
     """
     Adds a new row to a table.
@@ -121,11 +122,10 @@ def add_table_row(table: ConstList, table_id: int, row: TableRow, free_list: Lis
     :param free_list: List of free indices in the table. Faster than searching for negative generation values.
     :return: Mutated table, Handle to the new row.
     """
-    if free_list:
-        # use any free index
-        row_index: int = free_list.pop()
-        assert row_index < len(table)
+    # use the next free index
+    row_index: int = free_list.acquire()
 
+    if row_index < len(table):  # the row is re-used
         if table[row_index]._gen == -(2 ** 31):
             # integer overflow!
             warning(f'Generation overflow in table {table_id}, row {row_index}')
@@ -138,7 +138,7 @@ def add_table_row(table: ConstList, table_id: int, row: TableRow, free_list: Lis
         # mutate the table
         new_table: ConstList = table.set(row_index, row.set(_gen=generation))
 
-    else:  # free list is empty
+    else:  # row is appended to the end of the list
         # create a new row
         row_index: int = len(table)
         generation: int = 1
@@ -150,7 +150,7 @@ def add_table_row(table: ConstList, table_id: int, row: TableRow, free_list: Lis
     return new_table, RowHandle(table_id, row_index, generation)
 
 
-def remove_table_row(table: ConstList, index: int, free_list: List[int]) -> ConstList:
+def remove_table_row(table: ConstList, index: int, free_list: FreeList) -> ConstList:
     """
     Removes the row with the given index from the table.
     :param table: Table to mutate.
@@ -166,10 +166,7 @@ def remove_table_row(table: ConstList, index: int, free_list: List[int]) -> Cons
     assert generation < 0
 
     # add the removed row to the free list
-    free_list.append(index)
-
-    # we also sort the free list to keep the indices small (and the active rows grouped)
-    free_list.sort(reverse=True)
+    free_list.release(index)
 
     # mutate the table
     return table.set(index, table[index].set(_gen=generation))
@@ -333,10 +330,10 @@ class Table:
         self._storage: Storage = storage
         self._id: int = table_id
         self._table_type: Type = table_type
-        self._free_list: List[int] = []
+        self._free_list: FreeList = FreeList()
 
     def __del__(self):
-        diff: int = len(self) - len(self._free_list)
+        diff: int = len(self) - self._free_list.count_free(len(self))
         if diff == 0:
             debug(f'Table {self._id} removed cleanly after growing to {len(self)} rows')
         else:
@@ -478,7 +475,9 @@ class Table:
         Refreshes the "Free List" of this Table after its data has been updated by the Storage.
         """
         table_data: ConstList = self._get_table_data()
-        self._free_list = [index for index in range(len(table_data)) if table_data[index]._gen < 0]
+        self._free_list = FreeList.from_string(
+            ''.join(('1' if table_data[index]._gen < 0 else '0') for index in range(len(table_data)))
+        )
 
     def _get_handle_error(self, row_handle: RowHandle, table_data: ConstList) -> HandleError.Reason:
         """
