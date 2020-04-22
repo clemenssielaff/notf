@@ -19,6 +19,7 @@ from pynotf.data import Value, RowHandle, Table, TableRow, Storage, mutate_value
 import pynotf.extra.pynanovg as nanovg
 import pynotf.extra.opengl as gl
 
+from prototype.event_loop import EventLoop
 
 # * node hierarchy
 # * a service (periphery devices)
@@ -133,12 +134,6 @@ class NodeStateDescription(NamedTuple):
     design: NodeDesign
 
 
-class NodeStateMachine(NamedTuple):
-    states: Dict[str, NodeStateDescription]
-    transitions: List[Tuple[str, str]]
-    initial: str
-
-
 class NodeSockets(NamedTuple):
     names: Bonsai
     elements: List[Tuple[NodeSocketKind, RowHandle]]
@@ -146,7 +141,9 @@ class NodeSockets(NamedTuple):
 
 class NodeDescription(NamedTuple):
     sockets: Dict[str, Tuple[NodeSocketKind, Value]]
-    state_machine: NodeStateMachine
+    states: Dict[str, NodeStateDescription]
+    transitions: List[Tuple[str, str]]
+    initial_state: str
 
 
 class Claim(NamedTuple):
@@ -229,6 +226,10 @@ def create_operator(data: OperatorRowDescription) -> RowHandle:
     :param data: Date from which to construct the new row.
     :return: The handle to the created row.
     """
+    # We allow access to the operator data using `self.XXX`. Ensure that a data name is not shadowed by a OperatorSelf
+    # method. This is an artifact of the Python language and generally nothing to worry about.
+    assert len(set(data.data.get_keys()).intersection(set(dir(OperatorSelf)))) == 0
+
     return get_app().get_table(TableIndex.OPERATORS).add_row(
         op_index=data.operator_index,
         value=data.initial_value,
@@ -654,74 +655,6 @@ class Painterpreter:
         glfw.swap_buffers(self._window)  # TODO: this is happening in the MAIN loop - it should happen on a 3nd thread
 
 
-# EVENT LOOP ###########################################################################################################
-
-class EventLoop:
-
-    def __init__(self):
-        self._events = curio.UniversalQueue()
-        self._should_close: bool = False
-
-    def schedule(self, event) -> None:
-        self._events.put(event)
-
-    def close(self):
-        self._should_close = True
-        self._events.put(None)
-
-    def run(self):
-        curio.run(self._loop)
-
-    async def _loop(self):
-        new_tasks = []
-        active_tasks = set()
-        finished_tasks = []
-
-        async def finish_when_complete(coroutine, *args) -> Any:
-            """
-            Executes a coroutine, and automatically joins
-            :param coroutine: Coroutine to execute.
-            :param args: Arguments passed to the coroutine.
-            :return: Returns the result of the given coroutine (retrievable on join).
-            """
-            try:
-                task_result: Any = await coroutine(*args)
-            except curio.errors.TaskCancelled:
-                return None
-            finished_tasks.append(await curio.current_task())
-            return task_result
-
-        while True:
-            event = await self._events.get()
-
-            # close the loop
-            if self._should_close:
-                for task in active_tasks:
-                    await task.cancel()
-                for task in active_tasks:
-                    await task.join()
-                return
-
-            # execute a synchronous function first
-            assert isinstance(event, tuple) and len(event) > 0
-            if iscoroutinefunction(event[0]):
-                new_tasks.append(event)
-            else:
-                event[0](*event[1:])
-
-            # start all tasks that might have been kicked off by a (potential) synchronous function call above
-            for task_args in new_tasks:
-                active_tasks.add(await curio.spawn(finish_when_complete(*task_args)))
-            new_tasks.clear()
-
-            # finally join all finished task
-            for task in finished_tasks:
-                assert task in active_tasks
-                await task.join()
-                active_tasks.remove(task)
-            finished_tasks.clear()
-
-
 # LOGIC ################################################################################################################
 
 class OperatorSelf:
@@ -733,8 +666,30 @@ class OperatorSelf:
         assert (handle.table == TableIndex.OPERATORS)
         self._handle: RowHandle = handle
 
+    def __getitem__(self, name: str) -> Value:
+        """
+        self['arg'] is the access to the Operator's arguments.
+        :param name: Name of the argument to access.
+        :return: The requested argument.
+        :raise: KeyError
+        """
+        return get_app().get_table(TableIndex.OPERATORS)[self._handle]["args"][name]
+
+    def __getattr__(self, name: str):
+        """
+        `self.name` is the access to the Operator's private data.
+        :param name: Name of the data field to access.
+        :return: The requested data field.
+        :raise: KeyError.
+        """
+        return get_app().get_table(TableIndex.OPERATORS)[self._handle]["data"][name]
+
     @property
-    def data(self) -> Value:  # TODO: replace `self.data['x']` with `self.x`
+    def data(self) -> Value:
+        """
+        Complete data field, for example if you want to return the current data unchanged
+        :return:
+        """
         return get_app().get_table(TableIndex.OPERATORS)[self._handle]["data"]
 
     def is_valid(self) -> bool:
@@ -745,9 +700,6 @@ class OperatorSelf:
 
     def get_downstream(self) -> RowHandleList:
         return get_downstream(self._handle)
-
-    def __getitem__(self, name: str):
-        return get_app().get_table(TableIndex.OPERATORS)[self._handle]["args"][name]
 
     def next(self, value: Value) -> None:
         emit_downstream(self._handle, OperatorCallback.NEXT, value)
@@ -823,7 +775,7 @@ class Scene:
             )
         )
         self._root_node: Node = Node(root_handle)
-        self._root_node.transition_into(root_description.state_machine.initial)
+        self._root_node.transition_into(root_description.initial_state)
 
     def __del__(self):
         self._root_node.remove()
@@ -832,6 +784,8 @@ class Scene:
         self._root_node.create_child(name, description)
 
     def get_node(self, name: str) -> Optional[RowHandle]:
+        if name.startswith('/'): # remove leading
+            name = name[1:]
         path: List[str] = name.split('/')
         node: Node = self._root_node
         for step in path:
@@ -869,9 +823,9 @@ class Node:
         )
         node_table[self._handle]['children'] = node_table[self._handle]['children'].set(name, child_handle)
 
-        # initialize the child node by transitioning into its initial state
+        # initialize the child node by transitioning into its initial_state state
         child_node: Node = Node(child_handle)
-        child_node.transition_into(description.state_machine.initial)
+        child_node.transition_into(description.initial_state)
 
         return child_handle
 
@@ -913,7 +867,7 @@ class Node:
 
     def get_design(self) -> NodeDesign:
         node_table: Table = get_app().get_table(TableIndex.NODES)
-        return node_table[self._handle]['description'].state_machine.states[self.get_state()].design
+        return node_table[self._handle]['description'].states[self.get_state()].design
 
     def remove(self):
         # unregister from the parent
@@ -931,13 +885,13 @@ class Node:
         node_table: Table = get_app().get_table(TableIndex.NODES)
         current_state: str = node_table[self._handle]['state']
         node_description: NodeDescription = node_table[self._handle]['description']
-        assert current_state == '' or (current_state, state) in node_description.state_machine.transitions
+        assert current_state == '' or (current_state, state) in node_description.transitions
 
         # remove the current dynamic network
         self._clear_network()
 
         # enter the new state
-        new_state: NodeStateDescription = node_description.state_machine.states[state]
+        new_state: NodeStateDescription = node_description.states[state]
         node_table[self._handle]['state'] = state
 
         # create new elements
@@ -962,8 +916,8 @@ class Node:
 
         # TODO: create all other connections
 
-        # children = field(type=RowHandleMap, mandatory=True, initial=RowHandleMap())
-        # network = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
+        # children = field(type=RowHandleMap, mandatory=True, initial_state=RowHandleMap())
+        # network = field(type=RowHandleList, mandatory=True, initial_state=RowHandleList())
 
     def _remove_recursively(self):
         """
@@ -1043,20 +997,20 @@ class OpBuffer:
 
     @staticmethod
     def on_next(self: OperatorSelf, _upstream: RowHandle, _value: Value) -> Value:
-        if not int(self.data["is_running"]) == 1:
+        if not int(self.is_running) == 1:
             async def timeout():
                 await curio.sleep(float(self["time_span"]))
                 if not self.is_valid():
                     return
-                self.next(Value(self.data["counter"]))
-                print(f'Clicked {int(self.data["counter"])} times in the last {float(self["time_span"])} seconds')
+                self.next(Value(self.counter))
+                print(f'Clicked {int(self.counter)} times in the last {float(self["time_span"])} seconds')
                 return mutate_value(self.data, False, "is_running")
 
             self.schedule(timeout)
             return Value(is_running=True, counter=1)
 
         else:
-            return mutate_value(self.data, self.data["counter"] + 1, "counter")
+            return mutate_value(self.data, self.counter + 1, "counter")
 
 
 class OpFactory:
@@ -1142,14 +1096,13 @@ class OpSine:
         frequency: float = 0.5
         amplitude: float = 100
         samples: float = 60  # samples per second
-        keys: Optional[List[str]] = args.get_keys()
-        if keys:
-            if 'frequency' in keys:
-                frequency = float(args['frequency'])
-            if 'amplitude' in keys:
-                amplitude = float(args['amplitude'])
-            if 'samples' in keys:
-                amplitude = float(args['samples'])
+        keys: List[str] = args.get_keys()
+        if 'frequency' in keys:
+            frequency = float(args['frequency'])
+        if 'amplitude' in keys:
+            amplitude = float(args['amplitude'])
+        if 'samples' in keys:
+            amplitude = float(args['samples'])
 
         return OperatorRowDescription(
             operator_index=OperatorIndex.SINE,
@@ -1216,49 +1169,48 @@ ELEMENT_TABLE: Tuple[
 # SETUP ################################################################################################################
 
 root_node: NodeDescription = NodeDescription(
-    sockets={}, state_machine=NodeStateMachine(
-        states=dict(
-            default=NodeStateDescription(
-                network=NodeNetworkDescription(
-                    operators=[],
-                    internal_connections=[],
-                    external_connections=[],
-                    incoming_connections=[],
-                    outgoing_connections=[],
-                ),
-                design=[],
-            )
-        ),
-        transitions=[],
-        initial='default'
-    )
+    sockets={},
+    states=dict(
+        default=NodeStateDescription(
+            network=NodeNetworkDescription(
+                operators=[],
+                internal_connections=[],
+                external_connections=[],
+                incoming_connections=[],
+                outgoing_connections=[],
+            ),
+            design=[],
+        )
+    ),
+    transitions=[],
+    initial_state='default',
 )
 
 count_presses_node: NodeDescription = NodeDescription(
-    sockets=dict(key_down=(NodeSocketKind.INPUT, Value())),
-    state_machine=NodeStateMachine(
-        states=dict(
-            default=NodeStateDescription(
-                network=NodeNetworkDescription(
-                    operators=[
-                        (OperatorIndex.BUFFER, Value(schema=Value.Schema(), time_span=1)),
-                        (OperatorIndex.PRINTER, Value()),
-                    ],
-                    internal_connections=[
-                        (0, 1),
-                    ],
-                    external_connections=[],
-                    incoming_connections=[
-                        ('key_down', 0),
-                    ],
-                    outgoing_connections=[],
-                ),
-                design=[],
+    sockets=dict(
+        key_down=(NodeSocketKind.INPUT, Value())
+    ),
+    states=dict(
+        default=NodeStateDescription(
+            network=NodeNetworkDescription(
+                operators=[
+                    (OperatorIndex.BUFFER, Value(schema=Value.Schema(), time_span=1)),
+                    (OperatorIndex.PRINTER, Value()),
+                ],
+                internal_connections=[
+                    (0, 1),
+                ],
+                external_connections=[],
+                incoming_connections=[
+                    ('key_down', 0),
+                ],
+                outgoing_connections=[],
             ),
+            design=[],
         ),
-        transitions=[],
-        initial='default'
-    )
+    ),
+    transitions=[],
+    initial_state='default',
 )
 
 countdown_node: NodeDescription = NodeDescription(
@@ -1266,43 +1218,41 @@ countdown_node: NodeDescription = NodeDescription(
         key_down=(NodeSocketKind.INPUT, Value()),
         roundness=(NodeSocketKind.PROPERTY, Value(10)),
     ),
-    state_machine=NodeStateMachine(
-        states=dict(
-            default=NodeStateDescription(
-                network=NodeNetworkDescription(
-                    operators=[
-                        (OperatorIndex.FACTORY, Value(id=OperatorIndex.COUNTDOWN, args=Value(start=5))),
-                        (OperatorIndex.PRINTER, Value(0)),
-                        (OperatorIndex.SINE, Value()),
-                    ],
-                    internal_connections=[
-                        (0, 1),
-                        # TODO: internal connection into a property
-                    ],
-                    external_connections=[],
-                    incoming_connections=[
-                        ('key_down', 0),
-                    ],
-                    outgoing_connections=[],
-                ),
-                design=[
-                    ("begin_path",),
-                    ("rounded_rect", 50, 50,
-                     Expression('max(0, window.width - 100)'),
-                     Expression('max(0, window.height - 100)'),
-                     Expression('prop["roundness"]')),
-                    ("fill_color", nanovg.rgba(.5, .5, .5)),
-                    ("fill",),
+    states=dict(
+        default=NodeStateDescription(
+            network=NodeNetworkDescription(
+                operators=[
+                    (OperatorIndex.FACTORY, Value(id=OperatorIndex.COUNTDOWN, args=Value(start=5))),
+                    (OperatorIndex.PRINTER, Value(0)),
+                    (OperatorIndex.SINE, Value()),
                 ],
+                internal_connections=[
+                    (0, 1),
+                    # TODO: internal connection into a property
+                ],
+                external_connections=[],
+                incoming_connections=[
+                    ('key_down', 0),
+                ],
+                outgoing_connections=[],
             ),
+            design=[
+                ("begin_path",),
+                ("rounded_rect", 50, 50,
+                 Expression('max(0, window.width - 100)'),
+                 Expression('max(0, window.height - 100)'),
+                 Expression('prop["roundness"]')),
+                ("fill_color", nanovg.rgba(.5, .5, .5)),
+                ("fill",),
+            ],
         ),
-        transitions=[],
-        initial='default'
-    )
+    ),
+    transitions=[],
+    initial_state='default',
 )
 
 
-# TODO: instead of this function, use the root node description's initial state for setup
+# TODO: instead of this function, use the root node description's initial_state state for setup
 def app_setup(window, scene: Scene) -> None:
     def key_callback_fn(_1, key, _2, action, _3):
         nonlocal key_fact

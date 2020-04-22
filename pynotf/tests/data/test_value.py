@@ -202,7 +202,7 @@ class TestCase(unittest.TestCase):
 
     def test_keys(self):
         self.assertEqual(test_value.get_keys(), list(test_element.keys()))
-        self.assertIsNone(Value(0).get_keys())
+        self.assertTrue(len(Value(0).get_keys()) == 0)
 
     def test_none(self):
         none: Value = Value()

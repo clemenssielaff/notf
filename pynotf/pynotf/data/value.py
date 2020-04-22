@@ -623,15 +623,15 @@ class Value:
         assert len(self._schema) > 0
         return Kind(self._schema[0])
 
-    def get_keys(self) -> Optional[List[str]]:
+    def get_keys(self) -> List[str]:
         """
-        Returns the known keys if this is a named record.
-        Otherwise returns None.
+        Returns the known keys.
+        The returned list is empty if this is not a named record.
         """
-        if self._dictionary:
-            return self._dictionary.names.keys() or None
+        if self._dictionary is None:
+            return []
         else:
-            return None
+            return self._dictionary.names.keys()
 
     def __repr__(self) -> str:
         """
