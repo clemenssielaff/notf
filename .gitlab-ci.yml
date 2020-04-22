@@ -1,4 +1,4 @@
-image: ubuntu:19.04
+image: ubuntu:19.10
 
 notf-tests:
   stage: build
