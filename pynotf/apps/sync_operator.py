@@ -6,7 +6,8 @@ from threading import Thread
 from typing import Tuple, Callable, Any, Optional, Dict, Union, List, NamedTuple
 from types import CodeType
 from inspect import iscoroutinefunction
-from math import inf
+from math import inf, sin, pi
+from time import monotonic
 
 import glfw
 import curio
@@ -48,7 +49,8 @@ class OperatorCallback(IntEnum):
     NEXT = 0  # 0-2 matches the corresponding EmitterStatus
     FAILURE = 1
     COMPLETION = 2
-    CREATE = 3
+    SUBSCRIPTION = 3
+    CREATE = 4
 
 
 @unique
@@ -143,7 +145,7 @@ class NodeSockets(NamedTuple):
 
 
 class NodeDescription(NamedTuple):
-    sockets: Dict[str, Tuple[NodeSocketKind, Value.Schema]]
+    sockets: Dict[str, Tuple[NodeSocketKind, Value]]
     state_machine: NodeStateMachine
 
 
@@ -199,7 +201,7 @@ class OperatorRow(TableRow):
 class OperatorRowDescription(NamedTuple):
     operator_index: int
     initial_value: Value
-    input_schema: Value.Schema
+    input_schema: Value.Schema = Value.Schema()
     args: Value = Value()
     data: Value = Value()
     flags: int = create_flags()
@@ -435,6 +437,11 @@ def subscribe(upstream: RowHandle, downstream: RowHandle) -> None:
     add_downstream(upstream, downstream)
     add_upstream(downstream, upstream)
 
+    # execute the upstream's `on_subscribe` callback
+    on_subscribe_func: Optional[Callable] = ELEMENT_TABLE[get_op_index(upstream)][OperatorCallback.SUBSCRIPTION]
+    if on_subscribe_func is not None:
+        on_subscribe_func(OperatorSelf(upstream), downstream)
+
 
 def unsubscribe(upstream: RowHandle, downstream: RowHandle) -> None:
     operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
@@ -502,6 +509,11 @@ class Application:
 
     def is_handle_valid(self, handle: RowHandle) -> bool:
         return self.get_table(handle.table).is_handle_valid(handle)
+
+    @staticmethod
+    def redraw():
+        # TODO: redrawing does not differentiate between windows
+        glfw.post_empty_event()
 
     def schedule_event(self, callback: Callable, *args):
         assert self._data
@@ -722,7 +734,7 @@ class OperatorSelf:
         self._handle: RowHandle = handle
 
     @property
-    def data(self) -> Value:
+    def data(self) -> Value:  # TODO: replace `self.data['x']` with `self.x`
         return get_app().get_table(TableIndex.OPERATORS)[self._handle]["data"]
 
     def is_valid(self) -> bool:
@@ -806,8 +818,8 @@ class Scene:
             parent=RowHandle(),  # empty row handle as parent
             sockets=NodeSockets(
                 names=Bonsai([socket_name for socket_name in root_description.sockets.keys()]),
-                elements=[(socket_direction, create_operator(OpRelay.create(Value(socket_schema)))) for
-                          (socket_direction, socket_schema) in root_description.sockets.values()],
+                elements=[(socket_direction, create_operator(OpRelay.create(socket_value))) for
+                          (socket_direction, socket_value) in root_description.sockets.values()],
             )
         )
         self._root_node: Node = Node(root_handle)
@@ -879,7 +891,7 @@ class Node:
 
     def get_property(self, name: str) -> Optional[RowHandle]:
         socket_handle: Optional[RowHandle] = self.get_socket(name)
-        if socket_handle is None or get_op_index(socket_handle) != OperatorIndex.PROPERTY:
+        if socket_handle is None:  # or get_op_index(socket_handle) != OperatorIndex.PROPERTY: # TODO: create actual properties...
             return None
         else:
             return socket_handle
@@ -894,6 +906,7 @@ class Node:
         assert socket_handle.table == TableIndex.OPERATORS
         return socket_handle
         # TODO: differentiate inputs/outputs? Right now, you can connect an output as downstream from external
+        #   Also, as it is, NodeSocketKind is totally irrelevant
 
     def get_state(self) -> str:
         return get_app().get_table(TableIndex.NODES)[self._handle]['state']
@@ -942,6 +955,10 @@ class Node:
         # create internal connections
         for source_index, target_index in network_description.internal_connections:
             subscribe(network[source_index], network[target_index])
+
+        # TODO: HACK
+        if self._handle.index == 1:
+            subscribe(network[2], self.get_socket("roundness"))
 
         # TODO: create all other connections
 
@@ -1057,7 +1074,6 @@ class OpFactory:
         return OperatorRowDescription(
             operator_index=OperatorIndex.FACTORY,
             initial_value=example_operator_data.initial_value,
-            input_schema=Value.Schema(),
             args=args,
         )
 
@@ -1084,7 +1100,6 @@ class OpCountdown:
         return OperatorRowDescription(
             operator_index=OperatorIndex.COUNTDOWN,
             initial_value=Value(0),
-            input_schema=Value.Schema(),
             args=args,
         )
 
@@ -1121,13 +1136,53 @@ class OpPrinter:
         return self.data
 
 
+class OpSine:
+    @staticmethod
+    def create(args: Value) -> OperatorRowDescription:
+        frequency: float = 0.5
+        amplitude: float = 100
+        samples: float = 60  # samples per second
+        keys: Optional[List[str]] = args.get_keys()
+        if keys:
+            if 'frequency' in keys:
+                frequency = float(args['frequency'])
+            if 'amplitude' in keys:
+                amplitude = float(args['amplitude'])
+            if 'samples' in keys:
+                amplitude = float(args['samples'])
+
+        return OperatorRowDescription(
+            operator_index=OperatorIndex.SINE,
+            initial_value=Value(0),
+            args=Value(
+                frequency=frequency,
+                amplitude=amplitude,
+                samples=samples,
+            )
+        )
+
+    @staticmethod
+    def on_subscribe(self: OperatorSelf, _1: RowHandle) -> None:
+        frequency: float = float(self['frequency'])
+        amplitude: float = float(self['amplitude'])
+        samples: float = float(self['samples'])
+
+        async def runner():
+            while self.is_valid():
+                self.next(Value((sin(2 * pi * frequency * monotonic()) + 1) * amplitude * 0.5))
+                get_app().redraw()
+                await curio.sleep(1 / samples)
+
+        self.schedule(runner)
+
+
 # class OpBuffer:
 #     @staticmethod
 #     def create(args: Value) -> OperatorRowDescription:
 #         pass
 #
 #     @staticmethod
-#     def on_next(self: Operator, upstream: RowHandle, value: Value) -> Value:
+#     def on_next(self: OperatorSelf, upstream: RowHandle, value: Value) -> Value:
 #         pass
 
 @unique
@@ -1138,21 +1193,24 @@ class OperatorIndex(IndexEnum):
     FACTORY = auto()
     COUNTDOWN = auto()
     PRINTER = auto()
+    SINE = auto()
 
 
 ELEMENT_TABLE: Tuple[
     Tuple[
-        Optional[Callable[[OperatorSelf, RowHandle], Value]],
-        Optional[Callable[[OperatorSelf, RowHandle], Value]],
-        Optional[Callable[[OperatorSelf, RowHandle], Value]],
+        Optional[Callable[[OperatorSelf, RowHandle], Value]],  # on next
+        Optional[Callable[[OperatorSelf, RowHandle], Value]],  # on failure
+        Optional[Callable[[OperatorSelf, RowHandle], Value]],  # on completion
+        Optional[Callable[[OperatorSelf, RowHandle], None]],  # on subscription
         Callable[[Value], OperatorRowDescription],
     ], ...] = (
-    (OpRelay.on_next, None, None, OpRelay.create),
-    (OpRelay.on_next, None, None, OpProperty.create),  # property uses relay's `on_next` function
-    (OpBuffer.on_next, None, None, OpBuffer.create),
-    (OpFactory.on_next, None, None, OpFactory.create),
-    (OpCountdown.on_next, None, None, OpCountdown.create),
-    (OpPrinter.on_next, None, None, OpPrinter.create),
+    (OpRelay.on_next, None, None, None, OpRelay.create),
+    (OpRelay.on_next, None, None, None, OpProperty.create),  # property uses relay's `on_next` function
+    (OpBuffer.on_next, None, None, None, OpBuffer.create),
+    (OpFactory.on_next, None, None, None, OpFactory.create),
+    (OpCountdown.on_next, None, None, None, OpCountdown.create),
+    (OpPrinter.on_next, None, None, None, OpPrinter.create),
+    (None, None, None, OpSine.on_subscribe, OpSine.create),
 )
 
 # SETUP ################################################################################################################
@@ -1177,7 +1235,7 @@ root_node: NodeDescription = NodeDescription(
 )
 
 count_presses_node: NodeDescription = NodeDescription(
-    sockets=dict(key_down=(NodeSocketKind.INPUT, Value.Schema())),
+    sockets=dict(key_down=(NodeSocketKind.INPUT, Value())),
     state_machine=NodeStateMachine(
         states=dict(
             default=NodeStateDescription(
@@ -1204,7 +1262,10 @@ count_presses_node: NodeDescription = NodeDescription(
 )
 
 countdown_node: NodeDescription = NodeDescription(
-    sockets=dict(key_down=(NodeSocketKind.INPUT, Value.Schema())),
+    sockets=dict(
+        key_down=(NodeSocketKind.INPUT, Value()),
+        roundness=(NodeSocketKind.PROPERTY, Value(10)),
+    ),
     state_machine=NodeStateMachine(
         states=dict(
             default=NodeStateDescription(
@@ -1212,9 +1273,11 @@ countdown_node: NodeDescription = NodeDescription(
                     operators=[
                         (OperatorIndex.FACTORY, Value(id=OperatorIndex.COUNTDOWN, args=Value(start=5))),
                         (OperatorIndex.PRINTER, Value(0)),
+                        (OperatorIndex.SINE, Value()),
                     ],
                     internal_connections=[
                         (0, 1),
+                        # TODO: internal connection into a property
                     ],
                     external_connections=[],
                     incoming_connections=[
@@ -1226,7 +1289,8 @@ countdown_node: NodeDescription = NodeDescription(
                     ("begin_path",),
                     ("rounded_rect", 50, 50,
                      Expression('max(0, window.width - 100)'),
-                     Expression('max(0, window.height - 100)'), 100),
+                     Expression('max(0, window.height - 100)'),
+                     Expression('prop["roundness"]')),
                     ("fill_color", nanovg.rgba(.5, .5, .5)),
                     ("fill",),
                 ],
@@ -1236,8 +1300,6 @@ countdown_node: NodeDescription = NodeDescription(
         initial='default'
     )
 )
-
-# TODO: continue here - try drawing with access to a Property of the herbert countdown node
 
 
 # TODO: instead of this function, use the root node description's initial state for setup
