@@ -15,11 +15,13 @@ from pyrsistent import field
 
 sys.path.append(r'/home/clemens/code/notf/pynotf')
 
-from pynotf.data import Value, RowHandle, Table, TableRow, Storage, mutate_value, RowHandleList, Bonsai, RowHandleMap
+from pynotf.data import Value, RowHandle, Table, TableRow, Storage, mutate_value, RowHandleList, Bonsai, RowHandleMap, \
+    Path
 import pynotf.extra.pynanovg as nanovg
 import pynotf.extra.opengl as gl
 
 from prototype.event_loop import EventLoop
+
 
 # * node hierarchy
 # * a service (periphery devices)
@@ -113,25 +115,19 @@ Xform = Tuple[float, float, float, float, float, float]
 
 @unique
 class NodeSocketKind(Enum):
-    INPUT = auto()
+    SOURCE = auto()
     PROPERTY = auto()
-    OUTPUT = auto()
-
-
-class NodeNetworkDescription(NamedTuple):  # TODO: assign integers to sockets as well
-    operators: List[Tuple[OperatorIndex, Value]]
-    internal_connections: List[Tuple[int, int]]  # internal to internal
-    external_connections: List[Tuple[str, str]]  # external to input
-    incoming_connections: List[Tuple[str, int]]  # input to internal
-    outgoing_connections: List[Tuple[int, str]]  # internal to output
+    SINK = auto()
 
 
 NodeDesign = List[Tuple[Any, ...]]
 
 
 class NodeStateDescription(NamedTuple):
-    network: NodeNetworkDescription
+    operators: Dict[str, Tuple[OperatorIndex, Value]]
+    connections: List[Tuple[Path, Path]]
     design: NodeDesign
+    children: Dict[str, NodeDescription]
 
 
 class NodeSockets(NamedTuple):
@@ -497,43 +493,38 @@ def remove_node(node: RowHandle) -> None:
 # APPLICATION ##########################################################################################################
 
 class Application:
-    class Data(NamedTuple):
-        storage: Storage
-        event_loop: EventLoop
 
     def __init__(self):
-        self._data: Optional[Application.Data] = None
+        self._storage: Storage = Storage(
+            operators=OperatorRow,
+            nodes=NodeRow,
+        )
+        self._event_loop: EventLoop = EventLoop()
+        self._scene: Scene = Scene()
 
     def get_table(self, table_index: Union[int, TableIndex]) -> Table:
-        assert self._data
-        return self._data.storage[int(table_index)]
+        return self._storage[int(table_index)]
 
     def is_handle_valid(self, handle: RowHandle) -> bool:
         return self.get_table(handle.table).is_handle_valid(handle)
 
+    def get_scene(self) -> Scene:
+        return self._scene
+
     @staticmethod
     def redraw():
-        # TODO: redrawing does not differentiate between windows
         glfw.post_empty_event()
 
     def schedule_event(self, callback: Callable, *args):
-        assert self._data
-        self._data.event_loop.schedule((callback, *args))
+        self._event_loop.schedule((callback, *args))
 
-    def run(self, setup_func: Callable[[Any, Scene], None], root_desc: NodeDescription) -> int:
+    def run(self, root_desc: NodeDescription) -> int:
         # initialize glfw
         if not glfw.init():
             return -1
 
         # create the application data
-        self._data = Application.Data(
-            storage=Storage(
-                operators=OperatorRow,
-                nodes=NodeRow,
-            ),
-            event_loop=EventLoop(),
-        )
-        scene = Scene(root_desc)
+        self._scene.initialize(root_desc)
 
         # create a windowed mode window and its OpenGL context.
         glfw.window_hint(glfw.CLIENT_API, glfw.OPENGL_ES_API)
@@ -547,40 +538,44 @@ class Application:
             glfw.terminate()
             return -1
 
+        # TODO: some sort of ... OS service?
+        #  also, where _do_ facts live? Right now, they live as source sockets on the root node...
+        glfw.set_key_callback(window, key_callback)
+        glfw.set_mouse_button_callback(window, mouse_button_callback)
+
         # make the window's context current
         glfw.make_context_current(window)
         nanovg._nanovg.loadGLES2Loader(glfw._glfw.glfwGetProcAddress)
         ctx = nanovg._nanovg.nvgCreateGLES3(5)
 
         # start the event loop
-        event_thread = Thread(target=self._data.event_loop.run)
+        event_thread = Thread(target=self._event_loop.run)
         event_thread.start()
-
-        # execute the user-supplied setup function
-        setup_func(window, scene)
 
         try:
             while not glfw.window_should_close(window):
                 with Painterpreter(window, ctx) as painter:
-                    painter.paint(scene.get_node("herbert"))
+                    painter.paint(self._scene.get_node(Path("/herbert")))
                     glfw.wait_events()
 
         finally:
-            self._data.event_loop.close()
+            self._event_loop.close()
             event_thread.join()
+            self._scene.clear()
 
             nanovg._nanovg.nvgDeleteGLES3(ctx)
-            del scene
-            self._data = None
             glfw.terminate()
 
         return 0  # terminated normally
 
 
-_THE_APPLICATION: Application = Application()
+_THE_APPLICATION: Optional[Application] = None
 
 
 def get_app() -> Application:
+    global _THE_APPLICATION
+    if _THE_APPLICATION is None:
+        _THE_APPLICATION = Application()
     return _THE_APPLICATION
 
 
@@ -725,18 +720,8 @@ class OperatorSelf:
 
 
 class Fact:
-    def __init__(self, initial: Value):
-        self._handle: RowHandle = get_app().get_table(TableIndex.OPERATORS).add_row(
-            value=initial,
-            op_index=OperatorIndex.RELAY,
-            input_schema=initial.get_schema(),
-            args=Value(),
-            data=Value(),
-            flags=create_flags(external=True),
-        )
-
-    def __del__(self):
-        remove_operator(self._handle)
+    def __init__(self, handle: RowHandle):
+        self._handle: RowHandle = handle
 
     def get_value(self) -> Value:
         return get_value(self._handle)
@@ -762,7 +747,16 @@ class Fact:
 
 class Scene:
 
-    def __init__(self, root_description: NodeDescription):
+    def __init__(self):
+        self._root_node: Optional[Node] = None
+
+    def initialize(self, root_description: NodeDescription):
+        for kind, _ in root_description.sockets.values():
+            assert kind == NodeSocketKind.SOURCE
+        facts: Dict[str, OperatorRowDescription] = {
+            key: OpRelay.create(value) for key, (_, value) in root_description.sockets.items()
+        }  # TODO: shouldn't Facts be external?
+
         # create the root node
         node_table: Table = get_app().get_table(TableIndex.NODES)
         root_handle: RowHandle = node_table.add_row(
@@ -770,31 +764,31 @@ class Scene:
             parent=RowHandle(),  # empty row handle as parent
             sockets=NodeSockets(
                 names=Bonsai([socket_name for socket_name in root_description.sockets.keys()]),
-                elements=[(socket_direction, create_operator(OpRelay.create(socket_value))) for
-                          (socket_direction, socket_value) in root_description.sockets.values()],
+                elements=[(NodeSocketKind.SOURCE, create_operator(fact)) for fact in facts.values()],
             )
         )
-        self._root_node: Node = Node(root_handle)
+        self._root_node = Node(root_handle)
         self._root_node.transition_into(root_description.initial_state)
 
-    def __del__(self):
-        self._root_node.remove()
+    def clear(self):
+        if self._root_node:
+            self._root_node.remove()
 
-    def create_node(self, name: str, description: NodeDescription):
-        self._root_node.create_child(name, description)
+    def create_node(self, name: str, description: NodeDescription) -> RowHandle:
+        return self._root_node.create_child(name, description)
 
-    def get_node(self, name: str) -> Optional[RowHandle]:
-        if name.startswith('/'): # remove leading
-            name = name[1:]
-        path: List[str] = name.split('/')
-        node: Node = self._root_node
-        for step in path:
-            node = Node(node.get_child(step))
-        return node.get_handle()
+    def get_fact(self, name: str, ) -> Optional[Fact]:
+        fact_handle: Optional[RowHandle] = self._root_node.get_source(name)
+        if fact_handle:
+            return Fact(fact_handle)
+        else:
+            return None
 
-    def get_socket(self, name: str) -> Optional[RowHandle]:
-        path, socket = name.rsplit(':', maxsplit=1)
-        return Node(self.get_node(path)).get_socket(socket)
+    def get_node(self, path: Path) -> Optional[RowHandle]:
+        return self._root_node.get_child(path)
+
+    def get_source(self, name: str) -> Optional[RowHandle]:
+        return self._root_node.get_source(name)
 
 
 class Node:
@@ -804,6 +798,9 @@ class Node:
 
     def get_handle(self) -> RowHandle:
         return self._handle
+
+    def get_parent(self) -> Optional[RowHandle]:
+        return get_app().get_table(TableIndex.NODES)[self._handle]['parent']
 
     # TODO: create child and -operator and state transition and all other private node methods should be operators...
     def create_child(self, name: str, description: NodeDescription) -> RowHandle:
@@ -833,34 +830,60 @@ class Node:
         node_table: Table = get_app().get_table(TableIndex.NODES)
         parent_handle: RowHandle = node_table[self._handle]['parent']
         if parent_handle.is_null():
-            return '<root>'
+            return '/'
         children: RowHandleMap = node_table[parent_handle]['children']
         for index, (child_name, child_handle) in enumerate(children.items()):
             if child_handle == self._handle:
                 return child_name
         assert False
 
-    def get_child(self, name: str) -> Optional[RowHandle]:
-        return get_app().get_table(TableIndex.NODES)[self._handle]['children'].get(name)
+    def get_child(self, path: Path, step: int = 0) -> Optional[RowHandle]:
+        if step == len(path):
+            return self._handle
 
-    def get_property(self, name: str) -> Optional[RowHandle]:
-        socket_handle: Optional[RowHandle] = self.get_socket(name)
-        if socket_handle is None:  # or get_op_index(socket_handle) != OperatorIndex.PROPERTY: # TODO: create actual properties...
+        # next step is up
+        next_step: str = path[step]
+        if next_step == Path.STEP_UP:
+            parent: Optional[RowHandle] = self.get_parent()
+            if parent is None:
+                return None
+            return Node(parent).get_child(path, step + 1)
+
+        # next step is down
+        node_table: Table = get_app().get_table(TableIndex.NODES)
+        child_handle: Optional[RowHandle] = node_table[self._handle]['children'].get(next_step)
+        if child_handle is None:
             return None
-        else:
-            return socket_handle
+        return Node(child_handle).get_child(path, step + 1)
 
-    def get_socket(self, name: str) -> Optional[RowHandle]:
+    def _get_socket(self, name: str) -> Optional[Tuple[NodeSocketKind, RowHandle]]:
         node_table: Table = get_app().get_table(TableIndex.NODES)
         sockets: NodeSockets = node_table[self._handle]['sockets']
         index: Optional[int] = sockets.names.get(name)
         if index is None:
             return None
-        socket_handle: RowHandle = sockets.elements[index][1]
-        assert socket_handle.table == TableIndex.OPERATORS
-        return socket_handle
-        # TODO: differentiate inputs/outputs? Right now, you can connect an output as downstream from external
-        #   Also, as it is, NodeSocketKind is totally irrelevant
+        return sockets.elements[index]
+
+    def get_source(self, name: str) -> Optional[RowHandle]:
+        socket_kind, socket_handle = self._get_socket(name)
+        if socket_kind == NodeSocketKind.SOURCE:
+            return socket_handle
+        else:
+            return None
+
+    def get_property(self, name: str) -> Optional[RowHandle]:
+        socket_kind, socket_handle = self._get_socket(name)
+        if socket_kind == NodeSocketKind.PROPERTY:
+            return socket_handle
+        else:
+            return None
+
+    def get_sink(self, name: str) -> Optional[RowHandle]:
+        socket_kind, socket_handle = self._get_socket(name)
+        if socket_kind == NodeSocketKind.SINK:
+            return socket_handle
+        else:
+            return None
 
     def get_state(self) -> str:
         return get_app().get_table(TableIndex.NODES)[self._handle]['state']
@@ -887,37 +910,47 @@ class Node:
         node_description: NodeDescription = node_table[self._handle]['description']
         assert current_state == '' or (current_state, state) in node_description.transitions
 
-        # remove the current dynamic network
-        self._clear_network()
+        # remove the dynamic operators from last state
+        self._clear_operators()
+        # TODO: remove children, or think of a better waz to transition between states
 
         # enter the new state
-        new_state: NodeStateDescription = node_description.states[state]
         node_table[self._handle]['state'] = state
 
-        # create new elements
-        network: List[RowHandle] = []
-        network_description: NodeNetworkDescription = new_state.network
-        for kind, args in network_description.operators:
-            network.append(create_operator(ELEMENT_TABLE[kind][OperatorCallback.CREATE](args)))
-        node_table[self._handle]['network'] = RowHandleList(network)
+        # create new child nodes
+        new_state: NodeStateDescription = node_description.states[state]
+        for name, child_description in new_state.children.items():
+            self.create_child(name, child_description)
 
-        # incoming connections
-        for input_name, operator_index in network_description.incoming_connections:
-            relay: RowHandle = self.get_socket(input_name)
-            subscribe(relay, network[operator_index])
+        # create new operators
+        network: Dict[str, RowHandle] = {}
+        for name, (kind, args) in new_state.operators.items():
+            assert name not in network
+            network[name] = create_operator(ELEMENT_TABLE[kind][OperatorCallback.CREATE](args))
+        node_table[self._handle]['network'] = RowHandleList(network.values())
 
-        # create internal connections
-        for source_index, target_index in network_description.internal_connections:
-            subscribe(network[source_index], network[target_index])
+        def find_operator(path: Path) -> Optional[RowHandle]:
+            if path.is_node_path():
+                assert path.is_relative() and len(path) == 1  # interpret single name paths as dynamic operator
+                return network.get(path[0])
 
-        # TODO: HACK
-        if self._handle.index == 1:
-            subscribe(network[2], self.get_socket("roundness"))
+            else:
+                assert path.is_leaf_path()
+                node_handle: Optional[RowHandle]
+                if path.is_absolute():
+                    node_handle = get_app().get_scene().get_node(path)
+                else:
+                    assert path.is_relative()
+                    node_handle = self.get_child(path)
+                if node_handle:
+                    result: Optional[Tuple[NodeSocketKind, RowHandle]] = Node(node_handle)._get_socket(path.get_leaf())
+                    if result:
+                        return result[1]
+            return None
 
-        # TODO: create all other connections
-
-        # children = field(type=RowHandleMap, mandatory=True, initial_state=RowHandleMap())
-        # network = field(type=RowHandleList, mandatory=True, initial_state=RowHandleList())
+        # create new connections
+        for source, sink in new_state.connections:
+            subscribe(find_operator(source), find_operator(sink))
 
     def _remove_recursively(self):
         """
@@ -931,7 +964,7 @@ class Node:
             Node(child_handle)._remove_recursively()
 
         # remove dynamic network
-        self._clear_network()
+        self._clear_operators()
 
         # remove sockets
         sockets: NodeSockets = node_table[self._handle]['sockets']
@@ -941,7 +974,7 @@ class Node:
         # remove the node
         remove_node(self._handle)
 
-    def _clear_network(self) -> None:
+    def _clear_operators(self) -> None:
         node_table: Table = get_app().get_table(TableIndex.NODES)
         for operator in node_table[self._handle]['network']:
             remove_operator(operator)
@@ -1166,76 +1199,51 @@ ELEMENT_TABLE: Tuple[
     (None, None, None, OpSine.on_subscribe, OpSine.create),
 )
 
+
 # SETUP ################################################################################################################
 
-root_node: NodeDescription = NodeDescription(
-    sockets={},
-    states=dict(
-        default=NodeStateDescription(
-            network=NodeNetworkDescription(
-                operators=[],
-                internal_connections=[],
-                external_connections=[],
-                incoming_connections=[],
-                outgoing_connections=[],
-            ),
-            design=[],
-        )
-    ),
-    transitions=[],
-    initial_state='default',
-)
+# noinspection PyUnusedLocal
+def key_callback(window, key: int, scancode: int, action: int, mods: int) -> None:
+    if action not in (glfw.PRESS, glfw.REPEAT):
+        return
 
-count_presses_node: NodeDescription = NodeDescription(
-    sockets=dict(
-        key_down=(NodeSocketKind.INPUT, Value())
-    ),
-    states=dict(
-        default=NodeStateDescription(
-            network=NodeNetworkDescription(
-                operators=[
-                    (OperatorIndex.BUFFER, Value(schema=Value.Schema(), time_span=1)),
-                    (OperatorIndex.PRINTER, Value()),
-                ],
-                internal_connections=[
-                    (0, 1),
-                ],
-                external_connections=[],
-                incoming_connections=[
-                    ('key_down', 0),
-                ],
-                outgoing_connections=[],
-            ),
-            design=[],
-        ),
-    ),
-    transitions=[],
-    initial_state='default',
-)
+    if key == glfw.KEY_ESCAPE:
+        glfw.set_window_should_close(window, 1)
+        return
+
+    if glfw.KEY_A <= key <= glfw.KEY_Z:
+        # if (mods & glfw.MOD_SHIFT) != glfw.MOD_SHIFT:
+        #     key += 32
+        # char: str = bytes([key]).decode()
+        get_app().get_scene().get_fact('key_fact').next(Value())
+
+
+# noinspection PyUnusedLocal
+def mouse_button_callback(window, button: int, action: int, mods: int) -> None:
+    if button == glfw.MOUSE_BUTTON_LEFT and action == glfw.PRESS:
+        x, y = glfw.get_cursor_pos(window)
+        get_app().get_scene().get_fact('mouse_fact').next(Value(x, y))
+
 
 countdown_node: NodeDescription = NodeDescription(
     sockets=dict(
-        key_down=(NodeSocketKind.INPUT, Value()),
+        key_down=(NodeSocketKind.SINK, Value()),
         roundness=(NodeSocketKind.PROPERTY, Value(10)),
     ),
     states=dict(
         default=NodeStateDescription(
-            network=NodeNetworkDescription(
-                operators=[
-                    (OperatorIndex.FACTORY, Value(id=OperatorIndex.COUNTDOWN, args=Value(start=5))),
-                    (OperatorIndex.PRINTER, Value(0)),
-                    (OperatorIndex.SINE, Value()),
-                ],
-                internal_connections=[
-                    (0, 1),
-                    # TODO: internal connection into a property
-                ],
-                external_connections=[],
-                incoming_connections=[
-                    ('key_down', 0),
-                ],
-                outgoing_connections=[],
+            operators=dict(
+                factory=(OperatorIndex.FACTORY, Value(id=OperatorIndex.COUNTDOWN, args=Value(start=5))),
+                printer=(OperatorIndex.PRINTER, Value(0)),
+                mouse_pos_printer=(OperatorIndex.PRINTER, Value(0, 0)),
+                sine=(OperatorIndex.SINE, Value()),
             ),
+            connections=[
+                (Path('/:key_fact'), Path('factory')),
+                (Path('factory'), Path('printer')),
+                (Path('/:mouse_fact'), Path('mouse_pos_printer')),
+                (Path('sine'), Path(':roundness')),
+            ],
             design=[
                 ("begin_path",),
                 ("rounded_rect", 50, 50,
@@ -1245,39 +1253,54 @@ countdown_node: NodeDescription = NodeDescription(
                 ("fill_color", nanovg.rgba(.5, .5, .5)),
                 ("fill",),
             ],
+            children=dict(),
         ),
     ),
     transitions=[],
     initial_state='default',
 )
 
+root_node: NodeDescription = NodeDescription(
+    sockets=dict(
+        key_fact=(NodeSocketKind.SOURCE, Value()),
+        mouse_fact=(NodeSocketKind.SOURCE, Value(0, 0)),
+    ),
+    states=dict(
+        default=NodeStateDescription(
+            operators={},
+            connections=[],
+            design=[],
+            children=dict(
+                herbert=countdown_node,
+            ),
+        )
+    ),
+    transitions=[],
+    initial_state='default',
+)
 
-# TODO: instead of this function, use the root node description's initial_state state for setup
-def app_setup(window, scene: Scene) -> None:
-    def key_callback_fn(_1, key, _2, action, _3):
-        nonlocal key_fact
-        if action not in (glfw.PRESS, glfw.REPEAT):
-            return
-
-        if key == glfw.KEY_ESCAPE:
-            glfw.set_window_should_close(window, 1)
-            del key_fact  # TODO: Fact will outlive the application when closed through window X
-            return
-
-        if glfw.KEY_A <= key <= glfw.KEY_Z:
-            # if (mods & glfw.MOD_SHIFT) != glfw.MOD_SHIFT:
-            #     key += 32
-            # char: str = bytes([key]).decode()
-            key_fact.next(Value())
-
-    key_fact: Fact = Fact(Value())
-    # scene.create_node("herbert", count_presses_node)
-    scene.create_node("herbert", countdown_node)
-    key_fact.subscribe(scene.get_socket('herbert:key_down'))
-    glfw.set_key_callback(window, key_callback_fn)
-
+# count_presses_node: NodeDescription = NodeDescription(
+#     sockets=dict(
+#         key_down=(NodeSocketKind.SINK, Value())
+#     ),
+#     states=dict(
+#         default=NodeStateDescription(
+#             operators=dict(
+#                 buffer=(OperatorIndex.BUFFER, Value(schema=Value.Schema(), time_span=1)),
+#                 printer=(OperatorIndex.PRINTER, Value()),
+#             ),
+#             connections=[
+#                 (Path('/:key_down'), Path('buffer')),
+#                 (Path('buffer'), Path('printer')),
+#             ],
+#             design=[],
+#         ),
+#     ),
+#     transitions=[],
+#     initial_state='default',
+# )
 
 # MAIN #################################################################################################################
 
 if __name__ == "__main__":
-    sys.exit(get_app().run(app_setup, root_node))
+    sys.exit(get_app().run(root_node))

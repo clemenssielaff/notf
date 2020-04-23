@@ -17,6 +17,9 @@ class Path:
     Every Path is immutable, and guaranteed consistent (albeit not necessarily valid) if the construction succeeded.
     """
 
+    STEP_IN_PLACE: str = STEP_IN_PLACE
+    STEP_UP: str = STEP_UP
+
     class Error(Exception):
         """
         Error thrown during the construction of a Path object.

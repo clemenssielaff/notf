@@ -553,9 +553,11 @@ class Value:
 
     def __init__(self, *args, **kwargs):
         if args:
-            assert len(args) == 1
             assert not kwargs
-            obj: Any = args[0]
+            if len(args) == 1:
+                obj: Any = args[0]
+            else:
+                obj: Tuple[Any,...] = args
         elif kwargs:
             obj: Dict[str, Any] = kwargs
         else:
