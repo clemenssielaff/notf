@@ -425,7 +425,7 @@ what is basically a None value.
 def create_data_from_schema(schema: Schema) -> Data:
     """
     Creates a default-initialized, immutable Data object conforming to the given Schema.
-    :param schema: Schema describing the layout of the Data object to produce.
+    :param schema: Schema describing the type of the Data object to produce.
     :return: The Schema's default Data.
     """
     if schema.is_none():

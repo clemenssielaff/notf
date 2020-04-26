@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from enum import IntEnum, auto, unique, Enum
 from threading import Thread
-from typing import Tuple, Callable, Any, Optional, Dict, Union, List, NamedTuple
+from typing import Tuple, Callable, Any, Optional, Dict, Union, List, NamedTuple, Iterable
 from types import CodeType
 from inspect import iscoroutinefunction
 from math import inf, sin, pi
@@ -11,6 +11,8 @@ from time import monotonic
 
 import glfw
 import curio
+
+from pyrsistent._checked_types import CheckedPVector as ConstList
 from pyrsistent import field
 
 sys.path.append(r'/home/clemens/code/notf/pynotf')
@@ -23,11 +25,6 @@ import pynotf.extra.opengl as gl
 from prototype.event_loop import EventLoop
 
 
-# * node hierarchy
-# * a service (periphery devices)
-# * graphic design
-# * lua runtime
-
 # UTILS ################################################################################################################
 
 class IndexEnum(IntEnum):
@@ -39,21 +36,20 @@ class IndexEnum(IntEnum):
         return index
 
 
+class ValueList(ConstList):
+    """
+    An immutable list of Values.
+    """
+    __type__ = Value
+
+
 # DATA #################################################################################################################
 
 @unique
 class TableIndex(IndexEnum):
     OPERATORS = auto()
     NODES = auto()
-
-
-@unique
-class OperatorCallback(IntEnum):
-    NEXT = 0  # 0-2 matches the corresponding EmitterStatus
-    FAILURE = 1
-    COMPLETION = 2
-    SUBSCRIPTION = 3
-    CREATE = 4
+    LAYOUTS = auto()
 
 
 @unique
@@ -71,7 +67,7 @@ class EmitterStatus(IntEnum):
               |
               +--> COMPLETING --> COMPLETE
     """
-    EMITTING = 0  # 0-2 matches the corresponding OperatorCallback
+    EMITTING = 0  # 0-2 matches the corresponding OperatorVtableIndex
     FAILING = 1
     COMPLETING = 2
     IDLE = 3  # follow-up status is active (EMITTING, FAILING, COMPLETING) + 3
@@ -105,12 +101,34 @@ def create_flags(external: bool = False, multicast: bool = False, status: Emitte
             ~(int(0b111) << FlagIndex.STATUS)) | (status << FlagIndex.STATUS)
 
 
+class Pos2(NamedTuple):
+    x: float = 0
+    y: float = 0
+
+
 class Size2(NamedTuple):
-    width: float
-    height: float
+    width: float = 0
+    height: float = 0
 
 
-Xform = Tuple[float, float, float, float, float, float]
+class Aabr(NamedTuple):
+    bottom_left: Pos2 = Pos2()
+    top_right: Pos2 = Pos2()
+
+
+class Xform(NamedTuple):
+    """
+    The matrix elements are laid out as follows:
+      [a c e]                          [sx kx tx]
+      [b d f]   which corresponds to   [ky sy ty]
+      [0 0 1]                          [ 0  0  1]
+    """
+    a: float = 1
+    b: float = 0
+    c: float = 0
+    d: float = 1
+    e: float = 0
+    f: float = 0
 
 
 @unique
@@ -123,11 +141,17 @@ class NodeSocketKind(Enum):
 NodeDesign = List[Tuple[Any, ...]]
 
 
+class LayoutDescription(NamedTuple):
+    type: LayoutIndex
+    args: Value
+
+
 class NodeStateDescription(NamedTuple):
     operators: Dict[str, Tuple[OperatorIndex, Value]]
     connections: List[Tuple[Path, Path]]
     design: NodeDesign
     children: Dict[str, NodeDescription]
+    layout: LayoutDescription
 
 
 class NodeSockets(NamedTuple):
@@ -140,27 +164,6 @@ class NodeDescription(NamedTuple):
     states: Dict[str, NodeStateDescription]
     transitions: List[Tuple[str, str]]
     initial_state: str
-
-
-class Claim(NamedTuple):
-    class Stretch(NamedTuple):
-        minimum: float = 0.
-        preferred: float = 0.
-        maximum: float = inf
-        scale_factor: float = 1.
-        priority: int = 0
-
-    vertical: Claim.Stretch = Stretch()
-    horizontal: Claim.Stretch = Stretch()
-
-
-class NodeData(NamedTuple):
-    opacity: float = 1.
-    depth_override: int = 0
-    xform_local: Xform = (1, 0, 0, 1, 0, 0)
-    claim: Claim = Claim()
-    xform_layout: Xform = (1, 0, 0, 1, 0, 0)
-    grant: Size2 = Size2(0, 0)
 
 
 """
@@ -185,8 +188,8 @@ class OperatorRow(TableRow):
     flags = field(type=int, mandatory=True)  # flags and op_index could be stored in the same 64 bit word
     value = field(type=Value, mandatory=True)
     input_schema = field(type=Value.Schema, mandatory=True)
-    args = field(type=Value, mandatory=True)
-    data = field(type=Value, mandatory=True)
+    args = field(type=Value, mandatory=True)  # must be a named record
+    data = field(type=Value, mandatory=True)  # must be a named record
     upstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
     downstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
 
@@ -200,14 +203,61 @@ class OperatorRowDescription(NamedTuple):
     flags: int = create_flags()
 
 
+class Claim(NamedTuple):
+    class Stretch(NamedTuple):
+        minimum: float = 0.
+        preferred: float = 0.
+        maximum: float = inf
+        scale_factor: float = 1.
+        priority: int = 0
+
+    vertical: Claim.Stretch = Stretch()
+    horizontal: Claim.Stretch = Stretch()
+
+
+class LayoutWidgetInfo(NamedTuple):
+    name: str  # which Widget
+    xform: Xform
+    grant: Size2
+    depth: int = 0
+    opacity: float = 0
+
+
+class LayoutComposition(NamedTuple):
+    widgets: Tuple[LayoutWidgetInfo] = ()
+    aabr: Aabr = Aabr()  # union of all child aabrs
+    claim: Claim = Claim()  # union of all child claims
+
+
+class LayoutRow(TableRow):
+    __table_index__: int = TableIndex.LAYOUTS
+    layout_index = field(type=int, mandatory=True)
+    args = field(type=Value, mandatory=True)  # must be a named record
+    per_widget_value = field(type=Value, mandatory=True)  # initial/default per-widget data value
+    widgets = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
+    widget_values = field(type=ValueList, mandatory=True, initial=ValueList())
+    composition = field(type=LayoutComposition, mandatory=True, initial=LayoutComposition())
+
+
+class NodeData(NamedTuple):
+    opacity: float = 1.
+    visibility: bool = True
+    depth_override: int = 0
+    xform_offset: Xform = (1, 0, 0, 1, 0, 0)
+    xform_layout: Xform = (1, 0, 0, 1, 0, 0)
+    grant: Size2 = Size2(0, 0)
+    claim: Claim = Claim()
+
+
 class NodeRow(TableRow):
     __table_index__: int = TableIndex.NODES
     description = field(type=NodeDescription, mandatory=True)
     parent = field(type=RowHandle, mandatory=True)
     sockets = field(type=NodeSockets, mandatory=True)
+    layout = field(type=RowHandle, mandatory=True, initial=RowHandle())
     state = field(type=str, mandatory=True, initial='')
     data = field(type=NodeData, mandatory=True, initial=NodeData())
-    children = field(type=RowHandleMap, mandatory=True, initial=RowHandleMap())
+    child_names = field(type=RowHandleMap, mandatory=True, initial=RowHandleMap())
     network = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
 
 
@@ -232,7 +282,7 @@ def create_operator(data: OperatorRowDescription) -> RowHandle:
         input_schema=data.input_schema,
         args=data.args,
         data=data.data,
-        flags=data.flags,
+        flags=data.flags | (EmitterStatus.IDLE << FlagIndex.STATUS),
     )
 
 
@@ -331,7 +381,7 @@ def remove_downstream(upstream: RowHandle, downstream: RowHandle) -> bool:
         return False
 
 
-def run_downstream(operator: RowHandle, source: RowHandle, callback: OperatorCallback, value: Value) -> None:
+def run_downstream(operator: RowHandle, source: RowHandle, callback: OperatorVtableIndex, value: Value) -> None:
     assert get_app().is_handle_valid(operator)
     assert get_app().is_handle_valid(source)
 
@@ -342,12 +392,12 @@ def run_downstream(operator: RowHandle, source: RowHandle, callback: OperatorCal
         return  # operator has completed
 
     # find the callback to perform
-    callback_func: Optional[Callable] = ELEMENT_TABLE[get_op_index(operator)][callback]
+    callback_func: Optional[Callable] = OPERATOR_VTABLE[get_op_index(operator)][callback]
     if callback_func is None:
         return  # operator type does not provide the requested callback
 
     # perform the callback ...
-    if callback == OperatorCallback.NEXT:
+    if callback == OperatorVtableIndex.NEXT:
         if get_input_schema(operator).is_none():
             new_data: Value = callback_func(OperatorSelf(operator), source,
                                             Value())  # for operators with no input value
@@ -364,8 +414,8 @@ def run_downstream(operator: RowHandle, source: RowHandle, callback: OperatorCal
         callback_func(OperatorSelf(operator), source, value)
 
 
-def emit_downstream(operator: RowHandle, callback: OperatorCallback, value: Value) -> None:
-    assert callback != OperatorCallback.CREATE
+def emit_downstream(operator: RowHandle, callback: OperatorVtableIndex, value: Value) -> None:
+    assert callback != OperatorVtableIndex.CREATE
 
     # make sure the operator is valid and not completed yet
     operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
@@ -380,7 +430,7 @@ def emit_downstream(operator: RowHandle, callback: OperatorCallback, value: Valu
     # copy the list of downstream handles, in case it changes during the emission
     downstream: RowHandleList = get_downstream(operator)
 
-    if callback == OperatorCallback.NEXT:
+    if callback == OperatorVtableIndex.NEXT:
 
         # store the emitted value and ensure that the operator is able to emit the given value
         set_value(operator, value, get_value(operator).get_schema())
@@ -424,9 +474,10 @@ def subscribe(upstream: RowHandle, downstream: RowHandle) -> None:
     if upstream_status.is_completed():
         assert is_external(upstream)  # operator is valid but completed? -> it must be external
         if upstream_status.is_active():
-            return run_downstream(downstream, upstream, OperatorCallback(upstream_status), get_value(upstream))
+            return run_downstream(downstream, upstream, OperatorVtableIndex(upstream_status), get_value(upstream))
         else:
-            return run_downstream(downstream, upstream, OperatorCallback(int(upstream_status) - 3), get_value(upstream))
+            return run_downstream(downstream, upstream, OperatorVtableIndex(int(upstream_status) - 3),
+                                  get_value(upstream))
 
     if len(get_downstream(upstream)) != 0:
         assert is_multicast(upstream)
@@ -435,7 +486,7 @@ def subscribe(upstream: RowHandle, downstream: RowHandle) -> None:
     add_upstream(downstream, upstream)
 
     # execute the upstream's `on_subscribe` callback
-    on_subscribe_func: Optional[Callable] = ELEMENT_TABLE[get_op_index(upstream)][OperatorCallback.SUBSCRIPTION]
+    on_subscribe_func: Optional[Callable] = OPERATOR_VTABLE[get_op_index(upstream)][OperatorVtableIndex.SUBSCRIPTION]
     if on_subscribe_func is not None:
         on_subscribe_func(OperatorSelf(upstream), downstream)
 
@@ -498,6 +549,7 @@ class Application:
         self._storage: Storage = Storage(
             operators=OperatorRow,
             nodes=NodeRow,
+            layouts=LayoutRow,
         )
         self._event_loop: EventLoop = EventLoop()
         self._scene: Scene = Scene()
@@ -526,6 +578,9 @@ class Application:
         # create the application data
         self._scene.initialize(root_desc)
 
+        # TODO: HACK
+        self._scene.get_node(Path('/zanzibar')).set_data(xform_layout=Xform(1, 0, 0, 1, 100, 0))
+
         # create a windowed mode window and its OpenGL context.
         glfw.window_hint(glfw.CLIENT_API, glfw.OPENGL_ES_API)
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
@@ -542,6 +597,7 @@ class Application:
         #  also, where _do_ facts live? Right now, they live as source sockets on the root node...
         glfw.set_key_callback(window, key_callback)
         glfw.set_mouse_button_callback(window, mouse_button_callback)
+        glfw.set_window_size_callback(window, window_size_callback)
 
         # make the window's context current
         glfw.make_context_current(window)
@@ -555,8 +611,8 @@ class Application:
         try:
             while not glfw.window_should_close(window):
                 with Painterpreter(window, ctx) as painter:
-                    painter.paint(self._scene.get_node(Path("/herbert")))
-                    glfw.wait_events()
+                    self._scene.paint(painter)
+                glfw.wait_events()
 
         finally:
             self._event_loop.close()
@@ -626,13 +682,17 @@ class Painterpreter:
 
         return self
 
-    def paint(self, node: RowHandle) -> None:
+    def paint(self, node: Node) -> None:
         scope: Dict[str, Any] = dict(
             window=self._buffer_size,
-            prop=Properties(node),
+            prop=Properties(node.get_handle()),
         )
 
-        for command in Node(node).get_design():
+        nanovg.reset(self._context)
+        nanovg.global_alpha(self._context, max(0., min(1., node.get_data().opacity)))
+        nanovg.transform(self._context, *node.get_data().xform_layout)
+
+        for command in node.get_design():
             func_name: str = command[0]
             assert isinstance(func_name, str)
 
@@ -697,13 +757,13 @@ class OperatorSelf:
         return get_downstream(self._handle)
 
     def next(self, value: Value) -> None:
-        emit_downstream(self._handle, OperatorCallback.NEXT, value)
+        emit_downstream(self._handle, OperatorVtableIndex.NEXT, value)
 
     def fail(self, error: Value) -> None:
-        emit_downstream(self._handle, OperatorCallback.FAILURE, error)
+        emit_downstream(self._handle, OperatorVtableIndex.FAILURE, error)
 
     def complete(self) -> None:
-        emit_downstream(self._handle, OperatorCallback.COMPLETION, Value())
+        emit_downstream(self._handle, OperatorVtableIndex.COMPLETION, Value())
 
     def schedule(self, callback: Callable, *args):
         assert iscoroutinefunction(callback)
@@ -731,13 +791,13 @@ class Fact:
 
     def next(self, value: Value) -> None:
         assert value.get_schema() == self.get_schema()
-        get_app().schedule_event(lambda: emit_downstream(self._handle, OperatorCallback.NEXT, value))
+        get_app().schedule_event(lambda: emit_downstream(self._handle, OperatorVtableIndex.NEXT, value))
 
     def fail(self, error: Value) -> None:
-        get_app().schedule_event(lambda: emit_downstream(self._handle, OperatorCallback.FAILURE, error))
+        get_app().schedule_event(lambda: emit_downstream(self._handle, OperatorVtableIndex.FAILURE, error))
 
     def complete(self) -> None:
-        get_app().schedule_event(lambda: emit_downstream(self._handle, OperatorCallback.COMPLETION, Value()))
+        get_app().schedule_event(lambda: emit_downstream(self._handle, OperatorVtableIndex.COMPLETION, Value()))
 
     def subscribe(self, downstream: RowHandle):
         subscribe(self._handle, downstream)
@@ -784,11 +844,14 @@ class Scene:
         else:
             return None
 
-    def get_node(self, path: Path) -> Optional[RowHandle]:
+    def get_node(self, path: Path) -> Optional[Node]:
         return self._root_node.get_child(path)
 
     def get_source(self, name: str) -> Optional[RowHandle]:
         return self._root_node.get_source(name)
+
+    def paint(self, painter: Painterpreter) -> None:
+        self._root_node.paint(painter)
 
 
 class Node:
@@ -802,11 +865,32 @@ class Node:
     def get_parent(self) -> Optional[RowHandle]:
         return get_app().get_table(TableIndex.NODES)[self._handle]['parent']
 
+    def get_data(self) -> NodeData:
+        return get_app().get_table(TableIndex.NODES)[self._handle]['data']
+
+    def set_data(self, *,
+                 opacity: Optional[float] = None,
+                 visibility: Optional[bool] = None,
+                 depth_override: Optional[int] = None,
+                 xform_local: Optional[Xform] = None,
+                 xform_layout: Optional[Xform] = None,
+                 grant: Optional[Size2] = None) -> None:
+        current_data: NodeData = self.get_data()
+        get_app().get_table(TableIndex.NODES)[self._handle]['data'] = NodeData(
+            opacity or current_data.opacity,
+            visibility or current_data.visibility,
+            depth_override or current_data.depth_override,
+            xform_local or current_data.xform_offset,
+            xform_layout or current_data.xform_layout,
+            grant or current_data.grant,
+            current_data.claim
+        )
+
     # TODO: create child and -operator and state transition and all other private node methods should be operators...
     def create_child(self, name: str, description: NodeDescription) -> RowHandle:
         # ensure the child name is unique
         node_table: Table = get_app().get_table(TableIndex.NODES)
-        assert name not in node_table[self._handle]['children']
+        assert name not in node_table[self._handle]['child_names']
 
         # create the child node entry
         child_handle: RowHandle = node_table.add_row(
@@ -818,7 +902,7 @@ class Node:
                           (socket_direction, socket_schema) in description.sockets.values()],
             )
         )
-        node_table[self._handle]['children'] = node_table[self._handle]['children'].set(name, child_handle)
+        node_table[self._handle]['child_names'] = node_table[self._handle]['child_names'].set(name, child_handle)
 
         # initialize the child node by transitioning into its initial_state state
         child_node: Node = Node(child_handle)
@@ -831,15 +915,15 @@ class Node:
         parent_handle: RowHandle = node_table[self._handle]['parent']
         if parent_handle.is_null():
             return '/'
-        children: RowHandleMap = node_table[parent_handle]['children']
-        for index, (child_name, child_handle) in enumerate(children.items()):
+        child_names: RowHandleMap = node_table[parent_handle]['child_names']
+        for index, (child_name, child_handle) in enumerate(child_names.items()):
             if child_handle == self._handle:
                 return child_name
         assert False
 
-    def get_child(self, path: Path, step: int = 0) -> Optional[RowHandle]:
+    def get_child(self, path: Path, step: int = 0) -> Optional[Node]:
         if step == len(path):
-            return self._handle
+            return self
 
         # next step is up
         next_step: str = path[step]
@@ -851,10 +935,16 @@ class Node:
 
         # next step is down
         node_table: Table = get_app().get_table(TableIndex.NODES)
-        child_handle: Optional[RowHandle] = node_table[self._handle]['children'].get(next_step)
+        child_handle: Optional[RowHandle] = node_table[self._handle]['child_names'].get(next_step)
         if child_handle is None:
             return None
         return Node(child_handle).get_child(path, step + 1)
+
+    def paint(self, painter: Painterpreter):
+        painter.paint(self)
+        layout: Layout = Layout(get_app().get_table(TableIndex.NODES)[self._handle]['layout'])
+        for child in layout.iter_nodes():
+            painter.paint(child)
 
     def _get_socket(self, name: str) -> Optional[Tuple[NodeSocketKind, RowHandle]]:
         node_table: Table = get_app().get_table(TableIndex.NODES)
@@ -897,8 +987,8 @@ class Node:
         node_table: Table = get_app().get_table(TableIndex.NODES)
         parent_handle: RowHandle = node_table[self._handle]['parent']
         if not parent_handle.is_null():
-            children: RowHandleMap = node_table[parent_handle]['children']
-            children.remove(self.get_name())
+            child_names: RowHandleMap = node_table[parent_handle]['child_names']
+            node_table[parent_handle]['child_names'] = child_names.remove(self.get_name())
 
         # remove all children first and then yourself
         self._remove_recursively()
@@ -910,23 +1000,31 @@ class Node:
         node_description: NodeDescription = node_table[self._handle]['description']
         assert current_state == '' or (current_state, state) in node_description.transitions
 
-        # remove the dynamic operators from last state
-        self._clear_operators()
-        # TODO: remove children, or think of a better waz to transition between states
+        # remove the dynamic dependencies from the last state
+        # TODO: remove children, or think of a better way to transition between states
+        self._clear_dependencies()
 
         # enter the new state
         node_table[self._handle]['state'] = state
+        new_state: NodeStateDescription = node_description.states[state]
 
         # create new child nodes
-        new_state: NodeStateDescription = node_description.states[state]
+        child_handles: List[RowHandle] = []
         for name, child_description in new_state.children.items():
-            self.create_child(name, child_description)
+            child_handles.append(self.create_child(name, child_description))
+
+        # create the new layout
+        layout_handle: RowHandle = LAYOUT_VTABLE[new_state.layout.type][LayoutVtableIndex.CREATE](new_state.layout.args)
+        node_table[self._handle]['layout'] = layout_handle
+        layout: Layout = Layout(layout_handle)
+        for child_handle in child_handles:
+            layout.add_node(child_handle)
 
         # create new operators
         network: Dict[str, RowHandle] = {}
         for name, (kind, args) in new_state.operators.items():
             assert name not in network
-            network[name] = create_operator(ELEMENT_TABLE[kind][OperatorCallback.CREATE](args))
+            network[name] = create_operator(OPERATOR_VTABLE[kind][OperatorVtableIndex.CREATE](args))
         node_table[self._handle]['network'] = RowHandleList(network.values())
 
         def find_operator(path: Path) -> Optional[RowHandle]:
@@ -936,14 +1034,14 @@ class Node:
 
             else:
                 assert path.is_leaf_path()
-                node_handle: Optional[RowHandle]
+                node: Optional[Node]
                 if path.is_absolute():
-                    node_handle = get_app().get_scene().get_node(path)
+                    node = get_app().get_scene().get_node(path)
                 else:
                     assert path.is_relative()
-                    node_handle = self.get_child(path)
-                if node_handle:
-                    result: Optional[Tuple[NodeSocketKind, RowHandle]] = Node(node_handle)._get_socket(path.get_leaf())
+                    node = self.get_child(path)
+                if node:
+                    result: Optional[Tuple[NodeSocketKind, RowHandle]] = node._get_socket(path.get_leaf())
                     if result:
                         return result[1]
             return None
@@ -959,12 +1057,11 @@ class Node:
         """
         # remove all children
         node_table: Table = get_app().get_table(TableIndex.NODES)
-        child_handles: RowHandleMap = node_table[self._handle]['children']
-        for child_handle in child_handles.values():
+        for child_handle in node_table[self._handle]['child_names'].values():
             Node(child_handle)._remove_recursively()
 
         # remove dynamic network
-        self._clear_operators()
+        self._clear_dependencies()
 
         # remove sockets
         sockets: NodeSockets = node_table[self._handle]['sockets']
@@ -974,11 +1071,110 @@ class Node:
         # remove the node
         remove_node(self._handle)
 
-    def _clear_operators(self) -> None:
+    def _clear_dependencies(self) -> None:
         node_table: Table = get_app().get_table(TableIndex.NODES)
+
+        # network
         for operator in node_table[self._handle]['network']:
             remove_operator(operator)
         node_table[self._handle]['network'] = RowHandleList()
+
+        # layout
+        current_layout: RowHandle = node_table[self._handle]['layout']
+        if current_layout:
+            layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
+            layout_table.remove_row(current_layout)
+
+    def set_grant(self, grant: Size2) -> None:
+        node_table: Table = get_app().get_table(TableIndex.NODES)
+        if node_table[self._handle]['data'].grant == grant:
+            return
+        self.set_data(grant=grant)
+
+        layout_handle: RowHandle = node_table[self._handle]['layout']
+        if layout_handle:
+            Layout(layout_handle).perform(grant)
+
+    def set_claim(self, claim: Claim) -> None:
+        pass
+
+
+# LAYOUT REGISTRY ######################################################################################################
+
+class Layout:
+
+    def __init__(self, handle: RowHandle):
+        assert handle.table == TableIndex.LAYOUTS
+        self._handle: RowHandle = handle
+
+    @staticmethod
+    def create(layout_index: LayoutIndex, args: Value) -> RowHandle:
+        return LAYOUT_VTABLE[layout_index][LayoutVtableIndex.CREATE](args)
+
+    def get_handle(self) -> RowHandle:
+        return self._handle
+
+    def clear(self):
+        get_app().get_table(TableIndex.LAYOUTS)[self._handle]['widgets'] = RowHandleList()
+
+    def add_node(self, node: RowHandle):
+        layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
+        widgets: RowHandleList = layout_table[self._handle]['widgets']
+        if node in widgets:
+            widgets = widgets.remove(node)
+        layout_table[self._handle]['widgets'] = widgets.append(node)
+
+    def perform(self, grant: Size2) -> None:
+        layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
+        layout_index: LayoutIndex = layout_table[self._handle]['layout_index']
+        composition: LayoutComposition = LAYOUT_VTABLE[layout_index][LayoutVtableIndex.LAYOUT](
+            LayoutView(self._handle), grant)
+        layout_table[self._handle]['composition'] = composition
+
+    def iter_nodes(self) -> Iterable[Node]:
+        # TODO: utilize depth_override
+        for node_handle in get_app().get_table(TableIndex.LAYOUTS)[self._handle]['widgets']:
+            yield Node(node_handle)
+
+
+class LayoutView:
+    def __init__(self, handle: RowHandle):
+        assert handle.table == TableIndex.LAYOUTS
+        self._handle: RowHandle = handle
+
+
+class LtOverlayout:
+    @staticmethod
+    def create(args: Value) -> RowHandle:
+        return get_app().get_table(TableIndex.LAYOUTS).add_row(
+            layout_index=LayoutIndex.OVERLAY,
+            args=args,
+            per_widget_value=Value(),
+        )
+
+    @staticmethod
+    def layout(self: LayoutView, grant: Size2) -> LayoutComposition:
+        return LayoutComposition()
+
+
+@unique
+class LayoutIndex(IndexEnum):
+    OVERLAY = auto()
+
+
+@unique
+class LayoutVtableIndex(IntEnum):
+    CREATE = 0
+    LAYOUT = 1
+
+
+LAYOUT_VTABLE: Tuple[
+    Tuple[
+        Optional[Callable[[Value], RowHandle]],  # create
+        Optional[Callable[[LayoutView, Size2], LayoutComposition]],  # layout
+    ], ...] = (
+    (LtOverlayout.create, LtOverlayout.layout),
+)
 
 
 # OPERATOR REGISTRY ####################################################################################################
@@ -992,6 +1188,7 @@ class OpRelay:
             operator_index=OperatorIndex.RELAY,
             initial_value=value,
             input_schema=value.get_schema(),
+            flags=(1 << FlagIndex.IS_MULTICAST),
         )
 
     @staticmethod
@@ -1055,7 +1252,7 @@ class OpFactory:
     def create(args: Value) -> OperatorRowDescription:
         operator_id: int = int(args['id'])
         factory_arguments: Value = args['args']
-        example_operator_data: OperatorRowDescription = ELEMENT_TABLE[operator_id][OperatorCallback.CREATE](
+        example_operator_data: OperatorRowDescription = OPERATOR_VTABLE[operator_id][OperatorVtableIndex.CREATE](
             factory_arguments)
 
         return OperatorRowDescription(
@@ -1070,13 +1267,13 @@ class OpFactory:
         if len(downstream) == 0:
             return self.data
 
-        factory_function: Callable[[Value], OperatorRowDescription] = ELEMENT_TABLE[int(self['id'])][
-            OperatorCallback.CREATE]
+        factory_function: Callable[[Value], OperatorRowDescription] = OPERATOR_VTABLE[int(self['id'])][
+            OperatorVtableIndex.CREATE]
         factory_arguments: Value = self['args']
         for subscriber in downstream:
             new_operator: RowHandle = create_operator(factory_function(factory_arguments))
             subscribe(new_operator, subscriber)
-            run_downstream(new_operator, self.get_handle(), OperatorCallback.NEXT, get_value(new_operator))
+            run_downstream(new_operator, self.get_handle(), OperatorVtableIndex.NEXT, get_value(new_operator))
 
         return self.data
 
@@ -1182,7 +1379,16 @@ class OperatorIndex(IndexEnum):
     SINE = auto()
 
 
-ELEMENT_TABLE: Tuple[
+@unique
+class OperatorVtableIndex(IntEnum):
+    NEXT = 0  # 0-2 matches the corresponding EmitterStatus
+    FAILURE = 1
+    COMPLETION = 2
+    SUBSCRIPTION = 3
+    CREATE = 4
+
+
+OPERATOR_VTABLE: Tuple[
     Tuple[
         Optional[Callable[[OperatorSelf, RowHandle], Value]],  # on next
         Optional[Callable[[OperatorSelf, RowHandle], Value]],  # on failure
@@ -1225,6 +1431,11 @@ def mouse_button_callback(window, button: int, action: int, mods: int) -> None:
         get_app().get_scene().get_fact('mouse_fact').next(Value(x, y))
 
 
+# noinspection PyUnusedLocal
+def window_size_callback(window, width: int, height: int) -> None:
+    get_app().get_scene()._root_node.set_grant(Size2(width, height))
+
+
 countdown_node: NodeDescription = NodeDescription(
     sockets=dict(
         key_down=(NodeSocketKind.SINK, Value()),
@@ -1254,6 +1465,41 @@ countdown_node: NodeDescription = NodeDescription(
                 ("fill",),
             ],
             children=dict(),
+            layout=LayoutDescription(
+                LayoutIndex.OVERLAY,
+                Value(),
+            ),
+        ),
+    ),
+    transitions=[],
+    initial_state='default',
+)
+
+count_presses_node: NodeDescription = NodeDescription(
+    sockets=dict(
+        key_down=(NodeSocketKind.SINK, Value())
+    ),
+    states=dict(
+        default=NodeStateDescription(
+            operators=dict(
+                buffer=(OperatorIndex.BUFFER, Value(schema=Value.Schema(), time_span=1)),
+                printer=(OperatorIndex.PRINTER, Value()),
+            ),
+            connections=[
+                (Path('/:mouse_fact'), Path('buffer')),
+                (Path('buffer'), Path('printer')),
+            ],
+            design=[
+                ("begin_path",),
+                ("rect", 50, 50, 50, 50),
+                ("fill_color", nanovg.rgba(1, 1, 1)),
+                ("fill",),
+            ],
+            children=dict(),
+            layout=LayoutDescription(
+                LayoutIndex.OVERLAY,
+                Value(),
+            ),
         ),
     ),
     transitions=[],
@@ -1272,33 +1518,17 @@ root_node: NodeDescription = NodeDescription(
             design=[],
             children=dict(
                 herbert=countdown_node,
+                zanzibar=count_presses_node,
+            ),
+            layout=LayoutDescription(
+                LayoutIndex.OVERLAY,
+                Value(),
             ),
         )
     ),
     transitions=[],
     initial_state='default',
 )
-
-# count_presses_node: NodeDescription = NodeDescription(
-#     sockets=dict(
-#         key_down=(NodeSocketKind.SINK, Value())
-#     ),
-#     states=dict(
-#         default=NodeStateDescription(
-#             operators=dict(
-#                 buffer=(OperatorIndex.BUFFER, Value(schema=Value.Schema(), time_span=1)),
-#                 printer=(OperatorIndex.PRINTER, Value()),
-#             ),
-#             connections=[
-#                 (Path('/:key_down'), Path('buffer')),
-#                 (Path('buffer'), Path('printer')),
-#             ],
-#             design=[],
-#         ),
-#     ),
-#     transitions=[],
-#     initial_state='default',
-# )
 
 # MAIN #################################################################################################################
 
