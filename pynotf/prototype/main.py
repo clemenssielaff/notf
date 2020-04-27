@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import sys
 from enum import IntEnum, auto, unique, Enum
+from logging import warning
 from threading import Thread
 from typing import Tuple, Callable, Any, Optional, Dict, Union, List, NamedTuple, Iterable
 from types import CodeType
 from inspect import iscoroutinefunction
-from math import inf, sin, pi
+from math import sin, pi
 from time import monotonic
 
 import glfw
@@ -18,7 +19,7 @@ from pyrsistent import field
 sys.path.append(r'/home/clemens/code/notf/pynotf')
 
 from pynotf.data import Value, RowHandle, Table, TableRow, Storage, mutate_value, RowHandleList, Bonsai, RowHandleMap, \
-    Path
+    Path, Claim
 import pynotf.extra.pynanovg as nanovg
 import pynotf.extra.opengl as gl
 
@@ -146,12 +147,16 @@ class LayoutDescription(NamedTuple):
     args: Value
 
 
+# TODO: Node states carry a lot of weight right now and I think they are a crutch.
+#  Instead, you should be able to to create child and dynamic operators and change the layout and claim etc. without
+#  changing the state.
 class NodeStateDescription(NamedTuple):
     operators: Dict[str, Tuple[OperatorIndex, Value]]
     connections: List[Tuple[Path, Path]]
     design: NodeDesign
     children: Dict[str, NodeDescription]
     layout: LayoutDescription
+    claim: Claim = Claim()
 
 
 class NodeSockets(NamedTuple):
@@ -203,19 +208,7 @@ class OperatorRowDescription(NamedTuple):
     flags: int = create_flags()
 
 
-class Claim(NamedTuple):
-    class Stretch(NamedTuple):
-        minimum: float = 0.
-        preferred: float = 0.
-        maximum: float = inf
-        scale_factor: float = 1.
-        priority: int = 0
-
-    vertical: Claim.Stretch = Stretch()
-    horizontal: Claim.Stretch = Stretch()
-
-
-class LayoutWidgetInfo(NamedTuple):
+class NodeComposition(NamedTuple):
     name: str  # which Widget
     xform: Xform
     grant: Size2
@@ -223,8 +216,9 @@ class LayoutWidgetInfo(NamedTuple):
     opacity: float = 0
 
 
+# TODO: additional dict to quickly find a node by name? (see Node.get_composition)
 class LayoutComposition(NamedTuple):
-    widgets: Tuple[LayoutWidgetInfo] = ()
+    nodes: Tuple[NodeComposition] = ()
     aabr: Aabr = Aabr()  # union of all child aabrs
     claim: Claim = Claim()  # union of all child claims
 
@@ -233,9 +227,9 @@ class LayoutRow(TableRow):
     __table_index__: int = TableIndex.LAYOUTS
     layout_index = field(type=int, mandatory=True)
     args = field(type=Value, mandatory=True)  # must be a named record
-    per_widget_value = field(type=Value, mandatory=True)  # initial/default per-widget data value
-    widgets = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
-    widget_values = field(type=ValueList, mandatory=True, initial=ValueList())
+    node_value_initial = field(type=Value, mandatory=True)
+    nodes = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
+    node_values = field(type=ValueList, mandatory=True, initial=ValueList())
     composition = field(type=LayoutComposition, mandatory=True, initial=LayoutComposition())
 
 
@@ -243,10 +237,8 @@ class NodeData(NamedTuple):
     opacity: float = 1.
     visibility: bool = True
     depth_override: int = 0
-    xform_offset: Xform = (1, 0, 0, 1, 0, 0)
-    xform_layout: Xform = (1, 0, 0, 1, 0, 0)
-    grant: Size2 = Size2(0, 0)
-    claim: Claim = Claim()
+    offset: Xform = (1, 0, 0, 1, 0, 0)
+    claim: Claim = Claim()  # TODO: Claim is not immutable
 
 
 class NodeRow(TableRow):
@@ -578,9 +570,6 @@ class Application:
         # create the application data
         self._scene.initialize(root_desc)
 
-        # TODO: HACK
-        self._scene.get_node(Path('/zanzibar')).set_data(xform_layout=Xform(1, 0, 0, 1, 100, 0))
-
         # create a windowed mode window and its OpenGL context.
         glfw.window_hint(glfw.CLIENT_API, glfw.OPENGL_ES_API)
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
@@ -607,6 +596,9 @@ class Application:
         # start the event loop
         event_thread = Thread(target=self._event_loop.run)
         event_thread.start()
+
+        # initialize the root
+        self._scene.get_node(Path('/')).relayout_down(Size2(640, 480))
 
         try:
             while not glfw.window_should_close(window):
@@ -637,7 +629,7 @@ def get_app() -> Application:
 
 # PAINTERPRETER ########################################################################################################
 
-class Properties:
+class PainterpreterNodeProperties:
     def __init__(self, node: RowHandle):
         self._handle: RowHandle = node
 
@@ -683,14 +675,19 @@ class Painterpreter:
         return self
 
     def paint(self, node: Node) -> None:
+        if not node.get_parent():  # TODO: I don't like that you cannot draw the root...
+            return
+
         scope: Dict[str, Any] = dict(
             window=self._buffer_size,
-            prop=Properties(node.get_handle()),
+            prop=PainterpreterNodeProperties(node.get_handle()),
+            grant=node.get_composition().grant
         )
 
+        # TODO: add method to completely reset the context including the save/restore stack
         nanovg.reset(self._context)
         nanovg.global_alpha(self._context, max(0., min(1., node.get_data().opacity)))
-        nanovg.transform(self._context, *node.get_data().xform_layout)
+        nanovg.transform(self._context, *node.get_composition().xform)
 
         for command in node.get_design():
             func_name: str = command[0]
@@ -845,7 +842,7 @@ class Scene:
             return None
 
     def get_node(self, path: Path) -> Optional[Node]:
-        return self._root_node.get_child(path)
+        return self._root_node.get_descendant(path)
 
     def get_source(self, name: str) -> Optional[RowHandle]:
         return self._root_node.get_source(name)
@@ -872,21 +869,30 @@ class Node:
                  opacity: Optional[float] = None,
                  visibility: Optional[bool] = None,
                  depth_override: Optional[int] = None,
-                 xform_local: Optional[Xform] = None,
-                 xform_layout: Optional[Xform] = None,
-                 grant: Optional[Size2] = None) -> None:
+                 offset: Optional[Xform] = None,
+                 claim: Optional[Claim] = None) -> None:
         current_data: NodeData = self.get_data()
         get_app().get_table(TableIndex.NODES)[self._handle]['data'] = NodeData(
             opacity or current_data.opacity,
             visibility or current_data.visibility,
             depth_override or current_data.depth_override,
-            xform_local or current_data.xform_offset,
-            xform_layout or current_data.xform_layout,
-            grant or current_data.grant,
-            current_data.claim
+            offset or current_data.offset,
+            claim or current_data.claim,
         )
 
-    # TODO: create child and -operator and state transition and all other private node methods should be operators...
+    def get_composition(self) -> Optional[NodeComposition]:
+        node_table: Table = get_app().get_table(TableIndex.NODES)
+        parent_handle: RowHandle = self.get_parent()
+        if not parent_handle:
+            return None
+        layout_handle: RowHandle = node_table[parent_handle]['layout']
+        layout_composition: LayoutComposition = get_app().get_table(TableIndex.LAYOUTS)[layout_handle]['composition']
+        my_name: str = self.get_name()
+        for node_comp in layout_composition.nodes:
+            if node_comp.name == my_name:
+                return node_comp
+        return None
+
     def create_child(self, name: str, description: NodeDescription) -> RowHandle:
         # ensure the child name is unique
         node_table: Table = get_app().get_table(TableIndex.NODES)
@@ -910,6 +916,7 @@ class Node:
 
         return child_handle
 
+    # TODO: it might be faster to just store the name inside the node as well..
     def get_name(self) -> str:
         node_table: Table = get_app().get_table(TableIndex.NODES)
         parent_handle: RowHandle = node_table[self._handle]['parent']
@@ -921,7 +928,13 @@ class Node:
                 return child_name
         assert False
 
-    def get_child(self, path: Path, step: int = 0) -> Optional[Node]:
+    def get_child(self, name: str) -> Optional[Node]:
+        child_handle: Optional[RowHandle] = get_app().get_table(TableIndex.NODES)[self._handle]['child_names'].get(name)
+        if child_handle is None:
+            return None
+        return Node(child_handle)
+
+    def get_descendant(self, path: Path, step: int = 0) -> Optional[Node]:
         if step == len(path):
             return self
 
@@ -931,14 +944,14 @@ class Node:
             parent: Optional[RowHandle] = self.get_parent()
             if parent is None:
                 return None
-            return Node(parent).get_child(path, step + 1)
+            return Node(parent).get_descendant(path, step + 1)
 
         # next step is down
         node_table: Table = get_app().get_table(TableIndex.NODES)
         child_handle: Optional[RowHandle] = node_table[self._handle]['child_names'].get(next_step)
         if child_handle is None:
             return None
-        return Node(child_handle).get_child(path, step + 1)
+        return Node(child_handle).get_descendant(path, step + 1)
 
     def paint(self, painter: Painterpreter):
         painter.paint(self)
@@ -1039,7 +1052,7 @@ class Node:
                     node = get_app().get_scene().get_node(path)
                 else:
                     assert path.is_relative()
-                    node = self.get_child(path)
+                    node = self.get_descendant(path)
                 if node:
                     result: Optional[Tuple[NodeSocketKind, RowHandle]] = node._get_socket(path.get_leaf())
                     if result:
@@ -1049,6 +1062,9 @@ class Node:
         # create new connections
         for source, sink in new_state.connections:
             subscribe(find_operator(source), find_operator(sink))
+
+        # update the claim
+        self.set_claim(new_state.claim)  # causes a potential re-layout
 
     def _remove_recursively(self):
         """
@@ -1085,18 +1101,33 @@ class Node:
             layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
             layout_table.remove_row(current_layout)
 
-    def set_grant(self, grant: Size2) -> None:
-        node_table: Table = get_app().get_table(TableIndex.NODES)
-        if node_table[self._handle]['data'].grant == grant:
-            return
-        self.set_data(grant=grant)
+    def relayout_down(self, grant: Size2) -> None:
+        layout_handle: RowHandle = get_app().get_table(TableIndex.NODES)[self._handle]['layout']
+        layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
 
-        layout_handle: RowHandle = node_table[self._handle]['layout']
-        if layout_handle:
-            Layout(layout_handle).perform(grant)
+        # update the layout with the new grant
+        old_composition: LayoutComposition = layout_table[layout_handle]['composition']
+        new_composition: LayoutComposition = Layout(layout_handle).perform(grant)
+
+        def find_old_grant(node_name: str) -> Optional[Size2]:  # TODO: add name lookup to LayoutComposition
+            for node in old_composition.nodes:
+                if node.name == node_name:
+                    return node.grant
+            return None
+
+        for node_composition in new_composition.nodes:
+            assert isinstance(node_composition, NodeComposition)
+            if node_composition.grant == find_old_grant(node_composition.name):
+                continue  # no change in grant
+            child: Optional[Node] = self.get_child(node_composition.name)
+            if child is None:
+                warning(f'Layout contained unknown child node "{node_composition.name}"')
+                continue
+            child.relayout_down(grant)
 
     def set_claim(self, claim: Claim) -> None:
-        pass
+        # TODO: relayout upwards
+        self.set_data(claim=claim)
 
 
 # LAYOUT REGISTRY ######################################################################################################
@@ -1115,26 +1146,49 @@ class Layout:
         return self._handle
 
     def clear(self):
-        get_app().get_table(TableIndex.LAYOUTS)[self._handle]['widgets'] = RowHandleList()
+        get_app().get_table(TableIndex.LAYOUTS)[self._handle]['nodes'] = RowHandleList()
 
     def add_node(self, node: RowHandle):
         layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
-        widgets: RowHandleList = layout_table[self._handle]['widgets']
+        widgets: RowHandleList = layout_table[self._handle]['nodes']
         if node in widgets:
             widgets = widgets.remove(node)
-        layout_table[self._handle]['widgets'] = widgets.append(node)
+        layout_table[self._handle]['nodes'] = widgets.append(node)
 
-    def perform(self, grant: Size2) -> None:
+    def perform(self, grant: Size2) -> LayoutComposition:
         layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
         layout_index: LayoutIndex = layout_table[self._handle]['layout_index']
         composition: LayoutComposition = LAYOUT_VTABLE[layout_index][LayoutVtableIndex.LAYOUT](
             LayoutView(self._handle), grant)
         layout_table[self._handle]['composition'] = composition
+        return composition
 
     def iter_nodes(self) -> Iterable[Node]:
         # TODO: utilize depth_override
-        for node_handle in get_app().get_table(TableIndex.LAYOUTS)[self._handle]['widgets']:
+        for node_handle in get_app().get_table(TableIndex.LAYOUTS)[self._handle]['nodes']:
             yield Node(node_handle)
+
+
+class LayoutNodeView:
+    def __init__(self, handle: RowHandle):
+        assert handle.table == TableIndex.NODES
+        self._node: Node = Node(handle)
+
+    @property
+    def name(self) -> str:
+        return self._node.get_name()
+
+    @property
+    def depth(self) -> int:
+        return self._node.get_data().depth_override
+
+    @property
+    def opacity(self) -> float:
+        return self._node.get_data().opacity
+
+    @property
+    def claim(self) -> Claim:
+        return self._node.get_data().claim
 
 
 class LayoutView:
@@ -1142,6 +1196,12 @@ class LayoutView:
         assert handle.table == TableIndex.LAYOUTS
         self._handle: RowHandle = handle
 
+    def iter_nodes(self) -> Iterable[LayoutNodeView]:
+        for node_handle in get_app().get_table(TableIndex.LAYOUTS)[self._handle]['nodes']:
+            yield LayoutNodeView(node_handle)
+
+
+# TODO: real layout implementations
 
 class LtOverlayout:
     @staticmethod
@@ -1149,17 +1209,69 @@ class LtOverlayout:
         return get_app().get_table(TableIndex.LAYOUTS).add_row(
             layout_index=LayoutIndex.OVERLAY,
             args=args,
-            per_widget_value=Value(),
+            node_value_initial=Value(),
         )
 
     @staticmethod
     def layout(self: LayoutView, grant: Size2) -> LayoutComposition:
-        return LayoutComposition()
+        compositions: List[NodeComposition] = []
+        for node in self.iter_nodes():
+            node_grant: Size2 = Size2(
+                width=max(node.claim.horizontal.min, min(node.claim.horizontal.max, grant.width)),
+                height=max(node.claim.vertical.min, min(node.claim.vertical.max, grant.height)),
+            )
+            compositions.append(NodeComposition(
+                name=node.name,
+                xform=Xform(),
+                grant=node_grant,
+                depth=node.depth,
+                opacity=node.opacity,
+            ))
+        return LayoutComposition(
+            nodes=tuple(compositions),
+            aabr=Aabr(bottom_left=Pos2(0, 0), top_right=Pos2(grant.width, grant.height)),
+            claim=Claim(),
+        )
+
+
+class LtFlexbox:
+    @staticmethod
+    def create(args: Value) -> RowHandle:
+        return get_app().get_table(TableIndex.LAYOUTS).add_row(
+            layout_index=LayoutIndex.FLEXBOX,
+            args=args,
+            node_value_initial=Value(),
+        )
+
+    @staticmethod
+    def layout(self: LayoutView, grant: Size2) -> LayoutComposition:
+        compositions: List[NodeComposition] = []
+        x_offset: float = 0
+        for node in self.iter_nodes():
+            node_grant: Size2 = Size2(
+                width=max(node.claim.horizontal.min, min(node.claim.horizontal.max, grant.width)),
+                height=max(node.claim.vertical.min, min(node.claim.vertical.max, grant.height)),
+            )
+            compositions.append(NodeComposition(
+                name=node.name,
+                xform=Xform(e=x_offset),
+                grant=node_grant,
+                depth=node.depth,
+                opacity=node.opacity,
+            ))
+            x_offset += node_grant.width
+
+        return LayoutComposition(
+            nodes=tuple(compositions),
+            aabr=Aabr(bottom_left=Pos2(0, 0), top_right=Pos2(grant.width, grant.height)),
+            claim=Claim(),
+        )
 
 
 @unique
 class LayoutIndex(IndexEnum):
     OVERLAY = auto()
+    FLEXBOX = auto()
 
 
 @unique
@@ -1174,6 +1286,7 @@ LAYOUT_VTABLE: Tuple[
         Optional[Callable[[LayoutView, Size2], LayoutComposition]],  # layout
     ], ...] = (
     (LtOverlayout.create, LtOverlayout.layout),
+    (LtFlexbox.create, LtFlexbox.layout),
 )
 
 
@@ -1433,8 +1546,40 @@ def mouse_button_callback(window, button: int, action: int, mods: int) -> None:
 
 # noinspection PyUnusedLocal
 def window_size_callback(window, width: int, height: int) -> None:
-    get_app().get_scene()._root_node.set_grant(Size2(width, height))
+    get_app().get_scene()._root_node.relayout_down(Size2(width, height))
 
+
+count_presses_node: NodeDescription = NodeDescription(
+    sockets=dict(
+        key_down=(NodeSocketKind.SINK, Value())
+    ),
+    states=dict(
+        default=NodeStateDescription(
+            operators=dict(
+                buffer=(OperatorIndex.BUFFER, Value(schema=Value.Schema(), time_span=1)),
+                printer=(OperatorIndex.PRINTER, Value()),
+            ),
+            connections=[
+                (Path('/:mouse_fact'), Path('buffer')),
+                (Path('buffer'), Path('printer')),
+            ],
+            design=[
+                ("begin_path",),
+                ("rect", 0, 0, Expression('grant.width'), Expression('grant.height')),
+                ("fill_color", nanovg.rgba(1, 1, 1)),
+                ("fill",),
+            ],
+            children=dict(),
+            layout=LayoutDescription(
+                LayoutIndex.OVERLAY,
+                Value(),
+            ),
+            claim=Claim(Claim.Stretch(10, 200, 200), Claim.Stretch(10, 200, 200)),
+        ),
+    ),
+    transitions=[],
+    initial_state='default',
+)
 
 countdown_node: NodeDescription = NodeDescription(
     sockets=dict(
@@ -1457,9 +1602,9 @@ countdown_node: NodeDescription = NodeDescription(
             ],
             design=[
                 ("begin_path",),
-                ("rounded_rect", 50, 50,
-                 Expression('max(0, window.width - 100)'),
-                 Expression('max(0, window.height - 100)'),
+                ("rounded_rect", 0, 0,
+                 Expression('max(0, grant.width)'),
+                 Expression('max(0, grant.height)'),
                  Expression('prop["roundness"]')),
                 ("fill_color", nanovg.rgba(.5, .5, .5)),
                 ("fill",),
@@ -1469,37 +1614,7 @@ countdown_node: NodeDescription = NodeDescription(
                 LayoutIndex.OVERLAY,
                 Value(),
             ),
-        ),
-    ),
-    transitions=[],
-    initial_state='default',
-)
-
-count_presses_node: NodeDescription = NodeDescription(
-    sockets=dict(
-        key_down=(NodeSocketKind.SINK, Value())
-    ),
-    states=dict(
-        default=NodeStateDescription(
-            operators=dict(
-                buffer=(OperatorIndex.BUFFER, Value(schema=Value.Schema(), time_span=1)),
-                printer=(OperatorIndex.PRINTER, Value()),
-            ),
-            connections=[
-                (Path('/:mouse_fact'), Path('buffer')),
-                (Path('buffer'), Path('printer')),
-            ],
-            design=[
-                ("begin_path",),
-                ("rect", 50, 50, 50, 50),
-                ("fill_color", nanovg.rgba(1, 1, 1)),
-                ("fill",),
-            ],
-            children=dict(),
-            layout=LayoutDescription(
-                LayoutIndex.OVERLAY,
-                Value(),
-            ),
+            claim=Claim(Claim.Stretch(100, 200, 800), Claim.Stretch(100, 200, 800)),
         ),
     ),
     transitions=[],
@@ -1517,13 +1632,14 @@ root_node: NodeDescription = NodeDescription(
             connections=[],
             design=[],
             children=dict(
-                herbert=countdown_node,
                 zanzibar=count_presses_node,
+                herbert=countdown_node,
             ),
             layout=LayoutDescription(
-                LayoutIndex.OVERLAY,
+                LayoutIndex.FLEXBOX,
                 Value(),
             ),
+            claim=Claim(),
         )
     ),
     transitions=[],
