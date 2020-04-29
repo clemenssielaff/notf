@@ -13,7 +13,7 @@ from time import monotonic
 import glfw
 import curio
 
-from pyrsistent._checked_types import CheckedPVector as ConstList
+from pyrsistent._checked_types import CheckedPVector as ConstList, CheckedPMap as ConstMap
 from pyrsistent import field
 
 sys.path.append(r'/home/clemens/code/notf/pynotf')
@@ -209,16 +209,20 @@ class OperatorRowDescription(NamedTuple):
 
 
 class NodeComposition(NamedTuple):
-    name: str  # which Widget
-    xform: Xform
-    grant: Size2
-    depth: int = 0
+    order: int  # position among its siblings, zero-indexed
+    xform: Xform  # layout xform
+    grant: Size2  # grant size
     opacity: float = 0
 
 
-# TODO: additional dict to quickly find a node by name? (see Node.get_composition)
+class NodeCompositions(ConstMap):
+    __key_type__ = str
+    __value_type__ = NodeComposition
+
+
 class LayoutComposition(NamedTuple):
-    nodes: Tuple[NodeComposition] = ()
+    nodes: NodeCompositions = NodeCompositions()  # node name -> composition
+    order: RowHandleList = RowHandleList()  # all nodes in draw order
     aabr: Aabr = Aabr()  # union of all child aabrs
     claim: Claim = Claim()  # union of all child claims
 
@@ -882,16 +886,14 @@ class Node:
 
     def get_composition(self) -> Optional[NodeComposition]:
         node_table: Table = get_app().get_table(TableIndex.NODES)
-        parent_handle: RowHandle = self.get_parent()
+        parent_handle: RowHandle = node_table[self._handle]['parent']
         if not parent_handle:
             return None
+
+        layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
         layout_handle: RowHandle = node_table[parent_handle]['layout']
-        layout_composition: LayoutComposition = get_app().get_table(TableIndex.LAYOUTS)[layout_handle]['composition']
-        my_name: str = self.get_name()
-        for node_comp in layout_composition.nodes:
-            if node_comp.name == my_name:
-                return node_comp
-        return None
+        layout_composition: LayoutComposition = layout_table[layout_handle]['composition']
+        return layout_composition.nodes.get(self.get_name())
 
     def create_child(self, name: str, description: NodeDescription) -> RowHandle:
         # ensure the child name is unique
@@ -1106,24 +1108,21 @@ class Node:
         layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
 
         # update the layout with the new grant
-        old_composition: LayoutComposition = layout_table[layout_handle]['composition']
-        new_composition: LayoutComposition = Layout(layout_handle).perform(grant)
+        old_layout: LayoutComposition = layout_table[layout_handle]['composition']
+        new_layout: LayoutComposition = Layout(layout_handle).perform(grant)
 
-        def find_old_grant(node_name: str) -> Optional[Size2]:  # TODO: add name lookup to LayoutComposition
-            for node in old_composition.nodes:
-                if node.name == node_name:
-                    return node.grant
-            return None
-
-        for node_composition in new_composition.nodes:
-            assert isinstance(node_composition, NodeComposition)
-            if node_composition.grant == find_old_grant(node_composition.name):
+        # update all child nodes
+        for child_name, child_layout in new_layout.nodes.items():
+            assert isinstance(child_name, str)
+            assert isinstance(child_layout, NodeComposition)
+            old_node_layout: Optional[NodeComposition] = old_layout.nodes.get(child_name)
+            if old_node_layout and old_node_layout.grant == child_layout.grant:
                 continue  # no change in grant
-            child: Optional[Node] = self.get_child(node_composition.name)
-            if child is None:
-                warning(f'Layout contained unknown child node "{node_composition.name}"')
+            child_node: Optional[Node] = self.get_child(child_name)
+            if not child_node:
+                warning(f'Layout contained unknown child node "{child_name}"')
                 continue
-            child.relayout_down(grant)
+            child_node.relayout_down(grant)
 
     def set_claim(self, claim: Claim) -> None:
         # TODO: relayout upwards
@@ -1170,17 +1169,18 @@ class Layout:
 
 
 class LayoutNodeView:
-    def __init__(self, handle: RowHandle):
+    def __init__(self, handle: RowHandle, order: int):
         assert handle.table == TableIndex.NODES
         self._node: Node = Node(handle)
+        self._order: int = order
 
     @property
     def name(self) -> str:
         return self._node.get_name()
 
     @property
-    def depth(self) -> int:
-        return self._node.get_data().depth_override
+    def order(self) -> int:
+        return self._order
 
     @property
     def opacity(self) -> float:
@@ -1196,9 +1196,31 @@ class LayoutView:
         assert handle.table == TableIndex.LAYOUTS
         self._handle: RowHandle = handle
 
-    def iter_nodes(self) -> Iterable[LayoutNodeView]:
-        for node_handle in get_app().get_table(TableIndex.LAYOUTS)[self._handle]['nodes']:
-            yield LayoutNodeView(node_handle)
+    def sort_nodes(self) -> Tuple[List[RowHandle], Iterable[LayoutNodeView]]:
+        node_list: RowHandleList = get_app().get_table(TableIndex.LAYOUTS)[self._handle]['nodes']
+
+        # TODO: I am sure there is a better implementation for this kind of priority sorting
+        buckets: Dict[int, List[RowHandle]] = {}
+        for node_handle in node_list:
+            depth_override: int = get_app().get_table(TableIndex.NODES)[node_handle]['data'].depth_override
+            if depth_override in buckets:
+                buckets[depth_override].append(node_handle)
+            else:
+                buckets[depth_override] = [node_handle]
+        node_orders: Dict[RowHandle, int] = {}
+        sorted_nodes: List[RowHandle] = []
+        index: int = 0
+        for depth in sorted(buckets.keys()):
+            for node_handle in buckets[depth]:
+                sorted_nodes.append(node_handle)
+                node_orders[node_handle] = index
+                index += 1
+
+        def generator():
+            for handle in node_list:
+                yield LayoutNodeView(handle, node_orders[handle])
+
+        return sorted_nodes, generator()
 
 
 # TODO: real layout implementations
@@ -1214,21 +1236,23 @@ class LtOverlayout:
 
     @staticmethod
     def layout(self: LayoutView, grant: Size2) -> LayoutComposition:
-        compositions: List[NodeComposition] = []
-        for node in self.iter_nodes():
+        compositions: Dict[str, NodeComposition] = {}
+        sorted_nodes, view_generator = self.sort_nodes()
+        for node_view in view_generator:
             node_grant: Size2 = Size2(
-                width=max(node.claim.horizontal.min, min(node.claim.horizontal.max, grant.width)),
-                height=max(node.claim.vertical.min, min(node.claim.vertical.max, grant.height)),
+                width=max(node_view.claim.horizontal.min, min(node_view.claim.horizontal.max, grant.width)),
+                height=max(node_view.claim.vertical.min, min(node_view.claim.vertical.max, grant.height)),
             )
-            compositions.append(NodeComposition(
-                name=node.name,
+            assert node_view.name not in compositions
+            compositions[node_view.name] = NodeComposition(
+                order=node_view.order,
                 xform=Xform(),
                 grant=node_grant,
-                depth=node.depth,
-                opacity=node.opacity,
-            ))
+                opacity=node_view.opacity,
+            )
         return LayoutComposition(
-            nodes=tuple(compositions),
+            nodes=NodeCompositions(compositions),
+            order=RowHandleList(sorted_nodes),
             aabr=Aabr(bottom_left=Pos2(0, 0), top_right=Pos2(grant.width, grant.height)),
             claim=Claim(),
         )
@@ -1245,24 +1269,26 @@ class LtFlexbox:
 
     @staticmethod
     def layout(self: LayoutView, grant: Size2) -> LayoutComposition:
-        compositions: List[NodeComposition] = []
+        compositions: Dict[str, NodeComposition] = {}
         x_offset: float = 0
-        for node in self.iter_nodes():
+        sorted_nodes, view_generator = self.sort_nodes()
+        for node_view in view_generator:
             node_grant: Size2 = Size2(
-                width=max(node.claim.horizontal.min, min(node.claim.horizontal.max, grant.width)),
-                height=max(node.claim.vertical.min, min(node.claim.vertical.max, grant.height)),
+                width=max(node_view.claim.horizontal.min, min(node_view.claim.horizontal.max, grant.width)),
+                height=max(node_view.claim.vertical.min, min(node_view.claim.vertical.max, grant.height)),
             )
-            compositions.append(NodeComposition(
-                name=node.name,
+            assert node_view.name not in compositions
+            compositions[node_view.name] = NodeComposition(
+                order=node_view.order,
                 xform=Xform(e=x_offset),
                 grant=node_grant,
-                depth=node.depth,
-                opacity=node.opacity,
-            ))
+                opacity=node_view.opacity,
+            )
             x_offset += node_grant.width
 
         return LayoutComposition(
-            nodes=tuple(compositions),
+            nodes=NodeCompositions(compositions),
+            order=RowHandleList(sorted_nodes),
             aabr=Aabr(bottom_left=Pos2(0, 0), top_right=Pos2(grant.width, grant.height)),
             claim=Claim(),
         )
