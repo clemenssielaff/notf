@@ -7,8 +7,6 @@ LEAF_DELIMITER: str = ':'
 STEP_IN_PLACE: str = '.'
 STEP_UP: str = '..'
 
-CONTROL_CHARACTERS = ('/', ':', '.')
-
 
 ########################################################################################################################
 
@@ -60,9 +58,11 @@ class Path:
             raise NameError('Names must be strings')
         if name == "":
             raise NameError('Names may not be empty')
-        for path_control_character in CONTROL_CHARACTERS:
+        if name == STEP_IN_PLACE or name == STEP_UP:
+            raise NameError(f'The name "{name}" is reserved.')
+        for path_control_character in ('/', ':'):
             if path_control_character in name:
-                raise NameError('Names may not contain Path control characters dot [.], slash [/] and colon [:]')
+                raise NameError('Names may not contain Path control characters slash [/] and colon [:]')
 
     def __init__(self, string: str = ''):
         """

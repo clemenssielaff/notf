@@ -240,11 +240,12 @@ class TestCase(unittest.TestCase):
         with self.assertRaises(NameError):
             Path.check_name('')  # empty
         with self.assertRaises(NameError):
+            Path.check_name('.')  # reserved
+        with self.assertRaises(NameError):
+            Path.check_name('..')  # reserved
+        with self.assertRaises(NameError):
             Path.check_name('contains/slash')
         with self.assertRaises(NameError):
-            Path.check_name('contains.dot')
-        with self.assertRaises(NameError):
             Path.check_name('contains:colon')
-        with self.assertRaises(NameError):
-            Path.check_name('contains..two_dots')
         Path.check_name("this_should-work75")
+        Path.check_name('name.with dot_and-others..')
