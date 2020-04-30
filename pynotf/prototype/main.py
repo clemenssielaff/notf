@@ -113,8 +113,8 @@ class Size2(NamedTuple):
 
 
 class Aabr(NamedTuple):
-    bottom_left: Pos2 = Pos2()
-    top_right: Pos2 = Pos2()
+    min: Pos2 = Pos2()
+    max: Pos2 = Pos2()
 
 
 class Xform(NamedTuple):
@@ -130,6 +130,11 @@ class Xform(NamedTuple):
     d: float = 1
     e: float = 0
     f: float = 0
+
+
+class Hitbox(NamedTuple):
+    aabr: Aabr
+    callback: RowHandle
 
 
 @unique
@@ -537,6 +542,10 @@ def remove_node(node: RowHandle) -> None:
         node_table.remove_row(node)
 
 
+def is_in_aabr(aabr: Aabr, pos: Pos2) -> bool:
+    return aabr.min.x <= pos.x <= aabr.max.x and aabr.min.y <= pos.y <= aabr.max.y
+
+
 # APPLICATION ##########################################################################################################
 
 class Application:
@@ -662,6 +671,10 @@ class Painterpreter:
         self._context = context
         self._window_size: Size2 = Size2(*glfw.get_window_size(window))
         self._buffer_size: Size2 = Size2(*glfw.get_framebuffer_size(window))
+        self._hitboxes: List[Hitbox] = []  # Aabr in window-space, Operator handles
+
+    def get_hitboxes(self) -> List[Hitbox]:
+        return self._hitboxes
 
     def __enter__(self) -> Painterpreter:
         gl.viewport(0, 0, *self._buffer_size)
@@ -705,6 +718,20 @@ class Painterpreter:
                     args.append(arg)
 
             getattr(nanovg, func_name)(self._context, *args)
+
+            # TODO: what I really need is a function ON the Painterpreter itself that allows the caller to also specify
+            #  the callback operator that is associated with that shape - this is obviously a hacky hack
+            if func_name == "rounded_rect":
+                x = node.get_composition().xform.e
+                y = node.get_composition().xform.f
+                width = command[3].execute(scope)
+                height = command[4].execute(scope)
+                callback: Optional[RowHandle] = node.get_sink("bring_front")  # because hack
+                assert callback
+                self._hitboxes.append(Hitbox(
+                    Aabr(Pos2(x, y), Pos2(x + width, y + height)),
+                    callback,
+                ))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         nanovg.end_frame(self._context)
@@ -810,6 +837,7 @@ class Scene:
 
     def __init__(self):
         self._root_node: Optional[Node] = None
+        self._hitboxes: List[Hitbox] = []
 
     def initialize(self, root_description: NodeDescription):
         for kind, _ in root_description.sockets.values():
@@ -853,6 +881,15 @@ class Scene:
 
     def paint(self, painter: Painterpreter) -> None:
         self._root_node.paint(painter)
+        self._hitboxes = painter.get_hitboxes()
+
+    def iter_hitboxes(self, pos: Pos2) -> Iterable[Hitbox]:
+        """
+        Returns the Operators connected to all hitboxes that overlap the given position in reverse draw order.
+        """
+        for hitbox in self._hitboxes:
+            if is_in_aabr(hitbox.aabr, pos):
+                yield hitbox
 
 
 class Node:
@@ -957,9 +994,10 @@ class Node:
 
     def paint(self, painter: Painterpreter):
         painter.paint(self)
-        layout: Layout = Layout(get_app().get_table(TableIndex.NODES)[self._handle]['layout'])
-        for child in layout.iter_nodes():
-            painter.paint(child)
+        layout_handle: RowHandle = get_app().get_table(TableIndex.NODES)[self._handle]['layout']
+        layout_composition: LayoutComposition = get_app().get_table(TableIndex.LAYOUTS)[layout_handle]['composition']
+        for node_handle in layout_composition.order:
+            painter.paint(Node(node_handle))
 
     def _get_socket(self, name: str) -> Optional[Tuple[NodeSocketKind, RowHandle]]:
         node_table: Table = get_app().get_table(TableIndex.NODES)
@@ -1162,11 +1200,6 @@ class Layout:
         layout_table[self._handle]['composition'] = composition
         return composition
 
-    def iter_nodes(self) -> Iterable[Node]:
-        # TODO: utilize depth_override
-        for node_handle in get_app().get_table(TableIndex.LAYOUTS)[self._handle]['nodes']:
-            yield Node(node_handle)
-
 
 class LayoutNodeView:
     def __init__(self, handle: RowHandle, order: int):
@@ -1195,6 +1228,15 @@ class LayoutView:
     def __init__(self, handle: RowHandle):
         assert handle.table == TableIndex.LAYOUTS
         self._handle: RowHandle = handle
+
+    def __getitem__(self, name: str) -> Value:
+        """
+        self['arg'] is the access to the Layout's arguments.
+        :param name: Name of the argument to access.
+        :return: The requested argument.
+        :raise: KeyError
+        """
+        return get_app().get_table(TableIndex.LAYOUTS)[self._handle]["args"][name]
 
     def sort_nodes(self) -> Tuple[List[RowHandle], Iterable[LayoutNodeView]]:
         node_list: RowHandleList = get_app().get_table(TableIndex.LAYOUTS)[self._handle]['nodes']
@@ -1253,7 +1295,7 @@ class LtOverlayout:
         return LayoutComposition(
             nodes=NodeCompositions(compositions),
             order=RowHandleList(sorted_nodes),
-            aabr=Aabr(bottom_left=Pos2(0, 0), top_right=Pos2(grant.width, grant.height)),
+            aabr=Aabr(min=Pos2(0, 0), max=Pos2(grant.width, grant.height)),
             claim=Claim(),
         )
 
@@ -1284,12 +1326,12 @@ class LtFlexbox:
                 grant=node_grant,
                 opacity=node_view.opacity,
             )
-            x_offset += node_grant.width
+            x_offset += node_grant.width + float(self['margin'])
 
         return LayoutComposition(
             nodes=NodeCompositions(compositions),
             order=RowHandleList(sorted_nodes),
-            aabr=Aabr(bottom_left=Pos2(0, 0), top_right=Pos2(grant.width, grant.height)),
+            aabr=Aabr(min=Pos2(0, 0), max=Pos2(grant.width, grant.height)),
             claim=Claim(),
         )
 
@@ -1557,9 +1599,6 @@ def key_callback(window, key: int, scancode: int, action: int, mods: int) -> Non
         return
 
     if glfw.KEY_A <= key <= glfw.KEY_Z:
-        # if (mods & glfw.MOD_SHIFT) != glfw.MOD_SHIFT:
-        #     key += 32
-        # char: str = bytes([key]).decode()
         get_app().get_scene().get_fact('key_fact').next(Value())
 
 
@@ -1568,6 +1607,13 @@ def mouse_button_callback(window, button: int, action: int, mods: int) -> None:
     if button == glfw.MOUSE_BUTTON_LEFT and action == glfw.PRESS:
         x, y = glfw.get_cursor_pos(window)
         get_app().get_scene().get_fact('mouse_fact').next(Value(x, y))
+    elif button == glfw.MOUSE_BUTTON_RIGHT and action == glfw.PRESS:
+        x, y = glfw.get_cursor_pos(window)
+        for hitbox in get_app().get_scene().iter_hitboxes(Pos2(x, y)):
+            aabr = hitbox.aabr
+            x1, y1, x2, y2 = aabr.min.x, aabr.min.y, aabr.max.x, aabr.max.y
+            print(f"Triggered hitbox callback for hitbox with aabr({x1}, {y1}, {x2}, {y2})")
+        # get_app().get_scene().get_fact('mouse_fact').next(Value(x, y))
 
 
 # noinspection PyUnusedLocal
@@ -1577,7 +1623,8 @@ def window_size_callback(window, width: int, height: int) -> None:
 
 count_presses_node: NodeDescription = NodeDescription(
     sockets=dict(
-        key_down=(NodeSocketKind.SINK, Value())
+        key_down=(NodeSocketKind.SINK, Value()),
+        bring_front=(NodeSocketKind.SINK, Value()),
     ),
     states=dict(
         default=NodeStateDescription(
@@ -1591,7 +1638,7 @@ count_presses_node: NodeDescription = NodeDescription(
             ],
             design=[
                 ("begin_path",),
-                ("rect", 0, 0, Expression('grant.width'), Expression('grant.height')),
+                ("rounded_rect", 0, 0, Expression('grant.width'), Expression('grant.height'), 0),
                 ("fill_color", nanovg.rgba(1, 1, 1)),
                 ("fill",),
             ],
@@ -1611,6 +1658,7 @@ countdown_node: NodeDescription = NodeDescription(
     sockets=dict(
         key_down=(NodeSocketKind.SINK, Value()),
         roundness=(NodeSocketKind.PROPERTY, Value(10)),
+        bring_front=(NodeSocketKind.SINK, Value()),
     ),
     states=dict(
         default=NodeStateDescription(
@@ -1651,6 +1699,7 @@ root_node: NodeDescription = NodeDescription(
     sockets=dict(
         key_fact=(NodeSocketKind.SOURCE, Value()),
         mouse_fact=(NodeSocketKind.SOURCE, Value(0, 0)),
+        hitbox_fact=(NodeSocketKind.SOURCE, Value(0, 0)),
     ),
     states=dict(
         default=NodeStateDescription(
@@ -1663,7 +1712,7 @@ root_node: NodeDescription = NodeDescription(
             ),
             layout=LayoutDescription(
                 LayoutIndex.FLEXBOX,
-                Value(),
+                Value(margin=-100),
             ),
             claim=Claim(),
         )
