@@ -1036,32 +1036,19 @@ class Layout:
         layout_table[self._handle]['composition'] = composition
         return composition
 
-    def sort_nodes(self) -> Tuple[List[Node], Iterable[LayoutNodeView]]:
+    def get_nodes(self) -> Iterable[LayoutNodeView]:
+        """
+        Returns a Node View for each Node in this layout, in the order that they were added.
+        """
         node_list: RowHandleList = get_app().get_table(TableIndex.LAYOUTS)[self._handle]['nodes']
+        return (LayoutNodeView(Node(handle)) for handle in node_list)
 
-        # TODO: I am sure there is a better implementation for this kind of priority sorting
-        #  also, since the depth override is now stored as a Value, the algorithm should work with floating point depths
-        buckets: Dict[int, List[RowHandle]] = {}
-        for node_handle in node_list:
-            depth_override: int = int(Node(node_handle).get_property('sys.depth').get_value())
-            if depth_override in buckets:
-                buckets[depth_override].append(node_handle)
-            else:
-                buckets[depth_override] = [node_handle]
-        node_orders: Dict[RowHandle, int] = {}
-        sorted_nodes: List[Node] = []
-        index: int = 0
-        for depth in sorted(buckets.keys()):
-            for node_handle in buckets[depth]:
-                sorted_nodes.append(Node(node_handle))
-                node_orders[node_handle] = index
-                index += 1
-
-        def generator():
-            for handle in node_list:
-                yield LayoutNodeView(Node(handle))
-
-        return sorted_nodes, generator()
+    def get_order(self) -> RowHandleList:
+        """
+        Returns the handles of all Nodes in this Layout in draw-order.
+        """
+        node_list: RowHandleList = get_app().get_table(TableIndex.LAYOUTS)[self._handle]['nodes']
+        return RowHandleList(sorted(node_list, key=lambda h: float(Node(h).get_property('sys.depth').get_value())))
 
     def remove(self) -> None:
         if self.is_valid():
@@ -1099,8 +1086,7 @@ class LtOverlayout:
     @staticmethod
     def layout(self: Layout, grant: Size2) -> LayoutComposition:
         compositions: Dict[str, NodeComposition] = {}
-        sorted_nodes, view_generator = self.sort_nodes()
-        for node_view in view_generator:
+        for node_view in self.get_nodes():
             node_grant: Size2 = Size2(
                 width=max(node_view.claim.horizontal.min, min(node_view.claim.horizontal.max, grant.width)),
                 height=max(node_view.claim.vertical.min, min(node_view.claim.vertical.max, grant.height)),
@@ -1113,7 +1099,7 @@ class LtOverlayout:
             )
         return LayoutComposition(
             nodes=NodeCompositions(compositions),
-            order=RowHandleList(sorted_nodes),
+            order=self.get_order(),
             aabr=Aabr(min=Pos2(0, 0), max=Pos2(grant.width, grant.height)),
             claim=Claim(),
         )
@@ -1132,8 +1118,7 @@ class LtFlexbox:
     def layout(self: Layout, grant: Size2) -> LayoutComposition:
         compositions: Dict[str, NodeComposition] = {}
         x_offset: float = 0
-        sorted_nodes, view_generator = self.sort_nodes()
-        for node_view in view_generator:
+        for node_view in self.get_nodes():
             node_grant: Size2 = Size2(
                 width=max(node_view.claim.horizontal.min, min(node_view.claim.horizontal.max, grant.width)),
                 height=max(node_view.claim.vertical.min, min(node_view.claim.vertical.max, grant.height)),
@@ -1148,7 +1133,7 @@ class LtFlexbox:
 
         return LayoutComposition(
             nodes=NodeCompositions(compositions),
-            order=RowHandleList(node.get_handle() for node in sorted_nodes),
+            order=self.get_order(),
             aabr=Aabr(min=Pos2(0, 0), max=Pos2(grant.width, grant.height)),
             claim=Claim(),
         )
