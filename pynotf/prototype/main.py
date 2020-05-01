@@ -24,7 +24,7 @@ import pynotf.extra.pynanovg as nanovg
 import pynotf.extra.opengl as gl
 
 from prototype.event_loop import EventLoop
-from prototype.data_types import Pos2, Size2, Aabr, Xform, Hitbox, NodeDesign, EmitterStatus, ValueList, IndexEnum
+from prototype.data_types import Pos2, Size2, Aabr, Xform, NodeDesign, EmitterStatus, ValueList, IndexEnum
 
 
 # TO DOs in order:
@@ -74,7 +74,7 @@ class NodeStateDescription(NamedTuple):
 
 class NodeProperties(NamedTuple):
     names: Bonsai
-    elements: List[RowHandle]
+    elements: List[Operator]
 
 
 class NodeDescription(NamedTuple):
@@ -95,6 +95,12 @@ BUILTIN_NODE_PROPERTIES: Dict[str, Value] = {
     f'{BUILTIN_NAMESPACE}.height': Value(100),  # and remove the {BUILTIN_NAMESPACE}.height/width props
     f'{BUILTIN_NAMESPACE}.width': Value(100),  # and remove the {BUILTIN_NAMESPACE}.height/width props
 }
+
+
+class Hitbox(NamedTuple):
+    aabr: Aabr
+    callback: Operator
+
 
 """
 I had a long long about splitting this table up into several tables, as not all Operators require access to all fields.
@@ -184,7 +190,7 @@ def is_in_aabr(aabr: Aabr, pos: Pos2) -> bool:
 class Operator:
 
     @classmethod
-    def create(cls, description: OperatorRowDescription) -> RowHandle:
+    def create(cls, description: OperatorRowDescription) -> Operator:
         """
         For example, for the Factory operator, we want to inspect the input/output Schema of another, yet-to-be-created
         Operator without actually creating one.
@@ -193,22 +199,21 @@ class Operator:
         :param description: Date from which to construct the new row.
         :return: The handle to the created row.
         """
-        # We allow access to the operator data using `self.XXX`. Ensure that a data name is not shadowed by a
-        # OperatorSelf method. This is an artifact of the Python language and generally nothing to worry about.
-        assert len(set(description.data.get_keys()).intersection(set(dir(OperatorSelf)))) == 0
-
-        return get_app().get_table(TableIndex.OPERATORS).add_row(
+        return Operator(get_app().get_table(TableIndex.OPERATORS).add_row(
             op_index=description.operator_index,
             value=description.initial_value,
             input_schema=description.input_schema,
             args=description.args,
             data=description.data,
             flags=description.flags | (EmitterStatus.IDLE << FlagIndex.STATUS),
-        )
+        ))
 
     def __init__(self, handle: RowHandle):
         assert handle.table == TableIndex.OPERATORS
         self._handle: RowHandle = handle
+
+    def __repr__(self) -> str:
+        return f'Operator:{self._handle.index}.{self._handle.generation}'
 
     def get_handle(self) -> RowHandle:
         return self._handle
@@ -259,47 +264,43 @@ class Operator:
     def get_data(self) -> Value:
         return get_app().get_table(TableIndex.OPERATORS)[self._handle]["data"]
 
-    def get_upstream(self) -> RowHandleList:
+    def get_upstream(self) -> RowHandleList:  # TODO: row handles exposed in interface
         return get_app().get_table(TableIndex.OPERATORS)[self._handle]['upstream']
 
     def get_downstream(self) -> RowHandleList:
         return get_app().get_table(TableIndex.OPERATORS)[self._handle]['downstream']
 
-    def add_upstream(self, upstream: RowHandle) -> None:
-        assert upstream.table == TableIndex.OPERATORS
+    def add_upstream(self, operator: Operator) -> None:
+        handle: RowHandle = operator.get_handle()
         current_upstream: RowHandleList = self.get_upstream()
-        if upstream not in current_upstream:
-            get_app().get_table(TableIndex.OPERATORS)[self._handle]['upstream'] = current_upstream.append(upstream)
+        if handle not in current_upstream:
+            get_app().get_table(TableIndex.OPERATORS)[self._handle]['upstream'] = current_upstream.append(handle)
 
-    def add_downstream(self, downstream: RowHandle) -> None:
-        assert downstream.table == TableIndex.OPERATORS
+    def add_downstream(self, operator: Operator) -> None:
+        handle: RowHandle = operator.get_handle()
         current_downstream: RowHandleList = self.get_downstream()
-        if downstream not in current_downstream:
-            get_app().get_table(TableIndex.OPERATORS)[self._handle]['downstream'] = \
-                current_downstream.append(downstream)
+        if handle not in current_downstream:
+            get_app().get_table(TableIndex.OPERATORS)[self._handle]['downstream'] = current_downstream.append(handle)
 
-    def remove_upstream(self, upstream: RowHandle) -> bool:
-        assert upstream.table == TableIndex.OPERATORS
+    def remove_upstream(self, operator: Operator) -> bool:
+        handle: RowHandle = operator.get_handle()
         current_upstream: RowHandleList = self.get_upstream()
-        if upstream in current_upstream:
-            get_app().get_table(TableIndex.OPERATORS)[self._handle]['upstream'] = current_upstream.remove(upstream)
+        if handle in current_upstream:
+            get_app().get_table(TableIndex.OPERATORS)[self._handle]['upstream'] = current_upstream.remove(handle)
             return True
         return False
 
-    def remove_downstream(self, downstream: RowHandle) -> bool:
-        assert downstream.table == TableIndex.OPERATORS
+    def remove_downstream(self, operator: Operator) -> bool:
+        handle: RowHandle = operator.get_handle()
         current_downstream: RowHandleList = self.get_downstream()
-        if downstream in current_downstream:
-            get_app().get_table(TableIndex.OPERATORS)[self._handle]['downstream'] = \
-                current_downstream.remove(downstream)
+        if handle in current_downstream:
+            get_app().get_table(TableIndex.OPERATORS)[self._handle]['downstream'] = current_downstream.remove(handle)
             return True
         return False
 
-    def subscribe(self, downstream: RowHandle) -> None:
-        operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
-        assert operator_table.is_handle_valid(downstream)
-        assert Operator(downstream).get_input_schema().is_none() or (
-                self.get_value().get_schema() == Operator(downstream).get_input_schema())
+    def subscribe(self, downstream: Operator) -> None:
+        assert downstream.get_input_schema().is_none() or (
+                self.get_value().get_schema() == downstream.get_input_schema())
 
         # if the operator has already completed, call the corresponding callback on the downstream operator
         # immediately and do not subscribe it
@@ -307,38 +308,34 @@ class Operator:
         if my_status.is_completed():
             assert self.is_external()  # operator is valid but completed? -> it must be external
             callback = OperatorVtableIndex(my_status if my_status.is_active() else int(my_status) - 3)
-            Operator(downstream).run(self._handle, callback, self.get_value())
+            downstream.run(self, callback, self.get_value())
             return
 
         if len(self.get_downstream()) != 0:
             assert self.is_multicast()
 
         self.add_downstream(downstream)
-        Operator(downstream).add_upstream(self._handle)
+        downstream.add_upstream(self)
 
         # execute the operator's `on_subscribe` callback
-        on_subscribe_func: Optional[Callable] = OPERATOR_VTABLE[self.get_op_index()][
-            OperatorVtableIndex.SUBSCRIPTION]
+        on_subscribe_func: Optional[Callable] = OPERATOR_VTABLE[self.get_op_index()][OperatorVtableIndex.SUBSCRIPTION]
         if on_subscribe_func is not None:
-            on_subscribe_func(OperatorSelf(self._handle), downstream)
+            on_subscribe_func(self, downstream)
 
-    def unsubscribe(self, downstream: RowHandle) -> None:
-        operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
-        assert operator_table.is_handle_valid(downstream)
-
+    def unsubscribe(self, downstream: Operator) -> None:
         # TODO: I don't really have a good idea yet how to handle error and completion values.
         #  they are also stored in the `value` field, but that screws with the schema compatibility check
         # assert get_input_schema(downstream).is_none() or (get_value(upstream).get_schema() == get_input_schema(downstream))
 
         # if the upstream was already completed when the downstream subscribed, its subscription won't have completed
-        current_upstream: RowHandleList = Operator(downstream).get_upstream()
+        current_upstream: RowHandleList = downstream.get_upstream()
         if self._handle not in current_upstream:
             assert len(self.get_downstream()) == 0
             assert self.get_status().is_completed()
             return
 
         # update the downstream element
-        Operator(downstream).remove_upstream(self._handle)
+        downstream.remove_upstream(self)
 
         # update the upstream element
         self.remove_downstream(downstream)
@@ -347,11 +344,20 @@ class Operator:
         if len(self.get_downstream()) == 0 and not self.is_external():
             return self.remove()
 
-    def run(self, source: RowHandle, callback: OperatorVtableIndex, value: Value) -> None:
+    def on_next(self, source: Operator, value: Value) -> None:
+        self.run(source, OperatorVtableIndex.NEXT, value)
+
+    def on_fail(self, source: Operator, error: Value) -> None:
+        self.run(source, OperatorVtableIndex.FAILURE, error)
+
+    def on_complete(self, source: Operator, message: Value = Value()) -> None:
+        self.run(source, OperatorVtableIndex.COMPLETION, message)
+
+    def run(self, source: Operator, callback: OperatorVtableIndex, value: Value) -> None:  # TODO: run and emit private?
         """
         Runs one of the three callbacks of this Operator.
         """
-        assert get_app().is_handle_valid(source)
+        assert source.is_valid()
 
         # make sure the operator is valid and not completed yet
         operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
@@ -366,8 +372,7 @@ class Operator:
 
         if callback == OperatorVtableIndex.NEXT:
             # perform the `on_next` callback
-            new_data: Value = callback_func(OperatorSelf(self._handle), source,
-                                            Value() if self.get_input_schema().is_none() else value)
+            new_data: Value = callback_func(self, source, Value() if self.get_input_schema().is_none() else value)
 
             # ...and update the operator's data
             assert new_data.get_schema() == operator_table[self._handle]["data"].get_schema()
@@ -375,7 +380,7 @@ class Operator:
 
         else:
             # the failure and completion callbacks do not return a value
-            callback_func(OperatorSelf(self._handle), source, value)
+            callback_func(self, source, value)
 
     def next(self, value: Value) -> None:
         self.emit(OperatorVtableIndex.NEXT, value)
@@ -409,7 +414,7 @@ class Operator:
 
             # emit to all valid downstream elements
             for element in downstream:
-                Operator(element).run(self._handle, callback, value)
+                Operator(element).run(self, callback, value)
 
             # reset the status
             self.set_status(EmitterStatus.IDLE)
@@ -420,7 +425,7 @@ class Operator:
 
             # emit one last time ...
             for element in downstream:
-                Operator(element).run(self._handle, callback, value)
+                Operator(element).run(self, callback, value)
 
             # ... and finalize the status
             self.set_status(EmitterStatus(int(callback) + 3))
@@ -434,21 +439,32 @@ class Operator:
                 assert self.is_external()
                 assert len(self.get_downstream()) == 0
 
+    def schedule(self, callback: Callable, *args):
+        assert iscoroutinefunction(callback)
+
+        async def update_data_on_completion():
+            result: Optional[Value] = await callback(*args)
+
+            # only update the operator data if it has not completed
+            if self.is_valid():
+                self.set_value(result)
+
+        get_app().schedule_event(update_data_on_completion)
+
     def remove(self) -> None:
-        operator_table: Table = get_app().get_table(TableIndex.OPERATORS)
-        if not operator_table.is_handle_valid(self._handle):
+        if not self.is_valid():
             return
 
         # remove from all remaining downstream elements
         for downstream in list(self.get_downstream()):
-            Operator(downstream).remove_upstream(self._handle)
+            Operator(downstream).remove_upstream(self)
 
         # unsubscribe from all upstream elements
         for upstream in list(self.get_upstream()):
-            Operator(upstream).unsubscribe(self._handle)  # this might remove upstream elements
+            Operator(upstream).unsubscribe(self)  # this might remove upstream elements
 
         # finally, remove yourself
-        operator_table.remove_row(self._handle)
+        get_app().get_table(TableIndex.OPERATORS).remove_row(self._handle)
 
 
 # APPLICATION ##########################################################################################################
@@ -548,13 +564,11 @@ def get_app() -> Application:
 # PAINTERPRETER ########################################################################################################
 
 class PainterpreterNodeProperties:
-    def __init__(self, node: RowHandle):
-        self._handle: RowHandle = node
+    def __init__(self, node: Node):
+        self._node: Node = node
 
     def __getitem__(self, name: str) -> Value:
-        property_handle: Optional[RowHandle] = Node(self._handle).get_property(name)
-        assert property_handle
-        return Operator(property_handle).get_value()
+        return self._node.get_property(name).get_value()
 
 
 class Expression:
@@ -602,12 +616,12 @@ class Painterpreter:
 
         scope: Dict[str, Any] = dict(
             window=self._buffer_size,
-            prop=PainterpreterNodeProperties(node.get_handle()),
+            prop=PainterpreterNodeProperties(node),
             grant=node.get_composition().grant
         )
 
         # TODO: add method to completely reset the context including the save/restore stack
-        node_opacity = float(Operator(node.get_property('sys.opacity')).get_value())
+        node_opacity = float(node.get_property('sys.opacity').get_value())
         nanovg.reset(self._context)
         nanovg.global_alpha(self._context, max(0., min(1., node_opacity)))
         nanovg.transform(self._context, *node.get_composition().xform)
@@ -632,7 +646,7 @@ class Painterpreter:
                 y = node.get_composition().xform.f
                 width = command[3].execute(scope)
                 height = command[4].execute(scope)
-                callback: Optional[RowHandle] = node.get_property("bring_front")  # because hack
+                callback: Optional[Operator] = node.get_property("bring_front")  # because hack
                 assert callback
                 self._hitboxes.append(Hitbox(
                     Aabr(Pos2(x, y), Pos2(x + width, y + height)),
@@ -646,54 +660,9 @@ class Painterpreter:
 
 # LOGIC ################################################################################################################
 
-class OperatorSelf:
-    """
-    Operator access within one of its callback functions.
-    """
-
-    def __init__(self, handle: RowHandle):
-        self._operator: Operator = Operator(handle)
-
-    def __getitem__(self, name: str) -> Value:
-        return self._operator.get_argument(name)
-
-    def get_handle(self) -> RowHandle:
-        return self._operator.get_handle()
-
-    def is_valid(self) -> bool:
-        return self._operator.is_valid()
-
-    def get_data(self) -> Value:
-        return self._operator.get_data()
-
-    def get_downstream(self) -> RowHandleList:
-        return self._operator.get_downstream()
-
-    def next(self, value: Value) -> None:
-        self._operator.next(value)
-
-    def fail(self, error: Value) -> None:
-        self._operator.fail(error)
-
-    def complete(self) -> None:
-        self._operator.complete()
-
-    def schedule(self, callback: Callable, *args):
-        assert iscoroutinefunction(callback)
-
-        async def update_data_on_completion():
-            result: Optional[Value] = await callback(*args)
-
-            # only update the operator data if it has not completed
-            if self._operator.is_valid():
-                self._operator.set_value(result)
-
-        get_app().schedule_event(update_data_on_completion)
-
-
 class Fact:
-    def __init__(self, handle: RowHandle):
-        self._operator: Operator = Operator(handle)
+    def __init__(self, operator: Operator):
+        self._operator: Operator = operator
 
     def get_value(self) -> Value:
         return self._operator.get_value()
@@ -711,7 +680,7 @@ class Fact:
     def complete(self) -> None:
         get_app().schedule_event(lambda: self._operator.emit(OperatorVtableIndex.COMPLETION, Value()))
 
-    def subscribe(self, downstream: RowHandle):
+    def subscribe(self, downstream: Operator):
         self._operator.subscribe(downstream)
 
 
@@ -745,11 +714,11 @@ class Scene:
         if self._root_node:
             self._root_node.remove()
 
-    def create_node(self, name: str, description: NodeDescription) -> RowHandle:
+    def create_node(self, name: str, description: NodeDescription) -> Node:
         return self._root_node.create_child(name, description)
 
     def get_fact(self, name: str, ) -> Optional[Fact]:
-        fact_handle: Optional[RowHandle] = self._root_node.get_property(name)
+        fact_handle: Optional[Operator] = self._root_node.get_property(name)
         if fact_handle:
             return Fact(fact_handle)
         else:
@@ -779,8 +748,11 @@ class Node:
     def get_handle(self) -> RowHandle:
         return self._handle
 
-    def get_parent(self) -> Optional[RowHandle]:
-        return get_app().get_table(TableIndex.NODES)[self._handle]['parent']
+    def get_parent(self) -> Optional[Node]:
+        parent_handle: RowHandle = get_app().get_table(TableIndex.NODES)[self._handle]['parent']
+        if not parent_handle:
+            return None
+        return Node(parent_handle)
 
     def get_composition(self) -> Optional[NodeComposition]:
         node_table: Table = get_app().get_table(TableIndex.NODES)
@@ -793,7 +765,7 @@ class Node:
         layout_composition: LayoutComposition = layout_table[layout_handle]['composition']
         return layout_composition.nodes.get(self.get_name())
 
-    def create_child(self, name: str, description: NodeDescription) -> RowHandle:
+    def create_child(self, name: str, description: NodeDescription) -> Node:
         # ensure the child name is unique
         node_table: Table = get_app().get_table(TableIndex.NODES)
         assert name not in node_table[self._handle]['child_names']
@@ -821,7 +793,7 @@ class Node:
         child_node: Node = Node(child_handle)
         child_node.transition_into(description.initial_state)
 
-        return child_handle
+        return child_node
 
     # TODO: it might be faster to just store the name inside the node as well..
     def get_name(self) -> str:
@@ -867,7 +839,7 @@ class Node:
         for node_handle in layout_composition.order:
             painter.paint(Node(node_handle))
 
-    def get_property(self, name: str) -> Optional[RowHandle]:
+    def get_property(self, name: str) -> Optional[Operator]:
         properties: NodeProperties = get_app().get_table(TableIndex.NODES)[self._handle]['properties']
         index: Optional[int] = properties.names.get(name)
         if index is None:
@@ -885,7 +857,7 @@ class Node:
         # unregister from the parent
         node_table: Table = get_app().get_table(TableIndex.NODES)
         parent_handle: RowHandle = node_table[self._handle]['parent']
-        if not parent_handle.is_null():
+        if parent_handle:
             child_names: RowHandleMap = node_table[parent_handle]['child_names']
             node_table[parent_handle]['child_names'] = child_names.remove(self.get_name())
 
@@ -908,28 +880,28 @@ class Node:
         new_state: NodeStateDescription = node_description.states[state]
 
         # create new child nodes
-        child_handles: List[RowHandle] = []
+        child_nodes: List[Node] = []
         for name, child_description in new_state.children.items():
-            child_handles.append(self.create_child(name, child_description))
+            child_nodes.append(self.create_child(name, child_description))
 
         # create the new layout
         layout_handle: RowHandle = LAYOUT_VTABLE[new_state.layout.type][LayoutVtableIndex.CREATE](new_state.layout.args)
         node_table[self._handle]['layout'] = layout_handle
         layout: Layout = Layout(layout_handle)
-        for child_handle in child_handles:
-            layout.add_node(child_handle)
+        for child_node in child_nodes:
+            layout.add_node(child_node)
 
         # create new operators
         network: Dict[str, RowHandle] = {}
         for name, (kind, args) in new_state.operators.items():
             assert name not in network
-            network[name] = Operator.create(OPERATOR_VTABLE[kind][OperatorVtableIndex.CREATE](args))
+            network[name] = Operator.create(OPERATOR_VTABLE[kind][OperatorVtableIndex.CREATE](args)).get_handle()
         node_table[self._handle]['network'] = RowHandleList(network.values())
 
-        def find_operator(path: Path) -> Optional[RowHandle]:
+        def find_operator(path: Path) -> Optional[Operator]:
             if path.is_node_path():
                 assert path.is_relative() and len(path) == 1  # interpret single name paths as dynamic operator
-                return network.get(path[0])
+                return Operator(network.get(path[0]))
 
             else:
                 assert path.is_leaf_path()
@@ -946,7 +918,7 @@ class Node:
 
         # create new connections
         for source, sink in new_state.connections:
-            Operator(find_operator(source)).subscribe(find_operator(sink))
+            find_operator(source).subscribe(find_operator(sink))
 
         # update the claim
         self.set_claim(new_state.claim)  # causes a potential re-layout
@@ -966,8 +938,8 @@ class Node:
 
         # remove properties
         properties: NodeProperties = node_table[self._handle]['properties']
-        for property_handle in properties.elements:
-            Operator(property_handle).remove()
+        for property_ in properties.elements:
+            property_.remove()
 
         # remove the node
         node_table.remove_row(self._handle)
@@ -981,7 +953,7 @@ class Node:
         node_table[self._handle]['network'] = RowHandleList()
 
         # layout
-        current_layout: RowHandle = node_table[self._handle]['layout']
+        current_layout: RowHandle = node_table[self._handle]['layout']  # TODO: also use Layout instead of raw handles
         if current_layout:
             layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
             layout_table.remove_row(current_layout)
@@ -1009,10 +981,10 @@ class Node:
 
     def set_claim(self, claim: Claim) -> None:
         # TODO: relayout upwards
-        if self.get_parent().is_null():
+        if not self.get_parent():
             return
-        Operator(self.get_property('sys.width')).set_value(Value(claim.horizontal.preferred))
-        Operator(self.get_property('sys.height')).set_value(Value(claim.vertical.preferred))
+        self.get_property('sys.width').set_value(Value(claim.horizontal.preferred))
+        self.get_property('sys.height').set_value(Value(claim.vertical.preferred))
 
 
 # LAYOUT REGISTRY ######################################################################################################
@@ -1033,12 +1005,12 @@ class Layout:
     def clear(self):
         get_app().get_table(TableIndex.LAYOUTS)[self._handle]['nodes'] = RowHandleList()
 
-    def add_node(self, node: RowHandle):
+    def add_node(self, node: Node):
         layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
-        widgets: RowHandleList = layout_table[self._handle]['nodes']
-        if node in widgets:
-            widgets = widgets.remove(node)
-        layout_table[self._handle]['nodes'] = widgets.append(node)
+        current_nodes: RowHandleList = layout_table[self._handle]['nodes']
+        if node in current_nodes:
+            current_nodes = current_nodes.remove(node)  # re-add at the end
+        layout_table[self._handle]['nodes'] = current_nodes.append(node.get_handle())
 
     def perform(self, grant: Size2) -> LayoutComposition:
         layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
@@ -1065,12 +1037,12 @@ class LayoutNodeView:
 
     @property
     def opacity(self) -> float:
-        return float(Operator(self._node.get_property('sys.opacity')).get_value())
+        return float(self._node.get_property('sys.opacity').get_value())
 
     @property
     def claim(self) -> Claim:
-        width = float(Operator(self._node.get_property('sys.width')).get_value())
-        height = float(Operator(self._node.get_property('sys.height')).get_value())
+        width = float(self._node.get_property('sys.width').get_value())
+        height = float(self._node.get_property('sys.height').get_value())
         return Claim(Claim.Stretch(width, max_=200), Claim.Stretch(height, max_=200))  # TODO: hack
 
 
@@ -1088,24 +1060,24 @@ class LayoutView:
         """
         return get_app().get_table(TableIndex.LAYOUTS)[self._handle]["args"][name]
 
-    def sort_nodes(self) -> Tuple[List[RowHandle], Iterable[LayoutNodeView]]:
+    def sort_nodes(self) -> Tuple[List[Node], Iterable[LayoutNodeView]]:
         node_list: RowHandleList = get_app().get_table(TableIndex.LAYOUTS)[self._handle]['nodes']
 
         # TODO: I am sure there is a better implementation for this kind of priority sorting
         #  also, since the depth override is now stored as a Value, the algorithm should work with floating point depths
         buckets: Dict[int, List[RowHandle]] = {}
         for node_handle in node_list:
-            depth_override: int = int(Operator(Node(node_handle).get_property('sys.depth')).get_value())
+            depth_override: int = int(Node(node_handle).get_property('sys.depth').get_value())
             if depth_override in buckets:
                 buckets[depth_override].append(node_handle)
             else:
                 buckets[depth_override] = [node_handle]
         node_orders: Dict[RowHandle, int] = {}
-        sorted_nodes: List[RowHandle] = []
+        sorted_nodes: List[Node] = []
         index: int = 0
         for depth in sorted(buckets.keys()):
             for node_handle in buckets[depth]:
-                sorted_nodes.append(node_handle)
+                sorted_nodes.append(Node(node_handle))
                 node_orders[node_handle] = index
                 index += 1
 
@@ -1115,8 +1087,6 @@ class LayoutView:
 
         return sorted_nodes, generator()
 
-
-# TODO: real layout implementations
 
 class LtOverlayout:
     @staticmethod
@@ -1179,7 +1149,7 @@ class LtFlexbox:
 
         return LayoutComposition(
             nodes=NodeCompositions(compositions),
-            order=RowHandleList(sorted_nodes),
+            order=RowHandleList(node.get_handle() for node in sorted_nodes),
             aabr=Aabr(min=Pos2(0, 0), max=Pos2(grant.width, grant.height)),
             claim=Claim(),
         )
@@ -1209,8 +1179,6 @@ LAYOUT_VTABLE: Tuple[
 
 # OPERATOR REGISTRY ####################################################################################################
 
-# TODO: Buffer is not really a Buffer, Countdown is way to specific, Create should utilize its input value etc.
-
 class OpRelay:
     @staticmethod
     def create(value: Value) -> OperatorRowDescription:
@@ -1222,7 +1190,7 @@ class OpRelay:
         )
 
     @staticmethod
-    def on_next(self: OperatorSelf, _: RowHandle, value: Value) -> Value:
+    def on_next(self: Operator, _: RowHandle, value: Value) -> Value:
         self.next(value)
         return self.get_data()
 
@@ -1256,14 +1224,15 @@ class OpBuffer:
         )
 
     @staticmethod
-    def on_next(self: OperatorSelf, _upstream: RowHandle, _value: Value) -> Value:
+    def on_next(self: Operator, _upstream: RowHandle, _value: Value) -> Value:
         if not int(self.get_data()['is_running']) == 1:
             async def timeout():
-                await curio.sleep(float(self["time_span"]))
+                await curio.sleep(float(self.get_argument("time_span")))
                 if not self.is_valid():
                     return
                 self.next(Value(self.get_data()['counter']))
-                print(f'Clicked {int(self.get_data()["counter"])} times in the last {float(self["time_span"])} seconds')
+                print(f'Clicked {int(self.get_data()["counter"])} times '
+                      f'in the last {float(self.get_argument("time_span"))} seconds')
                 return mutate_value(self.get_data(), False, "is_running")
 
             self.schedule(timeout)
@@ -1292,18 +1261,18 @@ class OpFactory:
         )
 
     @staticmethod
-    def on_next(self: OperatorSelf, _1: RowHandle, _2: Value) -> Value:
+    def on_next(self: Operator, _1: RowHandle, _2: Value) -> Value:
         downstream: RowHandleList = self.get_downstream()
         if len(downstream) == 0:
             return self.get_data()
 
-        factory_function: Callable[[Value], OperatorRowDescription] = OPERATOR_VTABLE[int(self['id'])][
+        factory_function: Callable[[Value], OperatorRowDescription] = OPERATOR_VTABLE[int(self.get_argument('id'))][
             OperatorVtableIndex.CREATE]
-        factory_arguments: Value = self['args']
+        factory_arguments: Value = self.get_argument('args')
         for subscriber in downstream:
-            new_operator: Operator = Operator(Operator.create(factory_function(factory_arguments)))
+            new_operator: Operator = Operator.create(factory_function(factory_arguments))
             new_operator.subscribe(subscriber)
-            new_operator.run(self.get_handle(), OperatorVtableIndex.NEXT, new_operator.get_value())
+            new_operator.run(self, OperatorVtableIndex.NEXT, new_operator.get_value())
 
         return self.get_data()
 
@@ -1318,8 +1287,8 @@ class OpCountdown:
         )
 
     @staticmethod
-    def on_next(self: OperatorSelf, _upstream: RowHandle, _value: Value) -> Value:
-        counter: Value = self['start']
+    def on_next(self: Operator, _upstream: RowHandle, _value: Value) -> Value:
+        counter: Value = self.get_argument('start')
         assert counter.get_kind() == Value.Kind.NUMBER
 
         async def loop():
@@ -1345,7 +1314,7 @@ class OpPrinter:
         )
 
     @staticmethod
-    def on_next(self: OperatorSelf, upstream: RowHandle, value: Value) -> Value:
+    def on_next(self: Operator, upstream: RowHandle, value: Value) -> Value:
         print(f'Received {value!r} from {upstream}')
         return self.get_data()
 
@@ -1375,10 +1344,10 @@ class OpSine:
         )
 
     @staticmethod
-    def on_subscribe(self: OperatorSelf, _1: RowHandle) -> None:
-        frequency: float = float(self['frequency'])
-        amplitude: float = float(self['amplitude'])
-        samples: float = float(self['samples'])
+    def on_subscribe(self: Operator, _1: RowHandle) -> None:
+        frequency: float = float(self.get_argument('frequency'))
+        amplitude: float = float(self.get_argument('amplitude'))
+        samples: float = float(self.get_argument('samples'))
 
         async def runner():
             while self.is_valid():
@@ -1395,7 +1364,7 @@ class OpSine:
 #         pass
 #
 #     @staticmethod
-#     def on_next(self: OperatorSelf, upstream: RowHandle, value: Value) -> Value:
+#     def on_next(self: Operator, upstream: RowHandle, value: Value) -> Value:
 #         pass
 
 @unique
@@ -1420,10 +1389,10 @@ class OperatorVtableIndex(IntEnum):
 
 OPERATOR_VTABLE: Tuple[
     Tuple[
-        Optional[Callable[[OperatorSelf, RowHandle], Value]],  # on next
-        Optional[Callable[[OperatorSelf, RowHandle], Value]],  # on failure
-        Optional[Callable[[OperatorSelf, RowHandle], Value]],  # on completion
-        Optional[Callable[[OperatorSelf, RowHandle], None]],  # on subscription
+        Optional[Callable[[Operator, RowHandle], Value]],  # on next
+        Optional[Callable[[Operator, RowHandle], Value]],  # on failure
+        Optional[Callable[[Operator, RowHandle], Value]],  # on completion
+        Optional[Callable[[Operator, RowHandle], None]],  # on subscription
         Callable[[Value], OperatorRowDescription],
     ], ...] = (
     (OpRelay.on_next, None, None, None, OpRelay.create),

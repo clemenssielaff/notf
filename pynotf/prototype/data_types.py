@@ -95,9 +95,4 @@ class Xform(NamedTuple):
     f: float = 0
 
 
-class Hitbox(NamedTuple):
-    aabr: Aabr
-    callback: RowHandle
-
-
 NodeDesign = List[Tuple[Any, ...]]
