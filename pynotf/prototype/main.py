@@ -184,6 +184,15 @@ def is_in_aabr(aabr: Aabr, pos: Pos2) -> bool:
     return aabr.min.x <= pos.x <= aabr.max.x and aabr.min.y <= pos.y <= aabr.max.y
 
 
+def patch_builtin_properties(node_description: NodeDescription) -> None:
+    # ensure none of the properties use the the reserved 'sys' namespace
+    for property_name in node_description.properties:
+        assert not property_name.startswith(f'{BUILTIN_NAMESPACE}.')
+
+    # add built-in properties
+    node_description.properties.update(BUILTIN_NODE_PROPERTIES)
+
+
 # OPERATORS ############################################################################################################
 
 
@@ -209,7 +218,7 @@ class Operator:
         ))
 
     def __init__(self, handle: RowHandle):
-        assert handle.table == TableIndex.OPERATORS
+        assert handle.is_null() or handle.table == TableIndex.OPERATORS
         self._handle: RowHandle = handle
 
     def __repr__(self) -> str:
@@ -264,7 +273,7 @@ class Operator:
     def get_data(self) -> Value:
         return get_app().get_table(TableIndex.OPERATORS)[self._handle]["data"]
 
-    def get_upstream(self) -> RowHandleList:  # TODO: row handles exposed in interface
+    def get_upstream(self) -> RowHandleList:
         return get_app().get_table(TableIndex.OPERATORS)[self._handle]['upstream']
 
     def get_downstream(self) -> RowHandleList:
@@ -308,7 +317,7 @@ class Operator:
         if my_status.is_completed():
             assert self.is_external()  # operator is valid but completed? -> it must be external
             callback = OperatorVtableIndex(my_status if my_status.is_active() else int(my_status) - 3)
-            downstream.run(self, callback, self.get_value())
+            downstream._run(self, callback, self.get_value())
             return
 
         if len(self.get_downstream()) != 0:
@@ -330,8 +339,8 @@ class Operator:
         # if the upstream was already completed when the downstream subscribed, its subscription won't have completed
         current_upstream: RowHandleList = downstream.get_upstream()
         if self._handle not in current_upstream:
-            assert len(self.get_downstream()) == 0
             assert self.get_status().is_completed()
+            assert len(self.get_downstream()) == 0
             return
 
         # update the downstream element
@@ -345,15 +354,15 @@ class Operator:
             return self.remove()
 
     def on_next(self, source: Operator, value: Value) -> None:
-        self.run(source, OperatorVtableIndex.NEXT, value)
+        self._run(source, OperatorVtableIndex.NEXT, value)
 
     def on_fail(self, source: Operator, error: Value) -> None:
-        self.run(source, OperatorVtableIndex.FAILURE, error)
+        self._run(source, OperatorVtableIndex.FAILURE, error)
 
-    def on_complete(self, source: Operator, message: Value = Value()) -> None:
-        self.run(source, OperatorVtableIndex.COMPLETION, message)
+    def on_complete(self, source: Operator, message: Optional[Value] = None) -> None:
+        self._run(source, OperatorVtableIndex.COMPLETION, message or Value())
 
-    def run(self, source: Operator, callback: OperatorVtableIndex, value: Value) -> None:  # TODO: run and emit private?
+    def _run(self, source: Operator, callback: OperatorVtableIndex, value: Value) -> None:
         """
         Runs one of the three callbacks of this Operator.
         """
@@ -383,15 +392,15 @@ class Operator:
             callback_func(self, source, value)
 
     def next(self, value: Value) -> None:
-        self.emit(OperatorVtableIndex.NEXT, value)
+        self._emit(OperatorVtableIndex.NEXT, value)
 
     def fail(self, error: Value) -> None:
-        self.emit(OperatorVtableIndex.FAILURE, error)
+        self._emit(OperatorVtableIndex.FAILURE, error)
 
-    def complete(self) -> None:
-        self.emit(OperatorVtableIndex.COMPLETION, Value())
+    def complete(self, message: Optional[Value] = None) -> None:
+        self._emit(OperatorVtableIndex.COMPLETION, message or Value())
 
-    def emit(self, callback: OperatorVtableIndex, value: Value) -> None:
+    def _emit(self, callback: OperatorVtableIndex, value: Value) -> None:
         assert callback != OperatorVtableIndex.CREATE
 
         # make sure the operator is valid and not completed yet
@@ -414,7 +423,7 @@ class Operator:
 
             # emit to all valid downstream elements
             for element in downstream:
-                Operator(element).run(self, callback, value)
+                Operator(element)._run(self, callback, value)
 
             # reset the status
             self.set_status(EmitterStatus.IDLE)
@@ -425,7 +434,7 @@ class Operator:
 
             # emit one last time ...
             for element in downstream:
-                Operator(element).run(self, callback, value)
+                Operator(element)._run(self, callback, value)
 
             # ... and finalize the status
             self.set_status(EmitterStatus(int(callback) + 3))
@@ -456,11 +465,11 @@ class Operator:
             return
 
         # remove from all remaining downstream elements
-        for downstream in list(self.get_downstream()):
+        for downstream in self.get_downstream():
             Operator(downstream).remove_upstream(self)
 
         # unsubscribe from all upstream elements
-        for upstream in list(self.get_upstream()):
+        for upstream in self.get_upstream():
             Operator(upstream).unsubscribe(self)  # this might remove upstream elements
 
         # finally, remove yourself
@@ -484,6 +493,8 @@ class Application:
         return self._storage[int(table_index)]
 
     def is_handle_valid(self, handle: RowHandle) -> bool:
+        if handle.is_null():
+            return False
         return self.get_table(handle.table).is_handle_valid(handle)
 
     def get_scene(self) -> Scene:
@@ -611,9 +622,6 @@ class Painterpreter:
         return self
 
     def paint(self, node: Node) -> None:
-        if not node.get_parent():  # TODO: I don't like that you cannot draw the root...
-            return
-
         scope: Dict[str, Any] = dict(
             window=self._buffer_size,
             prop=PainterpreterNodeProperties(node),
@@ -672,13 +680,13 @@ class Fact:
 
     def next(self, value: Value) -> None:
         assert value.get_schema() == self.get_schema()
-        get_app().schedule_event(lambda: self._operator.emit(OperatorVtableIndex.NEXT, value))
+        get_app().schedule_event(lambda: self._operator.next(value))
 
     def fail(self, error: Value) -> None:
-        get_app().schedule_event(lambda: self._operator.emit(OperatorVtableIndex.FAILURE, error))
+        get_app().schedule_event(lambda: self._operator.fail(error))
 
     def complete(self) -> None:
-        get_app().schedule_event(lambda: self._operator.emit(OperatorVtableIndex.COMPLETION, Value()))
+        get_app().schedule_event(lambda: self._operator.complete())
 
     def subscribe(self, downstream: Operator):
         self._operator.subscribe(downstream)
@@ -691,24 +699,28 @@ class Scene:
     def __init__(self):
         self._root_node: Optional[Node] = None
         self._hitboxes: List[Hitbox] = []
+        self._size: Size2 = Size2()
 
     def initialize(self, root_description: NodeDescription):
-        facts: Dict[str, OperatorRowDescription] = {
-            key: OpRelay.create(value) for key, value in root_description.properties.items()
-        }  # TODO: shouldn't Facts be external?
-
         # create the root node
-        node_table: Table = get_app().get_table(TableIndex.NODES)
-        root_handle: RowHandle = node_table.add_row(
+        patch_builtin_properties(root_description)
+        self._root_node = Node(get_app().get_table(TableIndex.NODES).add_row(
             description=root_description,
             parent=RowHandle(),  # empty row handle as parent
             properties=NodeProperties(
                 names=Bonsai([property_name for property_name in root_description.properties.keys()]),
-                elements=[Operator.create(fact) for fact in facts.values()],
+                elements=[Operator.create(OpRelay.create(value)) for value in root_description.properties.values()],
             )
-        )
-        self._root_node = Node(root_handle)
+        ))
         self._root_node.transition_into(root_description.initial_state)
+
+    def set_size(self, size: Size2):
+        if size != self._size:
+            self._size = size
+            self._root_node.relayout_down(self._size)
+
+    def get_size(self) -> Size2:
+        return self._size
 
     def clear(self):
         if self._root_node:
@@ -742,7 +754,7 @@ class Scene:
 
 class Node:
     def __init__(self, handle: RowHandle):
-        assert handle.table == TableIndex.NODES
+        assert handle.is_null() or handle.table == TableIndex.NODES
         self._handle: RowHandle = handle
 
     def get_handle(self) -> RowHandle:
@@ -754,30 +766,25 @@ class Node:
             return None
         return Node(parent_handle)
 
-    def get_composition(self) -> Optional[NodeComposition]:
-        node_table: Table = get_app().get_table(TableIndex.NODES)
-        parent_handle: RowHandle = node_table[self._handle]['parent']
-        if not parent_handle:
-            return None
+    def get_layout(self) -> Layout:
+        return Layout(get_app().get_table(TableIndex.NODES)[self._handle]['layout'])
 
-        layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
-        layout_handle: RowHandle = node_table[parent_handle]['layout']
-        layout_composition: LayoutComposition = layout_table[layout_handle]['composition']
-        return layout_composition.nodes.get(self.get_name())
+    def get_composition(self) -> NodeComposition:
+        parent: Optional[Node] = self.get_parent()
+        if not parent:
+            return NodeComposition(Xform(), get_app().get_scene().get_size(), 1)  # root composition
+
+        node_composition: Optional[Optional[NodeComposition]] = parent.get_layout().get_node_composition(self)
+        assert node_composition
+        return node_composition
 
     def create_child(self, name: str, description: NodeDescription) -> Node:
         # ensure the child name is unique
         node_table: Table = get_app().get_table(TableIndex.NODES)
         assert name not in node_table[self._handle]['child_names']
 
-        # ensure none of the properties use the the reserved 'sys' namespace
-        for property_name in description.properties:
-            assert not property_name.startswith(f'{BUILTIN_NAMESPACE}.')
-
-        # add built-in properties
-        description.properties.update(BUILTIN_NODE_PROPERTIES)
-
         # create the child node entry
+        patch_builtin_properties(description)
         child_handle: RowHandle = node_table.add_row(
             description=description,
             parent=self._handle,
@@ -814,29 +821,28 @@ class Node:
         return Node(child_handle)
 
     def get_descendant(self, path: Path, step: int = 0) -> Optional[Node]:
+        # success
         if step == len(path):
             return self
 
         # next step is up
-        next_step: str = path[step]
-        if next_step == Path.STEP_UP:
-            parent: Optional[RowHandle] = self.get_parent()
-            if parent is None:
-                return None
-            return Node(parent).get_descendant(path, step + 1)
+        if path[step] == Path.STEP_UP:
+            parent: Optional[Node] = self.get_parent()
+            if parent:
+                return parent.get_descendant(path, step + 1)
 
         # next step is down
-        node_table: Table = get_app().get_table(TableIndex.NODES)
-        child_handle: Optional[RowHandle] = node_table[self._handle]['child_names'].get(next_step)
-        if child_handle is None:
-            return None
-        return Node(child_handle).get_descendant(path, step + 1)
+        else:
+            next_child: Optional[Node] = self.get_child(path[step])
+            if next_child:
+                return next_child.get_descendant(path, step + 1)
+
+        # failure
+        return None
 
     def paint(self, painter: Painterpreter):
         painter.paint(self)
-        layout_handle: RowHandle = get_app().get_table(TableIndex.NODES)[self._handle]['layout']
-        layout_composition: LayoutComposition = get_app().get_table(TableIndex.LAYOUTS)[layout_handle]['composition']
-        for node_handle in layout_composition.order:
+        for node_handle in self.get_layout().get_composition().order:
             painter.paint(Node(node_handle))
 
     def get_property(self, name: str) -> Optional[Operator]:
@@ -885,11 +891,10 @@ class Node:
             child_nodes.append(self.create_child(name, child_description))
 
         # create the new layout
-        layout_handle: RowHandle = LAYOUT_VTABLE[new_state.layout.type][LayoutVtableIndex.CREATE](new_state.layout.args)
-        node_table[self._handle]['layout'] = layout_handle
-        layout: Layout = Layout(layout_handle)
+        layout: Layout = Layout.create(new_state.layout.type, new_state.layout.args)
         for child_node in child_nodes:
             layout.add_node(child_node)
+        node_table[self._handle]['layout'] = layout.get_handle()
 
         # create new operators
         network: Dict[str, RowHandle] = {}
@@ -953,18 +958,13 @@ class Node:
         node_table[self._handle]['network'] = RowHandleList()
 
         # layout
-        current_layout: RowHandle = node_table[self._handle]['layout']  # TODO: also use Layout instead of raw handles
-        if current_layout:
-            layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
-            layout_table.remove_row(current_layout)
+        self.get_layout().remove()
 
     def relayout_down(self, grant: Size2) -> None:
-        layout_handle: RowHandle = get_app().get_table(TableIndex.NODES)[self._handle]['layout']
-        layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
-
         # update the layout with the new grant
-        old_layout: LayoutComposition = layout_table[layout_handle]['composition']
-        new_layout: LayoutComposition = Layout(layout_handle).perform(grant)
+        layout: Layout = self.get_layout()
+        old_layout: LayoutComposition = layout.get_composition()
+        new_layout: LayoutComposition = layout.perform(grant)
 
         # update all child nodes
         for child_name, child_layout in new_layout.nodes.items():
@@ -992,73 +992,49 @@ class Node:
 class Layout:
 
     def __init__(self, handle: RowHandle):
-        assert handle.table == TableIndex.LAYOUTS
+        assert handle.is_null() or handle.table == TableIndex.LAYOUTS
         self._handle: RowHandle = handle
 
     @staticmethod
-    def create(layout_index: LayoutIndex, args: Value) -> RowHandle:
-        return LAYOUT_VTABLE[layout_index][LayoutVtableIndex.CREATE](args)
+    def create(layout_index: LayoutIndex, args: Value) -> Layout:
+        return Layout(LAYOUT_VTABLE[layout_index][LayoutVtableIndex.CREATE](args))
 
     def get_handle(self) -> RowHandle:
         return self._handle
 
-    def clear(self):
+    def is_valid(self) -> bool:
+        return get_app().get_table(TableIndex.LAYOUTS).is_handle_valid(self._handle)
+
+    def get_argument(self, name) -> Value:
+        """
+        :param name: Name of the argument to access.
+        :return: The requested argument.
+        :raise: KeyError
+        """
+        return get_app().get_table(TableIndex.LAYOUTS)[self._handle]["args"][name]
+
+    def clear(self) -> None:
         get_app().get_table(TableIndex.LAYOUTS)[self._handle]['nodes'] = RowHandleList()
 
-    def add_node(self, node: Node):
+    def add_node(self, node: Node) -> None:
         layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
         current_nodes: RowHandleList = layout_table[self._handle]['nodes']
         if node in current_nodes:
             current_nodes = current_nodes.remove(node)  # re-add at the end
         layout_table[self._handle]['nodes'] = current_nodes.append(node.get_handle())
 
+    def get_composition(self) -> LayoutComposition:
+        return get_app().get_table(TableIndex.LAYOUTS)[self._handle]['composition']
+
+    def get_node_composition(self, node: Node) -> Optional[NodeComposition]:
+        return self.get_composition().nodes.get(node.get_name())
+
     def perform(self, grant: Size2) -> LayoutComposition:
         layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
         layout_index: LayoutIndex = layout_table[self._handle]['layout_index']
-        composition: LayoutComposition = LAYOUT_VTABLE[layout_index][LayoutVtableIndex.LAYOUT](
-            LayoutView(self._handle), grant)
+        composition: LayoutComposition = LAYOUT_VTABLE[layout_index][LayoutVtableIndex.LAYOUT](self, grant)
         layout_table[self._handle]['composition'] = composition
         return composition
-
-
-class LayoutNodeView:
-    def __init__(self, handle: RowHandle, order: int):
-        assert handle.table == TableIndex.NODES
-        self._node: Node = Node(handle)
-        self._order: int = order
-
-    @property
-    def name(self) -> str:
-        return self._node.get_name()
-
-    @property
-    def order(self) -> int:
-        return self._order
-
-    @property
-    def opacity(self) -> float:
-        return float(self._node.get_property('sys.opacity').get_value())
-
-    @property
-    def claim(self) -> Claim:
-        width = float(self._node.get_property('sys.width').get_value())
-        height = float(self._node.get_property('sys.height').get_value())
-        return Claim(Claim.Stretch(width, max_=200), Claim.Stretch(height, max_=200))  # TODO: hack
-
-
-class LayoutView:
-    def __init__(self, handle: RowHandle):
-        assert handle.table == TableIndex.LAYOUTS
-        self._handle: RowHandle = handle
-
-    def __getitem__(self, name: str) -> Value:
-        """
-        self['arg'] is the access to the Layout's arguments.
-        :param name: Name of the argument to access.
-        :return: The requested argument.
-        :raise: KeyError
-        """
-        return get_app().get_table(TableIndex.LAYOUTS)[self._handle]["args"][name]
 
     def sort_nodes(self) -> Tuple[List[Node], Iterable[LayoutNodeView]]:
         node_list: RowHandleList = get_app().get_table(TableIndex.LAYOUTS)[self._handle]['nodes']
@@ -1083,9 +1059,32 @@ class LayoutView:
 
         def generator():
             for handle in node_list:
-                yield LayoutNodeView(handle, node_orders[handle])
+                yield LayoutNodeView(Node(handle))
 
         return sorted_nodes, generator()
+
+    def remove(self) -> None:
+        if self.is_valid():
+            get_app().get_table(TableIndex.LAYOUTS).remove_row(self._handle)
+
+
+class LayoutNodeView:
+    def __init__(self, node: Node):
+        self._node: Node = node
+
+    @property
+    def name(self) -> str:
+        return self._node.get_name()
+
+    @property
+    def opacity(self) -> float:
+        return float(self._node.get_property('sys.opacity').get_value())
+
+    @property
+    def claim(self) -> Claim:
+        width = float(self._node.get_property('sys.width').get_value())
+        height = float(self._node.get_property('sys.height').get_value())
+        return Claim(Claim.Stretch(width, max_=200), Claim.Stretch(height, max_=200))  # TODO: hack
 
 
 class LtOverlayout:
@@ -1098,7 +1097,7 @@ class LtOverlayout:
         )
 
     @staticmethod
-    def layout(self: LayoutView, grant: Size2) -> LayoutComposition:
+    def layout(self: Layout, grant: Size2) -> LayoutComposition:
         compositions: Dict[str, NodeComposition] = {}
         sorted_nodes, view_generator = self.sort_nodes()
         for node_view in view_generator:
@@ -1130,7 +1129,7 @@ class LtFlexbox:
         )
 
     @staticmethod
-    def layout(self: LayoutView, grant: Size2) -> LayoutComposition:
+    def layout(self: Layout, grant: Size2) -> LayoutComposition:
         compositions: Dict[str, NodeComposition] = {}
         x_offset: float = 0
         sorted_nodes, view_generator = self.sort_nodes()
@@ -1145,7 +1144,7 @@ class LtFlexbox:
                 grant=node_grant,
                 opacity=node_view.opacity,
             )
-            x_offset += node_grant.width + float(self['margin'])
+            x_offset += node_grant.width + float(self.get_argument('margin'))
 
         return LayoutComposition(
             nodes=NodeCompositions(compositions),
@@ -1170,7 +1169,7 @@ class LayoutVtableIndex(IntEnum):
 LAYOUT_VTABLE: Tuple[
     Tuple[
         Optional[Callable[[Value], RowHandle]],  # create
-        Optional[Callable[[LayoutView, Size2], LayoutComposition]],  # layout
+        Optional[Callable[[Layout, Size2], LayoutComposition]],  # layout
     ], ...] = (
     (LtOverlayout.create, LtOverlayout.layout),
     (LtFlexbox.create, LtFlexbox.layout),
@@ -1272,7 +1271,7 @@ class OpFactory:
         for subscriber in downstream:
             new_operator: Operator = Operator.create(factory_function(factory_arguments))
             new_operator.subscribe(subscriber)
-            new_operator.run(self, OperatorVtableIndex.NEXT, new_operator.get_value())
+            new_operator.on_next(self, new_operator.get_value())
 
         return self.get_data()
 
@@ -1436,7 +1435,7 @@ def mouse_button_callback(window, button: int, action: int, mods: int) -> None:
 
 # noinspection PyUnusedLocal
 def window_size_callback(window, width: int, height: int) -> None:
-    get_app().get_scene()._root_node.relayout_down(Size2(width, height))
+    get_app().get_scene().set_size(Size2(width, height))
 
 
 count_presses_node: NodeDescription = NodeDescription(
