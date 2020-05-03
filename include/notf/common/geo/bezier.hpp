@@ -14,7 +14,7 @@ namespace detail {
 // bezier =========================================================================================================== //
 
 /// 1 dimensional Bezier segment.
-/// Used as a building block for the PolyBezier spline.
+/// Used as a building block for the ParametricBezier.
 template<size_t Order, class Element>
 class Bezier {
 
@@ -33,15 +33,16 @@ public:
 
 private:
     /// Actual bezier interpolation.
-    /// Might look a bit overcomplicated, but produces the same assembly code for a bezier<3> as the
+    /// Might look a bit overcomplicated, but produces the same assembly code for a Bezier<3> as the
     /// "extremely-optimized version" from https://pomax.github.io/bezierinfo/#control
-    /// (see https://godbolt.org/z/HbOyKJ for a comparison)
+    /// Edit: ... at least for clang9.
+    /// (see https://godbolt.org/z/HbOyKJ for a comparison) 
     template<size_t... I>
     constexpr auto _interpolate_impl(const element_t t, std::index_sequence<I...>) const {
         constexpr const std::array<element_t, Order + 1> binomials = pascal_triangle_row<Order, element_t>();
         const std::array<element_t, Order + 1> ts = power_list<Order + 1>(t);
         const std::array<element_t, Order + 1> its = power_list<Order + 1>(1 - t);
-        auto lambda = [&](const ulong i) { return binomials[i] * m_weights[i] * ts[i] * its[Order - i]; };
+        auto lambda = [&](const ulong i) { return binomials[i] * weights[i] * ts[i] * its[Order - i]; };
         return sum(lambda(I)...);
     }
 
@@ -52,7 +53,7 @@ public:
 
     /// Value constructor.
     /// @param data Data making up the Bezier.
-    constexpr Bezier(weights_t data) noexcept : m_weights(std::move(data)) {}
+    constexpr Bezier(weights_t data) noexcept : weights(std::move(data)) {}
 
     /// Value constructor.
     /// @param start    Start weight point of the Bezier, determines the data type.
@@ -61,7 +62,7 @@ public:
              class = std::enable_if_t<all(sizeof...(Ts) == Order,  //
                                           std::is_arithmetic_v<T>, //
                                           all_convertible_to_v<T, Ts...>)>>
-    constexpr Bezier(T start, Ts... tail) : m_weights({start, tail...}) {}
+    constexpr Bezier(T start, Ts... tail) : weights({start, tail...}) {}
 
     /// Straight line with constant interpolation speed.
     /// @param start    Start weight.
@@ -79,17 +80,17 @@ public:
     /// @param index    Index of the weight. Must be in rande [0, Order].
     constexpr element_t get_weight(const size_t index) const {
         if (index > Order) { NOTF_THROW(IndexError, "Cannot get weight {} from Bezier of Order {}", index, Order); }
-        return m_weights[index];
+        return weights[index];
     }
 
     /// Bezier interpolation at position `t`.
-    /// A bezier is most useful in [0, 1] but may be sampled outside that interval as well.
+    /// A Bezier is most useful in [0, 1] but may be sampled outside that interval as well.
     /// @param t    Position to evaluate.
     constexpr element_t interpolate(const element_t& t) const {
         return _interpolate_impl(t, std::make_index_sequence<Order + 1>{});
     }
 
-    /// The derivate bezier, can be used to calculate the tangent.
+    /// The derivate Bezier, can be used to calculate the tangent.
     constexpr std::enable_if_t<(Order > 0), Bezier<Order - 1, element_t>> get_derivate() const {
         std::array<element_t, Order> deriv_weights{};
         for (ulong k = 0; k < Order; ++k) {
@@ -98,10 +99,18 @@ public:
         return deriv_weights;
     }
 
+    /// Equality operator.
+    /// @param other    Value to test against.
+    constexpr bool operator==(const Bezier& other) const noexcept { return weights == other.weights; }
+
+    /// Inequality operator.
+    /// @param other    Value to test against.
+    constexpr bool operator!=(const Bezier& other) const noexcept { return weights != other.weights; }
+
     // fields ---------------------------------------------------------------------------------- //
 public:
     /// Bezier weights.
-    weights_t m_weights;
+    weights_t weights;
 };
 
 // parametric bezier ================================================================================================ //
@@ -135,13 +144,13 @@ private:
     /// Transforms individual vertices into an array of 1D beziers suitable for use in a Parametric Bezier.
     static constexpr data_t _deinterleave(std::array<vector_t, Order + 1>&& input) noexcept {
         std::array<typename bezier_t::weights_t, vector_t::get_dimensions()> output{};
-        for (uint dim = 0; dim < get_dimensions(); ++dim) {
-            for (uint i = 0; i < Order + 1; ++i) {
+        for (size_t dim = 0; dim < get_dimensions(); ++dim) {
+            for (size_t i = 0; i < Order + 1; ++i) {
                 output[dim][i] = input[i][dim];
             }
         }
         data_t result{};
-        for (uint dim = 0; dim < get_dimensions(); ++dim) {
+        for (size_t dim = 0; dim < get_dimensions(); ++dim) {
             result[dim] = std::move(output[dim]);
         }
         return result;
@@ -154,7 +163,7 @@ public:
 
     /// Value constructor.
     /// @param data Data making up the Bezier.
-    constexpr ParametricBezier(data_t data) noexcept : m_data(std::move(data)) {}
+    constexpr ParametricBezier(data_t data) noexcept : data(std::move(data)) {}
 
     /// Value constructor.
     /// @param vertices Individual vertices that make up this ParametricBezier.
@@ -165,48 +174,56 @@ public:
 
     /// Access to a 1D Bezier that makes up this ParametricBezier.
     const bezier_t& get_dimension(const size_t dim) const {
-        if (dim >= m_data.size()) {
+        if (dim >= data.size()) {
             NOTF_THROW(IndexError, "Cannot get dimension {} from a ParametricBezier with only {} dimensions", dim,
                        get_dimensions());
         }
-        return m_data[dim];
+        return data[dim];
     }
 
     /// Access to a vertex of this Bezier.
-    /// @param index    Index of the vertex. Must be in rande [0, Order].
+    /// @param index    Index of the vertex. Must be in range [0, Order].
     constexpr vector_t get_vertex(const size_t index) const {
         if (index > Order) { NOTF_THROW(IndexError, "Cannot get index {} from Bezier of Order {}", index, Order); }
         vector_t result{};
         for (size_t dim = 0; dim < get_dimensions(); ++dim) {
-            result[dim] = m_data[dim].get_weight(index);
+            result[dim] = data[dim].get_weight(index);
         }
         return result;
     }
 
     /// Bezier interpolation at position `t`.
-    /// A bezier is most useful in [0, 1] but may be sampled outside that interval as well.
+    /// A Bezier is most useful in [0, 1] but may be sampled outside that interval as well.
     /// @param t    Position to evaluate.
     constexpr vector_t interpolate(const element_t& t) const {
         vector_t result{};
         for (uint dim = 0; dim < get_dimensions(); ++dim) {
-            result[dim] = m_data[0].interpolate(t);
+            result[dim] = data[0].interpolate(t);
         }
         return result;
     }
 
-    /// The derivate bezier, can be used to calculate the tangent.
+    /// The derivate Bezier, can be used to calculate the tangent.
     constexpr std::enable_if_t<(Order > 0), ParametricBezier<Order - 1, vector_t>> get_derivate() const {
         typename ParametricBezier<Order - 1, vector_t>::data_t derivate{};
         for (uint dim = 0; dim < get_dimensions(); ++dim) {
-            derivate[dim] = m_data[0].get_derivate();
+            derivate[dim] = data[0].get_derivate();
         }
         return derivate;
     }
 
+    /// Equality operator.
+    /// @param other    Value to test against.
+    constexpr bool operator==(const ParametricBezier& other) const noexcept { return data == other.data; }
+
+    /// Inequality operator.
+    /// @param other    Value to test against.
+    constexpr bool operator!=(const ParametricBezier& other) const noexcept { return data != other.data; }
+
     // fields ---------------------------------------------------------------------------------- //
 public:
     /// Bezier weights.
-    data_t m_data;
+    data_t data;
 };
 
 } // namespace detail

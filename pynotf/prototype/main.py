@@ -1526,4 +1526,7 @@ root_node: NodeDescription = NodeDescription(
 # MAIN #################################################################################################################
 
 if __name__ == "__main__":
-    sys.exit(get_app().run(root_node))
+    # sys.exit(get_app().run(root_node))
+    import pycnotf as p
+    r = p.Aabr(0, 0, 100, 100)
+    print(r)

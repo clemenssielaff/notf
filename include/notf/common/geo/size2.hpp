@@ -31,7 +31,7 @@ public:
     constexpr Size2(Args&&... args) noexcept : super_t{std::forward<Args>(args)...} {}
 
     /// Name of this Size2 type.
-    static constexpr const char* get_name() {
+    static constexpr const char* get_type_name() {
         if constexpr (std::is_same_v<Element, float>) {
             return "Size2f";
         } else if constexpr (std::is_same_v<Element, double>) {
@@ -43,34 +43,56 @@ public:
         }
     }
 
-    /// Creates and returns an invalid Size2 instance.
+    /// Returns an invalid Size2 instance.
     constexpr static Size2 invalid() noexcept { return {-1, -1}; }
+
+    /// The largest representable Size2.
+    constexpr static Size2 largest() noexcept {
+        Size2 result{};
+        result[0] = min_v<element_t>;
+        result[1] = max_v<element_t>;
+        return result;
+    }
 
     /// The "most wrong" Size2 (maximal negative area).
     /// Is useful as the starting point for defining the union of multiple Size2.
     constexpr static Size2 wrongest() noexcept { return {min_v<element_t>, min_v<element_t>}; }
 
-    /// @{
     /// Width
-    constexpr element_t& width() noexcept { return data[0]; }
-    constexpr const element_t& width() const noexcept { return data[0]; }
-    /// @}
+    constexpr const element_t& get_width() const noexcept { return data[0]; }
 
-    /// @{
+    /// Set width
+    /// @param width    New width.
+    constexpr const Size2& set_width(const element_t width) noexcept {
+        _width() = width;
+        return *this;
+    }
+
     /// Height
-    constexpr element_t& height() noexcept { return data[1]; }
-    constexpr const element_t& height() const noexcept { return data[1]; }
-    /// @}
+    constexpr const element_t& get_height() const noexcept { return data[1]; }
 
-    /// Tests if this Size is valid (>=0) in both dimensions.
-    constexpr bool is_valid() const noexcept { return width() >= 0 && height() >= 0; }
+    /// Set height
+    /// @param width    New height.
+    constexpr const Size2& set_height(const element_t height) noexcept {
+        _height() = height;
+        return *this;
+    }
 
-    /// Checks if the size has the same height and width.
-    constexpr bool is_square() const noexcept { return abs(width()) - abs(height()) <= precision_high<element_t>(); }
+    /// Tests if this Size2 is valid (>=0) in both dimensions.
+    constexpr bool is_valid() const noexcept { return get_width() >= 0 && get_height() >= 0; }
 
-    /// Returns the area of a rectangle of this Size.
+    /// Checks if the Size2 has the same height and width.
+    constexpr bool is_square() const noexcept {
+        return abs(get_width()) - abs(get_height()) <= precision_high<element_t>();
+    }
+
+    /// Returns the area of a rectangle of this Size2.
     /// Always returns 0, if the size is invalid.
-    constexpr element_t get_area() const noexcept { return max(0, width() * height()); }
+    constexpr element_t get_area() const noexcept { return max(0, get_width() * get_height()); }
+
+private:
+    constexpr element_t& _width() noexcept { return data[0]; }
+    constexpr element_t& _height() noexcept { return data[1]; }
 
     // fields ---------------------------------------------------------------------------------- //
 public:
@@ -106,7 +128,7 @@ struct formatter<notf::detail::Size2<Element>> {
 
     template<typename FormatContext>
     auto format(const type& size, FormatContext& ctx) {
-        return format_to(ctx.begin(), "{}({}x{})", type::get_name(), size.width(), size.height());
+        return format_to(ctx.begin(), "{}({}x{})", type::get_type_name(), size.width(), size.height());
     }
 };
 

@@ -37,7 +37,7 @@ public:
     static constexpr Vector2 y_axis() noexcept { return Vector2(0, 1); }
 
     /// Name of this Vector2 type.
-    static constexpr const char* get_name() noexcept {
+    static constexpr const char* get_type_name() noexcept {
         if constexpr (std::is_same_v<Element, float>) {
             return "V2f";
         } else if constexpr (std::is_same_v<Element, double>) {
@@ -91,7 +91,7 @@ public:
     /// @note Always returns zero, if one or both of the input vectors are of zero magnitude.
     /// @param other     Vector to test against.
     element_t get_angle_to(const Vector2& other) const noexcept {
-        const element_t mag_sq_product = super_t::magnitude_sq() * other.magnitude_sq();
+        const element_t mag_sq_product = super_t::get_magnitude_sq() * other.get_magnitude_sq();
         if (mag_sq_product <= precision_high<element_t>()) {
             return 0; // one or both are zero
         }
@@ -106,7 +106,7 @@ public:
     /// @note Returns zero, if one or both of the input vectors are of zero magnitude.
     /// @param other     Vector to test against.
     element_t get_direction_to(const Vector2& other) const noexcept {
-        const element_t mag_sq_product = super_t::magnitude_sq() * other.magnitude_sq();
+        const element_t mag_sq_product = super_t::get_magnitude_sq() * other.get_magnitude_sq();
         if (mag_sq_product <= precision_high<element_t>()) {
             return 0; // one or both are zero
         }
@@ -154,7 +154,7 @@ public:
     /// @param other     Vector to project on.
     Vector2 project_on(const Vector2& other) const noexcept {
         const Vector2 normal = other.get_normalized();
-        return normal * dot(normal);
+        return normal * this->dot(normal);
     }
 
     // fields ---------------------------------------------------------------------------------- //
@@ -189,7 +189,7 @@ struct fmt::formatter<notf::detail::Vector2<Element>> {
 
     template<typename FormatContext>
     auto format(const type& vec, FormatContext& ctx) {
-        return format_to(ctx.begin(), "{}({}, {})", type::get_name(), vec.x(), vec.y());
+        return format_to(ctx.begin(), "{}({}, {})", type::get_type_name(), vec.x(), vec.y());
     }
 };
 

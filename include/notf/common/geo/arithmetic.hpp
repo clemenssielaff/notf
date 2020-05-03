@@ -212,7 +212,7 @@ public:
 
     // element/component-wise -------------------------------------------------
 
-    /// Get the element-wise maximum of this and the other value.
+    /// Get the element-wise maximum of this and other.
     /// @param other    Other value to max against.
     constexpr actual_t get_max(const actual_t& other) const noexcept {
         actual_t result{};
@@ -226,7 +226,7 @@ public:
         return result;
     }
 
-    /// Get the element-wise minimum of this and the other value.
+    /// Get the element-wise minimum of this and other.
     /// @param other    Other value to min against.
     constexpr actual_t get_min(const actual_t& other) const noexcept {
         actual_t result{};
@@ -262,16 +262,6 @@ public:
             } else {
                 data[i].set_all(value);
             }
-        }
-        return *static_cast<actual_t*>(this);
-    }
-
-    /// Set all components of this value to the given component.
-    /// @param value    Value to set.
-    template<bool IsGround = std::is_arithmetic_v<component_t>>
-    constexpr std::enable_if_t<!IsGround, actual_t&> set_all(const component_t value) noexcept {
-        for (size_t i = 0; i < get_dimensions(); ++i) {
-            data[i] = value;
         }
         return *static_cast<actual_t*>(this);
     }
@@ -423,11 +413,7 @@ public:
 
     /// Calculate the squared magnitude of this vector.
     constexpr element_t get_magnitude_sq() const noexcept {
-        element_t result = 0;
-        for (size_t i = 0; i < super_t::get_dimensions(); ++i) {
-            result += data[i] * data[i];
-        }
-        return result;
+        return this->dot(*this);
     }
 
     /// Returns the magnitude of this vector.
@@ -463,7 +449,13 @@ public:
 
     /// Returns the dot product of this vector and another.
     /// @param other     Other vector.
-    constexpr element_t dot(const actual_t& other) const noexcept { return (*this * other).sum(); }
+    constexpr element_t dot(const actual_t& other) const noexcept {
+        element_t result = 0;
+        for (size_t i = 0; i < super_t::get_dimensions(); ++i) {
+            result += data[i] * other[i];
+        }
+        return result;
+    }
 
     /// Tests whether this vector is orthogonal to the other.
     /// The zero vector is orthogonal to every vector.

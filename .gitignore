@@ -17,3 +17,4 @@ pynotf/coverage/
 pynotf/.coverage
 pynotf/.hypothesis/*
 pynotf/tests/.hypothesis/*
+pynotf/bin/pycnotf/build/*
