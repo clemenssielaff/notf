@@ -25,6 +25,9 @@ pybind11_add_module(${CURRENT_TARGET}
     src/py_bezier.cpp
     src/py_size2.cpp
     src/py_vector2.cpp
+    
+    3rdparty/fmt/format.cc
+    3rdparty/fmt/os.cc
 )
 
 target_compile_definitions(${CURRENT_TARGET} PUBLIC
