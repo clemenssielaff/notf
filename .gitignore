@@ -1,20 +1,19 @@
 CMakeFiles/
-build/
+BUILD/
+INSTALL/
 CMakeLists.txt.user*
 __pycache__
 .idea/
 .vscode/
 
 # auto-generated files
-include/notf/meta/config.hpp
-thirdparty/lua/src/luaconf.h
 default.profraw
 
+
 # python sketch specific
-pynotf/.venv/
-pynotf/lib/*.so*
+.venv/
 pynotf/coverage/
 pynotf/.coverage
 pynotf/.hypothesis/*
 pynotf/tests/.hypothesis/*
-pynotf/bin/pycnotf/build/*
+

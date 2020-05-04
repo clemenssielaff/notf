@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 def _load_nanovg():
-    library = CDLL(str((Path(__file__).parent / Path("../../lib/libnanovg.so")).resolve()))
+    library = CDLL(str((Path(__file__).parent / Path("/home/clemens/code/notf/INSTALL/libnanovg.so")).resolve()))
     return library
 
 

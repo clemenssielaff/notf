@@ -36,8 +36,8 @@ endif()
 
 # top-level project
 project(notf
-    VERSION 0.4.0.0
-    DESCRIPTION "Reactive & Lightweight UI Application Engine in C++/Python"
+    VERSION 0.5.0.0
+    DESCRIPTION "notf"
     LANGUAGES CXX
 )
 
@@ -90,7 +90,7 @@ if(CMAKE_BUILD_TYPE MATCHES "Release")
         message(STATUS "notf: Building with LTO")
         set_property(GLOBAL PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     else()
-        message(STATUS "notf:Building without LTO:\n${LTO_ERROR}")
+        message(STATUS "notf: Building without LTO:\n${LTO_ERROR}")
     endif()
 endif()
 
@@ -142,44 +142,6 @@ if (NOTF_CLANG)
     endif()
 endif()
 
-# build the tests
-if(NOTF_DEBUG)
-    option(NOTF_BUILD_TESTS "Build tests" ON)
-    if(NOTF_BUILD_TESTS)
-        message(STATUS "notf: Building tests")
-        set(NOTF_TEST TRUE)
-
-        # enable coverage
-        if(NOTF_THREAD_SANITIZATION)
-            message(AUTHOR_WARNING "notf: Disabling coverage to avoid interference with thread sanitization.")
-        else()
-            message(STATUS "notf: Creating coverage.")
-            if (NOTF_CLANG)
-                set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-instr-generate -fcoverage-mapping")
-                set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-instr-generate")
-            elseif(NOTF_GCC)
-                set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
-                set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} --coverage")
-            else()
-                message(AUTHOR_WARNING "notf: Code coverage is only supported for GCC and clang builds")
-            endif()
-        endif()
-    endif()
-endif()
-
-# build the apps
-option(NOTF_BUILD_APPS "Build apps" ON)
-if(NOTF_BUILD_APPS)
-    message(STATUS "notf: Building apps.")
-else()
-    message(STATUS "notf: NOT building apps.")
-endif()
-
-# build the benchmarks
-option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
-if(NOTF_BUILD_BENCHMARKS)
-    message(STATUS "notf: Building benchmarks")
-endif()
 
 # log level
 set(NOTF_LOG_LEVEL "0" CACHE STRING "Log level to compile (0=all -> 6=nothing)")
@@ -202,7 +164,7 @@ set(NOTF_VERSION_STRING ${PROJECT_VERSION})
 set(NOTF_LITERALS_NAMESPACE_NAME "literals")
 
 configure_file (
-    "${PROJECT_SOURCE_DIR}/include/notf/meta/config.hpp.in"
+    "${PROJECT_SOURCE_DIR}/notf/meta/config.hpp.in"
     "${CMAKE_BINARY_DIR}/config/notf/meta/config.hpp"
 )
 include_directories("${CMAKE_BINARY_DIR}/config")
@@ -264,25 +226,47 @@ endmacro()
 
 # discover all notf header files for use in subprojects
 file(GLOB_RECURSE NOTF_HEADERS
-    "include/notf/*.hpp"
+    "notf/*.hpp"
 )
 
 # additional markdown files for documentation
 file(GLOB_RECURSE NOTF_DOCS
-    "include/notf/*.md"
+    "notf/*.md"
 )
 
-add_subdirectory(thirdparty)
-add_subdirectory(src)
+add_subdirectory(notf)
 
-if(NOTF_BUILD_APPS)
-    add_subdirectory(apps)
+# tests
+if(NOTF_DEBUG)
+    option(NOTF_BUILD_TESTS "Build tests" ON)
+    if(NOTF_BUILD_TESTS)
+        message(STATUS "notf: Building tests")
+        add_subdirectory(tests)
+        set(NOTF_TEST TRUE)
+
+        # enable coverage
+        if(NOTF_THREAD_SANITIZATION)
+            message(AUTHOR_WARNING "notf: Disabling coverage to avoid interference with thread sanitization.")
+        else()
+            message(STATUS "notf: Creating coverage.")
+            if (NOTF_CLANG)
+                set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-instr-generate -fcoverage-mapping")
+                set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-instr-generate")
+            elseif(NOTF_GCC)
+                set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
+                set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} --coverage")
+            else()
+                message(AUTHOR_WARNING "notf: Code coverage is only supported for GCC and clang builds")
+            endif()
+        endif()
+    endif()
 endif()
 
-if(NOTF_BUILD_TESTS)
-    add_subdirectory(tests)
-endif()
 
+# benchmarks
+option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
 if(NOTF_BUILD_BENCHMARKS)
+    message(STATUS "notf: Building benchmarks")
     add_subdirectory(benchmarks)
 endif()
+
