@@ -2,7 +2,7 @@
 
 #include "notf/meta/real.hpp"
 
-#include "test/utils.hpp"
+#include "utils.hpp"
 
 namespace {
 const float two_pi = notf::pi<float>() * 2;
@@ -56,6 +56,7 @@ SCENARIO("functions related to floating-point calculation", "[meta][real]") {
         REQUIRE(!is_approx(838412.f, 838413.f));
         REQUIRE(!is_approx(838413.f, 838412.f));
         REQUIRE(is_approx(9998413.f, 9998412.f));
+        REQUIRE(is_approx(3.f, 3));
 
         REQUIRE(!is_approx(0.1, double_nan));
         REQUIRE(!is_approx(double_nan, 1.68));
@@ -119,5 +120,13 @@ SCENARIO("functions related to floating-point calculation", "[meta][real]") {
         REQUIRE(is_approx(90._deg, pi<long double>() * 0.5l, precision_high<long double>()));
         REQUIRE(is_approx(180_deg, pi<long double>(), precision_high<long double>()));
         REQUIRE(is_approx(270_deg, pi<long double>() * 1.5l, precision_high<long double>()));
+    }
+
+    SECTION("fast inverse sqrt") {
+        const float random_float = random(1.f, 10.f);
+        REQUIRE(is_approx(fast_inv_sqrt(random_float), 1.f/sqrtf(random_float), 0.1f));
+
+        const double random_double = random(1., 10.);
+        REQUIRE(is_approx(fast_inv_sqrt(random_double), 1./sqrtf(random_double), 0.01));
     }
 }

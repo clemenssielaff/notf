@@ -60,16 +60,32 @@ constexpr std::size_t get_digit(const std::size_t number, const uint digit) noex
     return (number % exp(base, digit + 1)) / exp(base, digit);
 }
 
+/// @{
 /// Counts the digits in an integral number.
-template<std::size_t base = 10>
-constexpr std::size_t count_digits(std::size_t number) noexcept {
+template<uint32_t base = 10>
+constexpr uint32_t count_digits(uint64_t number) noexcept {
     static_assert(base > 1);
-    std::size_t result = 1;
+    uint32_t result = 1;
     while (number /= base) {
         ++result;
     }
     return result;
 }
+/// Trade more number of comparisons for fewer number of divisions.
+/// From "Three Optimization Tips for C++" by  Andrei Alexandrescu
+template<>
+constexpr uint32_t count_digits<10>(uint64_t number) noexcept {
+    uint32_t count = 1;
+    for (;;) {
+        if (number < 10) return count;
+        if (number < 100) return count + 1;
+        if (number < 1000) return count + 2;
+        if (number < 10000) return count + 3;
+        number /= std::size_t(10000);
+        count += 4;
+    }
+}
+/// @}
 
 /// Tests if a given integer is a power of two.
 template<class I, class = std::enable_if_t<std::is_integral_v<I>>>
@@ -136,10 +152,11 @@ constexpr auto lcm(const Iterable& numbers) {
 
 // pascal triangle ================================================================================================== //
 
-constexpr ulong binomial(const ulong n, const ulong k) {
+template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+constexpr T binomial(const T n, const T k) {
     if (k > n) { NOTF_THROW(LogicError, "Cannot calculate binomial coefficient with k > n"); }
-    ulong result = 1;
-    for (ulong itr = 1; itr <= k; ++itr) {
+    T result = 1;
+    for (T itr = 1; itr <= k; ++itr) {
         result = (result * (n + 1 - itr)) / itr;
     }
     return result;

@@ -23,19 +23,19 @@ SCENARIO("polyline", "[common][polyline]") {
 //        }
 //    }
 
-//    SECTION("Polyline comparison") {
+    SECTION("Polyline comparison") {
 
-//        SECTION("Simple comparison") {
-//            auto triangle1 = Polylinef({V2f(0, 0), V2f(1, 1), V2f(1, 0)});
-//            auto triangle2 = Polylinef({V2f(0, 1), V2f(1, 1), V2f(1, 0)});
-//            REQUIRE(triangle1 == triangle1);
-//            REQUIRE(triangle1 != triangle2);
-//        }
+        SECTION("Simple comparison") {
+            auto triangle1 = Polylinef({V2f(0, 0), V2f(1, 1), V2f(1, 0)});
+            auto triangle2 = Polylinef({V2f(0, 1), V2f(1, 1), V2f(1, 0)});
+            REQUIRE(triangle1 == triangle1);
+            REQUIRE(triangle1 != triangle2);
+        }
 
 //        SECTION("Rotated comparison") {
 //            auto triangle1 = Polylinef({V2f(0, 0), V2f(1, 1), V2f(1, 0)});
 //            auto triangle2 = Polylinef({V2f(1, 1), V2f(1, 0), V2f(0, 0)});
 //            REQUIRE(triangle1 == triangle2);
 //        }
-//    }
+    }
 }

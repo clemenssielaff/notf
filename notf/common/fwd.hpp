@@ -3,7 +3,6 @@
 #include <memory>
 
 #include "notf/meta/fwd.hpp"
-#include "notf/meta/half.hpp"
 #include "notf/meta/macros.hpp"
 
 NOTF_OPEN_NAMESPACE
@@ -53,7 +52,6 @@ namespace detail {
 template<class>
 struct Vector2;
 }
-using V2h = detail::Vector2<half>;
 using V2f = detail::Vector2<float>;
 using V2d = detail::Vector2<double>;
 using V2i = detail::Vector2<int>;
@@ -64,7 +62,6 @@ namespace detail {
 template<class>
 struct Vector3;
 }
-using V3h = detail::Vector3<half>;
 using V3f = detail::Vector3<float>;
 using V3d = detail::Vector3<double>;
 using V3i = detail::Vector3<int>;
@@ -75,7 +72,6 @@ namespace detail {
 template<class>
 struct Vector4;
 }
-using V4h = detail::Vector4<half>;
 using V4f = detail::Vector4<float>;
 using V4d = detail::Vector4<double>;
 using V4i = detail::Vector4<int>;

@@ -36,11 +36,10 @@ endif()
 
 # top-level project
 project(notf
-    VERSION 0.5.0.0
+    VERSION 0.5.0
     DESCRIPTION "notf"
     LANGUAGES CXX
 )
-
 
 # SYSTEM CHECK #########################################################################################################
 
@@ -106,10 +105,10 @@ if (NOTF_CLANG)
 endif()
 
 # use ccache if available
-find_program(CCACHE_PROGRAM ccache)
-if(CCACHE_PROGRAM)
+find_program(NOTF_CCACHE_PROGRAM ccache)
+if(NOTF_CCACHE_PROGRAM)
     message(STATUS "notf: Using ccache")
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE_PROGRAM})
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${NOTF_CCACHE_PROGRAM})
 endif()
 
 # print additional information during compilation (like timings)
@@ -142,7 +141,6 @@ if (NOTF_CLANG)
     endif()
 endif()
 
-
 # log level
 set(NOTF_LOG_LEVEL "0" CACHE STRING "Log level to compile (0=all -> 6=nothing)")
 
@@ -153,21 +151,37 @@ if(NOTF_ABORT_ON_ASSERT)
     set(NOTF_ABORT_ON_ASSERT 1)
 endif()
 
-# CODE INTEGRATION #####################################################################################################
+# tests
+if(NOTF_DEBUG)
+    option(NOTF_BUILD_TESTS "Build tests" ON)
+    if(NOTF_BUILD_TESTS)
+        message(STATUS "notf: Building tests")
+        set(NOTF_TEST TRUE)
 
-# Name of the notf namespace.
-# This macro can be used to implement namespace versioning.
-set(NOTF_NAMESPACE_NAME "notf")
+        # enable coverage
+        if(NOTF_THREAD_SANITIZATION)
+            message(AUTHOR_WARNING "notf: Disabling coverage to avoid interference with thread sanitization.")
+        else()
+            message(STATUS "notf: Creating coverage.")
+            if (NOTF_CLANG)
+                set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-instr-generate -fcoverage-mapping")
+                set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-instr-generate")
+            elseif(NOTF_GCC)
+                set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
+                set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} --coverage")
+            else()
+                message(AUTHOR_WARNING "notf: Code coverage is only supported for GCC and clang builds")
+            endif()
+        endif()
+    endif()
+endif()
 
-# these variables will be defined in notf/meta/config.hpp
-set(NOTF_VERSION_STRING ${PROJECT_VERSION})
-set(NOTF_LITERALS_NAMESPACE_NAME "literals")
 
-configure_file (
-    "${PROJECT_SOURCE_DIR}/notf/meta/config.hpp.in"
-    "${CMAKE_BINARY_DIR}/config/notf/meta/config.hpp"
-)
-include_directories("${CMAKE_BINARY_DIR}/config")
+# benchmarks
+option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
+if(NOTF_BUILD_BENCHMARKS)
+    message(STATUS "notf: Building benchmarks")
+endif()
 
 # SYSTEM DEPENDEND GLOBALS ############################################################################################
 
@@ -180,6 +194,7 @@ if(NOTF_WINDOWS)
     )
 else()
     set(NOTF_GLOBAL_DEFINES
+        # empty
     )
 endif()
 if(NOTF_TEST)
@@ -215,6 +230,23 @@ elseif(NOTF_MSVC)
     )
 endif()
 
+# CODE INTEGRATION #####################################################################################################
+
+# Names of the notf namespaces.
+# These macro can be used to implement namespace versioning.
+set(NOTF_NAMESPACE_NAME "notf")
+set(NOTF_LITERALS_NAMESPACE_NAME "literals")
+
+# these variables will be defined in notf/meta/config.hpp
+set(NOTF_VERSION_STRING ${PROJECT_VERSION})
+
+# configuration file
+configure_file (
+    "${PROJECT_SOURCE_DIR}/notf/meta/config.hpp.in"
+    "${CMAKE_BINARY_DIR}/config/notf/meta/config.hpp"
+)
+include_directories("${CMAKE_BINARY_DIR}/config")
+
 # SUB-PROJECTS #########################################################################################################
 
 # utility macro to add source files in a common subdirectory
@@ -226,47 +258,31 @@ endmacro()
 
 # discover all notf header files for use in subprojects
 file(GLOB_RECURSE NOTF_HEADERS
-    "notf/*.hpp"
+    "notf/**.hpp"
 )
+list(APPEND NOTF_HEADERS ${PROJECT_SOURCE_DIR}/notf/meta/config.hpp.in)
 
-# additional markdown files for documentation
+# discover markdown files for documentation
 file(GLOB_RECURSE NOTF_DOCS
-    "notf/*.md"
+    "notf/**.md"
 )
 
+# thirdparty projects
+add_subdirectory(thirdparty/pybind11-2.5.0)
+add_subdirectory(thirdparty/fmt-6.2.0)
+
+set(SPDLOG_FMT_EXTERNAL_HO ON CACHE BOOL "do not use bundled fmt" FORCE)
+add_subdirectory(thirdparty/spdlog-1.5.0)
+
+# main project
 add_subdirectory(notf)
 
 # tests
-if(NOTF_DEBUG)
-    option(NOTF_BUILD_TESTS "Build tests" ON)
-    if(NOTF_BUILD_TESTS)
-        message(STATUS "notf: Building tests")
-        add_subdirectory(tests)
-        set(NOTF_TEST TRUE)
-
-        # enable coverage
-        if(NOTF_THREAD_SANITIZATION)
-            message(AUTHOR_WARNING "notf: Disabling coverage to avoid interference with thread sanitization.")
-        else()
-            message(STATUS "notf: Creating coverage.")
-            if (NOTF_CLANG)
-                set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-instr-generate -fcoverage-mapping")
-                set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-instr-generate")
-            elseif(NOTF_GCC)
-                set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
-                set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} --coverage")
-            else()
-                message(AUTHOR_WARNING "notf: Code coverage is only supported for GCC and clang builds")
-            endif()
-        endif()
-    endif()
+if(NOTF_BUILD_TESTS)
+    add_subdirectory(tests)
 endif()
-
 
 # benchmarks
-option(NOTF_BUILD_BENCHMARKS "Build benchmarks" OFF)
 if(NOTF_BUILD_BENCHMARKS)
-    message(STATUS "notf: Building benchmarks")
     add_subdirectory(benchmarks)
 endif()
-

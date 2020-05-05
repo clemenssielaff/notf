@@ -12,7 +12,7 @@ endif()
 set(MASTER_PROJECT OFF)
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
   set(MASTER_PROJECT ON)
-  message(STATUS "CMake version: ${CMAKE_VERSION}")
+  message(STATUS "fmt: CMake version: ${CMAKE_VERSION}")
 endif ()
 
 # Joins arguments and places the results in ${result_var}.
@@ -60,7 +60,7 @@ project(FMT CXX)
 # Get version from core.h
 file(READ include/fmt/core.h core_h)
 if (NOT core_h MATCHES "FMT_VERSION ([0-9]+)([0-9][0-9])([0-9][0-9])")
-  message(FATAL_ERROR "Cannot get FMT_VERSION from core.h.")
+  message(FATAL_ERROR "fmt: Cannot get FMT_VERSION from core.h.")
 endif ()
 # Use math to skip leading zeros if any.
 math(EXPR CPACK_PACKAGE_VERSION_MAJOR ${CMAKE_MATCH_1})
@@ -68,9 +68,9 @@ math(EXPR CPACK_PACKAGE_VERSION_MINOR ${CMAKE_MATCH_2})
 math(EXPR CPACK_PACKAGE_VERSION_PATCH ${CMAKE_MATCH_3})
 join(FMT_VERSION ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.
                  ${CPACK_PACKAGE_VERSION_PATCH})
-message(STATUS "Version: ${FMT_VERSION}")
+message(STATUS "fmt: Version: ${FMT_VERSION}")
 
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "fmt: Build type: ${CMAKE_BUILD_TYPE}")
 
 if (NOT CMAKE_RUNTIME_OUTPUT_DIRECTORY)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -88,7 +88,7 @@ if (${index} GREATER -1)
   # compatibility with older CMake versions.
   set(FMT_REQUIRED_FEATURES cxx_variadic_templates)
 endif ()
-message(STATUS "Required features: ${FMT_REQUIRED_FEATURES}")
+message(STATUS "fmt: Required features: ${FMT_REQUIRED_FEATURES}")
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   set(PEDANTIC_COMPILE_FLAGS -pedantic-errors -Wall -Wextra -pedantic

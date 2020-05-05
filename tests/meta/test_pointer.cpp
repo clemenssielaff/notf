@@ -26,8 +26,11 @@ SCENARIO("Pointer", "[meta][pointer]") {
         REQUIRE((raw_pointer(valid_shared) == valid_shared.get().get()));
 
         Bar* c = nullptr;
-        REQUIRE_THROWS_AS(valid_ptr<Bar*>(c), valid_ptr<Bar*>::NotValidError);
-        REQUIRE_THROWS_AS(valid_ptr<Bar*>(std::move(c)), valid_ptr<Bar*>::NotValidError);
+        REQUIRE_THROWS_AS(valid_ptr<Bar*>(c), NotValidError);
+        REQUIRE_THROWS_AS(valid_ptr<Bar*>(std::move(c)), NotValidError);
+
+        std::shared_ptr<Bar> s;
+        REQUIRE_THROWS_AS(valid_ptr<std::shared_ptr<Bar>>(std::move(s)), NotValidError);
 
         valid_ptr<Foo*> valid2(valid);
         REQUIRE((valid2 == valid));

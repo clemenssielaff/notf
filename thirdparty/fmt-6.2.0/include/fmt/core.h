@@ -354,7 +354,7 @@ template <typename Char> class basic_string_view {
   size_t size_;
 
  public:
-  using char_type FMT_DEPRECATED_ALIAS = Char;
+  using char_type = Char;
   using value_type = Char;
   using iterator = const Char*;
 

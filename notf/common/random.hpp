@@ -1,17 +1,32 @@
 #pragma once
 
-#include "randutils.hpp"
-
 #include "notf/common/geo/arithmetic.hpp"
+
+#include <random>
+
+#include "pcg_random.hpp"
 
 NOTF_OPEN_NAMESPACE
 
+// random number generator ========================================================================================== //
+
+namespace detail {
+
+pcg32& global_rng();
+
+} // namespace detail
+
 // random =========================================================================================================== //
 
-/// Returns a random scalar value.
-template<class T, class = std::enable_if_t<std::is_arithmetic_v<T>>>
+/// Returns a single random scalar value.
+template<class T>
 T random(const T min = 0, const T max = 1) {
-    return randutils::global_rng().uniform(min, max);
+    if constexpr (std::is_floating_point_v<T>) {
+        return std::uniform_real_distribution<>(min, max)(detail::global_rng());
+    } else {
+        static_assert(std::is_integral_v<T>);
+        return std::uniform_int_distribution<>(min, max)(detail::global_rng());
+    }
 }
 
 /// Returns a random arithmetic value.
@@ -36,12 +51,20 @@ inline bool random<bool>(const bool, const bool) {
 /// @param length   Length of the string (is not randomized).
 /// @param pool     Pool of possible (not necessarily unique) characters.
 template<class T, class = std::enable_if_t<std::is_same_v<T, std::string>>>
-T random(const size_t length, const std::string_view pool) {
-    if (pool.empty()) { return {}; }
-    std::string result(length, pool[0]);
-    auto random_engine = randutils::global_rng();
-    for (size_t i = 0; i < length; ++i) {
-        result[i] = *random_engine.choose(std::begin(pool), std::end(pool));
+std::string random(const size_t length, const std::string_view pool) {
+    const auto pool_size = pool.size();
+    std::string result;
+    if (length == 0 || pool_size == 0) {
+        // do nothing
+    } else if (pool_size == 1) {
+        result.resize(length, pool[0]);
+    } else {
+        result.resize(length);
+        auto distribution = std::uniform_int_distribution<>(0, pool_size - 1);
+        auto& rng = detail::global_rng();
+        for (size_t i = 0; i < length; ++i) {
+            result[i] = distribution(rng);
+        }
     }
     return result;
 }

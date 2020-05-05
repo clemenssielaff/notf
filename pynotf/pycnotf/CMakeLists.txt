@@ -8,9 +8,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # use ccache if available
 find_program(CCACHE_PROGRAM ccache)
-if(CCACHE_PROGRAM)
+if(NOTF_CCACHE_PROGRAM)
     message(STATUS "notf: Using ccache")
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE_PROGRAM})
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${NOTF_CCACHE_PROGRAM})
 endif()
 
 # print additional information during compilation (like timings)

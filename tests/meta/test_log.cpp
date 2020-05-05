@@ -11,7 +11,9 @@ SCENARIO("the logger", "[meta][log]") {
     auto& the_logger = TheLogger::get();
     SECTION("assign log levels at run time") {
         REQUIRE(the_logger->level() == spdlog::level::trace);
-        the_logger->set_level(spdlog::level::off);
+        the_logger.set_level(TheLogger::Level::OFF);
+        the_logger.set_file_level(TheLogger::Level::OFF);
+        the_logger.set_console_level(TheLogger::Level::OFF);
         the_logger->trace("this will {} be printed", "NOT");
     }
     the_logger->set_level(spdlog::level::trace); // always set the level back

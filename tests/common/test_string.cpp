@@ -173,3 +173,15 @@ SCENARIO("string startwith / endwith", "[common][string]") {
         REQUIRE(cstring_length(test.c_str()) == 4);
     }
 }
+
+SCENARIO("characters", "[common][string]") {
+
+    SECTION("uppercase") {
+        for(auto c : "ABCDEFGHIJKLMNOPQRSTUVWXYZ"){
+            if(c){
+                REQUIRE(is_upper(c));
+            }
+        }
+        REQUIRE(!is_upper('a'));
+    }
+}

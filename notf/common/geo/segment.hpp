@@ -5,7 +5,6 @@
 #include "notf/common/geo/aabr.hpp"
 #include "notf/common/geo/triangle.hpp"
 #include "notf/common/geo/vector2.hpp"
-#include "notf/common/geo/vector3.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -37,22 +36,22 @@ struct Segment {
     /// Value Constructor.
     /// @param start    Start point.
     /// @param end      End point.
-    Segment(vector_t start, const vector_t& end) : start(std::move(start)), end(std::move(end)) {}
+    Segment(vector_t start, vector_t end) : start(std::move(start)), end(std::move(end)) {}
 
     /// Difference vector between the end and start point of the Segment.
-    vector_t get_delta() const { return end - start; }
+    vector_t get_delta() const noexcept { return end - start; }
 
     /// Length of this line Segment.
-    element_t get_length() const { return get_delta().magnitude(); }
+    element_t get_length() const noexcept { return get_delta().magnitude(); }
 
     /// The squared length of this line Segment.
-    element_t get_length_sq() const { return get_delta().magnitude_sq(); }
+    element_t get_length_sq() const noexcept { return get_delta().magnitude_sq(); }
 
     /// Has the Segment zero length?
-    bool is_zero() const { return get_delta().is_zero(); }
+    bool is_zero() const  noexcept{ return get_delta().is_zero(); }
 
     /// The AABR of this line Segment.
-    Aabrf get_bounding_rect() const { return {start, end}; }
+    Aabrf get_bounding_rect() const  noexcept { return {start, end}; }
 
     /// Checks whether this Segment is parallel to another.
     bool is_parallel_to(const Segment& other) const { return get_delta().is_parallel_to(other.delta()); }
@@ -151,33 +150,6 @@ struct Segment2 : public Segment<detail::Vector2<Element>> {
     // TODO: Line2 intersect
 };
 
-// segment3 ========================================================================================================= //
-
-/// 3D line segment.
-template<class Element>
-struct Segment3 : public Segment<detail::Vector3<Element>> {
-
-    /// Base type.
-    using super_t = Segment<detail::Vector3<Element>>;
-
-    /// Vector type.
-    using vector_t = typename super_t::vector_t;
-
-    /// Element type.
-    using element_t = typename super_t::element_t;
-
-    // fields ---------------------------------------------------------------------------------- //
-    /// Start point of the Segment.
-    using super_t::start;
-
-    /// End point of the Segment.
-    using super_t::end;
-
-    // methods --------------------------------------------------------------------------------- //
-    /// Default constructor.
-    Segment3() = default;
-};
-
 } // namespace detail
 
 // formatting ======================================================================================================= //
@@ -186,19 +158,15 @@ struct Segment3 : public Segment<detail::Vector3<Element>> {
 /// @param os       Output stream, implicitly passed with the << operator.
 /// @param segment  Segment to print.
 /// @return Output stream for further output.
-inline std::ostream& operator<<(std::ostream& out, const Segment2f& segment) {
-    return out << fmt::format("{}", segment);
-}
-inline std::ostream& operator<<(std::ostream& out, const Segment3f& segment) {
+template<class Element>
+inline std::ostream& operator<<(std::ostream& out, const notf::detail::Segment2<Element>& segment) {
     return out << fmt::format("{}", segment);
 }
 
 NOTF_CLOSE_NAMESPACE
 
-namespace fmt {
-
 template<class Element>
-struct formatter<notf::detail::Segment2<Element>> {
+struct fmt::formatter<notf::detail::Segment2<Element>> {
     using type = notf::detail::Segment2<Element>;
 
     template<typename ParseContext>
@@ -208,30 +176,10 @@ struct formatter<notf::detail::Segment2<Element>> {
 
     template<typename FormatContext>
     auto format(const type& segment, FormatContext& ctx) {
-        return format_to(ctx.begin(), "Line2f([{}, {}] -> [{}, {}])", segment.start.x(), segment.start.y(),
+        return format_to(ctx.begin(), "Segment2([{}, {}] -> [{}, {}])", segment.start.x(), segment.start.y(),
                          segment.end.x(), segment.end.y());
-        // TODO: use get_type with Segment2 formatting
     }
 };
-
-template<class Element>
-struct formatter<notf::detail::Segment3<Element>> {
-    using type = notf::detail::Segment3<Element>;
-
-    template<typename ParseContext>
-    constexpr auto parse(ParseContext& ctx) {
-        return ctx.begin();
-    }
-
-    template<typename FormatContext>
-    auto format(const type& segment, FormatContext& ctx) {
-        return format_to(ctx.begin(), "Line3f([{}, {}] -> [{}, {}])", segment.start.x(), segment.start.y(),
-                         segment.end.x(), segment.end.y());
-        // TODO: use get_type with Segment3 formatting
-    }
-};
-
-} // namespace fmt
 
 // std::hash ======================================================================================================== //
 
@@ -247,5 +195,3 @@ struct std::hash<notf::detail::Segment<VECTOR>> {
 
 static_assert(sizeof(notf::Segment2f) == sizeof(float) * 4);
 static_assert(std::is_pod<notf::Segment2f>::value);
-static_assert(sizeof(notf::Segment3f) == sizeof(float) * 6);
-static_assert(std::is_pod<notf::Segment3f>::value);

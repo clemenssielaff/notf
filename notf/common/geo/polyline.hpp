@@ -185,7 +185,7 @@ public:
     }
 
     /// Checks if this Polyline is convex.
-    bool is_convex() const {
+    [[nodiscard]] bool is_convex() const {
         // lines are neither convex or concave, but since a convex Polyline is easier to deal with, we say they are
         if (m_vertices.size() < 3) { return true; }
 

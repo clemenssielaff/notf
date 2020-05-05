@@ -17,7 +17,7 @@ namespace detail {
 constexpr inline size_t versioned_base_hash() noexcept { return config::version_major(); }
 
 /// see http://stackoverflow.com/a/4948967
-template<class T>
+template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
 constexpr size_t magic_hash_number() noexcept {
     long double result = 2.l;
     for (size_t i = 1; i < bitsizeof<T>(); ++i) {

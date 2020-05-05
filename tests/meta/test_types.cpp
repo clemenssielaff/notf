@@ -16,6 +16,7 @@ SCENARIO("types", "[meta][types]") {
     }
 
     SECTION("all") {
+        REQUIRE(all(true, true));
         REQUIRE(all(1, true, 1 == 1));
         REQUIRE(!all(1, false, 1 == 1));
     }
@@ -23,5 +24,9 @@ SCENARIO("types", "[meta][types]") {
     SECTION("any") {
         REQUIRE(any(0, true, 1 == 2));
         REQUIRE(!any(0, false, 1 == 2));
+    }
+
+    SECTION("just for coverage"){
+        null_result<void>();
     }
 }

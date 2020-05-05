@@ -98,6 +98,11 @@ public:
         return true;
     }
 
+    /// operator !=
+    constexpr bool operator!=(const ConstString& other) const noexcept {
+        return !operator==(other);
+    }
+
     /// Access to an individual character of the string.
     constexpr char operator[](const size_t index) const {
         return (index < m_size) ? m_text[index] :

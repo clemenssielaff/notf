@@ -135,6 +135,9 @@ const T* raw_from_weak_ptr(const std::weak_ptr<T>& weak_ptr) noexcept {
 
 // safe(r) pointer types ============================================================================================ //
 
+/// Error thrown by valid_ptr, when you try to dereference a nullptr.
+NOTF_EXCEPTION_TYPE(NotValidError);
+
 /// Restricts a pointer or smart pointer to only hold non-null values.
 /// Has zero size overhead over T.
 ///
@@ -162,7 +165,7 @@ public:
     using element_type = std::remove_pointer_t<T>;
 
     /// Error thrown by valid_ptr, when you try to dereference a nullptr.
-    NOTF_EXCEPTION_TYPE(NotValidError);
+    using NotValidError = NotValidError;  // not part of the template
 
     // methods --------------------------------------------------------------------------------- //
 public:
