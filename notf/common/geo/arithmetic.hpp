@@ -1,6 +1,7 @@
 #pragma once
 
 #include "notf/meta/array.hpp"
+#include "notf/meta/concept.hpp"
 #include "notf/meta/hash.hpp"
 
 #include "notf/common/fwd.hpp"
@@ -11,7 +12,7 @@ namespace detail {
 
 // arithmetic  ====================================================================================================== //
 
-template<class Actual, class Component, size_t Dimensions>
+template<class Actual, class Component, std::size_t Dimensions>
 struct Arithmetic {
 
     static_assert(Dimensions > 0, "Cannot define a zero-dimensional arithmetic type");
@@ -30,17 +31,19 @@ private:
     };
 
     // types ----------------------------------------------------------------------------------- //
-private:
+public:
     /// Arithmetic specialization deriving from this base class.
     using actual_t = Actual;
 
-public:
     /// Component type used by this arithmetic type.
     /// In a vector, this is the same as element_t, whereas in a matrix it will be a vector.
     using component_t = Component;
 
     /// Scalar type used by this arithmetic type.
     using element_t = typename _detail::template produce_element<component_t>::type;
+
+    /// Number of components stored in this arithmetic type.
+    constexpr static const std::size_t dimensions = Dimensions;
 
     /// Data holder.
     using Data = std::array<component_t, Dimensions>;
@@ -83,6 +86,12 @@ public:
             return {make_array_of<get_dimensions()>(component_t::all(value))};
         }
     }
+
+    /// Create an arithmetic value with all elements set to the highest possible value.
+    constexpr static actual_t highest() noexcept { return all(highest_v<element_t>); }
+
+    /// Create an arithmetic value with all elements set to the lowest possible value.
+    constexpr static actual_t lowest() noexcept { return all(lowest_v<element_t>); }
 
     /// Arithmetic value with all elements set to zero.
     constexpr static actual_t zero() noexcept { return {Data{}}; }
@@ -190,8 +199,8 @@ public:
     /// Tests whether this value is element-wise approximately equal to another.
     /// @param other    Other matrix to test against.
     /// @param epsilon  Largest ignored difference.
-    constexpr bool is_approx(const actual_t& other, const element_t epsilon = precision_high<element_t>()) const
-        noexcept {
+    constexpr bool is_approx(const actual_t& other,
+                             const element_t epsilon = precision_high<element_t>()) const noexcept {
         for (size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 if (!notf::is_approx(data[i], other[i], epsilon)) { return false; }
@@ -218,7 +227,7 @@ public:
         actual_t result{};
         for (size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
-                result.data[i] = max(data[i], other[i]);
+                result.data[i] = notf::max(data[i], other[i]);
             } else {
                 result.data[i] = data[i].get_max(other[i]);
             }
@@ -232,7 +241,7 @@ public:
         actual_t result{};
         for (size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
-                result.data[i] = min(data[i], other[i]);
+                result.data[i] = notf::min(data[i], other[i]);
             } else {
                 result.data[i] = data[i].get_min(other[i]);
             }
@@ -261,6 +270,32 @@ public:
                 data[i] = value;
             } else {
                 data[i].set_all(value);
+            }
+        }
+        return *static_cast<actual_t*>(this);
+    }
+
+    /// Set all elements of this value to the element-wise maximum of this and other.
+    /// @param other    Other value to max against.
+    constexpr actual_t& maximize_with(const actual_t& other) noexcept {
+        for (size_t i = 0; i < get_dimensions(); ++i) {
+            if constexpr (std::is_arithmetic_v<component_t>) {
+                data[i] = notf::max(data[i], other[i]);
+            } else {
+                data[i].maximize_with(other[i]);
+            }
+        }
+        return *static_cast<actual_t*>(this);
+    }
+
+    /// Set all elements of this value to the element-wise minimum of this and other.
+    /// @param other    Other value to min against.
+    constexpr actual_t& minimize_with(const actual_t& other) noexcept {
+        for (size_t i = 0; i < get_dimensions(); ++i) {
+            if constexpr (std::is_arithmetic_v<component_t>) {
+                data[i] = notf::min(data[i], other[i]);
+            } else {
+                data[i].minimize_with(other[i]);
             }
         }
         return *static_cast<actual_t*>(this);
@@ -383,10 +418,10 @@ private:
     /// Base class.
     using super_t = Arithmetic<Actual, Component, Dimensions>;
 
+public:
     /// Arithmetic specialization deriving from this base class.
     using actual_t = Actual;
 
-public:
     /// Component type used by this arithmetic type.
     /// In a vector, this is the same as element_t, whereas in a matrix it will be a vector.
     using component_t = typename super_t::component_t;
@@ -412,9 +447,7 @@ public:
     constexpr bool is_unit() const noexcept { return abs(get_magnitude_sq() - 1) <= precision_high<element_t>(); }
 
     /// Calculate the squared magnitude of this vector.
-    constexpr element_t get_magnitude_sq() const noexcept {
-        return this->dot(*this);
-    }
+    constexpr element_t get_magnitude_sq() const noexcept { return this->dot(*this); }
 
     /// Returns the magnitude of this vector.
     constexpr element_t get_magnitude() const noexcept { return sqrt(get_magnitude_sq()); }
@@ -431,18 +464,28 @@ public:
         return *this /= sqrt(mag_sq);
     }
 
-    /// Normalizes this vector in-place.
-    /// Is fast but imprecise.
-    actual_t& fast_normalize() noexcept { return *this /= fast_inv_sqrt(get_magnitude_sq()); }
-
     /// @{
     /// Returns a normalized copy of this vector.
-    actual_t get_normalized() const& noexcept {
-        actual_t result = *this;
+    constexpr actual_t get_normalized() const& noexcept {
+        actual_t result(data);
         result.normalize();
         return result;
     }
     actual_t& get_normalized() && noexcept { return normalize(); }
+    /// @}
+
+    /// Normalizes this vector in-place.
+    /// Is fast but imprecise.
+    actual_t& fast_normalize() noexcept { return *this /= notf::fast_inv_sqrt(get_magnitude_sq()); }
+
+    /// @{
+    /// Returns an imprecisely normalized copy of this vector.
+    constexpr actual_t get_fast_normalized() const& noexcept {
+        actual_t result(data);
+        result.fast_normalize();
+        return result;
+    }
+    actual_t& get_fast_normalized() && noexcept { return fast_normalize(); }
     /// @}
 
     // geometric --------------------------------------------------------------
@@ -460,9 +503,9 @@ public:
     /// Tests whether this vector is orthogonal to the other.
     /// The zero vector is orthogonal to every vector.
     /// @param other     Vector to test against.
-    bool is_orthogonal_to(const actual_t& other) const {
+    bool is_orthogonal_to(actual_t other) const {
         // normalization required for large absolute differences in vector lengths
-        return abs(get_normalized().dot(other.get_normalized())) <= precision_high<element_t>();
+        return abs(get_fast_normalized().dot(other.fast_normalize())) <= precision_high<element_t>();
     }
 
     // fields ---------------------------------------------------------------------------------- //
@@ -471,6 +514,27 @@ public:
     using super_t::data;
 };
 
+// is arithmetic type =============================================================================================== //
+
+/// Helper struct to check if a given type is derived from Arithmetic.
+template<class T>
+struct ArithmeticDetector {
+    NOTF_CREATE_TYPE_DETECTOR(actual_t);
+    NOTF_CREATE_TYPE_DETECTOR(component_t);
+    NOTF_CREATE_FIELD_DETECTOR(dimensions);
+    static constexpr bool check() noexcept {
+        if constexpr (_has_actual_t_v<T> && _has_component_t_v<T> && _has_dimensions_v<T>) {
+            return std::is_base_of_v<Arithmetic<typename T::actual_t, typename T::component_t, T::dimensions>, T>;
+        } else {
+            return false;
+        }
+    }
+};
+
 } // namespace detail
+
+/// Checks if a given type is a subclass of notf::detail::Arithmetic.
+template<class T>
+static constexpr bool is_arithmetic_type_v = detail::ArithmeticDetector<T>::check();
 
 NOTF_CLOSE_NAMESPACE

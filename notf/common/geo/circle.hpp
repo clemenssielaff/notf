@@ -51,14 +51,14 @@ public:
 
     /// Checks, if the given point is contained within (or on the border of) this Circle.
     /// @param point    Point to check.
-    bool contains(const vector_t& point) const { return (point - center).magnitude_sq() <= (radius * radius); }
+    bool contains(const vector_t& point) const { return (point - center).get_magnitude_sq() <= (radius * radius); }
 
     /// Checks if the other Circle intersects with this one.
     /// Intersection requires the intersected area to be >= zero.
     /// @param other    Circle to intersect.
     bool intersects(const Circle& other) const {
         const element_t radii = radius + other.radius;
-        return (other.center - center).magnitude_sq() < (radii * radii);
+        return (other.center - center).get_magnitude_sq() < (radii * radii);
     }
 
     /// Returns the closest point inside this Circle to the given target point.
@@ -100,14 +100,15 @@ public:
 /// @param out      Output stream, implicitly passed with the << operator.
 /// @param circle   Circle to print.
 /// @return Output stream for further output.
-inline std::ostream& operator<<(std::ostream& out, const Circlef& circle) { return out << fmt::format("{}", circle); }
+template<class Element>
+inline std::ostream& operator<<(std::ostream& out, const detail::Circle<Element>& circle) {
+    return out << fmt::format("{}", circle);
+}
 
 NOTF_CLOSE_NAMESPACE
 
-namespace fmt {
-
 template<class Element>
-struct formatter<notf::detail::Circle<Element>> {
+struct fmt::formatter<notf::detail::Circle<Element>> {
     using type = notf::detail::Circle<Element>;
 
     template<typename ParseContext>
@@ -121,8 +122,6 @@ struct formatter<notf::detail::Circle<Element>> {
         // TODO: circle printing is bad, missing get_type and weird formatting
     }
 };
-
-} // namespace fmt
 
 // std::hash ======================================================================================================== //
 

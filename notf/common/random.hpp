@@ -19,7 +19,7 @@ pcg32& global_rng();
 // random =========================================================================================================== //
 
 /// Returns a single random scalar value.
-template<class T>
+template<class T, class = std::enable_if_t<std::is_arithmetic_v<T>>>
 T random(const T min = 0, const T max = 1) {
     if constexpr (std::is_floating_point_v<T>) {
         return std::uniform_real_distribution<>(min, max)(detail::global_rng());
@@ -30,11 +30,10 @@ T random(const T min = 0, const T max = 1) {
 }
 
 /// Returns a random arithmetic value.
-template<class T>
-auto random(const typename T::element_t min = 0, const typename T::element_t max = 1)
-    -> decltype(typename T::element_t{}, T{}) {
+template<class T, class = std::enable_if_t<is_arithmetic_type_v<T>>>
+T random(const typename T::element_t min = 0, const typename T::element_t max = 1) {
     T result;
-    for (size_t dim = 0; dim < T::get_dimensions(); ++dim) {
+    for (std::size_t dim = 0; dim < T::get_dimensions(); ++dim) {
         result.data[dim] = random<typename T::component_t>(min, max);
     }
     return result;

@@ -19,27 +19,30 @@ void produce_vector2(pybind11::module& module) {
 
     // constructors
     Py_Vector2.def(py::init<>());
-    Py_Vector2.def(py::init<float, float>());
-    Py_Vector2.def(py::init<V2f>());
+    Py_Vector2.def(py::init<float, float>(), py::arg("x"), py::arg("y"));
+    Py_Vector2.def(py::init<const V2f&>(), py::arg("other"));
 
     // static constructors
-    Py_Vector2.def_static("all", &V2f::all, DOCSTR("A Vector2 with both components set to the given value"),
+    Py_Vector2.def_static("all", &V2f::all, DOCSTR("A Vector2 with both components set to the given value."),
                           py::arg("value"));
-    Py_Vector2.def_static("zero", &V2f::zero, DOCSTR("A Vector2 with both components set to zero"));
+    Py_Vector2.def_static("zero", &V2f::zero, DOCSTR("A Vector2 with both components set to zero."));
+    Py_Vector2.def_static("highest", &V2f::highest, DOCSTR("A Vector2 with both components set to the highest possible float."));
+    Py_Vector2.def_static("lowest", &V2f::lowest, DOCSTR("A Vector2 with both components set to the lowest possible float."));
     Py_Vector2.def_static("x_axis", &V2f::x_axis, DOCSTR("Returns an unit Vector2 along the x-axis."));
     Py_Vector2.def_static("y_axis", &V2f::y_axis, DOCSTR("Returns an unit Vector2 along the y-axis."));
 
     // properties
-    Py_Vector2.def_property("x", (const float& (V2f::*)() const) & V2f::x, (float& (V2f::*)()) & V2f::x);
-    Py_Vector2.def_property("y", (const float& (V2f::*)() const) & V2f::y, (float& (V2f::*)()) & V2f::y);
+    Py_Vector2.def_property("x", (const float& (V2f::*)() const) & V2f::x, (float& (V2f::*)()) & V2f::x, DOCSTR("[float] The first element in the vector."));
+    Py_Vector2.def_property("y", (const float& (V2f::*)() const) & V2f::y, (float& (V2f::*)()) & V2f::y, DOCSTR("[float] The second element in the vector."));
 
     // swizzles
-    Py_Vector2.def_property_readonly("xy", &V2f::xy);
-    Py_Vector2.def_property_readonly("yx", &V2f::yx);
+    Py_Vector2.def_property_readonly("xy", &V2f::xy, DOCSTR("[V2f] XY Swizzle."));
+    Py_Vector2.def_property_readonly("yx", &V2f::yx, DOCSTR("[V2f] YX Swizzle."));
+    Py_Vector2.def_property_readonly("xx", &V2f::xx, DOCSTR("[V2f] XX Swizzle."));
+    Py_Vector2.def_property_readonly("yy", &V2f::yy, DOCSTR("[V2f] YY Swizzle."));
 
     // inspection
-    Py_Vector2.def("is_zero", (bool (V2f::*)() const) & V2f::is_zero, DOCSTR("Checks if this Vector2 is the zero vector."));
-    Py_Vector2.def("is_zero", (bool (V2f::*)(float) const) & V2f::is_zero, DOCSTR("Checks if this Vector2 is the zero vector."), py::arg("epsilon"));
+    Py_Vector2.def("is_zero", &V2f::is_zero, DOCSTR("Checks if this Vector2 is the zero vector."), py::arg("epsilon") = precision_high<float>());
     Py_Vector2.def("is_unit", &V2f::is_unit, DOCSTR("Checks whether this Vector2 is of unit magnitude."));
     Py_Vector2.def("is_parallel_to", &V2f::is_parallel_to, DOCSTR("Checks whether this Vector2 is parallel to other."), py::arg("other"));
     Py_Vector2.def("is_orthogonal_to", &V2f::is_orthogonal_to, DOCSTR("Checks whether this Vector2 is orthogonal to other."), py::arg("other"));
@@ -51,13 +54,15 @@ void produce_vector2(pybind11::module& module) {
     Py_Vector2.def("get_magnitude_sq", &V2f::get_magnitude_sq, DOCSTR("Returns the squared magnitude of this Vector2."));
     Py_Vector2.def("get_magnitude", &V2f::get_magnitude, DOCSTR("Returns the magnitude of this Vector2."));
     Py_Vector2.def("is_real", &V2f::is_real, DOCSTR("Checks, if this Vector2 contains only real values."));
-    Py_Vector2.def("contains_zero", &V2f::contains_zero, DOCSTR("Checks, if any component of this Vector2 is a zero."));
+    Py_Vector2.def("contains_zero", &V2f::contains_zero, DOCSTR("Checks, if any component of this Vector2 is a zero."), py::arg("epsilon") = precision_high<float>());
     Py_Vector2.def("get_max", &V2f::get_max, DOCSTR("Get the element-wise maximum of this and other."), py::arg("other"));
     Py_Vector2.def("get_min", &V2f::get_min, DOCSTR("Get the element-wise minimum of this and other."), py::arg("other"));
     Py_Vector2.def("get_sum", &V2f::get_sum, DOCSTR("Sum of all elements of this value."));
 
     // modification
     Py_Vector2.def("set_all", &V2f::set_all, DOCSTR("Sets all components of the Vector to the given value."), py::arg("value"));
+    Py_Vector2.def("maximize_with", &V2f::maximize_with, DOCSTR("Set all elements of this value to the element-wise maximum of this and other."), py::arg("other"));
+    Py_Vector2.def("minimize_with", &V2f::minimize_with, DOCSTR("Set all elements of this value to the element-wise minimum of this and other."), py::arg("other"));
     Py_Vector2.def("dot", &V2f::dot, DOCSTR("Vector2 dot product."), py::arg("other"));
     Py_Vector2.def("cross", &V2f::cross, DOCSTR("Returns the cross product of this vector and another."), py::arg("other"));
     Py_Vector2.def("normalize", &V2f::normalize, DOCSTR("Normalizes this vector in-place."));

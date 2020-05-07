@@ -52,13 +52,13 @@ public:
     // inspection -------------------------------------------------------------
 
     /// @{
-    /// Access to the first element in the vector.
+    /// The first element in the vector.
     constexpr element_t& x() noexcept { return data[0]; }
     constexpr const element_t& x() const noexcept { return data[0]; }
     /// @}
 
     /// @{
-    /// Access to the second element in the vector.
+    /// The second element in the vector.
     constexpr element_t& y() noexcept { return data[1]; }
     constexpr const element_t& y() const noexcept { return data[1]; }
     /// @}
@@ -67,8 +67,8 @@ public:
     /// Vectors use distance approximation instead of component-wise approximation.
     /// @param other     Vector to test against.
     /// @param epsilon   Maximal allowed distance between the two Vectors.
-    constexpr bool is_approx(const Vector2& other, const element_t epsilon = precision_high<element_t>()) const
-        noexcept {
+    constexpr bool is_approx(const Vector2& other,
+                             const element_t epsilon = precision_high<element_t>()) const noexcept {
         return (*this - other).get_magnitude_sq() <= (epsilon * epsilon);
     }
 
@@ -96,9 +96,9 @@ public:
             return 0; // one or both are zero
         }
         if (abs(mag_sq_product - 1) <= precision_high<element_t>()) {
-            return acos(super_t::dot(other)); // both are unit
+            return notf::acos(super_t::dot(other)); // both are unit
         }
-        return acos(super_t::dot(other) / sqrt(mag_sq_product));
+        return notf::acos(super_t::dot(other) / sqrt(mag_sq_product));
     }
 
     /// Tests if the other vector is collinear (1), orthogonal(0), opposite (-1) or something in between.
@@ -126,6 +126,8 @@ public:
     /// Swizzles.
     constexpr Vector2 xy() const noexcept { return {x(), y()}; }
     constexpr Vector2 yx() const noexcept { return {y(), x()}; }
+    constexpr Vector2 xx() const noexcept { return {x(), x()}; }
+    constexpr Vector2 yy() const noexcept { return {y(), y()}; }
     /// @}
 
     /// Returns the cross product of this vector and another.

@@ -11,5 +11,5 @@
 #ifdef NO_DOC
 #define DOCSTR(x) ""
 #else
-#define DOCSTR(x) x
+#define DOCSTR(x) py::doc(x)
 #endif

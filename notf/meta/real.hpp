@@ -126,21 +126,21 @@ constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_zero(const T va
 /// Tests, if a value is positive or negative.
 /// @return  -1 if the value is negative, 1 if it is zero or above.
 template<class T>
-constexpr T sign(const T value) {
+constexpr T sign(const T value) noexcept {
     return std::signbit(value) ? -1 : 1;
 }
 
 /// Save asin calculation.
 /// @param value     Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to asin.
 template<class T>
-constexpr T asin(const T value) {
+constexpr T asin(const T value) noexcept {
     return std::asin(clamp(value, -1, 1));
 }
 
 /// Save acos calculation.
-/// @param value     Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to asin.
+/// @param value     Input, is clamped to the range of [-1.0 ... 1.0], prior to the call to acos.
 template<class T>
-constexpr T acos(const T value) {
+constexpr T acos(const T value) noexcept {
     return std::acos(clamp(value, -1, 1));
 }
 
@@ -166,7 +166,7 @@ T norm_angle(const T alpha) {
 /// Next representable floating point number greater than the given one.
 template<class T>
 constexpr std::enable_if_t<std::is_floating_point_v<T>, T> next_after(const T value) noexcept {
-    return std::nextafter(value, max_v<T>);
+    return std::nextafter(value, highest_v<T>);
 }
 
 /// Breaks a given real number into an integral and fractional part.

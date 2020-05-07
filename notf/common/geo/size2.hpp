@@ -49,14 +49,14 @@ public:
     /// The largest representable Size2.
     constexpr static Size2 largest() noexcept {
         Size2 result{};
-        result[0] = min_v<element_t>;
-        result[1] = max_v<element_t>;
+        result[0] = lowest_v<element_t>;
+        result[1] = highest_v<element_t>;
         return result;
     }
 
     /// The "most wrong" Size2 (maximal negative area).
     /// Is useful as the starting point for defining the union of multiple Size2.
-    constexpr static Size2 wrongest() noexcept { return {min_v<element_t>, min_v<element_t>}; }
+    constexpr static Size2 wrongest() noexcept { return {lowest_v<element_t>, lowest_v<element_t>}; }
 
     /// Width
     constexpr const element_t& get_width() const noexcept { return data[0]; }

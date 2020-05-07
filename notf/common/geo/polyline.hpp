@@ -185,14 +185,14 @@ public:
     }
 
     /// Checks if this Polyline is convex.
-    [[nodiscard]] bool is_convex() const {
+    bool is_convex() const {
         // lines are neither convex or concave, but since a convex Polyline is easier to deal with, we say they are
         if (m_vertices.size() < 3) { return true; }
 
         // find the first non-zero triangle
         size_t index = 2;
         while (index < m_vertices.size()
-               && Triangle<element_t>(m_vertices[0], m_vertices[1], m_vertices[index]).is_degenerate()) {
+               && Triangle<element_t>(m_vertices[0], m_vertices[1], m_vertices[index]).is_zero()) {
             ++index;
         }
         const Orientation first_orientation
@@ -201,7 +201,7 @@ public:
         // check if subsequent triangles always have the same orientation
         for (size_t i = index + 1; i <= m_vertices.size(); ++i) {
             const Triangle<element_t> triangle(m_vertices[i - 2], m_vertices[i - 1], m_vertices[i % m_vertices.size()]);
-            if (!triangle.is_degenerate() && triangle.get_orientation() != first_orientation) { return false; }
+            if (!triangle.is_zero() && triangle.get_orientation() != first_orientation) { return false; }
         }
         return true;
     }

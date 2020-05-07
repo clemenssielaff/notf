@@ -6,7 +6,6 @@ add_executable(${CURRENT_TARGET})
 add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}
 #    common/test_any.cpp
 #    common/test_mutex.cpp
-    common/test_polyline.cpp
     common/test_random.cpp
     common/test_string.cpp
 #    common/test_string_view.cpp
@@ -14,6 +13,14 @@ add_sources(TEST_FILES ${CMAKE_CURRENT_SOURCE_DIR}
 #    common/test_variant.cpp
     common/test_vector.cpp
     common/test_version.cpp
+
+    common/geo/test_aabr.cpp
+    common/geo/test_circle.cpp
+    common/geo/test_color.cpp
+#    common/geo/test_matrix3.cpp
+#    common/geo/test_matrix4.cpp
+    common/geo/test_polyline.cpp
+    common/geo/test_vector2.cpp
 
     meta/test_assert.cpp
     meta/test_config.cpp
@@ -44,6 +51,7 @@ target_sources(${CURRENT_TARGET} PRIVATE
 target_include_directories(${CURRENT_TARGET} PUBLIC
     ${CMAKE_SOURCE_DIR}/
     ${CMAKE_CURRENT_SOURCE_DIR}/
+    ${CMAKE_SOURCE_DIR}/thirdparty/glm-0.9.9.8/
 )
 
 # test runner dependencies

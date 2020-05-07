@@ -99,8 +99,8 @@ public:
     /// The largest representable Aabr.
     constexpr static Aabr largest() noexcept {
         Aabr result{};
-        result[0] = component_t::all(min_v<element_t>);
-        result[1] = component_t::all(max_v<element_t>);
+        result[0] = component_t::all(lowest_v<element_t>);
+        result[1] = component_t::all(highest_v<element_t>);
         return result;
     }
 
@@ -108,8 +108,8 @@ public:
     /// Is useful as the starting point for defining an Aabr from a set of points.
     constexpr static Aabr wrongest() noexcept {
         Aabr result{};
-        result[0] = component_t::all(max_v<element_t>);
-        result[1] = component_t::all(min_v<element_t>);
+        result[0] = component_t::all(highest_v<element_t>);
+        result[1] = component_t::all(lowest_v<element_t>);
         return result;
     }
 
@@ -136,7 +136,7 @@ public:
         }
     }
 
-    /// X-coordinate of the left edge of this Aabr.
+    /// The x-coordinate of the left edge of this Aabr.
     constexpr const element_t& get_left() const noexcept { return data[0].x(); }
 
     /// Sets the x-coordinate of this Aabr's left edge.
@@ -148,7 +148,7 @@ public:
         return *this;
     }
 
-    /// X-coordinate of the right edge of this Aabr.
+    /// The x-coordinate of the right edge of this Aabr.
     constexpr const element_t& get_right() const noexcept { return data[1].x(); }
 
     /// Sets the x-coordinate of this Aabr's right edge.
@@ -160,7 +160,7 @@ public:
         return *this;
     }
 
-    /// Y-coordinate of the top edge of this Aabr.
+    /// The y-coordinate of the top edge of this Aabr.
     constexpr const element_t& get_top() const noexcept { return data[1].y(); }
 
     /// Sets the y-coordinate of this Aabr's top edge.
@@ -172,7 +172,7 @@ public:
         return *this;
     }
 
-    /// Y-coordinate of the bottom edge of this Aabr.
+    /// The y-coordinate of the bottom edge of this Aabr.
     constexpr const element_t& get_bottom() const noexcept { return data[0].y(); }
 
     /// Sets the y-coordinate of this Aabr's bottom edge.
@@ -184,7 +184,7 @@ public:
         return *this;
     }
 
-    /// The center of the Aabr.
+    /// The center of this Aabr.
     constexpr component_t get_center() const noexcept { return (data[0] + data[1]) / 2; }
 
     /// Moves this Aabr to a new center position.
@@ -193,7 +193,7 @@ public:
         return set_center_y(pos.y());
     }
 
-    /// The horizontal center of the Aabr.
+    /// X-coordinate of the center of this Aabr.
     constexpr element_t get_center_x() const noexcept { return (data[0].x() + data[1].x()) / 2; }
 
     /// Moves the center of this Aabr to the given x-coordinate.
@@ -204,7 +204,7 @@ public:
         return *this;
     }
 
-    /// The vertical center of the Aabr.
+    /// Y-coordinate of the center of this Aabr.
     constexpr element_t get_center_y() const noexcept { return (data[0].y() + data[1].y()) / 2; }
 
     /// Moves the center of this Aabr to the given y-coordinate.
@@ -283,7 +283,7 @@ public:
         return *this;
     }
 
-    /// Returns the extend of this Aabr.
+    /// The size of this Aabr.
     constexpr Size2<element_t> get_size() const noexcept { return {get_width(), get_height()}; }
 
     /// Returns the extend of this Aabr.

@@ -53,9 +53,7 @@ public:
     constexpr vector_t get_center() const noexcept { return (a + b + c) /= 3; }
 
     /// Checks whether the Triangle has a zero area.
-    constexpr bool is_degenerate() const noexcept {
-        return abs(_twice_signed_area(a, b, c)) < precision_high<element_t>();
-    }
+    constexpr bool is_zero() const noexcept { return abs(_twice_signed_area(a, b, c)) < precision_high<element_t>(); }
 
     /// Area of this Triangle, is always positive.
     constexpr element_t get_area() const noexcept { return abs(_twice_signed_area(a, b, c)) / 2; }

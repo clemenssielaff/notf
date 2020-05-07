@@ -24,12 +24,13 @@ pybind11_add_module(${CURRENT_TARGET}
     src/main.cpp
     src/py_aabr.cpp
     src/py_bezier.cpp
+    src/py_segment.cpp
     src/py_size2.cpp
     src/py_vector2.cpp
 )
 
 target_compile_definitions(${CURRENT_TARGET} PUBLIC
-    # NO_DOC
+#     NO_DOC
 )
 
 target_link_libraries(${CURRENT_TARGET} PUBLIC

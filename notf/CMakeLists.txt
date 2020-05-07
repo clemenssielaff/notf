@@ -10,6 +10,7 @@ add_sources(NOTF_CORE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/
     common/string.cpp
     common/thread.cpp
 
+    common/geo/matrix3.cpp
     common/geo/path2.cpp
     common/geo/polyline.cpp
     common/geo/segment.cpp

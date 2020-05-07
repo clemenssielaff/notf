@@ -14,8 +14,8 @@ void produce_size2f(pybind11::module& module)
 
     // constructors
     Py_Size2f.def(py::init<>());
-    Py_Size2f.def(py::init<float, float>());
-    Py_Size2f.def(py::init<Size2i>());
+    Py_Size2f.def(py::init<float, float>(), py::arg("width"), py::arg("height"));
+    Py_Size2f.def(py::init<Size2i>(), py::arg("other"));
 
     // static constructors
     Py_Size2f.def_static("zero", &Size2f::zero, DOCSTR("The null Size2."));
@@ -24,11 +24,11 @@ void produce_size2f(pybind11::module& module)
     Py_Size2f.def_static("wrongest", &Size2f::wrongest, DOCSTR("The 'most wrong' Size2 (maximal negative area)."));
 
     // properties
-    Py_Size2f.def_property("width", &Size2f::get_width, &Size2f::set_width);
-    Py_Size2f.def_property("height", &Size2f::get_height, &Size2f::set_height);
+    Py_Size2f.def_property("width", &Size2f::get_width, &Size2f::set_width, DOCSTR("[float] The width."));
+    Py_Size2f.def_property("height", &Size2f::get_height, &Size2f::set_height, DOCSTR("[float] The height."));
 
     // inspection
-    Py_Size2f.def("is_zero", &Size2f::is_zero, DOCSTR("Tests if a rectangle of this Size had zero area."));
+    Py_Size2f.def("is_zero", &Size2f::is_zero, DOCSTR("Tests if a rectangle of this Size had zero area."), py::arg("epsilon") = precision_high<float>());
     Py_Size2f.def("is_valid", &Size2f::is_valid, DOCSTR("Tests if this Size2 is valid (>=0) in both dimensions."));
     Py_Size2f.def("is_square", &Size2f::is_square, DOCSTR("Checks if the Size2 has the same height and width."));
     Py_Size2f.def("get_area", &Size2f::get_area, DOCSTR("Returns the area of a rectangle of this Size2 or 0 if invalid."));
@@ -51,8 +51,8 @@ void produce_size2i(pybind11::module& module)
 
     // constructors
     Py_Size2i.def(py::init<>());
-    Py_Size2i.def(py::init<float, float>());
-    Py_Size2i.def(py::init<Size2f>());
+    Py_Size2i.def(py::init<float, float>(), py::arg("width"), py::arg("height"));
+    Py_Size2i.def(py::init<Size2f>(), py::arg("other"));
 
     // static constructors
     Py_Size2i.def_static("zero", &Size2i::zero, DOCSTR("The null Size2."));
@@ -61,11 +61,11 @@ void produce_size2i(pybind11::module& module)
     Py_Size2i.def_static("wrongest", &Size2i::wrongest, DOCSTR("The 'most wrong' Size2 (maximal negative area)."));
 
     // properties
-    Py_Size2i.def_property("width", &Size2i::get_width, &Size2i::set_width);
-    Py_Size2i.def_property("height", &Size2i::get_height, &Size2i::set_height);
+    Py_Size2i.def_property("width", &Size2i::get_width, &Size2i::set_width, DOCSTR("[int] The width."));
+    Py_Size2i.def_property("height", &Size2i::get_height, &Size2i::set_height, DOCSTR("[int] The height."));
 
     // inspection
-    Py_Size2i.def("is_zero", &Size2i::is_zero, DOCSTR("Tests if a rectangle of this Size had zero area."));
+    Py_Size2i.def("is_zero", &Size2i::is_zero, DOCSTR("Tests if a rectangle of this Size had zero area."), py::arg("epsilon") = precision_high<float>());
     Py_Size2i.def("is_valid", &Size2i::is_valid, DOCSTR("Tests if this Size2 is valid (>=0) in both dimensions."));
     Py_Size2i.def("is_square", &Size2i::is_square, DOCSTR("Checks if the Size2 has the same height and width."));
     Py_Size2i.def("get_area", &Size2i::get_area, DOCSTR("Returns the area of a rectangle of this Size2 or 0 if invalid."));

@@ -41,28 +41,29 @@ struct Segment {
     /// Difference vector between the end and start point of the Segment.
     vector_t get_delta() const noexcept { return end - start; }
 
-    /// Length of this line Segment.
-    element_t get_length() const noexcept { return get_delta().magnitude(); }
+    /// The length of this line Segment.
+    element_t get_length() const noexcept { return get_delta().get_magnitude(); }
 
     /// The squared length of this line Segment.
-    element_t get_length_sq() const noexcept { return get_delta().magnitude_sq(); }
+    element_t get_length_sq() const noexcept { return get_delta().get_magnitude_sq(); }
 
-    /// Has the Segment zero length?
-    bool is_zero() const  noexcept{ return get_delta().is_zero(); }
-
-    /// The AABR of this line Segment.
-    Aabrf get_bounding_rect() const  noexcept { return {start, end}; }
+    /// Checks whether the Segment zero length.
+    bool is_zero(const element_t epsilon = precision_high<element_t>()) const noexcept {
+        return get_delta().is_zero(epsilon);
+    }
 
     /// Checks whether this Segment is parallel to another.
-    bool is_parallel_to(const Segment& other) const { return get_delta().is_parallel_to(other.delta()); }
+    bool is_parallel_to(const Segment& other) const noexcept { return get_delta().is_parallel_to(other.get_delta()); }
 
     /// Checks whether this Segment is orthogonal to another.
-    bool is_orthogonal_to(const Segment& other) const { return get_delta().is_orthogonal_to(other.delta()); }
+    bool is_orthogonal_to(const Segment& other) const noexcept {
+        return get_delta().is_orthogonal_to(other.get_delta());
+    }
 
     /// Checks if this line Segment contains a given point.
     /// @param point    Point to heck.
-    bool contains(const vector_t& point) const {
-        return abs((point - start).direction_to(point - end) + 1) <= precision_high<element_t>();
+    constexpr bool contains(const vector_t& point) const noexcept {
+        return abs((point - start).get_direction_to(point - end) + 1) <= precision_high<element_t>();
     }
 };
 
@@ -82,16 +83,15 @@ struct Segment2 : public Segment<detail::Vector2<Element>> {
     using element_t = typename super_t::element_t;
 
     // fields ---------------------------------------------------------------------------------- //
-    /// Start point of the Segment.
+    /// Start point of the line Segment.
     using super_t::start;
 
-    /// End point of the Segment.
+    /// End point of the line Segment.
     using super_t::end;
 
     // methods ---------------------------------------------------------------------------------//
 
     using super_t::contains;
-    using super_t::get_bounding_rect;
     using super_t::get_delta;
     using super_t::get_length;
     using super_t::get_length_sq;
@@ -105,31 +105,35 @@ struct Segment2 : public Segment<detail::Vector2<Element>> {
     /// Value constructor.
     /// @param start    Start point.
     /// @param end      End point.
-    Segment2(vector_t start, const vector_t& end) : super_t(std::move(start), std::move(end)) {}
+    Segment2(vector_t start, const vector_t& end) noexcept : super_t(std::move(start), std::move(end)) {}
+
+    /// The Aabr of this line Segment.
+    Aabr<element_t> get_bounding_rect() const noexcept { return {start, end}; }
 
     /// Checks if this line Segment contains a given point.
-    /// @param point    Point to heck.
-    bool contains(const vector_t& point) const {
+    /// Overrides the more general method in the Segment base class.
+    /// @param point    Point to check.
+    constexpr bool contains(const vector_t& point) const noexcept {
         return Triangle<element_t>(start, end, point).is_zero() && ((point - start).dot(point - end) < 0);
     }
 
-    /// Quick tests if this Segment intersects another one.
+    /// Quick tests if this line Segment intersects another one.
     /// Does not calculate the actual point of intersection, only whether the Segments intersect at all.
     /// @returns True iff the two Segments intersect.
-    bool intersects(const Segment2& other) {
-        return (Triangle<element_t>(start, end, other.start).orientation()
-                != Triangle<element_t>(start, end, other.end).orientation())
-               && (Triangle<element_t>(other.start, other.end, start).orientation()
-                   != Triangle<element_t>(other.start, other.end, end).orientation());
+    constexpr bool intersects(const Segment2& other) const noexcept {
+        return (Triangle<element_t>(start, end, other.start).get_orientation()
+                != Triangle<element_t>(start, end, other.end).get_orientation())
+               && (Triangle<element_t>(other.start, other.end, start).get_orientation()
+                   != Triangle<element_t>(other.start, other.end, end).get_orientation());
     }
 
-    /// Returns the point on this Line that is closest to a given position.
+    /// The position on this line Segment that is closest to a given point.
     /// If the line has a length of zero, the start point is returned.
     /// @param point     Position to find the closest point on this Line to.
     /// @param inside    If true, the closest point has to lie within this Line's segment (between start and end).
-    vector_t get_closest_point(const vector_t& point, bool inside = true) const {
+    vector_t get_closest_point(const vector_t& point, bool inside = true) const noexcept {
         const vector_t delta = get_delta();
-        const float length_sq = delta.magnitude_sq();
+        const float length_sq = delta.get_magnitude_sq();
         if (is_approx(length_sq, 0)) { return start; }
         const float dot = (point - start).dot(delta);
         float t = -dot / length_sq;

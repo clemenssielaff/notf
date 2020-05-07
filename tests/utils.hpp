@@ -2,9 +2,9 @@
 
 #include <thread>
 
+#include "notf/meta/integer.hpp"
 #include "notf/meta/system.hpp"
 #include "notf/meta/types.hpp"
-#include "notf/meta/integer.hpp"
 
 #include "notf/common/random.hpp"
 
@@ -19,14 +19,26 @@ constexpr long double largest_supported_diagonale() { return 11585.2375029603946
 
 } // namespace detail
 
-template<class Real>
-constexpr Real lowest_tested() {
-    return static_cast<Real>(-detail::largest_supported_diagonale());
+template<class T>
+constexpr T lowest_tested() noexcept {
+    if constexpr (std::is_arithmetic_v<T>) {
+        return static_cast<T>(-detail::largest_supported_diagonale());
+    } else {
+        T result;
+        result.set_all(static_cast<typename T::element_t>(-detail::largest_supported_diagonale()));
+        return result;
+    }
 }
 
-template<class Real>
-constexpr Real highest_tested() {
-    return static_cast<Real>(detail::largest_supported_diagonale());
+template<class T>
+constexpr T highest_tested() noexcept {
+    if constexpr (std::is_arithmetic_v<T>) {
+        return static_cast<T>(detail::largest_supported_diagonale());
+    } else {
+        T result;
+        result.set_all(static_cast<typename T::element_t>(detail::largest_supported_diagonale()));
+        return result;
+    }
 }
 
 /// Random number around zero in the range of a size what we'd expect to see as a monitor resolution.
@@ -45,7 +57,7 @@ auto random_tested() -> decltype(typename T::element_t{}, T{}) {
 /// Generates a std::thread::id, even though its constructor is private.
 inline std::thread::id make_thread_id(const uint number) {
     using id_as_number = templated_unsigned_integer_t<bitsizeof<std::thread::id>()>;
-    static_assert(max_v<decltype(number)> <= max_v<id_as_number>,
+    static_assert(highest_v<decltype(number)> <= highest_v<id_as_number>,
                   "Cannot reliably represent an unsigned integer as a std::thread::id, because it is too large to fit");
     std::thread::id id;
     auto id_ptr = std::launder(reinterpret_cast<id_as_number*>(&id));

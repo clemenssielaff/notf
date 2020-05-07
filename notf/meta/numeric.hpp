@@ -79,19 +79,19 @@ constexpr auto sum(Ts&&... ts) {
 // limits =========================================================================================================== //
 
 /// Highest value representable with the given type.
-/// There exists no value `x` of the type for which `x > max_v<T>` is true.
+/// There exists no value `x` of the type for which `x > highest_v<T>` is true.
 template<class T>
-static constexpr const T max_v = std::numeric_limits<T>::max();
+static constexpr const T highest_v = std::numeric_limits<T>::max();
 
 /// Lowest value representable with the given type.
-/// There exists no value `x` of the type for which `x < min_v<T>` is true.
+/// There exists no value `x` of the type for which `x < lowest_v<T>` is true.
 template<class T>
-static constexpr const T min_v = std::numeric_limits<T>::lowest();
+static constexpr const T lowest_v = std::numeric_limits<T>::lowest();
 
 /// Helper struct containing the type that has a higher numeric limits.
 template<class LEFT, class RIGHT>
 struct higher_type {
-    using type = std::conditional_t<(max_v<LEFT> <= max_v<RIGHT>), LEFT, RIGHT>;
+    using type = std::conditional_t<(highest_v<LEFT> <= highest_v<RIGHT>), LEFT, RIGHT>;
 };
 
 // precision ======================================================================================================== //
@@ -141,7 +141,7 @@ constexpr bool can_be_narrow_cast(const Source& source) noexcept {
         return true;
     } else if constexpr (std::conjunction_v<std::is_integral<Source>, std::is_integral<Target>>) {
         // both are integers
-        if constexpr (is_same_signedness_v < Source, Target>) {
+        if constexpr (is_same_signedness_v<Source, Target>) {
             // both have the same signedness
             if constexpr (std::is_signed_v<Source>) {
                 // both are signed
@@ -150,8 +150,8 @@ constexpr bool can_be_narrow_cast(const Source& source) noexcept {
                     return true;
                 } else {
                     // source type is larger
-                    return (static_cast<Source>(max_v<Target>) <= source)
-                           && (static_cast<Source>(min_v<Target>) >= source);
+                    return (static_cast<Source>(highest_v<Target>) <= source)
+                           && (static_cast<Source>(lowest_v<Target>) >= source);
                 }
             } else {
                 // both are unsigned
@@ -160,7 +160,7 @@ constexpr bool can_be_narrow_cast(const Source& source) noexcept {
                     return true;
                 } else {
                     // source type is larger
-                    return source <= static_cast<Source>(max_v<Target>);
+                    return source <= static_cast<Source>(highest_v<Target>);
                 }
             }
         } else {
@@ -177,7 +177,7 @@ constexpr bool can_be_narrow_cast(const Source& source) noexcept {
                         return true;
                     } else {
                         // source type is larger
-                    return source <= static_cast<Source>(max_v<Target>);
+                        return source <= static_cast<Source>(highest_v<Target>);
                     }
                 }
             } else {
@@ -187,7 +187,7 @@ constexpr bool can_be_narrow_cast(const Source& source) noexcept {
                     return true;
                 } else {
                     // source type is larger
-                    return source <= static_cast<Source>(max_v<Target>);
+                    return source <= static_cast<Source>(highest_v<Target>);
                 }
             }
         }
@@ -198,7 +198,8 @@ constexpr bool can_be_narrow_cast(const Source& source) noexcept {
             return true;
         } else {
             // source type is larger
-            return (static_cast<Source>(max_v<Target>) <= source) && (static_cast<Source>(min_v<Target>) >= source);
+            return (static_cast<Source>(highest_v<Target>) <= source)
+                   && (static_cast<Source>(lowest_v<Target>) >= source);
         }
     } else if constexpr (std::conjunction_v<is_numeric<Source>, is_numeric<Target>>) {
         if constexpr (std::is_integral_v<Source>) {
@@ -220,8 +221,7 @@ constexpr bool can_be_narrow_cast(const Source& source) noexcept {
                 }
             }
         }
-    }
-    else {
+    } else {
         // non-numeric conversion
         return false;
     }
