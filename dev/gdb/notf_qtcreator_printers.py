@@ -129,8 +129,9 @@ def format_notf_vector(dumper, data, typename):
 
 
 def qdump__notf__detail__Vector2(dumper, vector):
-    format_notf_vector(dumper, vector["data"]["__elems_"], vector.type.name)
-
+    dumper.putType('pycnotf::V2f')
+    dumper.putValue(f'{vector["data"]["_M_elems"][0].floatingPoint()}, {vector["data"]["_M_elems"][1].floatingPoint()}')
+    # format_notf_vector(dumper, vector["data"]["__elems_"], vector.type.name)
 
 def qdump__notf__detail__Vector3(dumper, vector):
     format_notf_vector(dumper, vector["data"]["__elems_"], vector.type.name)

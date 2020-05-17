@@ -1,11 +1,18 @@
 #pragma once
 
-#include <functional>
 #include <tuple>
 
 #include "notf/meta/types.hpp"
 
 NOTF_OPEN_NAMESPACE
+
+// ref qualifiers =================================================================================================== //
+
+enum class RefQualifier {
+    NONE,    //<
+    L_VALUE, //< &
+    R_VALUE, //< &&
+};
 
 // function traits ================================================================================================== //
 
@@ -15,102 +22,205 @@ NOTF_OPEN_NAMESPACE
 ///
 ///     auto lambda = [](const int& i) { return i == 1; };
 ///     using ft = function_traits<decltype(lambda)>;
+///     static_assert (std::is_same_v<ft::return_t, bool>);
+///     static_assert (!std::is_same_v<ft::return_t, float>);
 ///
-///     static_assert(ft::has_return_type<bool>());         // success
-///     static_assert(ft::has_arg_type<0, const int&>());   // success
-///     // static_assert(ft::has_arg_type<0, float>());     // fail
-///
-///     auto okay_other = [](const int&) { return true; };
-///     static_assert(ft::is_same<decltype(okay_other)>()); // success
-///
-///     static_assert(ft::is_same<bool (&)(const int&)>()); // success
-///
-///     static_assert(std::is_same_v<typename ft::template arg_type<0>, const int&>); // success
-///
-template<class Signature>
-class function_traits : public function_traits<decltype(&Signature::operator())> {
-
-    // types ----------------------------------------------------------------------------------- //
-private:
-    using impl_t = function_traits<decltype(&Signature::operator())>;
-
-public:
-    /// Return type of the function.
-    using return_type = typename impl_t::return_type;
-
-    /// Tuple corresponding to the argument types of the function.
-    using args_tuple = typename impl_t::args_tuple;
-
-    /// Single argument type by index.
-    template<size_t I>
-    using arg_type = std::tuple_element_t<I, args_tuple>;
-
-    /// How many arguments the function expects.
-    static constexpr auto arity = impl_t::arity;
-
-    // methods --------------------------------------------------------------------------------- //
-public:
-    template<class T>
-    static constexpr bool has_return_type() noexcept {
-        return std::is_same_v<T, return_type>;
-    }
-
-    template<size_t index, class T>
-    static constexpr bool has_arg_type() noexcept {
-        return std::is_same_v<T, std::tuple_element_t<index, args_tuple>>;
-    }
-
-    template<class Other, class Indices = std::make_index_sequence<arity>>
-    static constexpr bool is_same() noexcept {
-        return all(function_traits<Other>::arity == arity,                                    // same arity
-                   std::is_same_v<typename function_traits<Other>::return_type, return_type>, // same return type
-                   _check_arg_types<Other>(Indices{}));                                       // same argument types
-    }
-
-private:
-    template<class T, std::size_t index>
-    static constexpr bool _check_arg_type() noexcept {
-        return std::is_same_v<typename function_traits<T>::template arg_type<index>,
-                              typename impl_t::template arg_type<index>>;
-    }
-    template<class T, std::size_t... i>
-    static constexpr bool _check_arg_types(std::index_sequence<i...>) noexcept {
-        return (... && _check_arg_type<T, i>());
-    }
-};
-
-// implementation for class methods
-template<class class_t, class return_t, class... Args>
-struct function_traits<return_t (class_t::*)(Args...)> {
-    using return_type = return_t;
-    using args_tuple = std::tuple<Args...>;
-    static constexpr auto arity = sizeof...(Args);
-
-    template<size_t I>
-    using arg_type = std::tuple_element_t<I, args_tuple>;
-};
-template<class class_t, class return_t, class... Args>
-struct function_traits<return_t (class_t::*)(Args...) const>
-    : public function_traits<return_t (class_t::*)(Args...)> {
-};
-template<class class_t, class return_t, class... Args>
-struct function_traits<return_t (class_t::*)(Args...) noexcept>
-    : public function_traits<return_t (class_t::*)(Args...)> {
-};
-template<class class_t, class return_t, class... Args>
-struct function_traits<return_t (class_t::*)(Args...) const noexcept>
-    : public function_traits<return_t (class_t::*)(Args...)> {
-};
+template<class>
+struct function_traits;
 
 // implementation for free functions
-template<class return_t, class... Args>
-struct function_traits<return_t (&)(Args...)> {
-    using return_type = return_t;
-    using args_tuple = std::tuple<Args...>;
-    static constexpr auto arity = sizeof...(Args);
-
-    template<size_t I>
-    using arg_type = std::tuple_element_t<I, args_tuple>;
+template<class ReturnType, class... Args>
+struct function_traits<ReturnType (&)(Args...)> {
+    using return_t = ReturnType;
+    using arg_ts = std::tuple<Args...>;
+    static constexpr bool is_noexcept = false;
 };
+
+// implementation for lambdas
+template<class Lambda>
+struct function_traits : function_traits<decltype(&Lambda::operator())> {
+private:
+    using super_t = function_traits<decltype(&Lambda::operator())>;
+
+public:
+    using return_t = typename super_t::return_t;
+    using arg_ts = typename super_t::arg_ts;
+    static constexpr auto is_noexcept = super_t::is_noexcept;
+};
+
+// implementations for class methods
+template<class Class, class ReturnType, class... Args>
+struct function_traits<ReturnType (Class::*)(Args...)> {
+    using return_t = ReturnType;
+    using arg_ts = std::tuple<Args...>;
+    static constexpr bool is_const = false;
+    static constexpr bool is_noexcept = false;
+    static constexpr RefQualifier ref_qualifier = RefQualifier::NONE;
+};
+template<class Class, class ReturnType, class... Args>
+struct function_traits<ReturnType (Class::*)(Args...) const> {
+    using return_t = ReturnType;
+    using arg_ts = std::tuple<Args...>;
+    static constexpr bool is_const = true;
+    static constexpr bool is_noexcept = false;
+    static constexpr RefQualifier ref_qualifier = RefQualifier::NONE;
+};
+template<class Class, class ReturnType, class... Args>
+struct function_traits<ReturnType (Class::*)(Args...) noexcept> {
+    using return_t = ReturnType;
+    using arg_ts = std::tuple<Args...>;
+    static constexpr bool is_const = false;
+    static constexpr bool is_noexcept = true;
+    static constexpr RefQualifier ref_qualifier = RefQualifier::NONE;
+};
+template<class Class, class ReturnType, class... Args>
+struct function_traits<ReturnType (Class::*)(Args...) const noexcept> {
+    using return_t = ReturnType;
+    using arg_ts = std::tuple<Args...>;
+    static constexpr bool is_const = true;
+    static constexpr bool is_noexcept = true;
+    static constexpr RefQualifier ref_qualifier = RefQualifier::NONE;
+};
+template<class Class, class ReturnType, class... Args>
+struct function_traits<ReturnType (Class::*)(Args...)&> {
+    using return_t = ReturnType;
+    using arg_ts = std::tuple<Args...>;
+    static constexpr bool is_const = false;
+    static constexpr bool is_noexcept = false;
+    static constexpr RefQualifier ref_qualifier = RefQualifier::L_VALUE;
+};
+template<class Class, class ReturnType, class... Args>
+struct function_traits<ReturnType (Class::*)(Args...) const&> {
+    using return_t = ReturnType;
+    using arg_ts = std::tuple<Args...>;
+    static constexpr bool is_const = true;
+    static constexpr bool is_noexcept = false;
+    static constexpr RefQualifier ref_qualifier = RefQualifier::L_VALUE;
+};
+template<class Class, class ReturnType, class... Args>
+struct function_traits<ReturnType (Class::*)(Args...)& noexcept> {
+    using return_t = ReturnType;
+    using arg_ts = std::tuple<Args...>;
+    static constexpr bool is_const = false;
+    static constexpr bool is_noexcept = true;
+    static constexpr RefQualifier ref_qualifier = RefQualifier::L_VALUE;
+};
+template<class Class, class ReturnType, class... Args>
+struct function_traits<ReturnType (Class::*)(Args...) const& noexcept> {
+    using return_t = ReturnType;
+    using arg_ts = std::tuple<Args...>;
+    static constexpr bool is_const = true;
+    static constexpr bool is_noexcept = true;
+    static constexpr RefQualifier ref_qualifier = RefQualifier::L_VALUE;
+};
+template<class Class, class ReturnType, class... Args>
+struct function_traits<ReturnType (Class::*)(Args...) &&> {
+    using return_t = ReturnType;
+    using arg_ts = std::tuple<Args...>;
+    static constexpr bool is_const = false;
+    static constexpr bool is_noexcept = false;
+    static constexpr RefQualifier ref_qualifier = RefQualifier::R_VALUE;
+};
+template<class Class, class ReturnType, class... Args>
+struct function_traits<ReturnType (Class::*)(Args...) const&&> {
+    using return_t = ReturnType;
+    using arg_ts = std::tuple<Args...>;
+    static constexpr bool is_const = true;
+    static constexpr bool is_noexcept = false;
+    static constexpr RefQualifier ref_qualifier = RefQualifier::R_VALUE;
+};
+template<class Class, class ReturnType, class... Args>
+struct function_traits<ReturnType (Class::*)(Args...)&& noexcept> {
+    using return_t = ReturnType;
+    using arg_ts = std::tuple<Args...>;
+    static constexpr bool is_const = false;
+    static constexpr bool is_noexcept = true;
+    static constexpr RefQualifier ref_qualifier = RefQualifier::R_VALUE;
+};
+template<class Class, class ReturnType, class... Args>
+struct function_traits<ReturnType (Class::*)(Args...) const&& noexcept> {
+    using return_t = ReturnType;
+    using arg_ts = std::tuple<Args...>;
+    static constexpr bool is_const = true;
+    static constexpr bool is_noexcept = true;
+    static constexpr RefQualifier ref_qualifier = RefQualifier::R_VALUE;
+};
+
+// method cast ====================================================================================================== //
+
+namespace detail {
+template<class Method>
+struct MethodCaster {
+
+    using traits = function_traits<Method>;
+
+    template<class T, std::size_t... Is>
+    static constexpr auto _produce_type(std::index_sequence<Is...>) noexcept {
+        if constexpr (traits::is_const) {
+            if constexpr (traits::ref_qualifier == RefQualifier::R_VALUE) {
+                // const&&
+                struct container {
+                    using type
+                        = typename traits::return_t (T::*)(std::tuple_element_t<Is, typename traits::arg_ts>...) const&&;
+                };
+                return container{};
+            } else if constexpr (traits::ref_qualifier == RefQualifier::L_VALUE) {
+                // const&
+                struct container {
+                    using type
+                        = typename traits::return_t (T::*)(std::tuple_element_t<Is, typename traits::arg_ts>...) const&;
+                };
+                return container{};
+            } else {
+                // const
+                struct container {
+                    using type
+                        = typename traits::return_t (T::*)(std::tuple_element_t<Is, typename traits::arg_ts>...) const;
+                };
+                return container{};
+            }
+        } else {
+            if constexpr (traits::ref_qualifier == RefQualifier::R_VALUE) {
+                // &&
+                struct container {
+                    using type
+                        = typename traits::return_t (T::*)(std::tuple_element_t<Is, typename traits::arg_ts>...) &&;
+                };
+                return container{};
+            } else if constexpr (traits::ref_qualifier == RefQualifier::L_VALUE) {
+                // &
+                struct container {
+                    using type
+                        = typename traits::return_t (T::*)(std::tuple_element_t<Is, typename traits::arg_ts>...) &;
+                };
+                return container{};
+            } else {
+                //
+                struct container {
+                    using type = typename traits::return_t (T::*)(std::tuple_element_t<Is, typename traits::arg_ts>...);
+                };
+                return container{};
+            }
+        }
+    }
+
+    template<class T, class Indices = std::make_index_sequence<std::tuple_size_v<typename traits::arg_ts>>>
+    using cast = typename decltype(_produce_type<T>(Indices{}))::type;
+};
+
+} // namespace detail
+
+/// Cast a method function pointer to an equivalent function pointer of another class.
+///
+/// When handling function pointers that can be accessed through a derived class but are declared in a base class,
+/// the type of the method's class will be the base class.
+/// This is correct and all but some libraries, for example pybind11, trips over that and throws runtime errors in
+/// Python complaining that the `self` argument is of the wrong type (it is of the derived, not the base class).
+/// This function can be used to trick pybind into thinking that a method defined in a base class is actually part of
+/// the derived class.
+template<class T, class Method>
+constexpr auto method_cast(Method method) noexcept {
+    return static_cast<typename detail::MethodCaster<Method>::template cast<T>>(method);
+}
 
 NOTF_CLOSE_NAMESPACE

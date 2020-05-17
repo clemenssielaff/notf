@@ -12,11 +12,7 @@ NOTF_OPEN_NAMESPACE
 
 // operations ======================================================================================================= //
 
-/// Absolute value.
-template<class T>
-constexpr T abs(T val) noexcept {
-    return val >= 0 ? val : -val;
-}
+using std::abs;
 
 /// Variadic min using auto type deduction.
 template<class T>
@@ -26,7 +22,7 @@ constexpr T&& min(T&& val) noexcept {
 template<class L, class R, class... Tail, class T = std::common_type_t<L, R>>
 constexpr T min(L lhs, R rhs, Tail&&... tail) noexcept {
     const T rest = min(rhs, std::forward<Tail>(tail)...);
-    return rest < static_cast<T>(lhs) ? rest : static_cast<T>(lhs); // returns lhs if both are equal
+    return std::min(rest, static_cast<T>(lhs));
 }
 
 /// In-place min
@@ -43,7 +39,7 @@ constexpr T&& max(T&& val) noexcept {
 template<class L, class R, class... Tail, class T = std::common_type_t<L, R>>
 constexpr T max(L lhs, R rhs, Tail&&... tail) noexcept {
     const T rest = max(static_cast<T>(rhs), std::forward<Tail>(tail)...);
-    return rest > static_cast<T>(lhs) ? rest : static_cast<T>(lhs); // returns lhs if both are equal
+    return std::max(static_cast<T>(lhs), rest);
 }
 
 /// In-place max

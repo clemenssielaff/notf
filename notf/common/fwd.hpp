@@ -89,9 +89,9 @@ using Size2s = detail::Size2<short>;
 
 // bezier.hpp
 namespace detail {
-template<size_t, class>
+template<std::size_t, class>
 class Bezier;
-template<size_t, class>
+template<std::size_t, class>
 class ParametricBezier;
 } // namespace detail
 using SquareBezierf = detail::Bezier<2, float>;
@@ -118,12 +118,12 @@ struct Padding;
 using Paddingf = detail::Padding<float>;
 using Paddingi = detail::Padding<int>;
 
-// polyline.hpp
+// polygon2.hpp
 namespace detail {
 template<class>
-class Polyline;
+class Polygon2;
 }
-using Polylinef = detail::Polyline<float>;
+using Polygon2f = detail::Polygon2<float>;
 
 // polybezier.hpp
 namespace detail {

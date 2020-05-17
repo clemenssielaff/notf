@@ -2,9 +2,12 @@
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
-#include "notf/common/geo/size2.hpp"
 #include "docstr.hpp"
+#include "notf/common/geo/size2.hpp"
+#include "notf/meta/function.hpp"
 using namespace notf;
+
+// clang-format off
 
 // size2f =========================================================================================================== //
 
@@ -28,7 +31,7 @@ void produce_size2f(pybind11::module& module)
     Py_Size2f.def_property("height", &Size2f::get_height, &Size2f::set_height, DOCSTR("[float] The height."));
 
     // inspection
-    Py_Size2f.def("is_zero", &Size2f::is_zero, DOCSTR("Tests if a rectangle of this Size had zero area."), py::arg("epsilon") = precision_high<float>());
+    Py_Size2f.def("is_zero", method_cast<Size2f>(&Size2f::is_zero), DOCSTR("Tests if a rectangle of this Size had zero area."), py::arg("epsilon") = precision_high<float>());
     Py_Size2f.def("is_valid", &Size2f::is_valid, DOCSTR("Tests if this Size2 is valid (>=0) in both dimensions."));
     Py_Size2f.def("is_square", &Size2f::is_square, DOCSTR("Checks if the Size2 has the same height and width."));
     Py_Size2f.def("get_area", &Size2f::get_area, DOCSTR("Returns the area of a rectangle of this Size2 or 0 if invalid."));
@@ -65,7 +68,7 @@ void produce_size2i(pybind11::module& module)
     Py_Size2i.def_property("height", &Size2i::get_height, &Size2i::set_height, DOCSTR("[int] The height."));
 
     // inspection
-    Py_Size2i.def("is_zero", &Size2i::is_zero, DOCSTR("Tests if a rectangle of this Size had zero area."), py::arg("epsilon") = precision_high<float>());
+    Py_Size2i.def("is_zero", method_cast<Size2i>(&Size2i::is_zero), DOCSTR("Tests if a rectangle of this Size had zero area."), py::arg("epsilon") = precision_high<float>());
     Py_Size2i.def("is_valid", &Size2i::is_valid, DOCSTR("Tests if this Size2 is valid (>=0) in both dimensions."));
     Py_Size2i.def("is_square", &Size2i::is_square, DOCSTR("Checks if the Size2 has the same height and width."));
     Py_Size2i.def("get_area", &Size2i::get_area, DOCSTR("Returns the area of a rectangle of this Size2 or 0 if invalid."));
@@ -80,3 +83,4 @@ void produce_size2i(pybind11::module& module)
     });
 }
 
+// clang-format on

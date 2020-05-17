@@ -4,12 +4,10 @@ namespace py = pybind11;
 
 #include "docstr.hpp"
 #include "notf/common/geo/aabr.hpp"
+#include "notf/meta/function.hpp"
 using namespace notf;
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wself-assign-overloaded"
-#endif
+// clang-format off
 
 // aabr ============================================================================================================= //
 
@@ -48,7 +46,7 @@ void produce_aabr(pybind11::module& module) {
     Py_Aabrf.def_property("size", &Aabrf::get_size, &Aabrf::set_size, DOCSTR("[Size2f] The size of this Aabr."));
 
     // inspection
-    Py_Aabrf.def("is_zero", &Aabrf::is_zero, DOCSTR("Test, if this Aabr is null; The null Aabr has no area and is located at zero."), py::arg("epsilon") = precision_high<float>());
+    Py_Aabrf.def("is_zero", method_cast<Aabrf>(&Aabrf::is_zero), DOCSTR("Test, if this Aabr is null; The null Aabr has no area and is located at zero."), py::arg("epsilon") = precision_high<float>());
     Py_Aabrf.def("is_valid", &Aabrf::is_valid, DOCSTR("A valid Aabr has a width and height >= 0."));
     Py_Aabrf.def("contains", &Aabrf::contains, DOCSTR("Checks if this Aabr contains a given point."), py::arg("point"));
     Py_Aabrf.def("intersects", &Aabrf::intersects, DOCSTR("Checks if two Aabrs intersect."), py::arg("other"));
@@ -65,6 +63,10 @@ void produce_aabr(pybind11::module& module) {
     Py_Aabrf.def("intersect", &Aabrf::intersect, DOCSTR("Intersects this Aabr with `other` in-place."), py::arg("other"));
     Py_Aabrf.def("unite", &Aabrf::unite, DOCSTR("Unites this Aabr with `other` in-place."), py::arg("other"));
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wself-assign-overloaded"
+#endif
     // operators
     Py_Aabrf.def(py::self == py::self);
     Py_Aabrf.def(py::self != py::self);
@@ -73,6 +75,10 @@ void produce_aabr(pybind11::module& module) {
     Py_Aabrf.def(py::self | py::self);
     Py_Aabrf.def(py::self |= py::self);
 
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+
     // builtins
     Py_Aabrf.def("__repr__", [](const Aabrf& aabr) {
         return fmt::format("pycnotf.Aabrf(min: ({}, {}) -> max: ({}, {}))", aabr.get_left(), aabr.get_bottom(),
@@ -80,6 +86,5 @@ void produce_aabr(pybind11::module& module) {
     });
 }
 
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
+// clang-format on
+

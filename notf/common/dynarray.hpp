@@ -127,7 +127,7 @@ public:
     /// Is only enabled for trivially destructible types, otherwise we might accidentally call `delete` on memory that
     /// hasn't been initialized yet.
     /// @param size     Size of this array.
-    template<class X = T, std::enable_if_t<std::is_trivially_destructible_v<X>, int> = 0>
+    template<class X = T, class = std::enable_if_t<std::is_trivially_destructible_v<X>>>
     DynArray(size_type size) : m_size(size), m_data(_produce_data(m_size)) {}
 
     /// Fill constructor.

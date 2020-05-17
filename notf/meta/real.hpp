@@ -3,23 +3,9 @@
 #include <cmath>
 
 #include "notf/meta/numeric.hpp"
+#include "notf/meta/system.hpp"
 
 NOTF_OPEN_NAMESPACE
-
-// templated real types ============================================================================================= //
-
-template<std::size_t size>
-struct templated_real;
-template<>
-struct templated_real<32> {
-    using type = float;
-};
-template<>
-struct templated_real<8> {
-    using type = double;
-};
-template<std::size_t size>
-using templated_real_t = typename templated_real<size>::type;
 
 // constants ======================================================================================================== //
 
@@ -43,7 +29,9 @@ constexpr T phi() noexcept {
 
 // operations ======================================================================================================= //
 
+using std::ceil;
 using std::cos;
+using std::floor;
 using std::fmod;
 using std::pow;
 using std::roundf;
@@ -96,8 +84,11 @@ constexpr std::enable_if_t<std::is_integral_v<T>, bool> is_nan(const T) noexcept
 /// Tests whether a given value is INFINITY.
 template<class T>
 constexpr std::enable_if_t<std::is_floating_point_v<T>, bool> is_inf(const T value) noexcept {
-    if constexpr (!std::numeric_limits<T>::has_infinity) { return false; }
-    return value == std::numeric_limits<T>::infinity();
+    if constexpr (!std::numeric_limits<T>::has_infinity) {
+        return false;
+    } else {
+        return value == std::numeric_limits<T>::infinity();
+    }
 }
 template<class T>
 constexpr std::enable_if_t<std::is_integral_v<T>, bool> is_inf(const T) noexcept {
@@ -232,6 +223,29 @@ constexpr T lerp(const T& from, const T& to, const R& blend) noexcept {
         return to;
     }
     return ((to - from) *= blend) += from;
+}
+
+/// Returns the number of leading 0-bits in x, starting at the most significant bit position.
+template<class T>
+constexpr std::enable_if_t<std::is_unsigned_v<T>, uint> clz(const T x) noexcept {
+    if constexpr (std::is_same_v<T, unsigned int>) {
+        return static_cast<uint>(__builtin_clz(x));
+    } else if constexpr (std::is_same_v<T, unsigned long>) {
+        return static_cast<uint>(__builtin_clzl(x));
+    } else if constexpr (std::is_same_v<T, unsigned long long>) {
+        return static_cast<uint>(__builtin_clzll(x));
+    }
+}
+
+/// Round up to the nearest higher power-of-two.
+/// If the value already is a power-of-two number, it is returned instead.
+template<class T>
+constexpr std::enable_if_t<std::is_integral_v<T>, T> ceil_power_of_two(const T value) noexcept {
+    if (value < 2) {
+        return 1;
+    } else {
+        return 1 << (bitsizeof<T>() - clz(static_cast<std::make_unsigned_t<T>>(value - 1)));
+    }
 }
 
 // approx =========================================================================================================== //

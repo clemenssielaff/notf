@@ -40,19 +40,19 @@ constexpr detail::Aabr<AabrElement> do_transform(const detail::Aabr<AabrElement>
     );
 }
 
-/// Generic Polyline transformation.
-template<class V, class M, class Value = detail::Polyline<V>, class Matrix = detail::Matrix3<M>>
-Value do_transform(const Value& polyline, const Matrix& matrix) noexcept {
+/// Generic Polygon transformation.
+template<class V, class M, class Value = detail::Polygon2<V>, class Matrix = detail::Matrix3<M>>
+Value do_transform(const Value& polygon, const Matrix& matrix) noexcept {
     using vertex_t = typename Value::vector_t;
 
     std::vector<vertex_t> vertices;
-    vertices.reserve(polyline.get_vertex_count());
+    vertices.reserve(polygon.get_vertex_count());
 
-    for (const auto& vertex : polyline.get_vertices()) {
+    for (const auto& vertex : polygon.get_vertices()) {
         vertices.emplace_back(do_transform(vertex, matrix));
     }
 
-    Value result(std::move(vertices), polyline.is_closed());
+    Value result(std::move(vertices), polygon.is_closed());
     return result;
 }
 
@@ -85,8 +85,8 @@ template<> Aabrd transform_by<Aabrd, M3f>(const Aabrd& value, const M3f& matrix)
 template<> Aabrf transform_by<Aabrf, M3d>(const Aabrf& value, const M3d& matrix) { return do_transform(value, matrix); }
 template<> Aabrd transform_by<Aabrd, M3d>(const Aabrd& value, const M3d& matrix) { return do_transform(value, matrix); }
 
-// Polyline * m3
-template<> Polylinef transform_by<Polylinef, M3f>(const Polylinef& value, const M3f& matrix) { return do_transform<float, float>(value, matrix); }
+// Polygon2 * m3
+template<> Polygon2f transform_by<Polygon2f, M3f>(const Polygon2f& value, const M3f& matrix) { return do_transform<float, float>(value, matrix); }
 
 // bezier * m3
 template<> CubicPolyBezier2f transform_by<CubicPolyBezier2f, M3f>(const CubicPolyBezier2f& value, const M3f& matrix) { return do_transform<3, float, float>(value, matrix); }

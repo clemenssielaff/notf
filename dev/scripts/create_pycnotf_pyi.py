@@ -2,17 +2,17 @@
 from os import getcwd
 from sys import path as PATH
 from re import compile as compile_regex, Match
-from typing import List, Dict, Type, Callable, NamedTuple, Any, Iterable
+from typing import List, Callable, NamedTuple, Any, Iterable, Optional
 from inspect import isclass, isbuiltin, ismethoddescriptor as ismethod, isdatadescriptor as isfield
-from itertools import chain
 
-# add the current working directory to the path, so you can find the pycnotf module
+# add the current working directory to the path, so you can find the module
 PATH.append(getcwd())
 import pycnotf
 
+MODULE = pycnotf
 INDENTATION_WIDTH: int = 4
 DOCSTRING_QUOTE = '"'
-CONSTRUCTOR_OVERLOAD_REGEX = compile_regex(r"\(self.*\)")
+CONSTRUCTOR_OVERLOAD_REGEX = compile_regex(r"\(self.*?\)")
 FIELD_DOCSTRING_REGEX = compile_regex(r"\[(\w*)\] (.*)")
 
 
@@ -28,27 +28,28 @@ class ClassDescription(NamedTuple):
     fields: List[FieldDescription]
     methods: List[Callable]
     staticmethods: List[Callable]
+    enums: List[str]
 
 
 def indent(lines: Iterable[str], depth: int = 1) -> str:
     """
     Concatenates the given lines of text into a single string, each line indented by the given depth.
     """
-    return (f'\n{" " * (depth * INDENTATION_WIDTH)}').join(('', *(line for line in lines if line)))
+    return f'\n{" " * (depth * INDENTATION_WIDTH)}'.join(('', *(line for line in lines if line)))
 
 
-def get_public_names(object) -> List[str]:
+def get_public_names(obj) -> List[str]:
     """
     Get all public names from a module or class.
     """
-    return [name for name in dir(object) if not name.startswith('_')]
+    return [name for name in dir(obj) if not name.startswith('_')]
 
 
 def parse_functions(module) -> List[Callable]:
     """
     Find all free functions in a module.
     """
-    return [getattr(pycnotf, name) for name in get_public_names(module) if isbuiltin(getattr(pycnotf, name))]
+    return [getattr(MODULE, name) for name in get_public_names(module) if isbuiltin(getattr(MODULE, name))]
 
 
 def parse_constructors(cls) -> List[str]:
@@ -87,6 +88,22 @@ def parse_fields(cls) -> List[FieldDescription]:
     return result
 
 
+def parse_enums(cls) -> List[str]:
+    """
+    Parses all class-level things that can be converted to int.
+    I think, that condition is enough to catch enums and only enums..?
+    """
+    result: List[str] = []
+    for name in get_public_names(cls):
+        attribute = getattr(cls, name)
+        try:
+            enum_value: int = int(attribute)
+        except TypeError:
+            continue
+        result.append(f'{name}: int = {enum_value}')
+    return result
+
+
 def parse_classes(module) -> List[ClassDescription]:
     """
     Find all classes in a module.
@@ -98,7 +115,8 @@ def parse_classes(module) -> List[ClassDescription]:
             fields=parse_fields(cls),
             methods=[getattr(cls, mth) for mth in get_public_names(cls) if ismethod(getattr(cls, mth))],
             staticmethods=[getattr(cls, mth) for mth in get_public_names(cls) if isbuiltin(getattr(cls, mth))],
-        ) for cls in (getattr(pycnotf, name) for name in get_public_names(module) if isclass(getattr(pycnotf, name)))
+            enums=parse_enums(cls),
+        ) for cls in (getattr(MODULE, name) for name in get_public_names(module) if isclass(getattr(MODULE, name)))
     ]
 
 
@@ -136,6 +154,8 @@ def generate_stubs(module) -> str:
     cls: ClassDescription
     for cls in parse_classes(module):
         result.append(f'\n\nclass {cls.name}:')
+        if cls.enums:
+            result.append(indent(cls.enums))
         for constructor in cls.constructors:
             result.append(indent((f'def __init__{constructor} -> None: ...',)))
         for field in cls.fields:
@@ -144,8 +164,6 @@ def generate_stubs(module) -> str:
             result.append(get_function_signature(method, depth=1, static=True))
         for method in cls.methods:
             result.append(get_function_signature(method, depth=1))
-        if (len(cls.methods) + len(cls.staticmethods)) == 0:
-            result.append(indent(('...\n',)))
 
     for function in parse_functions(module):
         result.append(get_function_signature(function, depth=0))
@@ -160,26 +178,20 @@ def run_heuristic_fixes(string: str) -> str:
     """
     # simple replacements (order matters)
     string = string.replace('pycnotf.', '')
-
     string = string.replace('notf::detail::Size2<float>', 'Size2f')
     string = string.replace('notf::detail::Size2<int>', 'Size2i')
     string = string.replace('notf::detail::Aabr<float>', 'Aabrf')
     string = string.replace('notf::detail::Segment<notf::detail::Vector2<float> >', 'Segment2f')
     string = string.replace('notf::detail::Vector2<float>', 'V2f')
-
-    string = string.replace('notf::detail::Arithmetic<V2f, float, 2ul>', 'V2f')
-    string = string.replace('notf::detail::ArithmeticVector<V2f, float, 2ul>', 'V2f')
-    string = string.replace('notf::detail::Arithmetic<Size2f, float, 2ul>', 'Size2f')
-    string = string.replace('notf::detail::Arithmetic<Size2i, int, 2ul>', 'Size2i')
-    string = string.replace('notf::detail::Arithmetic<Aabrf, V2f, 2ul>', 'Aabrf')
+    string = string.replace('notf::Orientation', 'Orientation')
 
     return string
 
 
 def main():
     """
-    Run this file with the current working directory set to a directory that contains the pycnotf compiled Python
-    extension to produce a new file `pycnotf.pyi` that contains information about the functions and classes contained in
+    Run this file with the current working directory set to a directory that contains the compiled Python extension to
+    produce a new file `*.pyi` that contains information about the functions and classes contained in
     the extension. This information would usually be hidden from IDEs because the function signatures in the compiled
     extension are missing type hints and/or the IDE cannot introspect the extension (for whatever reason).
 
@@ -191,8 +203,8 @@ def main():
     type hints on the Python objects themselves (AFAIK, this is currently done via the __annotations__ attribute). So it
     is doubtful that it would have worked correctly anyway.
     """
-    with open("pycnotf.pyi", "w") as file:
-        file.write(run_heuristic_fixes(generate_stubs(pycnotf)))
+    with open(f'{MODULE.__name__}.pyi', 'w') as file:
+        file.write(run_heuristic_fixes(generate_stubs(MODULE)))
 
 
 if __name__ == '__main__':

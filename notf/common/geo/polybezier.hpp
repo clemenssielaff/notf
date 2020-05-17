@@ -32,7 +32,7 @@ public:
     using parabezier_t = ParametricBezier<Order, Vector2<element_t>>;
 
     /// Internal hull type.
-    using hull_t = Polyline<element_t>;
+    using hull_t = Polygon<element_t>;
 
 private:
     /// Data held by a Bezier.
@@ -47,7 +47,7 @@ private:
     /// @param hull         Hull of this PolyBezier.
     /// @param token        To differentiate the private from the public constructor taking a Polyline.
     /// @throws ValueError  If the number of points in the hull is not `(number of spline segments) * order + 1`
-    PolyBezier(Polyline<element_t> hull, Token) : m_hull(std::move(hull)) {
+    PolyBezier(Polygon<element_t> hull, Token) : m_hull(std::move(hull)) {
         if (!_has_valid_vertex_count()) {
             if (is_closed()) {
                 NOTF_THROW(ValueError,
@@ -67,11 +67,11 @@ private:
 
     /// Constructs the hull of a PolyBezier that is made up of only straight lines.
     /// @param polyline Polyline to emulate.
-    static Polyline<element_t> _polyline_to_hull(Polyline<element_t>&& polyline) {
+    static Polygon<element_t> _polyline_to_hull(Polygon<element_t>&& polyline) {
         polyline.optimize();
         if (polyline.is_empty()) { return polyline; }
 
-        Polyline<element_t> result;
+        Polygon<element_t> result;
         result.set_closed(polyline.is_closed());
         const auto& input = polyline.get_vertices();
         auto& output = result.get_vertices();
@@ -108,7 +108,7 @@ public:
 
     /// Value Constructor.
     /// @param polyline     Polyline constructing a Polybezier of only straight lines..
-    PolyBezier(Polyline<element_t> polyline) : PolyBezier(_polyline_to_hull(std::move(polyline)), Token{}) {}
+    PolyBezier(Polygon<element_t> polyline) : PolyBezier(_polyline_to_hull(std::move(polyline)), Token{}) {}
 
     /// Checks whether the Polybezier has any vertices or not.
     bool is_empty() const { return m_hull.is_empty(); }
@@ -117,7 +117,7 @@ public:
     bool is_closed() const { return m_hull.is_closed(); }
 
     /// Hull PolyLine of this PolyBezier.
-    const Polyline<element_t>& get_hull() const { return m_hull; }
+    const Polygon<element_t>& get_hull() const { return m_hull; }
 
     /// Number of vertices in the hull of this PolyBezier.
     size_t get_vertex_count() const { return m_hull.get_vertex_count(); }
@@ -205,7 +205,7 @@ private:
 public: // TODO: clearly this shouldn't be public, but we need a way to get a hull from a polybezier and turn it back
         // into a Polybezier without going through _polyline_to_hull
     /// Hull of this PolyBezier.
-    Polyline<element_t> m_hull;
+    Polygon<element_t> m_hull;
 };
 
 } // namespace detail

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from pycnotf import V2f, CubicBezier2f, Aabrf
+from pycnotf import V2f, CubicBezier2f, Aabrf, Segment2f, Polygon2f
 
 
 class ShapeBuilder:
@@ -48,14 +48,24 @@ class ShapeBuilder:
 
 class Shape:
     def __init__(self, builder: ShapeBuilder):
-        self._points: List[V2f] = builder.points
+        self._vertices: List[V2f] = builder.points
         self._indices: List[int] = builder.indices
-        self._box: Aabrf = self._calculate_bounding_box()
+        self._aabr: Aabrf = self._calculate_bounding_box()
+
+    def contains(self, point: V2f) -> bool:
+        # first test: point in aabr
+        if not self._aabr.contains(point):
+            return False
+
+        # second challenge: point in polygon hull
+        if not Polygon2f.contains_(self._vertices, point):
+            return False
 
     def _calculate_bounding_box(self) -> Aabrf:
         min_: V2f = V2f.highest()
         max_: V2f = V2f.lowest()
-        for point in self._points:
+        for point in self._vertices:
             min_.minimize_with(point)
             max_.maximize_with(point)
         return Aabrf(min_, max_)
+

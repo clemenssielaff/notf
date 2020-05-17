@@ -84,7 +84,7 @@ public:
     /// @note The zero vector is parallel to every other vector.
     /// @param other    Vector to test against.
     constexpr bool is_parallel_to(const Vector2& other) const noexcept {
-        return cross(other) <= precision_high<element_t>();
+        return abs(cross(other)) <= precision_high<element_t>();
     }
 
     /// Returns the smallest angle (in radians) to the other vector.
@@ -101,7 +101,7 @@ public:
         return notf::acos(super_t::dot(other) / sqrt(mag_sq_product));
     }
 
-    /// Tests if the other vector is collinear (1), orthogonal(0), opposite (-1) or something in between.
+    /// Tests if the other vector is parallel (1), orthogonal(0), opposite (-1) or something in between.
     /// Similar to `angle`, but saving a call to `acos`.
     /// @note Returns zero, if one or both of the input vectors are of zero magnitude.
     /// @param other     Vector to test against.
@@ -135,7 +135,7 @@ public:
     /// Treats the 2D vectors like 3D vectors with z-components equal to zeros, takes their cross product, and returns
     /// the z-component of the result.
     /// @param other     Vector to the right.
-    constexpr element_t cross(const Vector2 other) const noexcept { return (x() * other.y()) - (y() * other.x()); }
+    constexpr element_t cross(const Vector2& other) const noexcept { return (x() * other.y()) - (y() * other.x()); }
 
     /// Returns a copy of this 2D Vector, rotated counter-clockwise by a given angle.
     /// @param angle    Angle in radians.
@@ -166,6 +166,15 @@ public:
 };
 
 } // namespace detail
+
+/// The Shoelace formula:
+/// https://en.wikipedia.org/wiki/Shoelace_formula#Proof_for_a_triangle
+/// but optimized for computation (see https://godbolt.org/z/ZuUDZV).
+template<class element_t>
+constexpr static element_t shoelace(const detail::Vector2<element_t>& a, const detail::Vector2<element_t>& b,
+                                    const detail::Vector2<element_t>& c) noexcept {
+    return a.x() * (b.y() - c.y()) + b.x() * (c.y() - a.y()) + c.x() * (a.y() - b.y());
+}
 
 // formatting ======================================================================================================= //
 

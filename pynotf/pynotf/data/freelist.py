@@ -1,5 +1,27 @@
 """
 Codename: ZebraList
+
+Idea: instead of storing a list of integer indices, just keep a relatively short list of basically "flag words" around.
+You can store 64 flags per `double` word.
+Instead of dynamically growing and shrinking the free list, you simply keep at least as many flags around as you have
+rows in the table. With `2**24 = 16777216` numbers of rows maximum, that is a maximum size for the free list of
+`16777216/(8*1024*1024) = 2 Mebibyte` exactly.
+For a more reasonable (?) expected size of like 100'000 rows, that would be 12.20703 Kibibyte. And while that might like
+a lot, just remember that of these 100k rows, there are certainly some free ones, that need to be written into the free
+list. Even if we use 32bit integers for the indices, we could store only `100000/32=3125` free rows (=`1/32` = 3.125%)
+of the whole table in the free list with the same size as the "flag words" one.
+
+Another advantage is that you never have to sort to compress the free list. Instead, you only keep a single index
+around, the index of the lowest (leftmost) word that has a nonzero bit set (indicating a free row in the table). When
+you remove a row, you check if the affected word is left of your current leftmost word and update it if so. When you add
+a row, you unset the flag and advance the index to the right until you hit another non-zero word. Usually, I expect this
+to happen quite quickly.
+So you get fast row insertion, faster row removal, allocation only when the table grows (and pre-allocating a large free
+list is cheap as it isn't that large in memory), no sorting, no shuffling and minimal space requirements.
+Nice.
+
+Another advantage of having a sorted (or quasi-sorted) free list is that you can easily order handles by creation date.
+Handles with a lower row index are older than one with a higher one unless the generation value of the first is higher
 """
 from __future__ import annotations
 

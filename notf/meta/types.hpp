@@ -318,6 +318,8 @@ inline constexpr const bool is_ingest_v = is_ingest<T>::value;
 ///     https://cpptruths.blogspot.com/2013/09/21-ways-of-passing-parameters-plus-one.html#inTidiom
 /// where it is in turn reprinted from
 ///     https://codesynthesis.com/~boris/blog/2012/06/26/efficient-argument-passing-cxx11-part2
+/// Be careful though, in a preliminary test with compiler explorer, the generated assembly was about 4x larger...
+/// IT MIGHT NOT BE WORTH IT
 template<class T>
 class ingest {
 

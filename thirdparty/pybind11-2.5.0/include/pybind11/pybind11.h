@@ -66,22 +66,36 @@ public:
 
     /// Construct a cpp_function from a lambda function (possibly with internal state)
     template <typename Func, typename... Extra,
-              typename = detail::enable_if_t<detail::is_lambda<Func>::value>>
+             typename = detail::enable_if_t<detail::is_lambda<Func>::value>>
     cpp_function(Func &&f, const Extra&... extra) {
         initialize(std::forward<Func>(f),
                    (detail::function_signature_t<Func> *) nullptr, extra...);
     }
 
-    /// Construct a cpp_function from a class method (non-const)
+    /// Construct a cpp_function from a class method (non-const, no ref-qualifier)
     template <typename Return, typename Class, typename... Arg, typename... Extra>
     cpp_function(Return (Class::*f)(Arg...), const Extra&... extra) {
         initialize([f](Class *c, Arg... args) -> Return { return (c->*f)(args...); },
                    (Return (*) (Class *, Arg...)) nullptr, extra...);
     }
 
-    /// Construct a cpp_function from a class method (const)
+    /// Construct a cpp_function from a class method (non-const, lvalue ref-qualifier)
+    template <typename Return, typename Class, typename... Arg, typename... Extra>
+    cpp_function(Return (Class::*f)(Arg...)&, const Extra&... extra) {
+        initialize([f](Class *c, Arg... args) -> Return { return (c->*f)(args...); },
+                   (Return (*) (Class *, Arg...)) nullptr, extra...);
+    }
+
+    /// Construct a cpp_function from a class method (const, no ref-qualifier)
     template <typename Return, typename Class, typename... Arg, typename... Extra>
     cpp_function(Return (Class::*f)(Arg...) const, const Extra&... extra) {
+        initialize([f](const Class *c, Arg... args) -> Return { return (c->*f)(args...); },
+                   (Return (*)(const Class *, Arg ...)) nullptr, extra...);
+    }
+
+    /// Construct a cpp_function from a class method (const, lvalue ref-qualifier)
+    template <typename Return, typename Class, typename... Arg, typename... Extra>
+    cpp_function(Return (Class::*f)(Arg...) const&, const Extra&... extra) {
         initialize([f](const Class *c, Arg... args) -> Return { return (c->*f)(args...); },
                    (Return (*)(const Class *, Arg ...)) nullptr, extra...);
     }

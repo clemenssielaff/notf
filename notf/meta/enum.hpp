@@ -10,7 +10,9 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
-constexpr size_t _bit_index_recursion(size_t c, size_t v) { return v == 0 ? c : _bit_index_recursion(c + 1, v >> 1); }
+constexpr std::size_t _bit_index_recursion(std::size_t c, std::size_t v) {
+    return v == 0 ? c : _bit_index_recursion(c + 1, v >> 1);
+}
 
 } // namespace detail
 
@@ -27,9 +29,9 @@ constexpr size_t _bit_index_recursion(size_t c, size_t v) { return v == 0 ? c : 
 ///      bit_index(C) == 2; // is true
 ///      bit_index(D) == 3; // is true
 ///
-constexpr size_t bit_index(size_t v) { return detail::_bit_index_recursion(0, (v ^ (v - 1)) >> 1); }
+constexpr std::size_t bit_index(std::size_t v) { return detail::_bit_index_recursion(0, (v ^ (v - 1)) >> 1); }
 
 /// Convenience constexpr for _LAST members, that don't have a power-of-two value.
-constexpr size_t bit_index_count(size_t v) { return bit_index(v - 1) + 1; }
+constexpr std::size_t bit_index_count(std::size_t v) { return bit_index(v - 1) + 1; }
 
 NOTF_CLOSE_NAMESPACE

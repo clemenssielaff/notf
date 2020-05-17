@@ -7,9 +7,10 @@ NOTF_OPEN_NAMESPACE
 // orientation ====================================================================================================== //
 
 /// Orientation of the Triangle.
-enum class Orientation : char {
+enum class Orientation {
+    UNDEFINED = 0,
     CCW = 1,
-    CW = 2,
+    CW = -1,
     COUNTERCLOCKWISE = CCW,
     CLOCKWISE = CW,
     SOLID = CCW,
@@ -18,7 +19,7 @@ enum class Orientation : char {
 
 /// Inverse Orientation.
 inline constexpr Orientation operator-(const Orientation orientation) noexcept {
-    return (orientation == Orientation::CCW) ? Orientation::CW : Orientation::CCW;
+    return Orientation(to_number(orientation) * -1);
 }
 
 // triangle ========================================================================================================= //
@@ -53,33 +54,29 @@ public:
     constexpr vector_t get_center() const noexcept { return (a + b + c) /= 3; }
 
     /// Checks whether the Triangle has a zero area.
-    constexpr bool is_zero() const noexcept { return abs(_twice_signed_area(a, b, c)) < precision_high<element_t>(); }
+    constexpr bool is_zero() const noexcept { return abs(shoelace(a, b, c)) < precision_high<element_t>(); }
 
     /// Area of this Triangle, is always positive.
-    constexpr element_t get_area() const noexcept { return abs(_twice_signed_area(a, b, c)) / 2; }
+    constexpr element_t get_area() const noexcept { return abs(get_signed_area()); }
 
     /// Signed area of this Triangle.
     /// The area is positive if the orientation of the triangle is counterclockwise and negative if it is clockwise.
-    constexpr element_t get_signed_area() const noexcept { return _twice_signed_area(a, b, c) / 2; }
+    constexpr element_t get_signed_area() const noexcept { return shoelace(a, b, c) / 2; }
 
-    /// Orientation of this Triangle (zero Triangle is CCW).
+    /// Orientation of this Triangle (the zero Triangle has an undefined orientation).
+    /// Is basically Segment2::is_left(a, b, c).
     constexpr Orientation get_orientation() const noexcept {
-        return _twice_signed_area(a, b, c) >= 0 ? Orientation::CCW : Orientation::CW;
+        const element_t is_c_left_of_ab = shoelace(a, b, c);
+        return is_c_left_of_ab <= -precision_high<element_t>() ?
+                   Orientation::CW :
+                   is_c_left_of_ab >= precision_high<element_t>() ? Orientation::CCW : Orientation::UNDEFINED;
     }
 
     /// Tests whether this Triangle contains a given point.
     /// @param point    Point to test.
     constexpr bool contains(const vector_t& point) const noexcept {
-        return (sign(_twice_signed_area(a, b, point)) == sign(_twice_signed_area(b, c, point)))
-               && (sign(_twice_signed_area(b, c, point)) == sign(_twice_signed_area(c, a, point)));
-    }
-
-private:
-    /// Equivalent to the Shoelace formula:
-    /// https://en.wikipedia.org/wiki/Shoelace_formula#Proof_for_a_triangle
-    /// but optimized for computation (see https://godbolt.org/z/ZuUDZV).
-    constexpr static element_t _twice_signed_area(const vector_t& a, const vector_t& b, const vector_t& c) noexcept {
-        return a.x() * (b.y() - c.y()) + b.x() * (c.y() - a.y()) + c.x() * (a.y() - b.y());
+        return (std::signbit(shoelace(a, b, point)) == std::signbit(shoelace(b, c, point)))
+               && (std::signbit(shoelace(b, c, point)) == std::signbit(shoelace(c, a, point)));
     }
 
     // fields ---------------------------------------------------------------------------------- //

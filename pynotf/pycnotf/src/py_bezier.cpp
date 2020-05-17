@@ -1,9 +1,9 @@
 #include "pybind11/operators.h"
 #include "pybind11/pybind11.h"
+#include "pybind11/stl.h"
 namespace py = pybind11;
 
 #include "notf/common/geo/bezier.hpp"
-#include "notf/common/geo/vector2.hpp"
 #include "docstr.hpp"
 using namespace notf;
 
@@ -22,6 +22,7 @@ void produce_squarebezierf(pybind11::module& module)
 
     // inspection
     Py_SquareBezierf.def("get_weight", &SquareBezierf::get_weight, DOCSTR("Access to a weight of this Bezier, index must be in range [0, Order]."), py::arg("index"));
+    Py_SquareBezierf.def("get_derivate", &SquareBezierf::get_derivate, DOCSTR("The derivate Bezier, can be used to calculate the tangent."));
     Py_SquareBezierf.def("interpolate", &SquareBezierf::interpolate, DOCSTR("Bezier interpolation at position `t`, most useful in range [0, 1] but can be sampled outside as well."), py::arg("t"));
 
     // operators
@@ -49,6 +50,9 @@ void produce_squarebezier2f(pybind11::module& module)
     // inspection
     Py_SquareBezier2f.def("get_dimension", &SquareBezier2f::get_dimension, DOCSTR("Access to a 1D Bezier that makes up this ParametricBezier."), py::arg("dimension"));
     Py_SquareBezier2f.def("get_vertex", &SquareBezier2f::get_vertex, DOCSTR("Access to a vertex of this Bezier, index must be in range [0, Order]."), py::arg("index"));
+    Py_SquareBezier2f.def("get_vertices", &SquareBezier2f::get_vertices, DOCSTR("All vertices in this Bezier."));
+    Py_SquareBezier2f.def("get_derivate", &SquareBezier2f::get_derivate, DOCSTR("The derivate Bezier, can be used to calculate the tangent."));
+    Py_SquareBezier2f.def("get_segment_count", py::overload_cast<float>(&SquareBezier2f::get_segment_count, py::const_), DOCSTR("Number of line segments required to approximate the bezier."), py::arg("tolerance"));
     Py_SquareBezier2f.def("interpolate", &SquareBezier2f::interpolate, DOCSTR("Bezier interpolation at position `t`, most useful in range [0, 1] but can be sampled outside as well."), py::arg("t"));
 
     // operators
@@ -62,6 +66,9 @@ void produce_squarebezier2f(pybind11::module& module)
                            bezier.get_vertex(1).x(), bezier.get_vertex(1).y(),
                            bezier.get_vertex(2).x(), bezier.get_vertex(2).y());
     });
+
+    // functions
+    module.def("approximate", static_cast<Polygon2f(*)(const SquareBezier2f&, float)>(&approximate), "Approximates the given Bezier with a polygon.", py::arg("bezier"), py::arg("tolerance") = 1.f);
 }
 
 
@@ -109,7 +116,9 @@ void produce_cubicbezier2f(pybind11::module& module)
     // inspection
     Py_CubicBezier2f.def("get_dimension", &CubicBezier2f::get_dimension, DOCSTR("Access to a 1D Bezier that makes up this ParametricBezier."), py::arg("dimension"));
     Py_CubicBezier2f.def("get_vertex", &CubicBezier2f::get_vertex, DOCSTR("Access to a vertex of this Bezier, index must be in range [0, Order]."), py::arg("index"));
+    Py_CubicBezier2f.def("get_vertices", &CubicBezier2f::get_vertices, DOCSTR("All vertices in this Bezier."));
     Py_CubicBezier2f.def("get_derivate", &CubicBezier2f::get_derivate, DOCSTR("The derivate Bezier, can be used to calculate the tangent."));
+    Py_CubicBezier2f.def("get_segment_count", py::overload_cast<float>(&CubicBezier2f::get_segment_count, py::const_), DOCSTR("Number of line segments required to approximate the bezier."), py::arg("tolerance"));
     Py_CubicBezier2f.def("interpolate", &CubicBezier2f::interpolate, DOCSTR("Bezier interpolation at position `t`, most useful in range [0, 1] but can be sampled outside as well."), py::arg("t"));
 
     // operators
@@ -124,5 +133,8 @@ void produce_cubicbezier2f(pybind11::module& module)
                            bezier.get_vertex(2).x(), bezier.get_vertex(2).y(),
                            bezier.get_vertex(3).x(), bezier.get_vertex(3).y());
     });
+
+    // functions
+    module.def("approximate", static_cast<Polygon2f(*)(const CubicBezier2f&, float)>(&approximate), "Approximates the given Bezier with a polygon.", py::arg("bezier"), py::arg("tolerance") = 1.f);
 }
 

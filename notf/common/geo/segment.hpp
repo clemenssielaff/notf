@@ -1,10 +1,10 @@
 #pragma once
 
 #include <iosfwd>
+#include <optional>
 
 #include "notf/common/geo/aabr.hpp"
 #include "notf/common/geo/triangle.hpp"
-#include "notf/common/geo/vector2.hpp"
 
 NOTF_OPEN_NAMESPACE
 
@@ -110,11 +110,25 @@ struct Segment2 : public Segment<detail::Vector2<Element>> {
     /// The Aabr of this line Segment.
     Aabr<element_t> get_bounding_rect() const noexcept { return {start, end}; }
 
+    /// The vector from the start to the end of the line Segment.
+    constexpr vector_t get_delta() const noexcept { return end - start; }
+
     /// Checks if this line Segment contains a given point.
     /// Overrides the more general method in the Segment base class.
     /// @param point    Point to check.
     constexpr bool contains(const vector_t& point) const noexcept {
         return Triangle<element_t>(start, end, point).is_zero() && ((point - start).dot(point - end) < 0);
+    }
+
+    /// Checks if the given point is left of the line Segment.
+    constexpr bool is_left(const V2f& point) const noexcept {
+        return shoelace(start, end, point) > 0;
+    }
+
+    /// Tests if this Segment is collinear with another.
+    /// Two collinear Segments are two (potentially overlapping) parts of the same infinite line.
+    constexpr bool is_collinear_to(const Segment2& other) const noexcept {
+        return notf::is_zero(get_delta().cross(other.get_delta()), precision_high<element_t>());
     }
 
     /// Quick tests if this line Segment intersects another one.
@@ -141,17 +155,24 @@ struct Segment2 : public Segment<detail::Vector2<Element>> {
         return start + (delta * t);
     }
 
-    /// Calculates the intersection of this line with another ... IF they intersect.
-    /// @param intersection  Out argument, is filled wil the intersection point if an intersection was found.
-    /// @param other         Line to find an intersection with.
-    /// @param in_self       True, if the intersection point has to lie within the bounds of this Line.
-    /// @param in_other      True, if the intersection point has to lie within the bounds of the other Line.
-    /// @return  False if the lines do not intersect.
-    ///          If true, the intersection point ist written into the `intersection` argument.
-    //    bool
-    //    intersect(vector_t& intersection, const Line2& other, const bool in_self = true, const bool in_other = true)
-    //    const;
-    // TODO: Line2 intersect
+    /// The intersection of this line with another, iff they intersect at a unique point.
+    /// Collinear line Segments produce no intersection, even if they overlap.
+    /// @param other    Line to find an intersection with.
+    /// @return         The intersection point.
+    constexpr std::optional<vector_t> intersect(const Segment2& other) const noexcept {
+        const vector_t my_delta = get_delta();
+        const vector_t other_delta = other.get_delta();
+        const element_t cross_delta = my_delta.cross(other_delta);
+        if (!notf::is_zero(cross_delta, precision_high<element_t>())) {
+            const vector_t start_delta = other.start - start;
+            const element_t my_offset = start_delta.cross(other_delta) / cross_delta;
+            const element_t other_offset = start_delta.cross(my_delta) / cross_delta;
+            if (0 <= my_offset && my_offset <= 1 && 0 <= other_offset && other_offset <= 1) {
+                return start + (my_offset * my_delta);
+            }
+        }
+        return {}; // no intersection
+    }
 };
 
 } // namespace detail
@@ -180,7 +201,7 @@ struct fmt::formatter<notf::detail::Segment2<Element>> {
 
     template<typename FormatContext>
     auto format(const type& segment, FormatContext& ctx) {
-        return format_to(ctx.begin(), "Segment2([{}, {}] -> [{}, {}])", segment.start.x(), segment.start.y(),
+        return format_to(ctx.begin(), "Segment2(({}, {}) -> ({}, {}))", segment.start.x(), segment.start.y(),
                          segment.end.x(), segment.end.y());
     }
 };

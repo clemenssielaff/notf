@@ -79,7 +79,7 @@ public:
 
     /// Create an arithmetic value with all elements set to the given value.
     /// @param value    Value to set.
-    constexpr static actual_t all(const element_t& value) noexcept {
+    constexpr static actual_t all(const element_t value) noexcept {
         if constexpr (std::is_arithmetic_v<component_t>) {
             return {make_array_of<get_dimensions()>(value)};
         } else {
@@ -99,10 +99,10 @@ public:
     // inspection -------------------------------------------------------------
 
     /// Number of components in this arithmetic type.
-    static constexpr size_t get_dimensions() noexcept { return Dimensions; }
+    static constexpr std::size_t get_dimensions() noexcept { return Dimensions; }
 
     /// Number of elements in this arithmetic type.
-    static constexpr size_t get_size() noexcept {
+    static constexpr std::size_t get_size() noexcept {
         if constexpr (std::is_arithmetic_v<component_t>) {
             return get_dimensions();
         } else {
@@ -111,9 +111,9 @@ public:
     }
 
     /// Calculates and returns the hash of this value.
-    constexpr size_t get_hash() const noexcept {
+    constexpr std::size_t get_hash() const noexcept {
         std::size_t result = detail::versioned_base_hash();
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 notf::hash_combine(result, data[i]);
             } else {
@@ -126,12 +126,12 @@ public:
     /// @{
     /// Access to a component of this value by index.
     /// @param index    Index of the requested component.
-    constexpr component_t& operator[](const size_t index) noexcept(!config::is_debug_build()
+    constexpr component_t& operator[](const std::size_t index) noexcept(!config::is_debug_build()
                                                                    || config::abort_on_assert()) {
         NOTF_ASSERT(index < get_dimensions());
         return data[index];
     }
-    constexpr const component_t& operator[](const size_t index) const
+    constexpr const component_t& operator[](const std::size_t index) const
         noexcept(!config::is_debug_build() || config::abort_on_assert()) {
         NOTF_ASSERT(index < get_dimensions());
         return data[index];
@@ -159,7 +159,7 @@ public:
     /// Tests whether all components of this value are close to or equal to, zero.
     /// @param epsilon  Largest ignored difference.
     constexpr bool is_zero(const element_t epsilon = precision_high<element_t>()) const noexcept {
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 if (abs(data[i]) > epsilon) { return false; }
             } else {
@@ -172,7 +172,7 @@ public:
     /// Tests whether any of the components of this value is close to or equal to, zero.
     /// @param epsilon  Largest ignored difference.
     constexpr bool contains_zero(const element_t epsilon = precision_high<element_t>()) const noexcept {
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 if (abs(data[i]) <= epsilon) { return true; }
             } else {
@@ -184,7 +184,7 @@ public:
 
     /// Tests whether all components of this value are real (not NAN, not INFINITY).
     constexpr bool is_real() const noexcept {
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 if (!notf::is_real(data[i])) { return false; }
             } else {
@@ -201,7 +201,7 @@ public:
     /// @param epsilon  Largest ignored difference.
     constexpr bool is_approx(const actual_t& other,
                              const element_t epsilon = precision_high<element_t>()) const noexcept {
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 if (!notf::is_approx(data[i], other[i], epsilon)) { return false; }
             } else {
@@ -225,7 +225,7 @@ public:
     /// @param other    Other value to max against.
     constexpr actual_t get_max(const actual_t& other) const noexcept {
         actual_t result{};
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 result.data[i] = notf::max(data[i], other[i]);
             } else {
@@ -239,7 +239,7 @@ public:
     /// @param other    Other value to min against.
     constexpr actual_t get_min(const actual_t& other) const noexcept {
         actual_t result{};
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 result.data[i] = notf::min(data[i], other[i]);
             } else {
@@ -252,7 +252,7 @@ public:
     /// Sum of all elements of this value.
     constexpr element_t get_sum() const noexcept {
         element_t result = 0;
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 result += data[i];
             } else {
@@ -265,7 +265,7 @@ public:
     /// Set all elements of this value to the given element.
     /// @param value    Value to set.
     constexpr actual_t& set_all(const element_t value) noexcept {
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 data[i] = value;
             } else {
@@ -278,7 +278,7 @@ public:
     /// Set all elements of this value to the element-wise maximum of this and other.
     /// @param other    Other value to max against.
     constexpr actual_t& maximize_with(const actual_t& other) noexcept {
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 data[i] = notf::max(data[i], other[i]);
             } else {
@@ -291,7 +291,7 @@ public:
     /// Set all elements of this value to the element-wise minimum of this and other.
     /// @param other    Other value to min against.
     constexpr actual_t& minimize_with(const actual_t& other) noexcept {
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 data[i] = notf::min(data[i], other[i]);
             } else {
@@ -301,6 +301,34 @@ public:
         return *static_cast<actual_t*>(this);
     }
 
+    /// Set all elements of this value to their absolute value.
+    constexpr actual_t& set_absolute() noexcept {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
+            if constexpr (std::is_arithmetic_v<component_t>) {
+                data[i] = notf::abs(data[i]);
+            } else {
+                data[i].set_absolute();
+            }
+        }
+        return *static_cast<actual_t*>(this);
+    }
+
+    /// Get a copy of this value with all elements set to their absolute value.
+    constexpr actual_t get_absolute() const & noexcept {
+        actual_t result{};
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
+            if constexpr (std::is_arithmetic_v<component_t>) {
+                result.data[i] = notf::abs(data[i]);
+            } else {
+                result.data[i] = data[i].get_absolute();
+            }
+        }
+        return result;
+    }
+    constexpr actual_t& get_absolute() && noexcept {
+        return set_absolute();
+    }
+
     // scalar arithmetic ------------------------------------------------------
 
     /// @{
@@ -308,7 +336,7 @@ public:
     /// @param factor   Factor to multiply with.
     constexpr actual_t operator*(const element_t factor) const& noexcept {
         actual_t result{};
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] * factor;
         }
         return result;
@@ -321,7 +349,7 @@ public:
     /// In-place multiplication of this value with a scalar.
     /// @param factor   Factor to multiply with.
     constexpr actual_t& operator*=(const element_t factor) noexcept {
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             data[i] *= factor;
         }
         return *static_cast<actual_t*>(this);
@@ -332,7 +360,7 @@ public:
     /// @param divisor  Divisor to divide by.
     constexpr actual_t operator/(const element_t divisor) const& noexcept {
         actual_t result{};
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] / divisor;
         }
         return result;
@@ -343,7 +371,7 @@ public:
     /// In-place division of this value by a scalar.
     /// @param divisor  Divisor to divide by.
     constexpr actual_t& operator/=(const element_t divisor) noexcept {
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             data[i] /= divisor;
         }
         return *static_cast<actual_t*>(this);
@@ -362,7 +390,7 @@ public:
     /// @param other    Summand.
     constexpr actual_t operator+(const actual_t& other) const& noexcept {
         actual_t result{};
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] + other[i];
         }
         return result;
@@ -373,7 +401,7 @@ public:
     /// In-place addition of other to this.
     /// @param other    Other summand.
     constexpr actual_t& operator+=(const actual_t& other) noexcept {
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             data[i] += other[i];
         }
         return *static_cast<actual_t*>(this);
@@ -384,7 +412,7 @@ public:
     /// @param other    Subtrahend.
     constexpr actual_t operator-(const actual_t& other) const& noexcept {
         actual_t result{};
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             result[i] = data[i] - other[i];
         }
         return result;
@@ -395,7 +423,7 @@ public:
     /// The in-place difference between this value and other.
     /// @param other    Subtrahend.
     constexpr actual_t& operator-=(const actual_t& other) noexcept {
-        for (size_t i = 0; i < get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < get_dimensions(); ++i) {
             data[i] -= other[i];
         }
         return *static_cast<actual_t*>(this);
@@ -410,7 +438,7 @@ public:
 // arithmetic vector ================================================================================================ //
 
 /// Arithmetic vector implementation.
-template<class Actual, class Component, size_t Dimensions>
+template<class Actual, class Component, std::size_t Dimensions>
 struct ArithmeticVector : public Arithmetic<Actual, Component, Dimensions> {
 
     // types --------------------------------------------------------------------------------- //
@@ -494,7 +522,7 @@ public:
     /// @param other     Other vector.
     constexpr element_t dot(const actual_t& other) const noexcept {
         element_t result = 0;
-        for (size_t i = 0; i < super_t::get_dimensions(); ++i) {
+        for (std::size_t i = 0; i < super_t::get_dimensions(); ++i) {
             result += data[i] * other[i];
         }
         return result;

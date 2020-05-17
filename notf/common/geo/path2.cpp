@@ -21,7 +21,7 @@ Path2::Path2(std::vector<CubicPolyBezier2f> subpaths) {
 }
 
 Path2Ptr Path2::rect(const Aabrf& aabr) {
-    auto line = Polylinef(aabr.get_bottom_left(), aabr.get_bottom_right(), //
+    auto line = Polygon2f(aabr.get_bottom_left(), aabr.get_bottom_right(), //
                           aabr.get_top_right(), aabr.get_top_left());
     line.set_closed();
     std::vector<CubicPolyBezier2f> subpaths = {std::move(line)};

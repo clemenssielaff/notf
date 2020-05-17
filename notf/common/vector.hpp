@@ -242,10 +242,13 @@ void iterate_and_clean(std::vector<T>& vector, P&& predicate, F&& functor) {
 /// @returns        True if the vector was modified.
 template<class T>
 bool remove_consecutive_equal(std::vector<T>& vector) {
-    const size_t old_size = vector.size();
     const auto last = std::unique(vector.begin(), vector.end());
-    vector.erase(last, vector.end());
-    return vector.size() != old_size;
+    if (last == vector.end()) {
+        return false;
+    } else {
+        vector.erase(last, vector.end());
+        return true;
+    }
 }
 
 // reverse iteration ================================================================================================ //
