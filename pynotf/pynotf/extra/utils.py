@@ -1,5 +1,7 @@
 from typing import Tuple, Sized
 
+KAPPA: float = 0.552284749830793398402251632279597438092895833835930764235
+
 
 def chunks(iterable: Sized, size: int):
     """

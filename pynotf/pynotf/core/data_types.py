@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from enum import IntEnum, unique
-from typing import Tuple, Any, List, NamedTuple
+from typing import Tuple, Any, List, NamedTuple, Optional, Dict
+from types import CodeType
 
 from pyrsistent._checked_types import CheckedPVector as ConstList
 
-from pynotf.data import Value, RowHandle
+from pynotf.data import Value
 
 
 # UTILS ################################################################################################################
@@ -65,21 +66,6 @@ class EmitterStatus(IntEnum):
         return not (self == EmitterStatus.IDLE or self == EmitterStatus.EMITTING)
 
 
-class Pos2(NamedTuple):
-    x: float = 0
-    y: float = 0
-
-
-class Size2(NamedTuple):
-    width: float = 0
-    height: float = 0
-
-
-class Aabr(NamedTuple):
-    min: Pos2 = Pos2()
-    max: Pos2 = Pos2()
-
-
 class Xform(NamedTuple):
     """
     The matrix elements are laid out as follows:
@@ -95,4 +81,13 @@ class Xform(NamedTuple):
     f: float = 0
 
 
-NodeDesign = List[Tuple[Any, ...]]
+class Expression:
+    def __init__(self, source: str):
+        self._source: str = source
+        self._code: CodeType = compile(self._source, '<string>', mode='eval')  # might raise a SyntaxError
+
+    def execute(self, scope: Optional[Dict[str, Any]] = None) -> Any:
+        return eval(self._code, {}, scope or {})
+
+    def __repr__(self) -> str:
+        return f'Expression("{self._source}")'

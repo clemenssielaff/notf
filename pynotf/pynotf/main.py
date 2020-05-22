@@ -4,8 +4,8 @@ import sys
 from enum import IntEnum, auto, unique
 from logging import warning
 from threading import Thread
-from typing import Tuple, Callable, Any, Optional, Dict, Union, List, NamedTuple, Iterable
-from types import CodeType
+from typing import Tuple, Callable, Optional, Dict, Union, List, NamedTuple, Iterable
+
 from inspect import iscoroutinefunction
 from math import sin, pi
 from time import monotonic
@@ -16,20 +16,14 @@ import curio
 from pyrsistent._checked_types import CheckedPMap as ConstMap
 from pyrsistent import field
 
+import pynotf.extra.pynanovg as nanovg
+from pycnotf import V2f, Size2f, Aabrf
+
 from pynotf.data import Value, RowHandle, Table, TableRow, Storage, mutate_value, RowHandleList, Bonsai, RowHandleMap, \
     Path, Claim
-import pynotf.extra.pynanovg as nanovg
-import pynotf.extra.opengl as gl
-
 from pynotf.core.event_loop import EventLoop
-from pynotf.core.data_types import Pos2, Size2, Aabr, Xform, NodeDesign, EmitterStatus, ValueList, IndexEnum
-
-
-# TO DOs in order:
-# 1. allow painter to define a hitbox with an operator callback
-# 2. have the mouse click hit that operator
-# 3. create Value Claim
-# 4. instead of including Claim in the Node state, add a field where the user can set node property values
+from pynotf.core.data_types import Xform, EmitterStatus, ValueList, IndexEnum
+from pynotf.core.painterpreter import Sketch, Painter, Design
 
 
 # DATA #################################################################################################################
@@ -64,7 +58,7 @@ class LayoutDescription(NamedTuple):
 class NodeStateDescription(NamedTuple):
     operators: Dict[str, Tuple[OperatorIndex, Value]]
     connections: List[Tuple[Path, Path]]
-    design: NodeDesign
+    design: Design
     children: Dict[str, NodeDescription]
     layout: LayoutDescription
     claim: Claim = Claim()
@@ -89,14 +83,14 @@ BUILTIN_NODE_PROPERTIES: Dict[str, Value] = {
     f'{BUILTIN_NAMESPACE}.visibility': Value(1),
     f'{BUILTIN_NAMESPACE}.depth': Value(0),
     f'{BUILTIN_NAMESPACE}.xform': Value(1, 0, 0, 1, 0, 0),
-    # f'{BUILTIN_NAMESPACE}.claim' : Value(0), # TODO: express Claim wrapper around Value
+    # f'{BUILTIN_NAMESPACE}.claim' : Value(0), # TODO: express Claim as wrapper around Value
     f'{BUILTIN_NAMESPACE}.height': Value(100),  # and remove the {BUILTIN_NAMESPACE}.height/width props
     f'{BUILTIN_NAMESPACE}.width': Value(100),  # and remove the {BUILTIN_NAMESPACE}.height/width props
 }
 
 
 class Hitbox(NamedTuple):
-    aabr: Aabr
+    aabr: Aabrf
     callback: Operator
 
 
@@ -139,7 +133,7 @@ class OperatorRowDescription(NamedTuple):
 
 class NodeComposition(NamedTuple):
     xform: Xform  # layout xform
-    grant: Size2  # grant size
+    grant: Size2f  # grant size
     opacity: float = 0
 
 
@@ -151,7 +145,7 @@ class NodeCompositions(ConstMap):
 class LayoutComposition(NamedTuple):
     nodes: NodeCompositions = NodeCompositions()  # node name -> composition
     order: RowHandleList = RowHandleList()  # all nodes in draw order
-    aabr: Aabr = Aabr()  # union of all child aabrs
+    aabr: Aabrf = Aabrf()  # union of all child aabrs
     claim: Claim = Claim()  # union of all child claims
 
 
@@ -178,7 +172,7 @@ class NodeRow(TableRow):
 
 # FUNCTIONS ############################################################################################################
 
-def is_in_aabr(aabr: Aabr, pos: Pos2) -> bool:
+def is_in_aabr(aabr: Aabrf, pos: V2f) -> bool:
     return aabr.min.x <= pos.x <= aabr.max.x and aabr.min.y <= pos.y <= aabr.max.y
 
 
@@ -541,11 +535,12 @@ class Application:
         event_thread.start()
 
         # initialize the root
-        self._scene.get_node(Path('/')).relayout_down(Size2(640, 480))
+        self._scene.get_node(Path('/')).relayout_down(Size2f(640, 480))
 
         try:
             while not glfw.window_should_close(window):
-                with Painterpreter(window, ctx) as painter:
+                # TODO: this is happening in the MAIN loop - it should happen on a 3nd thread
+                with Painter(window, ctx) as painter:
                     self._scene.paint(painter)
                 glfw.wait_events()
 
@@ -568,100 +563,6 @@ def get_app() -> Application:
     if _THE_APPLICATION is None:
         _THE_APPLICATION = Application()
     return _THE_APPLICATION
-
-
-# PAINTERPRETER ########################################################################################################
-
-class PainterpreterNodeProperties:
-    def __init__(self, node: Node):
-        self._node: Node = node
-
-    def __getitem__(self, name: str) -> Value:
-        return self._node.get_property(name).get_value()
-
-
-class Expression:
-    def __init__(self, source: str):
-        self._source: str = source
-        self._code: CodeType = compile(self._source, '<string>', mode='eval')  # might raise a SyntaxError
-
-    def execute(self, scope: Optional[Dict[str, Any]] = None) -> Any:
-        return eval(self._code, {}, scope or {})
-
-    def __repr__(self) -> str:
-        return f'Expression("{self._source}")'
-
-
-class Painterpreter:
-
-    def __init__(self, window, context):
-        self._window = window
-        self._context = context
-        self._window_size: Size2 = Size2(*glfw.get_window_size(window))
-        self._buffer_size: Size2 = Size2(*glfw.get_framebuffer_size(window))
-        self._hitboxes: List[Hitbox] = []  # Aabr in window-space, Operator handles
-
-    def get_hitboxes(self) -> List[Hitbox]:
-        return self._hitboxes
-
-    def __enter__(self) -> Painterpreter:
-        gl.viewport(0, 0, *self._buffer_size)
-        gl.clearColor(0.098, 0.098, .098, 1)
-        gl.clear(gl.COLOR_BUFFER_BIT, gl.DEPTH_BUFFER_BIT, gl.STENCIL_BUFFER_BIT)
-
-        gl.enable(gl.BLEND)
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-        gl.enable(gl.CULL_FACE)
-        gl.disable(gl.DEPTH_TEST)
-
-        nanovg.begin_frame(self._context, self._window_size.width, self._window_size.height,
-                           self._buffer_size.width / self._window_size.width)
-
-        return self
-
-    def paint(self, node: Node) -> None:
-        scope: Dict[str, Any] = dict(
-            window=self._buffer_size,
-            prop=PainterpreterNodeProperties(node),
-            grant=node.get_composition().grant
-        )
-
-        # TODO: add method to completely reset the context including the save/restore stack
-        node_opacity = float(node.get_property('sys.opacity').get_value())
-        nanovg.reset(self._context)
-        nanovg.global_alpha(self._context, max(0., min(1., node_opacity)))
-        nanovg.transform(self._context, *node.get_composition().xform)
-
-        for command in node.get_design():
-            func_name: str = command[0]
-            assert isinstance(func_name, str)
-
-            args = []
-            for arg in command[1:]:
-                if isinstance(arg, Expression):
-                    args.append(arg.execute(scope))
-                else:
-                    args.append(arg)
-
-            getattr(nanovg, func_name)(self._context, *args)
-
-            # TODO: what I really need is a function ON the Painterpreter itself that allows the caller to also specify
-            #  the callback operator that is associated with that shape - this is obviously a hacky hack
-            if func_name == "rounded_rect":
-                x = node.get_composition().xform.e
-                y = node.get_composition().xform.f
-                width = command[3].execute(scope)
-                height = command[4].execute(scope)
-                callback: Optional[Operator] = node.get_property("bring_front")  # because hack
-                assert callback
-                self._hitboxes.append(Hitbox(
-                    Aabr(Pos2(x, y), Pos2(x + width, y + height)),
-                    callback,
-                ))
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        nanovg.end_frame(self._context)
-        glfw.swap_buffers(self._window)  # TODO: this is happening in the MAIN loop - it should happen on a 3nd thread
 
 
 # LOGIC ################################################################################################################
@@ -697,7 +598,7 @@ class Scene:
     def __init__(self):
         self._root_node: Optional[Node] = None
         self._hitboxes: List[Hitbox] = []
-        self._size: Size2 = Size2()
+        self._size: Size2f = Size2f()
 
     def initialize(self, root_description: NodeDescription):
         # create the root node
@@ -712,12 +613,12 @@ class Scene:
         ))
         self._root_node.transition_into(root_description.initial_state)
 
-    def set_size(self, size: Size2):
+    def set_size(self, size: Size2f):
         if size != self._size:
             self._size = size
             self._root_node.relayout_down(self._size)
 
-    def get_size(self) -> Size2:
+    def get_size(self) -> Size2f:
         return self._size
 
     def clear(self):
@@ -737,11 +638,11 @@ class Scene:
     def get_node(self, path: Path) -> Optional[Node]:
         return self._root_node.get_descendant(path)
 
-    def paint(self, painter: Painterpreter) -> None:
+    def paint(self, painter: Painter) -> None:
         self._root_node.paint(painter)
         self._hitboxes = painter.get_hitboxes()
 
-    def iter_hitboxes(self, pos: Pos2) -> Iterable[Hitbox]:
+    def iter_hitboxes(self, pos: V2f) -> Iterable[Hitbox]:
         """
         Returns the Operators connected to all hitboxes that overlap the given position in reverse draw order.
         """
@@ -838,7 +739,7 @@ class Node:
         # failure
         return None
 
-    def paint(self, painter: Painterpreter):
+    def paint(self, painter: Painter):
         painter.paint(self)
         for node_handle in self.get_layout().get_composition().order:
             painter.paint(Node(node_handle))
@@ -853,9 +754,10 @@ class Node:
     def get_state(self) -> str:
         return get_app().get_table(TableIndex.NODES)[self._handle]['state']
 
-    def get_design(self) -> NodeDesign:
+    def get_sketch(self) -> Sketch:
         node_table: Table = get_app().get_table(TableIndex.NODES)
-        return node_table[self._handle]['description'].states[self.get_state()].design
+        design: Design = node_table[self._handle]['description'].states[self.get_state()].design
+        return design.sketch(self)
 
     def remove(self):
         # unregister from the parent
@@ -958,7 +860,7 @@ class Node:
         # layout
         self.get_layout().remove()
 
-    def relayout_down(self, grant: Size2) -> None:
+    def relayout_down(self, grant: Size2f) -> None:
         # update the layout with the new grant
         layout: Layout = self.get_layout()
         old_layout: LayoutComposition = layout.get_composition()
@@ -1027,7 +929,7 @@ class Layout:
     def get_node_composition(self, node: Node) -> Optional[NodeComposition]:
         return self.get_composition().nodes.get(node.get_name())
 
-    def perform(self, grant: Size2) -> LayoutComposition:
+    def perform(self, grant: Size2f) -> LayoutComposition:
         layout_table: Table = get_app().get_table(TableIndex.LAYOUTS)
         layout_index: LayoutIndex = layout_table[self._handle]['layout_index']
         composition: LayoutComposition = LAYOUT_VTABLE[layout_index][LayoutVtableIndex.LAYOUT](self, grant)
@@ -1082,10 +984,10 @@ class LtOverlayout:
         )
 
     @staticmethod
-    def layout(self: Layout, grant: Size2) -> LayoutComposition:
+    def layout(self: Layout, grant: Size2f) -> LayoutComposition:
         compositions: Dict[str, NodeComposition] = {}
         for node_view in self.get_nodes():
-            node_grant: Size2 = Size2(
+            node_grant: Size2f = Size2f(
                 width=max(node_view.claim.horizontal.min, min(node_view.claim.horizontal.max, grant.width)),
                 height=max(node_view.claim.vertical.min, min(node_view.claim.vertical.max, grant.height)),
             )
@@ -1098,7 +1000,7 @@ class LtOverlayout:
         return LayoutComposition(
             nodes=NodeCompositions(compositions),
             order=self.get_order(),
-            aabr=Aabr(min=Pos2(0, 0), max=Pos2(grant.width, grant.height)),
+            aabr=Aabrf(grant),
             claim=Claim(),
         )
 
@@ -1113,11 +1015,11 @@ class LtFlexbox:
         )
 
     @staticmethod
-    def layout(self: Layout, grant: Size2) -> LayoutComposition:
+    def layout(self: Layout, grant: Size2f) -> LayoutComposition:
         compositions: Dict[str, NodeComposition] = {}
         x_offset: float = 0
         for node_view in self.get_nodes():
-            node_grant: Size2 = Size2(
+            node_grant: Size2f = Size2f(
                 width=max(node_view.claim.horizontal.min, min(node_view.claim.horizontal.max, grant.width)),
                 height=max(node_view.claim.vertical.min, min(node_view.claim.vertical.max, grant.height)),
             )
@@ -1132,7 +1034,7 @@ class LtFlexbox:
         return LayoutComposition(
             nodes=NodeCompositions(compositions),
             order=self.get_order(),
-            aabr=Aabr(min=Pos2(0, 0), max=Pos2(grant.width, grant.height)),
+            aabr=Aabrf(grant),
             claim=Claim(),
         )
 
@@ -1152,7 +1054,7 @@ class LayoutVtableIndex(IntEnum):
 LAYOUT_VTABLE: Tuple[
     Tuple[
         Optional[Callable[[Value], RowHandle]],  # create
-        Optional[Callable[[Layout, Size2], LayoutComposition]],  # layout
+        Optional[Callable[[Layout, Size2f], LayoutComposition]],  # layout
     ], ...] = (
     (LtOverlayout.create, LtOverlayout.layout),
     (LtFlexbox.create, LtFlexbox.layout),
@@ -1253,7 +1155,7 @@ class OpFactory:
         factory_arguments: Value = self.get_argument('args')
         for subscriber in downstream:
             new_operator: Operator = Operator.create(factory_function(factory_arguments))
-            new_operator.subscribe(subscriber)
+            new_operator.subscribe(Operator(subscriber))
             new_operator.on_next(self, new_operator.get_value())
 
         return self.get_data()
@@ -1409,7 +1311,7 @@ def mouse_button_callback(window, button: int, action: int, mods: int) -> None:
         get_app().get_scene().get_fact('mouse_fact').next(Value(x, y))
     elif button == glfw.MOUSE_BUTTON_RIGHT and action == glfw.PRESS:
         x, y = glfw.get_cursor_pos(window)
-        for hitbox in get_app().get_scene().iter_hitboxes(Pos2(x, y)):
+        for hitbox in get_app().get_scene().iter_hitboxes(V2f(x, y)):
             aabr = hitbox.aabr
             x1, y1, x2, y2 = aabr.min.x, aabr.min.y, aabr.max.x, aabr.max.y
             print(f"Triggered hitbox callback for hitbox with aabr({x1}, {y1}, {x2}, {y2})")
@@ -1418,7 +1320,7 @@ def mouse_button_callback(window, button: int, action: int, mods: int) -> None:
 
 # noinspection PyUnusedLocal
 def window_size_callback(window, width: int, height: int) -> None:
-    get_app().get_scene().set_size(Size2(width, height))
+    get_app().get_scene().set_size(Size2f(width, height))
 
 
 count_presses_node: NodeDescription = NodeDescription(
@@ -1436,12 +1338,14 @@ count_presses_node: NodeDescription = NodeDescription(
                 (Path('/:mouse_fact'), Path('buffer')),
                 (Path('buffer'), Path('printer')),
             ],
-            design=[
-                ("begin_path",),
-                ("rounded_rect", 0, 0, Expression('grant.width'), Expression('grant.height'), 0),
-                ("fill_color", nanovg.rgba(1, 1, 1)),
-                ("fill",),
-            ],
+            design=Design(
+                Design.FillCall(shape=Design.RoundedRect(
+                    x=Design.Constant(Value(0)), y=Design.Constant(Value(0)),
+                    width=Design.Expression(Value(0).get_schema(), "max(0, node.grant.width)"),
+                    height=Design.Expression(Value(0).get_schema(), "max(0, node.grant.height)"),
+                    radius=Design.Constant(Value(0))),
+                    paint=Design.SolidColor(Design.Constant(Value(r=1, g=1, b=1, a=1))),
+                )),
             children=dict(),
             layout=LayoutDescription(
                 LayoutIndex.OVERLAY,
@@ -1474,15 +1378,14 @@ countdown_node: NodeDescription = NodeDescription(
                 (Path('/:mouse_fact'), Path('mouse_pos_printer')),
                 (Path('sine'), Path(':roundness')),
             ],
-            design=[
-                ("begin_path",),
-                ("rounded_rect", 0, 0,
-                 Expression('max(0, grant.width)'),
-                 Expression('max(0, grant.height)'),
-                 Expression('prop["roundness"]')),
-                ("fill_color", nanovg.rgba(.5, .5, .5)),
-                ("fill",),
-            ],
+            design=Design(
+                Design.FillCall(shape=Design.RoundedRect(
+                    x=Design.Constant(Value(0)), y=Design.Constant(Value(0)),
+                    width=Design.Expression(Value(0).get_schema(), "max(0, node.grant.width)"),
+                    height=Design.Expression(Value(0).get_schema(), "max(0, node.grant.height)"),
+                    radius=Design.Expression(Value(0).get_schema(), "max(0, node.roundness)")),
+                    paint=Design.SolidColor(Design.Constant(Value(r=.5, g=.5, b=.5, a=1))),
+                )),
             children=dict(),
             layout=LayoutDescription(
                 LayoutIndex.OVERLAY,
@@ -1505,7 +1408,7 @@ root_node: NodeDescription = NodeDescription(
         default=NodeStateDescription(
             operators={},
             connections=[],
-            design=[],
+            design=Design(),
             children=dict(
                 zanzibar=count_presses_node,
                 herbert=countdown_node,
