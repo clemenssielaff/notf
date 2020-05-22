@@ -221,9 +221,12 @@ public:
         return derivate;
     }
 
-    /// @{
     /// Get the number of line segments required to approximate the bezier within a given tolerance.
-    /// Find the points of the segments by interpolating the bezier at regular t-intervals.
+    ///
+    /// This method works on the difference between the interpolated point on the bezier and the linearly interpolated
+    /// point on the straight line between the start and end.
+    /// The means that a bezier that looks like a straight line will still need multiple segments if its interpolation
+    /// "speed" is not linear.
     ///
     /// From: https://raphlinus.github.io/graphics/curves/2019/12/23/flatten-quadbez.html
     /// where it is presented as an alternative approach, originally from Sederberg's CAGD notes:
@@ -231,11 +234,20 @@ public:
     ///
     /// @param tolerance (Default = 1)  Maximum distance from a line segment to the bezier spline.
     /// @returns         Number of segments.
-    constexpr uint get_segment_count() const noexcept { return _get_segment_count(1); } // safes a call to sqrt
-    constexpr uint get_segment_count(const element_t tolerance) const noexcept {
-        return _get_segment_count(notf::sqrt(tolerance));
+    constexpr uint get_segment_count(const element_t tolerance = 1) const noexcept {
+        std::array<vector_t, Order + 1> vertices;
+        for (uint i = 0; i <= Order; ++i) {
+            vertices[i] = get_vertex(i);
+        }
+        static_assert(Order >= 2);
+        vector_t bounds = vertices[2] - (2 * vertices[1]) + vertices[0];
+        if constexpr (Order > 2) { bounds.set_abs(); }
+        for (uint i = 1; i + 2 <= Order; ++i) {
+            bounds.set_max((vertices[i + 2] - (2 * vertices[i + 1]) + vertices[i]).get_abs());
+        }
+        return static_cast<uint>(
+            element_t(1) + notf::sqrt(((Order * (Order - 1)) * bounds).get_magnitude() / (element_t(8) * tolerance)));
     }
-    /// @}
 
     /// Equality operator.
     /// @param other    Value to test against.
@@ -255,32 +267,24 @@ private:
         return result;
     }
 
-    constexpr uint _get_segment_count(const element_t tolerance_sqrt) const noexcept {
-        std::array<vector_t, Order + 1> vertices;
-        for (uint i = 0; i <= Order; ++i) {
-            vertices[i] = get_vertex(i);
-        }
-        static_assert(Order >= 2);
-        vector_t ddv = (2 * vertices[1]) - vertices[0] - vertices[2];
-        if constexpr (Order > 2) { ddv.set_absolute(); }
-        for (uint i = 1; i + 2 <= Order; ++i) {
-            ddv.maximize_with(((2.f * vertices[i + 1]) - vertices[i + 0] - vertices[i + 2]).get_absolute());
-        }
-        const float dd = ddv.dot(ddv);
-        return static_cast<uint>(notf::ceil(notf::pow(dd, element_t(1. / 4.)) / element_t(2) * tolerance_sqrt));
-    }
-
     // fields ---------------------------------------------------------------------------------- //
 public:
     /// Bezier weights.
     data_t data;
 };
 
+} // namespace detail
+
+// utility functions ================================================================================================ //
+
+/// Approximates the given Bezier with a polygon.
+/// @param tolerance (Default = 1)  Maximum distance from a line segment to the bezier spline.
 template<std::size_t Order, class Element>
-Polygon2<Element> _approximate(const ParametricBezier<Order, Vector2<Element>>& bezier,
-                               const uint segment_count) noexcept {
-    using polygon_t = Polygon2<Element>;
+detail::Polygon2<Element> approximate(const detail::ParametricBezier<Order, detail::Vector2<Element>>& bezier,
+                                      const Element tolerance = 1) noexcept {
+    using polygon_t = detail::Polygon2<Element>;
     using vertex_t = typename polygon_t::vertex_t;
+    const uint segment_count = bezier.get_segment_count(tolerance);
     std::vector<vertex_t> vertices(segment_count + 1, DefaultInitAllocator<vertex_t>());
     vertices[0] = bezier.get_vertex(0);
     for (uint i = 1; i < segment_count; ++i) {
@@ -290,26 +294,7 @@ Polygon2<Element> _approximate(const ParametricBezier<Order, Vector2<Element>>& 
     return polygon_t(std::move(vertices));
 }
 
-} // namespace detail
-
-// utility functions ================================================================================================ //
-
-/// Approximates the given Bezier with a polygon.
-/// @param tolerance (Default = 1)  Maximum distance from a line segment to the bezier spline.
-template<std::size_t Order, class Element>
-detail::Polygon2<Element>
-approximate(const detail::ParametricBezier<Order, detail::Vector2<Element>>& bezier) noexcept {
-    return detail::_approximate(bezier, bezier.get_segment_count());
-}
-template<std::size_t Order, class Element>
-detail::Polygon2<Element> approximate(const detail::ParametricBezier<Order, detail::Vector2<Element>>& bezier,
-                                      const Element tolerance) noexcept {
-    return detail::_approximate(bezier, bezier.get_segment_count(tolerance));
-}
-
 /*
-
-
 def cubic_split_middle(cubic_bezier: CubicBezier2f) -> Tuple[CubicBezier2f, CubicBezier2f]:
     """
     From: http://www.timotheegroleau.com/Flash/articles/cubic_bezier_in_flash.htm

@@ -167,8 +167,9 @@ public:
 
 } // namespace detail
 
-/// The Shoelace formula:
-/// https://en.wikipedia.org/wiki/Shoelace_formula#Proof_for_a_triangle
+/// The Shoelace formula.
+/// See
+///     https://en.wikipedia.org/wiki/Shoelace_formula#Proof_for_a_triangle
 /// but optimized for computation (see https://godbolt.org/z/ZuUDZV).
 template<class element_t>
 constexpr static element_t shoelace(const detail::Vector2<element_t>& a, const detail::Vector2<element_t>& b,

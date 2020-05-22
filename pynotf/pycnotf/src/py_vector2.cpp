@@ -54,13 +54,13 @@ void produce_vector2(pybind11::module& module) {
     Py_Vector2.def("get_max", method_cast<V2f>(&V2f::get_max), DOCSTR("Get the element-wise maximum of this and other."), py::arg("other"));
     Py_Vector2.def("get_min", method_cast<V2f>(&V2f::get_min), DOCSTR("Get the element-wise minimum of this and other."), py::arg("other"));
     Py_Vector2.def("get_sum", method_cast<V2f>(&V2f::get_sum), DOCSTR("Sum of all elements of this value."));
-    Py_Vector2.def("get_absolute", static_cast<V2f (V2f::*)() const &>(&V2f::get_absolute), DOCSTR("Get a copy of this value with all elements set to their absolute value."));
+    Py_Vector2.def("get_abs", static_cast<V2f (V2f::*)() const &>(&V2f::get_abs), DOCSTR("Get a copy of this value with all elements set to their absolute value."));
 
     // modification
     Py_Vector2.def("set_all", method_cast<V2f>(&V2f::set_all), DOCSTR("Sets all components of the Vector to the given value."), py::arg("value"));
-    Py_Vector2.def("maximize_with", method_cast<V2f>(&V2f::maximize_with), DOCSTR("Set all elements of this value to the element-wise maximum of this and other."), py::arg("other"));
-    Py_Vector2.def("minimize_with", method_cast<V2f const>(&V2f::minimize_with), DOCSTR("Set all elements of this value to the element-wise minimum of this and other."), py::arg("other"));
-    Py_Vector2.def("set_absolute", method_cast<V2f>(&V2f::set_absolute), DOCSTR("Set all elements of this value to their absolute value."));
+    Py_Vector2.def("set_max", method_cast<V2f>(&V2f::set_max), DOCSTR("Set all elements of this value to the element-wise maximum of this and other."), py::arg("other"));
+    Py_Vector2.def("set_min", method_cast<V2f const>(&V2f::set_min), DOCSTR("Set all elements of this value to the element-wise minimum of this and other."), py::arg("other"));
+    Py_Vector2.def("set_abs", method_cast<V2f>(&V2f::set_abs), DOCSTR("Set all elements of this value to their absolute value."));
     Py_Vector2.def("dot", method_cast<V2f>(&V2f::dot), DOCSTR("Vector2 dot product."), py::arg("other"));
     Py_Vector2.def("cross", &V2f::cross, DOCSTR("Returns the cross product of this vector and another."), py::arg("other"));
     Py_Vector2.def("normalize", method_cast<V2f>(&V2f::normalize), DOCSTR("Normalizes this vector in-place."));
@@ -98,9 +98,8 @@ void produce_vector2(pybind11::module& module) {
     Py_Vector2.def("__str__", [](const V2f& v2f) { return fmt::format("({}, {})", v2f.x(), v2f.y()); });
     Py_Vector2.def("__repr__", [](const V2f& v2f) { return fmt::format("pycnotf.V2f({}, {})", v2f.x(), v2f.y()); });
 
-    // free functions
-    //    module.def("lerp", &lerp<V2f>, DOCSTR("Linear interpolation between two Vector2s."), py::arg("from"),
-    //    py::arg("to"), py::arg("blend"));
+    // functions
+    module.def("shoelace", static_cast<float(*)(const V2f&, const V2f&, const V2f&)>(&shoelace), "The Shoelace formula.", py::arg("a"), py::arg("b"), py::arg("c"));
 }
 
 // clang-format on

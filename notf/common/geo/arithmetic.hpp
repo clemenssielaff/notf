@@ -277,12 +277,12 @@ public:
 
     /// Set all elements of this value to the element-wise maximum of this and other.
     /// @param other    Other value to max against.
-    constexpr actual_t& maximize_with(const actual_t& other) noexcept {
+    constexpr actual_t& set_max(const actual_t& other) noexcept {
         for (std::size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 data[i] = notf::max(data[i], other[i]);
             } else {
-                data[i].maximize_with(other[i]);
+                data[i].set_max(other[i]);
             }
         }
         return *static_cast<actual_t*>(this);
@@ -290,43 +290,43 @@ public:
 
     /// Set all elements of this value to the element-wise minimum of this and other.
     /// @param other    Other value to min against.
-    constexpr actual_t& minimize_with(const actual_t& other) noexcept {
+    constexpr actual_t& set_min(const actual_t& other) noexcept {
         for (std::size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 data[i] = notf::min(data[i], other[i]);
             } else {
-                data[i].minimize_with(other[i]);
+                data[i].set_min(other[i]);
             }
         }
         return *static_cast<actual_t*>(this);
     }
 
     /// Set all elements of this value to their absolute value.
-    constexpr actual_t& set_absolute() noexcept {
+    constexpr actual_t& set_abs() noexcept {
         for (std::size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 data[i] = notf::abs(data[i]);
             } else {
-                data[i].set_absolute();
+                data[i].set_abs();
             }
         }
         return *static_cast<actual_t*>(this);
     }
 
     /// Get a copy of this value with all elements set to their absolute value.
-    constexpr actual_t get_absolute() const & noexcept {
+    constexpr actual_t get_abs() const & noexcept {
         actual_t result{};
         for (std::size_t i = 0; i < get_dimensions(); ++i) {
             if constexpr (std::is_arithmetic_v<component_t>) {
                 result.data[i] = notf::abs(data[i]);
             } else {
-                result.data[i] = data[i].get_absolute();
+                result.data[i] = data[i].get_abs();
             }
         }
         return result;
     }
-    constexpr actual_t& get_absolute() && noexcept {
-        return set_absolute();
+    constexpr actual_t& get_abs() && noexcept {
+        return set_abs();
     }
 
     // scalar arithmetic ------------------------------------------------------
