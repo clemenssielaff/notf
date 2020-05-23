@@ -16,4 +16,4 @@ pynotf/coverage/
 pynotf/.coverage
 pynotf/.hypothesis/*
 pynotf/tests/.hypothesis/*
-
+*.prof
