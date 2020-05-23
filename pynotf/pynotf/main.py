@@ -529,6 +529,7 @@ class Application:
         glfw.make_context_current(window)
         nanovg._nanovg.loadGLES2Loader(glfw._glfw.glfwGetProcAddress)
         ctx = nanovg._nanovg.nvgCreateGLES3(5)
+        glfw.swap_interval(0)
 
         # start the event loop
         event_thread = Thread(target=self._event_loop.run)
@@ -1208,7 +1209,7 @@ class OpSine:
     def create(args: Value) -> OperatorRowDescription:
         frequency: float = 0.5
         amplitude: float = 100
-        samples: float = 60  # samples per second
+        samples: float = 72  # samples per second (this results in about 60 fps)
         keys: List[str] = args.get_keys()
         if 'frequency' in keys:
             frequency = float(args['frequency'])

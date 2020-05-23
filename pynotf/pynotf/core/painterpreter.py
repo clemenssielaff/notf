@@ -71,14 +71,12 @@ class Sketch(NamedTuple):
         cap: nanovg.LineCap = nanovg.LineCap.BUTT
         join: nanovg.LineJoin = nanovg.LineJoin.MITER
 
-    DrawCall = Union[FillCall, StrokeCall]
-
     class Hitbox(NamedTuple):
         shape: Shape
         callback: Operator
 
-    draw_calls: List[DrawCall] = []
-    hitboxes: List[Hitbox] = []
+    draw_calls: List[Union[FillCall, StrokeCall]]
+    hitboxes: List[Hitbox]
 
 
 # PAINTER ##############################################################################################################
@@ -109,6 +107,7 @@ class Painter:
         gl.enable(gl.CULL_FACE)
         gl.disable(gl.DEPTH_TEST)
 
+        self._hitboxes.clear()
         nanovg.begin_frame(self._context, self._window_size.width, self._window_size.height,
                            self._buffer_size.width / self._window_size.width)
 
@@ -423,7 +422,7 @@ class Design:
     def sketch(self, node: Node) -> Sketch:
         self._generation += 1
         context: Design._Context = Design._Context(node=node, generation=self._generation)
-        sketch: Sketch = Sketch()
+        sketch: Sketch = Sketch(draw_calls=[], hitboxes=[])
         for draw_call in self._draw_calls:
             if isinstance(draw_call, Design.FillCall):
                 sketch.draw_calls.append(Sketch.FillCall(
