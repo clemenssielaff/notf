@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Dict, List, NamedTuple, Union, Iterable, Optional, Tuple
+from time import perf_counter
 
 import glfw
 
@@ -83,6 +84,10 @@ class Sketch(NamedTuple):
 # PAINTER ##############################################################################################################
 
 class Painter:
+
+    _frame_counter: int = 0
+    _frame_start: float = 0
+
     def __init__(self, window, context):
         self._window = window
         self._context = context
@@ -91,6 +96,10 @@ class Painter:
         self._hitboxes: List[Sketch.Hitbox] = []
 
     def __enter__(self) -> Painter:
+        if Painter._frame_counter == 0:
+            Painter._frame_start = perf_counter()
+        Painter._frame_counter += 1
+
         gl.viewport(0, 0, self._buffer_size.width, self._buffer_size.height)
         gl.clearColor(0.098, 0.098, .098, 1)
         gl.clear(gl.COLOR_BUFFER_BIT, gl.DEPTH_BUFFER_BIT, gl.STENCIL_BUFFER_BIT)
@@ -108,6 +117,12 @@ class Painter:
     def __exit__(self, exc_type, exc_val, exc_tb):
         nanovg.end_frame(self._context)
         glfw.swap_buffers(self._window)
+
+        frame_end: float = perf_counter()
+        if (frame_end - Painter._frame_start) > 1:
+            print(f'Drew {Painter._frame_counter} frames last second '
+                  f'-> average time {((frame_end - Painter._frame_start) / Painter._frame_counter) * 1000}ms')
+            Painter._frame_counter = 0
 
     def get_hitboxes(self) -> List[Sketch.Hitbox]:
         return self._hitboxes  # TODO: I am not sure that the Painter is the best place to store hitboxes
