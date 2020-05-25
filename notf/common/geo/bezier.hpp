@@ -12,6 +12,11 @@ NOTF_OPEN_NAMESPACE
 
 namespace detail {
 
+// TODO: maybe don't store ParametricBeziers as a pair of Beziers [[x1, x2, x3...], [y1, y2, y3 ...]] but a list of
+//      vertices [[x1, y1], [x2, y2] ...]
+
+// TODO: simple, general algorithm for elevating a square to a cubic etc.
+
 // bezier =========================================================================================================== //
 
 /// 1 dimensional Bezier segment.

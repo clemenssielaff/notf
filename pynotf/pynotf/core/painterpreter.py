@@ -215,6 +215,7 @@ class Design:
 
         @abstractmethod
         def evaluate(self, context: Design._Context) -> Value:
+            # TODO: this should return a pair<Value, bool> where the bool indicates whether the value is new or not
             raise NotImplementedError()
 
     class Constant(_ValueBuilder):

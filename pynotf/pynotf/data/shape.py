@@ -9,7 +9,7 @@ from pynotf.extra import chunks
 
 class ShapeBuilder:
     def __init__(self, start: V2f):
-        self._is_finalized: bool = False
+        self._is_closed: bool = False
         self._points: List[V2f] = [start]
         self._indices: List[int] = []
 
@@ -19,20 +19,18 @@ class ShapeBuilder:
     def get_indices(self) -> List[int]:
         return self._indices
 
-    def is_finalized(self):
-        return self._is_finalized
-
-    def finalize(self):
+    def is_valid(self) -> bool:
+        if len(self._indices) == 0:
+            return False
+        if len(self._indices) % 4 != 0:
+            return False
         for index in self._indices:
-            assert index < len(self._points)
-        if self._points and not self._points[0].is_approx(self._points[-1]):
-            # close the shape with a straight line, if it is still open
-            self.add_segment(self._points[-1], self._points[0])
-        assert len(self._indices) % 4 == 0
-        self._is_finalized = True
+            if index >= len(self._points):
+                return False
+        return True
 
     def add_segment(self, end: V2f, ctrl1: Optional[V2f] = None, ctrl2: Optional[V2f] = None) -> None:
-        assert not self._is_finalized
+        assert not self._is_closed
 
         # start
         index: int = len(self._points) - 1
@@ -59,14 +57,26 @@ class ShapeBuilder:
             self._indices.append(index)
         self._indices.append(index)
 
+    def close(self) -> V2f:
+        if not self._is_closed:
+            # close the shape with a straight line, if it is still open
+            if not self._points[0].is_approx(self._points[-1]):
+                self.add_segment(self._points[-1], self._points[0])
+            self._is_closed = True
+        return self._points[0]  # return start point, useful for parsing multiple relative paths
+
 
 class Shape:
     def __init__(self, builder: ShapeBuilder):
-        assert builder.is_finalized
+        assert builder.is_valid()
 
         self._vertices: List[V2f] = builder.get_points()
         self._indices: List[int] = builder.get_indices()
         self._aabr: Aabrf = self._calculate_bounding_box()
+
+    def __repr__(self):
+        coords: str = ', '.join(f'({v.x}, {v.y})' for v in (self._vertices[i] for i in self._indices))
+        return f'Shape({coords})'
 
     def get_vertex(self, index: int) -> V2f:
         return self._vertices[self._indices[index]]
