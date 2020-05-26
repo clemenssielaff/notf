@@ -12,7 +12,7 @@ from pynotf.extra.utils import KAPPA
 from pycnotf import V2f, Size2i, Aabrf
 
 from pynotf.data import Value, Shape, ShapeBuilder
-from pynotf.core.data_types import Expression
+import pynotf.core as core
 
 
 # PAINT ################################################################################################################
@@ -73,7 +73,7 @@ class Sketch(NamedTuple):
 
     class Hitbox(NamedTuple):
         shape: Shape
-        callback: Operator
+        callback: core.Operator
 
     draw_calls: List[Union[FillCall, StrokeCall]]
     hitboxes: List[Hitbox]
@@ -125,7 +125,7 @@ class Painter:
     def get_hitboxes(self) -> List[Sketch.Hitbox]:
         return self._hitboxes  # TODO: I am not sure that the Painter is the best place to store hitboxes
 
-    def paint(self, node: Node) -> None:
+    def paint(self, node: core.Node) -> None:
         node_opacity: float = max(0., min(1., float(node.get_property('sys.opacity').get_value())))
 
         nanovg.reset(self._context)
@@ -198,7 +198,7 @@ class Design:
     """
 
     class _Context(NamedTuple):
-        node: Node
+        node: core.Node
         generation: int
 
     # VALUE BUILDERS ##########################################################
@@ -230,10 +230,10 @@ class Design:
             return self._value, False
 
     class Property(_ValueBuilder):
-        def __init__(self, node: Node, name: str):
+        def __init__(self, node: core.Node, name: str):
             """
-            :param node: Node from which to get the
-            :param name: Name of the Property on the Node.
+            :param node: core.Node from which to get the
+            :param name: Name of the Property on the core.Node.
             """
             self._cached: Value = node.get_property(name).get_value()
             self._generation: int = 0
@@ -258,12 +258,12 @@ class Design:
         def __init__(self, schema: Value.Schema, source: str, **arguments: Design._ValueBuilder):
             """
             Source of the Expression.
-            The expression has access to all Properties of the Node using `node["property.name"]`.
+            The expression has access to all Properties of the core.Node using `node["property.name"]`.
             """
             assert 'node' not in arguments
             self._cached: Value = Value(schema)
             self._generation: int = 0
-            self._expression: Expression = Expression(source)
+            self._expression: core.Expression = core.Expression(source)
             self._scope: Dict[str, Design._ValueBuilder] = arguments
 
         def get_schema(self) -> Value.Schema:
@@ -426,7 +426,7 @@ class Design:
 
     class HitboxCall(NamedTuple):
         shape: Design._ShapeBuilder
-        callback: Operator
+        callback: core.Operator
 
     # DESIGN ##################################################################
 
@@ -447,7 +447,7 @@ class Design:
                 assert isinstance(call, Design.StrokeCall)
                 self._draw_calls.append(call)
 
-    def sketch(self, node: Node) -> Sketch:
+    def sketch(self, node: core.Node) -> Sketch:
         self._generation += 1
         context: Design._Context = Design._Context(node=node, generation=self._generation)
         sketch: Sketch = Sketch(draw_calls=[], hitboxes=[])
@@ -478,6 +478,3 @@ class Design:
                     callback=hitbox.callback,
                 ))
         return sketch
-
-
-from ..main import Node, Operator
