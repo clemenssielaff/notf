@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, NamedTuple, Union, Iterable, Optional, Tuple
+from typing import Dict, List, NamedTuple, Union, Optional, Tuple
 from time import perf_counter
 
 import glfw
@@ -82,7 +82,6 @@ class Sketch(NamedTuple):
 # PAINTER ##############################################################################################################
 
 class Painter:
-
     _frame_counter: int = 0
     _frame_start: float = 0
 
@@ -119,8 +118,8 @@ class Painter:
 
         frame_end: float = perf_counter()
         if (frame_end - Painter._frame_start) > 1:
-            print(f'Drew {Painter._frame_counter} frames last second '
-                  f'-> average time {((frame_end - Painter._frame_start) / Painter._frame_counter) * 1000}ms')
+            # print(f'Drew {Painter._frame_counter} frames last second '
+            #       f'-> average time {((frame_end - Painter._frame_start) / Painter._frame_counter) * 1000}ms')
             Painter._frame_counter = 0
 
     def get_hitboxes(self) -> List[Sketch.Hitbox]:
@@ -210,12 +209,11 @@ class Design:
             raise NotImplementedError()
 
         @abstractmethod
-        def iter_upstream(self) -> Iterable[Design._ValueBuilder]:
-            raise NotImplementedError()
-
-        @abstractmethod
-        def evaluate(self, context: Design._Context) -> Value:
-            # TODO: this should return a pair<Value, bool> where the bool indicates whether the value is new or not
+        def evaluate(self, context: Design._Context) -> Tuple[Value, bool]:
+            """
+            Returns a pair of the Value and whether it is a new value (True) or the same as the last time this method
+            was called (False).
+            """
             raise NotImplementedError()
 
     class Constant(_ValueBuilder):
@@ -228,11 +226,8 @@ class Design:
         def get_schema(self) -> Value.Schema:
             return self._value.get_schema()
 
-        def iter_upstream(self) -> Iterable[Design._ValueBuilder]:
-            return iter(())  # empty generator
-
-        def evaluate(self, _: Design._Context) -> Value:
-            return self._value
+        def evaluate(self, _: Design._Context) -> Tuple[Value, bool]:
+            return self._value, False
 
     class Property(_ValueBuilder):
         def __init__(self, node: Node, name: str):
@@ -247,16 +242,17 @@ class Design:
         def get_schema(self) -> Value.Schema:
             return self._cached.get_schema()
 
-        def iter_upstream(self) -> Iterable[Design._ValueBuilder]:
-            return iter(())  # empty generator
-
-        def evaluate(self, context: Design._Context) -> Value:
+        def evaluate(self, context: Design._Context) -> Tuple[Value, bool]:
             if context.generation == self._generation:
-                return self._cached
-
-            self._cached = context.node.get_property(self._name).get_value()
+                return self._cached, False
             self._generation = context.generation
-            return self._cached
+
+            new_value: Value = context.node.get_property(self._name).get_value()
+            if new_value == self._cached:
+                return self._cached, False
+
+            self._cached = new_value
+            return self._cached, True
 
     class Expression(_ValueBuilder):
         def __init__(self, schema: Value.Schema, source: str, **arguments: Design._ValueBuilder):
@@ -273,13 +269,10 @@ class Design:
         def get_schema(self) -> Value.Schema:
             return self._cached.get_schema()
 
-        def iter_upstream(self) -> Iterable[Design._ValueBuilder]:
-            for dependency in self._scope.values():
-                yield dependency
-
-        def evaluate(self, context: Design._Context) -> Value:
+        def evaluate(self, context: Design._Context) -> Tuple[Value, bool]:
             if context.generation == self._generation:
-                return self._cached
+                return self._cached, False
+            self._generation = context.generation
 
             class _NodeProperties:
                 def __getattr__(self, property_name: str) -> Value:
@@ -290,20 +283,18 @@ class Design:
             scope = dict(node=_NodeProperties())
             for name, value_builder in self._scope:
                 scope[name] = value_builder.evaluate(context)
+            new_value: Value = Value(self._expression.execute(scope))
+            if new_value == self._cached:
+                return self._cached, False
 
-            self._cached = Value(self._expression.execute(scope))
-            self._generation = context.generation
-            return self._cached
+            self._cached = new_value
+            return self._cached, True
 
     # SHAPE BUILDERS ##########################################################
 
     class _ShapeBuilder(ABC):
         @abstractmethod
-        def iter_upstream(self) -> Iterable[Design._ValueBuilder]:
-            raise NotImplementedError()
-
-        @abstractmethod
-        def evaluate(self, context: Design._Context) -> Shape:
+        def evaluate(self, context: Design._Context) -> Tuple[List[Shape], bool]:
             raise NotImplementedError()
 
     class RoundedRect(_ShapeBuilder):
@@ -311,22 +302,45 @@ class Design:
                      height: Design._ValueBuilder, radius: Design._ValueBuilder):
             for arg in (x, y, width, height, radius):
                 assert arg.get_schema() == Value(0).get_schema()
+
+            self._cached: List[Shape] = []
+            self._generation: int = 0
+
             self._x: Design._ValueBuilder = x
             self._y: Design._ValueBuilder = y
             self._width: Design._ValueBuilder = width
             self._height: Design._ValueBuilder = height
             self._radius: Design._ValueBuilder = radius
 
-        def iter_upstream(self) -> Iterable[Design._ValueBuilder]:
-            for dependency in (self._x, self._y, self._width, self._height, self._radius):
-                yield dependency
+        def evaluate(self, context: Design._Context) -> Tuple[List[Shape], bool]:
+            if context.generation == self._generation:
+                return self._cached, False
+            self._generation = context.generation
 
-        def evaluate(self, context: Design._Context) -> Shape:
-            x: float = float(self._x.evaluate(context))
-            y: float = float(self._y.evaluate(context))
-            width: float = float(self._width.evaluate(context))
-            height: float = float(self._height.evaluate(context))
-            radius: float = float(self._radius.evaluate(context))
+            # TODO: maybe some kind of push-dirtying would be better?
+            #   Of course, that won't easily work with Expressions. Of course, if you separate properties out of the
+            #   expression and let the expression take properties as inputs, you could push dirtiness up from the
+            #   properties ... that might be especially good since I don't want to have to re-evaluate expressions all
+            #   the time, just to see that they are equal to the last computed value.
+            is_any_new: bool = False
+            x_value, is_new = self._x.evaluate(context)
+            is_any_new |= is_new
+            y_value, is_new = self._y.evaluate(context)
+            is_any_new |= is_new
+            width_value, is_new = self._width.evaluate(context)
+            is_any_new |= is_new
+            height_value, is_new = self._height.evaluate(context)
+            is_any_new |= is_new
+            radius_value, is_new = self._radius.evaluate(context)
+            is_any_new |= is_new
+            if not is_any_new and self._cached:
+                return self._cached, False
+
+            x: float = float(x_value)
+            y: float = float(y_value)
+            width: float = float(width_value)
+            height: float = float(height_value)
+            radius: float = float(radius_value)
             shape_builder: ShapeBuilder = ShapeBuilder(start=V2f(x + radius, y))
             shape_builder.add_segment(end=V2f(x + width - radius, y))
             shape_builder.add_segment(ctrl1=V2f(x + width - radius + (KAPPA * radius), y),
@@ -344,31 +358,44 @@ class Design:
             shape_builder.add_segment(ctrl1=V2f(x, y + radius - (radius * KAPPA)),
                                       ctrl2=V2f(x + radius - (radius * KAPPA), y),
                                       end=V2f(x + radius, y))
-            return Shape(shape_builder)
+            self._cached = [Shape(shape_builder)]
+            return self._cached, True
+
+    class ConstantShapes(_ShapeBuilder):
+        def __init__(self, shapes: List[Shape]):
+            self._shapes = shapes
+
+        def evaluate(self, _: Design._Context) -> Tuple[List[Shape], bool]:
+            return self._shapes, False
 
     # PAINT BUILDERS ##########################################################
 
     class _PaintBuilder(ABC):
         @abstractmethod
-        def iter_upstream(self) -> Iterable[Design._ValueBuilder]:
-            raise NotImplementedError()
-
-        @abstractmethod
-        def evaluate(self, context: Design._Context) -> Paint:
+        def evaluate(self, context: Design._Context) -> Tuple[Paint, bool]:
             raise NotImplementedError()
 
     class SolidColor(_ShapeBuilder):
         def __init__(self, color: Design._ValueBuilder):
             assert color.get_schema() == Value(r=0, g=0, b=0, a=0).get_schema()
+
+            self._cached: Optional[Paint] = None
+            self._generation: int = 0
+
             self._color: Design._ValueBuilder = color
 
-        def iter_upstream(self) -> Iterable[Design._ValueBuilder]:
-            yield self._color
+        def evaluate(self, context: Design._Context) -> Tuple[Paint, bool]:
+            if context.generation == self._generation:
+                return self._cached, False
+            self._generation = context.generation
 
-        def evaluate(self, context: Design._Context) -> Paint:
-            color: Value = self._color.evaluate(context)
-            return SolidColor(color=nanovg.Color(
+            color, is_new = self._color.evaluate(context)
+            if not is_new and self._cached is not None:
+                return self._cached, False
+
+            self._cached = SolidColor(color=nanovg.Color(
                 r=float(color['r']), g=float(color['g']), b=float(color['b']), a=float(color['a'])))
+            return self._cached, True
 
     # DRAW CALL ###############################################################
 
@@ -426,27 +453,30 @@ class Design:
         sketch: Sketch = Sketch(draw_calls=[], hitboxes=[])
         for draw_call in self._draw_calls:
             if isinstance(draw_call, Design.FillCall):
-                sketch.draw_calls.append(Sketch.FillCall(
-                    shape=draw_call.shape.evaluate(context),
-                    paint=draw_call.paint.evaluate(context),
-                    opacity=float(draw_call.opacity.evaluate(context)),
-                ))
+                for shape in draw_call.shape.evaluate(context)[0]:
+                    sketch.draw_calls.append(Sketch.FillCall(
+                        shape=shape,
+                        paint=draw_call.paint.evaluate(context)[0],
+                        opacity=float(draw_call.opacity.evaluate(context)[0]),
+                    ))
             else:
                 assert isinstance(draw_call, Design.StrokeCall)
-                # noinspection PyArgumentList
-                sketch.draw_calls.append(Sketch.StrokeCall(
-                    shape=draw_call.shape.evaluate(context),
-                    paint=draw_call.paint.evaluate(context),
-                    opacity=float(draw_call.opacity.evaluate(context)),
-                    line_width=float(draw_call.line_width.evaluate(context)),
-                    cap=nanovg.LineCap(int(draw_call.cap.evaluate(context))),
-                    join=nanovg.LineJoin(int(draw_call.join.evaluate(context))),
-                ))
+                for shape in draw_call.shape.evaluate(context)[0]:
+                    # noinspection PyArgumentList
+                    sketch.draw_calls.append(Sketch.StrokeCall(
+                        shape=shape,
+                        paint=draw_call.paint.evaluate(context)[0],
+                        opacity=float(draw_call.opacity.evaluate(context)[0]),
+                        line_width=float(draw_call.line_width.evaluate(context)[0]),
+                        cap=nanovg.LineCap(int(draw_call.cap.evaluate(context)[0])),
+                        join=nanovg.LineJoin(int(draw_call.join.evaluate(context)[0])),
+                    ))
         for hitbox in self._hitboxes:
-            sketch.hitboxes.append(Sketch.Hitbox(
-                shape=hitbox.shape.evaluate(context),
-                callback=hitbox.callback,
-            ))
+            for shape in hitbox.shape.evaluate(context)[0]:
+                sketch.hitboxes.append(Sketch.Hitbox(
+                    shape=shape,
+                    callback=hitbox.callback,
+                ))
         return sketch
 
 

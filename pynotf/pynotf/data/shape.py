@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import List, Optional, Iterable
 
 from pycnotf import V2f, CubicBezier2f, Aabrf, Polygon2f, approximate
-
 from pynotf.extra import chunks
 
 
@@ -67,16 +66,19 @@ class ShapeBuilder:
 
 
 class Shape:
-    def __init__(self, builder: ShapeBuilder):
-        assert builder.is_valid()
+    def __init__(self, builder: Optional[ShapeBuilder] = None):
+        assert builder is None or builder.is_valid()
 
-        self._vertices: List[V2f] = builder.get_points()
-        self._indices: List[int] = builder.get_indices()
-        self._aabr: Aabrf = self._calculate_bounding_box()
+        self._vertices: List[V2f] = [] if builder is None else builder.get_points()
+        self._indices: List[int] = [] if builder is None else builder.get_indices()
+        self._aabr: Aabrf = Aabrf.wrongest() if builder is None else self._calculate_bounding_box()
 
     def __repr__(self):
         coords: str = ', '.join(f'({v.x}, {v.y})' for v in (self._vertices[i] for i in self._indices))
         return f'Shape({coords})'
+
+    def is_valid(self) -> bool:
+        return self._aabr.is_valid()
 
     def get_vertex(self, index: int) -> V2f:
         return self._vertices[self._indices[index]]

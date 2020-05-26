@@ -1,29 +1,24 @@
 from typing import NamedTuple, List, Optional
-import xml.etree.ElementTree as Xml
 from re import compile as compile_regex
+import xml.etree.ElementTree as Xml
 
 from pycnotf import V2f
 from pynotf.data.shape import Shape, ShapeBuilder
 from pynotf.extra.utils import chunks
 
+# UTILITY ##############################################################################################################
+
 # from https://www.w3.org/TR/SVG11/single-page.html#intro-NamespaceAndDTDIdentifiers
 SVG_NAMESPACE: str = 'http://www.w3.org/2000/svg'
 
-
-# from https://www.w3.org/TR/SVGTiny12/paths.html#PathData
-class PathDescription(NamedTuple):
-    name: str
-    shapes: List[Shape] = []
-
-
-COMMAND_LETTERS = compile_regex(r'\s*([mM]|[lL]|[hH]|[vV]|[cC]|[sS]|[qQ]|[tT]|[zZ])\s*')
-COORDINATE_SEPARATOR = compile_regex(r'\s+,\s*|,\s*')
+COMMAND_LETTERS = compile_regex(r'([mM]|[lL]|[hH]|[vV]|[cC]|[sS]|[qQ]|[tT]|[zZ])')
 NUMBER = compile_regex(r'[+-]?(?:\d*\.\d+|\d+\.)(?:[eE][+-]?\d*)?|[+-]?(?:\d+)')
-COORDINATES = compile_regex(
-    r'([+-]?(?:\d*\.\d+|\d+\.)(?:[eE][+-]?\d*)?|[+-]?(?:\d+))(?:\s+,\s*|,\s*)?([+-]?(?:\d*\.\d+|\d+\.)(?:[eE][+-]?\d*)?|[+-]?(?:\d+))')
 
 
 def parse_shapes(definition: str) -> List[Shape]:
+    """
+    Fully implements https://www.w3.org/TR/SVGTiny12/paths.html#PathData
+    """
     result: List[Shape] = []
     current_command: Optional[str] = None
     last_ctrl_point: Optional[V2f] = None
@@ -59,8 +54,8 @@ def parse_shapes(definition: str) -> List[Shape]:
             current_coordinate = coordinates[0] if current_command.isupper() else current_coordinate + coordinates[0]
             current_shape = ShapeBuilder(current_coordinate)
             for coord in coordinates[1:]:
-                current_shape.add_segment(coord if current_command.isupper() else current_coordinate + coord)
-            current_coordinate = coordinates[-1]
+                current_coordinate = coord if current_command.isupper() else current_coordinate + coord
+                current_shape.add_segment(current_coordinate)
 
         # close path
         elif current_command in 'zZ':
@@ -140,11 +135,17 @@ def parse_shapes(definition: str) -> List[Shape]:
     return result
 
 
-xml_tree: Xml.ElementTree = Xml.parse('/home/clemens/code/notf/dev/img/notf_inline_white.svg')
-path_element: Xml.Element
-paths: List[PathDescription] = [
-    PathDescription(name=path_element.attrib['id'], shapes=parse_shapes(path_element.attrib['d']))
-    for path_element in xml_tree.getroot().findall('path', {'': SVG_NAMESPACE})
-]
+# PARSE SVG ############################################################################################################
 
-print(paths)
+class PathDescription(NamedTuple):
+    name: str
+    shapes: List[Shape] = []
+
+
+def parse_svg(file_path: str) -> List[PathDescription]:
+    return [
+        PathDescription(
+            name=path_element.attrib['id'],
+            shapes=parse_shapes(path_element.attrib['d'])
+        ) for path_element in Xml.parse(file_path).getroot().findall('path', {'': SVG_NAMESPACE})
+    ]

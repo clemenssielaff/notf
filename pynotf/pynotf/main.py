@@ -20,10 +20,11 @@ import pynotf.extra.pynanovg as nanovg
 from pycnotf import V2f, Size2f, Aabrf
 
 from pynotf.data import Value, RowHandle, Table, TableRow, Storage, mutate_value, RowHandleList, Bonsai, RowHandleMap, \
-    Path, Claim
+    Path, Claim, Shape
 from pynotf.core.event_loop import EventLoop
 from pynotf.core.data_types import Xform, EmitterStatus, ValueList, IndexEnum
 from pynotf.core.painterpreter import Sketch, Painter, Design
+from pynotf.extra.svg import parse_svg
 
 
 # DATA #################################################################################################################
@@ -1324,6 +1325,10 @@ def window_size_callback(window, width: int, height: int) -> None:
     get_app().get_scene().set_size(Size2f(width, height))
 
 
+NOTF_SHAPES: List[Shape] = []
+for path_description in parse_svg('/home/clemens/code/notf/dev/img/notf_inline_white.svg'):
+    NOTF_SHAPES.extend(path_description.shapes)
+
 count_presses_node: NodeDescription = NodeDescription(
     properties=dict(
         key_down=Value(),
@@ -1340,11 +1345,14 @@ count_presses_node: NodeDescription = NodeDescription(
                 (Path('buffer'), Path('printer')),
             ],
             design=Design(
-                Design.FillCall(shape=Design.RoundedRect(
-                    x=Design.Constant(Value(0)), y=Design.Constant(Value(0)),
-                    width=Design.Expression(Value(0).get_schema(), "max(0, node.grant.width)"),
-                    height=Design.Expression(Value(0).get_schema(), "max(0, node.grant.height)"),
-                    radius=Design.Constant(Value(0))),
+                # Design.FillCall(shape=Design.RoundedRect(
+                #     x=Design.Constant(Value(0)), y=Design.Constant(Value(0)),
+                #     width=Design.Expression(Value(0).get_schema(), "max(0, node.grant.width)"),
+                #     height=Design.Expression(Value(0).get_schema(), "max(0, node.grant.height)"),
+                #     radius=Design.Constant(Value(0))),
+                #     paint=Design.SolidColor(Design.Constant(Value(r=1, g=1, b=1, a=1))),
+                Design.FillCall(
+                    shape=Design.ConstantShapes(NOTF_SHAPES),
                     paint=Design.SolidColor(Design.Constant(Value(r=1, g=1, b=1, a=1))),
                 )),
             children=dict(),
@@ -1411,8 +1419,8 @@ root_node: NodeDescription = NodeDescription(
             connections=[],
             design=Design(),
             children=dict(
+                # herbert=countdown_node,
                 zanzibar=count_presses_node,
-                herbert=countdown_node,
             ),
             layout=LayoutDescription(
                 LayoutIndex.FLEXBOX,
