@@ -244,6 +244,7 @@ class Operator:
             on_subscribe_func(self, downstream)
 
     def unsubscribe(self, downstream: Operator) -> None:
+        assert isinstance(downstream, Operator)
         # TODO: I don't really have a good idea yet how to handle error and completion values.
         #  they are also stored in the `value` field, but that screws with the schema compatibility check
         # assert get_input_schema(downstream).is_none() or (get_value(upstream).get_schema() == get_input_schema(downstream))
@@ -281,7 +282,6 @@ class Operator:
         assert source.is_valid()
 
         # make sure the operator is valid and not completed yet
-        operator_table: Table = core.get_app().get_table(core.TableIndex.OPERATORS)
         status: EmitterStatus = self.get_status()
         if status.is_completed():
             return  # operator has completed
@@ -296,8 +296,7 @@ class Operator:
             new_data: Value = callback_func(self, source, Value() if self.get_input_schema().is_none() else value)
 
             # ...and update the operator's data
-            assert new_data.get_schema() == operator_table[self._handle]["data"].get_schema()
-            operator_table[self._handle]['data'] = new_data
+            self._set_data(new_data)
 
         else:
             # the failure and completion callbacks do not return a value
@@ -326,7 +325,7 @@ class Operator:
         self.set_status(EmitterStatus(callback))  # set the active status
 
         # copy the list of downstream handles, in case it changes during the emission
-        downstream: RowHandleList = self.get_downstream()
+        downstream: List[Operator] = [Operator(row_handle) for row_handle in self.get_downstream()]
 
         if callback == OperatorVtableIndex.NEXT:
 
@@ -335,7 +334,7 @@ class Operator:
 
             # emit to all valid downstream elements
             for element in downstream:
-                Operator(element)._run(self, callback, value)
+                element._run(self, callback, value)
 
             # reset the status
             self.set_status(EmitterStatus.IDLE)
@@ -346,7 +345,7 @@ class Operator:
 
             # emit one last time ...
             for element in downstream:
-                Operator(element)._run(self, callback, value)
+                element._run(self, callback, value)
 
             # ... and finalize the status
             self.set_status(EmitterStatus(int(callback) + 3))
@@ -368,7 +367,7 @@ class Operator:
 
             # only update the operator data if it has not completed
             if self.is_valid():
-                self.set_value(result)
+                self._set_data(result)
 
         core.get_app().schedule_event(update_data_on_completion)
 
@@ -386,6 +385,11 @@ class Operator:
 
         # finally, remove yourself
         core.get_app().get_table(core.TableIndex.OPERATORS).remove_row(self._handle)
+
+    def _set_data(self, new_data: Value) -> None:
+        operator_table: Table = core.get_app().get_table(core.TableIndex.OPERATORS)
+        assert new_data.get_schema() == operator_table[self._handle]["data"].get_schema()
+        operator_table[self._handle]['data'] = new_data
 
 
 # FACT #################################################################################################################
@@ -594,15 +598,6 @@ class OpSine:
 
         self.schedule(runner)
 
-
-# class OpBuffer:
-#     @staticmethod
-#     def create(args: Value) -> OperatorRowDescription:
-#         pass
-#
-#     @staticmethod
-#     def on_next(self: Operator, upstream: RowHandle, value: Value) -> Value:
-#         pass
 
 @unique
 class OperatorIndex(core.IndexEnum):

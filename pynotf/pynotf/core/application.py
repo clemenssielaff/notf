@@ -5,13 +5,9 @@ from typing import Callable, Optional, Union
 
 import glfw
 
-import pynotf.extra.pynanovg as nanovg
 from pycnotf import V2f, Size2f
-
 from pynotf.data import Value, RowHandle, Table, Storage, Path
-from pynotf.core.event_loop import EventLoop
-from pynotf.core.utils import TableIndex
-from pynotf.core.painterpreter import Painter
+import pynotf.extra.pynanovg as nanovg
 import pynotf.core as core
 
 
@@ -25,10 +21,10 @@ class Application:
             nodes=core.NodeRow,
             layouts=core.LayoutRow,
         )
-        self._event_loop: EventLoop = EventLoop()
+        self._event_loop: core.EventLoop = core.EventLoop()
         self._scene: core.Scene = core.Scene()
 
-    def get_table(self, table_index: Union[int, TableIndex]) -> Table:
+    def get_table(self, table_index: Union[int, core.TableIndex]) -> Table:
         return self._storage[int(table_index)]
 
     def is_handle_valid(self, handle: RowHandle) -> bool:
@@ -88,7 +84,7 @@ class Application:
         try:
             while not glfw.window_should_close(window):
                 # TODO: this is happening in the MAIN loop - it should happen on a 3nd thread
-                with Painter(window, ctx) as painter:
+                with core.Painter(window, ctx) as painter:
                     self._scene.paint(painter)
                 glfw.wait_events()
 

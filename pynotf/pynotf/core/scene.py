@@ -30,7 +30,7 @@ class NodeProperties(NamedTuple):
 
 
 class NodeDescription(NamedTuple):
-    properties: Dict[str, Value]
+    properties: Dict[str, Value]  # TODO: rename properties to "interface" since it also encapsulates signals and slots
     states: Dict[str, NodeStateDescription]
     transitions: List[Tuple[str, str]]
     initial_state: str

@@ -557,7 +557,7 @@ class Value:
             if len(args) == 1:
                 obj: Any = args[0]
             else:
-                obj: Tuple[Any,...] = args
+                obj: Tuple[Any, ...] = args
         elif kwargs:
             obj: Dict[str, Any] = kwargs
         else:

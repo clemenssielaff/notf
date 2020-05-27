@@ -28,12 +28,6 @@ count_presses_node: NodeDescription = NodeDescription(
                 (Path('buffer'), Path('printer')),
             ],
             design=Design(
-                # Design.FillCall(shape=Design.RoundedRect(
-                #     x=Design.Constant(Value(0)), y=Design.Constant(Value(0)),
-                #     width=Design.Expression(Value(0).get_schema(), "max(0, node.grant.width)"),
-                #     height=Design.Expression(Value(0).get_schema(), "max(0, node.grant.height)"),
-                #     radius=Design.Constant(Value(0))),
-                #     paint=Design.SolidColor(Design.Constant(Value(r=1, g=1, b=1, a=1))),
                 Design.FillCall(
                     shape=Design.ConstantShapes(NOTF_SHAPES),
                     paint=Design.SolidColor(Design.Constant(Value(r=1, g=1, b=1, a=1))),
@@ -102,7 +96,7 @@ root_node: NodeDescription = NodeDescription(
             connections=[],
             design=Design(),
             children=dict(
-                # herbert=countdown_node,
+                herbert=countdown_node,
                 zanzibar=count_presses_node,
             ),
             layout=LayoutDescription(
