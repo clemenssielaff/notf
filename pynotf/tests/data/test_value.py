@@ -325,8 +325,8 @@ class TestCase(unittest.TestCase):
 
         # change a map in the value
         modified = mutate_value(test_value, {"key": "changed",
-                                          "list_in_the_middle": ["I am a changed string"],
-                                          "a number": 124, }, "my_map")
+                                             "list_in_the_middle": ["I am a changed string"],
+                                             "a number": 124, }, "my_map")
         self.assertEqual(str(modified["my_map"]["key"]), "changed")
 
         # change an item in a list by negative index
@@ -405,8 +405,8 @@ class TestCase(unittest.TestCase):
             mutate_value(test_value, [{"x": 7}], "coords")
         with self.assertRaises(TypeError):  # shuffled
             mutate_value(test_value, {"list_in_the_middle": ["I am a changed string"],
-                                   "key": "changed",
-                                   "a number": 124, }, "my_map")
+                                      "key": "changed",
+                                      "a number": 124, }, "my_map")
 
     def test_modify_with_equal_value(self):
         # update with the same number
@@ -423,8 +423,8 @@ class TestCase(unittest.TestCase):
 
         # update with the same map
         modified = mutate_value(test_value, {"key": "string",
-                                          "list_in_the_middle": ["I'm in the middle"],
-                                          "a number": 847}, "my_map")
+                                             "list_in_the_middle": ["I'm in the middle"],
+                                             "a number": 847}, "my_map")
         self.assertEqual(id(test_value), id(modified))
 
     def test_change_list_size(self):
@@ -485,7 +485,7 @@ class TestCase(unittest.TestCase):
             Value([Value(0), Value("")])
 
     # noinspection PyTypeChecker
-    def test_implicit_numerics(self):
+    def test_implicit_numeric(self):
         one: Value = Value(1)
         two: Value = Value(2)
         three: Value = Value(3)
@@ -583,6 +583,35 @@ class TestCase(unittest.TestCase):
             )
         ))
         self.assertEqual(value["second"]["not_empty"], 1)
+
+    def test_as_and_from_json(self):
+        """
+        Simple conversion of the test Value to and from JSON.
+        """
+        json_string: str = test_value.as_json()
+        restored_value: Value = Value.from_json(json_string)
+        self.assertEqual(test_value, restored_value)
+
+    def test_from_json_with_schema(self):
+        """
+        Load a Value from JSON that contains an empty list.
+        """
+        value: Value = Value(dict(a=[1, 2, 3], b=[4, 5, 6]))
+        json_str: str = '{"a": [1, 2, 3], "b": []}'
+        with self.assertRaises(ValueError):
+            Value.from_json(json_str)
+        new_value: Value = Value.from_json(json_str, value)
+        self.assertEqual(value.get_schema(), new_value.get_schema())
+        value = mutate_value(value, [], 'b')
+        self.assertEqual(value, new_value)
+
+    def test_none_with_json(self):
+        """
+        Tests that even a None Value can be serialized properly.
+        """
+        json_string: str = Value().as_json()
+        value: Value = Value.from_json(json_string)
+        self.assertTrue(value.is_none())
 
 
 if __name__ == '__main__':

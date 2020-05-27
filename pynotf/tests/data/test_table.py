@@ -16,9 +16,11 @@ class TestRow(TableRow):
     __table_index__: int = 0
     name = field(type=str, mandatory=True)
 
+
 class TestRow2(TableRow):
     __table_index__: int = 1
     name = field(type=str, mandatory=True)
+
 
 ########################################################################################################################
 # TEST CASE
@@ -38,7 +40,7 @@ class TestCase(unittest.TestCase):
         A Storage with a single, simple Table with some basic operations on it.
         """
         storage: Storage = Storage(
-            properties=TestRow
+            test_simple=TestRow
         )
         self.assertEqual(len(storage), 1)
 
@@ -95,11 +97,15 @@ class TestCase(unittest.TestCase):
         self.assertEqual(table[row1]['name'], 'one')
         self.assertTrue(table.is_handle_valid(row1))
 
+        table.remove_row(row0)
+        table.remove_row(row1)
+        self.assertTrue(table.count_active_rows() == 0)
+
     def test_storage_names(self):
         with self.assertRaises(NameError):
             Storage(
-                Properties=TestRow,
-                properties=TestRow2,
+                Test_storage_names=TestRow,
+                test_storage_names=TestRow2,
             )
 
     def test_row_handle_equality(self):
@@ -112,10 +118,10 @@ class TestCase(unittest.TestCase):
 
     def test_row_handle_validity(self):
         storage: Storage = Storage(
-            properties=TestRow
+            test_row_handle_validity=TestRow
         )
         table: Table = storage[0]
-        table.add_row(name="name")
+        handle: RowHandle = table.add_row(name="name")
 
         self.assertTrue(table.is_handle_valid(RowHandle(0, 0, 1)))
         self.assertFalse(table.is_handle_valid(RowHandle(1, 0, 1)))
@@ -132,6 +138,9 @@ class TestCase(unittest.TestCase):
         with self.assertRaises(HandleError):
             _ = table[RowHandle(0, 0, 0)]
 
+        table.remove_row(handle)  # always clear the table at the end to avoid warnings
+        self.assertTrue(table.count_active_rows() == 0)
+
     def test_null_row_handles(self):
         self.assertTrue(RowHandle(0, 0, 1))
         self.assertTrue(RowHandle().is_null())
@@ -139,7 +148,7 @@ class TestCase(unittest.TestCase):
 
     def test_generation_overflow(self):
         storage: Storage = Storage(
-            properties=TestRow
+            test_generation_overflow=TestRow
         )
         table: Table = storage[0]
 
@@ -161,17 +170,20 @@ class TestCase(unittest.TestCase):
         self.assertTrue(len(table), 1)
         self.assertEqual(handle_original, handle_wrapped)  # ta-da! Wrapped.
 
+        table.remove_row(handle_original)  # always clear the table at the end to avoid warnings
+        self.assertTrue(table.count_active_rows() == 0)
+
     def test_to_string(self):
         """
         Basic test of the string representation of a table (for coverage, mostly).
         """
         storage: Storage = Storage(
-            properties=TestRow
+            test_to_string=TestRow
         )
 
         table: Table = storage[0]
         row1: RowHandle = table.add_row(name="a")
-        table.add_row(name="b")
+        row2: RowHandle = table.add_row(name="b")
         table.remove_row(row1)
 
         table_string: str = storage[0].to_string()
@@ -179,3 +191,6 @@ class TestCase(unittest.TestCase):
         self.assertEqual(len(lines), 8)
 
         self.assertIsNotNone(str(table))  # ... for coverage
+
+        table.remove_row(row2)  # always clear the table at the end to avoid warnings
+        self.assertTrue(table.count_active_rows() == 0)

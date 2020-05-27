@@ -5,6 +5,7 @@ from enum import IntEnum, auto
 from typing import Union, List, Dict, Any, Sequence, Optional, Tuple, Iterable, Callable
 from math import trunc, ceil, floor, pow
 from operator import floordiv, mod, truediv
+from json import dumps as write_json, loads as read_json
 
 from pyrsistent import pvector as make_const_list, PVector as ConstList, PRecord as ConstNamedTuple, field
 from pyrsistent.typing import PVector as ConstListT
@@ -35,12 +36,15 @@ def check_number(obj: Any) -> Optional[float]:
         return float(converter())
 
 
-def create_denotable(obj: Any, allow_empty_list: bool) -> Denotable:
+def create_denotable(obj: Any, allow_empty_list: bool = False, list_can_be_record: bool = False) -> Denotable:
     """
     Tries to convert any given Python object into a Denotable.
     Denotable are still pure Python objects, but they are known to be capable of being stored in a Value.
     :param obj: Object to convert.
     :param allow_empty_list: Empty lists are allowed when modifying a Value, but not during construction.
+    :param list_can_be_record: When deserializing JSON, we cannot differentiate between lists and unnamed records.
+        While the list type is built in, unnamed records are identified by lists starting with a single <null> element.
+        Usually, this would not be allowed.
     :return: The given obj as Denotable.
     :raise ValueError: If the object cannot be denoted by a Value.
     """
@@ -64,8 +68,12 @@ def create_denotable(obj: Any, allow_empty_list: bool) -> Denotable:
 
     # list
     elif isinstance(obj, list):
-        denotable: List[Denotable] = [create_denotable(x, allow_empty_list) for x in obj]
+        # when converting to JSON, there is no type differentiation between lists and unnamed records
+        # an unnamed record is identified by having the first element in the list set to <null>
+        if list_can_be_record and len(obj) > 0 and obj[0] is None:
+            return tuple(create_denotable(value, allow_empty_list, list_can_be_record) for value in obj[1:])
 
+        denotable: List[Denotable] = [create_denotable(x, allow_empty_list, list_can_be_record) for x in obj]
         if len(denotable) == 0:
             if allow_empty_list:
                 return []
@@ -110,7 +118,7 @@ def create_denotable(obj: Any, allow_empty_list: bool) -> Denotable:
         for key, value in obj.items():
             if not isinstance(key, str):
                 raise ValueError("All keys of a Record must be of Value.Kind String")
-            denotable[key] = create_denotable(value, allow_empty_list)
+            denotable[key] = create_denotable(value, allow_empty_list, list_can_be_record)
         return denotable
 
     # unnamed record
@@ -118,7 +126,7 @@ def create_denotable(obj: Any, allow_empty_list: bool) -> Denotable:
         if len(obj) == 0:
             raise ValueError("Records cannot be empty")
 
-        return tuple(create_denotable(value, allow_empty_list) for value in obj)
+        return tuple(create_denotable(value, allow_empty_list, list_can_be_record) for value in obj)
 
     # incompatible type
     raise ValueError("Cannot construct Denotable from a {}".format(type(obj).__name__))
@@ -225,7 +233,7 @@ class Schema(tuple, Sequence[int]):
             return obj.get_schema()
 
         schema: List[int] = []
-        denotable: Denotable = create_denotable(obj, allow_empty_list=False)
+        denotable: Denotable = create_denotable(obj)
         kind: Kind = Kind.from_denotable(denotable)
         assert kind != Kind.NONE
 
@@ -525,6 +533,7 @@ def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
             return None
 
         elif kind == Kind.LIST:
+            assert len(next_denotable) > 0
             return parse_next(next_denotable[0])
 
         else:
@@ -587,7 +596,7 @@ class Value:
 
         # initialization from denotable
         else:
-            denotable: Denotable = create_denotable(obj, allow_empty_list=False)
+            denotable: Denotable = create_denotable(obj)
             self._schema = Schema(denotable)
             self._data = create_data_from_denotable(denotable)
             self._dictionary = create_dictionary(denotable)
@@ -635,6 +644,85 @@ class Value:
         else:
             return self._dictionary.names.keys()
 
+    def as_json(self) -> str:
+        """
+        Serializes this Value to a JSON formatted string.
+        Unnamed records are stored as JSON objects with keys "0", "1", "2" ...
+        Upon deserialization, a JSON object with integer keys starting at "0" and counting up (in order) for every
+        key:value pair will be turned back into an unnamed record.
+        This opens the possibility of someone wanting to store a named record with integer names, which could not be
+        serialized.
+        """
+
+        def recursion(data: Any, iterator: int, dictionary: Optional[Dictionary]) -> str:
+            assert iterator < len(self._schema)
+            kind: Kind = Kind(self._schema[iterator])
+            if kind == Kind.NUMBER:
+                if trunc(data) == data:
+                    # int
+                    return write_json(int(data))
+                else:
+                    # float
+                    return write_json(data)
+            elif kind == Kind.STRING:
+                # string
+                return f'"{data}"'
+            elif kind == Kind.LIST:
+                # list
+                iterator += 1
+                return '[{}]'.format(', '.join(recursion(child_data, iterator, dictionary) for child_data in data[1:]))
+            else:
+                assert kind == Kind.RECORD
+                assert (iterator + 1) < len(self._schema)
+                child_count: int = self._schema[iterator + 1]
+                if dictionary is None or dictionary.names.is_empty():
+                    # unnamed record
+                    assert dictionary is None or isinstance(dictionary, Dictionary)  # for pycharm
+                    # unnamed records have <null> as their first element to differentiate them from lists
+                    return '[null, {}]'.format(', '.join(
+                        recursion(data[child_index], get_subschema_start(self._schema, iterator, child_index),
+                                  None if dictionary is None else dictionary.children[child_index])
+                        for child_index in range(child_count)))
+                else:
+                    # named record
+                    keys: List[str] = dictionary.names.keys()
+                    assert len(keys) == child_count
+                    children: List[Tuple[str, str]] = []
+                    for child_index in range(child_count):
+                        child_name: str = keys[child_index]
+                        child_value: str = recursion(
+                            data[child_index],
+                            get_subschema_start(self._schema, iterator, child_index),
+                            dictionary.children[dictionary.names[child_name]])
+                        children.append((child_name, child_value))
+                    return '{{{}}}'.format(', '.join('"{}": {}'.format(key, value) for (key, value) in children))
+
+        if self._schema.is_none():
+            return write_json(None)
+        else:
+            return recursion(self._data, 0, self._dictionary)
+
+    @classmethod
+    def from_json(cls, json_string: str, reference: Optional[Value] = None) -> Value:
+        """
+        Deserializes a Value from a JSON formatted string.
+        :param json_string: JSON formatted string.
+        :param reference: Optional Value that must match the Schema of the serialized Value.
+            Is required if the JSON contains empty lists.
+        :raise JSONDecodeError: If the JSON could not be decoded.
+        :raise ValueError: If the JSON object cannot be denoted by a Value.
+        :return: The deserialized Value.
+        """
+        json_object: Any = read_json(json_string)
+        if json_object is None:
+            return Value()
+        denotable: Denotable = create_denotable(
+            json_object, list_can_be_record=True, allow_empty_list=reference is not None)
+        return Value._create(
+            reference._schema if reference is not None else Schema(denotable),
+            create_data_from_denotable(denotable),
+            reference._dictionary if reference is not None else create_dictionary(denotable))
+
     def __repr__(self) -> str:
         """
         Unlike __str__, this function produces a string meant for debugging.
@@ -663,16 +751,11 @@ class Value:
                 child_count: int = self._schema[iterator + 1]
                 if dictionary is None or dictionary.names.is_empty():
                     # unnamed record
-                    if dictionary is None:
-                        return '{{{}}}'.format(', '.join(
-                            recursion(data[child_index], get_subschema_start(self._schema, iterator, child_index), None)
-                            for child_index in range(child_count)))
-                    else:
-                        return '{{{}}}'.format(', '.join(
-                            recursion(data[child_index],
-                                      get_subschema_start(self._schema, iterator, child_index),
-                                      dictionary.children[child_index])
-                            for child_index in range(child_count)))
+                    assert dictionary is None or isinstance(dictionary, Dictionary)  # for pycharm
+                    return '{{{}}}'.format(', '.join(
+                        recursion(data[child_index], get_subschema_start(self._schema, iterator, child_index),
+                                  None if dictionary is None else dictionary.children[child_index])
+                        for child_index in range(child_count)))
                 else:
                     # named record
                     keys: List[str] = dictionary.names.keys()
@@ -976,6 +1059,13 @@ class Value:
 
     # noinspection PyMethodMayBeStatic
     def _is_consistent(self) -> bool:
+        """
+        Checks if the Schema, the Data and the Dictionaries of this Value are consistent.
+        This can safely be assumed when you create a Value from a Denotable or Schema, but not when assembling the
+        individual members through Value.create.
+        Especially in the case where you have a given Schema and a Data object that might contain empty lists, you
+        cannot simply get the Schema from the Data to compare it.
+        """
         return True  # TODO: Value._is_consistent
 
 

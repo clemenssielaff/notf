@@ -333,7 +333,7 @@ class Table:
         self._free_list: FreeList = FreeList()
 
     def __del__(self):
-        diff: int = len(self) - self._free_list.count_free(len(self))
+        diff: int = self.count_active_rows()
         if diff == 0:
             debug(f'Table {self._id} removed cleanly after growing to {len(self)} rows')
         else:
@@ -402,6 +402,12 @@ class Table:
         :return: True iff the Handle can be used to access this Table.
         """
         return not self._get_handle_error(handle, self._get_table_data())
+
+    def count_active_rows(self) -> int:
+        """
+        Active rows in this table (total number of rows - free ones).
+        """
+        return len(self) - self._free_list.count_free(len(self))
 
     def add_row(self, **kwargs) -> RowHandle:
         """
