@@ -128,9 +128,7 @@ class LayoutNodeView:
 
     @property
     def claim(self) -> Claim:
-        width = float(self._node.get_property('sys.width').get_value())
-        height = float(self._node.get_property('sys.height').get_value())
-        return Claim(Claim.Stretch(width, max_=200), Claim.Stretch(height, max_=200))  # TODO: hack
+        return Claim(self._node.get_property('sys.claim').get_value())
 
 
 # LAYOUT REGISTRY ######################################################################################################

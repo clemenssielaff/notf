@@ -16,6 +16,9 @@ exclude_lines =
     # Ignore abstract methods
     raise NotImplementedError
     @abstractmethod
+    
+    # Ignore typing overloads
+    @overload
 
     # Ignore noops
     pass

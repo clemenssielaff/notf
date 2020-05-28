@@ -5,7 +5,7 @@ from typing import List
 
 from pynotf.data import Value, Path, Claim, Shape
 from pynotf.core import NodeDescription, OperatorIndex, Design, LayoutDescription, LayoutIndex, NodeStateDescription, \
-    get_app
+    get_app, Operator
 from pynotf.extra.svg import parse_svg
 
 NOTF_SHAPES: List[Shape] = []
@@ -44,17 +44,25 @@ count_presses_node: NodeDescription = NodeDescription(
     initial_state='default',
 )
 
+pulsating_round_rect: Design.RoundedRect = Design.RoundedRect(
+    x=Design.Constant(Value(0)), y=Design.Constant(Value(0)),
+    width=Design.Expression(Value(0).get_schema(), "max(0, node.grant.width)"),
+    height=Design.Expression(Value(0).get_schema(), "max(0, node.grant.height)"),
+    radius=Design.Expression(Value(0).get_schema(), "max(0, node.roundness)"))
+
 countdown_node: NodeDescription = NodeDescription(
     properties=dict(
         key_down=Value(),
         roundness=Value(10),
         bring_front=Value(),
+        on_mouse_click=Value(x=0, y=0),
     ),
     states=dict(
         default=NodeStateDescription(
             operators=dict(
                 factory=(OperatorIndex.FACTORY, Value(id=OperatorIndex.COUNTDOWN, args=Value(start=5))),
                 printer=(OperatorIndex.PRINTER, Value(0)),
+                mouse_click_printer=(OperatorIndex.PRINTER, Value(x=0, y=0)),
                 mouse_pos_printer=(OperatorIndex.PRINTER, Value(0, 0)),
                 sine=(OperatorIndex.SINE, Value()),
             ),
@@ -63,21 +71,19 @@ countdown_node: NodeDescription = NodeDescription(
                 (Path('factory'), Path('printer')),
                 (Path('/:mouse_fact'), Path('mouse_pos_printer')),
                 (Path('sine'), Path(':roundness')),
+                (Path(':on_mouse_click'), Path('mouse_click_printer')),
             ],
             design=Design(
-                Design.FillCall(shape=Design.RoundedRect(
-                    x=Design.Constant(Value(0)), y=Design.Constant(Value(0)),
-                    width=Design.Expression(Value(0).get_schema(), "max(0, node.grant.width)"),
-                    height=Design.Expression(Value(0).get_schema(), "max(0, node.grant.height)"),
-                    radius=Design.Expression(Value(0).get_schema(), "max(0, node.roundness)")),
-                    paint=Design.SolidColor(Design.Constant(Value(r=.5, g=.5, b=.5, a=1))),
-                )),
+                Design.FillCall(shape=pulsating_round_rect,
+                                paint=Design.SolidColor(Design.Constant(Value(r=.5, g=.5, b=.5, a=1)))),
+                Design.HitboxCall(shape=pulsating_round_rect, interface="on_mouse_click"),
+            ),
             children=dict(),
             layout=LayoutDescription(
                 LayoutIndex.OVERLAY,
                 Value(),
             ),
-            claim=Claim(Claim.Stretch(100, 200, 800), Claim.Stretch(100, 200, 800)),
+            claim=Claim(Claim.Stretch(100, 200, 300), Claim.Stretch(100, 200, 300)),
         ),
     ),
     transitions=[],
@@ -97,7 +103,7 @@ root_node: NodeDescription = NodeDescription(
             design=Design(),
             children=dict(
                 herbert=countdown_node,
-                zanzibar=count_presses_node,
+                # zanzibar=count_presses_node,
             ),
             layout=LayoutDescription(
                 LayoutIndex.FLEXBOX,

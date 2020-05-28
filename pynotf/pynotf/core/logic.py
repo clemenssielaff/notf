@@ -220,8 +220,9 @@ class Operator:
         return False
 
     def subscribe(self, downstream: Operator) -> None:
-        assert downstream.get_input_schema().is_none() or (
-                self.get_value().get_schema() == downstream.get_input_schema())
+        if not downstream.get_input_schema().is_none() and not (
+                self.get_value().get_schema() == downstream.get_input_schema()):
+            raise RuntimeError("Schema mismatch")
 
         # if the operator has already completed, call the corresponding callback on the downstream operator
         # immediately and do not subscribe it
@@ -474,13 +475,13 @@ class OpBuffer:
                 self.next(Value(self.get_data()['counter']))
                 print(f'Clicked {int(self.get_data()["counter"])} times '
                       f'in the last {float(self.get_argument("time_span"))} seconds')
-                return mutate_value(self.get_data(), False, "is_running")
+                return mutate_value(self.get_data(), "is_running", False)
 
             self.schedule(timeout)
             return Value(is_running=True, counter=1)
 
         else:
-            return mutate_value(self.get_data(), self.get_data()['counter'] + 1, "counter")
+            return mutate_value(self.get_data(), "counter", self.get_data()['counter'] + 1)
 
 
 class OpFactory:
@@ -563,7 +564,7 @@ class OpPrinter:
 class OpSine:
     @staticmethod
     def create(args: Value) -> OperatorRowDescription:
-        frequency: float = 0.5
+        frequency: float = 0.2
         amplitude: float = 100
         samples: float = 72  # samples per second (this results in about 60 fps)
         keys: List[str] = args.get_keys()

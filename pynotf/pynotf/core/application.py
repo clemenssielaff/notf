@@ -111,6 +111,9 @@ def get_app() -> Application:
 
 # SETUP ################################################################################################################
 
+# TODO: these callbacks rely on the existence of facts that need to be defined on the root node.
+#   Maybe have anoter set of builtin-properties for the root only? I think there's another TODO for this as well.
+
 # noinspection PyUnusedLocal
 def key_callback(window, key: int, scancode: int, action: int, mods: int) -> None:
     if action not in (glfw.PRESS, glfw.REPEAT):
@@ -131,9 +134,10 @@ def mouse_button_callback(window, button: int, action: int, mods: int) -> None:
         get_app().get_scene().get_fact('mouse_fact').next(Value(x, y))
     elif button == glfw.MOUSE_BUTTON_RIGHT and action == glfw.PRESS:
         x, y = glfw.get_cursor_pos(window)
+        hitbox: core.Sketch.Hitbox
         for hitbox in get_app().get_scene().iter_hitboxes(V2f(x, y)):
-            print(f"Triggered hitbox callback for hitbox with operator {hitbox.callback}")
-        # get_app().get_scene().get_fact('mouse_fact').next(Value(x, y))
+            if hitbox.callback.is_valid():
+                hitbox.callback.next(Value(x=x, y=y))
 
 
 # noinspection PyUnusedLocal

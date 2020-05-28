@@ -1,148 +1,255 @@
 from __future__ import annotations
 
 from math import inf
-from typing import Optional, Union
+from typing import Optional, Union, NamedTuple
+
+from .value import Value, mutate_value, multimutate_value
+
+# CONSTANTS ############################################################################################################
 
 ALMOST_ZERO: float = 0.00001
+SKETCH_INDEX_PRF: int = 0
+SKETCH_INDEX_MIN: int = 1
+SKETCH_INDEX_MAX: int = 2
+SKETCH_INDEX_SCL: int = 3
+SKETCH_INDEX_PRT: int = 4
+CLAIM_INDEX_HORIZONTAL: int = 0
+CLAIM_INDEX_VERTICAL: int = 1
+CLAIM_DEFAULT: Value = Value(dict(
+    horizontal=dict(preferred=0, min=0, max=inf, scale_factor=1, priority=0),
+    vertical=dict(preferred=0, min=0, max=inf, scale_factor=1, priority=0)))
+CLAIM_SCHEMA: Value.Schema = CLAIM_DEFAULT.get_schema()
 
 
-########################################################################################################################
+# STRETCH ##############################################################################################################
 
+class _Stretch:
 
-class Stretch:
-    def __init__(self, preferred: float = 0., min_: Optional[float] = None, max_: Optional[float] = None,
-                 scale_factor: float = 1., priority: int = 0):
-        self._preferred: float = max(preferred, 0.)
-        self._min: float = max(0., min(min_, self._preferred)) if min_ else self._preferred
-        self._max: float = max(max_, self._preferred) if max_ else inf
-        self._scale_factor: float = max(0., scale_factor)
-        self._priority: int = priority
-
-    @property
-    def min(self) -> float:
-        """
-        0 <= min <= preferred
-        """
-        return self._min
-
-    @min.setter
-    def min(self, value: float) -> None:
-        self._min = max(0., value)
-        self._preferred = max(self._min, self._preferred)
-        self._max = max(self._min, self._max)
+    def __init__(self, claim: Claim, index: int):
+        assert index in (CLAIM_INDEX_HORIZONTAL, CLAIM_INDEX_VERTICAL)
+        self._claim: Claim = claim
+        self._index: int = index  # in C++ we could have two types for horizontal/vertical and the index as a template
 
     @property
     def preferred(self) -> float:
         """
         min <= preferred <= max
         """
-        return self._preferred
+        return float(self._claim._value[self._index][SKETCH_INDEX_PRF])
 
     @preferred.setter
     def preferred(self, value: float) -> None:
-        self._preferred = max(0., value)
-        self._min = min(self._min, self._preferred)
-        self._max = max(self._max, self._preferred)
+        value = max(0., value)
+        self._claim._value = multimutate_value(
+            self._claim._value,
+            ((self._index, SKETCH_INDEX_PRF), value),
+            ((self._index, SKETCH_INDEX_MIN), min(value, self.min)),
+            ((self._index, SKETCH_INDEX_MAX), max(value, self.max)),
+        )
+
+    @property
+    def min(self) -> float:
+        """
+        0 <= min <= preferred
+        """
+        return float(self._claim._value[self._index][SKETCH_INDEX_MIN])
+
+    @min.setter
+    def min(self, value: float) -> None:
+        value = max(0., value)
+        self._claim._value = multimutate_value(
+            self._claim._value,
+            ((self._index, SKETCH_INDEX_PRF), max(value, self.preferred)),
+            ((self._index, SKETCH_INDEX_MIN), value),
+            ((self._index, SKETCH_INDEX_MAX), max(value, self.max)),
+        )
 
     @property
     def max(self) -> float:
         """
         preferred <= max < INFINITY
         """
-        return self._max
+        return float(self._claim._value[self._index][SKETCH_INDEX_MAX])
 
     @max.setter
     def max(self, value: float) -> None:
-        self._max = max(0., value)
-        self._min = min(self._min, self._max)
-        self._preferred = min(self._preferred, self._max)
+        value = max(0., value)
+        self._claim._value = multimutate_value(
+            self._claim._value,
+            ((self._index, SKETCH_INDEX_PRF), min(value, self.preferred)),
+            ((self._index, SKETCH_INDEX_MIN), min(value, self.min)),
+            ((self._index, SKETCH_INDEX_MAX), value),
+        )
 
     @property
     def scale_factor(self) -> float:
         """
         0 <= factor < INFINITY
         """
-        return self._scale_factor
+        return float(self._claim._value[self._index][SKETCH_INDEX_SCL])
 
     @scale_factor.setter
     def scale_factor(self, value: float) -> None:
-        self._scale_factor = max(ALMOST_ZERO, value)
+        self._claim._value = mutate_value(self._claim._value, (self._index, SKETCH_INDEX_SCL), max(ALMOST_ZERO, value))
 
     @property
     def priority(self) -> int:
         """
         Unbound signed.
         """
-        return self._priority
+        return int(self._claim._value[self._index][SKETCH_INDEX_PRT])
 
     @priority.setter
     def priority(self, value: int) -> None:
-        self._priority = value
+        self._claim._value = mutate_value(self._claim._value, (self._index, SKETCH_INDEX_PRT), value)
 
     def is_fixed(self) -> bool:
-        return (self._max - self._min) < ALMOST_ZERO
+        return (self.max - self.min) < ALMOST_ZERO
 
     def set_fixed(self, value: float) -> None:
-        self._min = self._preferred = self._max = max(0., value)
+        value = max(0., value)
+        self._claim._value = multimutate_value(
+            self._claim._value,
+            ((self._index, SKETCH_INDEX_PRF), value),
+            ((self._index, SKETCH_INDEX_MIN), value),
+            ((self._index, SKETCH_INDEX_MAX), value),
+        )
+
+    def add(self, other: _Stretch) -> None:
+        """
+        Adds the other Stretch to this one.
+        """
+        self._claim._value = multimutate_value(
+            self._claim._value,
+            ((self._index, SKETCH_INDEX_PRF), self.preferred + other.preferred),
+            ((self._index, SKETCH_INDEX_MIN), self.min + other.min),
+            ((self._index, SKETCH_INDEX_MAX), self.max + other.max),
+            ((self._index, SKETCH_INDEX_SCL), max(self.scale_factor, other.scale_factor)),
+            ((self._index, SKETCH_INDEX_PRT), max(self.priority, other.priority)),
+        )
 
     def offset(self, value: float) -> None:
         """
         Add an offset to the min/preferred/max values.
         """
-        self._min = max(0., self._min + value)
-        self._preferred = max(0., self._preferred + value)
-        self._max = max(0., self._max + value)
+        self._claim._value = multimutate_value(
+            self._claim._value,
+            ((self._index, SKETCH_INDEX_PRF), max(0., self.preferred + value)),
+            ((self._index, SKETCH_INDEX_MIN), max(0., self.min + value)),
+            ((self._index, SKETCH_INDEX_MAX), max(0., self.max + value)),
+        )
 
-    def maxed(self, other: Stretch) -> None:
+    def maxed(self, other: _Stretch) -> None:
         """
-        In-place max with another Stretch.
+        Max this with another Stretch.
         """
-        self._preferred = max(self._preferred, other._preferred)
-        self._min = max(self._min, other._min)
-        self._max = max(self._max, other._max)
-        self._scale_factor = max(self._scale_factor, other._scale_factor)
-        self._priority = max(self._priority, other._priority)
-
-    def __iadd__(self, other: Stretch) -> Stretch:
-        """
-        In-place max with another Stretch.
-        """
-        self._preferred += other._preferred
-        self._min += other._min
-        self._max = other._max
-        self._scale_factor = max(self._scale_factor, other._scale_factor)
-        self._priority = max(self._priority, other._priority)
-        return self
+        self._claim._value = multimutate_value(
+            self._claim._value,
+            ((self._index, SKETCH_INDEX_PRF), max(self.preferred, other.preferred)),
+            ((self._index, SKETCH_INDEX_MIN), max(self.min, other.min)),
+            ((self._index, SKETCH_INDEX_MAX), max(self.max, other.max)),
+            ((self._index, SKETCH_INDEX_SCL), max(self.scale_factor, other.scale_factor)),
+            ((self._index, SKETCH_INDEX_PRT), max(self.priority, other.priority)),
+        )
 
 
 ########################################################################################################################
 
+class StretchDescription(NamedTuple):
+    preferred: float = 0.
+    min: Optional[float] = None
+    max: Optional[float] = None
+    scale_factor: float = 1.
+    priority: int = 0
+
+    def validate(self) -> StretchDescription:
+        preferred: float = max(self.preferred, 0.)
+        return StretchDescription(
+            preferred=preferred,
+            min=preferred if self.min is None else max(0., min(self.min, preferred)),
+            max=inf if self.max is None else max(self.max, preferred),
+            scale_factor=max(ALMOST_ZERO, self.scale_factor),
+            priority=self.priority
+        )
+
 
 class Claim:
-    Stretch = Stretch
+    Stretch = StretchDescription
 
-    def __init__(self, width: Union[Stretch, float] = 0., height: Union[Stretch, float] = 0.):
-        if isinstance(width, float):
-            self.horizontal: Stretch = Stretch(width)
-        else:
-            self.horizontal: Stretch = width
+    def __init__(self, horizontal: Optional[Union[float, StretchDescription, Value]] = None,
+                 vertical: Optional[Union[float, StretchDescription]] = None):
+        self._value: Value
 
-        if isinstance(height, float):
-            self.vertical: Stretch = Stretch(height)
+        # default
+        if horizontal is None:
+            assert vertical is None
+            self._value = CLAIM_DEFAULT
+
+        # use an existing Value for the Claim
+        elif isinstance(horizontal, Value):
+            assert horizontal.get_schema() == CLAIM_SCHEMA
+            self._value = horizontal
+
+        # ... or construct a new one based on the user's description
         else:
-            self.vertical: Stretch = height
+            # horizontal description
+            if isinstance(horizontal, float):
+                horizontal = StretchDescription(horizontal)
+            assert isinstance(horizontal, StretchDescription)
+            horizontal = horizontal.validate()
+
+            # vertical description
+            if vertical is None:
+                vertical = horizontal
+            else:
+                if isinstance(vertical, float):
+                    vertical = StretchDescription(vertical)
+                assert isinstance(vertical, StretchDescription)
+                vertical = vertical.validate()
+
+            # value
+            self._value: Value = Value(dict(
+                horizontal=dict(
+                    preferred=horizontal.preferred,
+                    min=horizontal.min,
+                    max=horizontal.max,
+                    scale_factor=horizontal.scale_factor,
+                    priority=horizontal.priority
+                ),
+                vertical=dict(
+                    preferred=vertical.preferred,
+                    min=vertical.min,
+                    max=vertical.max,
+                    scale_factor=vertical.scale_factor,
+                    priority=vertical.priority
+                )
+            ))
+
+    def get_value(self) -> Value:
+        """
+        The Claim as Value.
+        """
+        return self._value
+
+    @property
+    def horizontal(self) -> _Stretch:
+        return _Stretch(self, CLAIM_INDEX_HORIZONTAL)
+
+    @property
+    def vertical(self) -> _Stretch:
+        return _Stretch(self, CLAIM_INDEX_VERTICAL)
 
     def set_fixed(self, width: float, height: Optional[float] = None) -> None:
         self.horizontal.set_fixed(width)
-        self.vertical.set_fixed(height or width)
+        self.vertical.set_fixed(height if height is not None else width)
 
     def add_horizontal(self, other: Claim) -> None:
-        self.horizontal += other.horizontal
+        self.horizontal.add(other.horizontal)
         self.vertical.maxed(other.vertical)
 
     def add_vertical(self, other: Claim) -> None:
         self.horizontal.maxed(other.horizontal)
-        self.vertical += other.vertical
+        self.vertical.add(other.vertical)
 
     def maxed(self, other: Claim) -> None:
         self.horizontal.maxed(other.horizontal)

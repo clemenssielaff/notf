@@ -2,18 +2,17 @@ from __future__ import annotations
 
 import sys
 from enum import IntEnum, auto
-from typing import Union, List, Dict, Any, Sequence, Optional, Tuple, Iterable, Callable
+from typing import Union, List, Dict, Any, Sequence, Optional, Tuple, Iterable, Callable, overload
 from math import trunc, ceil, floor, pow
 from operator import floordiv, mod, truediv
 from json import dumps as write_json, loads as read_json
 
-from pyrsistent import pvector as make_const_list, PVector as ConstList, PRecord as ConstNamedTuple, field
+from pyrsistent import pvector as make_const_list, PVector as ConstList, PRecord as ConstNamedTuple, field as c_field
 from pyrsistent.typing import PVector as ConstListT
 
 from pynotf.data import Bonsai
 
-########################################################################################################################
-
+# DENOTABLE ############################################################################################################
 
 # Python data that conforms to the restrictions imposed by the Value type.
 # The only way to get a `Denotable` object is to give "raw" Python data to `check_denotable`.
@@ -132,7 +131,7 @@ def create_denotable(obj: Any, allow_empty_list: bool = False, list_can_be_recor
     raise ValueError("Cannot construct Denotable from a {}".format(type(obj).__name__))
 
 
-########################################################################################################################
+# KIND #################################################################################################################
 
 class Kind(IntEnum):
     """
@@ -193,7 +192,7 @@ class Kind(IntEnum):
             return Kind.RECORD
 
 
-########################################################################################################################
+# SCHEMA ###############################################################################################################
 
 class Schema(tuple, Sequence[int]):
     """
@@ -413,7 +412,7 @@ def get_subschema_end(schema: Schema, start_index: int) -> int:
         return start_index + 2 + child_count
 
 
-########################################################################################################################
+# DATA #################################################################################################################
 
 Data = Union[
     None,  # the only data stored in a None Value
@@ -500,7 +499,7 @@ def create_data_from_denotable(denotable: Denotable) -> Data:
     return make_const_list(create_data_from_denotable(child) for child in denotable.values())
 
 
-########################################################################################################################
+# DICTIONARY ###########################################################################################################
 
 class Dictionary(ConstNamedTuple):
     """
@@ -512,8 +511,8 @@ class Dictionary(ConstNamedTuple):
     that contain the actual child Dictionaries.
     Unnamed records still have a Dictionary, but with an empty name field.
     """
-    names = field(type=Bonsai, mandatory=True)
-    children = field(type=ConstList, mandatory=True)
+    names = c_field(type=Bonsai, mandatory=True)
+    children = c_field(type=ConstList, mandatory=True)
 
 
 def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
@@ -553,8 +552,7 @@ def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
     return parse_next(denotable)
 
 
-########################################################################################################################
-
+# VALUE ################################################################################################################
 
 class Value:
     Kind = Kind
@@ -1069,127 +1067,228 @@ class Value:
         return True  # TODO: Value._is_consistent
 
 
-def mutate_value(value: Value, data: Any, *path: Union[int, str]) -> Value:
-    """
+# MUTATION #############################################################################################################
 
-    I would much rather have a syntax like `set_value(value["key"][34], "NEW")`, but for that you need to return an
-    accessor when getting a value. The accessor retains a reference to the root Value, so that `set_value` can modify
-    it, instead of the last one in the Path.
+def mutate_data(current_data: Data, new_data: Any, schema: Schema, schema_itr: int) -> Tuple[Data, bool]:
+    """
+    The last step when mutating Data.
+    Does not change the `current_data` field.
+    :param current_data: The currently iterated Data (sub)-buffer prior to mutation.
+    :param new_data: The new Data to place at the end of the `path`. Must match the existing Data's Schema.
+    :param schema: Schema of the Value providing the Data buffer.
+    :param schema_itr: Position of the iteration in the Schema.
+    :returns: (Potentially) New Data and a flag indicating whether or not it is different than `current_data`.
+    """
+    # get the kind of data expected at the current location in the Schema
+    assert schema_itr < len(schema)
+    kind: Kind = Kind(schema[schema_itr])
+    assert Kind.is_valid(kind)
+
+    # ensure that the new data is denotable
+    denotable: Denotable = create_denotable(new_data, allow_empty_list=True)
+
+    # set to empty list
+    if isinstance(denotable, list) and len(denotable) == 0:
+        if kind == Kind.LIST:
+            if len(current_data) == 0:
+                return current_data, False
+            else:
+                return create_data_from_denotable(denotable), True
+        else:
+            raise TypeError(f'Type mismatch, cannot set a Value of kind {kind.name.capitalize()} '
+                            f'to the empty list')
+
+    # check if the data's Schema matches the child Value's
+    data_schema: Schema = Schema(denotable)  # cannot create a Schema for an empty list
+    current_schema: Schema = Schema.from_slice(schema, schema_itr, get_subschema_end(schema, schema_itr))
+    if data_schema != current_schema:
+        raise TypeError(f'Cannot mutate a Value of kind {kind.name.capitalize()} to "{denotable}"')
+
+    # return the original Data if it and the new one are equal
+    result_data: Data = create_data_from_denotable(denotable)
+    if result_data == current_data:
+        return current_data, False
+    else:
+        return result_data, True
+
+
+def mutate_recursive(current_data: Data, new_data: Any, schema: Value.Schema, schema_itr: int,
+                     dict_itr: Optional[Dictionary], path: Sequence[Union[int, str], ...]) -> Tuple[Data, bool]:
+    """
+    Mutates a Value Data and returns the resulting Data with a flag that indicates whether the Data has been changed.
+    This is separate from the `mutate_value` function to allow the data to be transient.
+    :param current_data: The currently iterated Data (sub)-buffer prior to mutation.
+    :param new_data: The new Data to place at the end of the `path`. Must match the existing Data's Schema.
+    :param schema: Schema of the Value providing the Data buffer.
+    :param schema_itr: Position of the iteration in the Schema.
+    :param dict_itr: The current Dictionary associated with the Data buffer.
+    :param path: Remaining path to where the `new_data` is to be placed.
+    :returns: The (potentially) mutated Data and a flag indicating whether or not it has changed.
+    """
+    # last step
+    if len(path) == 0:
+        return mutate_data(current_data, new_data, schema, schema_itr)
+
+    # get the kind of data expected at the current location in the Schema
+    assert schema_itr < len(schema)
+    kind: Kind = Kind(schema[schema_itr])
+    assert Kind.is_valid(kind)
+
+    # cannot continue recursion past a ground value
+    if Kind.is_ground(kind):
+        raise IndexError(f'Unsupported operator[] for Value of kind {kind.name.capitalize()}')
+    assert kind in (Kind.LIST, Kind.RECORD)
+
+    # pop the index of the next child from the path
+    index: Union[int, str] = path[0]
+    if isinstance(index, str):
+        if dict_itr is None:
+            assert kind == Kind.LIST
+            raise KeyError(f'Cannot access List by name "{index}"')
+        elif dict_itr.names.is_empty():
+            raise KeyError(f'Cannot access unnamed Record by name "{index}"')
+        elif index not in dict_itr.names:
+            available_keys: str = '", "'.join(dict_itr.names.keys())
+            raise KeyError(f'Unknown key "{index}" in Record. Available keys are: "{available_keys}"')
+        index = dict_itr.names[index]
+
+    else:
+        assert isinstance(index, int)
+
+        # support negative indices from the back
+        if index < 0:
+            size: int = len(current_data)
+            if kind == kind.LIST:
+                assert len(current_data) > 0  # at least the size of the list must be stored in it
+                size -= 1
+            else:
+                assert schema_itr + 1 < len(schema)
+                assert size == schema[schema_itr + 1]
+            index = size + index
+
+        # list items start at index 1
+        if kind == kind.LIST:
+            index += 1
+
+    assert isinstance(index, int) and (0 <= index < len(current_data))
+
+    # advance the schema iterator
+    if kind == Kind.LIST:
+        schema_itr += 1
+    else:
+        schema_itr = get_subschema_start(schema, schema_itr, index)
+
+    # advance the dictionary iterator
+    if kind == Kind.RECORD:
+        dict_itr = dict_itr.children[index]
+
+    # continue the recursion
+    result_data, was_updated = mutate_recursive(current_data[index], new_data, schema, schema_itr, dict_itr, path[1:])
+    if was_updated:
+        return current_data.set(index, result_data), True
+    else:
+        return current_data, False
+
+
+@overload
+def mutate_value(value: Value, new_data: Any) -> Value: ...
+
+
+@overload
+def mutate_value(value: Value, key: str, new_data: Any) -> Value: ...
+
+
+@overload
+def mutate_value(value: Value, index: int, new_data: Any) -> Value: ...
+
+
+@overload
+def mutate_value(value: Value, path: Sequence[Union[int, str]], new_data: Any) -> Value: ...
+
+
+def mutate_value(value: Value, *args) -> Value:
+    """
+    Mutates a Value, meaning create a new Value through a single modification of an existing one.
+    For changing multiple parts of a Value's data at once, see `multimutate_value`.
+    If the new Value would the equal to the old one, the old one is returned to avoid the creation of a new instance.
+
+    This function allows several overloads:
+
+        1. mutate_value(value, new_data)
+        2. mutate_value(value, key, new_data)
+        3. mutate_value(value, index, new_data)
+        4. mutate_value(value, path, new_data)
+
+    1. Only works for ground types, where the new_data matches the Schema of the existing data.
+    2 and 3. Works for shallow record lookup or lists.
+    4. Works for all cases, but requires the specification of a path, a (potentially empty) sequence of key or indices
+        the part to change.
+
+    IN C++, value["key][4] could return an accessor which would then mutate the Value on assignment. The accessor
+    retains a reference to the root Value, so that `set_value` can modify it, instead of the last one in the Path.
     In C++ we can have an implicit conversion between a Value.Accessor and a Value and use r-value overloads to ensure
     that the user does not accidentally store a Value.Accessor instead of a Value, but in Python we cannot.
 
-    :param value:
-    :param data:
-    :param path:
-    :return:
+    :param value: Value providing the Data buffer to mutate.
+    """
+    if len(args) == 0:  # noop
+        return value
+
+    elif len(args) == 1:
+        if value.is_none():
+            if args[0] is None:
+                return value  # setting None to None returns None
+            else:
+                raise ValueError("Cannot modify the None Value.")
+        new_data, was_modified = mutate_data(value._data, args[0], value.get_schema(), 0)
+        if was_modified:
+            return Value._create(value._schema, new_data, value._dictionary)
+        else:
+            return value
+
+    else:
+        assert len(args) == 2
+        if value.is_none():
+            raise ValueError("Cannot modify the None Value.")
+        new_data: Data
+        was_modified: bool
+        if isinstance(args[0], (int, str)):
+            new_data, was_modified = mutate_recursive(
+                value._data, args[1], value.get_schema(), 0, value._dictionary, (args[0],))
+        else:
+            assert isinstance(args[0], (list, tuple))
+            new_data, was_modified = mutate_recursive(
+                value._data, args[1], value.get_schema(), 0, value._dictionary, args[0])
+        if was_modified:
+            return Value._create(value._schema, new_data, value._dictionary)
+        else:
+            return value
+
+
+def multimutate_value(value: Value, *changes: Tuple[Union[int, str, Sequence[Union[int, str]]], Any]) -> Value:
+    """
+    Performs multiple mutations on the given value.
+    :param value: Value providing the Data buffer to mutate.
+    :param changes: Path / New Data pair to describe a change in the Value's Data buffer.
     """
     if value.is_none():
-        if data is None:
-            return value  # setting None to None returns None
+        raise ValueError("Cannot modify the None Value.")
+
+    was_at_all_modified: bool = False
+    was_modified: bool
+    new_data: Data = value._data
+    for change in changes:
+        assert len(change) == 2
+        if isinstance(change[0], (int, str)):
+            new_data, was_modified = mutate_recursive(
+                new_data, change[1], value.get_schema(), 0, value._dictionary, (change[0],))
         else:
-            raise ValueError("Cannot modify the None Value.")
-    elif data is None:
-        raise ValueError("Cannot set a non-None Value to`None`")
+            assert isinstance(change[0], (list, tuple))
+            new_data, was_modified = mutate_recursive(
+                new_data, change[1], value.get_schema(), 0, value._dictionary, change[0])
+        was_at_all_modified |= was_modified
 
-    denotable: Denotable = create_denotable(data, allow_empty_list=True)
-
-    def recursion(_data: Data, _schema_itr: int, _dict_itr: Optional[Dictionary],
-                  _path: Tuple[Union[int, str], ...]) -> Optional[Data]:
-        """
-        If the last step of the recursion detects that the current and the new data are equal, returns None to avoid
-        the construction of a new Value.
-        :param _data: Data buffer to iterate.
-        :param _schema_itr: Index in the Value's Schema denoting the current child.
-        :param _dict_itr: Child Dictionary.
-        :param _path: The remaining path.
-        :return:
-        """
-        assert _schema_itr < len(value._schema)
-        kind: Kind = Kind(value._schema[_schema_itr])
-        assert Kind.is_valid(kind)
-
-        # last step
-        if len(_path) == 0:
-
-            # set to empty list
-            if isinstance(denotable, list) and len(denotable) == 0:
-                if kind == Kind.LIST:
-                    return create_data_from_denotable(denotable)
-                else:
-                    raise TypeError(f'Type mismatch, cannot set a Value of kind {kind.name.capitalize()} '
-                                    f'to the empty list')
-
-            # check if the data's Schema matches the child Value's
-            data_schema: Schema = Schema(denotable)  # cannot create a Scheme for an empty list
-            current_schema: Schema = Schema.from_slice(value.get_schema(), _schema_itr,
-                                                       get_subschema_end(value.get_schema(), _schema_itr))
-            if data_schema != current_schema:
-                raise TypeError(f'Cannot set a Value of kind {kind.name.capitalize()} to "{denotable}"')
-
-            # do nothing if the current and new data are equal
-            _new_data = create_data_from_denotable(denotable)
-            if _new_data == _data:
-                return None
-            else:
-                return _new_data
-
-        # cannot continue recursion past a ground value
-        if Kind.is_ground(kind):
-            raise IndexError(f'Unsupported operator[] for Value of kind {kind.name.capitalize()}')
-        assert kind in (Kind.LIST, Kind.RECORD)
-
-        # pop the index of the next child from the path
-        index: Union[int, str] = _path[0]
-        if isinstance(index, str):
-            if _dict_itr is None:
-                assert kind == Kind.LIST
-                raise KeyError(f'Cannot access List by name "{index}"')
-            elif _dict_itr.names.is_empty():
-                raise KeyError(f'Cannot access unnamed Record by name "{index}"')
-            elif index not in _dict_itr.names:
-                available_keys: str = '", "'.join(_dict_itr.names.keys())
-                raise KeyError(f'Unknown key "{index}" in Record. Available keys are: "{available_keys}"')
-            index = _dict_itr.names[index]
-
-        else:
-            assert isinstance(index, int)
-
-            # support negative indices from the back
-            if index < 0:
-                size: int = len(_data)
-                if kind == kind.LIST:
-                    assert len(_data) > 0  # at least the size of the list must be stored in it
-                    size -= 1
-                else:
-                    assert _schema_itr + 1 < len(value._schema)
-                    assert size == value._schema[_schema_itr + 1]
-                index = size + index
-
-            # list indices start at 1
-            if kind == kind.LIST:
-                index += 1
-
-        assert isinstance(index, int) and (0 <= index < len(_data))
-
-        # advance the schema iterator
-        if kind == Kind.LIST:
-            _schema_itr += 1
-        else:
-            _schema_itr = get_subschema_start(value._schema, _schema_itr, index)
-
-        # advance the dictionary iterator
-        if kind == Kind.RECORD:
-            _dict_itr = _dict_itr.children[index]
-
-        # continue the recursion
-        _new_data: Optional[Data] = recursion(_data[index], _schema_itr, _dict_itr, _path[1:])
-        if _new_data is None:
-            return None
-        else:
-            return _data.set(index, _new_data)
-
-    new_data: Optional[Data] = recursion(value._data, 0, value._dictionary, path)
-    if new_data is None:
-        return value
-    else:
+    if was_at_all_modified:
         return Value._create(value._schema, new_data, value._dictionary)
+    else:
+        return value

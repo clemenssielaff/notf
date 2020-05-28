@@ -43,9 +43,7 @@ BUILTIN_NODE_PROPERTIES: Dict[str, Value] = {
     f'{BUILTIN_NAMESPACE}.visibility': Value(1),
     f'{BUILTIN_NAMESPACE}.depth': Value(0),
     f'{BUILTIN_NAMESPACE}.xform': Value(1, 0, 0, 1, 0, 0),
-    # f'{BUILTIN_NAMESPACE}.claim' : Value(0), # TODO: express Claim as wrapper around Value
-    f'{BUILTIN_NAMESPACE}.height': Value(100),  # and remove the {BUILTIN_NAMESPACE}.height/width props
-    f'{BUILTIN_NAMESPACE}.width': Value(100),  # and remove the {BUILTIN_NAMESPACE}.height/width props
+    f'{BUILTIN_NAMESPACE}.claim': Claim().get_value(),
 }
 
 
@@ -131,6 +129,8 @@ class Scene:
             if hitbox.shape.contains(pos):
                 yield hitbox
 
+
+# NODE ################################################################################################################
 
 class Node:
     def __init__(self, handle: RowHandle):
@@ -366,5 +366,4 @@ class Node:
         # TODO: relayout upwards
         if not self.get_parent():
             return
-        self.get_property('sys.width').set_value(Value(claim.horizontal.preferred))
-        self.get_property('sys.height').set_value(Value(claim.vertical.preferred))
+        self.get_property('sys.claim').set_value(claim.get_value())

@@ -426,7 +426,7 @@ class Design:
 
     class HitboxCall(NamedTuple):
         shape: Design._ShapeBuilder
-        callback: core.Operator
+        interface: str  # name of an interface on the node that receives a Value(x=float, y=float)
 
     # DESIGN ##################################################################
 
@@ -472,9 +472,12 @@ class Design:
                         join=nanovg.LineJoin(int(draw_call.join.evaluate(context)[0])),
                     ))
         for hitbox in self._hitboxes:
+            interface_operator: Optional[core.Operator] = node.get_property(hitbox.interface)
+            assert interface_operator.get_input_schema() == Value(x=0, y=0).get_schema()
+            assert interface_operator is not None
             for shape in hitbox.shape.evaluate(context)[0]:
                 sketch.hitboxes.append(Sketch.Hitbox(
                     shape=shape,
-                    callback=hitbox.callback,
+                    callback=interface_operator,
                 ))
         return sketch
