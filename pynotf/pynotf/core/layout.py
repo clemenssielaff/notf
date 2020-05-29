@@ -107,7 +107,8 @@ class Layout:
         Returns the handles of all core.Nodes in this Layout in draw-order.
         """
         node_list: RowHandleList = core.get_app().get_table(core.TableIndex.LAYOUTS)[self._handle]['nodes']
-        return RowHandleList(sorted(node_list, key=lambda h: float(core.Node(h).get_property('sys.depth').get_value())))
+        return RowHandleList(
+            sorted(node_list, key=lambda h: float(core.Node(h).get_interop('widget.depth').get_value())))
 
     def remove(self) -> None:
         if self.is_valid():
@@ -124,11 +125,11 @@ class LayoutNodeView:
 
     @property
     def opacity(self) -> float:
-        return float(self._node.get_property('sys.opacity').get_value())
+        return float(self._node.get_interop('widget.opacity').get_value())
 
     @property
     def claim(self) -> Claim:
-        return Claim(self._node.get_property('sys.claim').get_value())
+        return Claim(self._node.get_interop('widget.claim').get_value())
 
 
 # LAYOUT REGISTRY ######################################################################################################

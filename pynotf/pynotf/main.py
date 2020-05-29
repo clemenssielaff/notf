@@ -5,7 +5,7 @@ from typing import List
 
 from pynotf.data import Value, Path, Claim, Shape
 from pynotf.core import NodeDescription, OperatorIndex, Design, LayoutDescription, LayoutIndex, NodeStateDescription, \
-    get_app, Operator
+    get_app
 from pynotf.extra.svg import parse_svg
 
 NOTF_SHAPES: List[Shape] = []
@@ -13,7 +13,7 @@ for path_description in parse_svg('/home/clemens/code/notf/dev/img/notf_inline_w
     NOTF_SHAPES.extend(path_description.shapes)
 
 count_presses_node: NodeDescription = NodeDescription(
-    properties=dict(
+    interface=dict(
         key_down=Value(),
         bring_front=Value(),
     ),
@@ -51,7 +51,7 @@ pulsating_round_rect: Design.RoundedRect = Design.RoundedRect(
     radius=Design.Expression(Value(0).get_schema(), "max(0, node.roundness)"))
 
 countdown_node: NodeDescription = NodeDescription(
-    properties=dict(
+    interface=dict(
         key_down=Value(),
         roundness=Value(10),
         bring_front=Value(),
@@ -91,7 +91,7 @@ countdown_node: NodeDescription = NodeDescription(
 )
 
 root_node: NodeDescription = NodeDescription(
-    properties=dict(
+    interface=dict(
         key_fact=Value(),
         mouse_fact=Value(0, 0),
         hitbox_fact=Value(0, 0),
@@ -103,7 +103,7 @@ root_node: NodeDescription = NodeDescription(
             design=Design(),
             children=dict(
                 herbert=countdown_node,
-                # zanzibar=count_presses_node,
+                zanzibar=count_presses_node,
             ),
             layout=LayoutDescription(
                 LayoutIndex.FLEXBOX,

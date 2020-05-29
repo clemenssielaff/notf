@@ -24,26 +24,32 @@ class NodeStateDescription(NamedTuple):
     claim: Claim = Claim()
 
 
-class NodeProperties(NamedTuple):
+class NodeInterops(NamedTuple):
     names: Bonsai
     elements: List[core.Operator]
 
 
 class NodeDescription(NamedTuple):
-    properties: Dict[str, Value]  # TODO: rename properties to "interface" since it also encapsulates signals and slots
+    interface: Dict[str, Value]
     states: Dict[str, NodeStateDescription]
     transitions: List[Tuple[str, str]]
     initial_state: str
 
 
-BUILTIN_NAMESPACE = 'sys'
+EMPTY_NODE_DESCRIPTION: Value = Value(
+    interface=dict(
+        # TODO: in order to have the node descriptions as Values, we need recursive values
+    )
+)
 
-BUILTIN_NODE_PROPERTIES: Dict[str, Value] = {
-    f'{BUILTIN_NAMESPACE}.opacity': Value(1),
-    f'{BUILTIN_NAMESPACE}.visibility': Value(1),
-    f'{BUILTIN_NAMESPACE}.depth': Value(0),
-    f'{BUILTIN_NAMESPACE}.xform': Value(1, 0, 0, 1, 0, 0),
-    f'{BUILTIN_NAMESPACE}.claim': Claim().get_value(),
+WIDGET_BUILTIN_NAMESPACE = 'widget'
+
+BUILTIN_NODE_INTEROPS: Dict[str, Value] = {
+    f'{WIDGET_BUILTIN_NAMESPACE}.opacity': Value(1),
+    f'{WIDGET_BUILTIN_NAMESPACE}.visibility': Value(1),
+    f'{WIDGET_BUILTIN_NAMESPACE}.depth': Value(0),
+    f'{WIDGET_BUILTIN_NAMESPACE}.xform': Value(1, 0, 0, 1, 0, 0),
+    f'{WIDGET_BUILTIN_NAMESPACE}.claim': Claim().get_value(),
 }
 
 
@@ -51,7 +57,7 @@ class NodeRow(TableRow):
     __table_index__: int = core.TableIndex.NODES
     description = field(type=NodeDescription, mandatory=True)
     parent = field(type=RowHandle, mandatory=True)
-    properties = field(type=NodeProperties, mandatory=True)
+    interface = field(type=NodeInterops, mandatory=True)
     layout = field(type=RowHandle, mandatory=True, initial=RowHandle())
     state = field(type=str, mandatory=True, initial='')
     child_names = field(type=RowHandleMap, mandatory=True, initial=RowHandleMap())
@@ -60,13 +66,13 @@ class NodeRow(TableRow):
 
 # UTILITIES ############################################################################################################
 
-def patch_builtin_properties(node_description: NodeDescription) -> None:
-    # ensure none of the properties use the the reserved 'sys' namespace
-    for property_name in node_description.properties:
-        assert not property_name.startswith(f'{BUILTIN_NAMESPACE}.')
+def patch_builtin_interops(node_description: NodeDescription) -> None:
+    # ensure none of the interface use the the built in widget namespace
+    for operator_name in node_description.interface:
+        assert not operator_name.startswith(f'{WIDGET_BUILTIN_NAMESPACE}.')
 
-    # add built-in properties
-    node_description.properties.update(BUILTIN_NODE_PROPERTIES)
+    # add built-in interface operators
+    node_description.interface.update(BUILTIN_NODE_INTEROPS)
 
 
 # SCENE ################################################################################################################
@@ -80,14 +86,14 @@ class Scene:
 
     def initialize(self, root_description: NodeDescription):
         # create the root node
-        patch_builtin_properties(root_description)
+        patch_builtin_interops(root_description)
         self._root_node = Node(core.get_app().get_table(core.TableIndex.NODES).add_row(
             description=root_description,
             parent=RowHandle(),  # empty row handle as parent
-            properties=NodeProperties(
-                names=Bonsai([property_name for property_name in root_description.properties.keys()]),
+            interface=NodeInterops(
+                names=Bonsai([interop_name for interop_name in root_description.interface.keys()]),
                 elements=[core.Operator.create(core.OpRelay.create(value)) for value in
-                          root_description.properties.values()],
+                          root_description.interface.values()],
             )
         ))
         self._root_node.transition_into(root_description.initial_state)
@@ -108,7 +114,7 @@ class Scene:
         return self._root_node.create_child(name, description)
 
     def get_fact(self, name: str, ) -> Optional[core.Fact]:
-        fact_handle: Optional[core.Operator] = self._root_node.get_property(name)
+        fact_handle: Optional[core.Operator] = self._root_node.get_interop(name)
         if fact_handle:
             return core.Fact(fact_handle)
         else:
@@ -140,6 +146,9 @@ class Node:
     def get_handle(self) -> RowHandle:
         return self._handle
 
+    def is_valid(self) -> bool:
+        return core.get_app().get_table(core.TableIndex.NODES).is_handle_valid(self._handle)
+
     def get_parent(self) -> Optional[Node]:
         parent_handle: RowHandle = core.get_app().get_table(core.TableIndex.NODES)[self._handle]['parent']
         if not parent_handle:
@@ -164,14 +173,14 @@ class Node:
         assert name not in node_table[self._handle]['child_names']
 
         # create the child node entry
-        patch_builtin_properties(description)
+        patch_builtin_interops(description)
         child_handle: RowHandle = node_table.add_row(
             description=description,
             parent=self._handle,
-            properties=NodeProperties(
-                names=Bonsai([property_name for property_name in description.properties.keys()]),
-                elements=[core.Operator.create(core.OpRelay.create(Value(property_schema))) for
-                          property_schema in description.properties.values()],
+            interface=NodeInterops(
+                names=Bonsai([interop_name for interop_name in description.interface.keys()]),
+                elements=[core.Operator.create(core.OpRelay.create(Value(interop_schema))) for
+                          interop_schema in description.interface.values()],
             )
         )
         node_table[self._handle]['child_names'] = node_table[self._handle]['child_names'].set(name, child_handle)
@@ -226,12 +235,12 @@ class Node:
         for node_handle in self.get_layout().get_composition().order:
             painter.paint(Node(node_handle))
 
-    def get_property(self, name: str) -> Optional[core.Operator]:
-        properties: NodeProperties = core.get_app().get_table(core.TableIndex.NODES)[self._handle]['properties']
-        index: Optional[int] = properties.names.get(name)
+    def get_interop(self, name: str) -> Optional[core.Operator]:
+        interface: NodeInterops = core.get_app().get_table(core.TableIndex.NODES)[self._handle]['interface']
+        index: Optional[int] = interface.names.get(name)
         if index is None:
             return None
-        return properties.elements[index]
+        return interface.elements[index]
 
     def get_state(self) -> str:
         return core.get_app().get_table(core.TableIndex.NODES)[self._handle]['state']
@@ -300,7 +309,7 @@ class Node:
                     assert path.is_relative()
                     node = self.get_descendant(path)
                 if node:
-                    return node.get_property(path.get_leaf())
+                    return node.get_interop(path.get_leaf())
 
             return None
 
@@ -324,10 +333,10 @@ class Node:
         # remove dynamic network
         self._clear_dependencies()
 
-        # remove properties
-        properties: NodeProperties = node_table[self._handle]['properties']
-        for property_ in properties.elements:
-            property_.remove()
+        # remove interface operators
+        interface: NodeInterops = node_table[self._handle]['interface']
+        for operator in interface.elements:
+            operator.remove()
 
         # remove the node
         node_table.remove_row(self._handle)
@@ -366,4 +375,4 @@ class Node:
         # TODO: relayout upwards
         if not self.get_parent():
             return
-        self.get_property('sys.claim').set_value(claim.get_value())
+        self.get_interop('widget.claim').set_value(claim.get_value())

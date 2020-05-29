@@ -63,7 +63,7 @@ class Application:
             return -1
 
         # TODO: some sort of ... OS service?
-        #  also, where _do_ facts live? Right now, they live as source properties on the root node...
+        #  also, where _do_ facts live? Right now, they live as interface operators on the root node...
         glfw.set_key_callback(window, key_callback)
         glfw.set_mouse_button_callback(window, mouse_button_callback)
         glfw.set_window_size_callback(window, window_size_callback)
@@ -112,7 +112,7 @@ def get_app() -> Application:
 # SETUP ################################################################################################################
 
 # TODO: these callbacks rely on the existence of facts that need to be defined on the root node.
-#   Maybe have anoter set of builtin-properties for the root only? I think there's another TODO for this as well.
+#   Maybe have another set of builtin interface ops for the root only? I think there's another to-do for this as well.
 
 # noinspection PyUnusedLocal
 def key_callback(window, key: int, scancode: int, action: int, mods: int) -> None:

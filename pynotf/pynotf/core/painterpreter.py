@@ -126,7 +126,7 @@ class Painter:
         return self._hitboxes  # TODO: I am not sure that the Painter is the best place to store hitboxes
 
     def paint(self, node: core.Node) -> None:
-        node_opacity: float = max(0., min(1., float(node.get_property('sys.opacity').get_value())))
+        node_opacity: float = max(0., min(1., float(node.get_interop('widget.opacity').get_value())))
 
         nanovg.reset(self._context)
         nanovg.global_alpha(self._context, node_opacity)
@@ -194,7 +194,7 @@ class Design:
     use that to create another shape.
     In the end, you have a list of draw calls to the shapes that you have defined.
 
-    The Sketch has access to the properties of its node.
+    The Sketch has access to the interface operators of its node.
     """
 
     class _Context(NamedTuple):
@@ -229,13 +229,13 @@ class Design:
         def evaluate(self, _: Design._Context) -> Tuple[Value, bool]:
             return self._value, False
 
-    class Property(_ValueBuilder):
+    class Interop(_ValueBuilder):
         def __init__(self, node: core.Node, name: str):
             """
             :param node: core.Node from which to get the
-            :param name: Name of the Property on the core.Node.
+            :param name: Name of the Interop on the core.Node.
             """
-            self._cached: Value = node.get_property(name).get_value()
+            self._cached: Value = node.get_interop(name).get_value()
             self._generation: int = 0
             self._name: str = name
 
@@ -247,7 +247,7 @@ class Design:
                 return self._cached, False
             self._generation = context.generation
 
-            new_value: Value = context.node.get_property(self._name).get_value()
+            new_value: Value = context.node.get_interop(self._name).get_value()
             if new_value == self._cached:
                 return self._cached, False
 
@@ -258,7 +258,7 @@ class Design:
         def __init__(self, schema: Value.Schema, source: str, **arguments: Design._ValueBuilder):
             """
             Source of the Expression.
-            The expression has access to all Properties of the core.Node using `node["property.name"]`.
+            The expression has access to all Interops of the core.Node using `node["interop.name"]`.
             """
             assert 'node' not in arguments
             self._cached: Value = Value(schema)
@@ -274,13 +274,13 @@ class Design:
                 return self._cached, False
             self._generation = context.generation
 
-            class _NodeProperties:
-                def __getattr__(self, property_name: str) -> Value:
-                    if property_name == 'grant':
+            class _NodeInterops:
+                def __getattr__(self, interop_name: str) -> Value:
+                    if interop_name == 'grant':
                         return context.node.get_composition().grant
-                    return context.node.get_property(property_name).get_value()
+                    return context.node.get_interop(interop_name).get_value()
 
-            scope = dict(node=_NodeProperties())
+            scope = dict(node=_NodeInterops())
             for name, value_builder in self._scope:
                 scope[name] = value_builder.evaluate(context)
             new_value: Value = Value(self._expression.execute(scope))
@@ -318,9 +318,9 @@ class Design:
             self._generation = context.generation
 
             # TODO: maybe some kind of push-dirtying would be better?
-            #   Of course, that won't easily work with Expressions. Of course, if you separate properties out of the
-            #   expression and let the expression take properties as inputs, you could push dirtiness up from the
-            #   properties ... that might be especially good since I don't want to have to re-evaluate expressions all
+            #   Of course, that won't easily work with Expressions. Of course, if you separate interface ops out of the
+            #   expression and let the expression take interops as inputs, you could push dirtiness up from the
+            #   interops ... that might be especially good since I don't want to have to re-evaluate expressions all
             #   the time, just to see that they are equal to the last computed value.
             is_any_new: bool = False
             x_value, is_new = self._x.evaluate(context)
@@ -472,7 +472,7 @@ class Design:
                         join=nanovg.LineJoin(int(draw_call.join.evaluate(context)[0])),
                     ))
         for hitbox in self._hitboxes:
-            interface_operator: Optional[core.Operator] = node.get_property(hitbox.interface)
+            interface_operator: Optional[core.Operator] = node.get_interop(hitbox.interface)
             assert interface_operator.get_input_schema() == Value(x=0, y=0).get_schema()
             assert interface_operator is not None
             for shape in hitbox.shape.evaluate(context)[0]:

@@ -85,6 +85,7 @@ class OperatorRow(TableRow):
     __table_index__: int = core.TableIndex.OPERATORS
     op_index = field(type=int, mandatory=True)
     flags = field(type=int, mandatory=True)  # flags and op_index could be stored in the same 64 bit word
+    node = field(type=RowHandle, mandatory=True)
     value = field(type=Value, mandatory=True)
     input_schema = field(type=Value.Schema, mandatory=True)
     args = field(type=Value, mandatory=True)  # must be a named record
@@ -107,13 +108,14 @@ class OperatorRowDescription(NamedTuple):
 class Operator:
 
     @classmethod
-    def create(cls, description: OperatorRowDescription) -> Operator:
+    def create(cls, description: OperatorRowDescription, node: RowHandle = RowHandle()) -> Operator:
         """
         For example, for the Factory operator, we want to inspect the input/output Schema of another, yet-to-be-created
         Operator without actually creating one.
         Therefore, the creator functions only return OperatorRowDescription, that *this* function then turns into an
         actual row in the Operator table.
         :param description: Date from which to construct the new row.
+        :param node: Node to associate with the created Operator.
         :return: The handle to the created row.
         """
         return Operator(core.get_app().get_table(core.TableIndex.OPERATORS).add_row(
@@ -123,6 +125,7 @@ class Operator:
             args=description.args,
             data=description.data,
             flags=description.flags | (EmitterStatus.IDLE << FlagIndex.STATUS),
+            node=node,
         ))
 
     def __init__(self, handle: RowHandle):
@@ -141,6 +144,9 @@ class Operator:
     def get_op_index(self) -> int:
         return core.get_app().get_table(core.TableIndex.OPERATORS)[self._handle]['op_index']
 
+    def get_node(self) -> core.Node:
+        return core.Node(core.get_app().get_table(core.TableIndex.OPERATORS)[self._handle]['node'])
+
     def get_flags(self) -> int:
         return core.get_app().get_table(core.TableIndex.OPERATORS)[self._handle]['flags']
 
@@ -151,6 +157,9 @@ class Operator:
         table: Table = core.get_app().get_table(core.TableIndex.OPERATORS)
         table[self._handle]['flags'] = \
             (table[self._handle]['flags'] & ~(int(0b111) << FlagIndex.STATUS)) | (status << FlagIndex.STATUS)
+
+    def is_node_operator(self) -> bool:
+        return self.get_node().is_valid()
 
     def is_external(self) -> bool:
         return bool(self.get_flags() & (1 << FlagIndex.IS_EXTERNAL))
@@ -437,21 +446,6 @@ class OpRelay:
         return self.get_data()
 
 
-class OpProperty:
-    """
-    A Property is basically a Relay with the requirement that it's value schema is not none.
-    """
-
-    @staticmethod
-    def create(value: Value) -> OperatorRowDescription:
-        assert not value.get_schema().is_none()
-        return OperatorRowDescription(
-            operator_index=OperatorIndex.PROPERTY,
-            initial_value=value,
-            input_schema=value.get_schema(),
-        )
-
-
 class OpBuffer:
     @staticmethod
     def create(args: Value) -> OperatorRowDescription:
@@ -600,15 +594,33 @@ class OpSine:
         self.schedule(runner)
 
 
+class OpCreateChild:
+
+    # TODO: OpCreateChild is not done yet
+
+    @staticmethod
+    def create(value: Value) -> OperatorRowDescription:
+        return OperatorRowDescription(
+            operator_index=OperatorIndex.CREATE_CHILD,
+            initial_value=value,
+            input_schema=value.get_schema(),
+        )
+
+    @staticmethod
+    def on_next(self: Operator, upstream: RowHandle, value: Value) -> Value:
+        print(f'Received {value!r} from {upstream}')
+        return self.get_data()
+
+
 @unique
 class OperatorIndex(core.IndexEnum):
     RELAY = auto()
-    PROPERTY = auto()
     BUFFER = auto()
     FACTORY = auto()
     COUNTDOWN = auto()
     PRINTER = auto()
     SINE = auto()
+    CREATE_CHILD = auto()
 
 
 @unique
@@ -629,7 +641,6 @@ OPERATOR_VTABLE: Tuple[
         Callable[[Value], OperatorRowDescription],
     ], ...] = (
     (OpRelay.on_next, None, None, None, OpRelay.create),
-    (OpRelay.on_next, None, None, None, OpProperty.create),  # property uses relay's `on_next` function
     (OpBuffer.on_next, None, None, None, OpBuffer.create),
     (OpFactory.on_next, None, None, None, OpFactory.create),
     (OpCountdown.on_next, None, None, None, OpCountdown.create),

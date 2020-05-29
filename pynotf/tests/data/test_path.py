@@ -28,7 +28,7 @@ class TestCase(unittest.TestCase):
         with self.assertRaises(Path.Error):
             Path("test/node:leaf/wrong")  # no nodes following a leaf
         with self.assertRaises(Path.Error):
-            Path("test/node:leaf:wrong")  # no properties following a leaf
+            Path("test/node:leaf:wrong")  # a leaf cannot follow another leaf
         with self.assertRaises(Path.Error):
             Path("test/wrong:")  # no empty leaf name
         with self.assertRaises(Path.Error):
