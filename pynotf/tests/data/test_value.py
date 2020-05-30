@@ -60,12 +60,6 @@ class TestCase(unittest.TestCase):
     def tearDown(self) -> None:
         logging.getLogger().setLevel(self._previous_log_level)
 
-    def test_check_kind(self):
-        self.assertEqual(Value.Kind.LIST, sys.maxsize - 3)
-        self.assertEqual(Value.Kind.RECORD, sys.maxsize - 2)
-        self.assertEqual(Value.Kind.NUMBER, sys.maxsize - 1)
-        self.assertEqual(Value.Kind.STRING, sys.maxsize - 0)
-
     def test_value(self):
         self.assertEqual(test_value._data,
                          vec([

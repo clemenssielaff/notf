@@ -140,17 +140,29 @@ class Kind(IntEnum):
     that denote the Kind of an Element, we only use the highest denotable integers for the enum.
     """
     NONE = 0
-    LIST = sys.maxsize - 3
+    NUMBER = 1
+    STRING = sys.maxsize - 2
+    LIST = auto()
     RECORD = auto()
-    NUMBER = auto()
-    STRING = auto()
+
+    # TODO: investigate whether we "really" need an explicit NONE type
+    #  Having zero in a Schema reserved for 'None' is a waste, because zero can never be a valid offset. So it is free
+    #  to use for a type that can be stored INSIDE a Value. Whereas 'None' implies that the Value is empty.
+
+    # TODO: you can ever get a 1 offset either, because the element in that special case is inlined.
+
+    # TODO: CONTINUE HERE
+    #  * maybe use 1 as the NUMBER Kind, since it is ground and 1 word long
+    #  * one way to keep the explicit NONE type _and_ don't waste any more numbers on an explicit VALUE kind would be to
+    #       use 0 as the VALUE Kind, but if a Schema _only_ has a single Value, then it is NONE as that arrangement
+    #       would otherwise be invalid anyway
 
     @staticmethod
     def is_valid(value: int) -> bool:
         """
         :return: True iff `value` is a valid Kind enum value.
         """
-        return value >= Kind.LIST or Kind.is_none(value)
+        return not (Kind.NUMBER < value < Kind.STRING)
 
     @staticmethod
     def is_offset(value: int) -> bool:
@@ -164,7 +176,7 @@ class Kind(IntEnum):
         """
         :return: Whether `value` denotes one of the ground types: Number and String
         """
-        return value >= Kind.NUMBER
+        return value == Kind.NUMBER or value == Kind.STRING
 
     @staticmethod
     def is_none(value: int) -> bool:
@@ -338,7 +350,10 @@ class Schema(tuple, Sequence[int]):
         next_word_is_record_size: bool = False
         for word, index in zip(self, range(len(self))):
             result += "{:>3}: ".format(index)
-            if word == Kind.NUMBER:
+            if next_word_is_record_size:
+                result += " ↳ Size: {}".format(word)
+                next_word_is_record_size = False
+            elif word == Kind.NUMBER:
                 result += "Number"
             elif word == Kind.STRING:
                 result += "String"
@@ -348,11 +363,7 @@ class Schema(tuple, Sequence[int]):
                 result += "Record"
                 next_word_is_record_size = True
             else:
-                if next_word_is_record_size:
-                    result += " ↳ Size: {}".format(word)
-                    next_word_is_record_size = False
-                else:
-                    result += "→ {}".format(index + word)
+                result += "→ {}".format(index + word)  # offset
             result += "\n"
         return result
 
