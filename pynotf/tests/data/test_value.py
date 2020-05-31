@@ -1,5 +1,4 @@
 import unittest
-import sys
 import logging
 from math import pi, trunc, floor, ceil
 
@@ -10,6 +9,15 @@ from pyrsistent import pvector as vec
 ########################################################################################################################
 # TEST HELPER
 ########################################################################################################################
+
+nested_test_element = {
+    "a nested number": 48,
+    "a nested record": {
+        "does this work": "jup"
+    },
+    "a doubly nested value": Value(789),
+    "a nested None": Value(),
+}
 
 test_element = {
     "coords": [
@@ -36,7 +44,8 @@ test_element = {
         ["a", "b"],
         ["c", "d"],
     ],
-    "unnamed record": (2, "hello", dict(x=3))
+    "unnamed record": (2, "hello", dict(x=3)),
+    "a nested value": Value(nested_test_element),
 }
 test_value = Value(test_element)
 float_value = Value(42.24)
@@ -70,6 +79,7 @@ class TestCase(unittest.TestCase):
                              vec([3, 2.0, 23.1, -347.0]),
                              vec([2, vec([2, "a", "b"]), vec([2, "c", "d"])]),
                              vec([2, "hello", vec([3])]),
+                             Value(nested_test_element),
                          ]))
 
     def test_copy_constructor(self):
@@ -89,42 +99,43 @@ class TestCase(unittest.TestCase):
 
     def test_schema(self):
         self.assertEqual(len(none_value.get_schema()), 1)
-        self.assertEqual(len(test_value._schema), 35)
+        self.assertEqual(len(test_value._schema), 36)
         self.assertEqual(str(test_value._schema), """  0: Record
-  1:  ↳ Size: 7
-  2: → 9
+  1:  ↳ Size: 8
+  2: → 10
   3: String
-  4: → 16
+  4: → 17
   5: Number
-  6: → 23
-  7: → 25
-  8: → 28
-  9: List
- 10: Record
- 11:  ↳ Size: 3
- 12: Number
- 13: String
- 14: List
- 15: Number
- 16: Record
- 17:  ↳ Size: 3
- 18: String
- 19: → 21
- 20: Number
- 21: List
- 22: String
- 23: List
- 24: Number
- 25: List
+  6: → 24
+  7: → 26
+  8: → 29
+  9: Value
+ 10: List
+ 11: Record
+ 12:  ↳ Size: 3
+ 13: Number
+ 14: String
+ 15: List
+ 16: Number
+ 17: Record
+ 18:  ↳ Size: 3
+ 19: String
+ 20: → 22
+ 21: Number
+ 22: List
+ 23: String
+ 24: List
+ 25: Number
  26: List
- 27: String
- 28: Record
- 29:  ↳ Size: 3
- 30: Number
- 31: String
- 32: Record
- 33:  ↳ Size: 1
- 34: Number
+ 27: List
+ 28: String
+ 29: Record
+ 30:  ↳ Size: 3
+ 31: Number
+ 32: String
+ 33: Record
+ 34:  ↳ Size: 1
+ 35: Number
 """)
 
     def test_equality(self):
@@ -165,8 +176,6 @@ class TestCase(unittest.TestCase):
             Value([dict(a=1, b=2), dict(a=1)])
         with self.assertRaises(ValueError):
             Value([dict(a=1, b=2), dict(a=1)])
-        with self.assertRaises(ValueError):
-            Value([Value(dict(a=1, b=2)), Value(dict(a=3, c=-4))])
 
     def test_valid_record(self):
         Value((1, 2, 3, 4))  # build from tuple
@@ -186,10 +195,11 @@ class TestCase(unittest.TestCase):
     def test_create_value_from_schema(self):
         self.assertEqual(
             Value(test_value._schema)._data,
-            vec([empty_list, '', vec(['', empty_list, 0.0]), 0.0, empty_list, empty_list, vec([0.0, '', vec([0.0])])]))
+            vec([empty_list, '', vec(['', empty_list, 0.0]), 0.0, empty_list,
+                 empty_list, vec([0.0, '', vec([0.0])]), Value()]))
 
     def test_kind(self):
-        self.assertEqual(none_value.get_kind(), Value.Kind.NONE)
+        self.assertEqual(none_value.get_kind(), Value.Kind.VALUE)
         self.assertEqual(float_value.get_kind(), Value.Kind.NUMBER)
         self.assertEqual(string_value.get_kind(), Value.Kind.STRING)
         self.assertEqual(test_value.get_kind(), Value.Kind.RECORD)
@@ -449,25 +459,25 @@ class TestCase(unittest.TestCase):
         # map turns into a list of maps
         self.assertEqual(Value.Schema([{"x": 0}]), Value.Schema({"x": 0}).as_list())
 
-    def test_list_initialize_numbers(self):
-        zero: Value = Value(0)
-        twenty: Value = Value(20)
-        nineteen: Value = Value(19)
-        list_initialized: Value = Value([zero, twenty, nineteen])
-        element_initialized: Value = Value([0, 20, 19])
-        self.assertEqual(list_initialized.get_schema(), element_initialized.get_schema())
-        self.assertEqual(list_initialized._data, element_initialized._data)
-        self.assertEqual(list_initialized._dictionary, element_initialized._dictionary)
-
-    def test_list_initialize_lists(self):
-        one: Value = Value([1])
-        five: Value = Value([1, 2, 3, 4, 5])
-        three: Value = Value([1, 2, 3])
-        list_initialized: Value = Value([one, five, three])
-        element_initialized: Value = Value([[1], [1, 2, 3, 4, 5], [1, 2, 3]])
-        self.assertEqual(list_initialized.get_schema(), element_initialized.get_schema())
-        self.assertEqual(list_initialized._data, element_initialized._data)
-        self.assertEqual(list_initialized._dictionary, element_initialized._dictionary)
+    # def test_list_initialize_numbers(self):
+    #     zero: Value = Value(0)
+    #     twenty: Value = Value(20)
+    #     nineteen: Value = Value(19)
+    #     list_initialized: Value = Value([zero, twenty, nineteen])
+    #     element_initialized: Value = Value([0, 20, 19])
+    #     self.assertEqual(list_initialized.get_schema(), element_initialized.get_schema())
+    #     self.assertEqual(list_initialized._data, element_initialized._data)
+    #     self.assertEqual(list_initialized._dictionary, element_initialized._dictionary)
+    #
+    # def test_list_initialize_lists(self):
+    #     one: Value = Value([1])
+    #     five: Value = Value([1, 2, 3, 4, 5])
+    #     three: Value = Value([1, 2, 3])
+    #     list_initialized: Value = Value([one, five, three])
+    #     element_initialized: Value = Value([[1], [1, 2, 3, 4, 5], [1, 2, 3]])
+    #     self.assertEqual(list_initialized.get_schema(), element_initialized.get_schema())
+    #     self.assertEqual(list_initialized._data, element_initialized._data)
+    #     self.assertEqual(list_initialized._dictionary, element_initialized._dictionary)
 
     def test_create_empty_list(self):
         value: Value = Value([1])
@@ -476,7 +486,7 @@ class TestCase(unittest.TestCase):
 
     def test_bad_list_initializer(self):
         with self.assertRaises(ValueError):
-            Value([Value(0), Value("")])
+            Value([0, ""])
 
     # noinspection PyTypeChecker
     def test_implicit_numeric(self):
@@ -635,6 +645,16 @@ class TestCase(unittest.TestCase):
             ((5, 1), ["c", "d"]),
         )
         self.assertEqual(id(result), id(test_value))
+
+    def test_value_in_value(self):
+        """
+        Values can contain other Values recursively.
+        This allows them to change what type of data they contain at runtime.
+        """
+        v: Value = Value(x=Value(1))
+        self.assertEqual(float(v['x']), 1)  # here is is a number
+        v = mutate_value(v, 'x', Value("derbness"))
+        self.assertEqual(str(v['x']), 'derbness')  # here is a string
 
 
 if __name__ == '__main__':

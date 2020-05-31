@@ -11,7 +11,7 @@ from pynotf.data import Bonsai
 
 @composite
 def unique_strings(draw):
-    return draw(lists(text(), unique=True))
+    return draw(lists(text(), unique=True, max_size=10))
 
 
 ########################################################################################################################

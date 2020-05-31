@@ -36,11 +36,10 @@ class NodeDescription(NamedTuple):
     initial_state: str
 
 
-EMPTY_NODE_DESCRIPTION: Value = Value(
-    interface=dict(
-        # TODO: in order to have the node descriptions as Values, we need recursive values
-    )
-)
+# EMPTY_NODE_DESCRIPTION: Value = Value(
+#     interface=dict(
+#     )
+# )
 
 WIDGET_BUILTIN_NAMESPACE = 'widget'
 

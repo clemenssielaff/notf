@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import sys
-from enum import IntEnum, auto
+from enum import IntEnum
 from typing import Union, List, Dict, Any, Sequence, Optional, Tuple, Iterable, Callable, overload
 from math import trunc, ceil, floor, pow
 from operator import floordiv, mod, truediv
@@ -28,6 +27,9 @@ Denotable = Union[
 
 
 def check_number(obj: Any) -> Optional[float]:
+    """
+    Checks if the given number can be converted to a float (the only number type that can be stored in a Value).
+    """
     converter: Optional[Callable[[], float]] = getattr(obj, "__float__", None)
     if converter is None:
         return None
@@ -89,11 +91,9 @@ def create_denotable(obj: Any, allow_empty_list: bool = False, list_can_be_recor
             def get_keys(rep: Denotable) -> Optional[List[str]]:
                 if isinstance(rep, dict):
                     return list(rep.keys())
-                elif isinstance(rep, tuple):
-                    return None
                 else:
-                    assert isinstance(rep, Value)
-                    return rep.get_keys()
+                    assert isinstance(rep, tuple)
+                    return None
 
             reference_keys: Optional[List[str]] = get_keys(reference_denotable)
             for i in range(1, len(denotable)):
@@ -135,55 +135,47 @@ def create_denotable(obj: Any, allow_empty_list: bool = False, list_can_be_recor
 
 class Kind(IntEnum):
     """
-    Enumeration of the five denotable Value Kinds.
-    To differentiate between integers in a Value.Schema that represent forward offsets (see Schema), and enum values
-    that denote the Kind of an Element, we only use the highest denotable integers for the enum.
+    Enumeration of the  denotable Value Kinds.
+
+    At the start of the value range of a Schema word (uint8), we can use zero and one as identifiers because they can
+    never be valid offsets. A zero offset makes no sense and a one offset is a special case that is "inlined".
+    At the end of the range, we use the highest available integers to allow the space in between to be used as valid
+    offsets.
     """
-    NONE = 0
-    NUMBER = 1
-    STRING = sys.maxsize - 2
-    LIST = auto()
-    RECORD = auto()
+    RECORD = 0
+    LIST = 1
+    NUMBER = 253
+    STRING = 254
+    VALUE = 255
+    _LEFT = LIST
+    _RIGHT = NUMBER
 
-    # TODO: investigate whether we "really" need an explicit NONE type
-    #  Having zero in a Schema reserved for 'None' is a waste, because zero can never be a valid offset. So it is free
-    #  to use for a type that can be stored INSIDE a Value. Whereas 'None' implies that the Value is empty.
-
-    # TODO: you can ever get a 1 offset either, because the element in that special case is inlined.
-
-    # TODO: CONTINUE HERE
-    #  * maybe use 1 as the NUMBER Kind, since it is ground and 1 word long
-    #  * one way to keep the explicit NONE type _and_ don't waste any more numbers on an explicit VALUE kind would be to
-    #       use 0 as the VALUE Kind, but if a Schema _only_ has a single Value, then it is NONE as that arrangement
-    #       would otherwise be invalid anyway
+    # TODO: ensure that offsets are accumulative. Meaning if you have to offsets A and B, then B is just the offset
+    #   from A onwards. Meaning, to get to B you have to add Offset A + Offset B.
+    #   Why? Because this way, we can ensure that the only way to run out of offset space is to have a nested element
+    #   in the schema that is longer than 252 words long. But we could theoretically have 252 (?) of them - and that is
+    #   a MASSIVE Schema, that I don't expect
 
     @staticmethod
     def is_valid(value: int) -> bool:
         """
         :return: True iff `value` is a valid Kind enum value.
         """
-        return not (Kind.NUMBER < value < Kind.STRING)
+        return value >= 0 and not Kind.is_offset(value)
 
     @staticmethod
     def is_offset(value: int) -> bool:
         """
         :return: True iff `value` is not a valid Kind enum value but an offset in a Schema.
         """
-        return not Kind.is_valid(value)
+        return Kind._LEFT < value < Kind._RIGHT
 
     @staticmethod
     def is_ground(value: int) -> bool:
         """
         :return: Whether `value` denotes one of the ground types: Number and String
         """
-        return value == Kind.NUMBER or value == Kind.STRING
-
-    @staticmethod
-    def is_none(value: int) -> bool:
-        """
-        :return: Whether `value` is the NONE Kind.
-        """
-        return value == Kind.NONE
+        return value >= Kind._RIGHT
 
     @staticmethod
     def from_denotable(denotable: Optional[Denotable]) -> Kind:
@@ -192,7 +184,7 @@ class Kind(IntEnum):
         """
         assert denotable is not None
         if isinstance(denotable, Value):
-            return denotable.get_kind()
+            return Kind.VALUE
         elif isinstance(denotable, str):
             return Kind.STRING
         elif isinstance(denotable, float):
@@ -237,18 +229,20 @@ class Schema(tuple, Sequence[int]):
             # The None Schema is still one word long, so you can store it in a Value.
             # Empty lists cannot be used to create a Value, so you'd have to jump through hoops to store a None Schema
             # in a Value.
-            return super().__new__(Schema, (0,))
-
-        if isinstance(obj, Value):
-            # Value Schemas can simply be copied
-            return obj.get_schema()
+            return super().__new__(Schema, (int(Kind.VALUE),))
+            # TODO: this "Schema[0]" means the None Value is crap. True, you cannot create a Value from an empty list,
+            #   but you *should*. Instead of saying, it has to be [0] then, allow the creation of Values with an empty
+            #   list iff you specify the schema manually.
 
         schema: List[int] = []
         denotable: Denotable = create_denotable(obj)
         kind: Kind = Kind.from_denotable(denotable)
-        assert kind != Kind.NONE
 
-        if kind == Kind.NUMBER:
+        if isinstance(obj, Value):
+            # Values take up a single word in a Schema, the VALUE Kind.
+            schema.append(int(Kind.VALUE))
+
+        elif kind == Kind.NUMBER:
             # Numbers take up a single word in a Schema, the NUMBER Kind.
             schema.append(int(Kind.NUMBER))
 
@@ -309,6 +303,7 @@ class Schema(tuple, Sequence[int]):
                 else:
                     offset = len(schema) - child_position
                     assert offset > 0
+                    assert offset < Kind._RIGHT
                     # If the offset is 1, we only have a single non-ground child in the entire record and it is at the
                     # very end. In this case, we can simply put the sub-schema of the child inline and save a word.
                     if offset == 1:
@@ -325,11 +320,9 @@ class Schema(tuple, Sequence[int]):
         Checks if this is the None Schema.
         """
         assert len(self) > 0
-        if self[0] == Kind.NONE:
-            assert len(self) == 1
-            return True
-        else:
-            return False
+        return len(self) == 1 and self[0] == Kind.VALUE
+        # TODO: (see above) do not use Schema([Kind.VALUE]) as None identifier but the empty list.
+        #   this way, we can use a Schema([Kind.VALUE]) as the _ANY_ Schema! Whoop whoop!
 
     def as_list(self) -> Schema:
         """
@@ -353,17 +346,19 @@ class Schema(tuple, Sequence[int]):
             if next_word_is_record_size:
                 result += " ↳ Size: {}".format(word)
                 next_word_is_record_size = False
+            elif word == Kind.RECORD:
+                result += "Record"
+                next_word_is_record_size = True
+            elif word == Kind.LIST:
+                result += "List"
             elif word == Kind.NUMBER:
                 result += "Number"
             elif word == Kind.STRING:
                 result += "String"
-            elif word == Kind.LIST:
-                result += "List"
-            elif word == Kind.RECORD:
-                result += "Record"
-                next_word_is_record_size = True
-            else:
-                result += "→ {}".format(index + word)  # offset
+            elif word == Kind.VALUE:
+                result += "Value"
+            else:  # offset
+                result += "→ {}".format(index + word)
             result += "\n"
         return result
 
@@ -431,6 +426,7 @@ Data = Union[
     int,  # the size of a list is stored as an unsigned integer which are immutable by design
     str,  # strings are ground and immutable because of their Python implementation
     ConstListT['Data'],  # references to child Data are immutable through the use of ConstList
+    'Value',  # Values are immutable by induction
 ]
 """
 The immutable data stored inside a Value.
@@ -460,6 +456,10 @@ def create_data_from_schema(schema: Schema) -> Data:
         elif schema[index] == Kind.STRING:
             return ""
 
+        # value
+        elif schema[index] == Kind.VALUE:
+            return Value()
+
         # list
         elif schema[index] == Kind.LIST:
             return make_const_list((0,))  # empty list
@@ -488,7 +488,7 @@ def create_data_from_denotable(denotable: Denotable) -> Data:
     assert denotable is not None
 
     if isinstance(denotable, Value):
-        return denotable._data
+        return denotable
 
     kind: Kind = Kind.from_denotable(denotable)
 
@@ -539,7 +539,7 @@ def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
 
         kind: Kind = Kind.from_denotable(next_denotable)
 
-        if Kind.is_none(kind) or Kind.is_ground(kind):
+        if Kind.is_ground(kind):
             return None
 
         elif kind == Kind.LIST:
@@ -663,6 +663,14 @@ class Value:
         serialized.
         """
 
+        # TODO: Instead of implicitly encoding the kinds into a JSON serialized value (with null
+        #   to differentiate unnamed records from lists, for example), just store the value's Schema explicitly.
+        #   This way, we can store unnamed records in lists and "inline" recursive Values, since the Schema defines
+        #   how they are deserialized.
+        #   Use base64 encoding for the schema, or even better: Z85 encoding: https://rfc.zeromq.org/spec/32/
+        #   also see: https://en.wikipedia.org/wiki/Ascii85
+        #   or probably best: https://gist.github.com/minrk/6357188 (the implementation in the comment below)
+
         def recursion(data: Any, iterator: int, dictionary: Optional[Dictionary]) -> str:
             assert iterator < len(self._schema)
             kind: Kind = Kind(self._schema[iterator])
@@ -750,6 +758,9 @@ class Value:
             elif kind == Kind.STRING:
                 # string
                 return f'"{data}"'
+            elif kind == Kind.VALUE:
+                # value
+                return str(data)
             elif kind == Kind.LIST:
                 # list
                 iterator += 1
@@ -1014,37 +1025,46 @@ class Value:
                            f'{"List" if kind == Kind.LIST else "Record"} of size {size}')
 
         if kind == Kind.LIST:
-            # the child Schema starts at index 1
+            # children in list data start at index 1 (index 0 is the size of the list)
+            assert len(self._data) > index + 1
+            data: Data = self._data[index + 1]
+
+            # if the child is a Value, return that instead of creating a new one
+            if self._schema[1] == Kind.VALUE:
+                assert isinstance(data, Value)
+                return data
+
+            # extract the child schema
             start: int = 1
             end: int = get_subschema_end(self._schema, start)
             schema: Schema = Schema.from_slice(self._schema, start, end)
-
-            # children in list data start at index 1
-            assert len(self._data) > index + 1
-            data: Data = self._data[index + 1]
 
             # since this is not a record, we do not have to change the dictionary
             dictionary: Optional[Dictionary] = self._dictionary
 
         else:
-            start_index: int = get_subschema_start(self._schema, 0, index)
-            end_index: int = get_subschema_end(self._schema, start_index)
-            schema: Schema = Schema.from_slice(self._schema, start_index, end_index)
+            assert kind == Kind.RECORD
 
             # children in record data start at index 0
             data: Data = self._data[index]
 
+            # if the child is a Value, return that instead of creating a new one
+            start_index: int = get_subschema_start(self._schema, 0, index)
+            if self._schema[start_index] == Kind.VALUE:
+                assert isinstance(data, Value)
+                return data
+
+            # extract the child schema
+            end_index: int = get_subschema_end(self._schema, start_index)
+            schema: Schema = Schema.from_slice(self._schema, start_index, end_index)
+
             # since this is a record, we need to advance to the child's dictionary
             dictionary: Dictionary = self._dictionary.children[index]
 
+        # create a new value to wrap the child
         return Value._create(schema, data, dictionary)
 
     def _get_item_by_name(self, name: str) -> Value:
-        """
-
-        :param name:
-        :return:
-        """
         assert isinstance(self._data, ConstList)
         assert self.get_kind() == Kind.RECORD
         assert self._dictionary is not None
@@ -1056,14 +1076,22 @@ class Value:
             available_keys: str = '", "'.join(self._dictionary.names.keys())  # this is a Record, there is at least one
             raise KeyError(f'Unknown key "{name}" in Record. Available keys are: "{available_keys}"')
 
+        # look up the index of the child by name
         assert len(self._data) == self._schema[1]
         index: int = self._dictionary.names[name]
         assert 0 <= index < len(self._data)
 
+        # if the index points to a Value child, return that instead of creating a new one
         start_index: int = get_subschema_start(self._schema, 0, index)
+        if self._schema[start_index] == Kind.VALUE:
+            assert isinstance(self._data[index], Value)
+            return self._data[index]
+
+        # extract the child schema
         end_index: int = get_subschema_end(self._schema, start_index)
         schema: Schema = Schema.from_slice(self._schema, start_index, end_index)
 
+        # create a new value to wrap the child
         return Value._create(schema, self._data[index], self._dictionary.children[index])
 
     # noinspection PyMethodMayBeStatic
