@@ -43,6 +43,7 @@ test_element = {
     "nested_list": [
         ["a", "b"],
         ["c", "d"],
+        [],
     ],
     "unnamed record": (2, "hello", dict(x=3)),
     "a nested value": Value(nested_test_element),
@@ -50,6 +51,7 @@ test_element = {
 test_value = Value(test_element)
 float_value = Value(42.24)
 string_value = Value("hello")
+value_value = Value(Value(1))
 none_value = Value()
 
 empty_list = vec((0,))
@@ -77,28 +79,24 @@ class TestCase(unittest.TestCase):
                              vec(["string", vec([1, "I'm in the middle"]), 847.0]),
                              32.2,
                              vec([3, 2.0, 23.1, -347.0]),
-                             vec([2, vec([2, "a", "b"]), vec([2, "c", "d"])]),
+                             vec([3, vec([2, "a", "b"]), vec([2, "c", "d"]), vec([0])]),
                              vec([2, "hello", vec([3])]),
                              Value(nested_test_element),
                          ]))
-
-    def test_copy_constructor(self):
-        other_value: Value = Value(test_value)
-        self.assertEqual(other_value.get_schema(), test_value.get_schema())
-        self.assertEqual(id(other_value._data), id(test_value._data))
 
     def test_repr(self):
         self.assertEqual(repr(Value()), 'Value(None)')
         self.assertEqual(repr(Value(89)), 'Value(89)')
         self.assertEqual(repr(Value(1.23)), 'Value(1.23)')
         self.assertEqual(repr(Value("limbo man")), 'Value("limbo man")')
+        self.assertEqual(repr(Value(Value(852))), 'Value(Value(852))')
         self.assertEqual(repr(Value([1, 2.34, 3])), 'Value([1, 2.34, 3])')
         self.assertEqual(repr(Value([dict(x=3), dict(x=89.12), dict(x=80)])), 'Value([{x: 3}, {x: 89.12}, {x: 80}])')
         self.assertEqual(repr(Value((1, ['foo', 'bla'], dict(what='the funk')))),
                          'Value({1, ["foo", "bla"], {what: "the funk"}})')
 
     def test_schema(self):
-        self.assertEqual(len(none_value.get_schema()), 1)
+        self.assertEqual(len(none_value.get_schema()), 0)
         self.assertEqual(len(test_value._schema), 36)
         self.assertEqual(str(test_value._schema), """  0: Record
   1:  ↳ Size: 8
@@ -199,7 +197,8 @@ class TestCase(unittest.TestCase):
                  empty_list, vec([0.0, '', vec([0.0])]), Value()]))
 
     def test_kind(self):
-        self.assertEqual(none_value.get_kind(), Value.Kind.VALUE)
+        self.assertEqual(none_value.get_kind(), Value.Kind.NONE)
+        self.assertEqual(value_value.get_kind(), Value.Kind.VALUE)
         self.assertEqual(float_value.get_kind(), Value.Kind.NUMBER)
         self.assertEqual(string_value.get_kind(), Value.Kind.STRING)
         self.assertEqual(test_value.get_kind(), Value.Kind.RECORD)
@@ -255,13 +254,25 @@ class TestCase(unittest.TestCase):
         # access number in list
         self.assertEqual(float(test_value["number_list"][1]), 23.1)
 
-        # access map using an invalid key
-        with self.assertRaises(KeyError):
-            _ = test_value["my_map"]["not a key"]
-
         # check for None value
         self.assertTrue(none_value.is_none())
         self.assertFalse(test_value.is_none())
+
+    def test_get_value_without_creating_a_new_one(self):
+        """
+        If a Value stores another Value, it can be returned without having to construct a new Value around it.
+        """
+        # get value from list without copy
+        value_in_list: Value = Value([Value(1)])
+        self.assertEqual(id(value_in_list._data[1]), id(value_in_list[0]))
+
+        # get value from an unnamed record without copy
+        value_in_unnamed_record = Value((Value(1),))
+        self.assertEqual(id(value_in_unnamed_record._data[0]), id(value_in_unnamed_record[0]))
+
+        # get value from an named record without copy
+        value_in_named_record = Value(dict(x=Value(1)))
+        self.assertEqual(id(value_in_named_record._data[0]), id(value_in_named_record[0]))
 
     def test_get_failure(self):
         with self.assertRaises(KeyError):  # access a list using a key
@@ -283,6 +294,10 @@ class TestCase(unittest.TestCase):
             _ = test_value["name"][0]
         with self.assertRaises(KeyError):  # access a string using a key
             _ = test_value["name"]["what"]
+
+        # access map using an invalid key
+        with self.assertRaises(KeyError):
+            _ = test_value["my_map"]["not a key"]
 
         # fail to get anything from a None value
         with self.assertRaises(TypeError):
@@ -321,7 +336,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(str(modified2["name"]), "Mr. VeryWell")
         self.assertEqual(str(modified["name"]), "Mr. Okay")
 
-    def test_set_value(self):
+    def test_mutation(self):
         # change a list in the value
         modified = mutate_value(test_value, "coords", [dict(x=42, someName="answer", number_list=[-1, -2])])
         self.assertEqual(len(modified["coords"]), 1)
@@ -344,7 +359,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(str(modified["coords"][1]["someName"]), "derb")
         self.assertEqual(str(modified[0][-1][-2]), "derb")
 
-    def test_set_failures(self):
+    def test_mutation_failures(self):
         with self.assertRaises(TypeError):  # set number to string
             mutate_value(test_value, "pos", "0.23")
         with self.assertRaises(TypeError):  # set number to list
@@ -412,7 +427,11 @@ class TestCase(unittest.TestCase):
                                                 "key": "changed",
                                                 "a number": 124, })
 
-    def test_modify_with_equal_value(self):
+        # mutation of none value
+        with self.assertRaises(ValueError):
+            mutate_value(none_value, 1, 2)
+
+    def test_mutate_with_equal_value(self):
         # update with the same number
         modified = mutate_value(test_value, "pos", 32.2)
         self.assertEqual(id(test_value), id(modified))
@@ -431,6 +450,14 @@ class TestCase(unittest.TestCase):
                                                        "a number": 847})
         self.assertEqual(id(test_value), id(modified))
 
+        # update with the same empty list
+        modified = mutate_value(test_value, ("nested_list", 2), [])
+        self.assertEqual(id(test_value), id(modified))
+
+        # pathless update with same ground
+        modified = mutate_value(float_value, 42.24)
+        self.assertEqual(id(float_value), id(modified))
+
     def test_change_list_size(self):
         # update list in nested list
         self.assertEqual(len(test_value["nested_list"][0]), 2)
@@ -446,6 +473,53 @@ class TestCase(unittest.TestCase):
         modified = mutate_value(test_value, "coords", [])
         self.assertEqual(len(modified["coords"]), 0)
 
+    def test_multimutate(self):
+        """
+        Multi-mutate allows multiple mutations in one operation.
+        """
+        new_value: Value = multimutate_value(
+            test_value,
+            (1, "Mrs. Also Okay"),
+            ("pos", 0.01),
+            (("my_map", "key"), "hole"),
+            ((5, 1), ["what"]),
+        )
+        self.assertEqual(str(new_value[1]), "Mrs. Also Okay")
+        self.assertEqual(float(new_value["pos"]), 0.01)
+        self.assertEqual(str(new_value["my_map"]["key"]), "hole")
+        self.assertEqual(new_value[5][1], Value(["what"]))
+
+        # You cannot mutate None
+        with self.assertRaises(ValueError):
+            multimutate_value(none_value, (0, 3))
+
+    def test_multimutate_with_same_result(self):
+        """
+        If the result of a multi-mutation is the same as the original Value, that one is returned.
+        """
+        result: Value = multimutate_value(
+            test_value,
+            (1, "Mr. Okay"),
+            ("pos", 32.2),
+            (("my_map", "key"), "string"),
+            ((5, 1), ["c", "d"]),
+        )
+        self.assertEqual(id(result), id(test_value))
+
+    def test_schema_from_value(self):
+        """
+        Retrieve Schemas from a Value (list of numbers).
+        """
+        schema: Value.Schema = Value.Schema.from_value(Value([
+            0, 8, 8, 254, 13, 253, 18, 19, 21, 255, 1, 0, 3, 253, 254, 1, 253, 0,
+            3, 254, 2, 253, 1, 254, 1, 253, 1, 1, 254, 0, 3, 253, 254, 0, 1, 253]))
+        self.assertEqual(schema, test_value.get_schema())
+
+        self.assertIsNone(Value.Schema.from_value(Value()))
+        self.assertIsNone(Value.Schema.from_value(Value(1)))
+        self.assertIsNone(Value.Schema.from_value(Value("")))
+        self.assertIsNone(Value.Schema.from_value(Value(dict(a=1))))
+
     def test_schema_as_list(self):
         # number turns into a list of numbers
         self.assertEqual(Value.Schema([0]), Value.Schema(0).as_list())
@@ -458,6 +532,12 @@ class TestCase(unittest.TestCase):
 
         # map turns into a list of maps
         self.assertEqual(Value.Schema([{"x": 0}]), Value.Schema({"x": 0}).as_list())
+
+        # value turns into a list of values
+        self.assertEqual(Value.Schema([Value(0)]), Value.Schema(Value(0)).as_list())
+
+        # none turns into None
+        self.assertEqual(Value.Schema(), Value.Schema().as_list())
 
     def test_create_empty_list(self):
         value: Value = Value([1])
@@ -517,6 +597,9 @@ class TestCase(unittest.TestCase):
         self.assertEqual(two + one, three)
         self.assertEqual(two + 1, three)
         self.assertEqual(2 + one, 3.)
+        self.assertEqual(two - one, one)
+        self.assertEqual(two - 1, one)
+        self.assertEqual(2 - one, 1.)
         self.assertEqual(two * two, four)
         self.assertEqual(two * 2, four)
         self.assertEqual(2 * two, 4.)
@@ -526,6 +609,18 @@ class TestCase(unittest.TestCase):
         self.assertEqual(two ** two, four)
         self.assertEqual(two ** 2, four)
         self.assertEqual(2 ** two, 4.)
+
+        # rich comparison
+        self.assertTrue(two >= two)
+        self.assertTrue(two >= one)
+        self.assertFalse(two >= three)
+        self.assertTrue(two >= 1)
+        self.assertTrue(two >= 2.)
+        self.assertFalse(two >= 3)
+        self.assertTrue(two > one)
+        self.assertFalse(two > two)
+        self.assertTrue(two > 1.)
+        self.assertFalse(two > 2)
 
         # unsupported
         unsupported = type('Unsupported', (object,), dict())()
@@ -542,6 +637,10 @@ class TestCase(unittest.TestCase):
         with self.assertRaises(TypeError):
             _ = unsupported + one
         with self.assertRaises(TypeError):
+            _ = one - unsupported
+        with self.assertRaises(TypeError):
+            _ = unsupported - one
+        with self.assertRaises(TypeError):
             _ = one * unsupported
         with self.assertRaises(TypeError):
             _ = unsupported * one
@@ -549,6 +648,10 @@ class TestCase(unittest.TestCase):
             _ = one % unsupported
         with self.assertRaises(TypeError):
             _ = one ** unsupported
+        with self.assertRaises(TypeError):
+            _ = two >= None
+        with self.assertRaises(TypeError):
+            _ = two > None
 
     def test_implicit_string(self):
         self.assertEqual(test_value["my_map"]['key'], "string")
@@ -619,6 +722,50 @@ class TestCase(unittest.TestCase):
         self.assertEqual(len(value["b"]), 0)
         self.assertEqual(len(value), 2)
 
+    def test_json_deserialization_failures(self):
+        """
+        Fail gracefully when encountering malformed JSON strings.
+        """
+        # head
+        with self.assertRaises(ValueError):
+            Value.from_json("")
+        with self.assertRaises(ValueError):
+            Value.from_json("{}")
+
+        # type
+        with self.assertRaises(ValueError):
+            Value.from_json('{"head": {}}')
+        with self.assertRaises(ValueError):
+            Value.from_json('{"head": {"type": ""}}')
+        with self.assertRaises(ValueError):
+            Value.from_json('{"head": {"type": 1}}')
+        with self.assertRaises(ValueError):
+            Value.from_json('{"head": {"type": "wrong"}}')
+
+        # binary
+        with self.assertRaises(ValueError):
+            Value.from_json('{"head": {"type": "notf-value"}}')
+        with self.assertRaises(ValueError):
+            Value.from_json('{"head": {"type": "notf-value", "binary": ""}}')
+        with self.assertRaises(ValueError):
+            Value.from_json('{"head": {"type": "notf-value", "binary": 0}}')
+        with self.assertRaises(ValueError):
+            Value.from_json('{"head": {"type": "notf-value", "binary": "unsupported"}}')
+
+        # body
+        with self.assertRaises(ValueError):
+            Value.from_json('{"head": {"type": "notf-value", "binary": "z85<"}}')
+        with self.assertRaises(ValueError):
+            Value.from_json('{"head": {"type": "notf-value", "binary": "z85<"}, "body"}')
+        with self.assertRaises(ValueError):
+            Value.from_json('{"head": {"type": "notf-value", "binary": "z85<"}, "body": {}}')
+
+        # schema
+        with self.assertRaises(ValueError):
+            Value.from_json('{"head": {"type": "notf-value", "binary": "z85<"}, "body": { "schema": 0}}')
+        with self.assertRaises(ValueError):
+            Value.from_json('{"head": {"type": "notf-value", "binary": "z85<"}, "body": { "schema": ""}}')
+
     def test_none_with_json(self):
         """
         Tests that even a None Value can be serialized properly.
@@ -626,35 +773,6 @@ class TestCase(unittest.TestCase):
         json_string: str = Value().as_json()
         value: Value = Value.from_json(json_string)
         self.assertTrue(value.is_none())
-
-    def test_multimutate(self):
-        """
-        Multi-mutate allows multiple mutations in one operation.
-        """
-        new_value: Value = multimutate_value(
-            test_value,
-            (1, "Mrs. Also Okay"),
-            ("pos", 0.01),
-            (("my_map", "key"), "hole"),
-            ((5, 1), ["what"]),
-        )
-        self.assertEqual(str(new_value[1]), "Mrs. Also Okay")
-        self.assertEqual(float(new_value["pos"]), 0.01)
-        self.assertEqual(str(new_value["my_map"]["key"]), "hole")
-        self.assertEqual(new_value[5][1], Value(["what"]))
-
-    def test_multimutate_with_same_result(self):
-        """
-        If the result of a multi-mutation is the same as the original Value, that one is returned.
-        """
-        result: Value = multimutate_value(
-            test_value,
-            (1, "Mr. Okay"),
-            ("pos", 32.2),
-            (("my_map", "key"), "string"),
-            ((5, 1), ["c", "d"]),
-        )
-        self.assertEqual(id(result), id(test_value))
 
     def test_value_in_value(self):
         """

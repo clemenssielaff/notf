@@ -99,12 +99,6 @@ def create_denotable(obj: Any) -> Denotable:
 
         return denotable
 
-    # schema is a tuple, but we treat it as a list...
-    elif isinstance(obj, Schema):
-        if len(obj) == 0:  # TODO: validate Schema
-            raise ValueError("Schema cannot be empty")
-        return [float(word) for word in obj]
-
     # named record
     elif isinstance(obj, dict):
         if len(obj) == 0:
@@ -146,9 +140,11 @@ class Kind(IntEnum):
     VALUE = 255
 
     _LEFT = LIST
-    _OFFSET = _LEFT + 1  # guaranteed to not be a valid Kind (therefore it is an offset)
     _RIGHT = NUMBER
-    assert _LEFT < _OFFSET < _RIGHT
+
+    # NONE is not a Kind, we just need an id for it. If we encounter it inside a Schema it is treated as an offset.
+    NONE = _LEFT + 1
+    assert _LEFT < NONE < _RIGHT
 
     # TODO: ensure that offsets are accumulative. Meaning if you have to offsets A and B, then B is just the offset
     #   from A onwards. Meaning, to get to B you have to add Offset A + Offset B.
@@ -170,12 +166,11 @@ class Kind(IntEnum):
         """
         return Kind._LEFT < value < Kind._RIGHT
 
-    @staticmethod  # TODO: turn into member
-    def is_ground(value: int) -> bool:
+    def is_ground(self) -> bool:
         """
-        :return: Whether `value` denotes one of the ground types: Number, String and Value.
+        :return: Whether this Kind denotes one of the ground types: Number, String and Value.
         """
-        return value >= Kind._RIGHT
+        return self >= Kind._RIGHT
 
     @staticmethod
     def from_denotable(denotable: Optional[Denotable]) -> Kind:
@@ -211,7 +206,7 @@ class Schema(tuple, Sequence[int]):
 
     @staticmethod
     def from_ground_kind(kind: Kind) -> Schema:
-        assert Kind.is_ground(kind)
+        assert kind.is_ground()
         return tuple.__new__(Schema, (int(kind),))
 
     @staticmethod
@@ -234,10 +229,7 @@ class Schema(tuple, Sequence[int]):
             # The None Schema is still one word long, so you can store it in a Value.
             # Empty lists cannot be used to create a Value, so you'd have to jump through hoops to store a None Schema
             # in a Value.
-            return super().__new__(Schema, (int(Kind.VALUE),))
-            # TODO: this "Schema[0]" means the None Value is crap. True, you cannot create a Value from an empty list,
-            #   but you *should*. Instead of saying, it has to be [0] then, allow the creation of Values with an empty
-            #   list iff you specify the schema manually.
+            return super().__new__(Schema, ())
 
         schema: List[int] = []
         denotable: Denotable = create_denotable(obj)
@@ -307,7 +299,7 @@ class Schema(tuple, Sequence[int]):
 
             for child in children:
                 # only store the Kind for ground types
-                if Kind.is_ground(Kind.from_denotable(child)):
+                if Kind.from_denotable(child).is_ground():
                     schema[child_position] = int(Kind.from_denotable(child))
                 # lists and records store a forward offset and append themselves to the end of the schema
                 else:
@@ -329,10 +321,7 @@ class Schema(tuple, Sequence[int]):
         """
         Checks if this is the None Schema.
         """
-        assert len(self) > 0
-        return len(self) == 1 and self[0] == Kind.VALUE
-        # TODO: (see above) do not use Schema([Kind.VALUE]) as None identifier but the empty list.
-        #   this way, we can use a Schema([Kind.VALUE]) as the _ANY_ Schema! Whoop whoop!
+        return len(self) == 0
 
     def as_list(self) -> Schema:
         """
@@ -348,20 +337,20 @@ class Schema(tuple, Sequence[int]):
     def as_z85(self) -> bytes:
         """
         Encodes this Schema to Z85.
-        The Z85 output is left-padded with OFFSET bytes because they can never be the first word.
+        The Z85 output is left-padded with NONE bytes because they can never be the first word.
         """
         raw_bytes: bytes = bytes(self)
         if len(raw_bytes) == 0:
             return raw_bytes
         padding: int = 3 - ((len(raw_bytes) - 1) % 4)  # pad to a multiple of 4
-        return Z85.encode(bytes([Kind._OFFSET] * padding) + raw_bytes)
+        return Z85.encode(bytes([Kind.NONE] * padding) + raw_bytes)
 
     @staticmethod
     def from_z85(z85_bytes: bytes) -> Schema:
         """
         Decodes a Schema from a Z85 encoded byte stream.
         """
-        return tuple.__new__(Schema, Z85.decode(z85_bytes).lstrip(bytes([Kind._OFFSET])))
+        return tuple.__new__(Schema, Z85.decode(z85_bytes).lstrip(bytes([Kind.NONE])))
 
     def __str__(self) -> str:
         """
@@ -421,7 +410,7 @@ def get_subschema_end(schema: Schema, start_index: int) -> int:
     assert Kind.is_valid(schema[start_index])
     kind: Kind = Kind(schema[start_index])
 
-    if Kind.is_ground(kind):
+    if kind.is_ground():
         return start_index + 1
 
     elif kind == Kind.LIST:
@@ -436,7 +425,7 @@ def get_subschema_end(schema: Schema, start_index: int) -> int:
         # we need to find the end index of the last, non-ground child
         for child_index in (start_index + 2 + child for child in reversed(range(child_count))):
             assert child_index < len(schema)
-            if not Kind.is_ground(schema[child_index]):
+            if not Kind(schema[child_index]).is_ground():
                 if Kind.is_offset(schema[child_index]):
                     return get_subschema_end(schema, child_index + schema[child_index])
                 else:
@@ -520,7 +509,7 @@ def create_data_from_denotable(denotable: Denotable) -> Data:
 
     kind: Kind = Kind.from_denotable(denotable)
 
-    if Kind.is_ground(kind):
+    if kind.is_ground():
         return denotable
 
     elif kind == Kind.LIST:
@@ -564,7 +553,7 @@ def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
     def parse_next(next_denotable: Denotable) -> Optional[Dictionary]:
         kind: Kind = Kind.from_denotable(next_denotable)
 
-        if Kind.is_ground(kind):
+        if kind.is_ground():
             return None
 
         elif kind == Kind.LIST:
@@ -588,18 +577,6 @@ def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
                 )
 
     return parse_next(denotable)
-
-
-def dictionary_to_dict(dictionary: Optional[Dictionary]) -> Dict:
-    """
-    Debug function to transform a nested Dictionary into a nested Python dict.
-    """
-    if dictionary is None:
-        return {}
-    names = dictionary.names.keys()
-    return {
-        names[i]: dictionary_to_dict(dictionary.children[i]) for i in range(len(names))
-    }
 
 
 # VALUE ################################################################################################################
@@ -628,15 +605,8 @@ class Value:
         if obj is None:
             return
 
-        # copy initialization
-        if isinstance(obj, Value):
-            assert len(kwargs) == 0
-            self._schema = obj._schema
-            self._data = obj._data
-            self._dictionary = obj._dictionary
-
         # initialization from Schema
-        elif isinstance(obj, Schema):
+        if isinstance(obj, Schema):
             assert len(kwargs) == 0
             self._schema = obj
             self._data = create_data_from_schema(self._schema)
@@ -679,7 +649,8 @@ class Value:
         """
         The Kind of this Value.
         """
-        assert len(self._schema) > 0
+        if len(self._schema) == 0:
+            return Kind.NONE
         return Kind(self._schema[0])
 
     def get_keys(self) -> List[str]:
@@ -805,6 +776,8 @@ class Value:
             if 'data' not in value_dict:
                 raise ValueError("JSON encoded Value is missing the `data` tag")
             data_root: Any = value_dict['data']
+            if data_root is None:
+                return Value()
 
             def data_recursion(raw_data: Any, schema: Schema, schema_itr: int) -> Tuple[Data, Optional[Dictionary]]:
                 kind: Kind = Kind(schema[schema_itr])
@@ -815,8 +788,6 @@ class Value:
                     assert isinstance(raw_data, str)
                     return raw_data, None
                 elif kind == Kind.VALUE:
-                    if raw_data is None:
-                        return None, None  # None Value
                     assert isinstance(raw_data, dict)
                     return value_recursion(raw_data), None
                 elif kind == Kind.LIST:
@@ -882,7 +853,7 @@ class Value:
                 return f'"{data}"'
             elif kind == Kind.VALUE:
                 # value
-                return str(data)
+                return repr(data)
             elif kind == Kind.LIST:
                 # list
                 iterator += 1
@@ -1251,7 +1222,8 @@ def mutate_data(current_data: Data, new_data: Any, schema: Schema, schema_itr: i
     # set to empty list
     if isinstance(denotable, list) and len(denotable) == 0:
         if kind == Kind.LIST:
-            if len(current_data) == 0:
+            if len(current_data) == 1:
+                assert current_data[0] == 0
                 return current_data, False
             else:
                 return create_data_from_denotable(denotable), True
@@ -1296,7 +1268,7 @@ def mutate_recursive(current_data: Data, new_data: Any, schema: Value.Schema, sc
     assert Kind.is_valid(kind)
 
     # cannot continue recursion past a ground value
-    if Kind.is_ground(kind):
+    if kind.is_ground():
         raise IndexError(f'Unsupported operator[] for Value of kind {kind.name.capitalize()}')
     assert kind in (Kind.LIST, Kind.RECORD)
 
@@ -1392,10 +1364,7 @@ def mutate_value(value: Value, *args) -> Value:
 
     :param value: Value providing the Data buffer to mutate.
     """
-    if len(args) == 0:  # noop
-        return value
-
-    elif len(args) == 1:
+    if len(args) == 1:
         if value.is_none():
             if args[0] is None:
                 return value  # setting None to None returns None
