@@ -569,7 +569,21 @@ class TestCase(unittest.TestCase):
         self.assertEqual(value["second"]["not_empty"], 1)
 
     def test_construct_with_empty_list(self):
-        value: Value = Value([[1, 2, 3], []])  # TODO: allow edge case with empty list
+        """
+        We allow nested lists to be empty as long as there is at least one not-empty one for reference
+        """
+        value1: Value = Value([[1, 2, 3], []])
+        value2: Value = Value([[], [1, 2, 3]])
+        value3: Value = Value([[], [1, 2, 3], []])
+        value4: Value = Value([[], [], [1, 2, 3]])
+        self.assertEqual(value1.get_schema(), Value([[1]]).get_schema())
+        self.assertEqual(value1.get_schema(), value2.get_schema())
+        self.assertEqual(value1.get_schema(), value3.get_schema())
+        self.assertEqual(value1.get_schema(), value4.get_schema())
+
+        # do not allow lists of empty lists
+        with self.assertRaises(ValueError):
+            Value([[], [], []])
 
     def test_as_and_from_json(self):
         """

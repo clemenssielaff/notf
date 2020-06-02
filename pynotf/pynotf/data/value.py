@@ -37,12 +37,11 @@ def check_number(obj: Any) -> Optional[float]:
         return float(converter())
 
 
-def create_denotable(obj: Any, allow_empty_list: bool = False) -> Denotable:
+def create_denotable(obj: Any) -> Denotable:
     """
     Tries to convert any given Python object into a Denotable.
     Denotable are still pure Python objects, but they are known to be capable of being stored in a Value.
     :param obj: Object to convert.
-    :param allow_empty_list: Empty lists are allowed when modifying a Value, but not during construction.
     :return: The given obj as Denotable.
     :raise ValueError: If the object cannot be denoted by a Value.
     """
@@ -66,20 +65,26 @@ def create_denotable(obj: Any, allow_empty_list: bool = False) -> Denotable:
 
     # list
     elif isinstance(obj, list):
-        denotable: List[Denotable] = [create_denotable(x, allow_empty_list) for x in obj]
+        denotable: List[Denotable] = [create_denotable(x) for x in obj]
         if len(denotable) == 0:
-            if allow_empty_list:
-                return []
-            else:
-                raise ValueError("Lists cannot be empty during Value definition")
+            return []
 
-        reference_denotable: Denotable = denotable[0]
-        reference_schema: Schema = Schema(reference_denotable)
-        for i in range(1, len(denotable)):
-            if Schema(denotable[i]) != reference_schema:
-                raise ValueError("All items in a Value.List must have the same Schema")
+        # ensure that all children have the same schema but allow empty list children
+        for idx, reference in enumerate(denotable):
+            if isinstance(reference, list) and len(reference) == 0:
+                continue
+            reference_schema: Schema = Schema(reference)
+            for other_child in denotable[idx + 1:]:
+                if isinstance(other_child, list) and len(other_child) == 0:
+                    continue
+                elif Schema(other_child) != reference_schema:
+                    raise ValueError("All items in a Value.List must have the same Schema")
+            break
+        # ... unless all of the children are empty lists
+        else:
+            raise ValueError("Cannot define a List Schema with only empty child lists")
 
-        if Kind.from_denotable(reference_denotable) == Kind.RECORD:
+        if Kind.from_denotable(reference) == Kind.RECORD:
             def get_keys(rep: Denotable) -> Optional[List[str]]:
                 if isinstance(rep, dict):
                     return list(rep.keys())
@@ -87,7 +92,7 @@ def create_denotable(obj: Any, allow_empty_list: bool = False) -> Denotable:
                     assert isinstance(rep, tuple)
                     return None
 
-            reference_keys: Optional[List[str]] = get_keys(reference_denotable)
+            reference_keys: Optional[List[str]] = get_keys(reference)
             for i in range(1, len(denotable)):
                 if get_keys(denotable[i]) != reference_keys:
                     raise ValueError("All Records in a Value.List must have the same Dictionary")
@@ -109,7 +114,7 @@ def create_denotable(obj: Any, allow_empty_list: bool = False) -> Denotable:
         for key, value in obj.items():
             if not isinstance(key, str):
                 raise ValueError("All keys of a Record must be of Value.Kind String")
-            denotable[key] = create_denotable(value, allow_empty_list)
+            denotable[key] = create_denotable(value)
         return denotable
 
     # unnamed record
@@ -117,7 +122,7 @@ def create_denotable(obj: Any, allow_empty_list: bool = False) -> Denotable:
         if len(obj) == 0:
             raise ValueError("Records cannot be empty")
 
-        return tuple(create_denotable(value, allow_empty_list) for value in obj)
+        return tuple(create_denotable(value) for value in obj)
 
     # incompatible type
     raise ValueError("Cannot construct Denotable from {}".format(type(obj).__name__))
@@ -259,9 +264,14 @@ class Schema(tuple, Sequence[int]):
             # || List Type || ChildType | ... ||
             # ||- header --||---- child ------||
             #
-            assert len(denotable) > 0
             schema.append(int(Kind.LIST))
-            schema.extend(Schema(denotable[0]))
+            for child in denotable:
+                if isinstance(child, list) and len(child) == 0:
+                    continue
+                schema.extend(Schema(child))
+                break
+            else:
+                raise ValueError("Lists cannot be empty for Schema definition")
 
         else:
             assert kind == Kind.RECORD
@@ -558,8 +568,10 @@ def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
             return None
 
         elif kind == Kind.LIST:
-            assert len(next_denotable) > 0
-            return parse_next(next_denotable[0])
+            if len(next_denotable) == 0:
+                return None
+            else:
+                return parse_next(next_denotable[0])
 
         else:
             assert kind == Kind.RECORD
@@ -1234,7 +1246,7 @@ def mutate_data(current_data: Data, new_data: Any, schema: Schema, schema_itr: i
     assert Kind.is_valid(kind)
 
     # ensure that the new data is denotable
-    denotable: Denotable = create_denotable(new_data, allow_empty_list=True)
+    denotable: Denotable = create_denotable(new_data)
 
     # set to empty list
     if isinstance(denotable, list) and len(denotable) == 0:
