@@ -20,6 +20,7 @@ A Bonsai dictionary is a simple array of "nodes". Each node in the array contain
 Instead of storing the absolute offset value, each offset is only the offset added by this child branch. In order to
 calculate the actual offset, you need to sum up the offset of all branches and including the target branch's.
 """
+from __future__ import annotations
 from typing import List, Tuple, Sequence, Dict, Optional
 
 WORD_SIZE: int = 8  # bits
@@ -262,6 +263,11 @@ class Bonsai:
 
     def __contains__(self, item: str) -> bool:
         return self.get(item) is not None
+
+    def __eq__(self, other: Bonsai) -> bool:
+        if not isinstance(other, Bonsai):
+            return False
+        return self._bonsai == other._bonsai
 
     def get(self, name: str) -> Optional[int]:
         if not isinstance(name, str):

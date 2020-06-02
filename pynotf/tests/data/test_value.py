@@ -459,26 +459,6 @@ class TestCase(unittest.TestCase):
         # map turns into a list of maps
         self.assertEqual(Value.Schema([{"x": 0}]), Value.Schema({"x": 0}).as_list())
 
-    # def test_list_initialize_numbers(self):
-    #     zero: Value = Value(0)
-    #     twenty: Value = Value(20)
-    #     nineteen: Value = Value(19)
-    #     list_initialized: Value = Value([zero, twenty, nineteen])
-    #     element_initialized: Value = Value([0, 20, 19])
-    #     self.assertEqual(list_initialized.get_schema(), element_initialized.get_schema())
-    #     self.assertEqual(list_initialized._data, element_initialized._data)
-    #     self.assertEqual(list_initialized._dictionary, element_initialized._dictionary)
-    #
-    # def test_list_initialize_lists(self):
-    #     one: Value = Value([1])
-    #     five: Value = Value([1, 2, 3, 4, 5])
-    #     three: Value = Value([1, 2, 3])
-    #     list_initialized: Value = Value([one, five, three])
-    #     element_initialized: Value = Value([[1], [1, 2, 3, 4, 5], [1, 2, 3]])
-    #     self.assertEqual(list_initialized.get_schema(), element_initialized.get_schema())
-    #     self.assertEqual(list_initialized._data, element_initialized._data)
-    #     self.assertEqual(list_initialized._dictionary, element_initialized._dictionary)
-
     def test_create_empty_list(self):
         value: Value = Value([1])
         empty: Value = mutate_value(value, [])
@@ -588,6 +568,9 @@ class TestCase(unittest.TestCase):
         ))
         self.assertEqual(value["second"]["not_empty"], 1)
 
+    def test_construct_with_empty_list(self):
+        value: Value = Value([[1, 2, 3], []])  # TODO: allow edge case with empty list
+
     def test_as_and_from_json(self):
         """
         Simple conversion of the test Value to and from JSON.
@@ -596,18 +579,31 @@ class TestCase(unittest.TestCase):
         restored_value: Value = Value.from_json(json_string)
         self.assertEqual(test_value, restored_value)
 
-    def test_from_json_with_schema(self):
+    def test_from_json_with_empty_list(self):
         """
         Load a Value from JSON that contains an empty list.
         """
-        value: Value = Value(dict(a=[1, 2, 3], b=[4, 5, 6]))
-        json_str: str = '{"a": [1, 2, 3], "b": []}'
-        with self.assertRaises(ValueError):
-            Value.from_json(json_str)
-        new_value: Value = Value.from_json(json_str, value)
-        self.assertEqual(value.get_schema(), new_value.get_schema())
-        value = mutate_value(value, 'b', [])
-        self.assertEqual(value, new_value)
+        json_string: str = """{
+            "head": {
+                "type": "notf-value",
+                "version": 1,
+                "binary": "z85<"
+            },
+            "body": {
+                "schema": "7Je%0$&(q@",
+                "data": {
+                    "a": [1, 2, 3],
+                    "b": []
+                }
+            }
+        }"""
+        value: Value = Value.from_json(json_string)
+        self.assertEqual(float(value["a"][0]), 1)
+        self.assertEqual(float(value["a"][1]), 2)
+        self.assertEqual(float(value["a"][2]), 3)
+        self.assertEqual(len(value["a"]), 3)
+        self.assertEqual(len(value["b"]), 0)
+        self.assertEqual(len(value), 2)
 
     def test_none_with_json(self):
         """

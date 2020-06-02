@@ -9,7 +9,7 @@ from json import dumps as write_json, loads as read_json
 from pyrsistent import pvector as make_const_list, PVector as ConstList, PRecord as ConstNamedTuple, field as c_field
 from pyrsistent.typing import PVector as ConstListT
 
-from pynotf.data import Bonsai
+from pynotf.data import Bonsai, Z85
 
 # DENOTABLE ############################################################################################################
 
@@ -37,15 +37,12 @@ def check_number(obj: Any) -> Optional[float]:
         return float(converter())
 
 
-def create_denotable(obj: Any, allow_empty_list: bool = False, list_can_be_record: bool = False) -> Denotable:
+def create_denotable(obj: Any, allow_empty_list: bool = False) -> Denotable:
     """
     Tries to convert any given Python object into a Denotable.
     Denotable are still pure Python objects, but they are known to be capable of being stored in a Value.
     :param obj: Object to convert.
     :param allow_empty_list: Empty lists are allowed when modifying a Value, but not during construction.
-    :param list_can_be_record: When deserializing JSON, we cannot differentiate between lists and unnamed records.
-        While the list type is built in, unnamed records are identified by lists starting with a single <null> element.
-        Usually, this would not be allowed.
     :return: The given obj as Denotable.
     :raise ValueError: If the object cannot be denoted by a Value.
     """
@@ -69,12 +66,7 @@ def create_denotable(obj: Any, allow_empty_list: bool = False, list_can_be_recor
 
     # list
     elif isinstance(obj, list):
-        # when converting to JSON, there is no type differentiation between lists and unnamed records
-        # an unnamed record is identified by having the first element in the list set to <null>
-        if list_can_be_record and len(obj) > 0 and obj[0] is None:
-            return tuple(create_denotable(value, allow_empty_list, list_can_be_record) for value in obj[1:])
-
-        denotable: List[Denotable] = [create_denotable(x, allow_empty_list, list_can_be_record) for x in obj]
+        denotable: List[Denotable] = [create_denotable(x, allow_empty_list) for x in obj]
         if len(denotable) == 0:
             if allow_empty_list:
                 return []
@@ -117,7 +109,7 @@ def create_denotable(obj: Any, allow_empty_list: bool = False, list_can_be_recor
         for key, value in obj.items():
             if not isinstance(key, str):
                 raise ValueError("All keys of a Record must be of Value.Kind String")
-            denotable[key] = create_denotable(value, allow_empty_list, list_can_be_record)
+            denotable[key] = create_denotable(value, allow_empty_list)
         return denotable
 
     # unnamed record
@@ -125,10 +117,10 @@ def create_denotable(obj: Any, allow_empty_list: bool = False, list_can_be_recor
         if len(obj) == 0:
             raise ValueError("Records cannot be empty")
 
-        return tuple(create_denotable(value, allow_empty_list, list_can_be_record) for value in obj)
+        return tuple(create_denotable(value, allow_empty_list) for value in obj)
 
     # incompatible type
-    raise ValueError("Cannot construct Denotable from a {}".format(type(obj).__name__))
+    raise ValueError("Cannot construct Denotable from {}".format(type(obj).__name__))
 
 
 # KIND #################################################################################################################
@@ -147,8 +139,11 @@ class Kind(IntEnum):
     NUMBER = 253
     STRING = 254
     VALUE = 255
+
     _LEFT = LIST
+    _OFFSET = _LEFT + 1  # guaranteed to not be a valid Kind (therefore it is an offset)
     _RIGHT = NUMBER
+    assert _LEFT < _OFFSET < _RIGHT
 
     # TODO: ensure that offsets are accumulative. Meaning if you have to offsets A and B, then B is just the offset
     #   from A onwards. Meaning, to get to B you have to add Offset A + Offset B.
@@ -170,10 +165,10 @@ class Kind(IntEnum):
         """
         return Kind._LEFT < value < Kind._RIGHT
 
-    @staticmethod
+    @staticmethod  # TODO: turn into member
     def is_ground(value: int) -> bool:
         """
-        :return: Whether `value` denotes one of the ground types: Number and String
+        :return: Whether `value` denotes one of the ground types: Number, String and Value.
         """
         return value >= Kind._RIGHT
 
@@ -205,12 +200,17 @@ class Schema(tuple, Sequence[int]):
     offset to a container Schema (List or Record).
     """
 
-    @classmethod
-    def from_slice(cls, base: Schema, start: int, end: int) -> Schema:
-        return super().__new__(Schema, base[start: end])
+    @staticmethod
+    def from_slice(base: Schema, start: int, end: int) -> Schema:
+        return tuple.__new__(Schema, base[start: end])
 
-    @classmethod
-    def from_value(cls, value: Value) -> Optional[Schema]:
+    @staticmethod
+    def from_ground_kind(kind: Kind) -> Schema:
+        assert Kind.is_ground(kind)
+        return tuple.__new__(Schema, (int(kind),))
+
+    @staticmethod
+    def from_value(value: Value) -> Optional[Schema]:
         """
         Creates a Schema from a list of numbers stored in a Value.
         :param value: Value storing the Schema.
@@ -218,9 +218,9 @@ class Schema(tuple, Sequence[int]):
         """
         if value.get_kind() != Value.Kind.LIST or Value.Kind(value.get_schema()[1]) != Value.Kind.NUMBER:
             return None
-        return super().__new__(Schema, (int(value[i]) for i in range(len(value))))  # TODO: validate Schema
+        return tuple.__new__(Schema, (int(value[i]) for i in range(len(value))))  # TODO: validate Schema
 
-    def __new__(cls, obj: Optional[Any] = None) -> Schema:
+    def __new__(cls, obj: Optional[Any] = None) -> Schema:  # TODO: I don't like this constructor
         """
         Recursive, breadth-first assembly of a Schema for the given Denotable.
         :returns: Schema describing how a Value containing the given Denotable would be laid out.
@@ -248,7 +248,7 @@ class Schema(tuple, Sequence[int]):
 
         elif kind == Kind.STRING:
             # Strings take up a single word in a Schema, the STRING Kind.
-            schema.append(Kind.STRING)
+            schema.append(int(Kind.STRING))
 
         elif kind == Kind.LIST:
             # A List Schema is a pair [LIST Kind, child Schema].
@@ -334,6 +334,24 @@ class Schema(tuple, Sequence[int]):
             return self
         else:
             return super().__new__(Schema, [int(Kind.LIST), *self])
+
+    def as_z85(self) -> bytes:
+        """
+        Encodes this Schema to Z85.
+        The Z85 output is left-padded with OFFSET bytes because they can never be the first word.
+        """
+        raw_bytes: bytes = bytes(self)
+        if len(raw_bytes) == 0:
+            return raw_bytes
+        padding: int = 3 - ((len(raw_bytes) - 1) % 4)  # pad to a multiple of 4
+        return Z85.encode(bytes([Kind._OFFSET] * padding) + raw_bytes)
+
+    @staticmethod
+    def from_z85(z85_bytes: bytes) -> Schema:
+        """
+        Decodes a Schema from a Z85 encoded byte stream.
+        """
+        return tuple.__new__(Schema, Z85.decode(z85_bytes).lstrip(bytes([Kind._OFFSET])))
 
     def __str__(self) -> str:
         """
@@ -534,9 +552,6 @@ def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
     """
 
     def parse_next(next_denotable: Denotable) -> Optional[Dictionary]:
-        if isinstance(next_denotable, Value):
-            return next_denotable._dictionary
-
         kind: Kind = Kind.from_denotable(next_denotable)
 
         if Kind.is_ground(kind):
@@ -561,6 +576,18 @@ def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
                 )
 
     return parse_next(denotable)
+
+
+def dictionary_to_dict(dictionary: Optional[Dictionary]) -> Dict:
+    """
+    Debug function to transform a nested Dictionary into a nested Python dict.
+    """
+    if dictionary is None:
+        return {}
+    names = dictionary.names.keys()
+    return {
+        names[i]: dictionary_to_dict(dictionary.children[i]) for i in range(len(names))
+    }
 
 
 # VALUE ################################################################################################################
@@ -656,89 +683,172 @@ class Value:
     def as_json(self) -> str:
         """
         Serializes this Value to a JSON formatted string.
-        Unnamed records are stored as JSON objects with keys "0", "1", "2" ...
-        Upon deserialization, a JSON object with integer keys starting at "0" and counting up (in order) for every
-        key:value pair will be turned back into an unnamed record.
-        This opens the possibility of someone wanting to store a named record with integer names, which could not be
-        serialized.
         """
 
-        # TODO: Instead of implicitly encoding the kinds into a JSON serialized value (with null
-        #   to differentiate unnamed records from lists, for example), just store the value's Schema explicitly.
-        #   This way, we can store unnamed records in lists and "inline" recursive Values, since the Schema defines
-        #   how they are deserialized.
-        #   Use base64 encoding for the schema, or even better: Z85 encoding: https://rfc.zeromq.org/spec/32/
-        #   also see: https://en.wikipedia.org/wiki/Ascii85
-        #   or probably best: https://gist.github.com/minrk/6357188 (the implementation in the comment below)
-
-        def recursion(data: Any, iterator: int, dictionary: Optional[Dictionary]) -> str:
-            assert iterator < len(self._schema)
-            kind: Kind = Kind(self._schema[iterator])
+        def recursion(data: Any, schema: Schema, schema_itr: int, dictionary: Optional[Dictionary]) -> Any:
+            assert schema_itr < len(schema)
+            kind: Kind = Kind(schema[schema_itr])
             if kind == Kind.NUMBER:
                 if trunc(data) == data:
                     # int
-                    return write_json(int(data))
+                    return int(data)
                 else:
                     # float
-                    return write_json(data)
+                    assert isinstance(data, float)
+                    return data
             elif kind == Kind.STRING:
                 # string
-                return f'"{data}"'
+                assert isinstance(data, str)
+                return data
+            elif kind == Kind.VALUE:
+                # value
+                assert isinstance(data, Value)
+                return dict(
+                    schema=data._schema.as_z85().decode(),
+                    data=None if data._schema.is_none() else recursion(data._data, data._schema, 0, data._dictionary),
+                )
             elif kind == Kind.LIST:
                 # list
-                iterator += 1
-                return '[{}]'.format(', '.join(recursion(child_data, iterator, dictionary) for child_data in data[1:]))
+                assert isinstance(data, ConstList) and len(data) > 0 and data[0] == len(data) - 1
+                schema_itr += 1
+                return [recursion(child_data, schema, schema_itr, dictionary) for child_data in data[1:]]
             else:
                 assert kind == Kind.RECORD
-                assert (iterator + 1) < len(self._schema)
-                child_count: int = self._schema[iterator + 1]
+                assert (schema_itr + 1) < len(schema)
+                child_count: int = schema[schema_itr + 1]
                 if dictionary is None or dictionary.names.is_empty():
                     # unnamed record
                     assert dictionary is None or isinstance(dictionary, Dictionary)  # for pycharm
-                    # unnamed records have <null> as their first element to differentiate them from lists
-                    return '[null, {}]'.format(', '.join(
-                        recursion(data[child_index], get_subschema_start(self._schema, iterator, child_index),
-                                  None if dictionary is None else dictionary.children[child_index])
-                        for child_index in range(child_count)))
+                    return [recursion(data[child_index], schema,
+                                      get_subschema_start(schema, schema_itr, child_index),
+                                      None if dictionary is None else dictionary.children[child_index])
+                            for child_index in range(child_count)]
                 else:
                     # named record
                     keys: List[str] = dictionary.names.keys()
                     assert len(keys) == child_count
-                    children: List[Tuple[str, str]] = []
-                    for child_index in range(child_count):
-                        child_name: str = keys[child_index]
-                        child_value: str = recursion(
-                            data[child_index],
-                            get_subschema_start(self._schema, iterator, child_index),
+                    return {
+                        child_name: recursion(
+                            data[child_index], schema,
+                            get_subschema_start(schema, schema_itr, child_index),
                             dictionary.children[dictionary.names[child_name]])
-                        children.append((child_name, child_value))
-                    return '{{{}}}'.format(', '.join('"{}": {}'.format(key, value) for (key, value) in children))
+                        for child_index, child_name in ((index, keys[index]) for index in range(child_count))
+                    }
 
-        if self._schema.is_none():
-            return write_json(None)
-        else:
-            return recursion(self._data, 0, self._dictionary)
+        return write_json(dict(
+            head=dict(
+                type="notf-value",
+                version=1,
+                binary='z85<',  # small endian Z85 encoding
+            ),
+            body=recursion(self, Schema.from_ground_kind(Kind.VALUE), 0, None),
+        ))
 
     @classmethod
-    def from_json(cls, json_string: str, reference: Optional[Value] = None) -> Value:
+    def from_json(cls, json_string: str) -> Value:
         """
         Deserializes a Value from a JSON formatted string.
-        :param json_string: JSON formatted string.
-        :param reference: Optional Value that must match the Schema of the serialized Value.
-            Is required if the JSON contains empty lists.
         :raise JSONDecodeError: If the JSON could not be decoded.
+        :raise Z85.DecodeError: If a z85 encoded Schema could not be decoded.
         :raise ValueError: If the JSON object cannot be denoted by a Value.
         :return: The deserialized Value.
         """
         json_object: Any = read_json(json_string)
-        if json_object is None:
-            return Value()
-        denotable: Denotable = create_denotable(
-            json_object, list_can_be_record=True, allow_empty_list=reference is not None)
-        return Value._create(
-            reference._schema if reference is not None else Schema(denotable),
-            create_data_from_denotable(denotable),
-            reference._dictionary if reference is not None else create_dictionary(denotable))
+
+        # check head
+        if 'head' not in json_object:
+            raise ValueError(f'JSON encoded Value is missing the `head` tag')
+        head: Dict[str, Any] = json_object['head']
+
+        # check type
+        if 'type' not in head:
+            raise ValueError(f'JSON encoded Value head is missing the `type` tag')
+        type_id: str = head['type']
+        if type_id != 'notf-value':
+            raise ValueError(f'JSON encoded type "{type_id}" cannot be decoded into a Value (must be "notf-value")')
+
+        # check binary
+        if 'binary' not in head:
+            raise ValueError(f'JSON encoded Value head is missing the `binary` tag')
+        binary_id: str = head['binary']
+        if binary_id != 'z85<':
+            raise ValueError(f'JSON encoded Values require binary format "z85<" (small-endian Z85), not "{binary_id}"')
+
+        # check body
+        if 'body' not in json_object:
+            raise ValueError("JSON encoded Value is missing the `body` tag")
+        body: Dict[str, Any] = json_object['body']
+
+        def value_recursion(value_dict: Dict[str, Any]) -> Value:
+
+            # schema
+            if 'schema' not in value_dict:
+                raise ValueError("JSON encoded Value is missing the `schema` tag")
+            encoded_schema: Any = value_dict['schema']
+            if not isinstance(encoded_schema, str):
+                raise ValueError("JSON encoded Value schema is not a string")
+            result_schema: Schema = Schema.from_z85(encoded_schema.encode())
+
+            # data
+            if 'data' not in value_dict:
+                raise ValueError("JSON encoded Value is missing the `data` tag")
+            data_root: Any = value_dict['data']
+
+            def data_recursion(raw_data: Any, schema: Schema, schema_itr: int) -> Tuple[Data, Optional[Dictionary]]:
+                kind: Kind = Kind(schema[schema_itr])
+                if kind == Kind.NUMBER:
+                    assert isinstance(raw_data, (float, int))
+                    return float(raw_data), None
+                elif kind == Kind.STRING:
+                    assert isinstance(raw_data, str)
+                    return raw_data, None
+                elif kind == Kind.VALUE:
+                    if raw_data is None:
+                        return None, None  # None Value
+                    assert isinstance(raw_data, dict)
+                    return value_recursion(raw_data), None
+                elif kind == Kind.LIST:
+                    assert isinstance(raw_data, list)
+                    schema_itr += 1
+                    child_data: List[Any] = [len(raw_data)]
+                    dictionary: Optional[Dictionary] = None
+                    for raw_child_data in raw_data:
+                        data, dictionary = data_recursion(raw_child_data, schema, schema_itr)
+                        child_data.append(data)
+                    return make_const_list(child_data), dictionary
+                else:
+                    assert kind == Kind.RECORD
+                    assert schema_itr < len(schema) + 1
+                    assert schema[schema_itr + 1] == len(raw_data)
+                    if isinstance(raw_data, list):
+                        # unnamed record
+                        child_data: List[Any] = []
+                        child_dictionaries: List[Any] = []
+                        for child_index, raw_child_data in enumerate(raw_data):
+                            data, dictionary = data_recursion(
+                                raw_child_data, schema, get_subschema_start(schema, schema_itr, child_index))
+                            child_data.append(data)
+                            child_dictionaries.append(dictionary)
+                        return make_const_list(child_data), Dictionary(
+                            names=Bonsai(), children=make_const_list(child_dictionaries))
+                    else:
+                        # named record
+                        assert isinstance(raw_data, dict)
+                        child_data: List[Any] = []
+                        child_dictionaries: Dict = {}
+                        for child_index, (child_name, raw_child_data) in enumerate(raw_data.items()):
+                            data, dictionary = data_recursion(
+                                raw_child_data, schema, get_subschema_start(schema, schema_itr, child_index))
+                            child_data.append(data)
+                            child_dictionaries[child_name] = dictionary
+                        return make_const_list(child_data), Dictionary(
+                            names=Bonsai(list(child_dictionaries.keys())),
+                            children=make_const_list(child_dictionaries.values()))
+
+            result_data, result_dictionary = data_recursion(data_root, result_schema, 0)
+            return Value._create(result_schema, result_data, result_dictionary)
+
+        return value_recursion(body)
 
     def __repr__(self) -> str:
         """
