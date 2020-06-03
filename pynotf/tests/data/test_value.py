@@ -207,6 +207,23 @@ class TestCase(unittest.TestCase):
         self.assertEqual(test_value.get_keys(), list(test_element.keys()))
         self.assertTrue(len(Value(0).get_keys()) == 0)
 
+    def test_schema_value(self):
+        """
+        You can store and restore Value Schemas in a Value.
+        """
+        # store in and restore a Schema from a Value
+        schema_value: Value = Value(schema=test_value.get_schema())
+        self.assertEqual(Value.Schema.from_value(schema_value['schema']), test_value.get_schema())
+
+        # explicit None schema
+        none_schema: Value.Schema = Value.Schema.from_any(None)
+        self.assertEqual(len(none_schema), 0)
+
+        # none Schema through an empty list
+        int_list_value: Value = Value([0])
+        empty_list_value: Value = mutate_value(int_list_value, [])
+        self.assertEqual(Value.Schema.from_value(empty_list_value), none_schema)
+
     def test_none(self):
         none: Value = Value()
         self.assertEqual(none, Value(None))
@@ -218,6 +235,19 @@ class TestCase(unittest.TestCase):
             _ = Value([None])
         with self.assertRaises(ValueError):
             _ = Value(dict(a=None))
+
+    def test_any(self):
+        """
+        Values can contain other Values recursively.
+        This allows them to change what type of data they contain at runtime.
+        """
+        v: Value = Value(x=Value(1))
+        self.assertEqual(float(v['x']), 1)  # here is is a number
+        v = mutate_value(v, 'x', Value("derbness"))
+        self.assertEqual(str(v['x']), 'derbness')  # here is a string
+
+        any_value: Value = Value(Value())
+        self.assertTrue(any_value.get_schema().is_any())
 
     def test_len(self):
         accessor = test_value["coords"]
@@ -358,6 +388,15 @@ class TestCase(unittest.TestCase):
         modified = mutate_value(test_value, ("coords", -1, -2), "derb")
         self.assertEqual(str(modified["coords"][1]["someName"]), "derb")
         self.assertEqual(str(modified[0][-1][-2]), "derb")
+
+    def test_mutate_with_value(self):
+        """
+        Allow mutating values with other values of the same Schema.
+        """
+        int_value: Value = Value(-1)
+        self.assertEqual(int(int_value), -1)
+        int_value2: Value = mutate_value(int_value, Value(42))
+        self.assertEqual(int(int_value2), 42)
 
     def test_mutation_failures(self):
         with self.assertRaises(TypeError):  # set number to string
@@ -522,19 +561,19 @@ class TestCase(unittest.TestCase):
 
     def test_schema_as_list(self):
         # number turns into a list of numbers
-        self.assertEqual(Value.Schema([0]), Value.Schema(0).as_list())
+        self.assertEqual(Value.Schema.from_any([0]), Value.Schema.from_any(0).as_list())
 
         # string turns into a list of strings
-        self.assertEqual(Value.Schema([""]), Value.Schema("").as_list())
+        self.assertEqual(Value.Schema.from_any([""]), Value.Schema.from_any("").as_list())
 
         # list turns into a list of lists
-        self.assertEqual(Value.Schema([[0]]), Value.Schema([0]).as_list())
+        self.assertEqual(Value.Schema.from_any([[0]]), Value.Schema.from_any([0]).as_list())
 
         # map turns into a list of maps
-        self.assertEqual(Value.Schema([{"x": 0}]), Value.Schema({"x": 0}).as_list())
+        self.assertEqual(Value.Schema.from_any([{"x": 0}]), Value.Schema.from_any({"x": 0}).as_list())
 
         # value turns into a list of values
-        self.assertEqual(Value.Schema([Value(0)]), Value.Schema(Value(0)).as_list())
+        self.assertEqual(Value.Schema.from_any([Value(0)]), Value.Schema.from_any(Value(0)).as_list())
 
         # none turns into None
         self.assertEqual(Value.Schema(), Value.Schema().as_list())
@@ -773,16 +812,6 @@ class TestCase(unittest.TestCase):
         json_string: str = Value().as_json()
         value: Value = Value.from_json(json_string)
         self.assertTrue(value.is_none())
-
-    def test_value_in_value(self):
-        """
-        Values can contain other Values recursively.
-        This allows them to change what type of data they contain at runtime.
-        """
-        v: Value = Value(x=Value(1))
-        self.assertEqual(float(v['x']), 1)  # here is is a number
-        v = mutate_value(v, 'x', Value("derbness"))
-        self.assertEqual(str(v['x']), 'derbness')  # here is a string
 
 
 if __name__ == '__main__':

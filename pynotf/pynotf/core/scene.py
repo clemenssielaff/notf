@@ -178,8 +178,8 @@ class Node:
             parent=self._handle,
             interface=NodeInterops(
                 names=Bonsai([interop_name for interop_name in description.interface.keys()]),
-                elements=[core.Operator.create(core.OpRelay.create(Value(interop_schema))) for
-                          interop_schema in description.interface.values()],
+                elements=[core.Operator.create(core.OpRelay.create(initial_value)) for
+                          initial_value in description.interface.values()],
             )
         )
         node_table[self._handle]['child_names'] = node_table[self._handle]['child_names'].set(name, child_handle)

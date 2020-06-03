@@ -28,13 +28,6 @@ class TestRow2(TableRow):
 
 class TestCase(unittest.TestCase):
 
-    def setUp(self) -> None:
-        self._previous_log_level = logging.getLogger().getEffectiveLevel()
-        logging.getLogger().setLevel(logging.ERROR)
-
-    def tearDown(self) -> None:
-        logging.getLogger().setLevel(self._previous_log_level)
-
     def test_simple(self):
         """
         A Storage with a single, simple Table with some basic operations on it.
@@ -141,10 +134,22 @@ class TestCase(unittest.TestCase):
         table.remove_row(handle)  # always clear the table at the end to avoid warnings
         self.assertTrue(table.count_active_rows() == 0)
 
+    def test_row_handles_to_and_from_int(self):
+        handle: RowHandle = RowHandle(45, 78, 12)
+        int_handle: int = int(handle)
+        self.assertEqual(RowHandle.from_int(int_handle), handle)
+
+    def test_handle_hash(self):
+        self.assertEqual(hash(RowHandle(45, 78, 12)), hash(RowHandle(45, 78, 12)))
+        self.assertNotEqual(hash(RowHandle(45, 78, 12)), hash(RowHandle(25, 78, 12)))
+
     def test_null_row_handles(self):
         self.assertTrue(RowHandle(0, 0, 1))
         self.assertTrue(RowHandle().is_null())
         self.assertFalse(RowHandle())
+
+    def test_row_handle_repr(self):
+        self.assertEqual(repr(RowHandle(1, 2, 3)), 'RowHandle(table=1, index=2, generation=3)')
 
     def test_generation_overflow(self):
         storage: Storage = Storage(
@@ -194,3 +199,16 @@ class TestCase(unittest.TestCase):
 
         table.remove_row(row2)  # always clear the table at the end to avoid warnings
         self.assertTrue(table.count_active_rows() == 0)
+
+    def test_warn_on_dirty_deletion(self):
+        """
+        Delete a table without removing all of its rows first.
+        Will print out a warning, but we silence it ... it's more for coverage really.
+        """
+        previous_log_level = logging.getLogger().getEffectiveLevel()
+        logging.getLogger().setLevel(logging.FATAL)
+        storage: Storage = Storage(
+            some_table=TestRow
+        )
+        storage[0].add_row(name="a")  # create but do not delete it
+        logging.getLogger().setLevel(previous_log_level)

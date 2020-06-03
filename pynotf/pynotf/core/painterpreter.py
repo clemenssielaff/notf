@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, NamedTuple, Union, Optional, Tuple
+from typing import Dict, List, NamedTuple, Union, Optional, Tuple, Any
 from time import perf_counter
 
 import glfw
@@ -255,13 +255,13 @@ class Design:
             return self._cached, True
 
     class Expression(_ValueBuilder):
-        def __init__(self, schema: Value.Schema, source: str, **arguments: Design._ValueBuilder):
+        def __init__(self, initial: Value, source: str, **arguments: Design._ValueBuilder):
             """
             Source of the Expression.
             The expression has access to all Interops of the core.Node using `node["interop.name"]`.
             """
             assert 'node' not in arguments
-            self._cached: Value = Value(schema)
+            self._cached: Value = initial
             self._generation: int = 0
             self._expression: core.Expression = core.Expression(source)
             self._scope: Dict[str, Design._ValueBuilder] = arguments
@@ -283,7 +283,12 @@ class Design:
             scope = dict(node=_NodeInterops())
             for name, value_builder in self._scope:
                 scope[name] = value_builder.evaluate(context)
-            new_value: Value = Value(self._expression.execute(scope))
+            result: Any = self._expression.execute(scope)
+            new_value: Value
+            if isinstance(result, Value):
+                new_value = result
+            else:
+                new_value = Value(result)
             if new_value == self._cached:
                 return self._cached, False
 

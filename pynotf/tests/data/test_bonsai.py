@@ -90,6 +90,16 @@ class TestCase(unittest.TestCase):
         self.assertTrue('b' in bonsai)
         self.assertFalse('c' in bonsai)
 
+    def test_equality(self):
+        """
+        Check if two Bonsais are the same.
+        """
+        self.assertEqual(Bonsai(['a', 'b']), Bonsai(['a', 'b']))
+        self.assertNotEqual(Bonsai(['a', 'b']), Bonsai(['a', 'c']))
+        self.assertNotEqual(Bonsai(['a', 'b']), Bonsai(['A', 'b']))
+        self.assertNotEqual(Bonsai(['a', 'b']), Bonsai(['a', 'b', 'c']))
+        self.assertNotEqual(Bonsai(['a', 'b']), None)
+
     def test_wikipedia_trie(self):
         """
         See https://en.wikipedia.org/wiki/Trie

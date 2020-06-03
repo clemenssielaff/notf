@@ -20,8 +20,8 @@ count_presses_node: NodeDescription = NodeDescription(
     states=dict(
         default=NodeStateDescription(
             operators=dict(
-                buffer=(OperatorIndex.BUFFER, Value(schema=Value.Schema(), time_span=1)),
-                printer=(OperatorIndex.PRINTER, Value()),
+                buffer=(OperatorIndex.BUFFER, Value(schema=Value.Schema.from_any(Value()), time_span=1)),
+                printer=(OperatorIndex.PRINTER, Value(Value())),
             ),
             connections=[
                 (Path('/:mouse_fact'), Path('buffer')),
@@ -46,9 +46,9 @@ count_presses_node: NodeDescription = NodeDescription(
 
 pulsating_round_rect: Design.RoundedRect = Design.RoundedRect(
     x=Design.Constant(Value(0)), y=Design.Constant(Value(0)),
-    width=Design.Expression(Value(0).get_schema(), "max(0, node.grant.width)"),
-    height=Design.Expression(Value(0).get_schema(), "max(0, node.grant.height)"),
-    radius=Design.Expression(Value(0).get_schema(), "max(0, node.roundness)"))
+    width=Design.Expression(Value(0), "max(0, node.grant.width)"),
+    height=Design.Expression(Value(0), "max(0, node.grant.height)"),
+    radius=Design.Expression(Value(0), "max(0, node.roundness)"))
 
 countdown_node: NodeDescription = NodeDescription(
     interface=dict(

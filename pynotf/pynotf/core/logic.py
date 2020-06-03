@@ -229,7 +229,7 @@ class Operator:
         return False
 
     def subscribe(self, downstream: Operator) -> None:
-        if not downstream.get_input_schema().is_none() and not (
+        if not downstream.get_input_schema().is_any() and not (
                 self.get_value().get_schema() == downstream.get_input_schema()):
             raise RuntimeError("Schema mismatch")
 
@@ -303,7 +303,7 @@ class Operator:
 
         if callback == OperatorVtableIndex.NEXT:
             # perform the `on_next` callback
-            new_data: Value = callback_func(self, source, Value() if self.get_input_schema().is_none() else value)
+            new_data: Value = callback_func(self, source, value)
 
             # ...and update the operator's data
             self._set_data(new_data)
@@ -450,7 +450,6 @@ class OpBuffer:
     @staticmethod
     def create(args: Value) -> OperatorRowDescription:
         schema: Value.Schema = Value.Schema.from_value(args['schema'])
-        assert schema
         return OperatorRowDescription(
             operator_index=OperatorIndex.BUFFER,
             initial_value=Value(0),

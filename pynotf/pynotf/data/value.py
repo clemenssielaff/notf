@@ -73,11 +73,11 @@ def create_denotable(obj: Any) -> Denotable:
         for idx, reference in enumerate(denotable):
             if isinstance(reference, list) and len(reference) == 0:
                 continue
-            reference_schema: Schema = Schema(reference)
+            reference_schema: Schema = Schema._from_denotable(reference)
             for other_child in denotable[idx + 1:]:
                 if isinstance(other_child, list) and len(other_child) == 0:
                     continue
-                elif Schema(other_child) != reference_schema:
+                elif Schema._from_denotable(other_child) != reference_schema:
                     raise ValueError("All items in a Value.List must have the same Schema")
             break
         # ... unless all of the children are empty lists
@@ -110,6 +110,10 @@ def create_denotable(obj: Any) -> Denotable:
                 raise ValueError("All keys of a Record must be of Value.Kind String")
             denotable[key] = create_denotable(value)
         return denotable
+
+    # schema (can be empty)
+    elif isinstance(obj, Schema):
+        return [float(word) for word in obj]
 
     # unnamed record
     elif isinstance(obj, tuple):
@@ -145,12 +149,6 @@ class Kind(IntEnum):
     # NONE is not a Kind, we just need an id for it. If we encounter it inside a Schema it is treated as an offset.
     NONE = _LEFT + 1
     assert _LEFT < NONE < _RIGHT
-
-    # TODO: ensure that offsets are accumulative. Meaning if you have to offsets A and B, then B is just the offset
-    #   from A onwards. Meaning, to get to B you have to add Offset A + Offset B.
-    #   Why? Because this way, we can ensure that the only way to run out of offset space is to have a nested element
-    #   in the schema that is longer than 252 words long. But we could theoretically have 252 (?) of them - and that is
-    #   a MASSIVE Schema, that I don't expect
 
     @staticmethod
     def is_valid(value: int) -> bool:
@@ -202,12 +200,12 @@ class Schema(tuple, Sequence[int]):
 
     @staticmethod
     def from_slice(base: Schema, start: int, end: int) -> Schema:
-        return tuple.__new__(Schema, base[start: end])
+        return Schema(base[start: end])
 
     @staticmethod
     def from_ground_kind(kind: Kind) -> Schema:
         assert kind.is_ground()
-        return tuple.__new__(Schema, (int(kind),))
+        return Schema((int(kind),))
 
     @staticmethod
     def from_value(value: Value) -> Optional[Schema]:
@@ -218,24 +216,39 @@ class Schema(tuple, Sequence[int]):
         """
         if value.get_kind() != Value.Kind.LIST or Value.Kind(value.get_schema()[1]) != Value.Kind.NUMBER:
             return None
-        return tuple.__new__(Schema, (int(value[i]) for i in range(len(value))))  # TODO: validate Schema
+        if len(value) == 0:
+            return Schema()
+        schema: Schema = Schema(int(value[i]) for i in range(len(value)))
+        return schema if Schema.validate(schema) else None
 
-    def __new__(cls, obj: Optional[Any] = None) -> Schema:  # TODO: I don't like this constructor
+    @staticmethod
+    def validate(_: Schema) -> bool:
+        return True  # TODO: validate Schema
+
+    @staticmethod
+    def from_any(obj: Any) -> Schema:
         """
-        Recursive, breadth-first assembly of a Schema for the given Denotable.
+        Helper function to create Schemas from anything encountered in the wild.
+        :raise ValueError: If you cannot create a Value.Schema from the given object.
         :returns: Schema describing how a Value containing the given Denotable would be laid out.
         """
         if obj is None:
-            # The None Schema is still one word long, so you can store it in a Value.
-            # Empty lists cannot be used to create a Value, so you'd have to jump through hoops to store a None Schema
-            # in a Value.
-            return super().__new__(Schema, ())
+            return Schema()
+        return Schema._from_denotable(create_denotable(obj))
+
+    @staticmethod
+    def _from_denotable(denotable: Denotable) -> Schema:
+        """
+        Recursive, breadth-first assembly of a Schema for the given Denotable.
+        :returns: Schema describing how a Value containing the given Denotable would be laid out.
+        :raise ValueError: If you cannot create a Value.Schema from the given object.
+        """
+        assert denotable is not None
 
         schema: List[int] = []
-        denotable: Denotable = create_denotable(obj)
         kind: Kind = Kind.from_denotable(denotable)
 
-        if isinstance(obj, Value):
+        if isinstance(denotable, Value):
             # Values take up a single word in a Schema, the VALUE Kind.
             schema.append(int(Kind.VALUE))
 
@@ -260,7 +273,7 @@ class Schema(tuple, Sequence[int]):
             for child in denotable:
                 if isinstance(child, list) and len(child) == 0:
                     continue
-                schema.extend(Schema(child))
+                schema.extend(Schema._from_denotable(child))
                 break
             else:
                 raise ValueError("Lists cannot be empty for Schema definition")
@@ -305,23 +318,52 @@ class Schema(tuple, Sequence[int]):
                 else:
                     offset = len(schema) - child_position
                     assert offset > 0
-                    assert offset < Kind._RIGHT
+
                     # If the offset is 1, we only have a single non-ground child in the entire record and it is at the
                     # very end. In this case, we can simply put the sub-schema of the child inline and save a word.
                     if offset == 1:
                         schema.pop()
+
+                    # The forward offset must be less than the first Kind identifier on the right of the word range.
+                    # I expect this to hold for the foreseeable future, because you can be very expressive with Schemas
+                    # of small sizes.
+                    # However, there is a plan B that we could investigate should large Schemas ever become a problem.
+                    # The idea is that instead of storing the raw forward offset, in the body of the record, you use
+                    # the previous offsets to accumulate the total. In the example above, word 4 would keep its offset
+                    # of 3 because it is the first offset. However, word 6 would have an offset of only 5 instead of
+                    # 8, because it would implicitly add the 3 from word 4. And while that does not look like a lot,
+                    # imagine that the second type in the record is a deeply nested record type that is 100 words long.
+                    # Then word 6 would need to point to word 108 and would require an offset of 102 with the current,
+                    # and 99 with the proposed method. ... Still not great. But a hypothetical third offset in the body
+                    # would only need to store the forward offset forward, maybe another 3 or 4. And not 105 or 106.
+                    # This is were the beauty is, the only way to run out of space is if you have a single element that
+                    # is huge, not if you have many ones that are small. ... And in the worst case, you could always use
+                    # a nested Value for those.
+                    #
+                    # The reason why we don't do it though is that you need to iterate through the entire body up to the
+                    # word that you want, at least if it is an offset. Right now, you can jump to the word, read the
+                    # offset and jump on to the child in question with no iteration required.
+                    # Of course, iterating over tightly packed bytes is hardly a problem, but why do it if we do not see
+                    # a need for it at the moment or the foreseeable future?
                     else:
+                        assert offset < Kind._RIGHT
                         schema[child_position] = offset  # forward offset
-                    schema.extend(Schema(child))
+                    schema.extend(Schema._from_denotable(child))
                 child_position += 1
 
-        return super().__new__(Schema, schema)
+        return Schema(schema)
 
     def is_none(self) -> bool:
         """
         Checks if this is the None Schema.
         """
         return len(self) == 0
+
+    def is_any(self) -> bool:
+        """
+        Checks if this is the Any Schema.
+        """
+        return len(self) == 1 and self[0] == int(Kind.VALUE)
 
     def as_list(self) -> Schema:
         """
@@ -350,7 +392,7 @@ class Schema(tuple, Sequence[int]):
         """
         Decodes a Schema from a Z85 encoded byte stream.
         """
-        return tuple.__new__(Schema, Z85.decode(z85_bytes).lstrip(bytes([Kind.NONE])))
+        return Schema(Z85.decode(z85_bytes).lstrip(bytes([Kind.NONE])))
 
     def __str__(self) -> str:
         """
@@ -615,7 +657,7 @@ class Value:
         # initialization from denotable
         else:
             denotable: Denotable = create_denotable(obj)
-            self._schema = Schema(denotable)
+            self._schema = Schema._from_denotable(denotable)
             self._data = create_data_from_denotable(denotable)
             self._dictionary = create_dictionary(denotable)
 
@@ -942,7 +984,7 @@ class Value:
 
     def __int__(self) -> int:
         if self.is_number():
-            return int(self._data)
+            return int(round(float(self._data)))
         else:
             raise TypeError("Value is not a number")
 
@@ -959,7 +1001,6 @@ class Value:
         kind: Kind = self.get_kind()
 
         if kind == Kind.LIST:
-            assert len(self._data) > 0
             list_size: int = self._data[0]
             assert list_size == len(self._data) - 1  # -1 for the first integer that is the size of the list
             return list_size
@@ -1222,20 +1263,25 @@ def mutate_data(current_data: Data, new_data: Any, schema: Schema, schema_itr: i
     # set to empty list
     if isinstance(denotable, list) and len(denotable) == 0:
         if kind == Kind.LIST:
-            if len(current_data) == 1:
+            if len(current_data) == 1:  # current list is already empty
                 assert current_data[0] == 0
                 return current_data, False
             else:
                 return create_data_from_denotable(denotable), True
         else:
-            raise TypeError(f'Type mismatch, cannot set a Value of kind {kind.name.capitalize()} '
-                            f'to the empty list')
+            raise TypeError(
+                f'Type mismatch, cannot set a Value of kind {kind.name.capitalize()} to the empty list')
+
+    # if the new data is a Value with the same Schema as the current data, extract the new data instead of attempting
+    # to set the complete Value as data
+    current_schema: Schema = Schema.from_slice(schema, schema_itr, get_subschema_end(schema, schema_itr))
+    if isinstance(new_data, Value) and new_data.get_schema() == current_schema:
+        return new_data._data, new_data._data != current_data
 
     # check if the data's Schema matches the child Value's
-    data_schema: Schema = Schema(denotable)  # cannot create a Schema for an empty list
-    current_schema: Schema = Schema.from_slice(schema, schema_itr, get_subschema_end(schema, schema_itr))
+    data_schema: Schema = Schema._from_denotable(denotable)
     if data_schema != current_schema:
-        raise TypeError(f'Cannot mutate a Value of kind {kind.name.capitalize()} to "{denotable}"')
+        raise TypeError(f'Cannot mutate a Value of kind {kind.name.capitalize()} to "{denotable!r}"')
 
     # return the original Data if it and the new one are equal
     result_data: Data = create_data_from_denotable(denotable)
@@ -1361,6 +1407,9 @@ def mutate_value(value: Value, *args) -> Value:
     retains a reference to the root Value, so that `set_value` can modify it, instead of the last one in the Path.
     In C++ we can have an implicit conversion between a Value.Accessor and a Value and use r-value overloads to ensure
     that the user does not accidentally store a Value.Accessor instead of a Value, but in Python we cannot.
+
+    If you try to set a Value A to another Value B which has the same Schema as A, this function will set A to the data
+    contained _within_ B, not B itself.
 
     :param value: Value providing the Data buffer to mutate.
     """
