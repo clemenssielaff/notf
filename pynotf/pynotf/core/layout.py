@@ -14,7 +14,7 @@ import pynotf.core as core
 # DATA #################################################################################################################
 
 class LayoutDescription(NamedTuple):
-    type: LayoutIndex
+    type: int
     args: Value
 
 
@@ -55,7 +55,7 @@ class Layout:
         self._handle: RowHandle = handle
 
     @staticmethod
-    def create(layout_index: LayoutIndex, args: Value) -> Layout:
+    def create(layout_index: int, args: Value) -> Layout:
         return Layout(LAYOUT_VTABLE[layout_index][LayoutVtableIndex.CREATE](args))
 
     def get_handle(self) -> RowHandle:

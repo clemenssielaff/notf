@@ -15,10 +15,9 @@ SKETCH_INDEX_SCL: int = 3
 SKETCH_INDEX_PRT: int = 4
 CLAIM_INDEX_HORIZONTAL: int = 0
 CLAIM_INDEX_VERTICAL: int = 1
-CLAIM_DEFAULT: Value = Value(dict(
+CLAIM_DEFAULT: Value = Value(
     horizontal=dict(preferred=0, min=0, max=inf, scale_factor=1, priority=0),
-    vertical=dict(preferred=0, min=0, max=inf, scale_factor=1, priority=0)))
-CLAIM_SCHEMA: Value.Schema = CLAIM_DEFAULT.get_schema()
+    vertical=dict(preferred=0, min=0, max=inf, scale_factor=1, priority=0))
 
 
 # STRETCH ##############################################################################################################
@@ -174,6 +173,7 @@ class StretchDescription(NamedTuple):
 
 
 class Claim:
+    SCHEMA: Value.Schema = CLAIM_DEFAULT.get_schema()
     Stretch = StretchDescription
 
     def __init__(self, horizontal: Optional[Union[float, StretchDescription, Value]] = None,
@@ -187,7 +187,7 @@ class Claim:
 
         # use an existing Value for the Claim
         elif isinstance(horizontal, Value):
-            assert horizontal.get_schema() == CLAIM_SCHEMA
+            assert horizontal.get_schema() == self.SCHEMA
             self._value = horizontal
 
         # ... or construct a new one based on the user's description
@@ -224,6 +224,15 @@ class Claim:
                     priority=vertical.priority
                 )
             ))
+
+    @classmethod
+    def from_value(cls, value: Value) -> Claim:
+        if value.get_schema() != cls.SCHEMA:
+            raise ValueError(f'Cannot build a Claim from an incompatible Value Schema:\n{value.get_schema()!s}.\n'
+                             f'A valid Claim Value has the Schema:\n{cls.SCHEMA!s}')
+        result: Claim = Claim()
+        result._value = value
+        return result
 
     def get_value(self) -> Value:
         """

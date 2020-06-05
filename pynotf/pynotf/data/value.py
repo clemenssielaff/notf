@@ -164,11 +164,12 @@ class Kind(IntEnum):
         """
         return Kind._LEFT < value < Kind._RIGHT
 
-    def is_ground(self) -> bool:
+    @staticmethod
+    def is_ground(value: int) -> bool:
         """
-        :return: Whether this Kind denotes one of the ground types: Number, String and Value.
+        :return: Whether the integer denotes one of the ground Kinds: Number, String and Value.
         """
-        return self >= Kind._RIGHT
+        return value >= Kind._RIGHT
 
     @staticmethod
     def from_denotable(denotable: Optional[Denotable]) -> Kind:
@@ -204,7 +205,7 @@ class Schema(tuple, Sequence[int]):
 
     @staticmethod
     def from_ground_kind(kind: Kind) -> Schema:
-        assert kind.is_ground()
+        assert Kind.is_ground(kind)
         return Schema((int(kind),))
 
     @staticmethod
@@ -226,7 +227,7 @@ class Schema(tuple, Sequence[int]):
         return True  # TODO: validate Schema
 
     @staticmethod
-    def from_any(obj: Any) -> Schema:
+    def create(obj: Any) -> Schema:
         """
         Helper function to create Schemas from anything encountered in the wild.
         :raise ValueError: If you cannot create a Value.Schema from the given object.
@@ -312,7 +313,7 @@ class Schema(tuple, Sequence[int]):
 
             for child in children:
                 # only store the Kind for ground types
-                if Kind.from_denotable(child).is_ground():
+                if Kind.is_ground(Kind.from_denotable(child)):
                     schema[child_position] = int(Kind.from_denotable(child))
                 # lists and records store a forward offset and append themselves to the end of the schema
                 else:
@@ -364,6 +365,30 @@ class Schema(tuple, Sequence[int]):
         Checks if this is the Any Schema.
         """
         return len(self) == 1 and self[0] == int(Kind.VALUE)
+
+    def is_number(self) -> bool:
+        """
+        Checks if this Schema represents a single number.
+        """
+        return len(self) == 1 and self[0] == int(Kind.NUMBER)
+
+    def is_string(self) -> bool:
+        """
+        Checks if this Schema represents a single string.
+        """
+        return len(self) == 1 and self[0] == int(Kind.STRING)
+
+    def is_list(self) -> bool:
+        """
+        Checks if this Schema represents a single list.
+        """
+        return not self.is_none() and self[0] == int(Kind.LIST)
+
+    def is_record(self) -> bool:
+        """
+        Checks if this Schema represents a single record.
+        """
+        return not self.is_none() and self[0] == int(Kind.RECORD)
 
     def as_list(self) -> Schema:
         """
@@ -452,7 +477,7 @@ def get_subschema_end(schema: Schema, start_index: int) -> int:
     assert Kind.is_valid(schema[start_index])
     kind: Kind = Kind(schema[start_index])
 
-    if kind.is_ground():
+    if Kind.is_ground(kind):
         return start_index + 1
 
     elif kind == Kind.LIST:
@@ -467,7 +492,7 @@ def get_subschema_end(schema: Schema, start_index: int) -> int:
         # we need to find the end index of the last, non-ground child
         for child_index in (start_index + 2 + child for child in reversed(range(child_count))):
             assert child_index < len(schema)
-            if not Kind(schema[child_index]).is_ground():
+            if not Kind.is_ground(schema[child_index]):
                 if Kind.is_offset(schema[child_index]):
                     return get_subschema_end(schema, child_index + schema[child_index])
                 else:
@@ -551,7 +576,7 @@ def create_data_from_denotable(denotable: Denotable) -> Data:
 
     kind: Kind = Kind.from_denotable(denotable)
 
-    if kind.is_ground():
+    if Kind.is_ground(kind):
         return denotable
 
     elif kind == Kind.LIST:
@@ -595,7 +620,7 @@ def create_dictionary(denotable: Denotable) -> Optional[Dictionary]:
     def parse_next(next_denotable: Denotable) -> Optional[Dictionary]:
         kind: Kind = Kind.from_denotable(next_denotable)
 
-        if kind.is_ground():
+        if Kind.is_ground(kind):
             return None
 
         elif kind == Kind.LIST:
@@ -994,6 +1019,9 @@ class Value:
         else:
             raise TypeError("Value is not a string")
 
+    def __hash__(self):
+        return hash((self._schema, self._data, self._dictionary))
+
     def __len__(self) -> int:
         """
         The number of child Elements if the current Element is a List or Map, or zero otherwise.
@@ -1030,6 +1058,12 @@ class Value:
 
         else:
             raise KeyError(f'Cannot use operator[] with a {kind.name.capitalize()} Value')
+
+    def __iter__(self) -> Iterable[Value]:
+        if self.get_kind() not in (Kind.LIST, Kind.RECORD):
+            return
+        for index in range(len(self)):
+            yield self[index]
 
     def __neg__(self) -> Value:
         return Value._create(self._schema, -float(self), self._dictionary)
@@ -1276,12 +1310,13 @@ def mutate_data(current_data: Data, new_data: Any, schema: Schema, schema_itr: i
     # to set the complete Value as data
     current_schema: Schema = Schema.from_slice(schema, schema_itr, get_subschema_end(schema, schema_itr))
     if isinstance(new_data, Value) and new_data.get_schema() == current_schema:
-        return new_data._data, new_data._data != current_data
+        return new_data._data, new_data._data != current_data  # note that this still creates a new value... :/
 
     # check if the data's Schema matches the child Value's
-    data_schema: Schema = Schema._from_denotable(denotable)
-    if data_schema != current_schema:
-        raise TypeError(f'Cannot mutate a Value of kind {kind.name.capitalize()} to "{denotable!r}"')
+    # data_schema: Schema = Schema._from_denotable(denotable)
+    # if data_schema != current_schema:
+    #     raise TypeError(f'Cannot mutate a Value of kind {kind.name.capitalize()} to "{denotable!r}"')
+    # TODO: this does not work if the denotable contains an empty list
 
     # return the original Data if it and the new one are equal
     result_data: Data = create_data_from_denotable(denotable)
@@ -1314,7 +1349,7 @@ def mutate_recursive(current_data: Data, new_data: Any, schema: Value.Schema, sc
     assert Kind.is_valid(kind)
 
     # cannot continue recursion past a ground value
-    if kind.is_ground():
+    if Kind.is_ground(kind):
         raise IndexError(f'Unsupported operator[] for Value of kind {kind.name.capitalize()}')
     assert kind in (Kind.LIST, Kind.RECORD)
 

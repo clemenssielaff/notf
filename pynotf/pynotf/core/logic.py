@@ -120,12 +120,12 @@ class Operator:
         """
         return Operator(core.get_app().get_table(core.TableIndex.OPERATORS).add_row(
             op_index=description.operator_index,
+            flags=description.flags | (EmitterStatus.IDLE << FlagIndex.STATUS),
+            node=node,
             value=description.initial_value,
             input_schema=description.input_schema,
             args=description.args,
             data=description.data,
-            flags=description.flags | (EmitterStatus.IDLE << FlagIndex.STATUS),
-            node=node,
         ))
 
     def __init__(self, handle: RowHandle):
@@ -606,8 +606,7 @@ class OpCreateChild:
         )
 
     @staticmethod
-    def on_next(self: Operator, upstream: RowHandle, value: Value) -> Value:
-        print(f'Received {value!r} from {upstream}')
+    def on_next(self: Operator, _: RowHandle, value: Value) -> Value:
         return self.get_data()
 
 

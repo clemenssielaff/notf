@@ -216,7 +216,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(Value.Schema.from_value(schema_value['schema']), test_value.get_schema())
 
         # explicit None schema
-        none_schema: Value.Schema = Value.Schema.from_any(None)
+        none_schema: Value.Schema = Value.Schema.create(None)
         self.assertEqual(len(none_schema), 0)
 
         # none Schema through an empty list
@@ -561,19 +561,19 @@ class TestCase(unittest.TestCase):
 
     def test_schema_as_list(self):
         # number turns into a list of numbers
-        self.assertEqual(Value.Schema.from_any([0]), Value.Schema.from_any(0).as_list())
+        self.assertEqual(Value.Schema.create([0]), Value.Schema.create(0).as_list())
 
         # string turns into a list of strings
-        self.assertEqual(Value.Schema.from_any([""]), Value.Schema.from_any("").as_list())
+        self.assertEqual(Value.Schema.create([""]), Value.Schema.create("").as_list())
 
         # list turns into a list of lists
-        self.assertEqual(Value.Schema.from_any([[0]]), Value.Schema.from_any([0]).as_list())
+        self.assertEqual(Value.Schema.create([[0]]), Value.Schema.create([0]).as_list())
 
         # map turns into a list of maps
-        self.assertEqual(Value.Schema.from_any([{"x": 0}]), Value.Schema.from_any({"x": 0}).as_list())
+        self.assertEqual(Value.Schema.create([{"x": 0}]), Value.Schema.create({"x": 0}).as_list())
 
         # value turns into a list of values
-        self.assertEqual(Value.Schema.from_any([Value(0)]), Value.Schema.from_any(Value(0)).as_list())
+        self.assertEqual(Value.Schema.create([Value(0)]), Value.Schema.create(Value(0)).as_list())
 
         # none turns into None
         self.assertEqual(Value.Schema(), Value.Schema().as_list())

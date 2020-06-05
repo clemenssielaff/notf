@@ -5,6 +5,10 @@ from typing import List, Optional, Iterable
 from pycnotf import V2f, CubicBezier2f, Aabrf, Polygon2f, approximate
 from pynotf.extra import chunks
 
+from pynotf.data import Value
+
+
+# SHAPE BUILDER ########################################################################################################
 
 class ShapeBuilder:
     def __init__(self, start: V2f):
@@ -65,13 +69,39 @@ class ShapeBuilder:
         return self._points[0]  # return start point, useful for parsing multiple relative paths
 
 
+# SHAPE ################################################################################################################
+
 class Shape:
+    SCHEMA: Value.Schema = Value(
+        vertices=[(0, 0)],
+        indices=[0],
+        aabr=(0, 0, 0, 0)
+    ).get_schema()
+
     def __init__(self, builder: Optional[ShapeBuilder] = None):
         assert builder is None or builder.is_valid()
 
         self._vertices: List[V2f] = [] if builder is None else builder.get_points()
         self._indices: List[int] = [] if builder is None else builder.get_indices()
         self._aabr: Aabrf = Aabrf.wrongest() if builder is None else self._calculate_bounding_box()
+
+    @classmethod
+    def from_value(cls, value: Value) -> Shape:
+        if value.get_schema() != cls.SCHEMA:
+            raise ValueError(f'Cannot build a Shape from an incompatible Value Schema: {value.get_schema()!s}.\n'
+                             f'A valid Shape Value has the Schema: {cls.SCHEMA!s}')
+        shape: Shape = Shape()
+        shape._vertices = [V2f(float(v[0]), float(v[1])) for v in value['vertices']]
+        shape._indices = [int(v) for v in value['indices']]
+        shape._aabr = Aabrf(*(float(v) for v in value['aabr']))
+        return shape
+
+    def as_value(self) -> Value:
+        return Value(
+            vertices=[(v.x, v.y) for v in self._vertices],
+            indices=self._indices,
+            aabr=(self._aabr.left, self._aabr.bottom, self._aabr.width, self._aabr.height)
+        )
 
     def __repr__(self):
         coords: str = ', '.join(f'({v.x}, {v.y})' for v in (self._vertices[i] for i in self._indices))

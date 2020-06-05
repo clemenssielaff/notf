@@ -269,6 +269,9 @@ class Bonsai:
             return False
         return self._bonsai == other._bonsai
 
+    def __hash__(self):
+        return hash(self._bonsai)
+
     def get(self, name: str) -> Optional[int]:
         if not isinstance(name, str):
             return None

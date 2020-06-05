@@ -5,4 +5,4 @@ from .layout import Layout, LayoutRow, LayoutDescription, NodeComposition, Layou
 from .logic import Operator, OperatorRow, OperatorIndex, Fact, OpRelay
 from .logic import OPERATOR_VTABLE, OperatorVtableIndex  # TODO: these should not be part of the public interface
 from .painterpreter import Painter, Sketch, Design
-from .scene import Node, Scene, NodeRow, NodeDescription, NodeStateDescription
+from .scene import Node, Scene, NodeRow

@@ -42,13 +42,13 @@ class Application:
     def schedule_event(self, callback: Callable, *args):
         self._event_loop.schedule((callback, *args))
 
-    def run(self, root_desc: core.NodeDescription) -> int:
+    def run(self, root_description: Value) -> int:
         # initialize glfw
         if not glfw.init():
             return -1
 
         # create the application data
-        self._scene.initialize(root_desc)
+        self._scene.initialize(root_description)
 
         # create a windowed mode window and its OpenGL context.
         glfw.window_hint(glfw.CLIENT_API, glfw.OPENGL_ES_API)
