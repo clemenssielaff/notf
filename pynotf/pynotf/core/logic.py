@@ -276,8 +276,8 @@ class Operator:
         if len(self.get_downstream()) == 0 and not self.is_external():
             return self.remove()
 
-    def on_next(self, source: Operator, value: Value) -> None:
-        self._run(source, OperatorVtableIndex.NEXT, value)
+    def on_update(self, source: Operator, value: Value) -> None:
+        self._run(source, OperatorVtableIndex.UPDATE, value)
 
     def on_fail(self, source: Operator, error: Value) -> None:
         self._run(source, OperatorVtableIndex.FAILURE, error)
@@ -301,8 +301,8 @@ class Operator:
         if callback_func is None:
             return  # operator type does not provide the requested callback
 
-        if callback == OperatorVtableIndex.NEXT:
-            # perform the `on_next` callback
+        if callback == OperatorVtableIndex.UPDATE:
+            # perform the `on_update` callback
             new_data: Value = callback_func(self, source, value)
 
             # ...and update the operator's data
@@ -312,8 +312,8 @@ class Operator:
             # the failure and completion callbacks do not return a value
             callback_func(self, source, value)
 
-    def next(self, value: Value) -> None:
-        self._emit(OperatorVtableIndex.NEXT, value)
+    def update(self, value: Value) -> None:
+        self._emit(OperatorVtableIndex.UPDATE, value)
 
     def fail(self, error: Value) -> None:
         self._emit(OperatorVtableIndex.FAILURE, error)
@@ -337,7 +337,7 @@ class Operator:
         # copy the list of downstream handles, in case it changes during the emission
         downstream: List[Operator] = [Operator(row_handle) for row_handle in self.get_downstream()]
 
-        if callback == OperatorVtableIndex.NEXT:
+        if callback == OperatorVtableIndex.UPDATE:
 
             # store the emitted value and ensure that the operator is able to emit the given value
             self.set_value(value, self.get_value().get_schema())
@@ -402,32 +402,6 @@ class Operator:
         operator_table[self._handle]['data'] = new_data
 
 
-# FACT #################################################################################################################
-
-class Fact:
-    def __init__(self, operator: Operator):
-        self._operator: Operator = operator
-
-    def get_value(self) -> Value:
-        return self._operator.get_value()
-
-    def get_schema(self) -> Value.Schema:
-        return self.get_value().get_schema()
-
-    def next(self, value: Value) -> None:
-        assert value.get_schema() == self.get_schema()
-        core.get_app().schedule_event(lambda: self._operator.next(value))
-
-    def fail(self, error: Value) -> None:
-        core.get_app().schedule_event(lambda: self._operator.fail(error))
-
-    def complete(self) -> None:
-        core.get_app().schedule_event(lambda: self._operator.complete())
-
-    def subscribe(self, downstream: Operator):
-        self._operator.subscribe(downstream)
-
-
 # OPERATOR REGISTRY ####################################################################################################
 
 class OpRelay:
@@ -441,8 +415,8 @@ class OpRelay:
         )
 
     @staticmethod
-    def on_next(self: Operator, _: RowHandle, value: Value) -> Value:
-        self.next(value)
+    def on_update(self: Operator, _: RowHandle, value: Value) -> Value:
+        self.update(value)
         return self.get_data()
 
 
@@ -459,13 +433,13 @@ class OpBuffer:
         )
 
     @staticmethod
-    def on_next(self: Operator, _upstream: RowHandle, _value: Value) -> Value:
+    def on_update(self: Operator, _upstream: RowHandle, _value: Value) -> Value:
         if not int(self.get_data()['is_running']) == 1:
             async def timeout():
                 await curio.sleep(float(self.get_argument("time_span")))
                 if not self.is_valid():
                     return
-                self.next(Value(self.get_data()['counter']))
+                self.update(Value(self.get_data()['counter']))
                 print(f'Clicked {int(self.get_data()["counter"])} times '
                       f'in the last {float(self.get_argument("time_span"))} seconds')
                 return mutate_value(self.get_data(), "is_running", False)
@@ -496,7 +470,7 @@ class OpFactory:
         )
 
     @staticmethod
-    def on_next(self: Operator, _1: RowHandle, _2: Value) -> Value:
+    def on_update(self: Operator, _1: RowHandle, _2: Value) -> Value:
         downstream: RowHandleList = self.get_downstream()
         if len(downstream) == 0:
             return self.get_data()
@@ -507,7 +481,7 @@ class OpFactory:
         for subscriber in downstream:
             new_operator: Operator = Operator.create(factory_function(factory_arguments))
             new_operator.subscribe(Operator(subscriber))
-            new_operator.on_next(self, new_operator.get_value())
+            new_operator.on_update(self, new_operator.get_value())
 
         return self.get_data()
 
@@ -522,17 +496,17 @@ class OpCountdown:
         )
 
     @staticmethod
-    def on_next(self: Operator, _upstream: RowHandle, _value: Value) -> Value:
+    def on_update(self: Operator, _upstream: RowHandle, _value: Value) -> Value:
         counter: Value = self.get_argument('start')
         assert counter.get_kind() == Value.Kind.NUMBER
 
         async def loop():
             nonlocal counter
-            self.next(counter)
+            self.update(counter)
             while counter > 0:
                 counter = counter - 1
                 await curio.sleep(1)
-                self.next(counter)
+                self.update(counter)
             self.complete()
 
         self.schedule(loop)
@@ -549,7 +523,7 @@ class OpPrinter:
         )
 
     @staticmethod
-    def on_next(self: Operator, upstream: RowHandle, value: Value) -> Value:
+    def on_update(self: Operator, upstream: RowHandle, value: Value) -> Value:
         print(f'Received {value!r} from {upstream}')
         return self.get_data()
 
@@ -586,7 +560,7 @@ class OpSine:
 
         async def runner():
             while self.is_valid():
-                self.next(Value((sin(2 * pi * frequency * monotonic()) + 1) * amplitude * 0.5))
+                self.update(Value((sin(2 * pi * frequency * monotonic()) + 1) * amplitude * 0.5))
                 core.get_app().redraw()
                 await curio.sleep(1 / samples)
 
@@ -606,7 +580,7 @@ class OpCreateChild:
         )
 
     @staticmethod
-    def on_next(self: Operator, _: RowHandle, value: Value) -> Value:
+    def on_update(self: Operator, _: RowHandle, value: Value) -> Value:
         return self.get_data()
 
 
@@ -623,7 +597,7 @@ class OperatorIndex(core.IndexEnum):
 
 @unique
 class OperatorVtableIndex(IntEnum):
-    NEXT = 0  # 0-2 matches the corresponding EmitterStatus
+    UPDATE = 0  # 0-2 matches the corresponding EmitterStatus
     FAILURE = 1
     COMPLETION = 2
     SUBSCRIPTION = 3
@@ -632,16 +606,16 @@ class OperatorVtableIndex(IntEnum):
 
 OPERATOR_VTABLE: Tuple[
     Tuple[
-        Optional[Callable[[Operator, RowHandle], Value]],  # on next
+        Optional[Callable[[Operator, RowHandle], Value]],  # on update
         Optional[Callable[[Operator, RowHandle], Value]],  # on failure
         Optional[Callable[[Operator, RowHandle], Value]],  # on completion
         Optional[Callable[[Operator, RowHandle], None]],  # on subscription
         Callable[[Value], OperatorRowDescription],
     ], ...] = (
-    (OpRelay.on_next, None, None, None, OpRelay.create),
-    (OpBuffer.on_next, None, None, None, OpBuffer.create),
-    (OpFactory.on_next, None, None, None, OpFactory.create),
-    (OpCountdown.on_next, None, None, None, OpCountdown.create),
-    (OpPrinter.on_next, None, None, None, OpPrinter.create),
+    (OpRelay.on_update, None, None, None, OpRelay.create),
+    (OpBuffer.on_update, None, None, None, OpBuffer.create),
+    (OpFactory.on_update, None, None, None, OpFactory.create),
+    (OpCountdown.on_update, None, None, None, OpCountdown.create),
+    (OpPrinter.on_update, None, None, None, OpPrinter.create),
     (None, None, None, OpSine.on_subscribe, OpSine.create),
 )
