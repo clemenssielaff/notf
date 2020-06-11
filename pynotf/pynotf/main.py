@@ -42,7 +42,7 @@ count_presses_node: Value = mutate_value(Node.VALUE, dict(
                 ('printer', OperatorIndex.PRINTER, Value(Value())),
             ],
             connections=[
-                ('/:mouse_fact', 'buffer'),
+                ('/|mouse_fact', 'buffer'),
                 ('buffer', 'printer'),
             ],
             design=Value([
@@ -82,11 +82,11 @@ countdown_node: Value = mutate_value(Node.VALUE, dict(
                 # TODO: it is weird to have name identifiers for the Design, but INDEX for Layout and Operators
             ],
             connections=[
-                ('/:key_fact', 'factory'),
+                ('/|key_fact', 'factory'),
                 ('factory', 'printer'),
-                ('/:mouse_fact', 'mouse_pos_printer'),
-                ('sine', ':roundness'),
-                (':on_mouse_click', 'mouse_click_printer'),
+                ('/|mouse_fact', 'mouse_pos_printer'),
+                ('sine', '|roundness'),
+                ('|on_mouse_click', 'mouse_click_printer'),
             ],
             design=Value([
                 ('fill', Value(
@@ -143,7 +143,6 @@ root_node: Value = mutate_value(Node.VALUE, dict(
 
 if __name__ == "__main__":
     sys.exit(get_app().run(root_node))
-
 
 # TODO: CONTINUE HERE
 #   I have made a lot of progress to define the whole application as pure data. Most of the application-specific code is

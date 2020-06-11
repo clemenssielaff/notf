@@ -1,4 +1,5 @@
 import unittest
+from typing import List
 
 from pynotf.data import Path
 
@@ -19,18 +20,18 @@ class TestCase(unittest.TestCase):
         self.assertTrue(empty_path.is_relative())
         self.assertFalse(empty_path.is_absolute())
         self.assertFalse(empty_path.is_node_path())
-        self.assertFalse(empty_path.is_leaf_path())
+        self.assertFalse(empty_path.is_interop_path())
 
     def test_invalid(self):
         """
         Non-empty paths can be invalid.
         """
         with self.assertRaises(Path.Error):
-            Path("test/node:leaf/wrong")  # no nodes following a leaf
+            Path("test/node|interop/wrong")  # no nodes following a interop
         with self.assertRaises(Path.Error):
-            Path("test/node:leaf:wrong")  # a leaf cannot follow another leaf
+            Path("test/node|interop|wrong")  # a interop cannot follow another interop
         with self.assertRaises(Path.Error):
-            Path("test/wrong:")  # no empty leaf name
+            Path("test/wrong|")  # no empty interop name
         with self.assertRaises(Path.Error):
             Path("/root/child/../../../nope")  # no going up further than the root in absolute paths
 
@@ -46,7 +47,7 @@ class TestCase(unittest.TestCase):
         """
         Paths can be absolute or relative.
         """
-        absolute: Path = Path("/test/this:path")
+        absolute: Path = Path("/test/this|path")
         self.assertTrue(absolute.is_absolute())
         self.assertFalse(absolute.is_relative())
         self.assertFalse(absolute.is_empty())
@@ -56,20 +57,20 @@ class TestCase(unittest.TestCase):
         self.assertFalse(relative.is_absolute())
         self.assertFalse(relative.is_empty())
 
-    def test_node_leaf(self):
+    def test_interop(self):
         """
-        Paths can denote a node or a leaf.
+        Paths can denote a node or an interop.
         """
         node: Path = Path("/this/is/a/valid")
         self.assertTrue(node.is_node_path())
-        self.assertFalse(node.is_leaf_path())
+        self.assertFalse(node.is_interop_path())
         self.assertEqual(node.get_node_path(), node)
 
-        leaf: Path = Path("/this/is/a/valid:leaf")
-        self.assertTrue(leaf.is_leaf_path())
-        self.assertFalse(leaf.is_node_path())
-        self.assertEqual(leaf.get_node_path(), node)
-        self.assertEqual(leaf.get_leaf(), 'leaf')
+        interop: Path = Path("/this/is/a/valid|interop")
+        self.assertTrue(interop.is_interop_path())
+        self.assertFalse(interop.is_node_path())
+        self.assertEqual(interop.get_node_path(), node)
+        self.assertEqual(interop.get_interop(), 'interop')
 
     def test_step_in_place(self):
         """
@@ -108,34 +109,45 @@ class TestCase(unittest.TestCase):
         self.assertTrue(up_and_down.is_absolute())
         self.assertTrue(up_and_down.is_node_path())
 
-    def test_relative_leaf(self):
+    def test_relative_interop(self):
         """
-        Leafs can also be used in a relative path.
+        Interop can also be used in a relative path.
         """
-        just_leaf: Path = Path(":leaf")
-        self.assertTrue(just_leaf.is_relative())
-        self.assertTrue(just_leaf.is_leaf_path())
-        self.assertFalse(just_leaf.is_empty())
+        just_interop: Path = Path("|interop")
+        self.assertTrue(just_interop.is_relative())
+        self.assertTrue(just_interop.is_interop_path())
+        self.assertFalse(just_interop.is_empty())
 
         node: Path = Path("/some/node")
-        self.assertEqual(node + just_leaf, Path("/some/node:leaf"))
+        self.assertEqual(node + just_interop, Path("/some/node|interop"))
 
     def test_steps(self):
         """
         Paths can be iterated step-by-step.
         """
-        path: Path = Path("/parent/child/node:leaf")
-        self.assertEqual(len(path), 3)  # not counting the leaf
-        self.assertEqual(path[0], 'parent')
-        self.assertEqual(path[1], 'child')
-        self.assertEqual(path[2], 'node')
-        self.assertEqual(path[-1], 'node')
-        self.assertEqual(path[-2], 'child')
-        self.assertEqual(path[-3], 'parent')
-        with self.assertRaises(IndexError):
-            _ = path[3]
-        with self.assertRaises(IndexError):
-            _ = path[-4]
+        path: Path = Path("/parent/child/node|interop")
+        nodes: List[str] = [name for name in path]
+        self.assertEqual(len(nodes), 3)
+        self.assertEqual(nodes[0], 'parent')
+        self.assertEqual(nodes[1], 'child')
+        self.assertEqual(nodes[2], 'node')
+
+        path: Path = Path("relative_node")
+        nodes: List[str] = [name for name in path]
+        self.assertEqual(len(nodes), 1)
+        self.assertEqual(nodes[0], 'relative_node')
+
+        path: Path = Path("/|some_fact")
+        nodes: List[str] = [name for name in path]
+        self.assertEqual(len(nodes), 0)
+
+        path: Path = Path("|relative_interop")
+        nodes: List[str] = [name for name in path]
+        self.assertEqual(len(nodes), 0)
+
+        path: Path = Path("/")
+        nodes: List[str] = [name for name in path]
+        self.assertEqual(len(nodes), 0)
 
     def test_compare(self):
         """
@@ -146,12 +158,12 @@ class TestCase(unittest.TestCase):
         self.assertTrue(Path("") != Path("/"))  # left one is relative, right one is absolute
         self.assertTrue(Path("node") != Path("/node"))
         self.assertTrue(Path("node") != Path(".node"))
-        self.assertTrue(Path("leaf") != Path(":leaf"))
+        self.assertTrue(Path("interop") != Path("|interop"))
         self.assertTrue(Path("one") != Path("one/two"))
         self.assertTrue(Path("one/two") != Path("one/two/three"))
         self.assertTrue(Path("one/two") != Path("one/three"))
         self.assertTrue(Path("one/two") == Path("one/two"))
-        self.assertTrue(Path("one/two:three") == Path("one/two:three"))
+        self.assertTrue(Path("one/two|three") == Path("one/two|three"))
 
     def test_repr(self):
         """
@@ -160,9 +172,9 @@ class TestCase(unittest.TestCase):
         self.assertEqual(str(Path()), "")
         self.assertEqual(str(Path("node")), "node")
         self.assertEqual(str(Path("/absolute/node")), "/absolute/node")
-        self.assertEqual(str(Path("/absolute/node:leaf")), "/absolute/node:leaf")
-        self.assertEqual(str(Path("relative/node:leaf")), "relative/node:leaf")
-        self.assertEqual(str(Path("relative/../node:leaf")), "node:leaf")
+        self.assertEqual(str(Path("/absolute/node|interop")), "/absolute/node|interop")
+        self.assertEqual(str(Path("relative/node|interop")), "relative/node|interop")
+        self.assertEqual(str(Path("relative/../node|interop")), "node|interop")
 
     def test_resolve_relative(self):
         """
@@ -187,11 +199,12 @@ class TestCase(unittest.TestCase):
         self.assertEqual(Path("/parent") + Path("path/to/") + Path("./another") + Path("child"),
                          Path("/parent/path/to/another/child"))
 
-        # ... down to a leaf
-        self.assertEqual(Path("/parent") + Path("path/to:leaf"), Path("/parent/path/to:leaf"))
+        # ... down to an interop
+        self.assertEqual(Path("/parent") + Path("path/to|interop"), Path("/parent/path/to|interop"))
 
-        # ... up from a leaf
-        self.assertEqual(Path("/root/path/to/a:leaf") + Path("../another:leaf"), Path("/root/path/to/another:leaf"))
+        # ... up from an interop
+        self.assertEqual(Path("/root/path/to/a|interop") + Path("../another|interop"),
+                         Path("/root/path/to/another|interop"))
 
     def test_resolve_absolute(self):
         """
@@ -199,23 +212,23 @@ class TestCase(unittest.TestCase):
         """
         # ... on the right of a relative path
         with self.assertRaises(Path.Error):
-            Path("path/to:leaf") + Path("/parent/to/absolute")
+            Path("path/to|interop") + Path("/parent/to/absolute")
 
         # ... to another another absolute path
         with self.assertRaises(Path.Error):
-            Path("/parent/to/absolute") + Path("/another/absolute:leaf")
+            Path("/parent/to/absolute") + Path("/another/absolute|interop")
 
-    def test_add_relative_to_leaf(self):
+    def test_add_relative_to_interop(self):
         """
-        When appending a relative path to a leaf path, the leaf is ignored.
+        When appending a relative path to an interop path, the interop is ignored.
         """
-        path: Path = Path("/parent/to/absolute:leaf") + Path("child/to/another:leaf")
-        self.assertEqual(path, Path("/parent/to/absolute/child/to/another:leaf"))
+        path: Path = Path("/parent/to/absolute|interop") + Path("child/to/another|interop")
+        self.assertEqual(path, Path("/parent/to/absolute/child/to/another|interop"))
         self.assertTrue(path.is_absolute())
-        self.assertTrue(path.is_leaf_path())
+        self.assertTrue(path.is_interop_path())
 
         with self.assertRaises(Path.Error):
-            _ = Path("/parent/to/absolute:leaf") + Path("/nope/does/not:work")
+            _ = Path("/parent/to/absolute|interop") + Path("/nope/does/not|work")
 
     def test_add_in_place(self):
         """
@@ -246,6 +259,6 @@ class TestCase(unittest.TestCase):
         with self.assertRaises(NameError):
             Path.check_name('contains/slash')
         with self.assertRaises(NameError):
-            Path.check_name('contains:colon')
+            Path.check_name('contains|pipe')
         Path.check_name("this_should-work75")
         Path.check_name('name.with dot_and-others..')

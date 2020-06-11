@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from logging import warning
-from typing import Tuple, Optional, Dict, List, NamedTuple, Iterable
+from typing import Tuple, Optional, Dict, List, NamedTuple, Iterable, Iterator
 
 from pyrsistent import field
 
@@ -253,6 +253,14 @@ class Node:
                 return child_name
         assert False
 
+    def get_path(self) -> Path:
+        names: List[str] = [self.get_name()]
+        next_node: Optional[Node] = self.get_parent()
+        while next_node:
+            names.append(next_node.get_name())
+            next_node = next_node.get_parent()
+        return Path._create(f'/{"/".join(reversed(names))}')
+
     def get_child(self, name: str) -> Optional[Node]:
         child_handle: Optional[RowHandle] = core.get_app().get_table(core.TableIndex.NODES)[self._handle][
             'child_names'].get(name)
@@ -260,25 +268,31 @@ class Node:
             return None
         return Node(child_handle)
 
-    def get_descendant(self, path: Path, step: int = 0) -> Optional[Node]:
+    def get_descendant(self, path: Path) -> Optional[Node]:
+        path_iterator: Iterator[str] = path.get_iterator()
+        node: Node = self
+        next_step: Optional[str] = next(path_iterator, None)
+        while next_step:
+
+            # next step is up
+            if next_step == Path.STEP_UP:
+                parent: Optional[Node] = node.get_parent()
+                if parent is None:
+                    raise Path.Error(f'Node "{str(self.get_path())}" has no parent')
+                node = parent
+
+            # next step is down
+            else:
+                next_child: Optional[Node] = node.get_child(next_step)
+                if next_child is None:
+                    raise Path.Error(f'Node "{str(self.get_path())}" has no child')
+                node = next_child
+
+            # advance the path iterator
+            next_step = next(path_iterator, None)
+
         # success
-        if step == len(path):
-            return self
-
-        # next step is up
-        if path[step] == Path.STEP_UP:
-            parent: Optional[Node] = self.get_parent()
-            if parent:
-                return parent.get_descendant(path, step + 1)
-
-        # next step is down
-        else:
-            next_child: Optional[Node] = self.get_child(path[step])
-            if next_child:
-                return next_child.get_descendant(path, step + 1)
-
-        # failure
-        return None
+        return node
 
     def paint(self, painter: core.Painter):
         painter.paint(self)
@@ -358,11 +372,12 @@ class Node:
 
         def find_operator(path: Path) -> Optional[core.Operator]:
             if path.is_node_path():
+                # TODO: interpreting single-name relative node paths as dynamic operators is not good
                 assert path.is_relative() and len(path) == 1  # interpret single name paths as dynamic operator
-                return core.Operator(network.get(path[0]))
+                return core.Operator(network.get(str(path)))
 
             else:
-                assert path.is_leaf_path()
+                assert path.is_interop_path()
                 node: Optional[Node]
                 if path.is_absolute():
                     node = core.get_app().get_scene().get_node(path)
@@ -370,7 +385,7 @@ class Node:
                     assert path.is_relative()
                     node = self.get_descendant(path)
                 if node:
-                    return node.get_interop(path.get_leaf())
+                    return node.get_interop(path.get_interop())
 
             return None
 
