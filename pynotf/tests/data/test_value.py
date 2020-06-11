@@ -1,8 +1,10 @@
 import unittest
 import logging
 from math import pi, trunc, floor, ceil
+from typing import List
 
 from pynotf.data import Value, mutate_value, multimutate_value
+from pynotf.data.value import is_denotable_valid_for_schema  # not part of the public API
 
 from pyrsistent import pvector as vec
 
@@ -53,6 +55,7 @@ float_value = Value(42.24)
 string_value = Value("hello")
 value_value = Value(Value(1))
 none_value = Value()
+list_value = Value([0, 1, 2])
 
 empty_list = vec((0,))
 
@@ -136,11 +139,27 @@ class TestCase(unittest.TestCase):
  35: Number
 """)
 
+    def test_simple_schemas(self):
+        self.assertTrue(float_value.get_schema().is_number())
+        self.assertTrue(string_value.get_schema().is_string())
+        self.assertTrue(list_value.get_schema().is_list())
+        self.assertTrue(test_value.get_schema().is_record())
+
+        self.assertFalse(float_value.get_schema().is_string())
+        self.assertFalse(string_value.get_schema().is_list())
+        self.assertFalse(list_value.get_schema().is_record())
+        self.assertFalse(test_value.get_schema().is_number())
+
     def test_equality(self):
         self.assertEqual(Value(Value.Schema()), none_value)
         self.assertEqual(Value(test_element), test_value)
         self.assertNotEqual(none_value, test_value)
         self.assertNotEqual(none_value, None)
+
+    def test_hash(self):
+        test_hash: int = hash(test_value)
+        mutated_hash: int = hash(mutate_value(test_value["name"], "Mrs. Okay"))
+        self.assertNotEqual(test_hash, mutated_hash)
 
     def test_invalid_element(self):
         with self.assertRaises(ValueError):
@@ -235,6 +254,14 @@ class TestCase(unittest.TestCase):
             _ = Value([None])
         with self.assertRaises(ValueError):
             _ = Value(dict(a=None))
+
+        # none can only be mutated to none
+        new_none: Value = mutate_value(none, None)
+        self.assertEqual(none, new_none)
+
+        # corner case to test if a denotable is valid for a None schema
+        # not accessible from the API but you can't just leave it out as it is a valid case...
+        self.assertTrue(is_denotable_valid_for_schema(None, none_value.get_schema()))
 
     def test_any(self):
         """
@@ -357,6 +384,23 @@ class TestCase(unittest.TestCase):
     def test_record_access(self):
         self.assertEqual(test_value["coords"][0]["someName"], test_value[0][0][1])
 
+    def test_iteration(self):
+        children: List[Value] = [child for child in test_value]
+        self.assertEqual(len(children), 8)
+        self.assertEqual(children[0], test_value["coords"])
+        self.assertEqual(children[1], test_value["name"])
+        self.assertEqual(children[2], test_value["my_map"])
+        self.assertEqual(children[3], test_value["pos"])
+        self.assertEqual(children[4], test_value["number_list"])
+        self.assertEqual(children[5], test_value["nested_list"])
+        self.assertEqual(children[6], test_value["unnamed record"])
+        self.assertEqual(children[7], test_value["a nested value"])
+
+        self.assertEqual(len([c for c in Value(0)]), 0)
+        self.assertEqual(len([c for c in Value("string")]), 0)
+        self.assertEqual(len([c for c in Value()]), 0)
+        self.assertEqual(len([c for c in Value(Value("another one"))]), 0)
+
     def test_immutability(self):
         modified = mutate_value(test_value, ("coords", 0, "x"), 1)
         self.assertEqual(float(modified["coords"][0]["x"]), 1)
@@ -398,77 +442,77 @@ class TestCase(unittest.TestCase):
         int_value2: Value = mutate_value(int_value, Value(42))
         self.assertEqual(int(int_value2), 42)
 
-    # def test_mutation_failures(self):  # TODO: test fails due to TODO in value.py 1319
-    #     with self.assertRaises(TypeError):  # set number to string
-    #         mutate_value(test_value, "pos", "0.23")
-    #     with self.assertRaises(TypeError):  # set number to list
-    #         mutate_value(test_value, "pos", [])
-    #     with self.assertRaises(TypeError):  # set number to map
-    #         mutate_value(test_value, "pos", {'x': 3})
-    #
-    #     with self.assertRaises(TypeError):  # set string to number
-    #         mutate_value(test_value, "name", 0.23)
-    #     with self.assertRaises(TypeError):  # set string to list
-    #         mutate_value(test_value, "name", ["hello"])
-    #     with self.assertRaises(TypeError):  # set string to map
-    #         mutate_value(test_value, "name", {"hello": "you"})
-    #
-    #     with self.assertRaises(TypeError):  # set list to number
-    #         mutate_value(test_value, "coords", 0.23)
-    #     with self.assertRaises(TypeError):  # set list to string
-    #         mutate_value(test_value, "coords", "nope")
-    #     with self.assertRaises(TypeError):  # set list to map
-    #         mutate_value(test_value, "coords", {"hello": "you"})
-    #
-    #     with self.assertRaises(TypeError):  # set map to number
-    #         mutate_value(test_value, "my_map", 0.23)
-    #     with self.assertRaises(TypeError):  # set map to string
-    #         mutate_value(test_value, "my_map", "nope")
-    #     with self.assertRaises(TypeError):  # set map to list
-    #         mutate_value(test_value, "my_map", [{"key": "b", "a number": 322}])
-    #
-    #     # the none value cannot be changed and nothing can be set to none
-    #     with self.assertRaises(ValueError):
-    #         mutate_value(none_value, 1)
-    #     with self.assertRaises(ValueError):
-    #         mutate_value(none_value, "")
-    #     with self.assertRaises(ValueError):
-    #         mutate_value(none_value, [])
-    #     with self.assertRaises(ValueError):
-    #         mutate_value(Value(1), None)
-    #     with self.assertRaises(ValueError):
-    #         mutate_value(Value("string"), None)
-    #     with self.assertRaises(ValueError):
-    #         mutate_value(Value(['list', 'of', 'strings']), None)
-    #
-    #     # path traversal errors
-    #     with self.assertRaises(IndexError):
-    #         mutate_value(test_value, ("pos", 0), 0)  # cannot move past a ground value
-    #     with self.assertRaises(IndexError):
-    #         mutate_value(test_value, ("name", 1), "")
-    #     with self.assertRaises(IndexError):
-    #         mutate_value(test_value, ("pos", "foo"), 0)
-    #     with self.assertRaises(IndexError):
-    #         mutate_value(test_value, ("name", "bar"), "")
-    #
-    #     with self.assertRaises(KeyError):
-    #         mutate_value(test_value, "not a key", 0)
-    #     with self.assertRaises(KeyError):
-    #         mutate_value(test_value, ("unnamed record", "has no names"), 0)
-    #     with self.assertRaises(KeyError):
-    #         mutate_value(test_value, ("number_list", "string as list index"), 0)
-    #
-    #     # fail to change the subtree to one with a different schema
-    #     with self.assertRaises(TypeError):
-    #         mutate_value(test_value, "coords", [{"x": 7}])
-    #     with self.assertRaises(TypeError):  # shuffled
-    #         mutate_value(test_value, "my_map", {"list_in_the_middle": ["I am a changed string"],
-    #                                             "key": "changed",
-    #                                             "a number": 124, })
-    #
-    #     # mutation of none value
-    #     with self.assertRaises(ValueError):
-    #         mutate_value(none_value, 1, 2)
+    def test_mutation_failures(self):
+        with self.assertRaises(TypeError):  # set number to string
+            mutate_value(test_value, "pos", "0.23")
+        with self.assertRaises(TypeError):  # set number to list
+            mutate_value(test_value, "pos", [])
+        with self.assertRaises(TypeError):  # set number to map
+            mutate_value(test_value, "pos", {'x': 3})
+
+        with self.assertRaises(TypeError):  # set string to number
+            mutate_value(test_value, "name", 0.23)
+        with self.assertRaises(TypeError):  # set string to list
+            mutate_value(test_value, "name", ["hello"])
+        with self.assertRaises(TypeError):  # set string to map
+            mutate_value(test_value, "name", {"hello": "you"})
+
+        with self.assertRaises(TypeError):  # set list to number
+            mutate_value(test_value, "coords", 0.23)
+        with self.assertRaises(TypeError):  # set list to string
+            mutate_value(test_value, "coords", "nope")
+        with self.assertRaises(TypeError):  # set list to map
+            mutate_value(test_value, "coords", {"hello": "you"})
+
+        with self.assertRaises(TypeError):  # set map to number
+            mutate_value(test_value, "my_map", 0.23)
+        with self.assertRaises(TypeError):  # set map to string
+            mutate_value(test_value, "my_map", "nope")
+        with self.assertRaises(TypeError):  # set map to list
+            mutate_value(test_value, "my_map", [{"key": "b", "a number": 322}])
+
+        # the none value cannot be changed and nothing can be set to none
+        with self.assertRaises(ValueError):
+            mutate_value(none_value, 1)
+        with self.assertRaises(ValueError):
+            mutate_value(none_value, "")
+        with self.assertRaises(ValueError):
+            mutate_value(none_value, [])
+        with self.assertRaises(ValueError):
+            mutate_value(Value(1), None)
+        with self.assertRaises(ValueError):
+            mutate_value(Value("string"), None)
+        with self.assertRaises(ValueError):
+            mutate_value(Value(['list', 'of', 'strings']), None)
+
+        # path traversal errors
+        with self.assertRaises(IndexError):
+            mutate_value(test_value, ("pos", 0), 0)  # cannot move past a ground value
+        with self.assertRaises(IndexError):
+            mutate_value(test_value, ("name", 1), "")
+        with self.assertRaises(IndexError):
+            mutate_value(test_value, ("pos", "foo"), 0)
+        with self.assertRaises(IndexError):
+            mutate_value(test_value, ("name", "bar"), "")
+
+        with self.assertRaises(KeyError):
+            mutate_value(test_value, "not a key", 0)
+        with self.assertRaises(KeyError):
+            mutate_value(test_value, ("unnamed record", "has no names"), 0)
+        with self.assertRaises(KeyError):
+            mutate_value(test_value, ("number_list", "string as list index"), 0)
+
+        # fail to change the subtree to one with a different schema
+        with self.assertRaises(TypeError):
+            mutate_value(test_value, "coords", [{"x": 7}])
+        with self.assertRaises(TypeError):  # shuffled
+            mutate_value(test_value, "my_map", {"list_in_the_middle": ["I am a changed string"],
+                                                "key": "changed",
+                                                "a number": 124, })
+
+        # mutation of none value
+        with self.assertRaises(ValueError):
+            mutate_value(none_value, 1, 2)
 
     def test_mutate_with_equal_value(self):
         # update with the same number

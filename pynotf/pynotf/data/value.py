@@ -73,11 +73,11 @@ def create_denotable(obj: Any) -> Denotable:
         for idx, reference in enumerate(denotable):
             if isinstance(reference, list) and len(reference) == 0:
                 continue
-            reference_schema: Schema = Schema._from_denotable(reference)
+            reference_schema: Schema = schema_from_denotable(reference)
             for other_child in denotable[idx + 1:]:
                 if isinstance(other_child, list) and len(other_child) == 0:
                     continue
-                elif Schema._from_denotable(other_child) != reference_schema:
+                elif not is_denotable_valid_for_schema(other_child, reference_schema):
                     raise ValueError("All items in a Value.List must have the same Schema")
             break
         # ... unless all of the children are empty lists
@@ -235,124 +235,7 @@ class Schema(tuple, Sequence[int]):
         """
         if obj is None:
             return Schema()
-        return Schema._from_denotable(create_denotable(obj))
-
-    @staticmethod
-    def _from_denotable(denotable: Denotable) -> Schema:
-        """
-        Recursive, breadth-first assembly of a Schema for the given Denotable.
-        :returns: Schema describing how a Value containing the given Denotable would be laid out.
-        :raise ValueError: If you cannot create a Value.Schema from the given object.
-        """
-        assert denotable is not None
-
-        schema: List[int] = []
-        kind: Kind = Kind.from_denotable(denotable)
-
-        if isinstance(denotable, Value):
-            # Values take up a single word in a Schema, the VALUE Kind.
-            schema.append(int(Kind.VALUE))
-
-        elif kind == Kind.NUMBER:
-            # Numbers take up a single word in a Schema, the NUMBER Kind.
-            schema.append(int(Kind.NUMBER))
-
-        elif kind == Kind.STRING:
-            # Strings take up a single word in a Schema, the STRING Kind.
-            schema.append(int(Kind.STRING))
-
-        elif kind == Kind.LIST:
-            # A List Schema is a pair [LIST Kind, child Schema].
-            # All Values contained in a List must have the same Schema.
-            # An example Schema of a List is:
-            #
-            # ||    1.     ||     2.    | ... ||
-            # || List Type || ChildType | ... ||
-            # ||- header --||---- child ------||
-            #
-            schema.append(int(Kind.LIST))
-            for child in denotable:
-                if isinstance(child, list) and len(child) == 0:
-                    continue
-                schema.extend(Schema._from_denotable(child))
-                break
-            else:
-                raise ValueError("Lists cannot be empty for Schema definition")
-
-        else:
-            assert kind == Kind.RECORD
-            # Records take up at least 3 words in the buffer - the RECORD kind identifier, the number of entries in the
-            # Record (must be at least 1) followed by the child entries.
-            # An example Schema of a Record containing a Number, a List, a String and another Record can be visualized
-            # as follows:
-            #
-            # ||    1.    |    2.    ||    3.    |    4.    |    5.    |    6.    ||   7.     | ... |    14.   | ... ||
-            # || Rec Type | Rec Size || Nr. Type |  +3 (=7) | Str Type | +8 (=14) || ListType | ... | Rec Type | ... ||
-            # ||------ header -------||------------------ body -------------------||------------ children -----------||
-            #
-            # The Record Schema itself is split into three parts:
-            # 1. The header just contains the RECORD Kind and number of child entries.
-            # 2. The body contains a single word for each child. Strings and Number Schemas are only a single word long,
-            #    therefore they can be written straight into the body of the Schema.
-            #    List and Record Schemas are longer than one word and are appended at the end of the body. The body
-            #    itself contains only the forward offset to the child Schema in question.
-            #    In the special case where the Record contains only one non-ground child and it is the last child in the
-            #    Record, we can remove the last entry in the body and move the single child up one word.
-            # 3. Child Lists and Records in order of their appearance in the body.
-            assert len(denotable) > 0
-            schema.append(int(Kind.RECORD))
-            schema.append(len(denotable))  # number of children
-            child_position = len(schema)
-            schema.extend([0] * len(denotable))  # reserve space for the body
-
-            if isinstance(denotable, dict):
-                children: Iterable[Denotable] = denotable.values()
-            else:
-                assert isinstance(denotable, tuple)
-                children: Iterable[Denotable] = denotable
-
-            for child in children:
-                # only store the Kind for ground types
-                if Kind.is_ground(Kind.from_denotable(child)):
-                    schema[child_position] = int(Kind.from_denotable(child))
-                # lists and records store a forward offset and append themselves to the end of the schema
-                else:
-                    offset = len(schema) - child_position
-                    assert offset > 0
-
-                    # If the offset is 1, we only have a single non-ground child in the entire record and it is at the
-                    # very end. In this case, we can simply put the sub-schema of the child inline and save a word.
-                    if offset == 1:
-                        schema.pop()
-
-                    # The forward offset must be less than the first Kind identifier on the right of the word range.
-                    # I expect this to hold for the foreseeable future, because you can be very expressive with Schemas
-                    # of small sizes.
-                    # However, there is a plan B that we could investigate should large Schemas ever become a problem.
-                    # The idea is that instead of storing the raw forward offset, in the body of the record, you use
-                    # the previous offsets to accumulate the total. In the example above, word 4 would keep its offset
-                    # of 3 because it is the first offset. However, word 6 would have an offset of only 5 instead of
-                    # 8, because it would implicitly add the 3 from word 4. And while that does not look like a lot,
-                    # imagine that the second type in the record is a deeply nested record type that is 100 words long.
-                    # Then word 6 would need to point to word 108 and would require an offset of 102 with the current,
-                    # and 99 with the proposed method. ... Still not great. But a hypothetical third offset in the body
-                    # would only need to store the forward offset forward, maybe another 3 or 4. And not 105 or 106.
-                    # This is were the beauty is, the only way to run out of space is if you have a single element that
-                    # is huge, not if you have many ones that are small. ... And in the worst case, you could always use
-                    # a nested Value for those.
-                    #
-                    # The reason why we don't do it though is that you need to iterate through the entire body up to the
-                    # word that you want, at least if it is an offset. Right now, you can jump to the word, read the
-                    # offset and jump on to the child in question with no iteration required.
-                    # Of course, iterating over tightly packed bytes is hardly a problem, but why do it if we do not see
-                    # a need for it at the moment or the foreseeable future?
-                    else:
-                        assert offset < Kind._RIGHT
-                        schema[child_position] = offset  # forward offset
-                    schema.extend(Schema._from_denotable(child))
-                child_position += 1
-
-        return Schema(schema)
+        return schema_from_denotable(create_denotable(obj))
 
     def is_none(self) -> bool:
         """
@@ -447,6 +330,123 @@ class Schema(tuple, Sequence[int]):
         return result
 
 
+def schema_from_denotable(denotable: Denotable) -> Schema:
+    """
+    Recursive, breadth-first assembly of a Schema for the given Denotable.
+    :returns: Schema describing how a Value containing the given Denotable would be laid out.
+    :raise ValueError: If you cannot create a Value.Schema from the given object.
+    """
+    assert denotable is not None
+
+    schema: List[int] = []
+    kind: Kind = Kind.from_denotable(denotable)
+
+    if isinstance(denotable, Value):
+        # Values take up a single word in a Schema, the VALUE Kind.
+        schema.append(int(Kind.VALUE))
+
+    elif kind == Kind.NUMBER:
+        # Numbers take up a single word in a Schema, the NUMBER Kind.
+        schema.append(int(Kind.NUMBER))
+
+    elif kind == Kind.STRING:
+        # Strings take up a single word in a Schema, the STRING Kind.
+        schema.append(int(Kind.STRING))
+
+    elif kind == Kind.LIST:
+        # A List Schema is a pair [LIST Kind, child Schema].
+        # All Values contained in a List must have the same Schema.
+        # An example Schema of a List is:
+        #
+        # ||    1.     ||     2.    | ... ||
+        # || List Type || ChildType | ... ||
+        # ||- header --||---- child ------||
+        #
+        schema.append(int(Kind.LIST))
+        for child in denotable:
+            if isinstance(child, list) and len(child) == 0:
+                continue
+            schema.extend(schema_from_denotable(child))
+            break
+        else:
+            raise ValueError("Lists cannot be empty for Schema definition")
+
+    else:
+        assert kind == Kind.RECORD
+        # Records take up at least 3 words in the buffer - the RECORD kind identifier, the number of entries in the
+        # Record (must be at least 1) followed by the child entries.
+        # An example Schema of a Record containing a Number, a List, a String and another Record can be visualized
+        # as follows:
+        #
+        # ||    1.    |    2.    ||    3.    |    4.    |    5.    |    6.    ||   7.     | ... |    14.   | ... ||
+        # || Rec Type | Rec Size || Nr. Type |  +3 (=7) | Str Type | +8 (=14) || ListType | ... | Rec Type | ... ||
+        # ||------ header -------||------------------ body -------------------||------------ children -----------||
+        #
+        # The Record Schema itself is split into three parts:
+        # 1. The header just contains the RECORD Kind and number of child entries.
+        # 2. The body contains a single word for each child. Strings and Number Schemas are only a single word long,
+        #    therefore they can be written straight into the body of the Schema.
+        #    List and Record Schemas are longer than one word and are appended at the end of the body. The body
+        #    itself contains only the forward offset to the child Schema in question.
+        #    In the special case where the Record contains only one non-ground child and it is the last child in the
+        #    Record, we can remove the last entry in the body and move the single child up one word.
+        # 3. Child Lists and Records in order of their appearance in the body.
+        assert len(denotable) > 0
+        schema.append(int(Kind.RECORD))
+        schema.append(len(denotable))  # number of children
+        child_position = len(schema)
+        schema.extend([0] * len(denotable))  # reserve space for the body
+
+        if isinstance(denotable, dict):
+            children: Iterable[Denotable] = denotable.values()
+        else:
+            assert isinstance(denotable, tuple)
+            children: Iterable[Denotable] = denotable
+
+        for child in children:
+            # only store the Kind for ground types
+            if Kind.is_ground(Kind.from_denotable(child)):
+                schema[child_position] = int(Kind.from_denotable(child))
+            # lists and records store a forward offset and append themselves to the end of the schema
+            else:
+                offset = len(schema) - child_position
+                assert offset > 0
+
+                # If the offset is 1, we only have a single non-ground child in the entire record and it is at the
+                # very end. In this case, we can simply put the sub-schema of the child inline and save a word.
+                if offset == 1:
+                    schema.pop()
+
+                # The forward offset must be less than the first Kind identifier on the right of the word range.
+                # I expect this to hold for the foreseeable future, because you can be very expressive with Schemas
+                # of small sizes.
+                # However, there is a plan B that we could investigate should large Schemas ever become a problem.
+                # The idea is that instead of storing the raw forward offset, in the body of the record, you use
+                # the previous offsets to accumulate the total. In the example above, word 4 would keep its offset
+                # of 3 because it is the first offset. However, word 6 would have an offset of only 5 instead of
+                # 8, because it would implicitly add the 3 from word 4. And while that does not look like a lot,
+                # imagine that the second type in the record is a deeply nested record type that is 100 words long.
+                # Then word 6 would need to point to word 108 and would require an offset of 102 with the current,
+                # and 99 with the proposed method. ... Still not great. But a hypothetical third offset in the body
+                # would only need to store the forward offset forward, maybe another 3 or 4. And not 105 or 106.
+                # This is were the beauty is, the only way to run out of space is if you have a single element that
+                # is huge, not if you have many ones that are small. ... And in the worst case, you could always use
+                # a nested Value for those.
+                #
+                # The reason why we don't do it though is that you need to iterate through the entire body up to the
+                # word that you want, at least if it is an offset. Right now, you can jump to the word, read the
+                # offset and jump on to the child in question with no iteration required.
+                # Of course, iterating over tightly packed bytes is hardly a problem, but why do it if we do not see
+                # a need for it at the moment or the foreseeable future?
+                else:
+                    assert offset < Kind._RIGHT
+                    schema[child_position] = offset  # forward offset
+                schema.extend(schema_from_denotable(child))
+            child_position += 1
+
+    return Schema(schema)
+
+
 def get_subschema_start(schema: Schema, iterator: int, index: int) -> int:
     """
     Given a Schema, the position of an iterator within the Schema, pointing to the start of a Record subschema,
@@ -500,6 +500,50 @@ def get_subschema_end(schema: Schema, start_index: int) -> int:
 
         # if all children are ground, the end index is one past the body
         return start_index + 2 + child_count
+
+
+def is_denotable_valid_for_schema(denotable: Denotable, schema: Schema) -> bool:
+    """
+    If a Denotable contains an empty list, it is not possible to derive a Schema to compare against an existing one.
+    This function checks if a Denotable would be valid data for a Value with the given Schema without requiring the
+    Denotable to contain no empty lists.
+    """
+    if schema.is_none():
+        return denotable is None
+
+    def recursion(schema_itr: int, child: Denotable) -> bool:
+        kind: Kind = Kind(schema[schema_itr])
+
+        # decision about ground types are easy
+        if kind == Kind.NUMBER:
+            return isinstance(child, float)
+        elif kind == Kind.STRING:
+            return isinstance(child, str)
+        elif kind == Kind.VALUE:
+            return isinstance(child, Value)
+
+        # lists
+        elif kind == Kind.LIST:
+            if not isinstance(child, list):
+                return False
+            if len(child) == 0:  # empty lists always match
+                return True
+            # we know the first item is representable for all, as the child is a denotable
+            return recursion(schema_itr + 1, child[0])
+
+        # records
+        else:
+            assert kind == Kind.RECORD
+            if not isinstance(child, (dict, tuple)):
+                return False
+            if len(child) != schema[schema_itr + 1]:  # not the same number of entries
+                return False
+            for index, grandchild in enumerate(child if isinstance(child, tuple) else child.values()):
+                if not recursion(get_subschema_start(schema, schema_itr, index), grandchild):
+                    return False
+            return True
+
+    return recursion(0, denotable)
 
 
 # DATA #################################################################################################################
@@ -568,7 +612,7 @@ def create_data_from_schema(schema: Schema) -> Data:
     return create_data()
 
 
-def create_data_from_denotable(denotable: Denotable) -> Data:
+def data_from_denotable(denotable: Denotable) -> Data:
     assert denotable is not None
 
     if isinstance(denotable, Value):
@@ -582,16 +626,16 @@ def create_data_from_denotable(denotable: Denotable) -> Data:
     elif kind == Kind.LIST:
         list_size: int = len(denotable)
         if list_size > 0:
-            return make_const_list((list_size, *(create_data_from_denotable(child) for child in denotable)))
+            return make_const_list((list_size, *(data_from_denotable(child) for child in denotable)))
         else:
             return make_const_list((0,))  # empty list
 
     assert kind == Kind.RECORD
     if isinstance(denotable, tuple):
-        return make_const_list(create_data_from_denotable(child) for child in denotable)
+        return make_const_list(data_from_denotable(child) for child in denotable)
 
     assert isinstance(denotable, dict)
-    return make_const_list(create_data_from_denotable(child) for child in denotable.values())
+    return make_const_list(data_from_denotable(child) for child in denotable.values())
 
 
 # DICTIONARY ###########################################################################################################
@@ -682,8 +726,8 @@ class Value:
         # initialization from denotable
         else:
             denotable: Denotable = create_denotable(obj)
-            self._schema = Schema._from_denotable(denotable)
-            self._data = create_data_from_denotable(denotable)
+            self._schema = schema_from_denotable(denotable)
+            self._data = data_from_denotable(denotable)
             self._dictionary = create_dictionary(denotable)
 
         assert self._is_consistent()
@@ -1291,35 +1335,21 @@ def mutate_data(current_data: Data, new_data: Any, schema: Schema, schema_itr: i
     kind: Kind = Kind(schema[schema_itr])
     assert Kind.is_valid(kind)
 
-    # ensure that the new data is denotable
-    denotable: Denotable = create_denotable(new_data)
-
-    # set to empty list
-    if isinstance(denotable, list) and len(denotable) == 0:
-        if kind == Kind.LIST:
-            if len(current_data) == 1:  # current list is already empty
-                assert current_data[0] == 0
-                return current_data, False
-            else:
-                return create_data_from_denotable(denotable), True
-        else:
-            raise TypeError(
-                f'Type mismatch, cannot set a Value of kind {kind.name.capitalize()} to the empty list')
-
     # if the new data is a Value with the same Schema as the current data, extract the new data instead of attempting
     # to set the complete Value as data
     current_schema: Schema = Schema.from_slice(schema, schema_itr, get_subschema_end(schema, schema_itr))
     if isinstance(new_data, Value) and new_data.get_schema() == current_schema:
         return new_data._data, new_data._data != current_data  # note that this still creates a new value... :/
 
+    # ensure that the new data is denotable
+    denotable: Denotable = create_denotable(new_data)
+
     # check if the data's Schema matches the child Value's
-    # data_schema: Schema = Schema._from_denotable(denotable)
-    # if data_schema != current_schema:
-    #     raise TypeError(f'Cannot mutate a Value of kind {kind.name.capitalize()} to "{denotable!r}"')
-    # TODO: this does not work if the denotable contains an empty list
+    if not is_denotable_valid_for_schema(denotable, current_schema):
+        raise TypeError(f'Cannot mutate a Value of kind {kind.name.capitalize()} to "{denotable!r}"')
 
     # return the original Data if it and the new one are equal
-    result_data: Data = create_data_from_denotable(denotable)
+    result_data: Data = data_from_denotable(denotable)
     if result_data == current_data:
         return current_data, False
     else:
