@@ -11,237 +11,55 @@ from pynotf.data import Path
 
 class TestCase(unittest.TestCase):
 
-    def test_empty(self):
+    def test_construction(self):
         """
-        Default constructed paths are empty but valid and relative.
+        Construct and normalize various Paths.
         """
-        empty_path: Path = Path()
-        self.assertTrue(empty_path.is_empty())
-        self.assertTrue(empty_path.is_relative())
-        self.assertFalse(empty_path.is_absolute())
-        self.assertFalse(empty_path.is_node_path())
-        self.assertFalse(empty_path.is_interop_path())
+        self.assertEqual(str(Path()), '')
+        self.assertEqual(str(Path('')), '')
+        self.assertEqual(str(Path('.')), '')
+        self.assertEqual(str(Path('..')), '..')
+        self.assertEqual(str(Path('//')), '/')
+        self.assertEqual(str(Path('./')), '')
+        self.assertEqual(str(Path('../')), '..')
+        self.assertEqual(str(Path('.//')), '')
+        self.assertEqual(str(Path('/node')), '/node')
+        self.assertEqual(str(Path('//node')), '/node')
+        self.assertEqual(str(Path('./node')), 'node')
+        self.assertEqual(str(Path('node/child')), 'node/child')
+        self.assertEqual(str(Path('node//child')), 'node/child')
+        self.assertEqual(str(Path('node|interop')), 'node|interop')
+        self.assertEqual(str(Path('/node|interop')), '/node|interop')
+        self.assertEqual(str(Path('|interop')), '|interop')
+        self.assertEqual(str(Path('.|interop')), '|interop')
+        self.assertEqual(str(Path('./|interop')), '|interop')
+        self.assertEqual(str(Path('../|interop')), '..|interop')
+        self.assertEqual(str(Path('../.')), '..')
+        self.assertEqual(str(Path('../..')), '../..')
+        self.assertEqual(str(Path('../../down/')), '../../down')
+        self.assertEqual(str(Path('three/steps/down/../../..')), '')
+        self.assertEqual(str(Path('three/steps/down/../../../../../')), '../..')
+        self.assertEqual(str(Path('two/down/../../../sibling/..')), '..')
+        self.assertEqual(str(Path('/parent/./child/../child/target/')), '/parent/child/target')
+        self.assertEqual(str(Path('parent/./child/../child/target/|interop')), 'parent/child/target|interop')
+        self.assertEqual(str(Path('service:/|/://.||::')), 'service:/|/://.||::')
 
-    def test_invalid(self):
+    def test_construction_failure(self):
         """
-        Non-empty paths can be invalid.
+        Fail to construct various invalid Paths.
         """
         with self.assertRaises(Path.Error):
-            Path("test/node|interop/wrong")  # no nodes following a interop
+            Path('test/node|interop/wrong')  # no nodes following a interop
         with self.assertRaises(Path.Error):
-            Path("test/node|interop|wrong")  # a interop cannot follow another interop
+            Path('test/node|interop|wrong')  # a interop cannot follow another interop
         with self.assertRaises(Path.Error):
-            Path("test/wrong|")  # no empty interop name
+            Path('test/wrong|')  # empty interop name
         with self.assertRaises(Path.Error):
-            Path("/root/child/../../../nope")  # no going up further than the root in absolute paths
-
-    def test_ignore_superfluous_symbols(self):
-        """
-        Superfluous symbols are ignored.
-        """
-        path: Path = Path("/parent/./child/../child/target/")
-        self.assertEqual(path, Path("/parent/child/target"))
-        self.assertEqual(len(path), 3)
-
-    def test_absolute_relative(self):
-        """
-        Paths can be absolute or relative.
-        """
-        absolute: Path = Path("/test/this|path")
-        self.assertTrue(absolute.is_absolute())
-        self.assertFalse(absolute.is_relative())
-        self.assertFalse(absolute.is_empty())
-
-        relative: Path = Path("test/this/path")
-        self.assertTrue(relative.is_relative())
-        self.assertFalse(relative.is_absolute())
-        self.assertFalse(relative.is_empty())
-
-    def test_interop(self):
-        """
-        Paths can denote a node or an interop.
-        """
-        node: Path = Path("/this/is/a/valid")
-        self.assertTrue(node.is_node_path())
-        self.assertFalse(node.is_interop_path())
-        self.assertEqual(node.get_node_path(), node)
-
-        interop: Path = Path("/this/is/a/valid|interop")
-        self.assertTrue(interop.is_interop_path())
-        self.assertFalse(interop.is_node_path())
-        self.assertEqual(interop.get_node_path(), node)
-        self.assertEqual(interop.get_interop(), 'interop')
-
-    def test_step_in_place(self):
-        """
-        A special relative path consists only of a single dot.
-        """
-        in_place: Path = Path(".")
-        self.assertTrue(in_place.is_node_path())
-        self.assertTrue(in_place.is_relative())
-
-    def test_step_up(self):
-        """
-        Paths can contain '..'-tokens.
-        """
-        empty: Path = Path("three/steps/down/../../..")
-        self.assertTrue(empty.is_empty())
-
-        one_up: Path = Path("two/down/../../../sibling/..")
-        self.assertEqual(one_up, Path(".."))
-        self.assertTrue(one_up.is_relative())
-        self.assertTrue(one_up.is_node_path())
-        self.assertFalse(one_up.is_empty())
-
-        two_up: Path = Path("three/steps/down/../../../../../")
-        self.assertEqual(two_up, Path("../.."))
-        self.assertTrue(two_up.is_relative())
-        self.assertTrue(two_up.is_node_path())
-        self.assertFalse(two_up.is_empty())
-
-        one_down: Path = Path("../../down/")
-        self.assertEqual(one_down, Path("../../down"))
-        self.assertTrue(one_down.is_relative())
-        self.assertTrue(one_down.is_node_path())
-
-        up_and_down: Path = Path("/root/one/up/../down")
-        self.assertEqual(up_and_down, Path("/root/one/down"))
-        self.assertTrue(up_and_down.is_absolute())
-        self.assertTrue(up_and_down.is_node_path())
-
-    def test_relative_interop(self):
-        """
-        Interop can also be used in a relative path.
-        """
-        just_interop: Path = Path("|interop")
-        self.assertTrue(just_interop.is_relative())
-        self.assertTrue(just_interop.is_interop_path())
-        self.assertFalse(just_interop.is_empty())
-
-        node: Path = Path("/some/node")
-        self.assertEqual(node + just_interop, Path("/some/node|interop"))
-
-    def test_steps(self):
-        """
-        Paths can be iterated step-by-step.
-        """
-        path: Path = Path("/parent/child/node|interop")
-        nodes: List[str] = [name for name in path]
-        self.assertEqual(len(nodes), 3)
-        self.assertEqual(nodes[0], 'parent')
-        self.assertEqual(nodes[1], 'child')
-        self.assertEqual(nodes[2], 'node')
-
-        path: Path = Path("relative_node")
-        nodes: List[str] = [name for name in path]
-        self.assertEqual(len(nodes), 1)
-        self.assertEqual(nodes[0], 'relative_node')
-
-        path: Path = Path("/|some_fact")
-        nodes: List[str] = [name for name in path]
-        self.assertEqual(len(nodes), 0)
-
-        path: Path = Path("|relative_interop")
-        nodes: List[str] = [name for name in path]
-        self.assertEqual(len(nodes), 0)
-
-        path: Path = Path("/")
-        nodes: List[str] = [name for name in path]
-        self.assertEqual(len(nodes), 0)
-
-    def test_compare(self):
-        """
-        Paths can be compared.
-        """
-        self.assertTrue(Path("") == Path())
-        self.assertTrue(Path("") != Path("."))  # left one is empty, right one is node
-        self.assertTrue(Path("") != Path("/"))  # left one is relative, right one is absolute
-        self.assertTrue(Path("node") != Path("/node"))
-        self.assertTrue(Path("node") != Path(".node"))
-        self.assertTrue(Path("interop") != Path("|interop"))
-        self.assertTrue(Path("one") != Path("one/two"))
-        self.assertTrue(Path("one/two") != Path("one/two/three"))
-        self.assertTrue(Path("one/two") != Path("one/three"))
-        self.assertTrue(Path("one/two") == Path("one/two"))
-        self.assertTrue(Path("one/two|three") == Path("one/two|three"))
-
-    def test_repr(self):
-        """
-        Paths can be converted back into a string.
-        """
-        self.assertEqual(str(Path()), "")
-        self.assertEqual(str(Path("node")), "node")
-        self.assertEqual(str(Path("/absolute/node")), "/absolute/node")
-        self.assertEqual(str(Path("/absolute/node|interop")), "/absolute/node|interop")
-        self.assertEqual(str(Path("relative/node|interop")), "relative/node|interop")
-        self.assertEqual(str(Path("relative/../node|interop")), "node|interop")
-
-    def test_resolve_relative(self):
-        """
-        Relative paths can be resolved to absolute paths...
-        """
-        # ... with an empty absolute path
-        self.assertEqual(Path("/") + Path("path/to/child"), Path("/path/to/child"))
-
-        # ... by going down in the hierarchy
-        self.assertEqual(Path("/parent") + Path("path/to/child"), Path("/parent/path/to/child"))
-
-        # ... by up down in the hierarchy
-        self.assertEqual(Path("/parent/child") + Path("../path/to/sibling"), Path("/parent/path/to/sibling"))
-
-        # ... by explicitly referring to the current
-        self.assertEqual(Path("/parent") + Path("./path/to/child"), Path("/parent/path/to/child"))
-
-        # ... by explicitly referring to the current
-        self.assertEqual(Path("/parent") + Path("./path/to/child"), Path("/parent/path/to/child"))
-
-        # ... by concatenating multiple relative paths
-        self.assertEqual(Path("/parent") + Path("path/to/") + Path("./another") + Path("child"),
-                         Path("/parent/path/to/another/child"))
-
-        # ... down to an interop
-        self.assertEqual(Path("/parent") + Path("path/to|interop"), Path("/parent/path/to|interop"))
-
-        # ... up from an interop
-        self.assertEqual(Path("/root/path/to/a|interop") + Path("../another|interop"),
-                         Path("/root/path/to/another|interop"))
-
-    def test_resolve_absolute(self):
-        """
-        Absolute paths cannot be concatenated...
-        """
-        # ... on the right of a relative path
+            Path('/root/child/../../../nope')  # going up further than the root in absolute paths
         with self.assertRaises(Path.Error):
-            Path("path/to|interop") + Path("/parent/to/absolute")
-
-        # ... to another another absolute path
+            Path('/node:service')  # service delimiter must be the first if present
         with self.assertRaises(Path.Error):
-            Path("/parent/to/absolute") + Path("/another/absolute|interop")
-
-    def test_add_relative_to_interop(self):
-        """
-        When appending a relative path to an interop path, the interop is ignored.
-        """
-        path: Path = Path("/parent/to/absolute|interop") + Path("child/to/another|interop")
-        self.assertEqual(path, Path("/parent/to/absolute/child/to/another|interop"))
-        self.assertTrue(path.is_absolute())
-        self.assertTrue(path.is_interop_path())
-
-        with self.assertRaises(Path.Error):
-            _ = Path("/parent/to/absolute|interop") + Path("/nope/does/not|work")
-
-    def test_add_in_place(self):
-        """
-        Paths can be modified in place.
-        """
-        path: Path = Path("/parent")
-        path += Path("path/to/")
-        path += Path("./another")
-        path += Path("child")
-        self.assertEqual(path, Path("/parent/path/to/another/child"))
-
-        with self.assertRaises(Path.Error):
-            path += Path("/won't/work/because/absolute")
+            Path(':')  # empty service
 
     def test_check_name(self):
         """
@@ -260,5 +78,277 @@ class TestCase(unittest.TestCase):
             Path.check_name('contains/slash')
         with self.assertRaises(NameError):
             Path.check_name('contains|pipe')
-        Path.check_name("this_should-work75")
+        Path.check_name('this_should-work75')
         Path.check_name('name.with dot_and-others..')
+
+    def test_is_empty(self):
+        """
+        Check that an empty Path is always recognized.
+        """
+        self.assertTrue(Path().is_empty())
+        self.assertFalse(Path('/').is_empty())
+        self.assertFalse(Path('/|interop').is_empty())
+        self.assertFalse(Path('|interop').is_empty())
+        self.assertFalse(Path('..').is_empty())
+        self.assertFalse(Path('..|interop').is_empty())
+        self.assertFalse(Path('/parent/child').is_empty())
+        self.assertFalse(Path('/parent/child|interop').is_empty())
+        self.assertFalse(Path('parent/child').is_empty())
+        self.assertFalse(Path('parent/child|interop').is_empty())
+        self.assertFalse(Path('../parent/child').is_empty())
+        self.assertFalse(Path('../parent/child|interop').is_empty())
+        self.assertFalse(Path('service:path').is_empty())
+
+    def test_is_absolute(self):
+        """
+        Check that absolute Paths are always recognized.
+        """
+        self.assertFalse(Path().is_absolute())
+        self.assertTrue(Path('/').is_absolute())
+        self.assertTrue(Path('/|interop').is_absolute())
+        self.assertFalse(Path('|interop').is_absolute())
+        self.assertFalse(Path('..').is_absolute())
+        self.assertFalse(Path('..|interop').is_absolute())
+        self.assertTrue(Path('/parent/child').is_absolute())
+        self.assertTrue(Path('/parent/child|interop').is_absolute())
+        self.assertFalse(Path('parent/child').is_absolute())
+        self.assertFalse(Path('parent/child|interop').is_absolute())
+        self.assertFalse(Path('../parent/child').is_absolute())
+        self.assertFalse(Path('../parent/child|interop').is_absolute())
+        self.assertTrue(Path('service:path').is_absolute())
+
+    def test_is_relative(self):
+        """
+        Check that relative Paths are always recognized.
+        """
+        self.assertTrue(Path().is_relative())
+        self.assertFalse(Path('/').is_relative())
+        self.assertFalse(Path('/|interop').is_relative())
+        self.assertTrue(Path('|interop').is_relative())
+        self.assertTrue(Path('..').is_relative())
+        self.assertTrue(Path('..|interop').is_relative())
+        self.assertFalse(Path('/parent/child').is_relative())
+        self.assertFalse(Path('/parent/child|interop').is_relative())
+        self.assertTrue(Path('parent/child').is_relative())
+        self.assertTrue(Path('parent/child|interop').is_relative())
+        self.assertTrue(Path('../parent/child').is_relative())
+        self.assertTrue(Path('../parent/child|interop').is_relative())
+        self.assertFalse(Path('service:path').is_relative())
+
+    def test_is_node_path(self):
+        """
+        Check that Node Paths are always recognized.
+        """
+        self.assertTrue(Path().is_node_path())
+        self.assertTrue(Path('/').is_node_path())
+        self.assertFalse(Path('/|interop').is_node_path())
+        self.assertFalse(Path('|interop').is_node_path())
+        self.assertTrue(Path('..').is_node_path())
+        self.assertFalse(Path('..|interop').is_node_path())
+        self.assertTrue(Path('/parent/child').is_node_path())
+        self.assertFalse(Path('/parent/child|interop').is_node_path())
+        self.assertTrue(Path('parent/child').is_node_path())
+        self.assertFalse(Path('parent/child|interop').is_node_path())
+        self.assertTrue(Path('../parent/child').is_node_path())
+        self.assertFalse(Path('../parent/child|interop').is_node_path())
+        self.assertFalse(Path('service:path').is_node_path())
+
+    def test_is_interop_path(self):
+        """
+        Check that Interop Paths are always recognized.
+        """
+        self.assertFalse(Path().is_interop_path())
+        self.assertFalse(Path('/').is_interop_path())
+        self.assertTrue(Path('/|interop').is_interop_path())
+        self.assertTrue(Path('|interop').is_interop_path())
+        self.assertFalse(Path('..').is_interop_path())
+        self.assertTrue(Path('..|interop').is_interop_path())
+        self.assertFalse(Path('/parent/child').is_interop_path())
+        self.assertTrue(Path('/parent/child|interop').is_interop_path())
+        self.assertFalse(Path('parent/child').is_interop_path())
+        self.assertTrue(Path('parent/child|interop').is_interop_path())
+        self.assertFalse(Path('../parent/child').is_interop_path())
+        self.assertTrue(Path('../parent/child|interop').is_interop_path())
+        self.assertFalse(Path('service:path').is_interop_path())
+
+    def test_is_service(self):
+        """
+        Check that Service Paths are always recognized.
+        """
+        self.assertFalse(Path().is_service_path())
+        self.assertFalse(Path('/').is_service_path())
+        self.assertFalse(Path('/|interop').is_service_path())
+        self.assertFalse(Path('|interop').is_service_path())
+        self.assertFalse(Path('..').is_service_path())
+        self.assertFalse(Path('..|interop').is_service_path())
+        self.assertFalse(Path('/parent/child').is_service_path())
+        self.assertFalse(Path('/parent/child|interop').is_service_path())
+        self.assertFalse(Path('parent/child').is_service_path())
+        self.assertFalse(Path('parent/child|interop').is_service_path())
+        self.assertFalse(Path('../parent/child').is_service_path())
+        self.assertFalse(Path('../parent/child|interop').is_service_path())
+        self.assertTrue(Path('service:path').is_service_path())
+
+    def test_get_node_path(self):
+        """
+        Node and Interop Paths can be asked for only the Node Path part.
+        """
+        self.assertEqual(Path().get_node_path(), Path())
+        self.assertEqual(Path('/').get_node_path(), Path('/'))
+        self.assertEqual(Path('/|interop').get_node_path(), Path('/'))
+        self.assertEqual(Path('|interop').get_node_path(), Path())
+        self.assertEqual(Path('..').get_node_path(), Path('..'))
+        self.assertEqual(Path('..|interop').get_node_path(), Path('..'))
+        self.assertEqual(Path('/parent/child').get_node_path(), Path('/parent/child'))
+        self.assertEqual(Path('/parent/child|interop').get_node_path(), Path('/parent/child'))
+        self.assertEqual(Path('parent/child').get_node_path(), Path('parent/child'))
+        self.assertEqual(Path('parent/child|interop').get_node_path(), Path('parent/child'))
+        self.assertIsNone(Path('service:path').get_node_path())
+
+    def test_get_interop_name(self):
+        """
+        Node and Interop Paths can be asked for only the Node Path part.
+        """
+        self.assertIsNone(Path().get_interop_name())
+        self.assertIsNone(Path('/').get_interop_name())
+        self.assertEqual(Path('/|interop').get_interop_name(), 'interop')
+        self.assertEqual(Path('|interop').get_interop_name(), 'interop')
+        self.assertIsNone(Path('..').get_interop_name())
+        self.assertEqual(Path('..|interop').get_interop_name(), 'interop')
+        self.assertIsNone(Path('/parent/child').get_interop_name())
+        self.assertEqual(Path('/parent/child|interop').get_interop_name(), 'interop')
+        self.assertIsNone(Path('parent/child').get_interop_name())
+        self.assertEqual(Path('parent/child|interop').get_interop_name(), 'interop')
+        self.assertIsNone(Path('service:path').get_interop_name())
+
+    def test_path_iteration(self):
+        """
+        Node Paths can be iterated Node-by-Node.
+        """
+        path: Path = Path('/parent/child/node|interop')
+        nodes: List[str] = [name for name in path.get_iterator()]
+        self.assertEqual(len(nodes), 3)
+        self.assertEqual(nodes[0], 'parent')
+        self.assertEqual(nodes[1], 'child')
+        self.assertEqual(nodes[2], 'node')
+
+        path: Path = Path('parent/child')
+        nodes: List[str] = [name for name in path]
+        self.assertEqual(len(nodes), 2)
+        self.assertEqual(nodes[0], 'parent')
+        self.assertEqual(nodes[1], 'child')
+
+        path: Path = Path('single_node')
+        nodes: List[str] = [name for name in path]
+        self.assertEqual(len(nodes), 1)
+        self.assertEqual(nodes[0], 'single_node')
+
+        path: Path = Path('/|some_fact')
+        nodes: List[str] = [name for name in path]
+        self.assertEqual(len(nodes), 0)
+
+        path: Path = Path('|relative_interop')
+        nodes: List[str] = [name for name in path]
+        self.assertEqual(len(nodes), 0)
+
+        path: Path = Path('/')
+        nodes: List[str] = [name for name in path]
+        self.assertEqual(len(nodes), 0)
+
+        path: Path = Path()
+        nodes: List[str] = [name for name in path]
+        self.assertEqual(len(nodes), 0)
+
+    def test_path_length(self):
+        """
+        The length of a Path is the number of nodes in it.
+        """
+        self.assertEqual(len(Path()), 0)
+        self.assertEqual(len(Path('/')), 1)
+        self.assertEqual(len(Path('/|interop')), 1)
+        self.assertEqual(len(Path('|interop')), 0)
+        self.assertEqual(len(Path('..')), 1)
+        self.assertEqual(len(Path('..|interop')), 1)
+        self.assertEqual(len(Path('/parent/child')), 2)
+        self.assertEqual(len(Path('/parent/child|interop')), 2)
+        self.assertEqual(len(Path('parent/child')), 2)
+        self.assertEqual(len(Path('parent/child|interop')), 2)
+        self.assertEqual(len(Path('../parent/child')), 3)
+        self.assertEqual(len(Path('../parent/child|interop')), 3)
+        self.assertEqual(len(Path('service:path')), 0)
+
+    def test_path_concatenation(self):
+        """
+        Paths can be concatenated.
+        """
+        self.assertEqual(Path('/some/node') + Path('|interop'), Path('/some/node|interop'))
+
+        #
+        # Relative paths can be resolved to absolute paths...
+
+        # ... with an empty absolute path
+        self.assertEqual(Path('/') + Path('path/to/child'), Path('/path/to/child'))
+
+        # ... by going down in the hierarchy
+        self.assertEqual(Path('/parent') + Path('path/to/child'), Path('/parent/path/to/child'))
+
+        # ... by up down in the hierarchy
+        self.assertEqual(Path('/parent/child') + Path('../path/to/sibling'), Path('/parent/path/to/sibling'))
+
+        # ... by explicitly referring to the current
+        self.assertEqual(Path('/parent') + Path('./path/to/child'), Path('/parent/path/to/child'))
+
+        # ... by explicitly referring to the current
+        self.assertEqual(Path('/parent') + Path('./path/to/child'), Path('/parent/path/to/child'))
+
+        # ... by concatenating multiple relative paths
+        self.assertEqual(Path('/parent') + Path('path/to/') + Path('./another') + Path('child'),
+                         Path('/parent/path/to/another/child'))
+
+        # ... down to an interop
+        self.assertEqual(Path('/parent') + Path('path/to|interop'), Path('/parent/path/to|interop'))
+
+        # ... up from an interop
+        self.assertEqual(Path('/root/path/to/a|interop') + Path('../another|interop'),
+                         Path('/root/path/to/another|interop'))
+
+        #
+        # Absolute paths cannot be concatenated...
+
+        # ... on the right of a relative path
+        with self.assertRaises(Path.Error):
+            Path('path/to|interop') + Path('/parent/to/absolute')
+
+        # ... to another another absolute path
+        with self.assertRaises(Path.Error):
+            Path('/parent/to/absolute') + Path('/another/absolute|interop')
+
+        #
+        # Service paths can also not be concatenated
+
+        # ... on the left
+        with self.assertRaises(Path.Error):
+            Path('service:path') + Path('relative/with|interop')
+
+        # ... or the right
+        with self.assertRaises(Path.Error):
+            Path('/parent/to/absolute') + Path('service:path')
+
+        #
+        # When appending a relative path to an interop path, the left interop is ignored.
+        self.assertEqual(Path('/parent/to/absolute|interop') + Path('child/to/another|interop'),
+                         Path('/parent/to/absolute/child/to/another|interop'))
+
+    def test_in_place_concatenation(self):
+        """
+        Paths can be modified in place.
+        """
+        path: Path = Path('/parent')
+        path += Path('path/to/')
+        path += Path('./another')
+        path += Path('child')
+        self.assertEqual(path, Path('/parent/path/to/another/child'))
+
+
+if __name__ == '__main__':
+    unittest.main()

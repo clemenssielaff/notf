@@ -385,7 +385,7 @@ class Node:
                     assert path.is_relative()
                     node = self.get_descendant(path)
                 if node:
-                    return node.get_interop(path.get_interop())
+                    return node.get_interop(path.get_interop_name())
 
             return None
 
