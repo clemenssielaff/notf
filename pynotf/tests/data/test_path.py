@@ -61,6 +61,17 @@ class TestCase(unittest.TestCase):
         with self.assertRaises(Path.Error):
             Path(':')  # empty service
 
+    def test_assembly(self):
+        """
+        A Node or Interop-Path can be assembled from pieces.
+        """
+        self.assertEqual(Path.assemble(["parent", "child"]), Path("/parent/child"))
+        self.assertEqual(Path.assemble(["parent", "child"], interop='interop'), Path("/parent/child|interop"))
+        self.assertEqual(Path.assemble(["parent", "child"], is_relative=True), Path("parent/child"))
+        self.assertEqual(Path.assemble(["parent", "child"], interop='interop', is_relative=True),
+                         Path("parent/child|interop"))
+        self.assertEqual(Path.assemble(["parent", "..", "child"]), Path("/child"))
+
     def test_check_name(self):
         """
         Names in the path must not contain control characters.
@@ -91,6 +102,7 @@ class TestCase(unittest.TestCase):
         self.assertFalse(Path('|interop').is_empty())
         self.assertFalse(Path('..').is_empty())
         self.assertFalse(Path('..|interop').is_empty())
+        self.assertFalse(Path('simple').is_empty())
         self.assertFalse(Path('/parent/child').is_empty())
         self.assertFalse(Path('/parent/child|interop').is_empty())
         self.assertFalse(Path('parent/child').is_empty())
@@ -109,6 +121,7 @@ class TestCase(unittest.TestCase):
         self.assertFalse(Path('|interop').is_absolute())
         self.assertFalse(Path('..').is_absolute())
         self.assertFalse(Path('..|interop').is_absolute())
+        self.assertFalse(Path('simple').is_absolute())
         self.assertTrue(Path('/parent/child').is_absolute())
         self.assertTrue(Path('/parent/child|interop').is_absolute())
         self.assertFalse(Path('parent/child').is_absolute())
@@ -127,6 +140,7 @@ class TestCase(unittest.TestCase):
         self.assertTrue(Path('|interop').is_relative())
         self.assertTrue(Path('..').is_relative())
         self.assertTrue(Path('..|interop').is_relative())
+        self.assertTrue(Path('simple').is_relative())
         self.assertFalse(Path('/parent/child').is_relative())
         self.assertFalse(Path('/parent/child|interop').is_relative())
         self.assertTrue(Path('parent/child').is_relative())
@@ -145,6 +159,7 @@ class TestCase(unittest.TestCase):
         self.assertFalse(Path('|interop').is_node_path())
         self.assertTrue(Path('..').is_node_path())
         self.assertFalse(Path('..|interop').is_node_path())
+        self.assertTrue(Path('simple').is_node_path())
         self.assertTrue(Path('/parent/child').is_node_path())
         self.assertFalse(Path('/parent/child|interop').is_node_path())
         self.assertTrue(Path('parent/child').is_node_path())
@@ -163,6 +178,7 @@ class TestCase(unittest.TestCase):
         self.assertTrue(Path('|interop').is_interop_path())
         self.assertFalse(Path('..').is_interop_path())
         self.assertTrue(Path('..|interop').is_interop_path())
+        self.assertFalse(Path('simple').is_interop_path())
         self.assertFalse(Path('/parent/child').is_interop_path())
         self.assertTrue(Path('/parent/child|interop').is_interop_path())
         self.assertFalse(Path('parent/child').is_interop_path())
@@ -181,6 +197,7 @@ class TestCase(unittest.TestCase):
         self.assertFalse(Path('|interop').is_service_path())
         self.assertFalse(Path('..').is_service_path())
         self.assertFalse(Path('..|interop').is_service_path())
+        self.assertFalse(Path('simple').is_service_path())
         self.assertFalse(Path('/parent/child').is_service_path())
         self.assertFalse(Path('/parent/child|interop').is_service_path())
         self.assertFalse(Path('parent/child').is_service_path())
@@ -188,6 +205,25 @@ class TestCase(unittest.TestCase):
         self.assertFalse(Path('../parent/child').is_service_path())
         self.assertFalse(Path('../parent/child|interop').is_service_path())
         self.assertTrue(Path('service:path').is_service_path())
+
+    def test_is_simple(self):
+        """
+        Simple Paths are a single, non-empty name.
+        """
+        self.assertFalse(Path().is_simple())
+        self.assertFalse(Path('/').is_simple())
+        self.assertFalse(Path('/|interop').is_simple())
+        self.assertFalse(Path('|interop').is_simple())
+        self.assertFalse(Path('..').is_simple())
+        self.assertFalse(Path('..|interop').is_simple())
+        self.assertTrue(Path('simple').is_simple())
+        self.assertFalse(Path('/parent/child').is_simple())
+        self.assertFalse(Path('/parent/child|interop').is_simple())
+        self.assertFalse(Path('parent/child').is_simple())
+        self.assertFalse(Path('parent/child|interop').is_simple())
+        self.assertFalse(Path('../parent/child').is_simple())
+        self.assertFalse(Path('../parent/child|interop').is_simple())
+        self.assertFalse(Path('service:path').is_simple())
 
     def test_get_node_path(self):
         """
@@ -199,6 +235,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(Path('|interop').get_node_path(), Path())
         self.assertEqual(Path('..').get_node_path(), Path('..'))
         self.assertEqual(Path('..|interop').get_node_path(), Path('..'))
+        self.assertEqual(Path('simple').get_node_path(), Path('simple'))
         self.assertEqual(Path('/parent/child').get_node_path(), Path('/parent/child'))
         self.assertEqual(Path('/parent/child|interop').get_node_path(), Path('/parent/child'))
         self.assertEqual(Path('parent/child').get_node_path(), Path('parent/child'))
@@ -215,6 +252,7 @@ class TestCase(unittest.TestCase):
         self.assertEqual(Path('|interop').get_interop_name(), 'interop')
         self.assertIsNone(Path('..').get_interop_name())
         self.assertEqual(Path('..|interop').get_interop_name(), 'interop')
+        self.assertIsNone(Path('simple').get_interop_name())
         self.assertIsNone(Path('/parent/child').get_interop_name())
         self.assertEqual(Path('/parent/child|interop').get_interop_name(), 'interop')
         self.assertIsNone(Path('parent/child').get_interop_name())
@@ -256,6 +294,10 @@ class TestCase(unittest.TestCase):
         self.assertEqual(len(nodes), 0)
 
         path: Path = Path()
+        nodes: List[str] = [name for name in path]
+        self.assertEqual(len(nodes), 0)
+
+        path: Path = Path('service:path')
         nodes: List[str] = [name for name in path]
         self.assertEqual(len(nodes), 0)
 

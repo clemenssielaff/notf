@@ -1,14 +1,16 @@
-from typing import Dict
+from abc import ABC, abstractmethod
 from enum import Enum, unique, auto
 
 from pynotf.data import Value
 import pynotf.core as core
+from pynotf.core.logic import OperatorRowDescription, OperatorIndex, create_flags
 
 
 # FACT #################################################################################################################
 
 @unique
 class FactState(Enum):
+    # TODO: I don't actually see myself using the FactState anywhere ...
     # To the best of our knowledge, the Fact is current and correct.
     KNOWN = auto()
 
@@ -22,12 +24,28 @@ class FactState(Enum):
     SPECULATIVE = auto()
 
 
+# TODO: maybe move Fact back into core.logic?
 class Fact:
     State = FactState
 
-    def __init__(self, operator: core.Operator):
-        self._operator: core.Operator = operator
+    def __init__(self, initial: Value):
+        self._operator: core.Operator = core.Operator.create(
+            OperatorRowDescription(
+                operator_index=OperatorIndex.RELAY,
+                initial_value=initial,
+                input_schema=Value.Schema(),
+                args=Value(),
+                data=Value(),
+                flags=create_flags(multicast=True, generator=True)
+            ))
         self._state: FactState = FactState.UNKNOWN
+
+    def __del__(self):
+        if self._operator.is_valid():
+            self._operator.remove()
+
+    def is_valid(self) -> bool:
+        return self._operator.is_valid()
 
     def get_value(self) -> Value:
         return self._operator.get_value()
@@ -37,6 +55,9 @@ class Fact:
 
     def get_schema(self) -> Value.Schema:
         return self.get_value().get_schema()
+
+    def get_operator(self) -> core.Operator:
+        return self._operator
 
     def update(self, value: Value) -> None:
         assert value.get_schema() == self.get_schema()
@@ -48,26 +69,30 @@ class Fact:
     def complete(self) -> None:
         core.get_app().schedule_event(lambda: self._operator.complete())
 
-    def subscribe(self, downstream: core.Operator):
-        self._operator.subscribe(downstream)
-
 
 # SERVICE ##############################################################################################################
 
-class Service:
+class Service(ABC):
     """
-    Provides a service.
-    """
-    pass
-
-
-# WORLD ################################################################################################################
-
-class World:
-    """
-    The World is the outside that the UI interacts with.
-    What is visible / accessible in the World is determined by what Services are available to the application.
+    Manages Facts about a certain aspect of the world that the UI interacts with.
+    Example for Services are:
+        "os.input" -> Provides input from Human interface devices through the operating system (mouse, keyboard, etc.).
+        "os.filesystem" -> Watches files or folders for changes.
+        "web.rest" -> Single response from a REST web query.
+        "db.sqlite" -> Visibility into sqlite queries and responses.
     """
 
-    def __init__(self):
-        self._services: Dict[str, Service] = {}
+    @abstractmethod
+    def initialize(self) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_fact(self, query: str) -> core.Operator:
+        """
+        Either returns a valid Fact Operator or raises an exception.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def shutdown(self) -> None:
+        raise NotImplementedError()

@@ -256,9 +256,9 @@ Color Color::from_hsl(const float h, const float s, const float l, const float a
     return hsl_to_rgb({norm_angle(h), s, l, a});
 }
 
-bool Color::is_color(const std::string& value) {
+bool Color::is_color(const std::string& string) {
     static const std::regex rgb_regex("^#?(?:[0-9a-fA-F]{2}){3,4}$");
-    return std::regex_search(value, rgb_regex);
+    return std::regex_search(string, rgb_regex);
 }
 
 std::string Color::to_string() const {

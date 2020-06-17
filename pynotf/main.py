@@ -1,11 +1,58 @@
 from __future__ import annotations
 
 import sys
-from typing import List, Tuple
+from typing import List, Tuple, Set
 
 from pynotf.data import Value, Shape, mutate_value
-from pynotf.core import OperatorIndex, LayoutIndex, get_app, Node
+from pynotf.core import OperatorIndex, LayoutIndex, get_app, Node, Service, Fact, Operator
 from pynotf.extra.svg import parse_svg
+
+########################################################################################################################
+
+from threading import Thread
+from time import sleep
+
+
+class NumberProducer(Service):
+    """
+    Produces a new number every second
+    """
+
+    def __init__(self):
+        self._thread: Thread = Thread(target=lambda: self._worker())
+        self._continue: bool = True
+        self._facts: Set[Fact] = set()
+        self._number: int = 0
+
+    def _worker(self):
+        while self._continue:
+            sleep(0.5)
+            number: int = self._number
+            self._number += 1
+            live_facts: Set[Fact] = set()
+            for fact in self._facts:
+                if not fact.is_valid():
+                    continue
+                fact.update(Value(number))
+                live_facts.add(fact)
+            self._facts = live_facts
+
+    def initialize(self) -> None:
+        self._thread.start()
+
+    def get_fact(self, query: str) -> Operator:
+        """
+        Either returns a valid Fact Operator or raises an exception.
+        """
+        new_fact: Fact = Fact(Value(0))
+        self._facts.add(new_fact)
+        return new_fact.get_operator()
+
+    def shutdown(self) -> None:
+        self._continue = False
+        self._thread.join()
+        self._facts.clear()
+
 
 ########################################################################################################################
 
@@ -31,7 +78,7 @@ pulsating_round_rect: Tuple[str, Value] = ('rounded_rect', Value(
 ))
 
 count_presses_node: Value = mutate_value(Node.VALUE, dict(
-    interface=[
+    interops=[
         ('key_down', Value()),
         ('bring_front', Value()),
     ],
@@ -40,10 +87,12 @@ count_presses_node: Value = mutate_value(Node.VALUE, dict(
             operators=[
                 ('buffer', OperatorIndex.BUFFER, Value(schema=Value.Schema.create(Value()), time_span=1)),
                 ('printer', OperatorIndex.PRINTER, Value(Value())),
+                ('number_service_printer', OperatorIndex.PRINTER, Value(0)),
             ],
             connections=[
                 ('/|mouse_fact', 'buffer'),
                 ('buffer', 'printer'),
+                # ('numbers:whatever', 'number_service_printer'),
             ],
             design=Value([
                 ('fill', Value(
@@ -65,7 +114,7 @@ count_presses_node: Value = mutate_value(Node.VALUE, dict(
 ))
 
 countdown_node: Value = mutate_value(Node.VALUE, dict(
-    interface=[
+    interops=[
         ('key_down', Value()),
         ('roundness', Value(10)),
         ('bring_front', Value()),
@@ -112,7 +161,7 @@ countdown_node: Value = mutate_value(Node.VALUE, dict(
 ))
 
 root_node: Value = mutate_value(Node.VALUE, dict(
-    interface=[
+    interops=[
         ('key_fact', Value()),
         ('mouse_fact', Value(0, 0)),
         ('hitbox_fact', Value(0, 0)),
@@ -142,6 +191,7 @@ root_node: Value = mutate_value(Node.VALUE, dict(
 # MAIN #################################################################################################################
 
 if __name__ == "__main__":
+    get_app().register_service('numbers', NumberProducer)
     sys.exit(get_app().run(root_node))
 
 # TODO: CONTINUE HERE

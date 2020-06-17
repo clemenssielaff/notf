@@ -498,7 +498,7 @@ class Design:
     use that to create another shape.
     In the end, you have a list of draw calls to the shapes that you have defined.
 
-    The Sketch has access to the interface operators of its node.
+    The Sketch has access to the interops of its node.
     """
 
     SCHEMA: Value.Schema = Value([("", Value())]).get_schema()  # [(identifier, arguments)]

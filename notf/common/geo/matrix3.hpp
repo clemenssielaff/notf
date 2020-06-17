@@ -66,9 +66,6 @@ public:
     /// The identity matrix.
     static constexpr Matrix3 identity() noexcept { return diagonal(1); }
 
-    /// Matrix with each element set to zero.
-    static constexpr Matrix3 zero() noexcept { return diagonal(0); }
-
     /// @{
     /// A translation matrix.
     /// See https://en.wikipedia.org/wiki/Transformation_matrix#Affine_transformations
@@ -109,15 +106,15 @@ public:
     /// @param x    X component of the scale vector.
     /// @param y    Y component of the scale vector.
     static constexpr Matrix3 scale(const element_t x, const element_t y) noexcept { return diagonal(x, y); }
-    static constexpr Matrix3 scale(const component_t& vec) noexcept { return scaling(vec[0], vec[1]); }
+    static constexpr Matrix3 scale(const component_t& vec) noexcept { return scale(vec[0], vec[1]); }
     /// @}
 
-    /// Squeeze transformation.
+    /// A squeeze transformation.
     /// See https://en.wikipedia.org/wiki/Transformation_matrix#Squeezing
     /// @param factor    Squeeze factor.
     static constexpr Matrix3 squeeze(const element_t factor) noexcept {
         if (is_zero(factor, precision_high<element_t>())) {
-            return zero();
+            return super_t::zero();
         } else {
             return diagonal(factor, 1 / factor);
         }
@@ -146,6 +143,7 @@ public:
     /// @param direction    Second point on the reflection line.
     static Matrix3 reflection(const component_t& start, component_t direction) noexcept {
         direction = direction - start;
+        // TODO: do these shortcuts really work if `start` is not at the origin?
         if (is_zero(direction[1], precision_high<element_t>())) { return scale(1, -1); } // line is horizontal
         if (is_zero(direction[0], precision_high<element_t>())) { return scale(-1, 1); } // line is vertical
         {
@@ -172,8 +170,9 @@ public:
         return {component_t{cos, sin}, component_t{sin, -cos}, component_t{0, 0}};
     }
 
-    /// A 2D transformation preserves the area if its determinant is +/-1.
+    /// The scale factor of this scaling transformation matrix.
     constexpr element_t get_scale_factor() const noexcept {
+        // TODO: is this actually correct?
         return sqrt(data[0].get_magnitude_sq() * data[1].get_magnitude_sq());
     }
 
@@ -181,6 +180,7 @@ public:
     ///          ||a c x||
     /// det(M) = ||b d y|| => a*d*1 + c*y*0 + x*b*0 - 0*d*x - 0*y*a - 1*b*c => a*d - b*c
     ///          ||0 0 1||
+    /// A 2D transformation preserves the area if its determinant is +/-1.
     constexpr element_t get_determinant() const noexcept { return data[0][0] * data[1][1] - data[0][1] * data[1][0]; }
 
     /// The inverse transformation matrix.
@@ -190,7 +190,7 @@ public:
     ///                 | 0  0 (ad-bc)|
     /// Note that det(M) == (ad-bc), therefore the bottom row will always be |0 0 1|.
     /// See https://www.wikihow.com/Find-the-Inverse-of-a-3x3-Matrix
-    constexpr Matrix3 get_inverse() const noexcept {
+    constexpr Matrix3 get_inverse() const noexcept { // TODO: return optional
         const element_t determinant = get_determinant();
         if (is_zero(determinant, precision_high<element_t>())) { // not invertible
             return identity();
@@ -247,7 +247,7 @@ public:
     /// Concatenate a counterclockwise rotation to this transformation.
     /// @param angle    Rotation to add.
     constexpr Matrix3& rotate(const element_t angle) noexcept {
-        this *= Matrix3::rotation(angle);
+        *this = *this * Matrix3::rotation(angle);
         return *this;
     }
 
@@ -290,28 +290,28 @@ detail::Vector2<Element> operator*(const detail::Vector2<Element>& lhs, const de
 // clang-format off
 
 // v2 * m3
-template<> V2f transform_by<V2f, M3f>(const V2f&, const M3f&);
-template<> V2d transform_by<V2d, M3f>(const V2d&, const M3f&);
+//template<> V2f transform_by<V2f, M3f>(const V2f&, const M3f&);
+//template<> V2d transform_by<V2d, M3f>(const V2d&, const M3f&);
 
-template<> V2f transform_by<V2f, M3d>(const V2f&, const M3d&);
-template<> V2d transform_by<V2d, M3d>(const V2d&, const M3d&);
+//template<> V2f transform_by<V2f, M3d>(const V2f&, const M3d&);
+//template<> V2d transform_by<V2d, M3d>(const V2d&, const M3d&);
 
 // aabr * m3
-template<> Aabrf transform_by<Aabrf, M3f>(const Aabrf&, const M3f&);
-template<> Aabrd transform_by<Aabrd, M3f>(const Aabrd&, const M3f&);
+//template<> Aabrf transform_by<Aabrf, M3f>(const Aabrf&, const M3f&);
+//template<> Aabrd transform_by<Aabrd, M3f>(const Aabrd&, const M3f&);
 
-template<> Aabrf transform_by<Aabrf, M3d>(const Aabrf&, const M3d&);
-template<> Aabrd transform_by<Aabrd, M3d>(const Aabrd&, const M3d&);
+//template<> Aabrf transform_by<Aabrf, M3d>(const Aabrf&, const M3d&);
+//template<> Aabrd transform_by<Aabrd, M3d>(const Aabrd&, const M3d&);
 
 // polyline * m3
-template<> Polylinef transform_by<Polylinef, M3f>(const Polylinef&, const M3f&);
+//template<> Polylinef transform_by<Polylinef, M3f>(const Polylinef&, const M3f&);
 
 // bezier * m3
-template<> CubicPolyBezier2f transform_by<CubicPolyBezier2f, M3f>(const CubicPolyBezier2f&, const M3f&);
-template<> CubicPolyBezier2d transform_by<CubicPolyBezier2d, M3f>(const CubicPolyBezier2d&, const M3f&);
+//template<> CubicPolyBezier2f transform_by<CubicPolyBezier2f, M3f>(const CubicPolyBezier2f&, const M3f&);
+//template<> CubicPolyBezier2d transform_by<CubicPolyBezier2d, M3f>(const CubicPolyBezier2d&, const M3f&);
 
-template<> CubicPolyBezier2f transform_by<CubicPolyBezier2f, M3d>(const CubicPolyBezier2f&, const M3d&);
-template<> CubicPolyBezier2d transform_by<CubicPolyBezier2d, M3d>(const CubicPolyBezier2d&, const M3d&);
+//template<> CubicPolyBezier2f transform_by<CubicPolyBezier2f, M3d>(const CubicPolyBezier2f&, const M3d&);
+//template<> CubicPolyBezier2d transform_by<CubicPolyBezier2d, M3d>(const CubicPolyBezier2d&, const M3d&);
 
 // clang-format on
 // formatting ======================================================================================================= //

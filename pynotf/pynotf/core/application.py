@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from threading import Thread
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, Type, Dict, Tuple
 
 import glfw
 
@@ -23,6 +23,12 @@ class Application:
         )
         self._event_loop: core.EventLoop = core.EventLoop()
         self._scene: core.Scene = core.Scene()
+        self._services: Dict[str, core.Service] = {}
+
+    def register_service(self, name: str, service: Type) -> None:
+        if name in self._services:
+            raise NameError(f'Cannot register Service with duplicate name "{name}"')
+        self._services[name] = service()
 
     def get_table(self, table_index: Union[int, core.TableIndex]) -> Table:
         return self._storage[int(table_index)]
@@ -32,8 +38,27 @@ class Application:
             return False
         return self.get_table(handle.table).is_handle_valid(handle)
 
-    def get_scene(self) -> core.Scene:
+    def get_scene(self) -> core.Scene:  # TODO: see if we can get rid of Application.get_scene
         return self._scene
+
+    def get_node(self, path: Union[Path, str]) -> Optional[core.Node]:
+        return self._scene.get_node(path)
+
+    def get_operator(self, path: Union[Path, str]) -> Optional[core.Operator]:
+        interop_name: Optional[str] = path.get_interop_name()
+        if interop_name is not None:
+            node: Optional[core.Node] = self.get_node(path)
+            if node is None:
+                return None
+            return node.get_interop(interop_name)
+
+        # service
+        query: Optional[Tuple[str, str]] = path.get_service_query()
+        if query is not None:
+            service: Optional[core.Service] = self._services.get(query[0])
+            if service is None:
+                return None
+            return service.get_fact(query[1])
 
     @staticmethod
     def redraw():
@@ -47,6 +72,10 @@ class Application:
         if not glfw.init():
             return -1
 
+        # start all services
+        for service in self._services.values():
+            service.initialize()
+
         # create the application data
         self._scene.initialize(root_description)
 
@@ -57,7 +86,7 @@ class Application:
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
         glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, True)
 
-        window = glfw.create_window(640, 480, "notf", None, None)
+        window = glfw.create_window(800, 480, "notf", None, None)
         if not window:
             glfw.terminate()
             return -1
@@ -71,7 +100,7 @@ class Application:
         # make the window's context current
         glfw.make_context_current(window)
         nanovg._nanovg.loadGLES2Loader(glfw._glfw.glfwGetProcAddress)
-        ctx = nanovg._nanovg.nvgCreateGLES3(5)
+        nvg = nanovg._nanovg.nvgCreateGLES3(5)
         glfw.swap_interval(0)
 
         # start the event loop
@@ -79,13 +108,21 @@ class Application:
         event_thread.start()
 
         # initialize the root
-        self._scene.get_node(Path('/')).relayout_down(Size2f(640, 480))
+        self._scene.get_node('/').relayout_down(Size2f(640, 480))
+
+        some_font = nanovg.create_font(nvg, "roboto", '/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf')
 
         try:
             while not glfw.window_should_close(window):
                 # TODO: this is happening in the MAIN loop - it should happen on a 3nd thread
-                with core.Painter(window, ctx) as painter:
+                with core.Painter(window, nvg) as painter:
                     self._scene.paint(painter)
+
+                    nanovg.font_size(nvg, 40.)
+                    nanovg.font_face_id(nvg, some_font)
+                    nanovg.fill_color(nvg, nanovg.rgba(1, 1, 1, 1))
+                    nanovg.font_blur(nvg, 2)
+                    nanovg.text(nvg, 30, 30, "Hello World")
                 glfw.wait_events()
 
         finally:
@@ -93,7 +130,11 @@ class Application:
             event_thread.join()
             self._scene.clear()
 
-            nanovg._nanovg.nvgDeleteGLES3(ctx)
+            # shutdown all services
+            for service in self._services.values():
+                service.shutdown()
+
+            nanovg._nanovg.nvgDeleteGLES3(nvg)
             glfw.terminate()
 
         return 0  # terminated normally

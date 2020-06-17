@@ -55,13 +55,18 @@ class EmitterStatus(IntEnum):
 class FlagIndex(IntEnum):
     IS_EXTERNAL = 0  # if this Operator is owned externally, meaning it is destroyed explicitly at some point
     IS_MULTICAST = 1  # if this Operator allows more than one downstream subscriber
-    STATUS = 2  # offset of the EmitterStatus
+    IS_GENERATOR = 2  # if this Operator does not subscribe but only generates its values (Facts, for example)
+    STATUS = 3  # offset of the EmitterStatus
 
 
-def create_flags(external: bool = False, multicast: bool = False,
-                 status: EmitterStatus = EmitterStatus.IDLE) -> int:
+def create_flags(
+        external: bool = False,
+        multicast: bool = False,
+        generator: bool = False,
+        status: EmitterStatus = EmitterStatus.IDLE) -> int:
     return (((int(external) << FlagIndex.IS_EXTERNAL) |
-             (int(multicast) << FlagIndex.IS_MULTICAST)) &
+             (int(multicast) << FlagIndex.IS_MULTICAST) |
+             (int(generator) << FlagIndex.IS_GENERATOR)) &
             ~(int(0b111) << FlagIndex.STATUS)) | (status << FlagIndex.STATUS)
 
 
@@ -167,6 +172,13 @@ class Operator:
     def is_multicast(self) -> bool:
         return bool(self.get_flags() & (1 << FlagIndex.IS_MULTICAST))
 
+    def is_generator(self) -> bool:
+        """
+        A "Generator" Operator is one that cannot subscribe to others but can only generate Values.
+        Facts, are one example of this kind of Operator.
+        """
+        return bool(self.get_flags() & (1 << FlagIndex.IS_GENERATOR))
+
     def get_input_schema(self) -> Value.Schema:
         return core.get_app().get_table(core.TableIndex.OPERATORS)[self._handle]['input_schema']
 
@@ -229,6 +241,9 @@ class Operator:
         return False
 
     def subscribe(self, downstream: Operator) -> None:
+        if downstream.is_generator():
+            raise RuntimeError(f"Cannot subscribe Generator {str(downstream)}")
+
         if not downstream.get_input_schema().is_any() and not (
                 self.get_value().get_schema() == downstream.get_input_schema()):
             raise RuntimeError("Schema mismatch")

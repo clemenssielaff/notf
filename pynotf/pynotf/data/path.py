@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Iterator
+from typing import List, Optional, Iterator, Iterable, Tuple
 
 SERVICE_DELIMITER: str = ':'
 NODE_DELIMITER: str = '/'
@@ -38,6 +38,7 @@ class Path:
     """
 
     Error = PathError
+
     STEP_UP = STEP_UP
 
     def __init__(self, string: str = ''):
@@ -45,8 +46,7 @@ class Path:
         Constructor.
         :param string: String from which to construct the Path.
         """
-        self._string: str = string
-        self._normalize()
+        self._string: str = self._normalize(string)
 
     @staticmethod
     def check_name(name: str):
@@ -63,6 +63,13 @@ class Path:
             if path_control_character in name:
                 raise NameError('Names may not contain Path control characters colon [:], slash [/] and pipe [|]')
 
+    @staticmethod
+    def assemble(nodes: Iterable[str], interop: Optional[str] = None, is_relative: bool = False) -> Path:
+        """
+        Assembles and returns a Node or Interop Path from the given arguments.
+        """
+        return Path(Path._assemble_string(nodes, interop, is_relative))
+
     def is_empty(self) -> bool:
         """
         Checks whether the Path is empty.
@@ -75,7 +82,7 @@ class Path:
         An absolute Path does not need to be resolved before it can be used.
         Service Paths are always absolute, Node Paths are absolute iff they begin with a Node delimiter character.
         """
-        first_delimiter: int = self._get_first_delimiter_pos()
+        first_delimiter: int = self._get_first_delimiter_pos(self._string)
         return (first_delimiter < len(self._string) and
                 ((first_delimiter == 0 and self._string[0] == NODE_DELIMITER) or
                  self._string[first_delimiter] == SERVICE_DELIMITER))
@@ -86,11 +93,11 @@ class Path:
         """
         if len(self._string) == 0:
             return True
-        first_delimiter: int = self._get_first_delimiter_pos()
+        first_delimiter: int = self._get_first_delimiter_pos(self._string)
         if first_delimiter == len(self._string):
             return True
         return (self._string[0] != NODE_DELIMITER and
-                self._string[self._get_first_delimiter_pos()] != SERVICE_DELIMITER)
+                self._string[self._get_first_delimiter_pos(self._string)] != SERVICE_DELIMITER)
 
     def is_node_path(self) -> bool:
         """
@@ -98,7 +105,7 @@ class Path:
         """
         if len(self._string) == 0:
             return True  # relative
-        first_delimiter: int = self._get_first_delimiter_pos()
+        first_delimiter: int = self._get_first_delimiter_pos(self._string)
         if first_delimiter == len(self._string):
             return True
         return (self._string[first_delimiter] not in (SERVICE_DELIMITER, INTEROP_DELIMITER) and
@@ -108,7 +115,7 @@ class Path:
         """
         Checks whether or not the last token in the Path identifies an Interop.
         """
-        first_delimiter: int = self._get_first_delimiter_pos()
+        first_delimiter: int = self._get_first_delimiter_pos(self._string)
         return (first_delimiter < len(self._string) and
                 self._string[first_delimiter] != SERVICE_DELIMITER and
                 (self._string[first_delimiter] == INTEROP_DELIMITER or
@@ -118,8 +125,20 @@ class Path:
         """
         Checks whether this Path identifies a Fact from a Service or a Node/Interop in the Scene.
         """
-        first_delimiter: int = self._get_first_delimiter_pos()
+        first_delimiter: int = self._get_first_delimiter_pos(self._string)
         return first_delimiter < len(self._string) and self._string[first_delimiter] == SERVICE_DELIMITER
+
+    def is_simple(self) -> bool:
+        """
+        A "simple" Path contains only a single name and no Path control characters.
+        Without context, this Path acts as a relative node Path. But since it encodes no Path logic, it can be used to
+        identify an internal Node Operator when defining Operator connections in a Node State (for example).
+        """
+        if len(self._string) == 0:
+            return False
+        elif self._string == Path.STEP_UP:
+            return False
+        return self._get_first_delimiter_pos(self._string) == len(self._string)
 
     def get_node_path(self) -> Optional[Path]:
         """
@@ -128,23 +147,24 @@ class Path:
         """
         if len(self._string) == 0:
             return Path()
-        first_delimiter: int = self._get_first_delimiter_pos()
+        first_delimiter: int = self._get_first_delimiter_pos(self._string)
         if first_delimiter == len(self._string):
             return self
         elif self._string[first_delimiter] == SERVICE_DELIMITER:
             return None
         elif self._string[first_delimiter] == INTEROP_DELIMITER:
-            return Path._create(self._string[:first_delimiter])
+            return Path._create_unchecked(self._string[:first_delimiter])
         interop_delimiter: int = self._string.rfind(INTEROP_DELIMITER, first_delimiter + 1)
-        return Path._create(self._string if interop_delimiter == -1 else self._string[:interop_delimiter])
+        return Path._create_unchecked(self._string if interop_delimiter == -1 else self._string[:interop_delimiter])
 
+    # TODO: maybe conflate get_node_path and get_interop_name like get_service_query?
     def get_interop_name(self) -> Optional[str]:
         """
         Returns the name of the Interop pointed to by this Path or None if this is not an Interop Path.
         """
         if len(self._string) == 0:
             return None
-        first_delimiter: int = self._get_first_delimiter_pos()
+        first_delimiter: int = self._get_first_delimiter_pos(self._string)
         if first_delimiter == len(self._string):
             return None
         elif self._string[first_delimiter] == SERVICE_DELIMITER:
@@ -154,7 +174,22 @@ class Path:
             return None
         return self._string[interop_delimiter + 1:]
 
+    def get_service_query(self) -> Optional[Tuple[str, str]]:
+        """
+        Returns the name of the service and the query if this is a Service Path or None otherwise.
+        """
+        if len(self._string) == 0:
+            return None
+        first_delimiter: int = self._get_first_delimiter_pos(self._string)
+        if first_delimiter == len(self._string) or self._string[first_delimiter] != SERVICE_DELIMITER:
+            return None
+        return self._string[:first_delimiter], self._string[first_delimiter + 1:]
+
     def get_iterator(self) -> Iterator[str]:
+        """
+        Creates an Iterable generator.
+        Call this if you want to use the iterator as a named object instead of using Python's build-in `for x in Path`.
+        """
         return self.__iter__()
 
     def __len__(self) -> int:
@@ -164,7 +199,7 @@ class Path:
         """
         if len(self._string) == 0:
             return 0
-        first_delimiter: int = self._get_first_delimiter_pos()
+        first_delimiter: int = self._get_first_delimiter_pos(self._string)
         if first_delimiter == len(self._string):
             return 1  # relative node path
         elif self._string[first_delimiter] == SERVICE_DELIMITER:
@@ -193,7 +228,7 @@ class Path:
             return
 
         # path contains one name only
-        index: int = self._get_first_delimiter_pos()
+        index: int = self._get_first_delimiter_pos(self._string)
         if index == len(self._string):
             yield self._string
             return
@@ -250,7 +285,7 @@ class Path:
         return self
 
     @staticmethod
-    def _create(string: str) -> Path:
+    def _create_unchecked(string: str) -> Path:
         """
         Create the Path without normalizing its string.
         """
@@ -258,65 +293,76 @@ class Path:
         result._string = string
         return result
 
-    def _get_first_delimiter_pos(self) -> int:
+    @staticmethod
+    def _assemble_string(nodes: Iterable[str], interop: Optional[str] = None, is_relative: bool = False) -> str:
+        """
+        Assemble a Node/Interop Path string from a pre-normalized list of Nodes and an optional Interop name.
+        """
+        return f'{"" if is_relative else NODE_DELIMITER}' \
+               f'{NODE_DELIMITER.join(nodes)}' \
+               f'{"" if interop is None else (INTEROP_DELIMITER + interop)}'
+
+    @staticmethod
+    def _get_first_delimiter_pos(string: str) -> int:
         """
         Returns the first position of a delimiter in the given string.
         If there is no delimiter character found the size of the string is returned.
         """
-        for index, char in enumerate(self._string):
+        for index, char in enumerate(string):
             if char in DELIMITERS:
                 return index
-        return len(self._string)
+        return len(string)
 
-    def _normalize(self) -> None:
+    @classmethod
+    def _normalize(cls, string: str) -> str:
         """
         Checks and normalizes the given Path string before storing it in the Path instance.
         """
         # empty path
-        string_length: int = len(self._string)
+        string_length: int = len(string)
         if string_length == 0:
-            return
+            return string
 
         # service paths are taken as-is, because they contain a service-specific URI
-        first_delimiter: int = self._get_first_delimiter_pos()
-        if first_delimiter < string_length and self._string[first_delimiter] == SERVICE_DELIMITER:
+        first_delimiter: int = cls._get_first_delimiter_pos(string)
+        if first_delimiter < string_length and string[first_delimiter] == SERVICE_DELIMITER:
             if first_delimiter == 0:
-                raise Path.Error.show_location(self._string, 0, 1, "Empty Service Names are not allowed.")
-            return
+                raise Path.Error.show_location(string, 0, 1, "Empty Service Names are not allowed.")
+            return string
 
         # if the first delimiter is not the service delimiter, it may not appear anywhere else
-        service_delimiter: int = self._string.find(SERVICE_DELIMITER, first_delimiter + 1)
+        service_delimiter: int = string.find(SERVICE_DELIMITER, first_delimiter + 1)
         if service_delimiter != -1:
             raise Path.Error.show_location(
-                self._string, service_delimiter, 1,
+                string, service_delimiter, 1,
                 f'Non-Service Paths may not contain the Service delimiter "{SERVICE_DELIMITER}"')
 
         # if the path contains an interop delimiter, ensure that it is followed by a single, valid name
-        interop_delimiter: int = self._string.find(INTEROP_DELIMITER, first_delimiter)  # interop might be the first
+        interop_delimiter: int = string.find(INTEROP_DELIMITER, first_delimiter)  # interop might be the first
         if interop_delimiter == -1:
             interop_delimiter = string_length  # denotes the end of the node path
         else:
             # empty interop names are not allowed
             if interop_delimiter == string_length - 1:
                 raise Path.Error.show_location(
-                    self._string, interop_delimiter, 1, "Empty Interop names are not allowed")
+                    string, interop_delimiter, 1, "Empty Interop names are not allowed")
 
             # additional delimiters of any kind after the interop delimiter are not allowed
-            extra_delimiter: int = self._string.find(NODE_DELIMITER, interop_delimiter + 1)
+            extra_delimiter: int = string.find(NODE_DELIMITER, interop_delimiter + 1)
             if extra_delimiter == -1:
-                extra_delimiter: int = self._string.find(INTEROP_DELIMITER, interop_delimiter + 1)
+                extra_delimiter: int = string.find(INTEROP_DELIMITER, interop_delimiter + 1)
             if extra_delimiter != -1:
                 raise Path.Error.show_location(
-                    self._string, extra_delimiter, string_length - extra_delimiter,
+                    string, extra_delimiter, string_length - extra_delimiter,
                     "An Interop name must not contain Path control characters")
 
         # at this point `it_index` is the index of the first delimiter in a node or interop path
-        is_absolute: bool = (first_delimiter == 0 and self._string[first_delimiter] == NODE_DELIMITER)
+        is_absolute: bool = (first_delimiter == 0 and string[first_delimiter] == NODE_DELIMITER)
 
         # split the path into tokens based on the node delimiters
-        nodes: List[str] = [] if is_absolute else [self._string[:first_delimiter]]
+        nodes: List[str] = [] if is_absolute else [string[:first_delimiter]]
         if interop_delimiter > first_delimiter + 1:
-            nodes.extend(self._string[first_delimiter + 1:interop_delimiter].split(NODE_DELIMITER))
+            nodes.extend(string[first_delimiter + 1:interop_delimiter].split(NODE_DELIMITER))
 
         # normalize the node path
         normalized_nodes: List[str] = []
@@ -333,8 +379,7 @@ class Path:
             elif node_name == STEP_UP:
                 if len(normalized_nodes) == 0:
                     if is_absolute:
-                        raise Path.Error.show_location(
-                            self._string, 0, len(STEP_UP), 'Absolute Path cannot be resolved.')
+                        raise Path.Error.show_location(string, 0, len(STEP_UP), 'Absolute Path cannot be resolved.')
                     # if the path is relative, store the ".." token at the beginning
                 else:  # len(normalized_nodes) > 0
                     if normalized_nodes[-1] != STEP_UP:
@@ -346,7 +391,7 @@ class Path:
             normalized_nodes.append(node_name)
 
         # construct the normalized path
-        self._string = \
-            f'{NODE_DELIMITER if is_absolute else ""}' \
-            f'{NODE_DELIMITER.join(normalized_nodes)}' \
-            f'{INTEROP_DELIMITER + self._string[interop_delimiter + 1:] if interop_delimiter < string_length else ""}'
+        return cls._assemble_string(
+            nodes=normalized_nodes,
+            interop=string[interop_delimiter + 1:] if interop_delimiter < string_length else None,
+            is_relative=not is_absolute)

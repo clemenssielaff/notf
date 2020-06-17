@@ -46,6 +46,7 @@ public:
     static Color from_rgb(const Integer r, const Integer g, const Integer b, const Integer a = 255) {
         return Color(r, g, b, a);
     }
+    // TOOD: from_rgb is basically just the constructor again...
 
     /// Creates a new Color from HSL values.
     /// @param h     Hue in radians, in the range [0, 2*pi)
@@ -68,7 +69,7 @@ public:
     // inspection -------------------------------------------------------------
 
     /// Checks, if the given string is a valid color value that can be passed to the constructor.
-    static bool is_color(const std::string& value);
+    static bool is_color(const std::string& string);
 
     // operators --------------------------------------------------------------
 

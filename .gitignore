@@ -5,10 +5,10 @@ CMakeLists.txt.user*
 __pycache__
 .idea/
 .vscode/
+*.so
 
 # auto-generated files
 default.profraw
-
 
 # python sketch specific
 .venv/

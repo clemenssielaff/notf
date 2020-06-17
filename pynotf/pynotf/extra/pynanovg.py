@@ -117,13 +117,13 @@ class LineJoin(IntEnum):
 
 @unique
 class Align(IntFlag):
-    ALIGN_LEFT = 1 << 0  # Default, align text horizontally to left.
-    ALIGN_CENTER = 1 << 1  # Align text horizontally to center.
-    ALIGN_RIGHT = 1 << 2  # Align text horizontally to right.
-    ALIGN_TOP = 1 << 3  # Align text vertically to top.
-    ALIGN_MIDDLE = 1 << 4  # Align text vertically to middle.
-    ALIGN_BOTTOM = 1 << 5  # Align text vertically to bottom.
-    ALIGN_BASELINE = 1 << 6  # Default, align text vertically to baseline.
+    LEFT = 1 << 0  # Default, align text horizontally to left.
+    CENTER = 1 << 1  # Align text horizontally to center.
+    RIGHT = 1 << 2  # Align text horizontally to right.
+    TOP = 1 << 3  # Align text vertically to top.
+    MIDDLE = 1 << 4  # Align text vertically to middle.
+    BOTTOM = 1 << 5  # Align text vertically to bottom.
+    BASELINE = 1 << 6  # Default, align text vertically to baseline.
 
 
 @unique
@@ -471,7 +471,6 @@ def global_alpha(ctx: c_void_p, alpha: float):
 def reset_transform(ctx: c_void_p):
     """
     Resets current transform to a identity matrix.
-    :param ctx:
     """
     _nanovg.nvgResetTransform(ctx)
 
@@ -487,8 +486,6 @@ def transform(ctx: c_void_p, a: float, b: float, c: float, d: float, e: float, f
       [0 0 1]                          [ 0  0  1]
 
     Where: sx,sy define scaling, kx,ky skewing, and tx,ty translation.
-
-    :param ctx:
     """
     _nanovg.nvgTransform(ctx, a, b, c, d, e, f)
 
@@ -789,8 +786,7 @@ def radial_gradient(
 
 @_c_api_wrapper('nvgImagePattern', [c_void_p, c_float, c_float, c_float, c_float, c_float, c_int32, c_float], Paint)
 def image_pattern(ctx: c_void_p, left: float, top: float, width: float, height: float, angle: float, image: int,
-                  alpha: float,
-                  ) -> Paint:
+                  alpha: float) -> Paint:
     """
     Creates and returns an image pattern.
 
@@ -1083,80 +1079,80 @@ def stroke(ctx: c_void_p):
 # Returns handle to the font.
 @_c_api_wrapper('nvgCreateFont', [c_void_p, c_char_p, c_char_p], c_int32)
 def create_font(ctx: c_void_p, name: str, filename: str) -> int:
-    raise NotImplementedError()
+    return _nanovg.nvgCreateFont(ctx, name.encode(), filename.encode())
 
 
-# Creates font by loading it from the specified memory chunk.
-# Returns handle to the font.
-@_c_api_wrapper('nvgCreateFontMem', [c_void_p, c_char_p, c_void_p, c_int32, c_int32], c_int32)
-def create_font_mem(ctx: c_void_p, name: str, data, ndata: int, free_data: int) -> int:
-    raise NotImplementedError()
+# # Creates font by loading it from the specified memory chunk.
+# # Returns handle to the font.
+# @_c_api_wrapper('nvgCreateFontMem', [c_void_p, c_char_p, c_void_p, c_int32, c_int32], c_int32)
+# def create_font_mem(ctx: c_void_p, name: str, data, ndata: int, free_data: int) -> int:
+#     return _nanovg.nvgCreateFontMem(ctx, name, data, ndata, free_data)
 
 
 # Finds a loaded font of specified name, and returns handle to it, or -1 if the font is not found.
 @_c_api_wrapper('nvgFindFont', [c_void_p, c_char_p], c_int32)
 def find_font(ctx: c_void_p, name: str) -> int:
-    raise NotImplementedError()
+    return _nanovg.nvgFindFont(ctx, name.encode())
 
 
 # Adds a fallback font by handle.
 @_c_api_wrapper('nvgAddFallbackFontId', [c_void_p, c_int32, c_int32], c_int32)
 def add_fallback_font_id(ctx: c_void_p, base_font: int, fallback_font: int) -> int:
-    raise NotImplementedError()
+    return _nanovg.nvgAddFallbackFontId(ctx, base_font, fallback_font)
 
 
 # Adds a fallback font by name.
 @_c_api_wrapper('nvgAddFallbackFont', [c_void_p, c_char_p, c_char_p], c_int32)
 def add_fallback_font(ctx: c_void_p, base_font: str, fallback_font: str):
-    raise NotImplementedError()
+    return _nanovg.nvgAddFallbackFont(ctx, base_font.encode(), fallback_font.encode())
 
 
 # Sets the font size of current text style.
 @_c_api_wrapper('nvgFontSize', [c_void_p, c_float])
 def font_size(ctx: c_void_p, size: float):
-    raise NotImplementedError()
+    return _nanovg.nvgFontSize(ctx, size)
 
 
 # Sets the blur of current text style.
 @_c_api_wrapper('nvgFontBlur', [c_void_p, c_float])
 def font_blur(ctx: c_void_p, blur: float):
-    raise NotImplementedError()
+    return _nanovg.nvgFontBlur(ctx, blur)
 
 
 # Sets the letter spacing of current text style.
 @_c_api_wrapper('nvgTextLetterSpacing', [c_void_p, c_float])
 def text_letter_spacing(ctx: c_void_p, spacing: float):
-    raise NotImplementedError()
+    return _nanovg.nvgTextLetterSpacing(ctx, spacing)
 
 
 # Sets the proportional line height of current text style. The line height is specified as multiple of font size.
 @_c_api_wrapper('nvgTextLineHeight', [c_void_p, c_float])
 def text_line_height(ctx: c_void_p, line_height: float):
-    raise NotImplementedError()
+    return _nanovg.nvgTextLineHeight(ctx, line_height)
 
 
 # Sets the text align of current text style, see NVGalign for options.
 @_c_api_wrapper('nvgTextAlign', [c_void_p, c_int32])
 def text_align(ctx: c_void_p, align: int):
-    raise NotImplementedError()
+    return _nanovg.nvgTextAlign(ctx, align)
 
 
 # Sets the font face based on specified id of current text style.
 @_c_api_wrapper('nvgFontFaceId', [c_void_p, c_int32])
 def font_face_id(ctx: c_void_p, font: int):
-    raise NotImplementedError()
+    return _nanovg.nvgFontFaceId(ctx, font)
 
 
 # Sets the font face based on specified name of current text style.
 @_c_api_wrapper('nvgFontFace', [c_void_p, c_char_p])
 def font_face(ctx: c_void_p, font: str):
-    raise NotImplementedError()
+    return _nanovg.nvgFontFace(ctx, font.encode())
 
 
-# Draws text string at specified location. If end is specified only the sub-string up to the end is drawn.
+# Draws text string at specified location.
 @_c_api_wrapper('nvgText', [c_void_p, c_float, c_float, c_char_p, c_char_p], c_float)
-def text(ctx: c_void_p, x: float, y: float, string: str, end: str) -> float:
-    raise NotImplementedError()
+def text(ctx: c_void_p, x: float, y: float, string: str) -> float:
+    return _nanovg.nvgText(ctx, x, y, string.encode(), None)  # end parameter does not seem to work
 
 
 # Draws multi-line text string at specified location wrapped at the specified width. If end is specified only the
@@ -1164,8 +1160,8 @@ def text(ctx: c_void_p, x: float, y: float, string: str, end: str) -> float:
 # boundaries or when new-line characters are encountered.
 # Words longer than the max width are slit at nearest character (i.e. no hyphenation).
 @_c_api_wrapper('nvgTextBox', [c_void_p, c_float, c_float, c_float, c_char_p, c_char_p])
-def text_box(ctx: c_void_p, x: float, y: float, break_row_width: float, string: str, end: str):
-    raise NotImplementedError()
+def text_box(ctx: c_void_p, x: float, y: float, break_row_width: float, string: str):
+    return _nanovg.nvgTextBox(ctx, x, y, break_row_width, string.encode(), None)
 
 
 # Measures the specified text string. Parameter bounds should be a pointer to float[4],
@@ -1173,32 +1169,32 @@ def text_box(ctx: c_void_p, x: float, y: float, break_row_width: float, string: 
 # Returns the horizontal advance of the measured text (i.e. where the next character should drawn).
 # Measured values are returned in local coordinate space.
 @_c_api_wrapper('nvgTextBounds', [c_void_p, c_float, c_float, c_char_p, c_char_p, c_void_p], c_float)
-def text_bounds(ctx: c_void_p, x: float, y: float, string: str, end: str, bounds) -> float:
-    raise NotImplementedError()
+def text_bounds(ctx: c_void_p, x: float, y: float, string: str, bounds) -> float:
+    return _nanovg.nvgTextBounds(ctx, x, y, string.encode(), None, bounds)
 
 
 # Measures the specified multi-text string. Parameter bounds should be a pointer to float[4],
 # if the bounding box of the text should be returned. The bounds value are [xmin,ymin, xmax,ymax]
 # Measured values are returned in local coordinate space.
 @_c_api_wrapper('nvgTextBoxBounds', [c_void_p, c_float, c_float, c_float, c_char_p, c_char_p, c_void_p])
-def text_box_bounds(ctx: c_void_p, x: float, y: float, break_row_width: float, string: str, end: str, bounds):
-    raise NotImplementedError()
+def text_box_bounds(ctx: c_void_p, x: float, y: float, break_row_width: float, string: str, bounds):
+    return _nanovg.nvgTextBoxBounds(ctx, x, y, break_row_width, string.encode(), None, bounds)
 
 
 # Calculates the glyph x positions of the specified text. If end is specified only the sub-string will be used.
 # Measured values are returned in local coordinate space.
 @_c_api_wrapper('nvgTextGlyphPositions', [c_void_p, c_float, c_float, c_char_p, c_char_p, c_void_p, c_int32], c_int32)
-def text_glyph_positions(ctx: c_void_p, x: float, y: float, string: str, end: str, positions: GlyphPosition,
+def text_glyph_positions(ctx: c_void_p, x: float, y: float, string: str, positions: GlyphPosition,
                          max_positions: int) -> int:
-    raise NotImplementedError()
+    return _nanovg.nvgTextGlyphPositions(ctx, x, y, string.encode(), None, positions, max_positions)
 
 
 # Returns the vertical metrics based on the current text style.
 # Measured values are returned in local coordinate space.
 # Returns ascender, descender, line height
-@_c_api_wrapper('nvgTextMetrics', [c_void_p, c_void_p, c_void_p, c_void_p])
-def text_metrics(ctx: c_void_p) -> (float, float, float):
-    raise NotImplementedError()
+# @_c_api_wrapper('nvgTextMetrics', [c_void_p, c_void_p, c_void_p, c_void_p])
+# def text_metrics(ctx: c_void_p) -> (float, float, float):
+#     return _nanovg.nvgTextMetrics(ctx, ascender, descender, lineh)
 
 
 # Breaks the specified text into lines. If end is specified only the sub-string will be used.
@@ -1207,4 +1203,4 @@ def text_metrics(ctx: c_void_p) -> (float, float, float):
 # Words longer than the max width are slit at nearest character (i.e. no hyphenation).
 @_c_api_wrapper('nvgTextBreakLines', [c_void_p, c_char_p, c_char_p, c_float, c_void_p, c_int32], c_int32)
 def text_break_lines(ctx: c_void_p, string: str, end: str, break_row_width: float, rows: TextRow, max_rows: int):
-    raise NotImplementedError()
+    return _nanovg.nvgTextBreakLines(ctx, string, end, break_row_width, rows, max_rows)
