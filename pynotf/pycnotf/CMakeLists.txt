@@ -1,20 +1,22 @@
-cmake_minimum_required(VERSION 3.16)
-project(pycnotf)
+cmake_minimum_required(VERSION 3.9)
 
-# use plain c++ 17
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+project(
+    pycnotf
+    VERSION 0.5.0
+)
 
-# use ccache if available
-find_program(CCACHE_PROGRAM ccache)
-if(NOTF_CCACHE_PROGRAM)
-    message(STATUS "notf: Using ccache")
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${NOTF_CCACHE_PROGRAM})
-endif()
+# notf root dir
+set(NOTF_ROOT_DIR "${PROJECT_SOURCE_DIR}/../../")
 
-# print additional information during compilation (like timings)
-set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
+# include common configuration
+set (CMAKE_MODULE_PATH "${NOTF_ROOT_DIR}/cmake")
+include(config)
+
+# produce your own copy of the configuration file in case this is built separately
+configure_file (
+    "${NOTF_ROOT_DIR}/notf/meta/config.hpp.in"
+    "${CMAKE_BINARY_DIR}/notf/meta/config.hpp"
+)
 
 add_subdirectory(thirdparty/pybind11-2.5.0)
 add_subdirectory(thirdparty/fmt-6.2.0)
@@ -41,7 +43,7 @@ pybind11_add_module(${CURRENT_TARGET}
     src/py_triangle.cpp
     src/py_vector2.cpp
 
-    ../../notf/common/color.cpp
+    ${NOTF_ROOT_DIR}/notf/common/color.cpp
 )
 
 target_compile_definitions(${CURRENT_TARGET} PUBLIC
@@ -56,5 +58,6 @@ target_link_libraries(${CURRENT_TARGET} PUBLIC
 
 target_include_directories(${CURRENT_TARGET} PUBLIC
     /home/clemens/code/notf/
-    /home/clemens/code/notf/BUILD/notf/clang10/debug/config
+    ${CMAKE_BINARY_DIR}
 )
+

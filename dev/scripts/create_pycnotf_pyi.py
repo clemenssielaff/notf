@@ -185,9 +185,17 @@ def run_heuristic_fixes(string: str) -> str:
     string = string.replace('notf::detail::Vector2<float>', 'V2f')
     string = string.replace('notf::Orientation', 'Orientation')
     string = string.replace('notf::detail::Arithmetic<notf::detail::Matrix3<float>, V2f, 3ul>', 'M3f')
+
+    # gcc standard library
     string = string.replace('std::vector<TextRow, std::allocator<TextRow> >', 'List[TextRow]')
     string = string.replace('std::vector<GlyphPosition, std::allocator<GlyphPosition> >', 'List[GlyphPosition]')
     string = string.replace('std::optional<Font>', 'Optional[Font]')
+    
+    # clang standard library
+    string = string.replace('std::__1::vector<TextRow, std::__1::allocator<TextRow> >', 'List[TextRow]')
+    string = string.replace('std::__1::vector<GlyphPosition, std::__1::allocator<GlyphPosition> >', 'List[GlyphPosition]')
+    string = string.replace('std::__1::optional<Font>', 'Optional[Font]')
+    
     string = string.replace('.???', '')
 
     return string

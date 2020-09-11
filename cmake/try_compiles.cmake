@@ -21,10 +21,10 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${NOTF_LINK_OPTIONS}")
 try_compile(
     NOTF_COMPILER_HAS_DECLVAL
     "${CMAKE_BINARY_DIR}"
-    "${CMAKE_SOURCE_DIR}/cmake/try_compiles/declval.cpp"
+    "${NOTF_ROOT_DIR}/cmake/try_compiles/declval.cpp"
     )
 if(NOTF_COMPILER_HAS_DECLVAL)
-    message(STATUS "notf: Compiler supports `decltype(std::declval<T>())`")
+    message(STATUS "${PROJECT_NAME}: Compiler supports `decltype(std::declval<T>())` ✔")
 else()
-    message(STATUS "notf: Compiler DOES NOT support `decltype(std::declval<T>())`")
+    message(STATUS "${PROJECT_NAME}: Compiler DOES NOT support `decltype(std::declval<T>())` ✘")
 endif()

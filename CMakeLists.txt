@@ -1,38 +1,5 @@
-# require at least CMake 3.9 to support Interprocedural Optimization IPO
+# require at least CMake 3.9 to support Interprocedural Optimization (IPO)
 cmake_minimum_required(VERSION 3.9)
-
-# CMake policies
-if(COMMAND cmake_policy)
-
-    # from https://cliutils.gitlab.io/modern-cmake/chapters/basics.html
-    if(CMAKE_VERSION VERSION_LESS 3.12)
-        cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
-    else()
-        cmake_policy(VERSION 3.12)
-    endif()
-
-    # apply modern policies
-    foreach(p
-        CMP0048 # it's okay to clear PROJECT_VERSION on project()
-        CMP0056 # use the same linker flags for `try_compile` as for the rest of the project
-        CMP0063 # honor visibility properties for all targets
-        CMP0066 # use the same compile flags for `try_compile` as for the rest of the project
-        CMP0067 # use the same c++ standard for `try_compile` as for the rest of the project
-        CMP0072 # OpenGL prefers GLVND by default when available
-        )
-      if(POLICY ${p})
-        cmake_policy(SET ${p} NEW)
-      endif()
-    endforeach()
-
-    # Only interpret if() arguments as variables or keywords when unquoted.
-    if (NOT CMAKE_VERSION VERSION_LESS "3.1")
-        cmake_policy(SET CMP0054 NEW)
-    endif()
-
-endif()
-
-# PROJECT ##############################################################################################################
 
 # top-level project
 project(notf
@@ -41,92 +8,15 @@ project(notf
     LANGUAGES CXX
 )
 
-# SYSTEM CHECK #########################################################################################################
+# notf root dir
+set(NOTF_ROOT_DIR ${PROJECT_SOURCE_DIR})
 
-# check compiler ID (from https://cmake.org/cmake/help/latest/variable/CMAKE_LANG_COMPILER_ID.html)
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(NOTF_CLANG TRUE)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set(NOTF_GCC TRUE)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    set(NOTF_MSVC TRUE)
-endif()
-
-# check operating system (from https://stackoverflow.com/a/40152725)
-if(WIN32)
-    set(NOTF_WINDOWS TRUE)
-elseif(APPLE)
-    set(NOTF_MACINTOSH TRUE)
-elseif(UNIX)
-    set(NOTF_LINUX TRUE)
-endif()
-
-# check endianness
-include (TestBigEndian)
-TEST_BIG_ENDIAN(NOTF_IS_BIG_ENDIAN)
-
-# PROJECT ##############################################################################################################
-
-# cmake modules
+# include common configuration
 set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-find_package(Threads REQUIRED)
-find_package(OpenGL REQUIRED)
+include(config)
 
-# use plain c++ 17
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
-# hide symbols by default
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
-
-# use link-time optimization if available
-if(CMAKE_BUILD_TYPE MATCHES "Release")
-    include(CheckIPOSupported)
-    check_ipo_supported(RESULT IS_LTO_SUPPORTED OUTPUT LTO_ERROR)
-    if(IS_LTO_SUPPORTED)
-        message(STATUS "notf: Building with LTO")
-        set_property(GLOBAL PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    else()
-        message(STATUS "notf: Building without LTO:\n${LTO_ERROR}")
-    endif()
-endif()
-
-# use LLVM libraries and tools
-if (NOTF_CLANG)
-    message(STATUS "notf: Using llvm tools: libc++ and lld ")
-    add_compile_options("-stdlib=libc++")
-    add_link_options(
-        "-stdlib=libc++"
-        "-lc++abi"
-        "-fuse-ld=lld"
-    )
-endif()
-
-# use ccache if available
-find_program(NOTF_CCACHE_PROGRAM ccache)
-if(NOTF_CCACHE_PROGRAM)
-    message(STATUS "notf: Using ccache")
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${NOTF_CCACHE_PROGRAM})
-endif()
-
-# print additional information during compilation (like timings)
-set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
-
-# CONFIGURATION ########################################################################################################
-
-# compiler feature check
-include(try_compiles)
-
-# define notf's debug/release flags
-if(CMAKE_BUILD_TYPE MATCHES "Release")
-    message(STATUS "notf: Building in release mode")
-    set(NOTF_RELEASE TRUE)
-else()
-    message(STATUS "notf: Building in debug mode")
-    set(NOTF_DEBUG TRUE)
-endif()
+# PROJECT OPTIONS ######################################################################################################
 
 # thread sanitization
 if (NOTF_CLANG)
@@ -139,16 +29,6 @@ if (NOTF_CLANG)
         # sanitization blacklist
         add_compile_options("-fsanitize-blacklist=${CMAKE_SOURCE_DIR}/.sanitizer-blacklist")
     endif()
-endif()
-
-# log level
-set(NOTF_LOG_LEVEL "0" CACHE STRING "Log level to compile (0=all -> 6=nothing)")
-
-# abort on assert
-option(NOTF_ABORT_ON_ASSERT "Abort straight away when failing an assert" 1)
-if(NOTF_ABORT_ON_ASSERT)
-    message(STATUS "notf: Aborting on assert failure")
-    set(NOTF_ABORT_ON_ASSERT 1)
 endif()
 
 # tests
@@ -183,62 +63,6 @@ if(NOTF_BUILD_BENCHMARKS)
     message(STATUS "notf: Building benchmarks")
 endif()
 
-# SYSTEM DEPENDEND GLOBALS ############################################################################################
-
-# global definitions
-if(NOTF_WINDOWS)
-    set(NOTF_GLOBAL_DEFINES
-        WIN32_LEAN_AND_MEAN # Don't include most of Windows.h
-        NOGDI
-        NOMINMAX
-    )
-else()
-    set(NOTF_GLOBAL_DEFINES
-        # empty
-    )
-endif()
-if(NOTF_TEST)
-    set(NOTF_GLOBAL_DEFINES ${NOTF_GLOBAL_DEFINES}
-        NOTF_TEST
-    )
-endif()
-
-# global options
-if(NOTF_CLANG)
-    set(NOTF_GLOBAL_OPTIONS
-#        -Weverything
-        -Wno-weak-vtables
-        -Wno-covered-switch-default
-
-        # clang vectorization analysis
-#        -Rpass-missed=loop-vectorized
-#        -Rpass-analysis=loop-vectorize
-#        -fsave-optimization-record
-#        -gline-tables-only
-#        -gcolumn-info
-    )
-elseif(NOTF_GCC)
-    set(NOTF_GLOBAL_OPTIONS
-        -Wall
-        -Wno-unknown-pragmas
-    )
-elseif(NOTF_MSVC)
-    set(NOTF_GLOBAL_OPTIONS
-        /W4
-        /EHs # use instead of /EHsc, tell the compiler that functions declared as extern "C" may throw an exception
-             # do *not* use `/GL` (global program optimization) as that would interfere with boost::fiber
-    )
-endif()
-
-# CODE INTEGRATION #####################################################################################################
-
-# Names of the notf namespaces.
-# These macro can be used to implement namespace versioning.
-set(NOTF_NAMESPACE_NAME "notf")
-set(NOTF_LITERALS_NAMESPACE_NAME "literals")
-
-# these variables will be defined in notf/meta/config.hpp
-set(NOTF_VERSION_STRING ${PROJECT_VERSION})
 
 # configuration file
 configure_file (
@@ -247,14 +71,20 @@ configure_file (
 )
 include_directories("${CMAKE_BINARY_DIR}/config")
 
-# SUB-PROJECTS #########################################################################################################
 
-# utility macro to add source files in a common subdirectory
-macro(add_sources source_list base_path)
-    foreach(file ${ARGN})
-        list(APPEND ${source_list} ${base_path}/${file})
-    endforeach()
-endmacro()
+# DEPENDENCIES #########################################################################################################
+
+find_package(Threads REQUIRED)
+find_package(OpenGL REQUIRED)
+
+# thirdparty projects
+add_subdirectory(thirdparty/pybind11-2.5.0)
+add_subdirectory(thirdparty/fmt-6.2.0)
+
+set(SPDLOG_FMT_EXTERNAL_HO ON CACHE BOOL "do not use bundled fmt" FORCE)
+add_subdirectory(thirdparty/spdlog-1.5.0)
+
+# SUB-PROJECTS #########################################################################################################
 
 # discover all notf header files for use in subprojects
 file(GLOB_RECURSE NOTF_HEADERS
@@ -266,13 +96,6 @@ list(APPEND NOTF_HEADERS ${PROJECT_SOURCE_DIR}/notf/meta/config.hpp.in)
 file(GLOB_RECURSE NOTF_DOCS
     "notf/**.md"
 )
-
-# thirdparty projects
-add_subdirectory(thirdparty/pybind11-2.5.0)
-add_subdirectory(thirdparty/fmt-6.2.0)
-
-set(SPDLOG_FMT_EXTERNAL_HO ON CACHE BOOL "do not use bundled fmt" FORCE)
-add_subdirectory(thirdparty/spdlog-1.5.0)
 
 # main project
 add_subdirectory(notf)
