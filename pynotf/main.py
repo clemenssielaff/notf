@@ -97,7 +97,7 @@ count_presses_node: Value = mutate_value(Node.VALUE, dict(
             design=Value([
                 ('fill', Value(
                     shape=('constant', Value([shape.as_value() for shape in notf_shapes])),
-                    paint=('constant', Value(r=1, g=1, b=1, a=1)),
+                    paint=('constant', Value(r=0.9, g=0.9, b=0.9, a=1)),
                     opacity=('constant', Value(1)),
                 ))
             ]),

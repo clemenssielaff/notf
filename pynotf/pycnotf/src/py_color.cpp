@@ -12,10 +12,16 @@ void produce_color(pybind11::module& module) {
     // constructors
     PyColor.def(py::init<>());
     PyColor.def(py::init<float, float, float, float>(), py::arg("r"), py::arg("g"), py::arg("b"), py::arg("a") = 1.f);
-    PyColor.def(py::init<int, int, int, int>(), py::arg("r"), py::arg("g"), py::arg("b"), py::arg("a") = 255);
     PyColor.def(py::init<const std::string&>());
 
     // static constructors
+    PyColor.def_static(
+        "from_rgb",
+        [](const int r, const int g, const int b, const int a) -> Color {
+            return {r, g, b, a};
+        },
+        DOCSTR("Creates a Color from integer values in the range [0, 255]"), py::arg("r"), py::arg("g"), py::arg("b"),
+        py::arg("a") = 255);
     PyColor.def_static("from_hsl", &Color::from_hsl, DOCSTR("Creates a Color from hsl(a) floats in the range [0, 1]"),
                        py::arg("h"), py::arg("s"), py::arg("l"), py::arg("a") = 1.f);
     PyColor.def_static("transparent", &Color::transparent, DOCSTR("Transparent color"));

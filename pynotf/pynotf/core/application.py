@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+from ctypes import cast as c_cast, c_void_p
 from threading import Thread
 from typing import Callable, Optional, Union, Type, Dict, Tuple
 
 import glfw
 
-from pycnotf import V2f, Size2f
+from pycnotf import V2f, Size2f, NanoVG, loadGLES2Loader, Color
 from pynotf.data import Value, RowHandle, Table, Storage, Path
-import pynotf.extra.pynanovg as nanovg
 import pynotf.core as core
 
 
@@ -99,8 +99,8 @@ class Application:
 
         # make the window's context current
         glfw.make_context_current(window)
-        nanovg._nanovg.loadGLES2Loader(glfw._glfw.glfwGetProcAddress)
-        nvg = nanovg._nanovg.nvgCreateGLES3(5)
+        loadGLES2Loader(c_cast(glfw._glfw.glfwGetProcAddress, c_void_p).value)
+        nanovg: NanoVG = NanoVG()
         glfw.swap_interval(0)
 
         # start the event loop
@@ -110,19 +110,19 @@ class Application:
         # initialize the root
         self._scene.get_node('/').relayout_down(Size2f(640, 480))
 
-        some_font = nanovg.create_font(nvg, "roboto", '/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf')
+        some_font = nanovg.create_font("roboto", '/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf')
 
         try:
             while not glfw.window_should_close(window):
                 # TODO: this is happening in the MAIN loop - it should happen on a 3nd thread
-                with core.Painter(window, nvg) as painter:
+                with core.Painter(window, nanovg) as painter:
                     self._scene.paint(painter)
 
-                    nanovg.font_size(nvg, 40.)
-                    nanovg.font_face_id(nvg, some_font)
-                    nanovg.fill_color(nvg, nanovg.rgba(1, 1, 1, 1))
-                    nanovg.font_blur(nvg, 2)
-                    nanovg.text(nvg, 30, 30, "Hello World")
+                    nanovg.font_size(40.)
+                    nanovg.font_face(some_font)
+                    nanovg.fill_paint(nanovg.solid_color(Color(255, 1, 1, 255)))
+                    nanovg.font_blur(2)
+                    nanovg.text(30, 30, "Hello World")
                 glfw.wait_events()
 
         finally:
@@ -134,7 +134,7 @@ class Application:
             for service in self._services.values():
                 service.shutdown()
 
-            nanovg._nanovg.nvgDeleteGLES3(nvg)
+            del nanovg
             glfw.terminate()
 
         return 0  # terminated normally

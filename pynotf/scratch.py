@@ -3,8 +3,16 @@ from ctypes import cast as c_cast, c_void_p
 
 import glfw
 
-from pycnotf import NanoVG, loadGLES2Loader
+from pycnotf import NanoVG, loadGLES2Loader, Color
 import pynotf.extra.opengl as gl
+
+
+def draw_frame(nvg: NanoVG):
+    nvg.begin_path()
+    nvg.rounded_rect(50, 50, 100, 100, 10)
+    nvg.fill_color(Color(1, 1, 1))
+    nvg.global_alpha(1)
+    nvg.fill()
 
 
 def main():
@@ -46,7 +54,7 @@ def main():
 
             nvg.begin_frame(window_width, window_height, fb_width / window_width)
 
-            # draw_frame(nvg, 0, 0, window_width, window_height)
+            draw_frame(nvg)
 
             nvg.end_frame()
             glfw.swap_buffers(window)

@@ -6,10 +6,10 @@ from time import perf_counter
 
 import glfw
 
-import pynotf.extra.pynanovg as nanovg
 import pynotf.extra.opengl as gl
 from pynotf.extra.utils import KAPPA
-from pycnotf import V2f, Size2i, Aabrf
+from pycnotf import V2f, Size2i, Aabrf, NanoVG, Color, LineCap, Paint as NvgPaint
+# TODO: Why only LineCap but no LineJoin?
 
 from pynotf.data import Value, Shape, ShapeBuilder, RowHandle
 import pynotf.core as core
@@ -18,20 +18,20 @@ import pynotf.core as core
 # PAINT ################################################################################################################
 
 class SolidColor(NamedTuple):
-    color: nanovg.Color
+    color: Color
 
 
 class LinearGradient(NamedTuple):
     start_point: V2f
     end_point: V2f
-    start_color: nanovg.Color
-    end_color: nanovg.Color
+    start_color: Color
+    end_color: Color
 
 
 class BoxGradient(NamedTuple):
     box: Aabrf
-    inner_color: nanovg.Color
-    outer_color: nanovg.Color
+    inner_color: Color
+    outer_color: Color
     radius: float = 0
     feather: float = 0
 
@@ -40,8 +40,8 @@ class RadialGradient(NamedTuple):
     center: V2f
     inner_radius: float
     outer_radius: float
-    inner_color: nanovg.Color
-    outer_color: nanovg.Color
+    inner_color: Color
+    outer_color: Color
 
 
 Paint = Union[SolidColor, LinearGradient, BoxGradient, RadialGradient]
@@ -68,8 +68,8 @@ class Sketch(NamedTuple):
         paint: Paint
         opacity: float = 1.
         line_width: float = 1.
-        cap: nanovg.LineCap = nanovg.LineCap.BUTT
-        join: nanovg.LineJoin = nanovg.LineJoin.MITER
+        cap: LineCap = LineCap.BUTT
+        join: LineCap = LineCap.MITER
 
     class Hitbox(NamedTuple):
         shape: Shape
@@ -85,9 +85,9 @@ class Painter:
     _frame_counter: int = 0
     _frame_start: float = 0
 
-    def __init__(self, window, context):
+    def __init__(self, window, nanovg: NanoVG):
         self._window = window
-        self._context = context
+        self._nanovg: NanoVG = nanovg
         # TODO: glfw.get_window_size and .get_framebuffer_size are extremely slow
         self._window_size: Size2i = Size2i(*glfw.get_window_size(window))
         self._buffer_size: Size2i = Size2i(*glfw.get_framebuffer_size(window))
@@ -108,13 +108,13 @@ class Painter:
         gl.disable(gl.DEPTH_TEST)
 
         self._hitboxes.clear()
-        nanovg.begin_frame(self._context, self._window_size.width, self._window_size.height,
-                           self._buffer_size.width / self._window_size.width)
+        self._nanovg.begin_frame(self._window_size.width, self._window_size.height,
+                                 self._buffer_size.width / self._window_size.width)
 
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        nanovg.end_frame(self._context)
+        self._nanovg.end_frame()
         glfw.swap_buffers(self._window)
 
         frame_end: float = perf_counter()
@@ -129,58 +129,51 @@ class Painter:
     def paint(self, node: core.Node) -> None:
         node_opacity: float = max(0., min(1., float(node.get_interop('widget.opacity').get_value())))
 
-        nanovg.reset(self._context)
-        nanovg.global_alpha(self._context, node_opacity)
-        nanovg.transform(self._context, *node.get_composition().xform)
+        self._nanovg.reset()
+        self._nanovg.global_alpha(node_opacity)
+        self._nanovg.transform(*node.get_composition().xform)
 
         sketch: Sketch = node.get_sketch()
         self._hitboxes.extend(sketch.hitboxes)
         for draw_call in sketch.draw_calls:
             if isinstance(draw_call, Sketch.FillCall):
                 self._set_shape(draw_call.shape)
-                nanovg.fill_paint(self._context, self._create_paint(draw_call.paint))
-                nanovg.global_alpha(self._context, max(0., min(1., draw_call.opacity)) * node_opacity)
-                nanovg.fill(self._context)
+                self._nanovg.fill_paint(self._create_paint(draw_call.paint))
+                self._nanovg.global_alpha(max(0., min(1., draw_call.opacity)) * node_opacity)
+                self._nanovg.fill()
 
             elif isinstance(draw_call, Sketch.StrokeCall):
                 self._set_shape(draw_call.shape)
-                nanovg.stroke_paint(self._context, self._create_paint(draw_call.paint))
-                nanovg.global_alpha(self._context, max(0., min(1., draw_call.opacity)) * node_opacity)
-                nanovg.stroke_width(self._context, draw_call.line_width)
-                nanovg.line_cap(self._context, draw_call.cap)
-                nanovg.line_join(self._context, draw_call.join)
-                nanovg.stroke(self._context)
+                self._nanovg.stroke_paint(self._create_paint(draw_call.paint))
+                self._nanovg.global_alpha(max(0., min(1., draw_call.opacity)) * node_opacity)
+                self._nanovg.stroke_width(draw_call.line_width)
+                self._nanovg.line_cap(draw_call.cap)
+                self._nanovg.line_join(draw_call.join)
+                self._nanovg.stroke()
 
             else:
                 assert False
 
     def _set_shape(self, shape: Shape):
-        nanovg.begin_path(self._context)
+        self._nanovg.begin_path()
         start_point: V2f = shape.get_vertex(0)
-        nanovg.move_to(self._context, start_point.x, start_point.y)
+        self._nanovg.move_to(start_point.x, start_point.y)
         for cubic in shape.iter_outline():
             _, ctrl1, ctrl2, end = cubic.get_vertices()
-            nanovg.bezier_to(self._context, ctrl1.x, ctrl1.y, ctrl2.x, ctrl2.y, end.x, end.y)
+            self._nanovg.bezier_to(ctrl1.x, ctrl1.y, ctrl2.x, ctrl2.y, end.x, end.y)
 
-    def _create_paint(self, paint: Paint) -> nanovg.Paint:
+    def _create_paint(self, paint: Paint) -> NvgPaint:
         if isinstance(paint, SolidColor):
-            return nanovg.Paint(
-                xform=(1, 0, 0, 1, 0, 0),
-                extend=(0, 0),
-                radius=0,
-                feather=1,
-                innerColor=paint.color,
-                outerColor=paint.color,
-                image=0)
+            return self._nanovg.solid_color(paint.color)
         elif isinstance(paint, LinearGradient):
-            return nanovg.linear_gradient(self._context, paint.start_point.x, paint.start_point.y, paint.end_point.x,
-                                          paint.end_point.y, paint.start_color, paint.end_color)
+            return self._nanovg.linear_gradient(paint.start_point.x, paint.start_point.y, paint.end_point.x,
+                                                paint.end_point.y, paint.start_color, paint.end_color)
         elif isinstance(paint, BoxGradient):
-            return nanovg.box_gradient(self._context, paint.box.left, paint.box.top, paint.box.width, paint.box.height,
-                                       paint.radius, paint.feather, paint.inner_color, paint.outer_color)
+            return self._nanovg.box_gradient(paint.box.left, paint.box.top, paint.box.width, paint.box.height,
+                                             paint.radius, paint.feather, paint.inner_color, paint.outer_color)
         elif isinstance(paint, RadialGradient):
-            return nanovg.radial_gradient(self._context, paint.center.x, paint.center.y, paint.inner_radius,
-                                          paint.outer_radius, paint.inner_color, paint.outer_color)
+            return self._nanovg.radial_gradient(paint.center.x, paint.center.y, paint.inner_radius,
+                                                paint.outer_radius, paint.inner_color, paint.outer_color)
         assert False
 
 
@@ -412,7 +405,7 @@ class ConstantColor(PaintNode):
 
     def __init__(self, color: Value):
         assert color.get_schema() == self.SCHEMA
-        self._color: Paint = SolidColor(color=nanovg.Color(
+        self._color: Paint = SolidColor(color=Color(
             r=float(color['r']), g=float(color['g']), b=float(color['b']), a=float(color['a'])))
 
     def evaluate(self, context: Context) -> Tuple[Paint, bool]:
@@ -728,8 +721,8 @@ class Design:
                         paint=draw_call.paint.evaluate(context)[0],
                         opacity=float(draw_call.opacity.evaluate(context)[0]),
                         line_width=float(draw_call.line_width.evaluate(context)[0]),
-                        cap=nanovg.LineCap(int(draw_call.cap.evaluate(context)[0])),
-                        join=nanovg.LineJoin(int(draw_call.join.evaluate(context)[0])),
+                        cap=LineCap(int(draw_call.cap.evaluate(context)[0])),
+                        join=LineCap(int(draw_call.join.evaluate(context)[0])),
                     ))
         for hitbox in self._mark_calls:
             assert hitbox.interop.is_valid()

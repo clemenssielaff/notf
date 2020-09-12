@@ -182,6 +182,7 @@ if(NOTF_CLANG)
 #        -Weverything
         -Wno-weak-vtables
         -Wno-covered-switch-default
+        -Wno-unused-command-line-argument
 
         # clang vectorization analysis
 #        -Rpass-missed=loop-vectorized

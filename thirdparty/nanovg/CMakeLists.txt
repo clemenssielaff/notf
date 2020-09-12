@@ -17,16 +17,19 @@ endif()
 set(CMAKE_VERBOSE_MAKEFILE ON CACHE BOOL "ON")
 
 set(CURRENT_TARGET ${PROJECT_NAME})
-add_library(${CURRENT_TARGET} STATIC
-    src/fontstash.h
-    src/glad.c
-    src/glad.h
-    src/nanovg.c
-    src/nanovg_gl.h
-    src/nanovg_gl_utils.h
-    src/nanovg.h
-    src/stb_image.h
-    src/stb_truetype.h
+add_library(${CURRENT_TARGET}
+#    SHARED
+#        src/libnanovg.c
+    STATIC
+        src/fontstash.h
+        src/glad.c
+        src/glad.h
+        src/nanovg.c
+        src/nanovg_gl.h
+        src/nanovg_gl_utils.h
+        src/nanovg.h
+        src/stb_image.h
+        src/stb_truetype.h
 )
 
 set_property(TARGET ${CURRENT_TARGET} PROPERTY POSITION_INDEPENDENT_CODE ON)

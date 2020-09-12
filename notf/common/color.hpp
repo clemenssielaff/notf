@@ -46,7 +46,6 @@ public:
     static Color from_rgb(const Integer r, const Integer g, const Integer b, const Integer a = 255) {
         return Color(r, g, b, a);
     }
-    // TOOD: from_rgb is basically just the constructor again...
 
     /// Creates a new Color from HSL values.
     /// @param h     Hue in radians, in the range [0, 2*pi)

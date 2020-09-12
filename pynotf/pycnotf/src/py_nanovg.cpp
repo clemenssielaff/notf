@@ -136,10 +136,21 @@ struct Paint {
     notf::Color outer_color;
     ImagePtr image;
 
+    static Paint from_color(const notf::Color& color) {
+        Paint result;
+        result.xform = notf::M3f::identity();
+        result.extent = notf::Size2f::zero();
+        result.radius = 0;
+        result.feather = 0;
+        result.inner_color = color;
+        result.outer_color = color;
+        return result;
+    }
+
     static Paint from_nvg_paint(NVGpaint paint) {
         Paint result;
-        std::copy(result.xform.as_ptr(), result.xform.as_ptr() + sizeof(float) * 6, paint.xform);
-        std::copy(result.extent.as_ptr(), result.extent.as_ptr() + sizeof(float) * 2, paint.extent);
+        std::memcpy(result.xform.as_ptr(), paint.xform, sizeof(float) * result.xform.get_size());
+        std::memcpy(result.extent.as_ptr(), paint.extent, sizeof(float) * result.extent.get_size());
         result.radius = paint.radius;
         result.feather = paint.feather;
         result.inner_color = notf::bit_cast<notf::Color>(paint.innerColor);
@@ -149,8 +160,8 @@ struct Paint {
 
     NVGpaint to_nvg_paint() const {
         NVGpaint result;
-        std::copy(&result.xform[0], &result.xform[0] + sizeof(float) * 6, const_cast<float*>(xform.as_ptr()));
-        std::copy(&result.extent[0], &result.extent[0] + sizeof(float) * 2, const_cast<float*>(extent.as_ptr()));
+        std::memcpy(result.xform, xform.as_ptr(), sizeof(float) * xform.get_size());
+        std::memcpy(result.extent, extent.as_ptr(), sizeof(float) * extent.get_size());
         result.radius = radius;
         result.feather = feather;
         result.innerColor = notf_to_nvg_color(inner_color);
@@ -214,11 +225,11 @@ struct NanoVG : public std::enable_shared_from_this<NanoVG> {
 
     void shape_anti_alias(const bool enabled) { nvgShapeAntiAlias(ctx, enabled ? 1 : 0); }
 
-    void stroke_color(const notf::Color color) { nvgStrokeColor(ctx, notf_to_nvg_color(color)); }
+    // void stroke_color(const notf::Color color) { nvgStrokeColor(ctx, notf_to_nvg_color(color)); }
 
     void stroke_paint(const Paint paint) { nvgStrokePaint(ctx, paint.to_nvg_paint()); }
 
-    void fill_color(const notf::Color color) { nvgFillColor(ctx, notf_to_nvg_color(color)); }
+    // void fill_color(const notf::Color color) { nvgFillColor(ctx, notf_to_nvg_color(color)); }
 
     void fill_paint(const Paint paint) { nvgFillPaint(ctx, paint.to_nvg_paint()); }
 
@@ -331,6 +342,8 @@ struct NanoVG : public std::enable_shared_from_this<NanoVG> {
     //    void update_image(int image, const unsigned char* data) {
     //        return nvgUpdateImage(ctx, image, data);
     //    }
+
+    Paint solid_color(const notf::Color& color) { return Paint::from_color(color); }
 
     Paint linear_gradient(const float start_x, const float start_y, const float end_x, const float end_y,
                           const notf::Color start_color, const notf::Color end_color) {
@@ -704,10 +717,8 @@ void produce_nanovg(pybind11::module& module) {
     Py_NanoVG.def("reset", &NanoVG::reset, DOCSTR("Resets current render state to default values. Does not affect the render state stack."));
 
     Py_NanoVG.def("shape_anti_alias", &NanoVG::shape_anti_alias, DOCSTR("Sets whether to draw antialias for stroke() and fill()."), py::arg("enabled") = true);
-    Py_NanoVG.def("stroke_color", &NanoVG::stroke_color, DOCSTR("Sets current stroke style to a solid color."), py::arg("color") = notf::Color(0, 0, 0, 255));
-    Py_NanoVG.def("stroke_paint", &NanoVG::stroke_paint, DOCSTR("Sets current stroke style to a paint, which can be a one of the gradients or a pattern."), py::arg("paint"));
-    Py_NanoVG.def("fill_color", &NanoVG::fill_color, DOCSTR("Sets current fill style to a solid color."), py::arg("color") = notf::Color(255, 255, 255, 255));
-    Py_NanoVG.def("fill_paint", &NanoVG::fill_paint, DOCSTR("Sets current fill style to a paint, which can be a one of the gradients or a pattern."), py::arg("paint"));
+    Py_NanoVG.def("stroke_paint", &NanoVG::stroke_paint, DOCSTR("Sets current stroke style to a paint."), py::arg("paint"));
+    Py_NanoVG.def("fill_paint", &NanoVG::fill_paint, DOCSTR("Sets current fill style to a paint."), py::arg("paint"));
     Py_NanoVG.def("miter_limit", &NanoVG::miter_limit, DOCSTR("Sets the miter limit of the stroke style."), py::arg("limit") = 10.f);
     Py_NanoVG.def("stroke_width", &NanoVG::stroke_width, DOCSTR("Sets the miter limit of the stroke style."), py::arg("width") = 1.f);
     Py_NanoVG.def("line_cap", &NanoVG::line_cap, DOCSTR("Sets how the end of the line (cap) is drawn."), py::arg("cap") = LineCap::BUTT);
@@ -728,6 +739,7 @@ void produce_nanovg(pybind11::module& module) {
 
     Py_NanoVG.def("create_image", &NanoVG::create_image, DOCSTR("Creates an image by loading it from the disk from specified file name."), py::arg("file_path"), py::arg("flags") = ImageFlags(0));
 
+    Py_NanoVG.def("solid_color", &NanoVG::solid_color, DOCSTR("Creates a solid color."), py::arg("color"));
     Py_NanoVG.def("linear_gradient", &NanoVG::linear_gradient, DOCSTR("Creates a linear gradient."), py::arg("start_x"), py::arg("start_y"), py::arg("end_x"), py::arg("end_y"), py::arg("start_color"), py::arg("end_color"));
     Py_NanoVG.def("box_gradient", &NanoVG::box_gradient, DOCSTR("Creates a box gradient."), py::arg("left"), py::arg("top"), py::arg("width"), py::arg("height"), py::arg("radius"), py::arg("feather"), py::arg("start_color"), py::arg("end_color"));
     Py_NanoVG.def("radial_gradient", &NanoVG::radial_gradient, DOCSTR("Creates a radial gradient."), py::arg("center_x"), py::arg("center_y"), py::arg("inner_radius"), py::arg("outer_radius"), py::arg("start_color"), py::arg("end_color"));
