@@ -94,6 +94,9 @@ public:
     /// Weighted conversion of this Color to greyscale.
     Color to_greyscale() const;
 
+    /// Color without any transparency.
+    Color to_opaque() const { return {r, g, b, 1}; }
+
     /// Premultiplied copy of this Color.
     Color premultiplied() const { return {r * a, g * a, b * a, a}; }
 

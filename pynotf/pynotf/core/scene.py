@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import IntEnum
 from logging import warning
 from typing import Tuple, Optional, Dict, List, NamedTuple, Iterable, Iterator, Union
 
@@ -8,6 +9,8 @@ from pyrsistent import field
 from pycnotf import V2f, Size2f
 from pynotf.data import Value, RowHandle, Table, TableRow, RowHandleList, Bonsai, RowHandleMap, Path, Claim
 import pynotf.core as core
+
+__all__ = ('Node', 'Scene', 'NodeRow')
 
 
 # DATA #################################################################################################################
@@ -25,12 +28,18 @@ class NodeStateDescription(NamedTuple):
 
 
 class NodeInterops(NamedTuple):
-    names: Bonsai
-    elements: List[core.Operator]
+    names: Bonsai = Bonsai()
+    elements: List[core.Operator] = []
+
+
+class DisplayKind(IntEnum):
+    NOP = 0
+    REDRAW = 1
+    RELAYOUT = 2
 
 
 class NodeDescription(NamedTuple):
-    interops: Dict[str, Value]
+    interops: Dict[str, Tuple[Value, DisplayKind]]
     states: Dict[str, NodeStateDescription]
     transitions: List[Tuple[str, str]]
     initial_state: str
@@ -43,12 +52,13 @@ class NodeDescription(NamedTuple):
 
 WIDGET_BUILTIN_NAMESPACE = 'widget'
 
-BUILTIN_NODE_INTEROPS: Dict[str, Value] = {
-    f'{WIDGET_BUILTIN_NAMESPACE}.opacity': Value(1),
-    f'{WIDGET_BUILTIN_NAMESPACE}.visibility': Value(1),
-    f'{WIDGET_BUILTIN_NAMESPACE}.depth': Value(0),
-    f'{WIDGET_BUILTIN_NAMESPACE}.xform': Value(1, 0, 0, 1, 0, 0),
-    f'{WIDGET_BUILTIN_NAMESPACE}.claim': Claim().get_value(),
+# TODO: Interop means "Interface Operator" ... I even forgot that myself and had no idea what they were...
+BUILTIN_NODE_INTEROPS: Dict[str, (Value, int)] = {  # interop name : (default value, is displayable)
+    f'{WIDGET_BUILTIN_NAMESPACE}.opacity': (Value(1), 1),
+    f'{WIDGET_BUILTIN_NAMESPACE}.visibility': (Value(1), 1),
+    f'{WIDGET_BUILTIN_NAMESPACE}.depth': (Value(0), 2),
+    f'{WIDGET_BUILTIN_NAMESPACE}.xform': (Value(1, 0, 0, 1, 0, 0), 1),  # used for painting
+    f'{WIDGET_BUILTIN_NAMESPACE}.claim': (Claim().get_value(), 2),
 }
 
 
@@ -56,7 +66,7 @@ class NodeRow(TableRow):
     __table_index__: int = core.TableIndex.NODES
     description = field(type=NodeDescription, mandatory=True)
     parent = field(type=RowHandle, mandatory=True)
-    interops = field(type=NodeInterops, mandatory=True)
+    interops = field(type=NodeInterops, mandatory=True, initial=NodeInterops())
     layout = field(type=RowHandle, mandatory=True, initial=RowHandle())
     state = field(type=str, mandatory=True, initial='')
     child_names = field(type=RowHandleMap, mandatory=True, initial=RowHandleMap())
@@ -88,7 +98,7 @@ def create_node_description_from_value(description: Value) -> NodeDescription:
                          f'A valid Node Value has the Schema: {Node.VALUE.get_schema()!s}')
 
     node_description: NodeDescription = NodeDescription(
-        interops={str(op[0]): op[1] for op in description['interops']},
+        interops={str(op[0]): (op[1], DisplayKind(int(op[2]))) for op in description['interops']},
         states={str(state[0]): create_node_state_from_value(state[1]) for state in description['states']},
         transitions=[(str(trans[0]), str(trans[1])) for trans in description['transitions']],
         initial_state=str(description['initial']),
@@ -114,18 +124,7 @@ class Scene:
         self._size: Size2f = Size2f()
 
     def initialize(self, root_description_value: Value):
-        # create the root node
-        root_description: NodeDescription = create_node_description_from_value(root_description_value)
-        self._root_node = Node(core.get_app().get_table(core.TableIndex.NODES).add_row(
-            description=root_description,
-            parent=RowHandle(),  # empty row handle as parent
-            interops=NodeInterops(
-                names=Bonsai([interop_name for interop_name in root_description.interops.keys()]),
-                elements=[core.Operator.create(core.OpRelay.create(value)) for value in
-                          root_description.interops.values()],
-            )
-        ))
-        self._root_node.transition_into(root_description.initial_state)
+        self._root_node = Node.create_node(create_node_description_from_value(root_description_value))
 
     def set_size(self, size: Size2f):
         if size != self._size:
@@ -174,8 +173,8 @@ class Scene:
 
 class Node:
     VALUE: Value = Value(
-        interops=[("name", Value())],  # any value
-        states=[("name", Value())],  # node state
+        interops=[("name", Value(), 0)],  # name, initial value, display flag
+        states=[("name", Value())],  # name, node state
         transitions=[('from', 'to')],
         initial="initial",
     )
@@ -195,6 +194,42 @@ class Node:
     def __init__(self, handle: RowHandle):
         assert handle.is_null() or handle.table == core.TableIndex.NODES
         self._handle: RowHandle = handle
+
+    @staticmethod
+    def create_node(description: NodeDescription, parent: Optional[Node] = None, name: str = "") -> Node:
+        node_table: Table = core.get_app().get_table(core.TableIndex.NODES)
+        parent_handle: RowHandle = RowHandle() if parent is None else parent.get_handle()
+
+        # ensure the node name is unique among its siblings
+        if parent_handle:
+            assert name and name not in node_table[parent.get_handle()]['child_names']
+
+        # create the new node row
+        node_handle: RowHandle = node_table.add_row(
+            description=description,
+            parent=parent_handle,
+        )
+
+        # create and attach the interops once the node row has been established
+        node_table[node_handle]['interops'] = NodeInterops(
+            names=Bonsai([interop_name for interop_name in description.interops.keys()]),
+            elements=[core.Operator.create(
+                description=core.OpRelay.create(interop_description[0]),
+                node=node_handle,
+                effect=(core.Operator.Effect.REDRAW if interop_description[1] == 1 else
+                        (core.Operator.Effect.REDRAW if interop_description[1] == 2 else core.Operator.Effect.NONE))
+            ) for interop_description in description.interops.values()]
+        )
+
+        # register the node with its parent
+        if parent_handle:
+            node_table[parent_handle]['child_names'] = node_table[parent_handle]['child_names'].set(name, node_handle)
+
+        # initialize the new node by transitioning into its initial_state state
+        node: Node = Node(node_handle)
+        node.transition_into(description.initial_state)
+
+        return node
 
     def get_handle(self) -> RowHandle:
         return self._handle
@@ -313,7 +348,7 @@ class Node:
         # TODO: relayout upwards
         if not self.get_parent():
             return
-        self.get_interop('widget.claim').set_value(claim.get_value())
+        self.get_interop('widget.claim').update(claim.get_value())
 
     def paint(self, painter: core.Painter):
         painter.paint(self)
@@ -321,7 +356,7 @@ class Node:
             painter.paint(Node(node_handle))
 
     def create_child(self, name: str, description_value: Value) -> Node:
-        return self._create_child(name, create_node_description_from_value(description_value))
+        return self.create_node(create_node_description_from_value(description_value), self, name)
 
     def remove(self):
         # unregister from the parent
@@ -357,13 +392,13 @@ class Node:
         #   evaluated, which only works if the scope is initialized, with only works if the grant is available, which
         #   only works if the parent is fully initialized including all of its children, so it can layout them.
         #   The current approach is one that branches on the evaluation of a Design node, if it is the first time it
-        #   behaves differently from the rest. This is not a _big_ problem, I think branch prediction should pick up
+        #   behaves differently from the res. This is not a _big_ problem, I think branch prediction should pick up
         #   on that pattern pretty quickly, but it smells.
 
         # create new child nodes
         child_nodes: List[Node] = []
         for name, child_description in new_state.children.items():
-            child_nodes.append(self._create_child(name, child_description))
+            child_nodes.append(self.create_node(child_description, self, name))
 
         # create the new layout
         layout: core.Layout = core.Layout.create(new_state.layout.type, new_state.layout.args)
@@ -376,8 +411,11 @@ class Node:
         for name, (kind, args) in new_state.operators.items():
             assert name not in network
             network[name] = core.Operator.create(
-                core.OPERATOR_VTABLE[kind][core.OperatorVtableIndex.CREATE](args)).get_handle()
+                description=core.OPERATOR_VTABLE[kind][core.OperatorVtableIndex.CREATE](args),
+                node=self._handle
+            ).get_handle()
         node_table[self._handle]['network'] = RowHandleList(network.values())
+
         # TODO: there is no way to get internal operators by name outside of this method
 
         def find_operator(path: Path) -> core.Operator:
@@ -429,29 +467,6 @@ class Node:
                 warning(f'core.Layout contained unknown child node "{child_name}"')
                 continue
             child_node.relayout_down(grant)
-
-    def _create_child(self, name: str, description: NodeDescription) -> Node:
-        # ensure the child name is unique
-        node_table: Table = core.get_app().get_table(core.TableIndex.NODES)
-        assert name not in node_table[self._handle]['child_names']
-
-        # create the child node entry
-        child_handle: RowHandle = node_table.add_row(
-            description=description,
-            parent=self._handle,
-            interops=NodeInterops(
-                names=Bonsai([interop_name for interop_name in description.interops.keys()]),
-                elements=[core.Operator.create(core.OpRelay.create(initial_value)) for
-                          initial_value in description.interops.values()],
-            )
-        )
-        node_table[self._handle]['child_names'] = node_table[self._handle]['child_names'].set(name, child_handle)
-
-        # initialize the child node by transitioning into its initial_state state
-        child_node: Node = Node(child_handle)
-        child_node.transition_into(description.initial_state)
-
-        return child_node
 
     def _remove_recursively(self):
         """

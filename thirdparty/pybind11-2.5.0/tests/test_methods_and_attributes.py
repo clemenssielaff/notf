@@ -447,7 +447,7 @@ def test_accepts_none(msg):
         Invoked with: None
     """
 
-    # The rest take the argument as pointer or holder, and accept None:
+    # The res take the argument as pointer or holder, and accept None:
     assert m.ok_none2(None) == -1
     assert m.ok_none3(None) == -1
     assert m.ok_none4(None) == -1

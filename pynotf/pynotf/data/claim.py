@@ -3,7 +3,7 @@ from __future__ import annotations
 from math import inf
 from typing import Optional, Union, NamedTuple
 
-from .value import Value, mutate_value, multimutate_value
+from .value import Value, get_mutated_value, multimutate_value
 
 # CONSTANTS ############################################################################################################
 
@@ -89,7 +89,7 @@ class _Stretch:
 
     @scale_factor.setter
     def scale_factor(self, value: float) -> None:
-        self._claim._value = mutate_value(self._claim._value, (self._index, SKETCH_INDEX_SCL), max(ALMOST_ZERO, value))
+        self._claim._value = get_mutated_value(self._claim._value, (self._index, SKETCH_INDEX_SCL), max(ALMOST_ZERO, value))
 
     @property
     def priority(self) -> int:
@@ -100,7 +100,7 @@ class _Stretch:
 
     @priority.setter
     def priority(self, value: int) -> None:
-        self._claim._value = mutate_value(self._claim._value, (self._index, SKETCH_INDEX_PRT), value)
+        self._claim._value = get_mutated_value(self._claim._value, (self._index, SKETCH_INDEX_PRT), value)
 
     def is_fixed(self) -> bool:
         return (self.max - self.min) < ALMOST_ZERO

@@ -16,7 +16,7 @@ void produce_matrix3f(pybind11::module& module) {
 
     // constructors
     Py_Matrix3f.def(py::init<>());
-    Py_Matrix3f.def(py::init([](float a, float b, float c, float d, float e, float f){ return M3f(V2f{a, b}, V2f{c, d}, V2f{e, f}); }), py::arg("a"), py::arg("b"), py::arg("c"), py::arg("d"), py::arg("e"), py::arg("f"));
+    Py_Matrix3f.def(py::init([](float a, float b, float c, float d, float e, float f){ return M3f(V2f{a, b}, V2f{c, d}, V2f{e, f}); }), py::arg("a") = 1.f, py::arg("b") = 0.f, py::arg("c") = 0.f, py::arg("d") = 1.f, py::arg("e") = 0.f, py::arg("f") = 0.f);
     Py_Matrix3f.def(py::init<V2f, V2f, V2f>(), py::arg("first"), py::arg("second"), py::arg("third"));
     Py_Matrix3f.def(py::init<const M3f&>(), py::arg("other"));
 
@@ -83,8 +83,9 @@ void produce_matrix3f(pybind11::module& module) {
 
     // builtins
     Py_Matrix3f.def("__len__", &M3f::get_size);
-    Py_Matrix3f.def("__str__", [](const M3f& mat) { return fmt::format("({: #7.6g}, {: #7.6g}, {: #7.6g} / {: #7.6g}, {: #7.6g}, {: #7.6g} / {:8}, {:8}, {:8})", mat[0][0], mat[1][0], mat[2][0], mat[0][1], mat[1][1], mat[2][1], 0, 0, 1); });
-    Py_Matrix3f.def("__repr__", [](const M3f& mat) { return fmt::format("pycnotf.M3f({: #7.6g}, {: #7.6g}, {: #7.6g} / {: #7.6g}, {: #7.6g}, {: #7.6g} / {:8}, {:8}, {:8})", mat[0][0], mat[1][0], mat[2][0], mat[0][1], mat[1][1], mat[2][1], 0, 0, 1); });
+    Py_Matrix3f.def("__str__", [](const M3f& mat) { return fmt::format("({: #7.6g}, {: #7.6g}, {: #7.6g} | {: #7.6g}, {: #7.6g}, {: #7.6g} | {:8}, {:8}, {:8})", mat[0][0], mat[1][0], mat[2][0], mat[0][1], mat[1][1], mat[2][1], 0, 0, 1); });
+    Py_Matrix3f.def("__repr__", [](const M3f& mat) { return fmt::format("pycnotf.M3f({: #7.6g}, {: #7.6g}, {: #7.6g} | {: #7.6g}, {: #7.6g}, {: #7.6g} | {:8}, {:8}, {:8})", mat[0][0], mat[1][0], mat[2][0], mat[0][1], mat[1][1], mat[2][1], 0, 0, 1); });
+    Py_Matrix3f.def("__getitem__", [](const M3f& mat, const std::size_t index) { if(index < 0 || index > 5) throw py::index_error(); return mat.as_ptr()[index];});
 }
 
 // clang-format on

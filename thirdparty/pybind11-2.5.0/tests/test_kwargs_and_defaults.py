@@ -139,7 +139,7 @@ def test_args_refcount():
     assert m.args_refcount(myval, myval, myval) == (exp3, exp3, exp3)
     assert refcount(myval) == expected
 
-    # This function takes the first arg as a `py::object` and the rest as a `py::args`.  Unlike the
+    # This function takes the first arg as a `py::object` and the res as a `py::args`.  Unlike the
     # previous case, when we have both positional and `py::args` we need to construct a new tuple
     # for the `py::args`; in the previous case, we could simply inc_ref and pass on Python's input
     # tuple without having to inc_ref the individual elements, but here we can't, hence the extra

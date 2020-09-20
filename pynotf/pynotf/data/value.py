@@ -237,6 +237,13 @@ class Schema(tuple, Sequence[int]):
             return Schema()
         return schema_from_denotable(create_denotable(obj))
 
+    @staticmethod
+    def any() -> Schema:
+        """
+        Create the "Any" Schema.
+        """
+        return Schema((int(Kind.VALUE),))
+
     def is_none(self) -> bool:
         """
         Checks if this is the None Schema.
@@ -1435,22 +1442,22 @@ def mutate_recursive(current_data: Data, new_data: Any, schema: Value.Schema, sc
 
 
 @overload
-def mutate_value(value: Value, new_data: Any) -> Value: ...
+def get_mutated_value(value: Value, new_data: Any) -> Value: ...
 
 
 @overload
-def mutate_value(value: Value, key: str, new_data: Any) -> Value: ...
+def get_mutated_value(value: Value, key: str, new_data: Any) -> Value: ...
 
 
 @overload
-def mutate_value(value: Value, index: int, new_data: Any) -> Value: ...
+def get_mutated_value(value: Value, index: int, new_data: Any) -> Value: ...
 
 
 @overload
-def mutate_value(value: Value, path: Sequence[Union[int, str]], new_data: Any) -> Value: ...
+def get_mutated_value(value: Value, path: Sequence[Union[int, str]], new_data: Any) -> Value: ...
 
 
-def mutate_value(value: Value, *args) -> Value:
+def get_mutated_value(value: Value, *args) -> Value:
     """
     Mutates a Value, meaning create a new Value through a single modification of an existing one.
     For changing multiple parts of a Value's data at once, see `multimutate_value`.

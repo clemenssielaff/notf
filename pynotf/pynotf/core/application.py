@@ -108,22 +108,18 @@ class Application:
         event_thread.start()
 
         # initialize the root
-        self._scene.get_node('/').relayout_down(Size2f(640, 480))
+        self._scene.get_node('/').relayout_down(Size2f(800, 480))  # TODO: make this dependent on the Window size
 
-        some_font = nanovg.create_font("roboto", '/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf')
+        # TODO: font management ... somehow (in-app? use thirdparty library?)
+        nanovg.create_font("Roboto", "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf")
 
         try:
             while not glfw.window_should_close(window):
-                # TODO: this is happening in the MAIN loop - it should happen on a 3nd thread
+                # TODO: this is happening in the MAIN loop - it should happen on a 3rd thread
                 with core.Painter(window, nanovg) as painter:
                     self._scene.paint(painter)
-
-                    nanovg.font_size(40.)
-                    nanovg.font_face(some_font)
-                    nanovg.fill_paint(nanovg.solid_color(Color(255, 1, 1, 255)))
-                    nanovg.font_blur(2)
-                    nanovg.text(30, 30, "Hello World")
                 glfw.wait_events()
+                # glfw.poll_events()  # run as fast as you can
 
         finally:
             self._event_loop.close()

@@ -10,25 +10,25 @@ A Scene owns a Circuit and manages it in a way that allows the user to inject us
 # The Widget
 
 A Widget is the basic building block of of the Scene's tree structure. Every Widget has a single parent, which is constant and guaranteed to be valid throughout the Widget's lifetime -- except for the root Widget, whose parent is always empty. The root Widget is created with the Scene and is the last Widget to be destroyed.
-  
-Every Widget has 0-n child Widget, addressable by a Widget-unique name. New Widget can only be created by their parent Widget, and only be removed by their parent (except the root, which is created and destroyed by the Scene). When a parent Widget removes one if its children, the child will remove all of it children first before destroying itself.  
+
+Every Widget has 0-n child Widget, addressable by a Widget-unique name. New Widget can only be created by their parent Widget, and only be removed by their parent (except the root, which is created and destroyed by the Scene). When a parent Widget removes one if its children, the child will remove all of it children first before destroying itself.
 It is not possible to change a Widget's parent as that would change the Widget's Path. You can however change its position among its siblings since that operation does not influence how the Widget would be addressed in the Scene. For more details see Widget.Path and Z-value below.
 
 One basic design decision is that parent Widgets have explicit knowledge of their children, but child Widgets should never rely on the presence of a particular parent. This way, we can build re-usable atomic Widgets that are easily composable into larger ones. Think of child Widgets as an implementation detail of the parent.
 
-> **What is a Widget**  
-> Originally, everything was a Node. I assumed that Widgets, Services, Resources, Layouts and Controller objects would all be subclasses of Node and share the same hierarchy. I also assumed that the user would be able to derive from the Node class to define custom Node types.  
+> **What is a Widget**
+> Originally, everything was a Node. I assumed that Widgets, Services, Resources, Layouts and Controller objects would all be subclasses of Node and share the same hierarchy. I also assumed that the user would be able to derive from the Node class to define custom Node types.
 > However, one by one, the other use-cases for most Node classes disappeared. Resources are better managed somewhere outside the hierarchy, where they can pre-fetched, cached and replaced without having to worry about their place in the Scene. Controller objects were replaced with the logic Circuit, Services are now globally accessible from the Application. And Layouts became a field inside a Widget, not a Node itself. At that point, all Nodes were Widgets.
 
 
 ## Widget Definition and Type
 
-Up until quite recently in the design process, I assumed that the user would be able to subclass the Widget base class to define custom Widget types. This is a natural thing to do in C++ or any object oriented (OO) programming language, but for notf it posed some unique challenges. First of all, defining a subclass means that the user would be allowed to define custom members and modify them during the class' virtual methods -- all user Scripts were potentially stateful. Furthermore, in order to create child Widgets of a custom type you need to pass the subclass as an argument in an interpreted language which means that you required access to the dynamic type objects and the interpreted context in which they live.  
+Up until quite recently in the design process, I assumed that the user would be able to subclass the Widget base class to define custom Widget types. This is a natural thing to do in C++ or any object oriented (OO) programming language, but for notf it posed some unique challenges. First of all, defining a subclass means that the user would be allowed to define custom members and modify them during the class' virtual methods -- all user Scripts were potentially stateful. Furthermore, in order to create child Widgets of a custom type you need to pass the subclass as an argument in an interpreted language which means that you required access to the dynamic type objects and the interpreted context in which they live.
 Both things did not sit well with the purely data-driven approach that I was going for.
 
-Fortunately, I discovered that it was possible to contain all user-define code in `Script` objects, basically strings. At least for an interpreted runtime. Statically compiled Scripts would compile with the rest of the program, but I figured that the true power of notf is first and foremost in its live updates, which require (?) a runtime. If you indexed each Script by a name, you basically broke down the whole "subtype" into a map of string to string. Combined with other POD (Value Schemas and the State Machine, see below), this lead to the invention of the Widget.Type object. Widget.Types are objects that describe the Widget, much like a Schema describes a Value. The contents of the Value might change, but the Schema stays the same.  
+Fortunately, I discovered that it was possible to contain all user-define code in `Script` objects, basically strings. At least for an interpreted runtime. Statically compiled Scripts would compile with the rest of the program, but I figured that the true power of notf is first and foremost in its live updates, which require (?) a runtime. If you indexed each Script by a name, you basically broke down the whole "subtype" into a map of string to string. Combined with other POD (Value Schemas and the State Machine, see below), this lead to the invention of the Widget.Type object. Widget.Types are objects that describe the Widget, much like a Schema describes a Value. The contents of the Value might change, but the Schema stays the same.
 You can create new Widget Types at runtime, by constructing a Widget.Definition object, populating its fields and registering it with the Scene. Every Widget.Type has a name that is unique in the Scene. It can be used to construct a new Widget of that type and Widget instances return it as their type identifier. The only difference between the Definition and the Type is that the Type is validated and is immutable.
-  
+
 A Widget.Definition object consists of:
 
 * The Widget.Type's *type_name* (str).
@@ -36,7 +36,7 @@ A Widget.Definition object consists of:
 * All *Input Plugs* and *Output Plugs* (Dict[str, Value.Schema])
   Unlike Properties, Plugs do not hold a Value, they just receive or emit one. They are defined by a Value Schema only.
   * All of the Widget's *Properties* (Dict[str, Property.Definition]).
-  Properties need to be defined themselves, albeit just with a Schema and an optional Property.Operation. See below for details.  
+  Properties need to be defined themselves, albeit just with a Schema and an optional Property.Operation. See below for details.
   All Properties and input/output Plugs share the same namespace. Their names cannot be empty and must not contain Path control symbols.
 * Free *Input Callbacks* (Dict[str, InputPlug.Callback])
   Functions that can be attached to an input plug
@@ -73,7 +73,7 @@ We do not differentiate between Paths leading to a Widget and those that lead to
 3. `get_input(Path)`
 4. `get_output(Path)`
 
-Inside each of the function, the Path needs to be tested whether it leads to a Widget or Element of the requested type anyway. Having an additional "Element Path" sounds good from a statically typed point-of-view, but since Paths are basically deserialized from a string input by the user, we do not gain anything from parsing two different types.  
+Inside each of the function, the Path needs to be tested whether it leads to a Widget or Element of the requested type anyway. Having an additional "Element Path" sounds good from a statically typed point-of-view, but since Paths are basically deserialized from a string input by the user, we do not gain anything from parsing two different types.
 Note that the `get_input` and `get_output` functions above return both the respective Input/Output Plugs as well as Properties, since Properties can act as inputs _or_ outputs (more an that below). Since all three share the same namespace, you can simply ask for a Input/Output Plug first, and then for a Property should no Plug exist. 
 
 
@@ -92,14 +92,14 @@ def get_depth(widget):
     if parent is None:
         return 0  # widget is the root
     parent_depth: float = parent.get_depth()
-    
+  
     # The available space for child Widgets is the difference between the parent's and the nearest uncle's depth.
     grandparent: Optional[Widget] = parent.get_parent()
     if grandparent is None:
         available_space_per_child: float = 1
     else:
         available_space_per_child: float = 1 / (grandparent.get_child_count() + 1)
-    
+  
     # The depth of a child widget is determined by its position among its siblings and the number of siblings.
     # The lowest index is a 1, otherwise we would end up with a depth of zero for all widgets on the left edge of the tree.
     # We use sibling count plus 1, otherwise Widgets on the right edge of the tree could have a z-value greater than 1.
@@ -107,16 +107,16 @@ def get_depth(widget):
     return parent_depth + (local_depth * available_space_per_child) 
 ```
 
-The depth value is calculated anew every time you ask for it.  
-While that might sound expensive, the alternative is worse: If we were to cache the depth value of all Widgets, they would need to be re-calculated every time a parent Widget changes the order of its children, or introduces a new child. Removing an existing child does not matter since the absolute depth values are irrelevant as that does not affect their order. And the calculation itself is not very complicated. It's just a lot of jumping around in memory. Maybe we could even get rid off a lot of jumps if we traversed the tree in a breadth-first fashion, which would allow us to get rid of most of the `getters` in the code above. Furthermore, you are able to cut the traversal short whenever you hit upon two siblings whose depth values did not change...  
-The problem here is not efficient tree traversal but that the tree can grow large quite quickly. Whenever you add or move a new new first-level Widget, you would end up recalculating the depth values of all Widgets in the entire Scene. This is a problem because we need to minimize the maximum amount of work done during any event, not the absolute amount of work done across all events. The bane of UI is not throughput but latency.  
+The depth value is calculated anew every time you ask for it.
+While that might sound expensive, the alternative is worse: If we were to cache the depth value of all Widgets, they would need to be re-calculated every time a parent Widget changes the order of its children, or introduces a new child. Removing an existing child does not matter since the absolute depth values are irrelevant as that does not affect their order. And the calculation itself is not very complicated. It's just a lot of jumping around in memory. Maybe we could even get rid off a lot of jumps if we traversed the tree in a breadth-first fashion, which would allow us to get rid of most of the `getters` in the code above. Furthermore, you are able to cut the traversal short whenever you hit upon two siblings whose depth values did not change...
+The problem here is not efficient tree traversal but that the tree can grow large quite quickly. Whenever you add or move a new new first-level Widget, you would end up recalculating the depth values of all Widgets in the entire Scene. This is a problem because we need to minimize the maximum amount of work done during any event, not the absolute amount of work done across all events. The bane of UI is not throughput but latency.
 
 Note that the depth is not needed for Scene traversal, it is only required if you take two random Widgets in the Scene and want to know which one is drawn on top of the other.
 
 
 ### Child Widgets and Depth Override
 
-We have already stated that any Widget can parent any number (including zero) of child Widgets. Each child Widget is owned by its parent and the parent is guaranteed to be alive for at least as long as the child is. Note that this description does not imply how child Widgets are managed by their parent (whether in a list, a map or something else).  
+We have already stated that any Widget can parent any number (including zero) of child Widgets. Each child Widget is owned by its parent and the parent is guaranteed to be alive for at least as long as the child is. Note that this description does not imply how child Widgets are managed by their parent (whether in a list, a map or something else).
 We have two use-cases for accessing a child Widget from a parent:
 
 1. By name. For example, when traversing a Path. This is most efficiently done using a map [name -> Widget].
@@ -126,7 +126,7 @@ Clearly for 2. the map from 1. will not suffice, so we need a second way to list
 
 * A list in the parent Widget that contains all (visible) child Widgets in an order most convenient for rendering. Let's call it the "Render List"
 * For each (visible) child Widget, its index in the RenderList. 
-  
+
 I am fine with the convention saying that all invisible Widgets have a depth value of 0. We do not need another way for the root to distinguish itself.
 
 For a while I didn't like this approach because it feels redundant to store the render order twice, but then I realized that the actual duplicate space will (most likely) be fairly small. And any change will only affect the Render List and the direct child Widgets -- it will not propagate further.
@@ -143,12 +143,12 @@ Properties can be updated both from Scripts executing on the Widget, from an Emi
 
 ### Forward connection
 
-There is another wrinkle to Properties in comparison to "pure" Circuit Emitter/Receivers. In the Circuit, the Receiver has full control over which Emitters it wants to connect to, while Emitters act as if they were unaware of the Receivers they emit to (apart from a function to test if there are any Receivers at all). This could be called "backward" connection, because the direction of the connection is backward to the flow of data.  
-Properties do not change that specific behavior, but they do allow any Widgets to initiate a "forward" connection to the Property of any other Widget. Internally, the connection is still initiated by the Receiver, but the Widget owning the connected Property will be unaware of what happened.  
+There is another wrinkle to Properties in comparison to "pure" Circuit Emitter/Receivers. In the Circuit, the Receiver has full control over which Emitters it wants to connect to, while Emitters act as if they were unaware of the Receivers they emit to (apart from a function to test if there are any Receivers at all). This could be called "backward" connection, because the direction of the connection is backward to the flow of data.
+Properties do not change that specific behavior, but they do allow any Widgets to initiate a "forward" connection to the Property of any other Widget. Internally, the connection is still initiated by the Receiver, but the Widget owning the connected Property will be unaware of what happened.
 
-Why would we want other Widgets to force their Values onto the Properties of other Widgets?  
-Let's take a progress bar as an example. The parent Widget is called "ProgressBar", it has a Propert called "progress" and is the thing that is known to the rest of the UI to display the progress in whatever form it wants to.  
-Inside, the "ProgressBar" Widget you find a rectangle Widget that grows to the right, the "bar" of the ProgressBar. It has has a "width" Property, which is a real number in the range [0, 1]. Next to it is a label Widget that displays the progress in text and has a "percentage" property in the range [0, 100[. Both children have no idea where their respective progress values comes from, they only know how to display it. The parent Widget's job is to orchestrate its children, so it must forward the progress value to its children, even though they have no idea that they are part of a bigger Widget.  
+Why would we want other Widgets to force their Values onto the Properties of other Widgets?
+Let's take a progress bar as an example. The parent Widget is called "ProgressBar", it has a Propert called "progress" and is the thing that is known to the rest of the UI to display the progress in whatever form it wants to.
+Inside, the "ProgressBar" Widget you find a rectangle Widget that grows to the right, the "bar" of the ProgressBar. It has has a "width" Property, which is a real number in the range [0, 1]. Next to it is a label Widget that displays the progress in text and has a "percentage" property in the range [0, 100[. Both children have no idea where their respective progress values comes from, they only know how to display it. The parent Widget's job is to orchestrate its children, so it must forward the progress value to its children, even though they have no idea that they are part of a bigger Widget.
 In order to push Values down to its child Widgets, the "ProgressBar" needs to connect to their Properties since the children do not know about the parent Widget and its "progress" Property.
 
 Of course, by allowing essentially random Widgets to connect to and overwrite Propreties on any other Widget, we open the user up to all sorts of error cases, where Property Values change suddenly between Functions and you don't know where the modification came from. In order to hand control back to the user, we added the `external` argument to Property Operations (see next chapter).
@@ -161,25 +161,25 @@ Of course, by allowing essentially random Widgets to connect to and overwrite Pr
 
 ### Property Operation
 
-Apart from their Value Schema and name, a Property is defined by an optional Operation that is performed on every new value. Like in an Operator in the Circuit, the Operation can either choose to return the input Value unmodified, change it in some way (clamp it, round it to the nearest integer etc.) before returning it or returning `None`, in which case the existing value of the Property remains unchanged.  
-Unlike Operator.Operations, Property.Operations receive a Widget.View object as an argument. This way, Operation are able to read their own and other Properties of the same Widget which allows for a Property which is a number that is clamped between two others, for example.  
+Apart from their Value Schema and name, a Property is defined by an optional Operation that is performed on every new value. Like in an Operator in the Circuit, the Operation can either choose to return the input Value unmodified, change it in some way (clamp it, round it to the nearest integer etc.) before returning it or returning `None`, in which case the existing value of the Property remains unchanged.
+Unlike Operator.Operations, Property.Operations receive a Widget.View object as an argument. This way, Operation are able to read their own and other Properties of the same Widget which allows for a Property which is a number that is clamped between two others, for example.
 Property Operations cannot be changed as they are as much part of the Property "type" as its Value Schema.
 
 Like Operator.Operations, Property.Operations are allowed to store an arbitrary Value as private data. This allows the Operators to keep semi-private values that are only relevant for their internal workings. For example, you could only allow the new value if it is larger than the average of the last three. Without the ability to store data own their own, this average would have to be a Property on the Widget, which is not really where it belongs.
 
-The third argument to a Property Operation (besides the Widget.Handle and the private data Value) is a flag `external` that is set to `true` if the new value was received from an upstream Emitter in the Circuit and to `false` if the new value was set from a Function on the Widget.  
+The third argument to a Property Operation (besides the Widget.Handle and the private data Value) is a flag `external` that is set to `true` if the new value was received from an upstream Emitter in the Circuit and to `false` if the new value was set from a Function on the Widget.
 This offers a more powerful way for the user to determine how a Property reacts to inputs from different sources than for example a simple `is_private` flag would do (where "private" Propreties could not be changes from outside their Widget). For example, if you wanted to allow all non-empty lists Values from the outside, but want to allow the Widget itself to set an empty list, you could simply reject all empty lists if the `external` flag is true. 
 
 
 ### Property Callback
 
-Like Input Plugs, Properties also have an optional Callback that is invoked after the Property has been updated. Unlike the Property Operation, which is only allowed to operate on the value, the Callback has full access to a Widget.Handle, which allows it to update Properties and emit from Output Plugs.  
+Like Input Plugs, Properties also have an optional Callback that is invoked after the Property has been updated. Unlike the Property Operation, which is only allowed to operate on the value, the Callback has full access to a Widget.Handle, which allows it to update Properties and emit from Output Plugs.
 Which Property Callback is active at any given time is defined by the Widget's current State. The Property.Callback can also be set to `None`.
 
 Of course, you have to take care not to create any infinite loops between Callbacks, just like you do with any emission in the Circuit. If a Property Callback of a Property were to set the same Property again, it would create an infinite loop and an immediate deadlock if it was not for the reentrancy check in a Property's `Emitter._emit` methods that will catch this case and fail gracefully. The same goes for the "wider" cycle, in which two Properties keep changing each other's value forever.
 
-There is however one exception to the "no cycle" rule, one that is only possible because of the separation between the Property Operation and -Callback:  
-Imagine a Widget with two Properties `A` and `B` that need to be kept in sync. Let's say that `B=A+2` must hold at all times. Whenever you set `A` to `x`, its Callback will also set `B` to `x+2`. But there is no way to differentiate this case from one where you changed `B` instead of `A` and so `B` will continue to update `A` as well ...which would cause a NoDag exception.  
+There is however one exception to the "no cycle" rule, one that is only possible because of the separation between the Property Operation and -Callback:
+Imagine a Widget with two Properties `A` and `B` that need to be kept in sync. Let's say that `B=A+2` must hold at all times. Whenever you set `A` to `x`, its Callback will also set `B` to `x+2`. But there is no way to differentiate this case from one where you changed `B` instead of `A` and so `B` will continue to update `A` as well ...which would cause a NoDag exception.
 But while this is a cycle, it is clearly not an infinite one. In fact, after touching both `A` and `B` once (no matter which one is set by the user), no further progress will be made. We can catch this case with a simple all-purpose optimization: check whether the new value is equal to the existing one *prior* to checking for cycles. If the value is the same, just do nothing and return. In this case, setting `A`  to `x` will change `B` to `x+2` which will in turn cause `A` to update to `x` again. But since at this point, `A` already has the value `x`, it will simply return nothing and the cycle is broken.
 
 
@@ -189,7 +189,7 @@ But while this is a cycle, it is clearly not an infinite one. In fact, after tou
 Full Properties (can receive values, be written and read locally):
 * Opacity (native): Number[0...1]
 * Depth Override: Number[signed int]
-* Xform (local): Xform3  
+* Xform (local): Xform3
   Are only used by the Render Callback and do not influence the Widget's Claim.
 * Claim: Claim
 
@@ -197,7 +197,7 @@ Read-only:
 * Xform (layout): Xform3
 * Grant: Size2
 * Opacity (effective): Number[0...1]
-* Index: Number[unsigned int]  
+* Index: Number[unsigned int]
   Position among siblings in draw-order.
 * Child Count: Number[unsigned int]
 
@@ -206,7 +206,7 @@ Read-only:
 
 ## Input Plug
 
-Apart from Properties, Widgets have another way to receive input from the outside world: Input Plugs. Unlike Properties, Input Plugs do not store any state beyond what Callback they are currently deferring to. An Input Plug is an implementation of a Circuit Receiver and reacts to ValueSignals that are passed down from connected Emitters upstream. All other Signals are ignored, except for the automatic disconnection from completed Emitters, which a Receiver does automatically.  
+Apart from Properties, Widgets have another way to receive input from the outside world: Input Plugs. Unlike Properties, Input Plugs do not store any state beyond what Callback they are currently deferring to. An Input Plug is an implementation of a Circuit Receiver and reacts to ValueSignals that are passed down from connected Emitters upstream. All other Signals are ignored, except for the automatic disconnection from completed Emitters, which a Receiver does automatically.
 When an InputPlug receives a ValueSignal, it will forward the Signal to an InputCallback inside the Widget. Which InputCallback is active at any given time can be changed during State changes of the Widget's StateMachine. The InputCallback can also be `None`, in which case the Signal is simply ignored.
 
 Input Plugs are the point at which input events are handled by a Widget. If the user clicks into the UI, the "mouse-down" Emitter will emit an event Value which is forwarded to receiving Widget Input Plugs in decreasing order of their Widget's Z-value.
@@ -218,13 +218,13 @@ InputCallbacks differ from other Functions in a Widget.Definition insofar as tha
 
 Output Plugs are Emitters that live on a Widget and can be invoked by Scripts on their Widget to propagate non-Property Values into the Circuit as needed. Output Plugs are truly stateless (apart from the state held by the abstract Emitter base class). They share a namespace with the rest of the Circuit Elements that are discoverable on a Widget (Input Plugs and Properties).
 
-> Since they do not interfere with the Widget that they live on, I originally planned that Output Plugs could be told to emit from anywhere. This way, they could act as aggregators, with multiple Widgets emitting from the same Output Plug on some third Widget.  
+> Since they do not interfere with the Widget that they live on, I originally planned that Output Plugs could be told to emit from anywhere. This way, they could act as aggregators, with multiple Widgets emitting from the same Output Plug on some third Widget.
 > However, this does not work with built-in output Plugs that are used to communicate true details about the Widget, like the number of children or the draw index as those need to be set internally from the Layout. If the user were able to emit from them, they could no longer be trusted.
 
 
 ## Widgets and Scripts
 
-When designing notf, I assumed at first that the user would add custom functionality by deriving from types that are supplied by the architecture. However, as discussed in "Widget Definition and Type", this approach meant a lot of overhead to supply base classes to runtime bindings (for Python, Lua, JavaScript etc.) and the introduction of untracked state. That in turn required the introduction of special "serialize/deserialize" functions and limited our ability to introspect the state of the entire UI. Lastly, the more I read about functional programming and immutable values, the more I liked the idea of designing the UI using _pure functions_ only. A pure function only operates on a given set of inputs, must return a value, and does not produce any side effects.  
+When designing notf, I assumed at first that the user would add custom functionality by deriving from types that are supplied by the architecture. However, as discussed in "Widget Definition and Type", this approach meant a lot of overhead to supply base classes to runtime bindings (for Python, Lua, JavaScript etc.) and the introduction of untracked state. That in turn required the introduction of special "serialize/deserialize" functions and limited our ability to introspect the state of the entire UI. Lastly, the more I read about functional programming and immutable values, the more I liked the idea of designing the UI using _pure functions_ only. A pure function only operates on a given set of inputs, must return a value, and does not produce any side effects.
 This is how I eventually settled on the concepts of _Functions_ (upper-case _F_).
 
 A Function is a piece of user-defined code, with a fixed list of parameters and a single return type. The code must run in isolation and operate only on the given arguments -- in other words, be pure functional. Throughout this document I also use the term _Script_, and where a Function always comes with a fixed signature, a Script is just any piece of user-defined code. A Function contains a Script, but a Script is not a Function.
@@ -251,7 +251,7 @@ Unlike in previous iterations of the notf architecture, the user is never able t
 
 # The Atomic Application
 
-At some point during the design we wanted to define how exceptions in Scripts would be handled by the running system. We know that all Scripts would be called somewhere below an Emitter.emit call in the stack, so it made sense to set up a general catch-all clause there and handle all exceptions as closely to the failure as possible.  
+At some point during the design we wanted to define how exceptions in Scripts would be handled by the running system. We know that all Scripts would be called somewhere below an Emitter.emit call in the stack, so it made sense to set up a general catch-all clause there and handle all exceptions as closely to the failure as possible.
 This is still a valid option, but one that comes with a major downside: it can leave the whole application (frontend and backend) in an inconsistent state if the user is not careful to handle exceptions gracefully (and if an exception escapes from a Script, we know that it was not). Imagine you have an application to rename a photo collection, based on the files' metadata. Your (pseudo-)code looks like this:
 
 ```python
@@ -267,29 +267,29 @@ for index in range(len(photos)):
     date: get_photo_meta_tag(photo, "date")
     location: get_photo_meta_tag(photo, "location")
     photo.rename(f'{date} @ {location}.jpg')
-    
+  
     # and then remove the backup file
     remove_file(backup[index])
 ```
 
-The exception occurs when one of the photos does not have a "location" tag, for example. Since it is not handled in the Script itself, the exception will interrupt the Script right in the loop and return immediately. At this point, we have an unknown number of already renamed files and a unknown number of backup copies, maybe in the same folder even? So that they get picked up as new "originals" during the next run of the script?  
+The exception occurs when one of the photos does not have a "location" tag, for example. Since it is not handled in the Script itself, the exception will interrupt the Script right in the loop and return immediately. At this point, we have an unknown number of already renamed files and a unknown number of backup copies, maybe in the same folder even? So that they get picked up as new "originals" during the next run of the script?
 Obviously, this is not great code. And you would be excused to think that it is the user's responsibility to make sure that code like this is never put into production. But the software is named "notf" for a reason, not "fewer tfs, though only if your code is perfect". Let's see if we can do better.
 
-Ideally, what would happen here is that the exception interrupts the application and lets the user know where the error happened. The user would then have the opportunity to fix the code and let the event replay (if the user is the developer) or abort and make a ticket for the programmers to fix their shit. We focus on the first case, since we strive to be a great UI development tool first and a great UI framework second (as that naturally derives from the first).  
+Ideally, what would happen here is that the exception interrupts the application and lets the user know where the error happened. The user would then have the opportunity to fix the code and let the event replay (if the user is the developer) or abort and make a ticket for the programmers to fix their shit. We focus on the first case, since we strive to be a great UI development tool first and a great UI framework second (as that naturally derives from the first).
 In either case, we want the event that caused the exception to not have any side-effects. Neither on the backend, nor in the frontend. 
 
 The backend requirement is relatively easy to ensure: just queue all service calls and execute them in batch once the event has completed successfully. And if it fails, then just discard the queue. This behavior should be indistinguishable from the approach of firing service calls off immediately, since whatever effect they have will not be part of the current event anyway.
 
-The frontend is a bit more involved. What this asks for are basically "atomic" events: events that either succeed completely (no exception escapes a ran Script) or fails without changing the application state at all. Whatever state changes have been made must be rolled back, as if they never happened.  
+The frontend is a bit more involved. What this asks for are basically "atomic" events: events that either succeed completely (no exception escapes a ran Script) or fails without changing the application state at all. Whatever state changes have been made must be rolled back, as if they never happened.
 As I see it, there are two ways to go about this:
 
 1. Keep a record of whatever changes are applied to the application state and undo them on failure.
 2. Keep a snapshot of the original state around and re-apply it on failure, overwriting the current state.
 
-The first option would allow us to keep the data representation separate from its modification. If you change the order of a Widget's children, you could simply store the modification itself (move the second child to the end of the list) and not worry about whether a child is a raw pointer, a Path or an index in a vector somewhere.  
+The first option would allow us to keep the data representation separate from its modification. If you change the order of a Widget's children, you could simply store the modification itself (move the second child to the end of the list) and not worry about whether a child is a raw pointer, a Path or an index in a vector somewhere.
 On the other hand, it would introduce a lot more complexity into the code, since every new functionality that is supplied to the user would require a new "do" and "undo" function to go along with it, including the state that is needed to undo the operation.
 
-The second option is the one favored by value-centric programming and modern frontend architectures like Redux. The first of [the three principles of Redux](https://redux.js.org/introduction/three-principles) is the idea that the entire application state is a single object. This, combined with an immutable object model allows for easy implementation of complete application serialization / undo-redo / copy / diffing etc. (as seen in the quite brilliant talk [Postmodern immutable data structures](https://www.youtube.com/watch?v=sPhpelUfu8Q)).  
+The second option is the one favored by value-centric programming and modern frontend architectures like Redux. The first of [the three principles of Redux](https://redux.js.org/introduction/three-principles) is the idea that the entire application state is a single object. This, combined with an immutable object model allows for easy implementation of complete application serialization / undo-redo / copy / diffing etc. (as seen in the quite brilliant talk [Postmodern immutable data structures](https://www.youtube.com/watch?v=sPhpelUfu8Q)).
 This option would provide a superset of the functionality as the first, but instead of adding new Command-pattern like structures in the code, we would need to modify the way the data is stored in memory. So far, we have been refering extensively to the use of `Value` objects, which are (among other things) immutable. With Widgets however, we have introduced a whole lot of other state into the code that cannot easily be represented with Values ... or can it?
 
 In order to have an application state that can be represented as plain old data in memory we would need to say goodbye to a few features that the previous programming model allowed us to do:
@@ -299,7 +299,7 @@ In order to have an application state that can be represented as plain old data 
 3. No more virtual base classes, all types need to be known since we cannot use `dynamic_cast`.
 4. The current memory model is a tree, with parents owning their children and Widgets scattered all over memory in a large, branching application state. Combine that with a lot of small, local changes to individual Values, each change prompting another creation of all copy of the tree down to the change, and you get many many copies of minimally different data. Every time you update a leaf, you then need to update the owner of the leaf, and its owner and so on all the way to the application object, which is then the next ground truth.
 
-For a while, I was not sure which way to go. The first one is easy to start, but is potentially hard to maintain because every new modification of any part of the application will require a new Command. We are basically creating and managing a lot of individual deltas, but without being able to outright copy the original state since it might contain pointers. So, on top of the maintenance hassle we have a lot of serialization at runtime.  
+For a while, I was not sure which way to go. The first one is easy to start, but is potentially hard to maintain because every new modification of any part of the application will require a new Command. We are basically creating and managing a lot of individual deltas, but without being able to outright copy the original state since it might contain pointers. So, on top of the maintenance hassle we have a lot of serialization at runtime.
 The second one seemed to offer some really cool functionality for free, but was totally incompatible with the way that the application was represented in memory...
 
 Until it hit us: What if we could lay out the whole application in tables instead of a tree? Like in an SQL database. This way, we could keep everything in a data structure that was as shallow as possible. With structural sharing, we could even have an entire history of the application state with minimal space requirements! And unlike a tree, diffing two tables is basically trivial.
@@ -313,7 +313,7 @@ So, what do we get for our troubles?
 
 Very cool. Now to how this will actually work:
 
-At the top, we have a single application object that stores a number of tables. Every row in a table represents instances of a single type: Widgets in one, Operators in another etc. That might sound unwieldly, but since we don't customize through subclasses (like in a regular OO program), there are only so many classes that we actually need to represent. In all of the logic module, for example, we only have two concrete (persistent) classes: The Circuit and the Operator. And you could argue that the Circuit does not even be its own table, since you only have one in a given application. And yes, there are more concrete classes than that in the logic module, but not _persistent_ ones. Instead we have Signals, Events, Errors etc.  
+At the top, we have a single application object that stores a number of tables. Every row in a table represents instances of a single type: Widgets in one, Operators in another etc. That might sound unwieldly, but since we don't customize through subclasses (like in a regular OO program), there are only so many classes that we actually need to represent. In all of the logic module, for example, we only have two concrete (persistent) classes: The Circuit and the Operator. And you could argue that the Circuit does not even be its own table, since you only have one in a given application. And yes, there are more concrete classes than that in the logic module, but not _persistent_ ones. Instead we have Signals, Events, Errors etc.
 Whenever you update a Value, you modify its table and the application object -- and that is that. 
 
 Instead of pointers, you have indices to a specific row of a table. Note that this does indeed mean that you need to know the exact type of object that you point to, so you can look it up in the correct table (unless of course we add another indirection but I hope that it will not come to that). Whenever a new object of the table's type is constructed, it will be put into the first free row of the table - initially at its end. Of course always appending new rows would mean that the table would grow forever, or at least until the application is shut down. This might not be a problem if you plan to keep the entire history of a session in memory, but if we decide to only keep the last 100 iterations around and serialize the rest to disk, this will no longer work. Instead, we need to re-use rows that have gone out of scope.
@@ -346,7 +346,7 @@ struct WidgetRow {
 using WidgetTable = immer::vector<WidgetRow>;
 ```
 
-One approach for the table design (the one from the example) is to move as much state as possible into the `Widget` struct, which keeps all mutable state nice and centralized.  
+One approach for the table design (the one from the example) is to move as much state as possible into the `Widget` struct, which keeps all mutable state nice and centralized.
 Another approach would be to keep the tables lean, so that as little "old" data as possible is copied whenever a row is modified.
 
 > TODO: return back to the design of the tables once we have the scene module all worked out
@@ -364,7 +364,7 @@ The Layout's job is to provide 5 data points for a (sub)set of the Widget's chil
 5. The optional **axis-aligned bounding rectangle** (AABR) of all children of the Widget.
 6. An optional **implicit Claim** that is the sum of all child Claims. More on that later.
 
-In order to provide these data points, a Layout has a `Layout.Callback`, which is a Script that can be defined by the user. However, with Layouts it is quite likely that we will be able to provide all implementations necessary for most use cases; those would then be implemented in native code.  
+In order to provide these data points, a Layout has a `Layout.Callback`, which is a Script that can be defined by the user. However, with Layouts it is quite likely that we will be able to provide all implementations necessary for most use cases; those would then be implemented in native code.
 The result of a Layout.Callback is written into a `Layout.Composition`, which is a structure:
 
     Layout.Composition: Tuple[
@@ -382,14 +382,14 @@ with
         Number, Number, Number, Number,
         Number, Number, Number, Number,
         Number, Number, Number, Number]
-    
+  
     AABR: Tuple[Number, Number, Number, Number]  # left, bottom, right, top
 
     Claim: ... # see Claim
 
 Each child's depth override and opacity factor (data points 3 and 4) are optional as they are provided by the child Widget's built-in properties. However, the Layout might choose to override the child's Widget depth-value or to multiply the Widget's opacity. If you don't touch these values in the Layout, they remain unchanged.
 
-That the AABR and the Claim (data points 5 and 6) are also both optional as we could infer them from the per-child data points, by simply combining all of the child sizes and Claims. However, we expect that the Layout.Callback will have more insight into (and/or intermediate data for) calculating these two fields for their specific use-case. Or maybe you just want the child AABR to be a bit larger, smaller etc?  
+That the AABR and the Claim (data points 5 and 6) are also both optional as we could infer them from the per-child data points, by simply combining all of the child sizes and Claims. However, we expect that the Layout.Callback will have more insight into (and/or intermediate data for) calculating these two fields for their specific use-case. Or maybe you just want the child AABR to be a bit larger, smaller etc?
 In any case, if the user leaves these fields empty, we can calculate them ourselves as well.
 
 I thought about splitting the Layout.Callback into multiple functions, but we cannot know which part of the Composition will change from the input alone. Therefore we would have to call each function on every new input. Furthermore, I expect the data points to correlate a lot, meaning that multiple smaller functions will have to do a lot of duplicate work. Therefore it is both cleaner and faster to have a single Layout.Callback to calculate the complete Composition in one go.
@@ -399,15 +399,15 @@ Layouts always contain a reference to their parent Widget, since they need to re
 
 ## Transitions
 
-Layouts are separate from Widgets so that the user can change the Layout depending on the state of the Widget or the available size granted the parent Widget. Perhaps you want to display only the icons of push buttons if you shrink their parent Widget to its minimal width? Or arrange a horizontal list of checkboxes vertically if their available space becomes to narrow?  
+Layouts are separate from Widgets so that the user can change the Layout depending on the state of the Widget or the available size granted the parent Widget. Perhaps you want to display only the icons of push buttons if you shrink their parent Widget to its minimal width? Or arrange a horizontal list of checkboxes vertically if their available space becomes to narrow?
 
-Things become interesting when you consider that Layout switches should not (always) be immediate, instead you will most likely want a smooth transition between them. This is where _Transitions_ come in.  
-A Transition is a built-in Layout that owns two other child Layouts that each produce their own Composition. Since Compositions are made up of known data, it is trivial to interpolate between them, no matter what internal process the child Layouts followed to produce their result.  
+Things become interesting when you consider that Layout switches should not (always) be immediate, instead you will most likely want a smooth transition between them. This is where _Transitions_ come in.
+A Transition is a built-in Layout that owns two other child Layouts that each produce their own Composition. Since Compositions are made up of known data, it is trivial to interpolate between them, no matter what internal process the child Layouts followed to produce their result.
 Of course, each one of the child Layouts can themselves be another Transition, and so on and so forth; although the utility of deeply nested Transitions is questionable.
 
 Transitions are built-in, because they need to own two other Layouts, something that we do not allow for user-defined Layouts. We do however allow complete customization of the Transition process, this should therefore not be a problem in practice. In fact, I think the fact that a Transition is-a Layout can be completely irrelevant to the user.
 
-Apart from the two children, Transitions also contain a reference to their (optional) parent Layout so that they can replace themselves with their target Layout on completion.  
+Apart from the two children, Transitions also contain a reference to their (optional) parent Layout so that they can replace themselves with their target Layout on completion.
 Alternatively (if possible) they might actually "become" the target Layout. In that case, we can omit the parent Layout field.
 
 In order to start a transition, the Widget has a method 
@@ -419,8 +419,8 @@ set_layout(
     warp_function: Optional[Transition.Warp] = None,
     )
 ```
-that automatically replaces the current Layout with a Transition containing the current Layout as the *source* Layout and the given `target_layout` instance as the *target* Layout.  
-Note that this works even if the current Layout is already a Transition.  
+that automatically replaces the current Layout with a Transition containing the current Layout as the *source* Layout and the given `target_layout` instance as the *target* Layout.
+Note that this works even if the current Layout is already a Transition.
 In the special case that `transition_duration` is 0, we can skip the transition and jump to the target immediately.
 
 The Transition registers a timer Callback to be called once every frame for `transition_duration` milliseconds (it is called at least every frame; if the Widget's size is changed in between, the Transition layout might be called more than once). It then invokes the layout function on both of its children until the Transition has completed.
@@ -443,11 +443,11 @@ If you only want to implement an easing blend, you can instead provide a `warp_f
 
 ## Layout Properties
 
-Unlike other Callbacks on a Widget, Layouts can not be pure functions. They cannot even work only with private data like some Operators do.  
+Unlike other Callbacks on a Widget, Layouts can not be pure functions. They cannot even work only with private data like some Operators do.
 Let's take the example of a simple ListLayout that takes a list of Widgets and arranges them vertically, one after the other. The spacing between the Widget is constant.
 Where does the spacing value come from? It cannot live on the Widget, or at least it should not, since the Widget may also want to lay out its children in a StackLayout (for example), should the grant become too small to display a list. In that case, why would you have a "spacing" property on the Widget, even though it is not used anywhere? If we did that, the Widget.Type would need to contain a union of all Properties for any Layout types that the Widget may use. Not a great design.
 
-Instead, Layouts need their own Properties. We use the name Layout.Property to differentiate them from Widget.Properties, which are conceptually similar but differ in implementation.  
+Instead, Layouts need their own Properties. We use the name Layout.Property to differentiate them from Widget.Properties, which are conceptually similar but differ in implementation.
 Note also that Layouts are explicitly *not* Widgets themselves. Their ability to have other Layouts as children and the fact that they have (their own version of) Properties might look like they share much of the same concepts as Widgets but they really don't.
 
 Layout.Properties can connect to upstream Emitters in the Circuit like Widget.Properies, but unlike Widget.Properties, Layout.Properties can also be set from the outside, from their owning Widget to be precise. Every change in a Layout.Property will trigger a relayout.
@@ -459,7 +459,7 @@ Layout.Properties can have a Value.Operator to ensure that all of the Property v
 
 ## Which Widgets to Lay Out
 
-In the trivial case, a Layout would always take all children of its Widget. However, we might not have space enough for all children at all times, or maybe we just want to hide some Widgets without removing them from the parent.  
+In the trivial case, a Layout would always take all children of its Widget. However, we might not have space enough for all children at all times, or maybe we just want to hide some Widgets without removing them from the parent.
 Therefore, in order to appear at all, every child of a Widget needs to be added to one (or more) Layouts explicitly. The "more" case occurs during Transitions, where the same child might have been added to both source and target Layout. Note though, that the child Widget will still only get a single xform, size and depth provided by the Transition, not multiple ones.
 
 You might have noticed that the `Widget.set_layout` method takes a Layout *instance*, not a Layout.Definition. That is because we need to add Widgets to the Layout using `Layout.add_widget(child_name: str, data: Optional[Value])`. The Value.Schema of the second argument is defined by the Layout.Definition's `per_widget_data` field and contains widget-specific data that is available to the Layout.Callback.
@@ -489,8 +489,8 @@ LayoutDefinition: Tuple[
 
 ## Layout Prologue
 
-The child Widgets to lay out is defined by the user with a simple list of strings. When the Layout collects all Claims to pass to the Layout.Callback, it has to request each child by name from its Widget.  
-To speed things up, Layouts should store handles to the child Widgets. With the data-in-table implementation of the application state, it should be trivial to determine whether or not a handle is still valid or not. The Layout will still need to request the Claim of each (valid) child Widget, but we do not have to do the lookup by name ever time.  
+The child Widgets to lay out is defined by the user with a simple list of strings. When the Layout collects all Claims to pass to the Layout.Callback, it has to request each child by name from its Widget.
+To speed things up, Layouts should store handles to the child Widgets. With the data-in-table implementation of the application state, it should be trivial to determine whether or not a handle is still valid or not. The Layout will still need to request the Claim of each (valid) child Widget, but we do not have to do the lookup by name ever time.
 Invalid handles are quietly ignored.
 
 
@@ -498,7 +498,7 @@ Invalid handles are quietly ignored.
 
 The signature of a Layout.Callback is `(self: Layout.View, available_size: Size2) -> Composition`. The available size is what we call the "grant", since it is the space "granted" by the parent Widget's Layout.
 
-Through the Layout.View, the Layout.Callback has access to all Layout.Properties as well as a map of per-widget data Values, indexable using the Widget's name as key. It has no further access to the parent nor to any child Widgets, like whether or not a specific Widget is selected or whatever. Information like that has to be forwarded to a Layout.Property.  
+Through the Layout.View, the Layout.Callback has access to all Layout.Properties as well as a map of per-widget data Values, indexable using the Widget's name as key. It has no further access to the parent nor to any child Widgets, like whether or not a specific Widget is selected or whatever. Information like that has to be forwarded to a Layout.Property.
 The reason for this limitation is that any knowledge of the laid-out Widgets would tie the Layout to the type of Widgets that it can handle, something that we explicitly want to discourage.
 
 Every child Widget comes with its own depth-value override (see Child Widgets and Depth Override), ...
@@ -507,8 +507,8 @@ Every child Widget comes with its own depth-value override (see Child Widgets an
 
 ## Layout Epilogue
 
-After a new Layout.Composition has been created, its values needs to be propagated to the child Widgets. In some cases, a relayout is triggered by the parent Widget itself. Here, it would be enough for the Widget to take the Composition and apply it to each child.  
-However, changing a Layout.Property also triggers a relayout, and here we have no Widget in the call stack to accept the result and apply it to the children.  
+After a new Layout.Composition has been created, its values needs to be propagated to the child Widgets. In some cases, a relayout is triggered by the parent Widget itself. Here, it would be enough for the Widget to take the Composition and apply it to each child.
+However, changing a Layout.Property also triggers a relayout, and here we have no Widget in the call stack to accept the result and apply it to the children.
 Instead, the root Layout of a Widget must *push* the new Layout values to the Widget, which in turn then distributes it to the children. All of that can happen in native code and be completely invisible to the user.
 
 
@@ -524,26 +524,26 @@ Instead, the root Layout of a Widget must *push* the new Layout values to the Wi
 Claims come in two "flavors": explicit and implicit. 
 
 
-> **Alternative Layouting:**  
+> **Alternative Layouting:**
 > And now a short story about an alternative Layout approach. I call it "alternative Layouting" because, like alternative facts or alternative medicine, it does not work.
 >
-> At one point during the design process, I became convinced that it should be possible to create a layout based on rules alone.  
+> At one point during the design process, I became convinced that it should be possible to create a layout based on rules alone.
 > The idea here was that you would have a user Script that would return a set of constraints that define the Layout and would not have to be updated on every change of the parent's size.
 > This also fit in well with the data-driven approach that I had adopted for the rest of the UI state.
 > 
-> And why not? With the introduction of Widget.Claims, we were already half-way there. You can think of a Claim as a collection of rules, now the only thing we needed was a more general expression of Layout rules. And I didn't have to look for long, because *anchors* already exist as a concept in layouting.  
-> Simply speaking, an anchor is a constraint that places one item along the edge of another one. If you place the left and the top edge of an item to the bottom and right edge of another one, you have just "anchored" the first item to the bottom-right corner of the second.  
+> And why not? With the introduction of Widget.Claims, we were already half-way there. You can think of a Claim as a collection of rules, now the only thing we needed was a more general expression of Layout rules. And I didn't have to look for long, because *anchors* already exist as a concept in layouting.
+> Simply speaking, an anchor is a constraint that places one item along the edge of another one. If you place the left and the top edge of an item to the bottom and right edge of another one, you have just "anchored" the first item to the bottom-right corner of the second.
 > Additionally, I was planning to allow the creation of "free" anchors, points or edges that Widget can be anchored to, that are encoded in the rules. For example, the iTunes cover view would consist of a list of free anchors (one per Widget), all placed on a horizontal line, with tighter spacing towards the edges and a central anchor in the middle. 
 >
-> In order to make the layout process as general as possible, we split it up into 3 phases:  
-> In the first phase, a user-defined Script would be invoked to produce at least two rules for each Widget that was going to be laid out: one rule for the horizontal placement, one rule for the vertical.  
-> In the second phase, we were going to build two DAGs, one for each axis in 2D space, defining the layout of each Widget in terms of constraints to attached or free anchors.  
+> In order to make the layout process as general as possible, we split it up into 3 phases:
+> In the first phase, a user-defined Script would be invoked to produce at least two rules for each Widget that was going to be laid out: one rule for the horizontal placement, one rule for the vertical.
+> In the second phase, we were going to build two DAGs, one for each axis in 2D space, defining the layout of each Widget in terms of constraints to attached or free anchors.
 > In the third phase, we would have distributed the available space in each dimension among the Widgets according to the constraints from step 2, so each Widget takes up as much space as possible but no more.
 > Brilliant.
 >
-> There were however problems with this approach (if there weren't we would be using it).  
+> There were however problems with this approach (if there weren't we would be using it).
 > 
-> First, in the case of the iTunes cover layout, the first phase is already the complete layout process. There is nothing else but this one user-defined Script that we need to call. And we need to call it again, whenever the number of child Widgets change, whenever the grant of the parent Widget changes, whenever the cursor position changed... We can never skip this phase, becaues the user might have included a weird edge-case branch that is only executed if the layout has exactly 3 widgets, each 3.45 units apart ...   
+> First, in the case of the iTunes cover layout, the first phase is already the complete layout process. There is nothing else but this one user-defined Script that we need to call. And we need to call it again, whenever the number of child Widgets change, whenever the grant of the parent Widget changes, whenever the cursor position changed... We can never skip this phase, becaues the user might have included a weird edge-case branch that is only executed if the layout has exactly 3 widgets, each 3.45 units apart ... 
 Basically, we have added a lot of complexity, creating anchors and resolving them, but did not gain anything.
 >
 > Secondly, there was no general way to handle "overflow" in the third phase. If the Widgets were too wide or high to fit into the grant size, they would simply overflow. Everything else (like a wrapping Flexbox) requires special handling and the only way to do that without restricting flexibility was to add another user-defined Callback to split child Widgets into "groups" that could be laid out according to some orthogonal layouting process. And to make things worse, after this user-defined Callback had run, we had to repeat the whole process from phase 2 onwards, including (potentially) calling the same user-defined Callback *again*, after realizing that the new groups still didn't fit.
@@ -553,13 +553,13 @@ Basically, we have added a lot of complexity, creating anchors and resolving the
 
 # Widget State Machine
 
-We have described a way to define a Widget through data and Callbacks. However, this only describes a single point in time for a Widget. Usually Widgets can be in different states: enabled / disabled / active / etc. These States only describe changes in business logic, not the internal Widget logic. A Widget can either be visible or invisible (depending on whether their internal _Visibility AABR_ is clipped by their parent _Clip Shape_, see "Shapes of a Widget" for details), but that differentiation is notf-internal and does not constitute an upper-case "State".  
+We have described a way to define a Widget through data and Callbacks. However, this only describes a single point in time for a Widget. Usually Widgets can be in different states: enabled / disabled / active / etc. These States only describe changes in business logic, not the internal Widget logic. A Widget can either be visible or invisible (depending on whether their internal _Visibility AABR_ is clipped by their parent _Clip Shape_, see "Shapes of a Widget" for details), but that differentiation is notf-internal and does not constitute an upper-case "State".
 States are defined by the user and toghether form a [Finite State Machine](https://en.wikipedia.org/wiki/Finite-state_machine).
 
 
 > TODO: would it be a good idea to limit certain changes to a Widget instance (changes in children, in upstream connections, in the render callback, ...) to state changes? 
 
-State changes, like value changes, are immediate. That means that the same Callback will execute in the context of both the source and the target state if it switches in the middle of its body.  
+State changes, like value changes, are immediate. That means that the same Callback will execute in the context of both the source and the target state if it switches in the middle of its body.
 Switches states looks like this:
 
 1. The EntryState:Enter Callback is called when the Widget is initialized.
@@ -569,7 +569,7 @@ Switches states looks like this:
 5. The NewState:Enter Callback is called
 6. The State-changing Callback from 3. is continued.
 
-This has the advantage that you can query and react to changes in state both before and after a State change but has the disadvantage of being more difficult to reason about (but not more so than any nested method call). That also means that you could trigger more than one State change from the same Callback.  
+This has the advantage that you can query and react to changes in state both before and after a State change but has the disadvantage of being more difficult to reason about (but not more so than any nested method call). That also means that you could trigger more than one State change from the same Callback.
 The alternative would be to restrict State changes to the Event epilogue. ... That might also work but I fail to see the advantage in the general case. Right now it seems like more complex code on our end and very little clarity added to the user's side. In fact, it might even prohibit certain functionality (having post a pre- and post-State switch part of the Callback) that might still prove to be useful.
 
 Since we have no way of introspecting user-code, we cannot know in advance which State switches will occur. This would make it impossible for us to map out a transition diagram. Therefore, the user needs to define all reachable States from a given State up-front.
@@ -585,10 +585,10 @@ The idea here is that we want to decouple the inner working of a Widget from how
 
 We should be able to connect all Widget Types with a Render Callback at startup and whenever the Style/s of an Application is changed. This way we can be certain that there will be no suprise failures at runtime. And you can actually serialize the current Render Callback for each Widget.Type with the rest of the Application state, meaning that if you do not change the Style at all (which I think is the default), you only occurr the cost of Render Callback lookup the first time you start a session.
 
-Another level of abstraction is the Palette, which is separate from the Style. Within a Render Callback, you have access to the current Palette which can contain colors, fonts, measurements (like the average height of a button, font size), gradients or whatever. Palettes also cascade like Styles, meaning you can have a "default" Palette and override only certain characteristics with you custom Palette that has a higher priority.  
+Another level of abstraction is the Palette, which is separate from the Style. Within a Render Callback, you have access to the current Palette which can contain colors, fonts, measurements (like the average height of a button, font size), gradients or whatever. Palettes also cascade like Styles, meaning you can have a "default" Palette and override only certain characteristics with you custom Palette that has a higher priority.
 Palettes are separate from Styles. Wheras Styles contain Scripts (executable code), Palettes contain only data. Palettes are also easy to expose to the user of an application, because you can modify them using number entry fields / color pickers etc. and do not need to know the interpreted scripting language.
 
-By associating the Render Callback with a Widget.Type, we ensure that the Render Callback of a Widget cannot be changed at runtime. You could easily imagine a world in which we _did_ allow that and it would also work, however we found that you do not _need_ to do it because every behavior that you get with multiple Render Callbacks can be duplicated by just having a big list of if/else statements at the root of you single Render Callback. The advantage here is that we contain the logic of drawing to the actual Render Callback itself and not spread it out over the union of all Widget Callbacks with a mutable Widget.Handle.  
+By associating the Render Callback with a Widget.Type, we ensure that the Render Callback of a Widget cannot be changed at runtime. You could easily imagine a world in which we _did_ allow that and it would also work, however we found that you do not _need_ to do it because every behavior that you get with multiple Render Callbacks can be duplicated by just having a big list of if/else statements at the root of you single Render Callback. The advantage here is that we contain the logic of drawing to the actual Render Callback itself and not spread it out over the union of all Widget Callbacks with a mutable Widget.Handle.
 
 
 ## Accessibility
@@ -598,7 +598,7 @@ Another advantage of the separation between the Render Callback and the Widget i
 
 ## Widget Design
 
-The Widget Design is a list of Commands for the `Painterpreter` object that uses it to generate the draw calls to the GPU to render the UI. It is created by calling functions on a `Painter` object that is passed to the Widget's Render Callback.  
+The Widget Design is a list of Commands for the `Painterpreter` object that uses it to generate the draw calls to the GPU to render the UI. It is created by calling functions on a `Painter` object that is passed to the Widget's Render Callback.
 Example
 
 ```python
@@ -628,7 +628,7 @@ The **Visibility AABR** is used to determine when a Widget has become invisible.
 It is the most performance critical of the Shapes and is used for broad-phase visibility testing. As soon the Visibility AABR is fully clipped by an ancestor, the Widget is considered invisible and will not be traversed during rendering or event propagation (unless the _Clip Shape_ is set to _unbound_, see below).
 
 The **Hit Shape** is a shape in Widget space in which mouse events are received. If you have a circular button for example, you don't want the outer corners of the Widget's bounding rectangle to react to mouse events, even though the Widget's draw shape does not extend to there.
-The Hit Shape is independent of the Draw Shape, because use-cases for Clip Shapes both smaller and larger than the Draw Shape exists: Dropshadows for example are drawn, but are not part of the Hit Shape; whereas the Hit Shape of circular buttons on touchscreen displays are usually larger than their Draw Shape. The Hit Shape is also independent of the Clip Shape.  
+The Hit Shape is independent of the Draw Shape, because use-cases for Clip Shapes both smaller and larger than the Draw Shape exists: Dropshadows for example are drawn, but are not part of the Hit Shape; whereas the Hit Shape of circular buttons on touchscreen displays are usually larger than their Draw Shape. The Hit Shape is also independent of the Clip Shape.
 Defaults to the Draw Shape if not set explicitly.
 
 The **Clip Shape** is Shape restricts all child shapes (draw / clip / hit) to a certain shape in parent space. The Clip shape does not affect its own Widget in any way. This way the Widget can draw itself around an area reserved for its children to frame them, for example. It has three states: default, explicit and unbound. 
@@ -697,7 +697,7 @@ The same goes for anything else that might be used as "removal light", like remo
 
 Design and how to "View" a Widget.
 
-Ideally, the Design would not be a part of the Widget at all. Instead, the Design would be a view onto the Widget.  
+Ideally, the Design would not be a part of the Widget at all. Instead, the Design would be a view onto the Widget.
 That leads to the following questions:
 
 1. Where is the function that transforms a Widget into whatever representation?
@@ -784,44 +784,44 @@ The bounding rect is calculated automatically from the hit-zone shape.
 This bounding rect is always updated whenever the layout changes and is empty, if the Widget is fully clipped - which is convenient because we don't need an additional flag.
 With the Z-order and the Aabr in window space, we should be able to limit the number of failed shape tests when finding the next Widget to propagate a mouse event to.
 Let's step through the algorithm to find out whether a mouse click hit a particular Widget.
-    
+  
 ```python
 def next_handler(click: ClickEvent, candidates: List[Widget]):
     """
     A Python generator function that takes a click event and produces the next interested Widget if there is one.
-    
+  
     :param click: The mouse click event, containing the position of the click in window coordinates.
     :param candidates: All Widgets that have subscribed to receive mouse click events, ordered from front to back.
-    """    
+    """  
     # Create a cache to store the calculated clipping shapes.
     cache: Dict[Widget, Path] = {}
-    
+  
     # We start with the topmost candidate and continue until somebody either blocks the event 
     # or we run out of candidates.
     for candidate in candidates:
-        
+      
         # If the click is not even in the Widget's bounding box in window coordinates, 
         # there is no way that this candidate will handle the event.
         if click.window_pos not in candidate.hitbox:
             continue
-        
+      
         def get_hitshape(widget: Widget) -> Path:
             # If we have already calculated the hitshape of the current Widget, just re-use that
             if widget in cache:
                 return cache[widget]
-            
+          
             parent: Optional[Widget] = widget.get_parent()
             if parent is None:  # widget is root
                 result: Path = widget.hitbox
-            
+          
             else:
                 parent_hitshape: Path = get_hitshape(parent)
                 widget_xform: Xform = widget.get_xform()  # transformation in parent space
                 result: Path = parent_hitshape  # TODO: THIS IS WRONG, WE NEED TO CLIP THE CHILD HITSHAPE IF ANYTHING
-            
+          
             cache[widget] = result
             return result
-        
+      
         # If the click is inside the candidate's hitshape, this is the next Widget to receive the event
         if click.window_pos in get_hitshape(widget):
             yield candidate

@@ -3,7 +3,7 @@ import logging
 from math import pi, trunc, floor, ceil
 from typing import List
 
-from pynotf.data import Value, mutate_value, multimutate_value
+from pynotf.data import Value, get_mutated_value, multimutate_value
 from pynotf.data.value import is_denotable_valid_for_schema  # not part of the public API
 
 from pyrsistent import pvector as vec
@@ -158,7 +158,7 @@ class TestCase(unittest.TestCase):
 
     def test_hash(self):
         test_hash: int = hash(test_value)
-        mutated_hash: int = hash(mutate_value(test_value["name"], "Mrs. Okay"))
+        mutated_hash: int = hash(get_mutated_value(test_value["name"], "Mrs. Okay"))
         self.assertNotEqual(test_hash, mutated_hash)
 
     def test_invalid_element(self):
@@ -240,14 +240,14 @@ class TestCase(unittest.TestCase):
 
         # none Schema through an empty list
         int_list_value: Value = Value([0])
-        empty_list_value: Value = mutate_value(int_list_value, [])
+        empty_list_value: Value = get_mutated_value(int_list_value, [])
         self.assertEqual(Value.Schema.from_value(empty_list_value), none_schema)
 
     def test_none(self):
         none: Value = Value()
         self.assertEqual(none, Value(None))
         self.assertEqual(len(none), 0)
-        mutate_value(none, None)  # noop but okay
+        get_mutated_value(none, None)  # noop but okay
 
         # None cannot be nested
         with self.assertRaises(ValueError):
@@ -256,7 +256,7 @@ class TestCase(unittest.TestCase):
             _ = Value(dict(a=None))
 
         # none can only be mutated to none
-        new_none: Value = mutate_value(none, None)
+        new_none: Value = get_mutated_value(none, None)
         self.assertEqual(none, new_none)
 
         # corner case to test if a denotable is valid for a None schema
@@ -270,7 +270,7 @@ class TestCase(unittest.TestCase):
         """
         v: Value = Value(x=Value(1))
         self.assertEqual(float(v['x']), 1)  # here is is a number
-        v = mutate_value(v, 'x', Value("derbness"))
+        v = get_mutated_value(v, 'x', Value("derbness"))
         self.assertEqual(str(v['x']), 'derbness')  # here is a string
 
         any_value: Value = Value(Value())
@@ -402,34 +402,34 @@ class TestCase(unittest.TestCase):
         self.assertEqual(len([c for c in Value(Value("another one"))]), 0)
 
     def test_immutability(self):
-        modified = mutate_value(test_value, ("coords", 0, "x"), 1)
+        modified = get_mutated_value(test_value, ("coords", 0, "x"), 1)
         self.assertEqual(float(modified["coords"][0]["x"]), 1)
         self.assertEqual(float(test_value["coords"][0]["x"]), 0)
 
-        modified2 = mutate_value(modified, "name", "Mr. VeryWell")
+        modified2 = get_mutated_value(modified, "name", "Mr. VeryWell")
         self.assertEqual(str(modified2["name"]), "Mr. VeryWell")
         self.assertEqual(str(modified["name"]), "Mr. Okay")
 
     def test_mutation(self):
         # change a list in the value
-        modified = mutate_value(test_value, "coords", [dict(x=42, someName="answer", number_list=[-1, -2])])
+        modified = get_mutated_value(test_value, "coords", [dict(x=42, someName="answer", number_list=[-1, -2])])
         self.assertEqual(len(modified["coords"]), 1)
         self.assertEqual(str(modified["coords"][0]["someName"]), "answer")
 
         # change a map in the value
-        modified = mutate_value(test_value, "my_map", {"key": "changed",
+        modified = get_mutated_value(test_value, "my_map", {"key": "changed",
                                                        "list_in_the_middle": ["I am a changed string"],
                                                        "a number": 124, })
         self.assertEqual(str(modified["my_map"]["key"]), "changed")
 
         # change an item in a list by negative index
-        modified = mutate_value(test_value, ("number_list", -2), 123)
+        modified = get_mutated_value(test_value, ("number_list", -2), 123)
         self.assertEqual(float(modified["number_list"][1]), 123)
         self.assertEqual(float(modified[4][1]), 123)
         self.assertEqual(float(modified[4][-2]), 123)
 
         # change an item in a record by negative index
-        modified = mutate_value(test_value, ("coords", -1, -2), "derb")
+        modified = get_mutated_value(test_value, ("coords", -1, -2), "derb")
         self.assertEqual(str(modified["coords"][1]["someName"]), "derb")
         self.assertEqual(str(modified[0][-1][-2]), "derb")
 
@@ -439,121 +439,121 @@ class TestCase(unittest.TestCase):
         """
         int_value: Value = Value(-1)
         self.assertEqual(int(int_value), -1)
-        int_value2: Value = mutate_value(int_value, Value(42))
+        int_value2: Value = get_mutated_value(int_value, Value(42))
         self.assertEqual(int(int_value2), 42)
 
     def test_mutation_failures(self):
         with self.assertRaises(TypeError):  # set number to string
-            mutate_value(test_value, "pos", "0.23")
+            get_mutated_value(test_value, "pos", "0.23")
         with self.assertRaises(TypeError):  # set number to list
-            mutate_value(test_value, "pos", [])
+            get_mutated_value(test_value, "pos", [])
         with self.assertRaises(TypeError):  # set number to map
-            mutate_value(test_value, "pos", {'x': 3})
+            get_mutated_value(test_value, "pos", {'x': 3})
 
         with self.assertRaises(TypeError):  # set string to number
-            mutate_value(test_value, "name", 0.23)
+            get_mutated_value(test_value, "name", 0.23)
         with self.assertRaises(TypeError):  # set string to list
-            mutate_value(test_value, "name", ["hello"])
+            get_mutated_value(test_value, "name", ["hello"])
         with self.assertRaises(TypeError):  # set string to map
-            mutate_value(test_value, "name", {"hello": "you"})
+            get_mutated_value(test_value, "name", {"hello": "you"})
 
         with self.assertRaises(TypeError):  # set list to number
-            mutate_value(test_value, "coords", 0.23)
+            get_mutated_value(test_value, "coords", 0.23)
         with self.assertRaises(TypeError):  # set list to string
-            mutate_value(test_value, "coords", "nope")
+            get_mutated_value(test_value, "coords", "nope")
         with self.assertRaises(TypeError):  # set list to map
-            mutate_value(test_value, "coords", {"hello": "you"})
+            get_mutated_value(test_value, "coords", {"hello": "you"})
 
         with self.assertRaises(TypeError):  # set map to number
-            mutate_value(test_value, "my_map", 0.23)
+            get_mutated_value(test_value, "my_map", 0.23)
         with self.assertRaises(TypeError):  # set map to string
-            mutate_value(test_value, "my_map", "nope")
+            get_mutated_value(test_value, "my_map", "nope")
         with self.assertRaises(TypeError):  # set map to list
-            mutate_value(test_value, "my_map", [{"key": "b", "a number": 322}])
+            get_mutated_value(test_value, "my_map", [{"key": "b", "a number": 322}])
 
         # the none value cannot be changed and nothing can be set to none
         with self.assertRaises(ValueError):
-            mutate_value(none_value, 1)
+            get_mutated_value(none_value, 1)
         with self.assertRaises(ValueError):
-            mutate_value(none_value, "")
+            get_mutated_value(none_value, "")
         with self.assertRaises(ValueError):
-            mutate_value(none_value, [])
+            get_mutated_value(none_value, [])
         with self.assertRaises(ValueError):
-            mutate_value(Value(1), None)
+            get_mutated_value(Value(1), None)
         with self.assertRaises(ValueError):
-            mutate_value(Value("string"), None)
+            get_mutated_value(Value("string"), None)
         with self.assertRaises(ValueError):
-            mutate_value(Value(['list', 'of', 'strings']), None)
+            get_mutated_value(Value(['list', 'of', 'strings']), None)
 
         # path traversal errors
         with self.assertRaises(IndexError):
-            mutate_value(test_value, ("pos", 0), 0)  # cannot move past a ground value
+            get_mutated_value(test_value, ("pos", 0), 0)  # cannot move past a ground value
         with self.assertRaises(IndexError):
-            mutate_value(test_value, ("name", 1), "")
+            get_mutated_value(test_value, ("name", 1), "")
         with self.assertRaises(IndexError):
-            mutate_value(test_value, ("pos", "foo"), 0)
+            get_mutated_value(test_value, ("pos", "foo"), 0)
         with self.assertRaises(IndexError):
-            mutate_value(test_value, ("name", "bar"), "")
+            get_mutated_value(test_value, ("name", "bar"), "")
 
         with self.assertRaises(KeyError):
-            mutate_value(test_value, "not a key", 0)
+            get_mutated_value(test_value, "not a key", 0)
         with self.assertRaises(KeyError):
-            mutate_value(test_value, ("unnamed record", "has no names"), 0)
+            get_mutated_value(test_value, ("unnamed record", "has no names"), 0)
         with self.assertRaises(KeyError):
-            mutate_value(test_value, ("number_list", "string as list index"), 0)
+            get_mutated_value(test_value, ("number_list", "string as list index"), 0)
 
         # fail to change the subtree to one with a different schema
         with self.assertRaises(TypeError):
-            mutate_value(test_value, "coords", [{"x": 7}])
+            get_mutated_value(test_value, "coords", [{"x": 7}])
         with self.assertRaises(TypeError):  # shuffled
-            mutate_value(test_value, "my_map", {"list_in_the_middle": ["I am a changed string"],
+            get_mutated_value(test_value, "my_map", {"list_in_the_middle": ["I am a changed string"],
                                                 "key": "changed",
                                                 "a number": 124, })
 
         # mutation of none value
         with self.assertRaises(ValueError):
-            mutate_value(none_value, 1, 2)
+            get_mutated_value(none_value, 1, 2)
 
     def test_mutate_with_equal_value(self):
         # update with the same number
-        modified = mutate_value(test_value, "pos", 32.2)
+        modified = get_mutated_value(test_value, "pos", 32.2)
         self.assertEqual(id(test_value), id(modified))
 
         # update with the same string
-        modified = mutate_value(test_value, "name", "Mr. Okay")
+        modified = get_mutated_value(test_value, "name", "Mr. Okay")
         self.assertEqual(id(test_value), id(modified))
 
         # update with the same list
-        modified = mutate_value(test_value, "number_list", [2, 23.1, -347])
+        modified = get_mutated_value(test_value, "number_list", [2, 23.1, -347])
         self.assertEqual(id(test_value), id(modified))
 
         # update with the same map
-        modified = mutate_value(test_value, "my_map", {"key": "string",
+        modified = get_mutated_value(test_value, "my_map", {"key": "string",
                                                        "list_in_the_middle": ["I'm in the middle"],
                                                        "a number": 847})
         self.assertEqual(id(test_value), id(modified))
 
         # update with the same empty list
-        modified = mutate_value(test_value, ("nested_list", 2), [])
+        modified = get_mutated_value(test_value, ("nested_list", 2), [])
         self.assertEqual(id(test_value), id(modified))
 
         # pathless update with same ground
-        modified = mutate_value(float_value, 42.24)
+        modified = get_mutated_value(float_value, 42.24)
         self.assertEqual(id(float_value), id(modified))
 
     def test_change_list_size(self):
         # update list in nested list
         self.assertEqual(len(test_value["nested_list"][0]), 2)
-        modified = mutate_value(test_value, ("nested_list", 0), ["x", "y", "z"])
+        modified = get_mutated_value(test_value, ("nested_list", 0), ["x", "y", "z"])
         self.assertEqual(len(modified["nested_list"][0]), 3)
 
         # update list in dict
         self.assertEqual(len(test_value["coords"][1]["number_list"]), 2)
-        modified = mutate_value(test_value, ("coords", 1, "number_list"), [6, 7, 8, 9])
+        modified = get_mutated_value(test_value, ("coords", 1, "number_list"), [6, 7, 8, 9])
         self.assertEqual(len(modified["coords"][1]["number_list"]), 4)
 
         # set the list to empty
-        modified = mutate_value(test_value, "coords", [])
+        modified = get_mutated_value(test_value, "coords", [])
         self.assertEqual(len(modified["coords"]), 0)
 
     def test_multimutate(self):
@@ -624,7 +624,7 @@ class TestCase(unittest.TestCase):
 
     def test_create_empty_list(self):
         value: Value = Value([1])
-        empty: Value = mutate_value(value, [])
+        empty: Value = get_mutated_value(value, [])
         self.assertEqual(len(empty), 0)
 
     def test_bad_list_initializer(self):

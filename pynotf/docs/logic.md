@@ -19,16 +19,16 @@ This text tries to document the thought processes that lead to the decisions tha
 An Event is an object that is passed to the Circuit to be handled. It references a single Emitter and a variant \[Value, Exception, Complete] containing the arguments for one of the three emission methods to call. Events are queued and handled in the order they arrive. Handling an Event encompasses the introduction of a new Signal into a Circuit, its propagation and the modifications of the Circuit as a result. The Event is finished, once all Receivers have finished handling the input Signal and no more Signals are being emitted within the Circuit.
 
 + **Signal**
- Object at the front of the Event handling process. At the beginning of an Event, a single Signal is emitted into the Circuit by a single Emitter but as the Signal is propagated through, it can multiply into different Signals.
+ Object at the front of the Event handling process. At the beginning of an Event, a single Signal is emitted into the Circuit by a single Emitter but as the Signal is propagated through, it can split along multiple paths into different Signals.
 
 + **Emitter**
- Is a Circuit object that emits a Signal into the Circuit. Emitters can be sources or relays of Signals, meaning they either introduce a new Signal into the circuit from somewhere outside the Logic (see Facts in the scene module) or they can create a Signals as a response to another Signal from within the Circuit. Emitters may contain a user-defined sorting function for their connected Receivers, but most will simply use the default implementation which is based on the order of connection and connection priorities.
+ Is a Circuit object that emits a Signal into the Circuit. Emitters can be sources or relays of Signals, meaning they either introduce a new Signal into the circuit from somewhere outside the Logic (see Facts in the scene module) or they can create a Signals as a response to another Signal from within the Circuit. Emitters may contain a user-defined sorting function for determining the order in which they call their connected Receivers, but most will simply use the default implementation which is based on the order of connection and connection priorities.
 
 + **Receiver**
  Is the counter-object to an Emitter. A Receiver receives a Signal from an Emitter and handles it in a way appropriate to its type. The handler function of a Receiver is the main injection point for user-defined functionality.
 
 + **Operator**
- Anything that is both an Emitter and a Receiver of Signals that contains user-defined code to modify the input value. Usually maps one or more inputs to an output but note that not all Switches generate an output Signal for each input Signal all the time.
+ Anything that is both an Emitter and a Receiver of Signals that contains user-defined code to modify the input value. Usually maps one or more inputs to an output but note that not all Operators generate an output Signal for each input Signal all the time.
 
 
 # Logic Elements
@@ -142,7 +142,7 @@ Example:
     A --+       D
         |       ^
         +-- C --+
-Let A emits first to B and then C, and both B and C to D. It is possible that C causes D to complete.
+Let A emits first to B and then C, and both B and C to D. It is possible that B causes D to complete.
 If A then emits to C and C emits to D (which is still connected as the Event has not finished yet), then D is indeed called upon even though it has already completed.
 Note that it is not possible to check beforehand if the Emitter is completed, as Emitters emit to Receivers (Operators are Receivers as well) and Receivers cannot be completed.
 
@@ -154,13 +154,13 @@ Not every input is guaranteed to produce an output as Operators are free to stor
 
 Side question: do we even need user-defined code in Operators? Can't we just provide all the Operators that the user needs? Well, the reactivex libraries seem to think so. At the time of this writing, its [documentation](http://reactivex.io/documentation/operators.html#alphabetical) lists around 70 reactive components. But we would instead like our built-ins to be as minimal as possible. Sure, you can put a standard library on top and that can contain all the Operators you could think of, but you could also write your entire UI without the standard library and program all of your Operators yourself. So we *do* want user-defined code in our Operators.
 
-### Slots
+### Interface Operators (Interops)
 
-Slots are Receivers that have an associated node and than forward their received Signal to a method of a Node subclass. Which method that is depends on the state of the Node.
+Interops (formerly called Properties) are Receivers that have an associated node and than forward their received Signal to a method of a Node subclass. Which method that is depends on the state of the Node.
 
 ## Cycles in the Circuit
 
-We started out with the assumption that the Circuit must not contain any cycles, meaning that the path that a Signal takes through the Circuit must never fold back onto itself. This is a safe requirement to make, since Emitters (either directly or through Operators or Slot callbacks) may contain user-defined code that may not be reentrant. It also rules out the possibility of the Signal cycling endlessly through the same loop, crashing the whole system. Lastly, it is also easy to prove that a graph does not contain cycles, which made the rule enforceable at runtime.
+We started out with the assumption that the Circuit must not contain any cycles, meaning that the path that a Signal takes through the Circuit must never fold back onto itself. This is a safe requirement to make, since Emitters (either directly or through Operators or Interop callbacks) may contain user-defined code that may not be reentrant. It also rules out the possibility of the Signal cycling endlessly through the same loop, crashing the whole system. Lastly, it is also easy to prove that a graph does not contain cycles, which made the rule enforceable at runtime.
 <br> So why didn't we just leave it at that?
 
 First, we noted that reentrancy would not be a problem because by the time an Emitter emits a new Signal, all of the user-defined code has already completed. And the emission in turn does not require access to any of the user-defined state that might change in a situation where the user-defined code is executed while the emission is still running.
@@ -183,7 +183,7 @@ Then we realized that you could reliably check for cycles simply by adding an ad
 However, finding the error does nothing to fix it. Whenever a cyclic dependency occurs in a running program and we stop it, the program will no longer work like the author indented. You could say that it never did because the author created a cyclic dependency but that statement is only true if cyclic dependencies are forbidden in general. If we allow them, then the demarkation between a valid and an invalid Circuit becomes blurry. Depending on where you set the recursion limit, the same Circuit may be valid in one case and not in the other.
 
 Now that we don't allow changes in the Circuit mid-event, we might even go one step further and check for cyclic dependencies at the point where they are created. This has the downside that it might cause sudden spikes in event handling times (when you connect into a very deep DAG that you need to traverse all the way in order to make sure that no cycle occurs), but we *could* only enable it during debugging sessions.
-<br> Actually, scratch that. There is no way we can statically detect cyclic dependencies because we don't only have Operators but also Slots with user-defined callbacks, that are free to trigger any (maybe multiple) Emitters on the Node.
+<br> Actually, scratch that. There is no way we can statically detect cyclic dependencies because we don't only have Operators but also Interops with user-defined callbacks, that are free to trigger any (maybe multiple) Emitters on the Node.
 
 This leaves the question on whether we want to catch cyclic dependency errors in release mode. It is true, that we can do nothing about errors once they have occured and I don't currently see a way to make cyclic dependencies impossible on a conceptual level ... If every Operator had a single upstream Emitter, we would force the entire Circuit to be a forest but we always have Nodes in there, that act as (transparent) upstream for Node Emitters. 
 <br> I guess, we could leave that up to a compiler flag but have it enabled by default. This way the default behavior is to catch the error and report them (to the user of the application, who can then hopefully report to the programmer), but if the programmer is sure that cyclic dependencies will never occur and/or that they are okay somehow and that the speed and/or space overhead is worth it - then the checks can be disabled.
@@ -191,7 +191,7 @@ This leaves the question on whether we want to catch cyclic dependency errors in
 Note that we still not able to catch all infinite loops. Namely those that span more than one Event. Let's say that `A` schedules a Signal to be emitted from `B`, which schedules a Signal to be emitted from `C` and `C` then back to `A`. This way, every Event (`A`->`B`, `B`->`C` and `C`->`A`) sees every Emitter only once an has no way of detecting the cycle. This is what we would call a [livelock](https://en.wikipedia.org/wiki/Deadlock#Livelock).
 <br> Then again, even though this would lead to the event loop spinning 100% of the time, it would not actually lock the system up. Since there is nothing we can do to stop the inclined developer to fall down this particular hole and the effects are annoying but not critical, we just leave it at that. If a livelock ever turns out to be an actual problem, we are sure you could detect them, maybe using heuristics and a little introspection... but until then any effort spend will not be worth it.
 
-Interestingly, there is yet another case where we are not able to catch livelock cycles: when you connect a Receiver to a completed emitter, the connection will not be made until the epilogue of the current event. This triggers the Receiver's "on_complete" function, which in turn might call user-defined code to re-connect to the still completed Receiver and so on. At no point do we have any reentrancy and still this is an infinite loop.  
+Interestingly, there is yet another case where we are not able to catch livelock cycles: when you connect a Receiver to a completed emitter, the connection will not be made until the epilogue of the current event. This triggers the Receiver's "on_complete" function, which in turn might call user-defined code to re-connect to the still completed Receiver and so on. At no point do we have any reentrancy and still this is an infinite loop.
 
 ### Can we enforce acyclicity?
 
@@ -211,7 +211,7 @@ In the beginning, Receivers kept a set of strong references to their Emitters. T
 
 Then we introduced *partial Operations*, which offered an easy way to construct an entire pipeline in a single Circuit element. Instead of having n-Operators daisy-chained together, you could now have a single Operator that produces the same result (and more efficiently so, at least in a compiled language). While this did not influence the question of ownership, it did result in Circuits with far fewer Operators. Suddenly it became feasible to burden the user with keeping track of an entire pipeline of Operators, something we considered before but ultimately deemed as too involved.
 
-Next, we started designing the *Scene* and its *Nodes*. Nodes own a set of Receivers (called *Slots*) and Emitters. Since the life time of a Node varies from the entire duration of the session down to less than a second, we had to consider the fact that Receivers would regularly outlive Nodes with Emitters upstream. Up to then, this meant that the downstream Receiver would keep a part of the Node alive, or even the entire Node, depending on how Nodes were designed. This was counter to the idea that Nodes should appear as a unit and also disappear as one. The second version of the Receiver design therefore did not own *any* references to the Emitters they were connected to. If an Emitter went out of scope, the Receiver would receive a completed or failure message and that was that. The Emitters in turn did not own their Receivers either. If a Receiver dropped, the Emitter would simply remove it and carry on. This moved the responsibility of ownership entirely outside the Circuit. 
+Next, we started designing the *Scene* and its *Nodes*. Nodes own a set of Receivers (called *Interops*) and Emitters. Since the life time of a Node varies from the entire duration of the session down to less than a second, we had to consider the fact that Receivers would regularly outlive Nodes with Emitters upstream. Up to then, this meant that the downstream Receiver would keep a part of the Node alive, or even the entire Node, depending on how Nodes were designed. This was counter to the idea that Nodes should appear as a unit and also disappear as one. The second version of the Receiver design therefore did not own *any* references to the Emitters they were connected to. If an Emitter went out of scope, the Receiver would receive a completed or failure message and that was that. The Emitters in turn did not own their Receivers either. If a Receiver dropped, the Emitter would simply remove it and carry on. This moved the responsibility of ownership entirely outside the Circuit. 
 <br> Let's call this the *external ownership* approach.
 
 Eventually we realized that if Node Emitters would always finish when the Node was removed, and all Receivers were guaranteed to disconnect from a finished Emitter, the *reverse ownership* approach would still work and it would be generalizable, since a finished (either completed or failed) Emitter will never emit again. There is no reason to keep it around. With both models feasible, we had to settle on one.
@@ -277,11 +277,11 @@ This chapter preempts a later chapter "Logic Modification", but since this is mo
 
 The question is: who owns a Circuit element? In the previous chapter we already established that downstream Circuit elements own their upstream elements and while this is so, it is not the whole truth. Someone has to own the sink element as well, otherwise the whole chain would expire immediately. The only entity that we allow the ownership of sink elements are Nodes.
 
-The special thing about Nodes is that they are at the same time user-definable and known to us (the notf system). The user can say "I want to create a Node with 3 integer Receivers (Slots)" and that's what we deliver. And when it comes time to delete the Node, we know exactly what Slots there are and when to delete them. This is fundamentally different from user-defined code, which is entirely unknowable to the system. If Circuit elements were free to be managed by user-defined code, they might be created and removed all over the place and we would never know.
+The special thing about Nodes is that they are at the same time user-definable and known to us (the notf system). The user can say "I want to create a Node with 3 integer Receivers (Interops)" and that's what we deliver. And when it comes time to delete the Node, we know exactly what Interops there are and when to delete them. This is fundamentally different from user-defined code, which is entirely unknowable to the system. If Circuit elements were free to be managed by user-defined code, they might be created and removed all over the place and we would never know.
 <br> Why is that problematic? As we discuss in "Logic Modification", the creation and destruction of connections in a Circuit must not happen immediately, but instead be put into a queue and delayed until the end of the event. Without some sort of oversight of connection creation/removal in the Circuit, we cannot guarantee that events will be propagated correctly. 
 
 At the same time, we want to enable the user to create new Operators (no Emitters or Receivers, only Operators) at runtime, for example to transform the Value of a Fact into a Value that is useful to a Slot. These Operators are not part of the Node type and are therefore unknown to us. How do we do that?
-<br> Well, the Operator constructor must not be part of its public API so it remains inaccessible from user-defined code. Nodes are able to create Operators, but they don't have any place to store them and we certainly don't want to hand the Operator back to the user. So instead, we only allow Slots to create and connect to a (user-defined) Operator immediately. You can think of Operators growing out to the left of Nodes like roots, to connect to existing sources of data upstream. All the user gets back is a reference of a non-copyable, non-movable object. Of course, this won't stop the adventurous to store raw pointers to the Operator but you have to assume that these brave souls will [dilbert principle](https://en.wikipedia.org/wiki/Dilbert_principle) their way out of our user-base eventually.
+<br> Well, the Operator constructor must not be part of its public API so it remains inaccessible from user-defined code. Nodes are able to create Operators, but they don't have any place to store them and we certainly don't want to hand the Operator back to the user. So instead, we only allow Interops to create and connect to a (user-defined) Operator immediately. You can think of Operators growing out to the left of Nodes like roots, to connect to existing sources of data upstream. All the user gets back is a reference of a non-copyable, non-movable object. Of course, this won't stop the adventurous to store raw pointers to the Operator but you have to assume that these brave souls will [dilbert principle](https://en.wikipedia.org/wiki/Dilbert_principle) their way out of our user-base eventually.
 
 The observant reader might have noticed a slight-of-hand here. While the "create-and-connect" approach is successful in creating arbitrary Operators without ever handing back ownership to the user, we are in fact creating untracked connections from user-defined code. Which is exactly what we wanted to avoid.
 <br> Fortunately, this is handled internally by the Circuit elements, without the user even knowing about it. Every Receiver (a Operator is-a Receiver) has a reference back to a central `Circuit` object, which stores a queue of all new and deleted connections during an event. At the end of the event loop, all new connections are created first, then all deleted ones are removed. The order is important because an Emitter without outgoing connections would be destroyed before new connections had the chance to keep it alive.
@@ -297,7 +297,7 @@ It is possible to delete a Node and its Operators, but that is also delayed unti
 
 Early on, we decided that the only thing to emitted by Emitters should be Values, instead of built-in or user-defined types. This would allow complete introspection of the system in any environment, and would allow the seamless interaction of Circuit elements defined in compiled languages like C++ and interpreted ones like Python. This approach works fine, as long as the only thing that gets passed around is pure, immutable data. Immutable being the weight bearing word here.
 
-Then it came time to think about how basic basic events like a mouse click are propagated through the Circuit. Let us assume for now, that we have a mechanism in place to propagate an event (however structured) to each applicable Slots in draw stack-order of their associated Widget. There is a whole chapter on this topic alone (see Ordered Emission)
+Then it came time to think about how basic basic events like a mouse click are propagated through the Circuit. Let us assume for now, that we have a mechanism in place to propagate an event (however structured) to each applicable Interops in draw stack-order of their associated Widget. There is a whole chapter on this topic alone (see Ordered Emission)
 <br> In previous versions, we had taken the Qt approach of using dedicated event objects. Widgets higher up would receive the event first and lower Widgets later. Every Widget could "accept" the event, which would set a flag on the event object itself notifying later Widgets that the event was already handled. This way they could act differently (or not at all), depending on whether the event has already been accepted or not. This of course requires the given event to be mutable, which isn't possible with Values.
 
 Here a (hopefully) complete list of possible solutions to the problem:
@@ -385,7 +385,7 @@ It consists of 3 things:
             +-----------------------+
     --> Unblockable
     ```
-    The Status always starts out as either "Ignored" or "Unblockable", with "Unblockable" being the default. An unblockable Signal cannot be stopped and calls to `accept()` or `block()` are ignored. If the Status starts out as "Ignored", then each Receiver is free to mark the Status as accepted or blocked. An accepted Signal is usually propagated further (depending on how the Emitter chooses to interpret what "accepted" means in its specific use-case), whereas the Receiver that marks its Signal as being blocked is guaranteed to be the last one to receive it.  
+    The Status always starts out as either "Ignored" or "Unblockable", with "Unblockable" being the default. An unblockable Signal cannot be stopped and calls to `accept()` or `block()` are ignored. If the Status starts out as "Ignored", then each Receiver is free to mark the Status as accepted or blocked. An accepted Signal is usually propagated further (depending on how the Emitter chooses to interpret what "accepted" means in its specific use-case), whereas the Receiver that marks its Signal as being blocked is guaranteed to be the last one to receive it.
     We also thought of making unblockable Signals acceptable (just not blockable)... that might also be something to think about. 
 
 Note that the "completion" Signal only contains the Emitter ID, while the "failure" Signal contains the Emitter ID and the exception.
@@ -541,7 +541,7 @@ Solution 3 is an interesting one. What it means is that no matter if you add or 
            +---> S4 -(new)-> R1
   ```
   
-  Let's say `E2` emits to `S3` and `S4` in that order. `S3` creates a new Receiver `R1` and connects it to `S4`. Since `S4` is not currently emitting, it will update its list of Receivers and once the Signal from `E2` arrives, `S4` will immediately emit to `R1`.  
+  Let's say `E2` emits to `S3` and `S4` in that order. `S3` creates a new Receiver `R1` and connects it to `S4`. Since `S4` is not currently emitting, it will update its list of Receivers and once the Signal from `E2` arrives, `S4` will immediately emit to `R1`.
   <br> Now, let's say that instead of the order above, `S4` happened to connect to `E2` one event loop *before* `S3`:
 
   ```
@@ -578,7 +578,7 @@ It was a solid ideal, but we soon found the first potential problems that arose 
 The behavior of `S1` is that it receives and stores two numbers into its local state `x` and `y` and after receiving the second one, produces `z` with `z = x - y`. It then resets and waits for the next pair. 
 <br> The problem is that if `E1` propagates the number one first to either `A1` or `A2` (because, as of now the order is essentially random), `x` will either be 3 or 4, while `y` will be the other one. That results in either `z = 3 - 4 = -1` or `z = 4 - 3 = 1`. Which one we get is as random as the order of propagation from `E1`.
 
-Therefore, we decided to get rid of randomness and guarantee that the order in which Emitters emit Values to their Receives is deterministic. Note that that does not mean that the order must be fixed. It can be dynamic, for example determined by the z-value of the Nodes attached to Slots. What it does mean however is that the order must be replicable, inspectable and modifiable by the user. All of the problems introduced through randomness, including the Node removal mid-event, would be solved if we place the responsibility of the order in which Signals are emitted on the user. 
+Therefore, we decided to get rid of randomness and guarantee that the order in which Emitters emit Values to their Receives is deterministic. Note that that does not mean that the order must be fixed. It can be dynamic, for example determined by the z-value of the Nodes attached to Interops. What it does mean however is that the order must be replicable, inspectable and modifiable by the user. All of the problems introduced through randomness, including the Node removal mid-event, would be solved if we place the responsibility of the order in which Signals are emitted on the user. 
 <br> Question is, how do we do that?
 
 The only way to relate independent Receivers to each other is through a common ranking system. Fortunately there is one: integers. Whenever a Receiver connects to an Emitter, it has the opportunity to pass an optional priority integer, with higher priority Receiver receiving Signals before lower priority Receiver. The default priority is zero. Receivers with equal priority receive their Signals in the order in which they subscribed. This approach allows the user to ignore priorities in most cases (since in most cases, you should not care) and in the cases outlined above, the user has the ability to manually determine an order. The user is also free to define a total order for each Receiver, should that ever become an issue.
@@ -597,8 +597,9 @@ It *is* possible for a completed Operator to be called more than once during the
 Behold:
 ```
     +--> B --+
+    |        |
 A --+        v
-    +------->C
+    +------> C
 ```
 We have two connections to `C` here: `A-->C` and `B-->C` and in order for the issue to appear, we need both of them active at the same time. For that, `A` emits to `B` first and then to `C`. This way, `A` and `B` are active at the same time. Assume that `C` is an Operator that fails as soon as it receives a Signal. When `B` calls `C`, it fails and completes immediately. `B` then finishes and `A` resumes its own emission, calling `C` for a second time, albeit now in a "completed" state.
 
@@ -699,8 +700,8 @@ Note that the user-defined code still isn't allowed to call the Service directly
 Another thought: Not every call to the prologue is matched to a call to the epilogue and vice-versa. Instead, I can imagine a scenario in which you ask for some thing that is changing (maybe the temperature reading of some sensor). Here, you would set up the AsyncOperator to take a sensor ID as input and then expect the AO to emit, whenever a new reading has become available. So you have one input and n outputs.
 In another Scenario, you are waiting forever for an async operation to finish but would like to have some default value right away. Something like "I am expecting this Value to be X (which is the input number), let me know whenever it changes." Here, you might want to have the epilogue emit X immediately, since a new Value might never be emitted. Of course, you know X already so it doesn't make much sense *for you* to get X back right away, but other Receivers might not know X yet and are listening to the Operator to provide the value.
 
-The second scenario is actually a good case for the prologue not returning a Service-String *or* a Value for the epilogue, but both. Meaning, the epilogue can always be called right away on top of whatever the async Service emits later on. Of course, you should also be able to inhibit both calls, so I guess the final signature of the prologue return object is:  
-Tuple[Optional[String], Optional[Value]]  
+The second scenario is actually a good case for the prologue not returning a Service-String *or* a Value for the epilogue, but both. Meaning, the epilogue can always be called right away on top of whatever the async Service emits later on. Of course, you should also be able to inhibit both calls, so I guess the final signature of the prologue return object is:
+Tuple[Optional[String], Optional[Value]]
 with the first String being the Service string and the Value the input for the epilogue function. If you pass (None, None) then nothing happens.
 
 
@@ -741,7 +742,7 @@ event with the same Value you might get a different result, as long as the user 
 state.
 Without a fixed topology, you do not have multithreaded execution.
 
-However ...  
+However ...
 There is this idea called "Event Sourcing" (https://martinfowler.com/eaaDev/EventSourcing.html) that basically says that
 instead of storing the state of something, we only store all the events that modify that something and then, if someone
 asks, use the events to generate the state that we need. For example, instead of storing the amount of money in the bank

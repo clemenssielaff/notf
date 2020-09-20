@@ -47,6 +47,7 @@ void produce_color(pybind11::module& module) {
     // inspections
     PyColor.def("to_string", &Color::to_string, DOCSTR("Returns the Color as an RGB string value."));
     PyColor.def("to_greyscale", &Color::to_greyscale, DOCSTR("Weighted conversion of this color to greyscale."));
+    PyColor.def("to_opaque", &Color::to_opaque, DOCSTR("Color without any transparency."));
     PyColor.def("premultiplied", &Color::premultiplied, DOCSTR("Premultiplied copy of this Color."));
 
     // operators

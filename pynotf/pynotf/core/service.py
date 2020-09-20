@@ -3,7 +3,6 @@ from enum import Enum, unique, auto
 
 from pynotf.data import Value
 import pynotf.core as core
-from pynotf.core.logic import OperatorRowDescription, OperatorIndex, create_flags
 
 
 # FACT #################################################################################################################
@@ -30,13 +29,13 @@ class Fact:
 
     def __init__(self, initial: Value):
         self._operator: core.Operator = core.Operator.create(
-            OperatorRowDescription(
-                operator_index=OperatorIndex.RELAY,
+            core.Operator.Description(
+                operator_index=core.OperatorIndex.RELAY,
                 initial_value=initial,
                 input_schema=Value.Schema(),
                 args=Value(),
                 data=Value(),
-                flags=create_flags(multicast=True, generator=True)
+                flags=core.Operator.Description.create_flags(source=True)
             ))
         self._state: FactState = FactState.UNKNOWN
 
@@ -78,7 +77,7 @@ class Service(ABC):
     Example for Services are:
         "os.input" -> Provides input from Human interface devices through the operating system (mouse, keyboard, etc.).
         "os.filesystem" -> Watches files or folders for changes.
-        "web.rest" -> Single response from a REST web query.
+        "web.res" -> Single response from a REST web query.
         "db.sqlite" -> Visibility into sqlite queries and responses.
     """
 

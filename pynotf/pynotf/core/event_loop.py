@@ -9,6 +9,9 @@ import curio
 # EVENT LOOP ###########################################################################################################
 
 class EventLoop:
+    """
+    The EventLoop class implements an async event loop that is run in its own thread in the Application's `run` method.
+    """
 
     def __init__(self):
         self._events = curio.UniversalQueue()

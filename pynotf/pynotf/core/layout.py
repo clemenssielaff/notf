@@ -185,7 +185,7 @@ class LtFlexbox:
             )
             assert node_view.name not in compositions
             compositions[node_view.name] = NodeComposition(
-                xform=core.Xform(e=x_offset),
+                xform=core.Xform(e=x_offset, f=10),  # TODO: f=10 is a hack .. just like this class
                 grant=node_grant,
                 opacity=node_view.opacity,
             )
