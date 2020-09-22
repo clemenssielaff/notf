@@ -170,6 +170,11 @@ public:
         return {component_t{cos, sin}, component_t{sin, -cos}, component_t{0, 0}};
     }
 
+    /// The translation vector of this transformation matrix.
+    constexpr component_t get_translation() const noexcept {
+        return data[2];
+    }
+
     /// The scale factor of this scaling transformation matrix.
     constexpr element_t get_scale_factor() const noexcept {
         // TODO: is this actually correct?

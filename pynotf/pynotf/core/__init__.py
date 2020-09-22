@@ -1,8 +1,9 @@
-from .utils import IndexEnum, ValueList, TableIndex, Xform, Expression
+from .utils import *
 from .application import get_app, Application
 from .event_loop import EventLoop
 from .layout import Layout, LayoutRow, LayoutDescription, NodeComposition, LayoutComposition, LayoutIndex
-from .logic import *
 from .painterpreter import *
 from .scene import *
+from .expression import *
+from .logic import *
 from .service import Fact, Service

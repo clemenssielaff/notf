@@ -168,7 +168,7 @@ def key_callback(window, key: int, scancode: int, action: int, mods: int) -> Non
 def mouse_button_callback(window, button: int, action: int, mods: int) -> None:
     if button == glfw.MOUSE_BUTTON_LEFT and action == glfw.PRESS:
         x, y = glfw.get_cursor_pos(window)
-        get_app().get_scene().get_fact('mouse_fact').update(Value(x, y))
+        get_app().get_scene().get_fact('mouse_fact').update(Value(x=x, y=y))
     elif button == glfw.MOUSE_BUTTON_RIGHT and action == glfw.PRESS:
         x, y = glfw.get_cursor_pos(window)
         hitbox: core.Sketch.Hitbox

@@ -42,6 +42,7 @@ void produce_matrix3f(pybind11::module& module) {
     Py_Matrix3f.def_static("reflection", static_cast<M3f (*)(float)>(&M3f::reflection), DOCSTR("Reflection over a line that passes through the origin at the given angle in radian."), py::arg("angle"));
 
     // inspection
+    Py_Matrix3f.def("get_translation", &M3f::get_translation, DOCSTR("The translation vector."));
     Py_Matrix3f.def("get_scale_factor", &M3f::get_scale_factor, DOCSTR("The scale factor."));
     Py_Matrix3f.def("get_determinant", &M3f::get_determinant, DOCSTR("The determinant."));
     Py_Matrix3f.def("get_inverse", &M3f::get_inverse, DOCSTR("The inverse of this matrix or the identity matrix on error."));

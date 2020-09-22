@@ -6,7 +6,7 @@ from typing import Tuple, Optional, Dict, List, NamedTuple, Iterable, Iterator, 
 
 from pyrsistent import field
 
-from pycnotf import V2f, Size2f
+from pycnotf import V2f, Size2f, M3f
 from pynotf.data import Value, RowHandle, Table, TableRow, RowHandleList, Bonsai, RowHandleMap, Path, Claim
 import pynotf.core as core
 
@@ -125,6 +125,7 @@ class Scene:
 
     def initialize(self, root_description_value: Value):
         self._root_node = Node.create_node(create_node_description_from_value(root_description_value))
+        self._root_node.initialize()  # initialize AFTER assigning it to `self._root_node` for absolute path lookup
 
     def set_size(self, size: Size2f):
         if size != self._size:
@@ -139,7 +140,7 @@ class Scene:
             self._root_node.remove()
 
     def create_node(self, name: str, description: Value) -> Node:
-        return self._root_node.create_child(name, description)
+        return self._root_node.create_child(name, create_node_description_from_value(description))
 
     # TODO: facts should not be "gotten" from the Scene, instead they are only managed by Services
     #   this used to return a Fact, but the root node interops that we were using as "Facts" should really be part of
@@ -225,11 +226,15 @@ class Node:
         if parent_handle:
             node_table[parent_handle]['child_names'] = node_table[parent_handle]['child_names'].set(name, node_handle)
 
-        # initialize the new node by transitioning into its initial_state state
-        node: Node = Node(node_handle)
-        node.transition_into(description.initial_state)
+        return Node(node_handle)
 
-        return node
+    def initialize(self) -> None:
+        """
+        Initialize a new node by transitioning into its initial_state state.
+        """
+        node_table: Table = core.get_app().get_table(core.TableIndex.NODES)
+        assert not node_table[self._handle]['state']
+        self.transition_into(node_table[self._handle]['description'].initial_state)
 
     def get_handle(self) -> RowHandle:
         return self._handle
@@ -264,12 +269,14 @@ class Node:
     def get_layout(self) -> core.Layout:
         return core.Layout(core.get_app().get_table(core.TableIndex.NODES)[self._handle]['layout'])
 
+    # TODO: this name is weird: Composition is not just one thing but the composition of multiple
+    #  the way I use it here, to describe the placement of a singular node within a larger scheme is not right
     def get_composition(self) -> core.NodeComposition:
         parent: Optional[Node] = self.get_parent()
         if not parent:
-            return core.NodeComposition(core.Xform(), core.get_app().get_scene().get_size(), 1)  # root composition
+            return core.NodeComposition(M3f.identity(), core.get_app().get_scene().get_size(), 1)  # root composition
 
-        node_composition: Optional[Optional[core.NodeComposition]] = parent.get_layout().get_node_composition(self)
+        node_composition: Optional[core.NodeComposition] = parent.get_layout().get_node_composition(self)
         assert node_composition
         return node_composition
 
@@ -355,8 +362,10 @@ class Node:
         for node_handle in self.get_layout().get_composition().order:
             painter.paint(Node(node_handle))
 
-    def create_child(self, name: str, description_value: Value) -> Node:
-        return self.create_node(create_node_description_from_value(description_value), self, name)
+    def create_child(self, name: str, description: NodeDescription) -> Node:
+        child_node: Node = self.create_node(description, self, name)
+        child_node.initialize()
+        return child_node
 
     def remove(self):
         # unregister from the parent
@@ -398,7 +407,7 @@ class Node:
         # create new child nodes
         child_nodes: List[Node] = []
         for name, child_description in new_state.children.items():
-            child_nodes.append(self.create_node(child_description, self, name))
+            child_nodes.append(self.create_child(name, child_description))
 
         # create the new layout
         layout: core.Layout = core.Layout.create(new_state.layout.type, new_state.layout.args)

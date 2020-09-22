@@ -6,7 +6,7 @@ from typing import Tuple, Callable, Optional, Dict, NamedTuple, Iterable
 from pyrsistent._checked_types import CheckedPMap as ConstMap
 from pyrsistent import field
 
-from pycnotf import Size2f, Aabrf
+from pycnotf import Size2f, Aabrf, M3f
 from pynotf.data import Value, RowHandle, Table, TableRow, RowHandleList, Claim
 import pynotf.core as core
 
@@ -19,7 +19,7 @@ class LayoutDescription(NamedTuple):
 
 
 class NodeComposition(NamedTuple):
-    xform: core.Xform  # layout xform
+    xform: M3f  # layout xform
     grant: Size2f  # grant size
     opacity: float = 0
 
@@ -153,7 +153,7 @@ class LtOverlayout:
             )
             assert node_view.name not in compositions
             compositions[node_view.name] = NodeComposition(
-                xform=core.Xform(),
+                xform=M3f.identity(),
                 grant=node_grant,
                 opacity=node_view.opacity,
             )
@@ -185,7 +185,7 @@ class LtFlexbox:
             )
             assert node_view.name not in compositions
             compositions[node_view.name] = NodeComposition(
-                xform=core.Xform(e=x_offset, f=10),  # TODO: f=10 is a hack .. just like this class
+                xform=M3f(e=x_offset, f=10),  # TODO: f=10 is a hack .. just like this class
                 grant=node_grant,
                 opacity=node_view.opacity,
             )

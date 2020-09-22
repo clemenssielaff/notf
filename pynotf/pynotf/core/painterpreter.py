@@ -153,8 +153,8 @@ class Painter:
         self._nanovg.global_alpha(node_opacity)
 
         # the offset xform is only used for painting, not for layout
-        layout_xform: M3f = M3f(*node.get_composition().xform)
-        offset_xform: M3f = M3f(*(float(e) for e in node.get_interop('widget.xform').get_value()))
+        layout_xform: M3f = node.get_composition().xform
+        offset_xform: M3f = core.m3f_from_value(node.get_interop('widget.xform').get_value())
         self._nanovg.transform(*(layout_xform * offset_xform))
 
         sketch: Sketch = node.get_sketch()
@@ -330,7 +330,7 @@ class ExpressionValue(ValueNode):
         scope = dict(node=_NodeInterops())
         for name, value_node in self._scope:
             scope[name] = value_node.evaluate(context)
-        result: Any = self._expression.execute(scope)
+        result: Any = self._expression.execute(**scope)
         new_value: Value
         if isinstance(result, Value):
             new_value = result

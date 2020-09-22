@@ -16,9 +16,7 @@ void produce_size2f(pybind11::module& module)
     py::class_<Size2f> Py_Size2f(module, "Size2f");
 
     // constructors
-    Py_Size2f.def(py::init<>());
-    Py_Size2f.def(py::init<float, float>(), py::arg("width"), py::arg("height"));
-    Py_Size2f.def(py::init<Size2i>(), py::arg("other"));
+    Py_Size2f.def(py::init<float, float>(), py::arg("width") = 0, py::arg("height")=0);
 
     // static constructors
     Py_Size2f.def_static("zero", &Size2f::zero, DOCSTR("The null Size2."));

@@ -141,6 +141,7 @@ class OperatorRow(TableRow):
     input_schema = field(type=Value.Schema, mandatory=True)
     args = field(type=Value, mandatory=True)  # must be a named record
     data = field(type=Value, mandatory=True)  # must be a named record
+    expression = field(type=core.Expression, mandatory=True, initial=core.Expression())
     upstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
     downstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
 
@@ -162,6 +163,7 @@ class Operator:
         input_schema: Value.Schema = Value.Schema()  # Schema of the Operator's input
         args: Value = Value()
         data: Value = Value()
+        expression: str = ''
         flags: int = 0
 
         @staticmethod
@@ -190,6 +192,7 @@ class Operator:
             input_schema=description.input_schema,
             args=description.args,
             data=description.data,
+            expression=core.Expression(description.expression),
         ))
 
     def __init__(self, handle: RowHandle):
@@ -211,14 +214,14 @@ class Operator:
     def get_value(self) -> Value:
         return core.get_app().get_table(core.TableIndex.OPERATORS)[self._handle]['value']
 
-    def _set_value(self, value: Value) -> None:
-        core.get_app().get_table(core.TableIndex.OPERATORS)[self._handle]['value'] = value
-
     def get_argument(self, name: str) -> Value:
         return core.get_app().get_table(core.TableIndex.OPERATORS)[self._handle]["args"][name]
 
     def get_data(self) -> Value:
         return core.get_app().get_table(core.TableIndex.OPERATORS)[self._handle]["data"]
+
+    def get_expression(self) -> core.Expression:
+        return core.get_app().get_table(core.TableIndex.OPERATORS)[self._handle]["expression"]
 
     def _set_data(self, new_data: Value) -> None:
         operator_table: Table = core.get_app().get_table(core.TableIndex.OPERATORS)
@@ -409,35 +412,30 @@ class Operator:
 
         if callback == OperatorVtableIndex.UPDATE:
             # ensure that the operator is able to emit the given value
+            # callbacks other than UPDATE are allowed to store non-schema conform data (
             if self.get_value().get_schema() != value.get_schema():
                 raise ValueError(f'Cannot emit Value with incompatible Schema from "{self!r}"\n'
                                  f'Expected {self.get_value().get_schema()}, got {value.get_schema()}')
 
-            # store the emitted value
-            self._set_value(value)
+        # store the emitted value
+        core.get_app().get_table(core.TableIndex.OPERATORS)[self._handle]['value'] = value
 
-            # emit to all valid downstream elements
-            for element in downstream:
-                element._run(self, callback, value)
+        # emit to all valid downstream elements
+        for element in downstream:
+            element._run(self, callback, value)
 
+        if callback == OperatorVtableIndex.UPDATE:
             # reset the status
             self._set_status(OperatorStatus.IDLE)
 
             # perform additional effects
             if self._get_effect() == OperatorEffect.REDRAW:
-                core.get_app().redraw()  # TODO: selective redraw ... which would introduce a dependency on scene.py :/
+                core.get_app().redraw()  # TODO: selective redraw
             elif self._get_effect() == OperatorEffect.RELAYOUT:
                 pass  # TODO: relayout effect
 
         else:
-            # store the emitted value, bypassing the schema check
-            self._set_value(value)
-
-            # emit one last time ...
-            for element in downstream:
-                element._run(self, callback, value)
-
-            # ... and finalize the status
+            # finalize the status
             self._set_status(OperatorStatus(int(callback) + 3))
 
             # unsubscribe all downstream handles (this might destroy the Operator, therefore it is the last thing we do)
@@ -650,6 +648,10 @@ class OpNodeExpression:
     ... Actually, it seems like this was quite intended by myself long ago when Interops were called Properties and they
     had Callbacks instead of connections into state-defined operators. I actually like the state-defined operator
     approach better.
+
+    Arguments:
+        source -- Expression source with the signature: (node: Node, arg: Value) -> None
+        schema -- Expression argument Schema.
     """
 
     @staticmethod
@@ -657,24 +659,50 @@ class OpNodeExpression:
         return Operator.Description(
             operator_index=OperatorIndex.NODE_EXPRESSION,
             initial_value=Value(),
-            input_schema=Value.Schema.any(),
-            args=Value(
-                source=str(args['source']),
-            )
+            input_schema=Value.Schema.from_value(args['schema']),
+            expression=str(args['source']),
         )
 
     @staticmethod
     def on_update(self: Operator, _: RowHandle, value: Value) -> Value:
-        # TODO: right now, we need to re-compile the source every time the expression is evaluated :/
-        #  we could create a storage of compiled expressions and instead of storing the source code in the Operator
-        #  only store a handle to that expression. Of course, that leaves us with the problem of managing the lifetime
-        #  of said stored expressions.
-        source: str = str(self.get_argument('source'))
-        scope = dict(self=self._get_node(), arg=value)
+        self.get_expression().execute(
+            node=self._get_node(),  # TODO: NodeAccessor
+            arg=value
+        )
 
-        # TODO: This allows the expression *full access* to the `self` Node, including state changes and everything.
-        #  This does not sound like a good idea.
-        core.Expression(source).execute(scope)
+        return self.get_data()
+
+
+class OpFilterExpression:
+    """
+    Expression Operator that takes an input Value (of arbitrary but fixed Schema) and emits the same Value, but only if
+    it passes the filter function.
+
+    Arguments:
+        source -- Expression string with the signature: (node: Node, arg: Value) -> bool
+        schema -- Expression argument Schema.
+    """
+
+    @staticmethod
+    def create(args: Value) -> Operator.Description:
+        # the operator needs to know the schema of the value it is operating on
+        value_schema: Optional[Value.Schema] = Value.Schema.from_value(args['schema'])
+
+        return Operator.Description(
+            operator_index=OperatorIndex.FILTER_EXPRESSION,
+            initial_value=Value(value_schema),  # zero initialized
+            input_schema=value_schema,
+            expression=str(args['source']),
+        )
+
+    @staticmethod
+    def on_update(self: Operator, _: RowHandle, value: Value) -> Value:
+        pass_filter: bool = self.get_expression().execute(
+            node=core.ConstNodeAccessor(self._get_node()),
+            arg=value
+        )
+        if pass_filter:
+            self.update(value)
 
         return self.get_data()
 
@@ -688,6 +716,7 @@ class OperatorIndex(core.IndexEnum):
     PRINTER = auto()
     SINE = auto()
     NODE_EXPRESSION = auto()
+    FILTER_EXPRESSION = auto()
 
 
 @unique
@@ -714,4 +743,5 @@ OPERATOR_VTABLE: Tuple[
     (OpPrinter.on_update, None, None, None, OpPrinter.create),
     (None, None, None, OpSine.on_subscribe, OpSine.create),
     (OpNodeExpression.on_update, None, None, None, OpNodeExpression.create),
+    (OpFilterExpression.on_update, None, None, None, OpFilterExpression.create),
 )

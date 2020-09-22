@@ -159,17 +159,30 @@ countdown_node: Value = get_mutated_value(Node.VALUE, dict(
 
 window: Value = get_mutated_value(Node.VALUE, dict(
     interops=[
+        # ('on_mouse_click', Value(x=0, y=0), 0),
     ],
     states=[
         ("default", get_mutated_value(Node.STATE, dict(
             operators=[
+                # operator pair to move the window slowly from left to right and back (for testing)
                 ('sine', OperatorIndex.SINE, Value()),
                 ('translate_expression', OperatorIndex.NODE_EXPRESSION, Value(
-                    source="""self.get_interop('widget.xform').update(1, 0, 0, 1, float(arg), 0)"""
+                    schema=[253],  # single number
+                    source="""node.get_interop('widget.xform').update(1, 0, 0, 1, float(arg), 0)""",
                 )),
+                ('filter_header_clicks', OperatorIndex.FILTER_EXPRESSION, Value(
+                    schema=list(Value(x=0, y=0).get_schema()),  # mouse position
+                    source="""
+Aabrf(0, 0, node.grant.width, 30).contains(
+    (node.window_xform.get_inverse() * M3f(e=float(arg['x']), f=float(arg['y']))).get_translation())
+""",
+                )),
+                ('printer', OperatorIndex.PRINTER, Value(x=0, y=0)),
             ],
             connections=[
-                ('sine', 'translate_expression')
+                ('sine', 'translate_expression'),
+                ('/|mouse_fact', 'filter_header_clicks'),
+                ('filter_header_clicks', 'printer'),
             ],
             design=Value([
                 # shadow
