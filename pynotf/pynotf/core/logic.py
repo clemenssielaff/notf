@@ -247,7 +247,8 @@ class Operator:
                 | (status << OperatorFlagIndex.STATUS))
 
     def _is_external(self) -> bool:
-        return bool(self._get_flags() & (1 << OperatorFlagIndex.IS_EXTERNAL))
+        # TODO: is the `is_external` flag maybe superfluous if we can test for a Node instead?
+        return bool(self._get_flags() & (1 << OperatorFlagIndex.IS_EXTERNAL)) or self._get_node().is_valid()
 
     def _is_source(self) -> bool:
         return bool(self._get_flags() & (1 << OperatorFlagIndex.IS_SOURCE))
@@ -707,6 +708,31 @@ class OpFilterExpression:
         return self.get_data()
 
 
+class OpNodeTransition:
+    """
+    Transitions the Node from one state to another.
+
+    Arguments:
+        target -- Name of the target state.
+    """
+
+    @staticmethod
+    def create(args: Value) -> Operator.Description:
+        return Operator.Description(
+            operator_index=OperatorIndex.NODE_TRANSITION,
+            initial_value=Value(),
+            input_schema=Value.Schema.any(),
+            args=Value(
+                target=str(args['target']),
+            )
+        )
+
+    @staticmethod
+    def on_update(self: Operator, _1: RowHandle, _2: Value) -> Value:
+        self._get_node().transition_into(str(self.get_argument('target')))
+        return self.get_data()
+
+
 @unique
 class OperatorIndex(core.IndexEnum):
     RELAY = auto()
@@ -717,6 +743,7 @@ class OperatorIndex(core.IndexEnum):
     SINE = auto()
     NODE_EXPRESSION = auto()
     FILTER_EXPRESSION = auto()
+    NODE_TRANSITION = auto()
 
 
 @unique
@@ -744,4 +771,5 @@ OPERATOR_VTABLE: Tuple[
     (None, None, None, OpSine.on_subscribe, OpSine.create),
     (OpNodeExpression.on_update, None, None, None, OpNodeExpression.create),
     (OpFilterExpression.on_update, None, None, None, OpFilterExpression.create),
+    (OpNodeTransition.on_update, None, None, None, OpNodeTransition.create),
 )

@@ -6,7 +6,7 @@ from typing import Callable, Optional, Union, Type, Dict, Tuple
 
 import glfw
 
-from pycnotf import V2f, Size2f, NanoVG, loadGLES2Loader, Color
+from pycnotf import V2f, Size2f, NanoVG, loadGLES2Loader
 from pynotf.data import Value, RowHandle, Table, Storage, Path
 import pynotf.core as core
 
@@ -118,6 +118,8 @@ class Application:
                 # TODO: this is happening in the MAIN loop - it should happen on a 3rd thread
                 with core.Painter(window, nanovg) as painter:
                     self._scene.paint(painter)
+
+                self._scene.perform_node_transitions()
                 glfw.wait_events()
                 # glfw.poll_events()  # run as fast as you can
 

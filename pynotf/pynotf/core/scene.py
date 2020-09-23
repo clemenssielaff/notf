@@ -123,9 +123,14 @@ class Scene:
         self._hitboxes: List[core.Sketch.Hitbox] = []
         self._size: Size2f = Size2f()
 
+        # Transitions cannot happen right away, while and event is still being handled.
+        # Instead, they are collected here and executed at the end of an event
+        self._transitions: List[Tuple[Node, str]] = []
+
     def initialize(self, root_description_value: Value):
         self._root_node = Node.create_node(create_node_description_from_value(root_description_value))
         self._root_node.initialize()  # initialize AFTER assigning it to `self._root_node` for absolute path lookup
+        self.perform_node_transitions()
 
     def set_size(self, size: Size2f):
         if size != self._size:
@@ -168,6 +173,14 @@ class Scene:
         for hitbox in self._hitboxes:
             if hitbox.shape.contains(pos):
                 yield hitbox
+
+    def schedule_node_transition(self, node: Node, target_state: str) -> None:
+        self._transitions.append((node, target_state))
+
+    def perform_node_transitions(self) -> None:
+        for node, target_state in self._transitions:
+            node._transition_into(target_state)
+        self._transitions.clear()
 
 
 # NODE ################################################################################################################
@@ -379,6 +392,9 @@ class Node:
         self._remove_recursively()
 
     def transition_into(self, state: str) -> None:
+        core.get_app().get_scene().schedule_node_transition(self, state)
+
+    def _transition_into(self, state: str) -> None:
         # ensure the transition is allowed
         node_table: Table = core.get_app().get_table(core.TableIndex.NODES)
         current_state: str = node_table[self._handle]['state']
