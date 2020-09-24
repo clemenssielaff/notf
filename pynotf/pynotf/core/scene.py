@@ -231,8 +231,9 @@ class Node:
                 description=core.OpRelay.create(interop_description[0]),
                 node=node_handle,
                 effect=(core.Operator.Effect.REDRAW if interop_description[1] == 1 else
-                        (core.Operator.Effect.REDRAW if interop_description[1] == 2 else core.Operator.Effect.NONE))
-            ) for interop_description in description.interops.values()]
+                        (core.Operator.Effect.REDRAW if interop_description[1] == 2 else core.Operator.Effect.NONE)),
+                name=interop_name,
+            ) for interop_name, interop_description in description.interops.items()]
         )
 
         # register the node with its parent
@@ -437,7 +438,8 @@ class Node:
             assert name not in network
             network[name] = core.Operator.create(
                 description=core.OPERATOR_VTABLE[kind][core.OperatorVtableIndex.CREATE](args),
-                node=self._handle
+                node=self._handle,
+                name=name,
             ).get_handle()
         node_table[self._handle]['network'] = RowHandleList(network.values())
 

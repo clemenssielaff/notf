@@ -39,7 +39,11 @@ class Path:
 
     Error = PathError
 
-    STEP_UP = STEP_UP
+    SERVICE_DELIMITER: str = SERVICE_DELIMITER
+    NODE_DELIMITER: str = NODE_DELIMITER
+    INTEROP_DELIMITER: str = INTEROP_DELIMITER
+    STEP_IN_PLACE: str = '.'
+    STEP_UP: str = STEP_UP
 
     def __init__(self, string: str = ''):
         """

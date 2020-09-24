@@ -9,7 +9,7 @@ from time import monotonic
 import curio
 from pyrsistent import field
 
-from pynotf.data import Value, RowHandle, Table, RowHandleList, TableRow, get_mutated_value
+from pynotf.data import Value, RowHandle, Table, RowHandleList, TableRow, get_mutated_value, Path
 import pynotf.core as core
 
 __all__ = ('Operator', 'OperatorRow', 'OperatorIndex', 'OpRelay',
@@ -150,6 +150,7 @@ class OperatorRow(TableRow):
     input_schema = field(type=Value.Schema, mandatory=True)
     args = field(type=Value, mandatory=True)  # must be a named record
     data = field(type=Value, mandatory=True)  # must be a named record
+    name = field(type=str, mandatory=True, initial='')  # this is just for debugging purposes
     expression = field(type=core.Expression, mandatory=True, initial=core.Expression())
     upstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
     downstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
@@ -183,12 +184,14 @@ class Operator:
             return (int(external) << OperatorFlagIndex.IS_EXTERNAL) | (int(source) << OperatorFlagIndex.IS_SOURCE)
 
     @classmethod
-    def create(cls, description: Description, node: RowHandle = RowHandle(), effect: Effect = Effect.NONE) -> Operator:
+    def create(cls, description: Description, node: RowHandle = RowHandle(), effect: Effect = Effect.NONE,
+               name: str = "") -> Operator:
         """
         Takes an Operator.Description and (optional) per-instance arguments and creates an Operator instance.
         :param description: Date from which to construct the new row.
         :param node: (optional) Node to associate with the created Operator.
         :param effect: (optional) Effect of the Operator, only applies if `node` is set.
+        :param name: (optional) Name of the Operator on the Node, only for debugging purposes.
         :return: The created Operator.
         """
         return Operator(core.get_app().get_table(core.TableIndex.OPERATORS).add_row(
@@ -202,6 +205,7 @@ class Operator:
             args=description.args,
             data=description.data,
             expression=core.Expression(description.expression),
+            name=name,
         ))
 
     def __init__(self, handle: RowHandle):
@@ -209,7 +213,20 @@ class Operator:
         self._handle: RowHandle = handle
 
     def __repr__(self) -> str:
-        return f'Operator:{self._handle.index}.{self._handle.generation}'
+        self_row: Table.Accessor = core.get_app().get_table(core.TableIndex.OPERATORS)[self._handle]
+
+        node: core.Node = core.Node(self_row['node'])
+        node_path: str = ''
+        if node.is_valid():
+            node_path = str(node.get_path())
+
+        given_name: str = self_row['name']
+        if node_path and given_name:
+            return f'Operator "{node_path}{Path.INTEROP_DELIMITER}{given_name}"'
+        elif given_name:
+            return f'Operator "{given_name}"'
+        else:
+            return f'Operator:{self._handle.index}.{self._handle.generation}'
 
     def get_handle(self) -> RowHandle:
         return self._handle
@@ -424,8 +441,8 @@ class Operator:
             # ensure that the operator is able to emit the given value
             # callbacks other than UPDATE are allowed to store non-schema conform data (
             if self.get_value().get_schema() != value.get_schema():
-                raise ValueError(f'Cannot emit Value with incompatible Schema from "{self!r}"\n'
-                                 f'Expected {self.get_value().get_schema()}, got {value.get_schema()}')
+                raise ValueError(f'Cannot emit Value with incompatible Schema from {self!r}\n'
+                                 f'Expected\n{self.get_value().get_schema()}got\n{value.get_schema()}')
 
         # store the emitted value
         core.get_app().get_table(core.TableIndex.OPERATORS)[self._handle]['value'] = value
@@ -508,7 +525,7 @@ class OpBuffer:
         schema: Value.Schema = Value.Schema.from_value(args['schema'])
         return Operator.Description(
             operator_index=OperatorIndex.BUFFER,
-            initial_value=Value(0),
+            initial_value=Value(schema),
             input_schema=schema,
             args=Value(time_span=args['time_span']),
             data=Value(is_running=False, counter=0),
