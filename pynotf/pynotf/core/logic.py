@@ -16,6 +16,15 @@ __all__ = ('Operator', 'OperatorRow', 'OperatorIndex', 'OpRelay',
            'OPERATOR_VTABLE', 'OperatorVtableIndex')  # TODO: these should not be part of the public interface
 
 
+# TODO: Maybe we don't need to store Operators in a table?
+#   Only the "state" of the Operator needs to be recoverable, the fact that Operators exist could be implied from the
+#   Scene.
+#   ... Or not, in the case of dynamically created Operators from the Factory :/ ... Well, in that case, we could store
+#   the (Type, Arguments, Data) triplet and still be able to restore them. ... Except not really, because dynamically
+#   created Operators would still need their connection information... We also need the flags...
+#   Anyway, it would be nice if we could do that, because we could use plain old polymorphism for Operator classes and
+#   store actual members, which would avoid storing a lot of unnecessary data in the table.
+
 # DATA #################################################################################################################
 
 @unique

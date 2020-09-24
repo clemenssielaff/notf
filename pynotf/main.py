@@ -157,6 +157,9 @@ countdown_node: Value = get_mutated_value(Node.VALUE, dict(
     initial="default",
 ))
 
+# TODO: it is clear now that Node States can (and do) share most of their Design and Operators. But the transition still
+#   clears and re-creates everything. This is not only inefficient, it also forces me to literally copy large parts of
+#   the state when creating a new one.
 window_design: Value = Value([
     # shadow
     ('fill', Value(
@@ -377,7 +380,7 @@ if __name__ == "__main__":
     get_app().register_service('numbers', NumberProducer)
     sys.exit(get_app().run(root_node))
 
-# TODO: CONTINUE HERE
+# TODO: load application from data
 #   I have made a lot of progress to define the whole application as pure data. Most of the application-specific code is
 #   defined here, and almost of all it is actually data.
 #   There are a few avenues that we need to explore from here:
