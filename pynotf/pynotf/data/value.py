@@ -130,7 +130,7 @@ def create_denotable(obj: Any) -> Denotable:
 
 class Kind(IntEnum):
     """
-    Enumeration of the  denotable Value Kinds.
+    Enumeration of the denotable Value Kinds.
 
     At the start of the value range of a Schema word (uint8), we can use zero and one as identifiers because they can
     never be valid offsets. A zero offset makes no sense and a one offset is a special case that is "inlined".
@@ -757,6 +757,9 @@ class Value:
     def is_none(self) -> bool:
         return self._data is None
 
+    def is_any(self) -> bool:
+        return isinstance(self._data, Value)
+
     def get_schema(self) -> Schema:
         """
         The Schema of this Value.
@@ -1070,6 +1073,15 @@ class Value:
         else:
             raise TypeError("Value is not a string")
 
+    def __bool__(self) -> bool:
+        kind: Kind = self.get_kind()
+        if kind == Kind.NONE:
+            return False
+        elif kind == Kind.RECORD:
+            return True  # records cannot be empty
+        else:
+            return bool(self._data)
+
     def __hash__(self):
         return hash((self._schema, self._data, self._dictionary))
 
@@ -1242,6 +1254,9 @@ class Value:
         if not (0 <= index < size):
             raise KeyError(f'Cannot get Element at index {size - index} from a '
                            f'{"List" if kind == Kind.LIST else "Record"} of size {size}')
+            # C++ transition note:
+            # I wonder if it is really the best idea to raise Exceptions here, when returning an Optional would
+            # suffice as well.
 
         if kind == Kind.LIST:
             # children in list data start at index 1 (index 0 is the size of the list)

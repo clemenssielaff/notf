@@ -42,7 +42,6 @@ class LayoutRow(TableRow):
     __table_index__: int = core.TableIndex.LAYOUTS
     layout_index = field(type=int, mandatory=True)
     args = field(type=Value, mandatory=True)  # must be a named record
-    node_value_initial = field(type=Value, mandatory=True)
     nodes = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
     node_values = field(type=core.ValueList, mandatory=True, initial=core.ValueList())
     composition = field(type=LayoutComposition, mandatory=True, initial=LayoutComposition())
@@ -66,13 +65,15 @@ class Layout:
     def is_valid(self) -> bool:
         return core.get_app().get_table(core.TableIndex.LAYOUTS).is_handle_valid(self._handle)
 
-    def get_argument(self, name) -> Value:
+    def get_argument(self, name) -> Optional[Value]:
         """
         :param name: Name of the argument to access.
-        :return: The requested argument.
-        :raise: KeyError
+        :return: The requested argument or None.
         """
-        return core.get_app().get_table(core.TableIndex.LAYOUTS)[self._handle]["args"][name]
+        try:
+            return core.get_app().get_table(core.TableIndex.LAYOUTS)[self._handle]["args"][name]
+        except KeyError:
+            return None
 
     def clear(self) -> None:
         core.get_app().get_table(core.TableIndex.LAYOUTS)[self._handle]['nodes'] = RowHandleList()
@@ -91,6 +92,8 @@ class Layout:
         return self.get_composition().nodes.get(node.get_name())
 
     def perform(self, grant: Size2f) -> LayoutComposition:
+        # TODO: do I have to make sure that the grant is compatible with the Node's Claim?
+        #  A Layout might grant a Widget more space than it asked for, or in the wrong aspect ratio for example.
         layout_table: Table = core.get_app().get_table(core.TableIndex.LAYOUTS)
         layout_index: LayoutIndex = layout_table[self._handle]['layout_index']
         composition: LayoutComposition = LAYOUT_VTABLE[layout_index][LayoutVtableIndex.LAYOUT](self, grant)
@@ -142,7 +145,6 @@ class LtOverlayout:
         return core.get_app().get_table(core.TableIndex.LAYOUTS).add_row(
             layout_index=LayoutIndex.OVERLAY,
             args=args,
-            node_value_initial=Value(),
         )
 
     @staticmethod

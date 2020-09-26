@@ -25,6 +25,8 @@ class NodeStateDescription(NamedTuple):
     children: Dict[str, NodeDescription]
     layout: core.LayoutDescription
     claim: Claim = Claim()
+# TODO: States should have entry/exit callbacks. For example, I wanted to create a (root) Node for the Flexbox test
+#  application that creates a random number of random child nodes with random claims
 
 
 class NodeInterops(NamedTuple):
@@ -44,11 +46,6 @@ class NodeDescription(NamedTuple):
     transitions: List[Tuple[str, str]]
     initial_state: str
 
-
-# EMPTY_NODE_DESCRIPTION: Value = Value(
-#     interops=dict(
-#     )
-# )
 
 WIDGET_BUILTIN_NAMESPACE = 'widget'
 

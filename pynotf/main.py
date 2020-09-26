@@ -2,8 +2,9 @@ import sys
 import apps
 
 if __name__ == "__main__":
-    # sys.exit(apps.pane())
-    sys.exit(apps.first_test())
+    # sys.exit(apps.first_test())
+    sys.exit(apps.pane())
+    # sys.exit(apps.flexbox())
 
 # TODO: load application from data
 #   I have made a lot of progress to define the whole application as pure data. Most of the application-specific code is

@@ -155,6 +155,9 @@ class OperatorRow(TableRow):
     upstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
     downstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
 
+# TODO: only Operators that are attached to nodes have a name, right? I should be able to get the name of an operator
+#  from the node instead of storing it in the Operator itself
+
 
 # OPERATORS ############################################################################################################
 
