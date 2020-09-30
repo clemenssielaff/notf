@@ -55,7 +55,6 @@ BUILTIN_NODE_INTEROPS: Dict[str, (Value, int)] = {  # interop name : (default va
     f'{WIDGET_BUILTIN_NAMESPACE}.visibility': (Value(1), 1),
     f'{WIDGET_BUILTIN_NAMESPACE}.depth': (Value(0), 2),
     f'{WIDGET_BUILTIN_NAMESPACE}.xform': (Value(1, 0, 0, 1, 0, 0), 1),  # used for painting
-    f'{WIDGET_BUILTIN_NAMESPACE}.claim': (Claim().get_value(), 2),
 }
 
 
@@ -362,11 +361,15 @@ class Node:
         # success
         return node
 
-    def set_claim(self, claim: Claim) -> None:
-        # TODO: relayout upwards
-        if not self.get_parent():
-            return
-        self.get_interop('widget.claim').update(claim.get_value())
+    def get_claim(self) -> Claim:
+        """
+        The Claim of the Node is dependent on its current State. It would be possible to have a state-independent Claim
+        in the Node itself, but since there is only one Design per State I think it makes sense to only have one Claim
+        per state as well.
+        """
+        node_row: Table.Accessor = core.get_app().get_table(core.TableIndex.NODES)[self._handle]
+        current_state: str = node_row['state']
+        return node_row['description'].states[current_state].claim
 
     def paint(self, painter: core.Painter):
         painter.paint(self)
@@ -471,7 +474,8 @@ class Node:
             find_operator(source).subscribe(find_operator(sink))
 
         # update the claim
-        self.set_claim(new_state.claim)  # causes a potential re-layout
+        if new_state.claim != self.get_claim():
+            pass  # TODO: relayout upwards
 
     def relayout_down(self, grant: Size2f) -> None:
         # update the layout with the new grant

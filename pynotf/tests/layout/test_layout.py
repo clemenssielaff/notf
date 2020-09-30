@@ -36,8 +36,8 @@ class TestCase(unittest.TestCase):
         ]
         new_surplus: float = distribute_surplus(surplus, items)
         self.assertEqual(new_surplus, 0.)
-        self.assertEqual(items[0].result, 5.)
-        self.assertEqual(items[1].result, 2.)
+        self.assertEqual(items[0].grant, 5.)
+        self.assertEqual(items[1].grant, 2.)
 
     def test_zero_items(self):
         """
@@ -59,8 +59,8 @@ class TestCase(unittest.TestCase):
         ]
         new_surplus: float = distribute_surplus(surplus, items)
         self.assertEqual(new_surplus, 0.)
-        self.assertEqual(items[0].result, 5.)
-        self.assertEqual(items[1].result, 5.)
+        self.assertEqual(items[0].grant, 5.)
+        self.assertEqual(items[1].grant, 5.)
 
     def test_different_maxima(self):
         """
@@ -74,8 +74,8 @@ class TestCase(unittest.TestCase):
         ]
         new_surplus: float = distribute_surplus(surplus, items)
         self.assertEqual(new_surplus, 2.)
-        self.assertEqual(items[0].result, 8.)
-        self.assertEqual(items[1].result, 10.)
+        self.assertEqual(items[0].grant, 8.)
+        self.assertEqual(items[1].grant, 10.)
 
     def test_preferred_too_large(self):
         """
@@ -88,8 +88,8 @@ class TestCase(unittest.TestCase):
         ]
         new_surplus: float = distribute_surplus(surplus, items)
         self.assertEqual(new_surplus, 0.)
-        self.assertEqual(items[0].result, 6.)
-        self.assertEqual(items[1].result, 4.)
+        self.assertEqual(items[0].grant, 6.)
+        self.assertEqual(items[1].grant, 4.)
 
     def test_maximum_too_large(self):
         """
@@ -102,8 +102,8 @@ class TestCase(unittest.TestCase):
         ]
         new_surplus: float = distribute_surplus(surplus, items)
         self.assertEqual(new_surplus, 0.)
-        self.assertEqual(items[0].result, 7.)
-        self.assertEqual(items[1].result, 6.)
+        self.assertEqual(items[0].grant, 7.)
+        self.assertEqual(items[1].grant, 6.)
 
     def test_minimum_too_small(self):
         """
@@ -116,8 +116,8 @@ class TestCase(unittest.TestCase):
         ]
         new_surplus: float = distribute_surplus(surplus, items)
         self.assertEqual(new_surplus, 0.)
-        self.assertEqual(items[0].result, 3.)
-        self.assertEqual(items[1].result, 4.)
+        self.assertEqual(items[0].grant, 3.)
+        self.assertEqual(items[1].grant, 4.)
 
     def test_no_deficit_or_leeway(self):
         """
@@ -130,8 +130,8 @@ class TestCase(unittest.TestCase):
         ]
         new_surplus: float = distribute_surplus(surplus, items)
         self.assertEqual(new_surplus, 0.)
-        self.assertEqual(items[0].result, 8.)
-        self.assertEqual(items[1].result, 8.)
+        self.assertEqual(items[0].grant, 8.)
+        self.assertEqual(items[1].grant, 8.)
 
     @given(floats(min_value=0), lists(layout_adapter()))
     @example(40, [LayoutAdapter(preferred=2, maximum=4, scaling=1, result=0.0),
@@ -190,12 +190,12 @@ class TestCase(unittest.TestCase):
 
         for item in items:
             # the size of each item has to be 0 <= size <= maximum
-            self.assertLessEqual(0., item.result)
-            self.assertLessEqual(item.result, item.maximum)
+            self.assertLessEqual(0., item.grant)
+            self.assertLessEqual(item.grant, item.maximum)
 
-            if item.result > item.preferred:
+            if item.grant > item.preferred:
                 above_preference_count += 1
-            elif item.result < item.preferred:
+            elif item.grant < item.preferred:
                 below_preference_count += 1
             else:
                 exact_preference_count += 1

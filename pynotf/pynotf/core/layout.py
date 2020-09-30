@@ -47,9 +47,49 @@ class LayoutRow(TableRow):
     composition = field(type=LayoutComposition, mandatory=True, initial=LayoutComposition())
 
 
+# TODO: at the moment we do not allow Layouts to store data, only arguments ... this is clean and nice and all, but
+#  it also means that you cannot store a flag, for example, whether or not a Layout contains multi-priority nodes
+#  But maybe that's not such a big deal... all you have to do is iterate all nodes once and then branch. It sucks a bit
+#  but maybe we can always implement fast passes for cases with all same priority.
+
+class LayoutNodeView:
+    def __init__(self, node: core.Node):
+        self._node: core.Node = node
+
+    @property
+    def name(self) -> str:
+        return self._node.get_name()
+
+    @property
+    def opacity(self) -> float:
+        return float(self._node.get_interop('widget.opacity').get_value())
+
+    @property
+    def claim(self) -> Claim:
+        return self._node.get_claim()
+
+
+class LayoutNodeIterator:
+    def __init__(self, layout_handle: RowHandle):
+        self._node_list: RowHandleList = core.get_app().get_table(core.TableIndex.LAYOUTS)[layout_handle]['nodes']
+
+    def __len__(self) -> int:
+        return len(self._node_list)
+
+    def __iter__(self) -> Iterable[LayoutNodeView]:
+        for node_handle in self._node_list:
+            yield LayoutNodeView(core.Node(node_handle))
+
+    def __getitem__(self, index) -> LayoutNodeView:
+        return LayoutNodeView(core.Node(self._node_list[index]))
+
+
 # LAYOUT ###############################################################################################################
 
 class Layout:
+
+    NodeView = LayoutNodeView
+    NodeIterator = LayoutNodeIterator
 
     def __init__(self, handle: RowHandle):
         assert handle.is_null() or handle.table == core.TableIndex.LAYOUTS
@@ -100,12 +140,11 @@ class Layout:
         layout_table[self._handle]['composition'] = composition
         return composition
 
-    def get_nodes(self) -> Iterable[LayoutNodeView]:
+    def iter_nodes(self) -> LayoutNodeIterator:
         """
         Returns a core.Node View for each core.Node in this layout, in the order that they were added.
         """
-        node_list: RowHandleList = core.get_app().get_table(core.TableIndex.LAYOUTS)[self._handle]['nodes']
-        return (LayoutNodeView(core.Node(handle)) for handle in node_list)
+        return LayoutNodeIterator(self._handle)
 
     def get_order(self) -> RowHandleList:
         """
@@ -118,23 +157,6 @@ class Layout:
     def remove(self) -> None:
         if self.is_valid():
             core.get_app().get_table(core.TableIndex.LAYOUTS).remove_row(self._handle)
-
-
-class LayoutNodeView:
-    def __init__(self, node: core.Node):
-        self._node: core.Node = node
-
-    @property
-    def name(self) -> str:
-        return self._node.get_name()
-
-    @property
-    def opacity(self) -> float:
-        return float(self._node.get_interop('widget.opacity').get_value())
-
-    @property
-    def claim(self) -> Claim:
-        return Claim(self._node.get_interop('widget.claim').get_value())
 
 
 # LAYOUT REGISTRY ######################################################################################################
@@ -150,7 +172,7 @@ class LtOverlayout:
     @staticmethod
     def layout(self: Layout, grant: Size2f) -> LayoutComposition:
         compositions: Dict[str, NodeComposition] = {}
-        for node_view in self.get_nodes():
+        for node_view in self.iter_nodes():
             node_grant: Size2f = Size2f(
                 width=max(node_view.claim.horizontal.min, min(node_view.claim.horizontal.max, grant.width)),
                 height=max(node_view.claim.vertical.min, min(node_view.claim.vertical.max, grant.height)),
@@ -179,6 +201,7 @@ class LayoutIndex(core.IndexEnum):
 class LayoutVtableIndex(IntEnum):
     CREATE = 0
     LAYOUT = 1
+
 
 from .layouts import LtFlexbox
 

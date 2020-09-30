@@ -1296,6 +1296,8 @@ class Value:
             dictionary: Dictionary = self._dictionary.children[index]
 
         # create a new value to wrap the child
+        # TODO: it would be way better to return a Value.View type here that is implicitly convertible to a Value but
+        #  does not allocate a whole new Value just to read it.
         return Value._create(schema, data, dictionary)
 
     def _get_item_by_name(self, name: str) -> Value:

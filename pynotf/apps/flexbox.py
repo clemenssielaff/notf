@@ -51,9 +51,12 @@ root_node: Value = get_mutated_value(Node.VALUE, dict(
             operators=[],
             connections=[],
             design=Value(),
-            children=[(f'window{i}', window) for i in range(10)],
+            children=[(f'window{i}', window) for i in range(4)],
             layout=(LayoutIndex.FLEXBOX, Value(
                 margin=10,
+                spacing=2,
+                direction=4,
+                alignment=3,
             )),
             claim=dict(
                 horizontal=dict(preferred=0, min=0, max=0, scale_factor=1, priority=0),

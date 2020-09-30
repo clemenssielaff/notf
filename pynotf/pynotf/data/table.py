@@ -401,7 +401,7 @@ class Table:
         :param handle: Handle to test.
         :return: True iff the Handle can be used to access this Table.
         """
-        return not self._get_handle_error(handle, self._get_table_data())
+        return self._get_handle_error(handle, self._get_table_data()) == HandleError.Reason.NO_ERROR
 
     def count_active_rows(self) -> int:
         """

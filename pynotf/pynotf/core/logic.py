@@ -452,7 +452,10 @@ class Operator:
 
         # emit to all valid downstream elements
         for element in downstream:
-            element._run(self, callback, value)
+            if element.is_valid():
+                element._run(self, callback, value)
+            else:
+                self._remove_downstream(element)
 
         if callback == OperatorVtableIndex.UPDATE:
             # reset the status
