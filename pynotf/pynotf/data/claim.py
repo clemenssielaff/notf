@@ -155,7 +155,7 @@ class Stretch:
         self._min = max(0., self._min + value)
         self._max = max(0., self._max + value)
 
-    def maxed(self, other: Stretch) -> None:
+    def set_maxed(self, other: Stretch) -> None:
         """
         Max this with another Stretch.
         """
@@ -222,12 +222,12 @@ class Claim:
 
     def add_horizontal(self, other: Claim) -> None:
         self._horizontal.add(other.horizontal)
-        self._vertical.maxed(other.vertical)
+        self._vertical.set_maxed(other.vertical)
 
     def add_vertical(self, other: Claim) -> None:
-        self._horizontal.maxed(other.horizontal)
+        self._horizontal.set_maxed(other.horizontal)
         self._vertical.add(other.vertical)
 
     def maxed(self, other: Claim) -> None:
-        self._horizontal.maxed(other.horizontal)
-        self._vertical.maxed(other.vertical)
+        self._horizontal.set_maxed(other.horizontal)
+        self._vertical.set_maxed(other.vertical)

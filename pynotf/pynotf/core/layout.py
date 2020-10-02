@@ -70,24 +70,32 @@ class LayoutNodeView:
 
 
 class LayoutNodeIterator:
-    def __init__(self, layout_handle: RowHandle):
-        self._node_list: RowHandleList = core.get_app().get_table(core.TableIndex.LAYOUTS)[layout_handle]['nodes']
+    def __init__(self, layout_handle: RowHandle, start: int = 0, end: Optional[int] = None):
+        self._handle: RowHandle = layout_handle
+        self._start: int = max(0, start)
+        self._end: int = len(self._nodes) if end is None else max(self._start + 1, end)
+
+    def slice(self, start: int = 0, end: Optional[int] = None) -> LayoutNodeIterator:
+        return LayoutNodeIterator(self._handle, start, end)
+
+    @property
+    def _nodes(self) -> RowHandleList:
+        return core.get_app().get_table(core.TableIndex.LAYOUTS)[self._handle]['nodes']
 
     def __len__(self) -> int:
-        return len(self._node_list)
+        return self._end - self._start
 
     def __iter__(self) -> Iterable[LayoutNodeView]:
-        for node_handle in self._node_list:
+        for node_handle in self._nodes[self._start: self._end]:
             yield LayoutNodeView(core.Node(node_handle))
 
     def __getitem__(self, index) -> LayoutNodeView:
-        return LayoutNodeView(core.Node(self._node_list[index]))
+        return LayoutNodeView(core.Node(self._nodes[index + self._start]))
 
 
 # LAYOUT ###############################################################################################################
 
 class Layout:
-
     NodeView = LayoutNodeView
     NodeIterator = LayoutNodeIterator
 
