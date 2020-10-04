@@ -120,6 +120,10 @@ class LtFlexbox:
 
 
 class FlexboxImpl:
+
+    # TODO: Flexbox works in general, has some tests (they don't work anymore) and I should put some more work into
+    #  it but I don't feel like it right now.
+
     def __init__(self, layout: Layout, grant: Size2f):
         self._layout: Layout = layout
         self._grant: Size2f = grant
@@ -505,11 +509,10 @@ def layout_wrapping_stacks(nodes: Layout.NodeIterator, available: FlexSize, offs
         current_stretch: Stretch = nodes[index].claim.horizontal if is_horizontal else nodes[index].claim.vertical
         cross_stretch: Stretch = Stretch(maximum=0., scale_factor=0.0001)
         used_main_space: float = 0.
-        addition: float = current_stretch.preferred + spacing
 
         # add nodes until the next one no longer fits the available space
-        while used_main_space + addition <= available.main or used_main_space == 0.:
-            used_main_space += addition
+        while used_main_space + current_stretch.preferred <= available.main or used_main_space == 0.:
+            used_main_space += current_stretch.preferred + spacing
             cross_stretch.set_maxed(current_stretch)
 
             # advance to the next node
@@ -517,7 +520,6 @@ def layout_wrapping_stacks(nodes: Layout.NodeIterator, available: FlexSize, offs
             if index == len(nodes):
                 break
             current_stretch = nodes[index].claim.horizontal if is_horizontal else nodes[index].claim.vertical
-            addition = current_stretch.preferred + spacing
 
         # add the stretch to the cross batch
         deficit: float = cross_stretch.preferred - cross_stretch.min
@@ -544,7 +546,7 @@ def layout_wrapping_stacks(nodes: Layout.NodeIterator, available: FlexSize, offs
     # determine values for alignment along the cross axis
     start_offset, added_spacing = calculate_alignment(cross_alignment, cross_surplus, cross_spacing, len(stack_ranges))
     offset.cross += start_offset
-    cross_spacing += added_spacing
+    cross_spacing = added_spacing  # C++ implementation, this would be a mutable ref
 
     # apply the layout
     content_aabr: Aabrf = Aabrf.wrongest()

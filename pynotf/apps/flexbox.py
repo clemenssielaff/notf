@@ -34,8 +34,8 @@ def get_box(index: int, count: int) -> Value:
                 children=[],
                 layout=(LayoutIndex.OVERLAY, Value()),
                 claim=dict(
-                    horizontal=dict(preferred=20, min=20, max=20, scale_factor=1, priority=0),
-                    vertical=dict(preferred=20, min=20, max=20, scale_factor=1, priority=0),
+                    horizontal=dict(preferred=40, min=20, max=60, scale_factor=2, priority=0),
+                    vertical=dict(preferred=40, min=20, max=60, scale_factor=2, priority=0),
                 )
             ))),
         ],
@@ -58,7 +58,7 @@ root_node: Value = get_mutated_value(Node.VALUE, dict(
             children=[(f'window{i}', get_box(i, 10)) for i in range(30)],
             layout=(LayoutIndex.FLEXBOX, Value(
                 spacing=10,
-                cross_spacing=10,
+                cross_spacing=5,
                 direction=1,
                 alignment=1,
                 padding=(0, 0, 0, 0),
