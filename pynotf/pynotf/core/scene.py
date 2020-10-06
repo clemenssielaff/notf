@@ -159,7 +159,7 @@ class Scene:
         return self._root_node.get_node(path)
 
     def paint(self, painter: core.Painter) -> None:
-        self._root_node.paint(painter)
+        painter.paint(self._root_node)
         self._hitboxes = painter.get_hitboxes()
 
     def iter_hitboxes(self, pos: V2f) -> Iterable[core.Sketch.Hitbox]:
@@ -175,7 +175,16 @@ class Scene:
 
     def perform_node_transitions(self) -> None:
         for node, target_state in self._transitions:
-            node._transition_into(target_state)
+            # TODO: we need to catch the current grant before transitioning, since the claim is currently stored in the
+            #  state (per-instance). That is a bug and there's another to do about this in Node.get_claim
+            current_grant: Size2f = Size2f(node.get_claim().horizontal.grant, node.get_claim().vertical.grant)
+            node.transition_immediately(target_state)
+
+            # Only established nodes have scheduled transitions.
+            # Therefore it is enough to re-layout the topmost (changed) Widget after it has transitioned.
+            # If we put the relayout call into Node.
+            node.relayout_down(current_grant)
+
         self._transitions.clear()
 
 
@@ -244,7 +253,10 @@ class Node:
         """
         node_table: Table = core.get_app().get_table(core.TableIndex.NODES)
         assert not node_table[self._handle]['state']
-        self.transition_into(node_table[self._handle]['description'].initial_state)
+
+        # We don't have to wait for the end of the signal to transition into the initial state of a newly created node,
+        # unlike we need to do for state transitions of live nodes.
+        self.transition_immediately(node_table[self._handle]['description'].initial_state)
 
     def get_handle(self) -> RowHandle:
         return self._handle
@@ -366,7 +378,15 @@ class Node:
         The Claim of the Node is dependent on its current State. It would be possible to have a state-independent Claim
         in the Node itself, but since there is only one Design per State I think it makes sense to only have one Claim
         per state as well.
+        This works for now, but is actually flawed because every Node has a COPY of its entire state description in its
+        row. That is an accident now and will certainly be fixed when moving to C++. This means that nodes are no longer
+        allowed to modify their Claim at all (apart from transitioning into another state with another claim that is).
+        The problems here are:
+         * I found it quite convenient to store the grant into the Claim itself
+         * By making the Claim essentially static, we can not calculate a combined claim from the children of a Widget
+        ... Clearly that does NOT WORK.
         """
+        # TODO: turn the Claim into a non-static (per-instance) member of Node
         node_row: Table.Accessor = core.get_app().get_table(core.TableIndex.NODES)[self._handle]
         current_state: str = node_row['state']
         return node_row['description'].states[current_state].claim
@@ -395,7 +415,7 @@ class Node:
     def transition_into(self, state: str) -> None:
         core.get_app().get_scene().schedule_node_transition(self, state)
 
-    def _transition_into(self, state: str) -> None:
+    def transition_immediately(self, state: str) -> None:
         # ensure the transition is allowed
         node_table: Table = core.get_app().get_table(core.TableIndex.NODES)
         current_state: str = node_table[self._handle]['state']
@@ -403,8 +423,11 @@ class Node:
         assert current_state == '' or (current_state, state) in node_description.transitions
 
         # remove the dynamic dependencies from the last state
-        # TODO: remove children, or think of a better way to transition between states
-        self._clear_dependencies()
+        self._clear_dependencies()  # TODO: think of a better way to transition between states
+
+        # remove all children
+        for child_handle in node_table[self._handle]['child_names'].values():
+            Node(child_handle).remove()
 
         # enter the new state
         node_table[self._handle]['state'] = state
@@ -494,7 +517,7 @@ class Node:
             if not child_node:
                 warning(f'core.Layout contained unknown child node "{child_name}"')
                 continue
-            child_node.relayout_down(grant)
+            child_node.relayout_down(child_layout.grant)
 
     def _remove_recursively(self):
         """

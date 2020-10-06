@@ -1502,6 +1502,9 @@ def get_mutated_value(value: Value, *args) -> Value:
 
     :param value: Value providing the Data buffer to mutate.
     """
+    # TODO: mutating a value with a dict turns the dict into a tuple, meaning that if the current value has a schema
+    #  with (a=1, b=2) and you try to set it using dict(b=20, a=10) it will turn that into (a=20, b=10) :/
+
     if len(args) == 1:
         if value.is_none():
             if args[0] is None:

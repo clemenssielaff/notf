@@ -155,6 +155,7 @@ class OperatorRow(TableRow):
     upstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
     downstream = field(type=RowHandleList, mandatory=True, initial=RowHandleList())
 
+
 # TODO: only Operators that are attached to nodes have a name, right? I should be able to get the name of an operator
 #  from the node instead of storing it in the Operator itself
 
@@ -698,11 +699,14 @@ class OpNodeExpression:
 
     @staticmethod
     def on_update(self: Operator, _: RowHandle, value: Value) -> Value:
+        if not self.is_valid():
+            # Operator has expired, no need to perform the expression and `self.get_data` will fail.
+            return Value()  # TODO: this should not happen if Operators are shut down cleanly during state transitions
+
         self.get_expression().execute(
             node=self._get_node(),  # TODO: NodeAccessor
             arg=value
         )
-
         return self.get_data()
 
 

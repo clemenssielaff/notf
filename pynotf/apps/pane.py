@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from random import randint
+from typing import List, Tuple
+
 from pynotf.data import Value, get_mutated_value
 from pynotf.core import OperatorIndex, LayoutIndex, Node, get_app
 
@@ -126,6 +129,59 @@ window_design: Value = Value([
     )),
 ])
 
+
+def produce_rect(index: int, count: int) -> Value:
+    color: float = 0.4 + 0.5 * (index / count)
+    # size_min: float = float(randint(0, 50))
+    # size_preferred: float = size_min + float(randint(0, 50))
+    # size_max: float = size_preferred + float(randint(0, 50))
+    size_min: float = 20.
+    size_preferred: float = 40.
+    size_max: float = 60.
+    return get_mutated_value(Node.VALUE, dict(
+        interops=[],
+        states=[
+            ("default", get_mutated_value(Node.STATE, dict(
+                operators=[],
+                connections=[],
+                design=Value([
+                    ('fill', Value(
+                        shape=('rounded_rect', Value(
+                            x=("constant", Value(0)),
+                            y=("constant", Value(0)),
+                            width=("expression", Value(
+                                source="max(0, node.grant.width)",
+                                kwargs=Value(),
+                            )),
+                            height=("expression", Value(
+                                source="max(0, node.grant.height)",
+                                kwargs=Value(),
+                            )),
+                            radius=("constant", Value(0)),
+                        )),
+                        paint=('constant', Value(r=color, g=color, b=color, a=1)),
+                        opacity=('constant', Value(1)),
+                    ))
+                ]),
+                children=[],
+                layout=(LayoutIndex.OVERLAY, Value()),
+                claim=dict(
+                    horizontal=(size_preferred, size_min,  size_max, 1, 0),
+                    vertical=(size_preferred, size_min, size_max, 1, 0),
+                )
+            ))),
+        ],
+        transitions=[
+            ('default', 'clicked'),
+        ],
+        initial="default",
+    ))
+
+
+def produce_rects(count: int) -> List[Tuple[str, Value]]:
+    return [(f'rect{i}', produce_rect(i, count)) for i in range(count)]
+
+
 window: Value = get_mutated_value(Node.VALUE, dict(
     interops=[
         # ('on_mouse_click', Value(x=0, y=0), 0),
@@ -150,15 +206,22 @@ Aabrf(0, 0, node.grant.width, 30).contains(
             ],
             connections=[
                 ('sine', 'translate_expression'),
-                ('/|mouse_fact', 'filter_header_clicks'),
+                ('/|mouse_click_fact', 'filter_header_clicks'),
                 ('filter_header_clicks', 'transition_to_clicked'),
             ],
             design=window_design,
-            children=[],
-            layout=(LayoutIndex.OVERLAY, Value()),
+            children=produce_rects(30),
+            layout=(LayoutIndex.FLEXBOX, Value(
+                spacing=10,
+                cross_spacing=10,
+                direction=1,
+                alignment=1,
+                padding=(0, 30, 0, 0),
+                wrap=2,
+            )),
             claim=dict(
-                horizontal=dict(preferred=300, min=300, max=600, scale_factor=1, priority=0),
-                vertical=dict(preferred=400, min=400, max=400, scale_factor=1, priority=0),
+                horizontal=(300, 300, 600, 1, 0),
+                vertical=(400, 400, 400, 1, 0),
             )
         ))),
         ("clicked", get_mutated_value(Node.STATE, dict(
@@ -173,15 +236,22 @@ Aabrf(0, 0, node.grant.width, 30).contains(
                 ('printer', OperatorIndex.PRINTER, Value(x=0, y=0)),
             ],
             connections=[
-                ('/|mouse_fact', 'filter_header_clicks'),
+                ('/|mouse_click_fact', 'filter_header_clicks'),
                 ('filter_header_clicks', 'printer'),
             ],
             design=window_design,
-            children=[],
-            layout=(LayoutIndex.OVERLAY, Value()),
+            children=produce_rects(30),
+            layout=(LayoutIndex.FLEXBOX, Value(
+                spacing=10,
+                cross_spacing=10,
+                direction=1,
+                alignment=1,
+                padding=(0, 30, 0, 0),
+                wrap=2,
+            )),
             claim=dict(
-                horizontal=dict(preferred=300, min=300, max=600, scale_factor=1, priority=0),
-                vertical=dict(preferred=400, min=400, max=400, scale_factor=1, priority=0),
+                horizontal=(300, 300, 600, 1, 0),
+                vertical=(400, 400, 400, 1, 0),
             )
         ))),
     ],
@@ -193,7 +263,7 @@ Aabrf(0, 0, node.grant.width, 30).contains(
 
 root_node: Value = get_mutated_value(Node.VALUE, dict(
     interops=[
-        ('mouse_fact', Value(0, 0), 0),
+        ('mouse_click_fact', Value(0, 0), 0),
     ],
     states=[
         ("default", get_mutated_value(Node.STATE, dict(
@@ -203,12 +273,10 @@ root_node: Value = get_mutated_value(Node.VALUE, dict(
             children=[
                 ("window", window),
             ],
-            layout=(LayoutIndex.FLEXBOX, Value(
-                margin=10,
-            )),
+            layout=(LayoutIndex.OVERLAY, Value()),
             claim=dict(
-                horizontal=dict(preferred=0, min=0, max=0, scale_factor=1, priority=0),
-                vertical=dict(preferred=0, min=0, max=0, scale_factor=1, priority=0),
+                horizontal=(0, 0, 0, 1, 0),
+                vertical=(0, 0, 0, 1, 0),
             )
         ))),
     ],

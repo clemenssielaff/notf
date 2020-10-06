@@ -338,6 +338,9 @@ def create_batches(surplus: float, stretches: List[Stretch]) -> Tuple[float, Dic
 
 
 def distribute_surplus_in_batch(surplus: float, batch: Batch) -> float:
+    if surplus <= 0.:
+        return 0.
+
     # if the deficit is larger than the surplus, we need to distribute the space so that each stretch can
     # grow from its minimal towards its preferred size, even if it will not get there
     if batch.total_deficit >= surplus:
@@ -541,7 +544,7 @@ def layout_wrapping_stacks(nodes: Layout.NodeIterator, available: FlexSize, offs
 
     # the cross layout of stacks is a regular stack layout in of itself
     used_cross_space += (len(stack_ranges) - 1) * cross_spacing
-    cross_surplus: float = distribute_surplus_in_batch(max(0., available.cross - used_cross_space), cross_batch)
+    cross_surplus: float = distribute_surplus_in_batch(available.cross - used_cross_space, cross_batch)
 
     # determine values for alignment along the cross axis
     start_offset, added_spacing = calculate_alignment(cross_alignment, cross_surplus, cross_spacing, len(stack_ranges))

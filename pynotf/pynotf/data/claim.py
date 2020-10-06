@@ -48,11 +48,11 @@ class Stretch:
                              f'A valid Claim Value has the Schema:\n'
                              f'{cls.SCHEMA!s}')
         return Stretch(
-            preferred=float(value[0]),
-            minimum=float(value[1]),
-            maximum=float(value[2]),
-            scale_factor=float(value[3]),
-            priority=int(value[4]),
+            preferred=float(value['preferred']),
+            minimum=float(value['min']),
+            maximum=float(value['max']),
+            scale_factor=float(value['scale_factor']),
+            priority=int(value['priority']),
         )
 
     @property

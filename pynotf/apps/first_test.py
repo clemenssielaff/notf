@@ -83,7 +83,7 @@ count_presses_node: Value = get_mutated_value(Node.VALUE, dict(
                 ('number_service_printer', OperatorIndex.PRINTER, Value(0)),
             ],
             connections=[
-                ('/|mouse_fact', 'buffer'),
+                ('/|mouse_click_fact', 'buffer'),
                 ('buffer', 'printer'),
                 # ('numbers:whatever', 'number_service_printer'),
             ],
@@ -125,7 +125,7 @@ countdown_node: Value = get_mutated_value(Node.VALUE, dict(
             connections=[
                 ('/|key_fact', 'factory'),
                 ('factory', 'printer'),
-                ('/|mouse_fact', 'mouse_pos_printer'),
+                ('/|mouse_click_fact', 'mouse_pos_printer'),
                 ('sine', '|roundness'),
                 ('|on_mouse_click', 'mouse_click_printer'),
             ],
@@ -155,7 +155,7 @@ countdown_node: Value = get_mutated_value(Node.VALUE, dict(
 root_node: Value = get_mutated_value(Node.VALUE, dict(
     interops=[
         ('key_fact', Value(), 0),
-        ('mouse_fact', Value(0, 0), 0),
+        ('mouse_click_fact', Value(0, 0), 0),
         ('hitbox_fact', Value(0, 0), 0),
     ],
     states=[

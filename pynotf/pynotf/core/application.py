@@ -95,6 +95,7 @@ class Application:
         #  also, where _do_ facts live? Right now, they live as interface operators on the root node...
         glfw.set_key_callback(window, key_callback)
         glfw.set_mouse_button_callback(window, mouse_button_callback)
+        glfw.set_cursor_pos_callback(window, cursor_position_callback)
         glfw.set_window_size_callback(window, window_size_callback)
 
         # make the window's context current
@@ -108,7 +109,7 @@ class Application:
         event_thread.start()
 
         # initialize the root
-        self._scene.get_node('/').relayout_down(Size2f(800, 480))  # TODO: make this dependent on the Window size
+        self._scene.set_size(Size2f(800, 480))  # TODO: make this dependent on the Window size
 
         # TODO: font management ... somehow (in-app? use thirdparty library?)
         nanovg.create_font("Roboto", "/home/clemens/code/notf/res/fonts/Roboto-Regular.ttf")
@@ -170,13 +171,18 @@ def key_callback(window, key: int, scancode: int, action: int, mods: int) -> Non
 def mouse_button_callback(window, button: int, action: int, mods: int) -> None:
     if button == glfw.MOUSE_BUTTON_LEFT and action == glfw.PRESS:
         x, y = glfw.get_cursor_pos(window)
-        get_app().get_scene().get_fact('mouse_fact').update(Value(x=x, y=y))
+        get_app().get_scene().get_fact('mouse_click_fact').update(Value(x=x, y=y))
     elif button == glfw.MOUSE_BUTTON_RIGHT and action == glfw.PRESS:
         x, y = glfw.get_cursor_pos(window)
         hitbox: core.Sketch.Hitbox
         for hitbox in get_app().get_scene().iter_hitboxes(V2f(x, y)):
             if hitbox.callback.is_valid():
                 hitbox.callback.update(Value(x=x, y=y))
+
+
+def cursor_position_callback(window, x: float, y: float) -> None:
+    print(f'Mouse pos: ({x}, {y})')
+    #get_app().get_scene().get_fact('mouse_pos_fact').update(Value(x=x, y=y))
 
 
 # noinspection PyUnusedLocal

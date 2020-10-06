@@ -146,16 +146,18 @@ class Painter:
     def get_hitboxes(self) -> List[Sketch.Hitbox]:
         return self._hitboxes  # TODO: I am not sure that the Painter is the best place to store hitboxes
 
-    def paint(self, node: core.Node) -> None:
+    def paint(self, node: core.Node, parent_xform: Optional[M3f] = None) -> None:
         node_opacity: float = max(0., min(1., float(node.get_interop('widget.opacity').get_value())))
 
         self._nanovg.reset()
         self._nanovg.global_alpha(node_opacity)
 
         # the offset xform is only used for painting, not for layout
+        parent_xform = M3f.identity() if parent_xform is None else parent_xform
         layout_xform: M3f = node.get_composition().xform
         offset_xform: M3f = core.m3f_from_value(node.get_interop('widget.xform').get_value())
-        self._nanovg.transform(*(layout_xform * offset_xform))
+        total_xform: M3f = ((parent_xform * layout_xform) * offset_xform)
+        self._nanovg.transform(*total_xform)
 
         sketch: Sketch = node.get_sketch()
         self._hitboxes.extend(sketch.hitboxes)
@@ -195,6 +197,10 @@ class Painter:
 
             else:
                 assert False
+
+        # lastly, draw all child nodes on top
+        for node_handle in node.get_layout().get_composition().order:
+            self.paint(core.Node(node_handle), total_xform)
 
     def _set_shape(self, shape: Shape):
         self._nanovg.begin_path()

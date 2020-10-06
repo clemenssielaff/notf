@@ -51,6 +51,9 @@ class LayoutRow(TableRow):
 #  it also means that you cannot store a flag, for example, whether or not a Layout contains multi-priority nodes
 #  But maybe that's not such a big deal... all you have to do is iterate all nodes once and then branch. It sucks a bit
 #  but maybe we can always implement fast passes for cases with all same priority.
+#  Another reason for a Layout to store data is that most layouts will not change drastically from one frame to the next
+#  so there is a good chance that most parts of the layout will remain exactly as they are. If we have to recompute
+#  everything every time, we might waste a huge opportunity for caching
 
 class LayoutNodeView:
     def __init__(self, node: core.Node):
@@ -186,6 +189,15 @@ class LtOverlayout:
                 height=max(node_view.claim.vertical.min, min(node_view.claim.vertical.max, grant.height)),
             )
             assert node_view.name not in compositions
+
+            # set the node's claim right here
+            # TODO: it would be cleaner if the Layout would make sure to update the claim grant for every node
+            #  regardless whether or not the implementation of Layout does so... but the Layout might just as well do it
+            #  and be faster. Maybe we have two ways? The builtin layouts assign the grant explicitly, but user-defined
+            #  layouts are not trusted and the `Layout.perform` method assigns grants explicitly?
+            node_view.claim.horizontal.grant = node_grant.width
+            node_view.claim.vertical.grant = node_grant.height
+
             compositions[node_view.name] = NodeComposition(
                 xform=M3f.identity(),
                 grant=node_grant,

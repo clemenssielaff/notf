@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from math import inf
+
 from pynotf.data import Value, get_mutated_value
 from pynotf.core import LayoutIndex, Node, get_app
 
@@ -34,8 +36,8 @@ def get_box(index: int, count: int) -> Value:
                 children=[],
                 layout=(LayoutIndex.OVERLAY, Value()),
                 claim=dict(
-                    horizontal=dict(preferred=40, min=20, max=60, scale_factor=2, priority=0),
-                    vertical=dict(preferred=40, min=20, max=60, scale_factor=2, priority=0),
+                    horizontal=dict(preferred=40, min=20, max=60, scale_factor=1, priority=0),
+                    vertical=dict(preferred=40, min=20, max=60, scale_factor=1, priority=0),
                 )
             ))),
         ],
@@ -46,27 +48,55 @@ def get_box(index: int, count: int) -> Value:
     ))
 
 
+container: Value = get_mutated_value(Node.VALUE, dict(
+        interops=[],
+        states=[
+            ("default", get_mutated_value(Node.STATE, dict(
+                operators=[],
+                connections=[],
+                design=Value(),
+                children=[(f'window{i}', get_box(i, 10)) for i in range(30)],
+                layout=(LayoutIndex.FLEXBOX, Value(
+                    spacing=10,
+                    cross_spacing=5,
+                    direction=1,
+                    alignment=1,
+                    padding=(0, 0, 0, 0),
+                    wrap=2,
+                )),
+                claim=dict(
+                    horizontal=dict(preferred=0, min=0, max=inf, scale_factor=1, priority=0),
+                    vertical=dict(preferred=0, min=0, max=inf, scale_factor=1, priority=0),
+                )
+            ))),
+        ],
+        transitions=[],
+        initial="default",
+    ))
+
 root_node: Value = get_mutated_value(Node.VALUE, dict(
     interops=[
-        ('mouse_fact', Value(0, 0), 0),
+        ('mouse_click_fact', Value(0, 0), 0),
     ],
     states=[
         ("default", get_mutated_value(Node.STATE, dict(
             operators=[],
             connections=[],
             design=Value(),
-            children=[(f'window{i}', get_box(i, 10)) for i in range(30)],
-            layout=(LayoutIndex.FLEXBOX, Value(
-                spacing=10,
-                cross_spacing=5,
-                direction=1,
-                alignment=1,
-                padding=(0, 0, 0, 0),
-                wrap=2,
-            )),
+            children=[('container', container)],
+            layout=(LayoutIndex.OVERLAY, Value()),
+            # children=[(f'window{i}', get_box(i, 10)) for i in range(30)],
+            # layout=(LayoutIndex.FLEXBOX, Value(
+            #     spacing=10,
+            #     cross_spacing=5,
+            #     direction=1,
+            #     alignment=1,
+            #     padding=(0, 0, 0, 0),
+            #     wrap=2,
+            # )),
             claim=dict(
-                horizontal=dict(preferred=0, min=0, max=0, scale_factor=1, priority=0),
-                vertical=dict(preferred=0, min=0, max=0, scale_factor=1, priority=0),
+                horizontal=dict(preferred=0, min=0, max=inf, scale_factor=1, priority=0),
+                vertical=dict(preferred=0, min=0, max=inf, scale_factor=1, priority=0),
             )
         ))),
     ],
