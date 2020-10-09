@@ -76,7 +76,8 @@ container: Value = get_mutated_value(Node.VALUE, dict(
 
 root_node: Value = get_mutated_value(Node.VALUE, dict(
     interops=[
-        ('mouse_click_fact', Value(0, 0), 0),
+        ('mouse_buttons', Value(pos=dict(x=0, y=0), action=0, button=0, buttons=0, modifiers=0), 0),
+        ('mouse_position', Value(pos=dict(x=0, y=0), delta=dict(x=0, y=0), buttons=0, modifiers=0), 0),
     ],
     states=[
         ("default", get_mutated_value(Node.STATE, dict(

@@ -37,3 +37,20 @@ def color_background(text: str, rgb: Tuple[int, int, int]) -> str:
     :return: Colorized text.
     """
     return f'\033[48;2;{rgb[0]};{rgb[1]};{rgb[2]}m{text}\033[0m'
+
+
+# BIT FIDDLING #########################################################################################################
+
+def set_bit(value: int, bit: int, set_true: bool = True) -> int:
+    if set_true:
+        return value | (1 << bit)
+    else:
+        return clear_bit(value, bit)
+
+
+def clear_bit(value: int, bit: int) -> int:
+    return value & ~(1 << bit)
+
+
+def to_binary_string(value: int) -> str:
+    return "{0:b}".format(value)

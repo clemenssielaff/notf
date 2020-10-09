@@ -1,3 +1,21 @@
+"""
+
+State Transitions
+=================
+Here's the problem. I want to move a Window (Pane) when I click on the header and move the mouse. Easy.
+Except, I don't just want the Window to move with the mouse cursor, I also want it to keep its position relative to the
+mouse cursor.
+Okay, easy answer: Whenever you get a new mouse event, just apply the delta to the last mouse position and completely
+ignore the absolute position of the cursor.
+:/
+Yeah, that should work.
+Hm... I actually wanted to lead into a discussion whether or not we need some way to "seed" the state with additional
+data from the rest of the application (like the position of the mouse cursor) but at least for _this particular_ problem
+it seem like I don't need to?
+I mean, I might be a good idea regardless... But then maybe not?
+And thinking about it right now, when I just realized that I don't need it is just a waste of time?
+Who Knows.
+"""
 from __future__ import annotations
 
 from enum import IntEnum
@@ -169,6 +187,9 @@ class Scene:
         for hitbox in self._hitboxes:
             if hitbox.shape.contains(pos):
                 yield hitbox
+        #     for hitbox in get_app().get_scene().iter_hitboxes(V2f(x, y)):
+        #         if hitbox.callback.is_valid():
+        #             hitbox.callback.update(Value(x=x, y=y))
 
     def schedule_node_transition(self, node: Node, target_state: str) -> None:
         self._transitions.append((node, target_state))
@@ -183,7 +204,9 @@ class Scene:
             # Only established nodes have scheduled transitions.
             # Therefore it is enough to re-layout the topmost (changed) Widget after it has transitioned.
             # If we put the relayout call into Node.
-            node.relayout_down(current_grant)
+            # node.relayout_down(current_grant)
+            # TODO: OMG DIRTIES OF HACKS, but I wanted to see it work :D
+            node.relayout_down(Size2f(600, 400))
 
         self._transitions.clear()
 
@@ -420,7 +443,9 @@ class Node:
         node_table: Table = core.get_app().get_table(core.TableIndex.NODES)
         current_state: str = node_table[self._handle]['state']
         node_description: NodeDescription = node_table[self._handle]['description']
-        assert current_state == '' or (current_state, state) in node_description.transitions
+        if current_state != '' and (current_state, state) not in node_description.transitions:
+            raise RuntimeError(f'Invalid transition for node "{self.get_path()}" '
+                               f'from current state "{current_state} to "{state}"')
 
         # remove the dynamic dependencies from the last state
         self._clear_dependencies()  # TODO: think of a better way to transition between states
@@ -477,7 +502,10 @@ class Node:
             """
             result: Optional[core.Operator] = None
             if path.is_simple():  # simple paths identify a dynamic operator in this context
-                result = core.Operator(network.get(str(path)))
+                operator_handle: Optional[RowHandle] = network.get(str(path))
+                if operator_handle is None:
+                    raise NameError(f'Unknown operator name {path} in Node {self.get_path()}')
+                result = core.Operator(operator_handle)
             elif path.is_absolute():
                 result = core.get_app().get_operator(path)
             else:

@@ -6,9 +6,10 @@ from typing import Callable, Optional, Union, Type, Dict, Tuple
 
 import glfw
 
-from pycnotf import V2f, Size2f, NanoVG, loadGLES2Loader
+from pycnotf import Size2f, NanoVG, loadGLES2Loader
 from pynotf.data import Value, RowHandle, Table, Storage, Path
 import pynotf.core as core
+from pynotf.service import IoService
 
 
 # APPLICATION ##########################################################################################################
@@ -91,11 +92,9 @@ class Application:
             glfw.terminate()
             return -1
 
-        # TODO: some sort of ... OS service?
-        #  also, where _do_ facts live? Right now, they live as interface operators on the root node...
-        glfw.set_key_callback(window, key_callback)
-        glfw.set_mouse_button_callback(window, mouse_button_callback)
-        glfw.set_cursor_pos_callback(window, cursor_position_callback)
+        # TODO: where _do_ facts live? Right now, they live as interface operators on the root node...
+        # TODO: these services/callbacks rely on the existence of facts that need to be defined on the root node.
+        IoService.initialize(self._scene, window)
         glfw.set_window_size_callback(window, window_size_callback)
 
         # make the window's context current
@@ -151,40 +150,7 @@ def get_app() -> Application:
 
 # SETUP ################################################################################################################
 
-# TODO: these callbacks rely on the existence of facts that need to be defined on the root node.
-#   Maybe have another set of builtin interface ops for the root only? I think there's another to-do for this as well.
-
-# noinspection PyUnusedLocal
-def key_callback(window, key: int, scancode: int, action: int, mods: int) -> None:
-    if action not in (glfw.PRESS, glfw.REPEAT):
-        return
-
-    if key == glfw.KEY_ESCAPE:
-        glfw.set_window_should_close(window, 1)
-        return
-
-    if glfw.KEY_A <= key <= glfw.KEY_Z:
-        get_app().get_scene().get_fact('key_fact').update(Value())
 
 
-# noinspection PyUnusedLocal
-def mouse_button_callback(window, button: int, action: int, mods: int) -> None:
-    if button == glfw.MOUSE_BUTTON_LEFT and action == glfw.PRESS:
-        x, y = glfw.get_cursor_pos(window)
-        get_app().get_scene().get_fact('mouse_click_fact').update(Value(x=x, y=y))
-    elif button == glfw.MOUSE_BUTTON_RIGHT and action == glfw.PRESS:
-        x, y = glfw.get_cursor_pos(window)
-        hitbox: core.Sketch.Hitbox
-        for hitbox in get_app().get_scene().iter_hitboxes(V2f(x, y)):
-            if hitbox.callback.is_valid():
-                hitbox.callback.update(Value(x=x, y=y))
-
-
-def cursor_position_callback(window, x: float, y: float) -> None:
-    print(f'Mouse pos: ({x}, {y})')
-    #get_app().get_scene().get_fact('mouse_pos_fact').update(Value(x=x, y=y))
-
-
-# noinspection PyUnusedLocal
 def window_size_callback(window, width: int, height: int) -> None:
     get_app().get_scene().set_size(Size2f(width, height))
